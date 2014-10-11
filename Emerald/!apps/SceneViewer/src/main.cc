@@ -1,0 +1,589 @@
+/**
+ *
+ * Internal Emerald scene viewer (kbi/elude @2014)
+ *
+ */
+#include "shared.h"
+#include <stdlib.h>
+#include "mesh/mesh.h"
+#include "mesh/mesh_material.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_curve_renderer.h"
+#include "ogl/ogl_flyby.h"
+#include "ogl/ogl_materials.h"
+#include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_rendering_handler.h"
+#include "ogl/ogl_scene_renderer.h"
+#include "ogl/ogl_shader.h"
+#include "ogl/ogl_text.h"
+#include "ogl/ogl_text.h"
+#include "ogl/ogl_uber.h"
+#include "ogl/ogl_ui.h"
+#include "scene/scene.h"
+#include "scene/scene_camera.h"
+#include "scene/scene_graph.h"
+#include "scene/scene_mesh.h"
+#include "system/system_assertions.h"
+#include "system/system_critical_section.h"
+#include "system/system_event.h"
+#include "system/system_file_enumerator.h"
+#include "system/system_file_serializer.h"
+#include "system/system_hashed_ansi_string.h"
+#include "system/system_log.h"
+#include "system/system_matrix4x4.h"
+#include "system/system_resizable_vector.h"
+#include "system/system_resources.h"
+#include "system/system_window.h"
+#include <string>
+#include <sstream>
+
+float                      _animation_duration_float     = 0.0f;
+system_timeline_time       _animation_duration_time      = 0;
+system_critical_section    _camera_cs                    = NULL;
+void**                     _camera_indices               = NULL;
+system_hashed_ansi_string* _camera_names                 = NULL;
+system_resizable_vector    _cameras                      = NULL;
+ogl_context                _context                      = NULL;
+system_matrix4x4           _current_matrix               = NULL;
+ogl_curve_renderer         _curve_renderer               = NULL;
+ogl_curve_item_id          _curve_renderer_item_id       = -1;
+ogl_pipeline               _pipeline                     = NULL;
+uint32_t                   _pipeline_stage_id            = -1;
+system_timeline_time       _scene_duration               = 0;
+ogl_scene_renderer         _scene_renderer               = NULL;
+uint32_t                   _selected_camera_index        = 0;
+system_hashed_ansi_string  _selected_scene_data_filename = NULL;
+scene                      _test_scene                   = NULL;
+ogl_text                   _text_renderer                = NULL;
+ogl_ui                     _ui                           = NULL;
+system_window              _window                       = NULL;
+system_event               _window_closed_event          = system_event_create(true, false);
+
+system_matrix4x4 _projection_matrix = NULL;
+GLuint           _vao_id            = 0;
+
+typedef struct _camera
+{
+    scene_camera              camera;
+    bool                      is_flyby;
+    system_hashed_ansi_string name;
+
+    explicit _camera(bool                      in_is_flyby,
+                     system_hashed_ansi_string in_name,
+                     scene_camera              in_camera)
+    {
+        camera   = in_camera;
+        is_flyby = in_is_flyby;
+        name     = in_name;
+    }
+} _camera;
+
+/* Forward declarations */
+void _on_camera_changed(void* fire_proc_user_arg,
+                        void* event_user_arg);
+
+/** TODO */
+void _init_cameras()
+{
+    unsigned int n_cameras = 0;
+
+    /* How many cameras do we have? */
+    scene_get_property(_test_scene,
+                       SCENE_PROPERTY_N_CAMERAS,
+                      &n_cameras);
+
+    /* Iterate over all cameras and create a descriptor for each entry */
+    _cameras = system_resizable_vector_create(4, /* capacity */
+                                              sizeof(_camera*) );
+
+    for (unsigned int n_camera = 0;
+                      n_camera < n_cameras;
+                    ++n_camera)
+    {
+        scene_camera current_camera = scene_get_camera_by_index(_test_scene, n_camera);
+
+        ASSERT_ALWAYS_ASYNC(current_camera != NULL,
+                            "Could not retrieve camera at index [%d]",
+                            n_camera);
+
+        if (current_camera != NULL)
+        {
+            system_hashed_ansi_string current_camera_name = NULL;
+
+            scene_camera_get_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_NAME,
+                                     &current_camera_name);
+
+            /* Create a new descriptor */
+            _camera* new_camera = new (std::nothrow) _camera(false, /* is_flyby */
+                                                             current_camera_name,
+                                                             current_camera);
+
+            ASSERT_ALWAYS_SYNC(new_camera != NULL, "Out of memory");
+            if (new_camera != NULL)
+            {
+                system_resizable_vector_push(_cameras, new_camera);
+            }
+        }
+    }
+
+    /* Add the 'flyby' camera */
+    _camera* flyby_camera = new (std::nothrow) _camera(true,
+                                                       system_hashed_ansi_string_create("Flyby camera"),
+                                                       NULL);
+
+    ASSERT_ALWAYS_SYNC(flyby_camera != NULL, "Out of memory");
+    if (flyby_camera != NULL)
+    {
+        system_resizable_vector_push(_cameras, flyby_camera);
+    }
+
+    /* Create the list of camera names */
+    const uint32_t n_total_cameras = system_resizable_vector_get_amount_of_elements(_cameras);
+
+    _camera_indices = new void*                    [n_total_cameras];
+    _camera_names   = new system_hashed_ansi_string[n_total_cameras];
+
+    for (uint32_t n_camera = 0;
+                  n_camera < n_total_cameras;
+                ++n_camera)
+    {
+        _camera* current_camera = NULL;
+
+        system_resizable_vector_get_element_at(_cameras, n_camera, &current_camera);
+
+        _camera_indices[n_camera] = (void*) n_camera;
+        _camera_names  [n_camera] = current_camera->name;
+    }
+
+    /* Set up the selected camera */
+    _on_camera_changed(NULL, (void*) _selected_camera_index);
+}
+
+/** Dropdown call-back handler */
+void _on_camera_changed(void* fire_proc_user_arg,
+                        void* event_user_arg)
+{
+    system_critical_section_enter(_camera_cs);
+    {
+        _selected_camera_index = (unsigned int) event_user_arg;
+
+        /* Release camera-specific projection matrix */
+        if (_projection_matrix != NULL)
+        {
+            system_matrix4x4_release(_projection_matrix);
+
+            _projection_matrix = NULL;
+        }
+
+        /* Retrieve the camera descriptro */
+        _camera* camera_ptr = NULL;
+
+        system_resizable_vector_get_element_at(_cameras,
+                                               _selected_camera_index,
+                                              &camera_ptr);
+
+        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve camera descriptor");
+        if (camera_ptr != NULL)
+        {
+            if (!camera_ptr->is_flyby)
+            {
+                /* Create projection matrix */
+                float yfov;
+                float zfar;
+                float znear;
+
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                                          &yfov);
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+                                          &zfar);
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
+                                          &znear);
+
+                _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(yfov,
+                                                                                           1280 / 720.0f,
+                                                                                           znear,
+                                                                                           zfar);
+
+                /* Configure the curve renderer to show the camera path */
+                scene_graph_node     camera_node              = NULL;
+                const float          curve_color[4]           = {1.0f, 1.0f, 1.0f, 1.0f};
+                scene_graph          graph                    = NULL;
+
+                scene_get_property(_test_scene,
+                                   SCENE_PROPERTY_GRAPH,
+                                  &graph);
+
+                camera_node = scene_graph_get_node_for_object(graph,
+                                                              SCENE_OBJECT_TYPE_CAMERA,
+                                                              camera_ptr->camera);
+                ASSERT_DEBUG_SYNC(camera_node != NULL,
+                                  "Could not retrieve owner node for selected camera.");
+
+                if (_curve_renderer_item_id != -1)
+                {
+                    ogl_curve_renderer_delete_curve(_curve_renderer,
+                                                    _curve_renderer_item_id);
+
+                    _curve_renderer_item_id = -1;
+                }
+
+                _curve_renderer_item_id = ogl_curve_renderer_add_scene_graph_node_curve(_curve_renderer,
+                                                                                        graph,
+                                                                                        camera_node,
+                                                                                        curve_color,
+                                                                                        _scene_duration,
+                                                                                        15); /* n_samples_per_second */
+            }
+            else
+            {
+                _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,
+                                                                                           1280 / 720.0f,
+                                                                                           1.0f,
+                                                                                           10000.0f);
+            }
+        } /* if (camera_ptr != NULL) */
+    }
+    system_critical_section_leave(_camera_cs);
+}
+
+/** Rendering handler */
+void _rendering_handler(ogl_context          context,
+                        uint32_t             n_frames_rendered,
+                        system_timeline_time frame_time,
+                        void*                unused)
+{
+    const ogl_context_gl_entrypoints* entry_points = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    entry_points->pGLClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+    entry_points->pGLClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    entry_points->pGLEnable(GL_DEPTH_TEST);
+    entry_points->pGLEnable(GL_CULL_FACE);
+
+    /* Render the scene */
+    ogl_pipeline_draw_stage(_pipeline,
+                            _pipeline_stage_id,
+                            frame_time);
+}
+
+void _render_scene(ogl_context          context,
+                   system_timeline_time time,
+                   void*                not_used)
+{
+    static system_timeline_time start_time = system_time_now();
+           system_timeline_time frame_time = (system_time_now() - start_time) % _animation_duration_time;
+
+    /* Update view matrix */
+    float            camera_location[4] = {0, 0, 0, 0};
+    system_matrix4x4 view               = system_matrix4x4_create();
+
+    system_critical_section_enter(_camera_cs);
+    {
+        _camera* camera_ptr = NULL;
+
+        system_resizable_vector_get_element_at(_cameras,
+                                               _selected_camera_index,
+                                              &camera_ptr);
+
+        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve current camera descriptor");
+        if (camera_ptr != NULL)
+        {
+            if (camera_ptr->is_flyby)
+            {
+                ogl_flyby_lock();
+                {
+                    ogl_flyby_update(_context);
+
+                    /* Retrieve flyby details */
+                    const float* flyby_camera_location = ogl_flyby_get_camera_location(_context);
+
+                    memcpy(camera_location,
+                           flyby_camera_location,
+                           sizeof(float) * 3);
+
+                    ogl_flyby_get_view_matrix(_context, view);
+                }
+                ogl_flyby_unlock();
+            } /* if (camera_ptr->is_flyby) */
+            else
+            {
+                scene_graph scene_renderer_graph = NULL;
+
+                /* Compute matrices for all nodes */
+                ogl_scene_renderer_get_property(_scene_renderer,
+                                                OGL_SCENE_RENDERER_PROPERTY_GRAPH,
+                                               &scene_renderer_graph);
+
+                scene_graph_compute(scene_renderer_graph,
+                                    frame_time);
+
+                /* Retrieve node that contains the transformation matrix for the camera */
+                scene_graph_node scene_camera_node                  = NULL;
+                system_matrix4x4 scene_camera_transformation_matrix = NULL;
+
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+                                         &scene_camera_node);
+
+                scene_graph_node_get_property(scene_camera_node,
+                                              SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
+                                             &scene_camera_transformation_matrix);
+
+                /* For the view matrix, we need to take the inverse of the transformation matrix */
+                system_matrix4x4_set_from_matrix4x4(view, scene_camera_transformation_matrix);
+                system_matrix4x4_invert            (view);
+
+                const float* view_matrix_data = system_matrix4x4_get_row_major_data(view);
+
+                camera_location[0] = view_matrix_data[0];
+                camera_location[1] = view_matrix_data[1];
+                camera_location[2] = view_matrix_data[2];
+            }
+        } /* if (camera_ptr != NULL) */
+    }
+    system_critical_section_leave(_camera_cs);
+
+    /* Traverse the scene graph */
+    ogl_scene_renderer_render_scene_graph(_scene_renderer,
+                                          view,
+                                          _projection_matrix,
+                                          camera_location,
+                                          RENDER_MODE_REGULAR,
+                                          HELPER_VISUALIZATION_NONE,
+                                          frame_time
+                                         );
+
+    /* Draw curves marked as active */
+    if (_curve_renderer_item_id != -1)
+    {
+        const ogl_context_gl_entrypoints* entry_points = NULL;
+        system_matrix4x4                  vp           = system_matrix4x4_create_by_mul(_projection_matrix, view);
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                &entry_points);
+
+        ogl_curve_renderer_draw(_curve_renderer,
+                                1,
+                               &_curve_renderer_item_id,
+                                vp);
+
+        system_matrix4x4_release(vp);
+    }
+
+    /* Render UI */
+    ogl_ui_draw  (_ui);
+    ogl_text_draw(_context, _text_renderer);
+
+    /* All done */
+    system_matrix4x4_release(view);
+}
+
+void _rendering_rbm_callback_handler(system_window           window,
+                                     unsigned short          x,
+                                     unsigned short          y,
+                                     system_window_vk_status new_status,
+                                     void*)
+{
+    system_event_set(_window_closed_event);
+}
+
+void _setup_ui()
+{
+    const float  dropdown_x1y1[2]  = {0.7f, 0.1f};
+    const float  text_default_size = 0.5f;
+    int          window_height     = 0;
+    int          window_width      = 0;
+
+    system_window_get_dimensions(_window,
+                                &window_width,
+                                &window_height);
+
+    _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
+                                     _context,
+                                     system_resources_get_meiryo_font_table(),
+                                     window_width,
+                                     window_height);
+
+    ogl_text_set_text_string_property(_text_renderer,
+                                      TEXT_STRING_ID_DEFAULT,
+                                      OGL_TEXT_STRING_PROPERTY_SCALE,
+                                     &text_default_size);
+
+    _ui = ogl_ui_create(_text_renderer,
+                        system_hashed_ansi_string_create("UI") );
+
+    /* Create camera selector */
+    ogl_ui_add_dropdown(_ui,
+                        system_resizable_vector_get_amount_of_elements(_cameras),
+                        _camera_names,
+                        _camera_indices,
+                        _selected_camera_index,
+                        system_hashed_ansi_string_create("Selected camera:"),
+                        dropdown_x1y1,
+                        _on_camera_changed,
+                        NULL);
+
+    ogl_line_strip_renderer renderer = NULL;
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_LINE_STRIP_RENDERER,
+                            &renderer);
+}
+
+/** Entry point */
+int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+{
+    float                 camera_position[3]       = {0, 0, 0};
+    bool                  context_result           = false;
+    ogl_rendering_handler window_rendering_handler = NULL;
+    int                   window_size    [2]       = {1280, 720};
+    int                   window_x1y1x2y2[4]       = {0};
+
+    /* Carry on */
+    system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
+
+    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
+                                                                            window_x1y1x2y2,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false,
+                                                                            0,
+                                                                            false,
+                                                                            false,
+                                                                            true);
+    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                            60,
+                                                                            _rendering_handler,
+                                                                            NULL);
+    context_result           = system_window_get_context                   (_window,
+                                                                           &_context);
+
+    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
+
+    system_window_set_rendering_handler(_window,
+                                        window_rendering_handler);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                        _rendering_rbm_callback_handler,
+                                        NULL);
+
+    /* Spawn curve renderer */
+    _curve_renderer = ogl_curve_renderer_create(_context, system_hashed_ansi_string_create("Curve renderer") );
+
+    /* Let the user select the scene file */
+    _selected_scene_data_filename = system_file_enumerator_choose_file_via_ui(system_hashed_ansi_string_create("*.scene"),
+                                                                              system_hashed_ansi_string_create("Emerald Scene files"),
+                                                                              system_hashed_ansi_string_create("Select Emerald Scene file") );
+
+    if (_selected_scene_data_filename == NULL)
+    {
+        goto end;
+    }
+
+    _test_scene = scene_load(_context,
+                             _selected_scene_data_filename);
+
+    /* Determine animation duration */
+    float                animation_duration_float = 0.0f;
+    system_timeline_time animation_duration       = 0;
+
+    scene_get_property(_test_scene,
+                       SCENE_PROPERTY_MAX_ANIMATION_DURATION,
+                      &animation_duration_float);
+
+    _scene_duration = system_time_get_timeline_time_for_msec( uint32_t(animation_duration_float * 1000.0f) );
+
+    /* Enumerate all cameras */
+    _camera_cs = system_critical_section_create();
+
+    _init_cameras();
+
+    /* Determine the animation duration. */
+    scene_get_property(_test_scene,
+                       SCENE_PROPERTY_MAX_ANIMATION_DURATION,
+                      &_animation_duration_float);
+
+    _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
+
+    /* Carry on initializing */
+    _current_matrix = system_matrix4x4_create();
+    _scene_renderer = ogl_scene_renderer_create(_context, _test_scene);
+
+    ogl_flyby_activate(_context, camera_position);
+    ogl_flyby_set_movement_delta(_context, 1.25f);
+
+    /* Construct the pipeline object */
+    _pipeline = ogl_pipeline_create(_context,
+                                    true, /* should_overlay_performance_info */
+                                    system_hashed_ansi_string_create("Pipeline") );
+
+    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
+
+    ogl_pipeline_add_stage_step(_pipeline,
+                                _pipeline_stage_id,
+                                system_hashed_ansi_string_create("Scene rendering"),
+                                _render_scene,
+                                NULL);
+
+    /* Set up UI */
+    _setup_ui();
+
+    /* Carry on */
+    ogl_rendering_handler_play(window_rendering_handler, 0);
+
+    system_event_wait_single_infinite(_window_closed_event);
+
+    /* Clean up */
+    ogl_rendering_handler_stop(window_rendering_handler);
+
+end:
+    ogl_curve_renderer_release(_curve_renderer);
+    ogl_pipeline_release      (_pipeline);
+    scene_release             (_test_scene);
+    ogl_scene_renderer_release(_scene_renderer);
+    system_window_close       (_window);
+    system_event_release      (_window_closed_event);
+
+    if (_cameras != NULL)
+    {
+        while (system_resizable_vector_get_amount_of_elements(_cameras) > 0)
+        {
+            _camera* current_camera = NULL;
+
+            system_resizable_vector_pop(_cameras, &current_camera);
+            delete current_camera;
+        }
+        system_resizable_vector_release(_cameras);
+    }
+
+    if (_camera_cs != NULL)
+    {
+        system_critical_section_release(_camera_cs);
+
+        _camera_cs = NULL;
+    }
+
+    if (_camera_indices != NULL)
+    {
+        delete [] _camera_indices;
+
+        _camera_indices = NULL;
+    }
+
+    if (_camera_names != NULL)
+    {
+        delete [] _camera_names;
+
+        _camera_names = NULL;
+    }
+
+    return 0;
+}

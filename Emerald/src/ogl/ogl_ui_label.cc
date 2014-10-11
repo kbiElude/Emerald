@@ -1,0 +1,153 @@
+/**
+ *
+ * Emerald (kbi/elude @2014)
+ *
+ */
+#include "shared.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_shader.h"
+#include "ogl/ogl_text.h"
+#include "ogl/ogl_ui.h"
+#include "ogl/ogl_ui_label.h"
+#include "ogl/ogl_ui_shared.h"
+#include "system/system_assertions.h"
+#include "system/system_hashed_ansi_string.h"
+#include "system/system_log.h"
+#include "system/system_thread_pool.h"
+#include "system/system_window.h"
+
+const float _ui_button_text_color[] = {1, 1, 1, 1.0f};
+
+/** Internal types */
+typedef struct
+{
+    ogl_context         context;
+    ogl_text_string_id  text_id;
+    ogl_text            text_renderer;
+    float               x1y1[2];
+} _ogl_ui_label;
+
+/** Please see header for specification */
+PUBLIC void ogl_ui_label_deinit(void* internal_instance)
+{
+    const bool     new_visibility = false;
+    _ogl_ui_label* ui_label_ptr   = (_ogl_ui_label*) internal_instance;
+
+    ogl_context_release              (ui_label_ptr->context);
+    ogl_text_set_text_string_property(ui_label_ptr->text_renderer,
+                                      ui_label_ptr->text_id,
+                                      OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                      &new_visibility);
+
+    delete internal_instance;
+}
+
+/** Please see header for specification */
+PUBLIC void ogl_ui_label_get_property(__in  __notnull const void* label,
+                                      __in  __notnull int         property_value,
+                                      __out __notnull void*       out_result)
+{
+    const _ogl_ui_label* label_ptr = (const _ogl_ui_label*) label;
+
+    switch (property_value)
+    {
+        case OGL_UI_LABEL_PROPERTY_TEXT_HEIGHT_SS:
+        {
+            ogl_text_get_text_string_property(label_ptr->text_renderer,
+                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                              label_ptr->text_id,
+                                              out_result);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized label property");
+        }
+    } /* switch (property_value) */
+}
+
+/** Please see header for specification */
+PUBLIC void* ogl_ui_label_init(__in           __notnull   ogl_ui                    instance,
+                               __in           __notnull   ogl_text                  text_renderer,
+                               __in           __notnull   system_hashed_ansi_string name,
+                               __in_ecount(2) __notnull   const float*              x1y1)
+{
+    _ogl_ui_label* new_label = new (std::nothrow) _ogl_ui_label;
+
+    ASSERT_ALWAYS_SYNC(new_label != NULL, "Out of memory");
+    if (new_label != NULL)
+    {
+        /* Initialize fields */
+        memset(new_label, 0, sizeof(_ogl_ui_label) );
+
+        new_label->x1y1[0] =     x1y1[0];
+        new_label->x1y1[1] = 1 - x1y1[1];
+
+        new_label->context       = ogl_ui_get_context(instance);
+        new_label->text_renderer = text_renderer;
+        new_label->text_id       = ogl_text_add_string(text_renderer);
+
+        ogl_context_retain(new_label->context);
+
+        /* Configure the text to be shown on the button */
+        ogl_text_set(new_label->text_renderer,
+                     new_label->text_id,
+                     system_hashed_ansi_string_get_buffer(name) );
+
+        ogl_text_set_text_string_property(new_label->text_renderer,
+                                          new_label->text_id,
+                                          OGL_TEXT_STRING_PROPERTY_COLOR,
+                                          _ui_button_text_color);
+        ogl_text_set_text_string_property(new_label->text_renderer,
+                                          new_label->text_id,
+                                          OGL_TEXT_STRING_PROPERTY_POSITION_SS,
+                                          x1y1);
+    } /* if (new_label != NULL) */
+
+    return (void*) new_label;
+}
+
+/** Please see header for specification */
+PUBLIC void ogl_ui_label_set_property(__in  __notnull void*       label,
+                                      __in  __notnull int         property_value,
+                                      __out __notnull const void* data)
+{
+    _ogl_ui_label* label_ptr = (_ogl_ui_label*) label;
+
+    switch (property_value)
+    {
+        case OGL_UI_LABEL_PROPERTY_TEXT:
+        {
+            ogl_text_set(label_ptr->text_renderer,
+                         label_ptr->text_id,
+                         system_hashed_ansi_string_get_buffer(*(system_hashed_ansi_string*) data));
+
+            break;
+        }
+
+        case OGL_UI_LABEL_PROPERTY_X1Y1:
+        {
+            const float* x1y1 = (const float*) data;
+
+            label_ptr->x1y1[0] = x1y1[0];
+            label_ptr->x1y1[1] = x1y1[1];
+
+            ogl_text_set_text_string_property(label_ptr->text_renderer,
+                                              label_ptr->text_id,
+                                              OGL_TEXT_STRING_PROPERTY_POSITION_SS,
+                                              label_ptr->x1y1);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized property value");
+        }
+    } /* switch (property_value) */
+}
