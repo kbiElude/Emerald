@@ -11,9 +11,9 @@
 #include "ogl/ogl_context_texture_compression.h"
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_wrappers.h"
-#include "ogl/ogl_line_strip_renderer.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pixel_format_descriptor.h"
+#include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_textures.h"
@@ -87,8 +87,8 @@ typedef struct
 
     GLenum                          active_texture_unit;
     ogl_context_bo_bindings         bo_bindings;
-    ogl_line_strip_renderer         line_strip_renderer;
     ogl_materials                   materials;
+    ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_samplers                    samplers;
     ogl_context_state_cache         state_cache;
@@ -217,11 +217,11 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
         context_ptr->bo_bindings = NULL;
     }
 
-    if (context_ptr->line_strip_renderer != NULL)
+    if (context_ptr->primitive_renderer != NULL)
     {
-        ogl_line_strip_renderer_release(context_ptr->line_strip_renderer);
+        ogl_primitive_renderer_release(context_ptr->primitive_renderer);
 
-        context_ptr->line_strip_renderer = NULL;
+        context_ptr->primitive_renderer = NULL;
     }
 
     if (context_ptr->multisampling_supported_sample != NULL)
@@ -2086,7 +2086,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->gl_arb_program_interface_query_support     = false;
                                     _result->gl_arb_texture_buffer_object_rgb32_support = false;
                                     _result->gl_ext_direct_state_access_support         = false;
-                                    _result->line_strip_renderer                        = NULL;
+                                    _result->primitive_renderer                         = NULL;
                                     _result->materials                                  = ogl_materials_create( (ogl_context) _result);
                                     _result->opengl32_dll_handle                        = NULL;
                                     _result->multisampling_samples                      = 0;
@@ -2461,16 +2461,16 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_LINE_STRIP_RENDERER:
+        case OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER:
         {
-            /* If there's no line strip renderer, create one now */
-            if (context_ptr->line_strip_renderer == NULL)
+            /* If there's no primitive renderer, create one now */
+            if (context_ptr->primitive_renderer == NULL)
             {
-                context_ptr->line_strip_renderer = ogl_line_strip_renderer_create(context,
-                                                                                  system_hashed_ansi_string_create("Context line strip renderer") );
+                context_ptr->primitive_renderer = ogl_primitive_renderer_create(context,
+                                                                                system_hashed_ansi_string_create("Context primitive renderer") );
             }
 
-            *((ogl_line_strip_renderer*) out_result) = context_ptr->line_strip_renderer;
+            *((ogl_primitive_renderer*) out_result) = context_ptr->primitive_renderer;
 
             break;
         }

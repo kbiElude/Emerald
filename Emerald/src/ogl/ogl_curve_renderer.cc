@@ -7,7 +7,7 @@
 #include "curve/curve_container.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_curve_renderer.h"
-#include "ogl/ogl_line_strip_renderer.h"
+#include "ogl/ogl_primitive_renderer.h"
 #include "object_manager/object_manager_general.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
@@ -19,7 +19,7 @@
 /** Internal type declarations */
 typedef struct _ogl_curve_renderer_item
 {
-    ogl_line_strip_renderer_dataset_id dataset_id;
+    ogl_primitive_renderer_dataset_id dataset_id;
 
     _ogl_curve_renderer_item()
     {
@@ -35,11 +35,11 @@ typedef struct _ogl_curve_renderer_item
 
 typedef struct
 {
-    ogl_line_strip_renderer_dataset_id* conversion_array_items;
-    uint32_t                            n_conversion_array_items;
+    ogl_primitive_renderer_dataset_id* conversion_array_items;
+    uint32_t                           n_conversion_array_items;
 
     system_resizable_vector   items;
-    ogl_line_strip_renderer   line_strip_renderer;
+    ogl_primitive_renderer    primitive_renderer;
     system_hashed_ansi_string name;
 
     REFCOUNT_INSERT_VARIABLES
@@ -190,11 +190,11 @@ PRIVATE void _ogl_curve_renderer_release(__in __notnull void* renderer)
         renderer_ptr->items = NULL;
     }
 
-    if (renderer_ptr->line_strip_renderer != NULL)
+    if (renderer_ptr->primitive_renderer != NULL)
     {
-        ogl_line_strip_renderer_release(renderer_ptr->line_strip_renderer);
+        ogl_primitive_renderer_release(renderer_ptr->primitive_renderer);
 
-        renderer_ptr->line_strip_renderer = NULL;
+        renderer_ptr->primitive_renderer = NULL;
     }
 }
 
@@ -202,7 +202,7 @@ PRIVATE void _ogl_curve_renderer_release(__in __notnull void* renderer)
 PRIVATE void _ogl_curve_renderer_release_item(__in __notnull _ogl_curve_renderer*      renderer_ptr,
                                               __in __notnull _ogl_curve_renderer_item* item_ptr)
 {
-    ogl_line_strip_renderer_delete_dataset(renderer_ptr->line_strip_renderer,
+    ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
                                            item_ptr->dataset_id);
 
     item_ptr->dataset_id = -1;
@@ -250,10 +250,11 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     }
 
     /* Fill it */
-    item_ptr->dataset_id = ogl_line_strip_renderer_add_dataset(renderer_ptr->line_strip_renderer,
-                                                               n_vertices,
-                                                               vertex_data,
-                                                               curve_color);
+    item_ptr->dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
+                                                              OGL_PRIMITIVE_TYPE_LINE_STRIP,
+                                                              n_vertices,
+                                                              vertex_data,
+                                                              curve_color);
 
     /* Store it */
     item_id = system_resizable_vector_get_amount_of_elements(renderer_ptr->items);
@@ -280,8 +281,8 @@ PUBLIC EMERALD_API ogl_curve_renderer ogl_curve_renderer_create(__in __notnull o
     if (new_instance != NULL)
     {
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_LINE_STRIP_RENDERER,
-                                &new_instance->line_strip_renderer);
+                                 OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,
+                                &new_instance->primitive_renderer);
 
         new_instance->conversion_array_items   = NULL;
         new_instance->items                    = system_resizable_vector_create(4, /* capacity */
@@ -353,7 +354,7 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
             renderer_ptr->conversion_array_items = NULL;
         }
 
-        renderer_ptr->conversion_array_items = new ogl_line_strip_renderer_dataset_id[2 * n_item_ids];
+        renderer_ptr->conversion_array_items = new ogl_primitive_renderer_dataset_id[2 * n_item_ids];
 
         ASSERT_ALWAYS_SYNC(renderer_ptr->conversion_array_items != NULL,
                            "Out of memory");
@@ -385,10 +386,10 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
         renderer_ptr->conversion_array_items[n_item_id] = item_ptr->dataset_id;
     } /* for (all item IDs) */
 
-    ogl_line_strip_renderer_draw(renderer_ptr->line_strip_renderer,
-                                 mvp,
-                                 n_item_ids,
-                                 renderer_ptr->conversion_array_items);
+    ogl_primitive_renderer_draw(renderer_ptr->primitive_renderer,
+                                mvp,
+                                n_item_ids,
+                                renderer_ptr->conversion_array_items);
 
 end:
     ;

@@ -10,10 +10,27 @@
 #include "system/system_time.h"
 #include "system/system_types.h"
 
-/* Line strip renderer */
-DECLARE_HANDLE(ogl_line_strip_renderer);
+/* Primitive renderer */
+DECLARE_HANDLE(ogl_primitive_renderer);
 
-typedef unsigned int ogl_line_strip_renderer_dataset_id;
+typedef unsigned int ogl_primitive_renderer_dataset_id;
+
+typedef enum
+{
+    OGL_PRIMITIVE_TYPE_LINE_LOOP                = GL_LINE_LOOP,
+    OGL_PRIMITIVE_TYPE_LINE_STRIP               = GL_LINE_STRIP,
+    OGL_PRIMITIVE_TYPE_LINE_STRIP_ADJACENCY     = GL_LINE_STRIP_ADJACENCY,
+    OGL_PRIMITIVE_TYPE_LINES                    = GL_LINES,
+    OGL_PRIMITIVE_TYPE_LINES_ADJACENCY          = GL_LINES_ADJACENCY,
+    OGL_PRIMITIVE_TYPE_POINTS                   = GL_POINTS,
+    OGL_PRIMITIVE_TYPE_TRIANGLE_FAN             = GL_TRIANGLE_FAN,
+    OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP           = GL_TRIANGLE_STRIP,
+    OGL_PRIMITIVE_TYPE_TRIANGLE_STRIP_ADJACENCY = GL_TRIANGLE_STRIP_ADJACENCY,
+    OGL_PRIMITIVE_TYPE_TRIANGLES                = GL_TRIANGLES,
+    OGL_PRIMITIVE_TYPE_TRIANGLES_ADJACENCY      = GL_TRIANGLES_ADJACENCY,
+
+    OGL_PRIMITIVE_TYPE_UNDEFINED
+} ogl_primitive_type;
 
 /* Curve renderer */
 DECLARE_HANDLE(ogl_curve_renderer);

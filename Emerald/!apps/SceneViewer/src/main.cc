@@ -431,11 +431,6 @@ void _setup_ui()
                         dropdown_x1y1,
                         _on_camera_changed,
                         NULL);
-
-    ogl_line_strip_renderer renderer = NULL;
-    ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_LINE_STRIP_RENDERER,
-                            &renderer);
 }
 
 /** Entry point */

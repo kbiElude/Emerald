@@ -28,9 +28,9 @@ static const system_hashed_ansi_string _object_type_ocl_kernel_hashed_ansi_strin
 static const system_hashed_ansi_string _object_type_ocl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Programs");
 static const system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Contexts");
 static const system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
-static const system_hashed_ansi_string _object_type_ogl_line_strip_renderer_hashed_ansi_string               = system_hashed_ansi_string_create("Line Strip Renderers");
 static const system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
 static const system_hashed_ansi_string _object_type_ogl_pixel_format_descriptor_hashed_ansi_string           = system_hashed_ansi_string_create("OpenGL Pixel Format Descriptors");
+static const system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi_string                = system_hashed_ansi_string_create("Primitive Renderers");
 static const system_hashed_ansi_string _object_type_ogl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Programs");
 static const system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
 static const system_hashed_ansi_string _object_type_ogl_sampler_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Samplers");
@@ -102,9 +102,9 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OCL_PROGRAM:                                     return _object_type_ocl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CONTEXT:                                     return _object_type_ogl_context_hashed_ansi_string;
         case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_LINE_STRIP_RENDERER:                         return _object_type_ogl_line_strip_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIXEL_FORMAT_DESCRIPTOR:                     return _object_type_ogl_pixel_format_descriptor_hashed_ansi_string;
+        case OBJECT_TYPE_OGL_PRIMITIVE_RENDERER:                          return _object_type_ogl_primitive_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PROGRAM:                                     return _object_type_ogl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SAMPLER:                                     return _object_type_ogl_sampler_hashed_ansi_string;

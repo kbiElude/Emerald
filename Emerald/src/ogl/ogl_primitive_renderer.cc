@@ -5,7 +5,7 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_line_strip_renderer.h"
+#include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
 #include "system/system_assertions.h"
@@ -48,25 +48,27 @@ static const char* vs_body     = "layout(std140, binding = 0) uniform UB\n"
 
 
 /** Internal types */
-typedef struct _ogl_line_strip_renderer_dataset
+typedef struct _ogl_primitive_renderer_dataset
 {
-    GLfloat      color_data[4];
-    unsigned int draw_first;
-    unsigned int n_vertices;
-    unsigned int n_vertices_allocated;
-    GLfloat*     vertex_data;
+    GLfloat            color_data[4];
+    unsigned int       draw_first;
+    ogl_primitive_type primitive_type;
+    unsigned int       n_vertices;
+    unsigned int       n_vertices_allocated;
+    GLfloat*           vertex_data;
 
-    _ogl_line_strip_renderer_dataset()
+    _ogl_primitive_renderer_dataset()
     {
         draw_first            = -1;
         n_vertices            = 0;
         n_vertices_allocated  = 0;
+        primitive_type        = OGL_PRIMITIVE_TYPE_UNDEFINED;
         vertex_data           = NULL;
 
         memset(color_data, 0, sizeof(color_data) );
     }
 
-    ~_ogl_line_strip_renderer_dataset()
+    ~_ogl_primitive_renderer_dataset()
     {
         if (vertex_data != NULL)
         {
@@ -76,7 +78,7 @@ typedef struct _ogl_line_strip_renderer_dataset
         }
     }
 
-} _ogl_line_strip_renderer_dataset;
+} _ogl_primitive_renderer_dataset;
 
 typedef struct
 {
@@ -101,7 +103,7 @@ typedef struct
     system_critical_section draw_cs;
 
     /* Draw call arguments */
-    ogl_line_strip_renderer_dataset_id* draw_dataset_ids;
+    ogl_primitive_renderer_dataset_id* draw_dataset_ids;
     system_matrix4x4                    draw_mvp;
     unsigned int                        draw_n_dataset_ids;
 
@@ -129,30 +131,30 @@ typedef struct
 
     REFCOUNT_INSERT_VARIABLES
 
-} _ogl_line_strip_renderer;
+} _ogl_primitive_renderer;
 
 /* Forward declarations */
-PRIVATE void _ogl_line_strip_renderer_draw_rendering_thread_callback    (ogl_context               context,
-                                                                         void*                     user_arg);
-PRIVATE void _ogl_line_strip_renderer_init_program                      (_ogl_line_strip_renderer* renderer_ptr);
-PRIVATE void _ogl_line_strip_renderer_init_vao                          (_ogl_line_strip_renderer* renderer_ptr);
-PRIVATE void _ogl_line_strip_renderer_init_vao_rendering_thread_callback(ogl_context               context,
-                                                                         void*                     user_arg);
-PRIVATE void _ogl_line_strip_renderer_release_rendering_thread_callback (ogl_context               context,
-                                                                         void*                     user_arg);
-PRIVATE void _ogl_line_strip_renderer_release                           (void*                     line_strip_renderer);
-PRIVATE void _ogl_line_strip_renderer_update_bo_storage                 (ogl_context               context,
-                                                                         _ogl_line_strip_renderer* renderer_ptr);
-PRIVATE void _ogl_line_strip_renderer_update_data_buffer                (_ogl_line_strip_renderer* renderer_ptr);
-PRIVATE void _ogl_line_strip_renderer_update_vao                        (ogl_context               context,
-                                                                         _ogl_line_strip_renderer* renderer_ptr);
+PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback    (ogl_context              context,
+                                                                        void*                    user_arg);
+PRIVATE void _ogl_primitive_renderer_init_program                      (_ogl_primitive_renderer* renderer_ptr);
+PRIVATE void _ogl_primitive_renderer_init_vao                          (_ogl_primitive_renderer* renderer_ptr);
+PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_context              context,
+                                                                        void*                    user_arg);
+PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback (ogl_context              context,
+                                                                        void*                    user_arg);
+PRIVATE void _ogl_primitive_renderer_release                           (void*                    line_strip_renderer);
+PRIVATE void _ogl_primitive_renderer_update_bo_storage                 (ogl_context              context,
+                                                                        _ogl_primitive_renderer* renderer_ptr);
+PRIVATE void _ogl_primitive_renderer_update_data_buffer                (_ogl_primitive_renderer* renderer_ptr);
+PRIVATE void _ogl_primitive_renderer_update_vao                        (ogl_context              context,
+                                                                        _ogl_primitive_renderer* renderer_ptr);
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_line_strip_renderer, ogl_line_strip_renderer, _ogl_line_strip_renderer);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_primitive_renderer, ogl_primitive_renderer, _ogl_primitive_renderer);
 
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_draw_rendering_thread_callback(ogl_context context,
+PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context context,
                                                                      void*       user_arg)
 {
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
@@ -167,12 +169,12 @@ PRIVATE void _ogl_line_strip_renderer_draw_rendering_thread_callback(ogl_context
                             &dsa_entry_points);
 
     /* NOTE: draw_cs is locked while this call-back is being handled */
-    _ogl_line_strip_renderer* renderer_ptr = (_ogl_line_strip_renderer*) user_arg;
+    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) user_arg;
 
     if (renderer_ptr->dirty)
     {
-        _ogl_line_strip_renderer_update_bo_storage(context, renderer_ptr);
-        _ogl_line_strip_renderer_update_vao       (context, renderer_ptr);
+        _ogl_primitive_renderer_update_bo_storage(context, renderer_ptr);
+        _ogl_primitive_renderer_update_vao       (context, renderer_ptr);
 
         ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
                           "Renderer's BO storage is still marked as dirty");
@@ -203,13 +205,13 @@ PRIVATE void _ogl_line_strip_renderer_draw_rendering_thread_callback(ogl_context
                       n < renderer_ptr->draw_n_dataset_ids;
                     ++n)
     {
-        _ogl_line_strip_renderer_dataset* dataset_ptr = NULL;
+        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    renderer_ptr->draw_dataset_ids[n],
                                                   &dataset_ptr) )
         {
-            entry_points->pGLDrawArraysInstancedBaseInstance(GL_LINE_STRIP,
+            entry_points->pGLDrawArraysInstancedBaseInstance(dataset_ptr->primitive_type,
                                                              dataset_ptr->draw_first,
                                                              dataset_ptr->n_vertices,
                                                              1, /* primcount */
@@ -224,7 +226,7 @@ PRIVATE void _ogl_line_strip_renderer_draw_rendering_thread_callback(ogl_context
 }
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_init_program(_ogl_line_strip_renderer* renderer_ptr)
+PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* renderer_ptr)
 {
     /* Prepare the vertex shader body */
     std::stringstream vs_define_sstream;
@@ -280,20 +282,20 @@ PRIVATE void _ogl_line_strip_renderer_init_program(_ogl_line_strip_renderer* ren
 }
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_init_vao(_ogl_line_strip_renderer* renderer_ptr)
+PRIVATE void _ogl_primitive_renderer_init_vao(_ogl_primitive_renderer* renderer_ptr)
 {
     /* Request a call-back from the rendering trhread */
     ogl_context_request_callback_from_context_thread(renderer_ptr->context,
-                                                     _ogl_line_strip_renderer_init_vao_rendering_thread_callback,
+                                                     _ogl_primitive_renderer_init_vao_rendering_thread_callback,
                                                      renderer_ptr);
 }
 
 /* TODO */
-PRIVATE void _ogl_line_strip_renderer_init_vao_rendering_thread_callback(ogl_context context,
-                                                                         void*       user_arg)
+PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_context context,
+                                                                        void*       user_arg)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
-    _ogl_line_strip_renderer*         renderer_ptr = (_ogl_line_strip_renderer*) user_arg;
+    _ogl_primitive_renderer*         renderer_ptr = (_ogl_primitive_renderer*) user_arg;
 
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -306,11 +308,11 @@ PRIVATE void _ogl_line_strip_renderer_init_vao_rendering_thread_callback(ogl_con
 }
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_release_rendering_thread_callback(ogl_context context,
-                                                                        void*       user_arg)
+PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_context context,
+                                                                       void*       user_arg)
 {
     ogl_context_gl_entrypoints* entrypoints  = NULL;
-    _ogl_line_strip_renderer*   instance_ptr = (_ogl_line_strip_renderer*) user_arg;
+    _ogl_primitive_renderer*   instance_ptr = (_ogl_primitive_renderer*) user_arg;
 
     ogl_context_get_property(instance_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -339,12 +341,12 @@ PRIVATE void _ogl_line_strip_renderer_release_rendering_thread_callback(ogl_cont
 }
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_release(void* line_strip_renderer)
+PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
 {
-    _ogl_line_strip_renderer* instance_ptr = (_ogl_line_strip_renderer*) line_strip_renderer;
+    _ogl_primitive_renderer* instance_ptr = (_ogl_primitive_renderer*) line_strip_renderer;
 
     ogl_context_request_callback_from_context_thread(instance_ptr->context,
-                                                     _ogl_line_strip_renderer_release_rendering_thread_callback,
+                                                     _ogl_primitive_renderer_release_rendering_thread_callback,
                                                      instance_ptr);
 
     if (instance_ptr->bo_mvp != NULL)
@@ -363,7 +365,7 @@ PRIVATE void _ogl_line_strip_renderer_release(void* line_strip_renderer)
 
     if (instance_ptr->datasets != NULL)
     {
-        _ogl_line_strip_renderer_dataset* dataset_ptr = NULL;
+        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
 
         while (system_resizable_vector_pop(instance_ptr->datasets,
                                           &dataset_ptr) )
@@ -391,8 +393,8 @@ PRIVATE void _ogl_line_strip_renderer_release(void* line_strip_renderer)
 }
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_update_bo_storage(ogl_context               context,
-                                                        _ogl_line_strip_renderer* renderer_ptr)
+PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              context,
+                                                       _ogl_primitive_renderer* renderer_ptr)
 {
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -409,7 +411,7 @@ PRIVATE void _ogl_line_strip_renderer_update_bo_storage(ogl_context             
     {
         LOG_INFO("Performance warning: Flushing data buffer in a rendering thread");
 
-        _ogl_line_strip_renderer_update_data_buffer(renderer_ptr);
+        _ogl_primitive_renderer_update_data_buffer(renderer_ptr);
 
         ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
                           "Data buffer is still dirty after flushing");
@@ -451,7 +453,7 @@ PRIVATE void _ogl_line_strip_renderer_update_bo_storage(ogl_context             
 }
 
 /** Please see header for specification */
-PRIVATE void _ogl_line_strip_renderer_update_data_buffer(__in __notnull _ogl_line_strip_renderer* renderer_ptr)
+PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_primitive_renderer* renderer_ptr)
 {
     /* TODO: This is the simplest implementation possible. Consider optimizations */
 
@@ -465,7 +467,7 @@ PRIVATE void _ogl_line_strip_renderer_update_data_buffer(__in __notnull _ogl_lin
                       n_item < n_datasets;
                     ++n_item)
     {
-        _ogl_line_strip_renderer_dataset* dataset_ptr = NULL;
+        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    n_item,
@@ -509,7 +511,7 @@ PRIVATE void _ogl_line_strip_renderer_update_data_buffer(__in __notnull _ogl_lin
                       n_item < n_datasets;
                     ++n_item)
     {
-        _ogl_line_strip_renderer_dataset* dataset_ptr = NULL;
+        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                    n_item,
@@ -536,8 +538,8 @@ PRIVATE void _ogl_line_strip_renderer_update_data_buffer(__in __notnull _ogl_lin
 }
 
 /** TODO */
-PRIVATE void _ogl_line_strip_renderer_update_vao(ogl_context               context,
-                                                 _ogl_line_strip_renderer* renderer_ptr)
+PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               context,
+                                                _ogl_primitive_renderer* renderer_ptr)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
 
@@ -580,16 +582,17 @@ PRIVATE void _ogl_line_strip_renderer_update_vao(ogl_context               conte
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_line_strip_renderer_dataset_id ogl_line_strip_renderer_add_dataset(__in                      __notnull ogl_line_strip_renderer renderer,
-                                                                                          __in                                unsigned int            n_vertices,
-                                                                                          __in_ecount(3*n_vertices) __notnull const float*            vertex_data,
-                                                                                          __in_ecount(4)            __notnull const float*            rgb)
+PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(__in                      __notnull ogl_primitive_renderer renderer,
+                                                                                        __in                                ogl_primitive_type     primitive_type,
+                                                                                        __in                                unsigned int           n_vertices,
+                                                                                        __in_ecount(3*n_vertices) __notnull const float*           vertex_data,
+                                                                                        __in_ecount(4)            __notnull const float*           rgb)
 {
-    _ogl_line_strip_renderer*          renderer_ptr = (_ogl_line_strip_renderer*) renderer;
-    ogl_line_strip_renderer_dataset_id result_id    = -1;
+    _ogl_primitive_renderer*          renderer_ptr = (_ogl_primitive_renderer*) renderer;
+    ogl_primitive_renderer_dataset_id result_id    = -1;
 
     /* Allocate new descriptor */
-    _ogl_line_strip_renderer_dataset* new_dataset_ptr = new (std::nothrow) _ogl_line_strip_renderer_dataset;
+    _ogl_primitive_renderer_dataset* new_dataset_ptr = new (std::nothrow) _ogl_primitive_renderer_dataset;
 
     ASSERT_ALWAYS_SYNC(new_dataset_ptr != NULL, "Out of memory");
     if (new_dataset_ptr == NULL)
@@ -600,6 +603,7 @@ PUBLIC EMERALD_API ogl_line_strip_renderer_dataset_id ogl_line_strip_renderer_ad
     /* Fill it. The vertex data offset will be set during BO contents reconstruction */
     new_dataset_ptr->n_vertices_allocated = n_vertices;
     new_dataset_ptr->n_vertices           = n_vertices;
+    new_dataset_ptr->primitive_type       = primitive_type;
     new_dataset_ptr->vertex_data          = new (std::nothrow) float[3 * n_vertices];
 
     ASSERT_ALWAYS_SYNC(new_dataset_ptr->vertex_data != NULL,
@@ -648,17 +652,17 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_line_strip_renderer_change_dataset_data(__in                      __notnull ogl_line_strip_renderer            renderer,
-                                                                    __in                                ogl_line_strip_renderer_dataset_id dataset_id,
-                                                                    __in                                unsigned int                       n_vertices,
-                                                                    __in_ecount(3*n_vertices) __notnull const float*                       vertex_data)
+PUBLIC EMERALD_API void ogl_primitive_renderer_change_dataset_data(__in                      __notnull ogl_primitive_renderer            renderer,
+                                                                   __in                                ogl_primitive_renderer_dataset_id dataset_id,
+                                                                   __in                                unsigned int                      n_vertices,
+                                                                   __in_ecount(3*n_vertices) __notnull const float*                      vertex_data)
 {
-    _ogl_line_strip_renderer* renderer_ptr = (_ogl_line_strip_renderer*) renderer;
+    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
 
     system_critical_section_enter(renderer_ptr->draw_cs);
 
     /* Retrieve the dataset descriptor */
-    _ogl_line_strip_renderer_dataset* dataset_ptr = NULL;
+    _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
 
     if (!system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                 dataset_id,
@@ -716,8 +720,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_line_strip_renderer ogl_line_strip_renderer_create(__in __notnull ogl_context               context,
-                                                                          __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __notnull ogl_context               context,
+                                                                        __in __notnull system_hashed_ansi_string name)
 {
     /* Context type verification */
     ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -727,7 +731,7 @@ PUBLIC EMERALD_API ogl_line_strip_renderer ogl_line_strip_renderer_create(__in _
                             &context_type);
 
     ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                      "ES contexts are not supported for ogl_line_strip_renderer");
+                      "ES contexts are not supported for ogl_primitive_renderer");
 
     /* Retrieve limits structure */
     const ogl_context_gl_limits* limits_ptr = NULL;
@@ -737,7 +741,7 @@ PUBLIC EMERALD_API ogl_line_strip_renderer ogl_line_strip_renderer_create(__in _
                             &limits_ptr);
 
     /* Spawn the new instance */
-    _ogl_line_strip_renderer* renderer_ptr = new (std::nothrow) _ogl_line_strip_renderer;
+    _ogl_primitive_renderer* renderer_ptr = new (std::nothrow) _ogl_primitive_renderer;
 
     ASSERT_ALWAYS_SYNC(renderer_ptr != NULL,
                        "Out of memory while allocating line strip renderer.");
@@ -750,39 +754,39 @@ PUBLIC EMERALD_API ogl_line_strip_renderer ogl_line_strip_renderer_create(__in _
         renderer_ptr->bo_mvp                          = system_matrix4x4_create();
         renderer_ptr->context                         = context;
         renderer_ptr->datasets                        = system_resizable_vector_create(4, /* capacity */
-                                                        sizeof(_ogl_line_strip_renderer_dataset*) );
+                                                        sizeof(_ogl_primitive_renderer_dataset*) );
         renderer_ptr->dirty                           = true;
         renderer_ptr->gl_max_uniform_block_size_value = limits_ptr->max_uniform_block_size;
         renderer_ptr->name                            = name;
 
-        _ogl_line_strip_renderer_init_program(renderer_ptr);
-        _ogl_line_strip_renderer_init_vao    (renderer_ptr);
+        _ogl_primitive_renderer_init_program(renderer_ptr);
+        _ogl_primitive_renderer_init_vao    (renderer_ptr);
 
         /* Retain the rendering context */
         ogl_context_retain(context);
 
         /* Register the instance */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(renderer_ptr,
-                                                       _ogl_line_strip_renderer_release,
-                                                       OBJECT_TYPE_OGL_LINE_STRIP_RENDERER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Line Strip Renderers\\",
+                                                       _ogl_primitive_renderer_release,
+                                                       OBJECT_TYPE_OGL_PRIMITIVE_RENDERER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Primitive Renderers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
     }
 
-    return (ogl_line_strip_renderer) renderer_ptr;
+    return (ogl_primitive_renderer) renderer_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_line_strip_renderer_delete_dataset(__in __notnull ogl_line_strip_renderer            renderer,
-                                                               __in           ogl_line_strip_renderer_dataset_id dataset_id)
+PUBLIC EMERALD_API bool ogl_primitive_renderer_delete_dataset(__in __notnull ogl_primitive_renderer            renderer,
+                                                              __in           ogl_primitive_renderer_dataset_id dataset_id)
 {
-    _ogl_line_strip_renderer* renderer_ptr = (_ogl_line_strip_renderer*) renderer;
+    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
     bool                      result       = true;
 
     /* Identify the dataset */
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
-        _ogl_line_strip_renderer_dataset* dataset_ptr = NULL;
+        _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
 
         if (!system_resizable_vector_get_element_at(renderer_ptr->datasets,
                                                     dataset_id,
@@ -822,13 +826,13 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_line_strip_renderer_draw(__in                       __notnull ogl_line_strip_renderer             renderer,
-                                                     __in                       __notnull system_matrix4x4                    mvp,
-                                                     __in                                 unsigned int                        n_dataset_ids,
-                                                     __in_ecount(n_dataset_ids) __notnull ogl_line_strip_renderer_dataset_id* dataset_ids)
+PUBLIC EMERALD_API void ogl_primitive_renderer_draw(__in                       __notnull ogl_primitive_renderer             renderer,
+                                                    __in                       __notnull system_matrix4x4                   mvp,
+                                                    __in                                 unsigned int                       n_dataset_ids,
+                                                    __in_ecount(n_dataset_ids) __notnull ogl_primitive_renderer_dataset_id* dataset_ids)
 {
     /* Store the draw call arguments */
-    _ogl_line_strip_renderer* renderer_ptr = (_ogl_line_strip_renderer*) renderer;
+    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
 
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
@@ -838,22 +842,22 @@ PUBLIC EMERALD_API void ogl_line_strip_renderer_draw(__in                       
 
         /* Switch to the rendering context */
         ogl_context_request_callback_from_context_thread(renderer_ptr->context,
-                                                         _ogl_line_strip_renderer_draw_rendering_thread_callback,
+                                                         _ogl_primitive_renderer_draw_rendering_thread_callback,
                                                          renderer_ptr);
     }
     system_critical_section_leave(renderer_ptr->draw_cs);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_line_strip_renderer_flush(__in __notnull ogl_line_strip_renderer renderer)
+PUBLIC EMERALD_API void ogl_primitive_renderer_flush(__in __notnull ogl_primitive_renderer renderer)
 {
-    _ogl_line_strip_renderer* renderer_ptr = (_ogl_line_strip_renderer*) renderer;
+    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
 
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
         if (renderer_ptr->dirty)
         {
-            _ogl_line_strip_renderer_update_data_buffer(renderer_ptr);
+            _ogl_primitive_renderer_update_data_buffer(renderer_ptr);
 
             ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
                               "Renderer still marked as dirty");
