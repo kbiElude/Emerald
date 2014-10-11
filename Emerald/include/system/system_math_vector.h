@@ -32,6 +32,16 @@ PUBLIC EMERALD_API void system_math_vector_minus3(__in_ecount(3) const float* a,
                                                   __out_ecount(3)      float* result);
 
 /** TODO */
+PUBLIC EMERALD_API void system_math_vector_mul3(__in_ecount(3)  const float* a,
+                                                __in_ecount(3)  const float* b,
+                                                __out_ecount(3)       float* result);
+
+/** TODO */
+PUBLIC EMERALD_API void system_math_vector_mul3_float(__in_ecount(3)  const float* a,
+                                                      __in            const float  b,
+                                                      __out_ecount(3)       float* result);
+
+/** TODO */
 PUBLIC EMERALD_API void system_math_vector_normalize3(__in_ecount(3)  const float* a,
                                                       __out_ecount(3)       float* result);
 

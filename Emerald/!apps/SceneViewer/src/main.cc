@@ -237,7 +237,8 @@ void _on_camera_changed(void* fire_proc_user_arg,
                                                                                         camera_node,
                                                                                         curve_color,
                                                                                         _scene_duration,
-                                                                                        15); /* n_samples_per_second */
+                                                                                        15,      /* n_samples_per_second */
+                                                                                        10.0f); /* view_vector_length */
             }
             else
             {

@@ -18,7 +18,8 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
                                                                                    __in            __notnull scene_graph_node     node,
                                                                                    __in_ecount(4)            const float*         curve_color,
                                                                                    __in                      system_timeline_time duration,
-                                                                                   __in                      unsigned int         n_samples_per_second);
+                                                                                   __in                      unsigned int         n_samples_per_second,
+                                                                                   __in                      float                view_vector_length);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_curve_renderer ogl_curve_renderer_create(__in __notnull ogl_context               context,

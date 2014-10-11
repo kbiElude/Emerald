@@ -18,6 +18,7 @@
 
 #define VS_UB_BINDING_ID      (0)
 #define VS_VERTEX_DATA_VAA_ID (0)
+#define VS_COLOR_DATA_VAA_ID  (1)
 
 static const char* fs_body     = "#version 420\n"
                                  "\n"
@@ -33,17 +34,17 @@ static const char* vs_preamble = "#version 420\n"
 static const char* vs_body     = "layout(std140, binding = 0) uniform UB\n"
                                  "{\n"
                                  "    layout(row_major) mat4 mvp;\n"
-                                 "                      vec4 color[N_COLORS_MINUS_MVP];\n"
                                  "} data;\n"
                                  "\n"
-                                 "layout(location = 0) in vec3 vertices;\n"
+                                 "layout(location = 0) in vec3 vertex;\n"
+                                 "layout(location = 1) in vec4 color;\n"
                                  "\n"
                                  "flat out vec4 fp_color;\n"
                                  "\n"
                                  "void main()\n"
                                  "{\n"
-                                 "    fp_color    = data.color[gl_InstanceID];\n"
-                                 "    gl_Position = data.mvp * vec4(vertices, 1.0);\n"
+                                 "    fp_color    = color;\n"
+                                 "    gl_Position = data.mvp * vec4(vertex, 1.0);\n"
                                  "}\n";
 
 
@@ -88,6 +89,7 @@ typedef struct
      * [n_datasets] * vec4          - color data for subsequent datasets.
      * [n_datasets] * [vertex data] - vertex data for subsequent datasets.
      **/
+    GLuint           bo_color_offset;
     void*            bo_data;
     unsigned int     bo_data_size;
     GLuint           bo_id;
@@ -104,11 +106,8 @@ typedef struct
 
     /* Draw call arguments */
     ogl_primitive_renderer_dataset_id* draw_dataset_ids;
-    system_matrix4x4                    draw_mvp;
-    unsigned int                        draw_n_dataset_ids;
-
-    /* Cached GL_MAX_UNIFORM_BLOCK_SIZE value */
-    unsigned int gl_max_uniform_block_size_value;
+    system_matrix4x4                   draw_mvp;
+    unsigned int                       draw_n_dataset_ids;
 
     /* VAO id */
     GLuint vao_id;
@@ -228,19 +227,13 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
 /** TODO */
 PRIVATE void _ogl_primitive_renderer_init_program(_ogl_primitive_renderer* renderer_ptr)
 {
-    /* Prepare the vertex shader body */
-    std::stringstream vs_define_sstream;
-    std::string       vs_define_string;
-
-    vs_define_sstream << "#define N_COLORS_MINUS_MVP ("
-                      << (renderer_ptr->gl_max_uniform_block_size_value - sizeof(float) * 16) / 16
-                      << ")\n";
-    vs_define_string  = vs_define_sstream.str();
-
+    /* Prepare the vertex shader body.
+     *
+     * NOTE: There used to be a #define here, which is why the break-down.
+     */
     const char* vs_parts[] =
     {
         vs_preamble,
-        vs_define_string.c_str(),
         vs_body
     };
     const unsigned int n_vs_parts = sizeof(vs_parts) / sizeof(vs_parts[0]);
@@ -458,9 +451,9 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
     /* TODO: This is the simplest implementation possible. Consider optimizations */
 
     /* Determine how much memory we need to allocate */
-    const unsigned int color_data_size  = renderer_ptr->gl_max_uniform_block_size_value - sizeof(float) * 16;
-    const unsigned int mvp_data_size    = sizeof(float) * 16;
     const unsigned int n_datasets       = system_resizable_vector_get_amount_of_elements(renderer_ptr->datasets);
+    unsigned int       color_data_size  = 0;
+    const unsigned int mvp_data_size    = sizeof(float) * 16;
     unsigned int       vertex_data_size = 0;
 
     for (unsigned int n_item = 0;
@@ -474,6 +467,9 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
                                                   &dataset_ptr) &&
             dataset_ptr != NULL)
         {
+            /* Color data */
+            color_data_size += sizeof(float) * 4;
+
             /* Vertex data */
             vertex_data_size += dataset_ptr->n_vertices * sizeof(float) * 3 /* components per vertex */;
         }
@@ -484,6 +480,7 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
     unsigned int data_color_offset  = data_mvp_offset   + mvp_data_size;
     unsigned int data_vertex_offset = data_color_offset + color_data_size;
 
+    renderer_ptr->bo_color_offset  = data_color_offset;
     renderer_ptr->bo_mvp_offset    = data_mvp_offset;
     renderer_ptr->bo_vertex_offset = data_vertex_offset;
 
@@ -527,11 +524,9 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
                    dataset_ptr->vertex_data,
                    sizeof(float) * 3 * dataset_ptr->n_vertices);
 
+            current_color_offset  += sizeof(float) * 4;
             current_vertex_offset += sizeof(float) * 3 * dataset_ptr->n_vertices;
         }
-
-        /* Color data is arrayed so we need to always update the relevant offset */
-        current_color_offset += sizeof(float) * 4;
     } /* for (all dataset items) */
 
     renderer_ptr->dirty = false;
@@ -541,44 +536,37 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
 PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               context,
                                                 _ogl_primitive_renderer* renderer_ptr)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    const ogl_context_gl_entrypoints* entry_points = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entry_points);
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
 
     /* Sanity check */
     ASSERT_DEBUG_SYNC(renderer_ptr->vao_id != 0, "VAO is not generated");
 
-#if 1
-    dsa_entry_points->pGLEnableVertexArrayAttribEXT      (renderer_ptr->vao_id,
-                                                          VS_VERTEX_DATA_VAA_ID);
-    dsa_entry_points->pGLVertexArrayVertexAttribOffsetEXT(renderer_ptr->vao_id,
-                                                          renderer_ptr->bo_id,
-                                                          VS_VERTEX_DATA_VAA_ID,
-                                                          3, /* size */
-                                                          GL_FLOAT,
-                                                          GL_FALSE, /* normalized */
-                                                          0,        /* stride */
-                                                          renderer_ptr->bo_vertex_offset);
-#else
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    entry_points->pGLBindBuffer     (GL_ARRAY_BUFFER,
+                                     renderer_ptr->bo_id);
+    entry_points->pGLBindVertexArray(renderer_ptr->vao_id);
 
-    ogl_context_get_property(context,
-        OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-       &entry_points);
-
-    entry_points->pGLBindBuffer             (GL_ARRAY_BUFFER,
-                                             renderer_ptr->bo_id);
-    entry_points->pGLBindVertexArray        (renderer_ptr->vao_id);
+    entry_points->pGLEnableVertexAttribArray(VS_COLOR_DATA_VAA_ID);
     entry_points->pGLEnableVertexAttribArray(VS_VERTEX_DATA_VAA_ID);
-    entry_points->pGLVertexAttribPointer    (VS_VERTEX_DATA_VAA_ID,
-                                             3, /* size */
-                                             GL_FLOAT,
-                                             GL_FALSE,
-                                             0, /* stride */
-                                             (void*) renderer_ptr->bo_vertex_offset);
-#endif
+
+    entry_points->pGLVertexAttribPointer(VS_COLOR_DATA_VAA_ID,
+                                         4, /* size */
+                                         GL_FLOAT,
+                                         GL_FALSE, /* normalized */
+                                         0,        /* stride */
+                                         (const GLvoid*) renderer_ptr->bo_color_offset);
+    entry_points->pGLVertexAttribPointer(VS_VERTEX_DATA_VAA_ID,
+                                         3, /* size */
+                                         GL_FLOAT,
+                                         GL_FALSE, /* normalized */
+                                         0,        /* stride */
+                                         (const GLvoid*) renderer_ptr->bo_vertex_offset);
+
+    entry_points->pGLVertexAttribDivisor(VS_COLOR_DATA_VAA_ID,
+                                         1);
 }
 
 /** Please see header for specification */
@@ -733,13 +721,6 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
     ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
                       "ES contexts are not supported for ogl_primitive_renderer");
 
-    /* Retrieve limits structure */
-    const ogl_context_gl_limits* limits_ptr = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
     /* Spawn the new instance */
     _ogl_primitive_renderer* renderer_ptr = new (std::nothrow) _ogl_primitive_renderer;
 
@@ -756,7 +737,6 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
         renderer_ptr->datasets                        = system_resizable_vector_create(4, /* capacity */
                                                         sizeof(_ogl_primitive_renderer_dataset*) );
         renderer_ptr->dirty                           = true;
-        renderer_ptr->gl_max_uniform_block_size_value = limits_ptr->max_uniform_block_size;
         renderer_ptr->name                            = name;
 
         _ogl_primitive_renderer_init_program(renderer_ptr);

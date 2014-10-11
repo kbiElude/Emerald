@@ -13,23 +13,28 @@
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 
 /** Internal type declarations */
 typedef struct _ogl_curve_renderer_item
 {
-    ogl_primitive_renderer_dataset_id dataset_id;
+    ogl_primitive_renderer_dataset_id path_dataset_id;
+    ogl_primitive_renderer_dataset_id view_vector_dataset_id;
 
     _ogl_curve_renderer_item()
     {
-        dataset_id = -1;
+        path_dataset_id        = -1;
+        view_vector_dataset_id = -1;
     }
 
     ~_ogl_curve_renderer_item()
     {
-        ASSERT_DEBUG_SYNC(dataset_id == -1,
-                          "Dataset has not been released");
+        ASSERT_DEBUG_SYNC(path_dataset_id == -1,
+                          "Path dataset has not been released");
+        ASSERT_DEBUG_SYNC(view_vector_dataset_id == -1,
+                          "View vector dataset has not been released");
     }
 } _ogl_curve_renderer_item;
 
@@ -54,8 +59,10 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
                                                                   __in  __notnull scene_graph_node          node,
                                                                   __in            system_timeline_time      duration,
                                                                   __in            unsigned int              n_samples_per_second,
+                                                                  __in            float                     view_vector_length,
                                                                   __out __notnull unsigned int*             out_n_vertices,
-                                                                  __out __notnull float**                   out_vertex_data);
+                                                                  __out __notnull float**                   out_vertex_line_strip_data,
+                                                                  __out_opt       float**                   out_view_vector_lines_data);
 PRIVATE void _ogl_curve_renderer_release                         (__in  __notnull void*                     renderer);
 PRIVATE void _ogl_curve_renderer_release_item                    (__in  __notnull _ogl_curve_renderer*      renderer_ptr,
                                                                   __in  __notnull _ogl_curve_renderer_item* item_ptr);
@@ -66,22 +73,25 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
                                                                   __in  __notnull scene_graph_node     node,
                                                                   __in            system_timeline_time duration,
                                                                   __in            unsigned int         n_samples_per_second,
+                                                                  __in            float                view_vector_length,
                                                                   __out __notnull unsigned int*        out_n_vertices,
-                                                                  __out __notnull float**              out_vertex_data)
+                                                                  __out __notnull float**              out_vertex_line_strip_data,
+                                                                  __out_opt       float**              out_view_vector_lines_data)
 {
-    bool         result             = true;
-    unsigned int result_n_vertices  = 0;
-    float*       result_vertex_data = NULL;
+    bool         result                  = true;
+    unsigned int result_n_vertices       = 0;
+    float*       result_vertex_data      = NULL;
+    float*       result_view_vector_data = NULL;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(graph                != NULL, "Graph is NULL");
-    ASSERT_DEBUG_SYNC(node                 != NULL, "Graph node is NULL");
-    ASSERT_DEBUG_SYNC(duration             != 0,    "Graph duration is 0");
-    ASSERT_DEBUG_SYNC(n_samples_per_second != 0,    "Samples/second is 0");
-    ASSERT_DEBUG_SYNC(out_n_vertices       != NULL, "out_n_vertices is NULL");
-    ASSERT_DEBUG_SYNC(out_vertex_data      != NULL, "out_vertex_data is NULL");
+    ASSERT_DEBUG_SYNC(graph                      != NULL, "Graph is NULL");
+    ASSERT_DEBUG_SYNC(node                       != NULL, "Graph node is NULL");
+    ASSERT_DEBUG_SYNC(duration                   != 0,    "Graph duration is 0");
+    ASSERT_DEBUG_SYNC(n_samples_per_second       != 0,    "Samples/second is 0");
+    ASSERT_DEBUG_SYNC(out_n_vertices             != NULL, "out_n_vertices is NULL");
+    ASSERT_DEBUG_SYNC(out_vertex_line_strip_data != NULL, "out_vertex_data is NULL");
 
-    /* How many samplese will we need to take? */
+    /* How many samples will we need to take? */
     uint32_t duration_ms = 0;
     uint32_t n_samples   = 0;
 
@@ -89,7 +99,7 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
 
     n_samples = duration_ms * n_samples_per_second / 1000 /* ms in 1 s */;
 
-    /* Allocate vertex data */
+    /* Allocate vertex data. This will hold the vertices making up the node-defined path */
     ASSERT_DEBUG_SYNC(n_samples != 0, "n_samples is 0");
 
     result_vertex_data = new float[3 /* x, y, z */ * n_samples];
@@ -102,9 +112,26 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
         goto end;
     }
 
+    /* If requested, also allocate memory for the lines that will depict the view vectors for
+     * each sample.
+     */
+    if (out_view_vector_lines_data != NULL)
+    {
+        result_view_vector_data = new float[2 /* points */ * 3 /* x, y, z */ * n_samples];
+
+        ASSERT_ALWAYS_SYNC(result_view_vector_data != NULL, "Out of memory");
+        if (result_view_vector_data == NULL)
+        {
+            result = false;
+
+            goto end;
+        }
+    } /* if (out_view_vector_lines_data != NULL) */
+
     /* Iterate over all samples and generate vertex data */
-    uint32_t sample_delta_time = 1000 / n_samples_per_second;
-    float*   traveller_ptr     = result_vertex_data;
+    float*   ref_traveller_ptr    = result_view_vector_data;
+    uint32_t sample_delta_time    = 1000 / n_samples_per_second;
+    float*   vertex_traveller_ptr = result_vertex_data;
 
     for (uint32_t n_sample = 0;
                   n_sample < n_samples;
@@ -123,7 +150,7 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
                                      &transformation_matrix);
 
         /* Compute the sample-specific position */
-        const float base_position  [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+        const float base_position  [4] = {0.0f, 0.0f,  0.0f, 1.0f};
         float       sample_position[4];
 
         system_matrix4x4_multiply_by_vector4(transformation_matrix,
@@ -137,18 +164,71 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
         sample_position[1] /= sample_position[3];
         sample_position[2] /= sample_position[3];
 
-        /* Store it */
-        memcpy(traveller_ptr,
+        /* Store the vertex data */
+        memcpy(vertex_traveller_ptr,
                sample_position,
                sizeof(float) * 3);
 
-        traveller_ptr += 3;
+        vertex_traveller_ptr += 3;
+
+        if (ref_traveller_ptr != NULL)
+        {
+            /* Compute the position of the other vertex we need to use for the view vector. */
+            const float ref_position       [4] = {0.0f, 0.0f, -1.0f, 1.0f}; /* NOTE: OpenGL-specific! */
+            float       sample_ref_position[4];
+
+            system_matrix4x4_multiply_by_vector4(transformation_matrix,
+                                                 ref_position,
+                                                 sample_ref_position);
+
+            ASSERT_DEBUG_SYNC(fabs(sample_ref_position[3]) > 1e-5f,
+                              "NaN ahead");
+
+            sample_ref_position[0] /= sample_ref_position[3];
+            sample_ref_position[1] /= sample_ref_position[3];
+            sample_ref_position[2] /= sample_ref_position[3];
+
+            /* Compute the view vector */
+            float view_vector[3] =
+            {
+                sample_ref_position[0] - sample_position[0],
+                sample_ref_position[1] - sample_position[1],
+                sample_ref_position[2] - sample_position[2],
+            };
+
+            system_math_vector_normalize3(view_vector, view_vector);
+            system_math_vector_mul3_float(view_vector, view_vector_length, view_vector);
+
+            /* Use the view vector information and the caller-specified length to come up
+             * with a final reference position */
+            sample_ref_position[0] = sample_position[0] + view_vector[0];
+            sample_ref_position[1] = sample_position[1] + view_vector[1];
+            sample_ref_position[2] = sample_position[2] + view_vector[2];
+
+            /* Store it */
+            memcpy(ref_traveller_ptr,
+                   sample_position,
+                   sizeof(float) * 3);
+
+            ref_traveller_ptr += 3;
+
+            memcpy(ref_traveller_ptr,
+                   sample_ref_position,
+                   sizeof(float) * 3);
+
+            ref_traveller_ptr += 3;
+        }
     } /* for (all samples) */
 
     /* Looks like everything's fine! */
-    result           = true;
-    *out_n_vertices  = n_samples;
-    *out_vertex_data = result_vertex_data;
+    result                      = true;
+    *out_n_vertices             = n_samples;
+    *out_vertex_line_strip_data = result_vertex_data;
+
+    if (result_view_vector_data != NULL)
+    {
+        *out_view_vector_lines_data = result_view_vector_data;
+    }
 
 end:
     if (!result)
@@ -158,6 +238,13 @@ end:
             delete [] result_vertex_data;
 
             result_vertex_data = NULL;
+        }
+
+        if (result_view_vector_data != NULL)
+        {
+            delete [] result_view_vector_data;
+
+            result_view_vector_data = NULL;
         }
     } /* if (!result) */
 
@@ -203,9 +290,12 @@ PRIVATE void _ogl_curve_renderer_release_item(__in __notnull _ogl_curve_renderer
                                               __in __notnull _ogl_curve_renderer_item* item_ptr)
 {
     ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
-                                           item_ptr->dataset_id);
+                                          item_ptr->path_dataset_id);
+    ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
+        item_ptr->view_vector_dataset_id);
 
-    item_ptr->dataset_id = -1;
+    item_ptr->path_dataset_id        = -1;
+    item_ptr->view_vector_dataset_id = -1;
 }
 
 /** Please see header for spec */
@@ -214,22 +304,27 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
                                                                                    __in            __notnull scene_graph_node     node,
                                                                                    __in_ecount(4)            const float*         curve_color,
                                                                                    __in                      system_timeline_time duration,
-                                                                                   __in                      unsigned int         n_samples_per_second)
+                                                                                   __in                      unsigned int         n_samples_per_second,
+                                                                                   __in                      float                view_vector_length)
 {
-    ogl_curve_item_id    item_id      = -1;
-    _ogl_curve_renderer* renderer_ptr = (_ogl_curve_renderer*) renderer;
+    ogl_curve_item_id    item_id                     = -1;
+    _ogl_curve_renderer* renderer_ptr                = (_ogl_curve_renderer*) renderer;
+    bool                 should_include_view_vectors = (view_vector_length > 1e-5f);
 
     /* Prepare vertex data */
-    unsigned int n_vertices  = 0;
-    bool         result      = false;
-    float*       vertex_data = NULL;
+    unsigned int n_vertices             = 0;
+    bool         result                 = false;
+    float*       vertex_data            = NULL;
+    float*       view_vector_lines_data = NULL;
 
     result = _ogl_curve_renderer_get_scene_graph_node_vertex_data(graph,
                                                                   node,
                                                                   duration,
                                                                   n_samples_per_second,
+                                                                  view_vector_length,
                                                                  &n_vertices,
-                                                                 &vertex_data);
+                                                                 &vertex_data,
+                                                                 should_include_view_vectors ? &view_vector_lines_data : NULL);
 
     ASSERT_ALWAYS_SYNC(result              &&
                        n_vertices  != 0    &&
@@ -250,11 +345,22 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     }
 
     /* Fill it */
-    item_ptr->dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
-                                                              OGL_PRIMITIVE_TYPE_LINE_STRIP,
-                                                              n_vertices,
-                                                              vertex_data,
-                                                              curve_color);
+    item_ptr->path_dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
+                                                                   OGL_PRIMITIVE_TYPE_LINE_STRIP,
+                                                                   n_vertices,
+                                                                   vertex_data,
+                                                                   curve_color);
+
+    if (should_include_view_vectors)
+    {
+        const float view_vector_color[] = {1.0f, 0.0f, 0.0f, 1.0f};
+
+        item_ptr->view_vector_dataset_id = ogl_primitive_renderer_add_dataset(renderer_ptr->primitive_renderer,
+                                                                              OGL_PRIMITIVE_TYPE_LINES,
+                                                                              n_vertices * 2,
+                                                                              view_vector_lines_data,
+                                                                              view_vector_color);
+    }
 
     /* Store it */
     item_id = system_resizable_vector_get_amount_of_elements(renderer_ptr->items);
@@ -342,8 +448,12 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
     _ogl_curve_renderer* renderer_ptr = (_ogl_curve_renderer*) renderer;
 
     /* Convert curve item IDs to line strip item IDs. Use a preallocated array.
-     * If necessary, scale it up */
-    if (renderer_ptr->n_conversion_array_items < n_item_ids)
+     * If necessary, scale it up.
+     *
+     * A single curve renderer item may hold both path data, as well as view vector data,
+     * so make sure we have enough space for twice the number of items the caller has requested.
+     */
+    if (renderer_ptr->n_conversion_array_items < 2 * n_item_ids)
     {
         LOG_INFO("Performance warning: scaling up conversion array");
 
@@ -354,7 +464,7 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
             renderer_ptr->conversion_array_items = NULL;
         }
 
-        renderer_ptr->conversion_array_items = new ogl_primitive_renderer_dataset_id[2 * n_item_ids];
+        renderer_ptr->conversion_array_items = new ogl_primitive_renderer_dataset_id[2 * (2 * n_item_ids)];
 
         ASSERT_ALWAYS_SYNC(renderer_ptr->conversion_array_items != NULL,
                            "Out of memory");
@@ -363,10 +473,12 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
             goto end;
         }
 
-        renderer_ptr->n_conversion_array_items = 2 * n_item_ids;
+        renderer_ptr->n_conversion_array_items = 2 * (2 * n_item_ids);
     }
 
     /* Fill the array with line strip IDs */
+    unsigned int n_items_used = 0;
+
     for (unsigned int n_item_id = 0;
                       n_item_id < n_item_ids;
                     ++n_item_id)
@@ -383,12 +495,19 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
             goto end;
         }
 
-        renderer_ptr->conversion_array_items[n_item_id] = item_ptr->dataset_id;
+        renderer_ptr->conversion_array_items[n_items_used] = item_ptr->path_dataset_id;
+        n_items_used++;
+
+        if (item_ptr->view_vector_dataset_id != -1)
+        {
+            renderer_ptr->conversion_array_items[n_items_used] = item_ptr->view_vector_dataset_id;
+            n_items_used++;
+        }
     } /* for (all item IDs) */
 
     ogl_primitive_renderer_draw(renderer_ptr->primitive_renderer,
                                 mvp,
-                                n_item_ids,
+                                n_items_used,
                                 renderer_ptr->conversion_array_items);
 
 end:
