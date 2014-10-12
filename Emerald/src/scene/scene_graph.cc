@@ -17,6 +17,7 @@
 #include "system/system_read_write_mutex.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_time.h"
+#include "system/system_threads.h"
 #include "system/system_variant.h"
 
 /* Private declarations */
@@ -152,7 +153,7 @@ typedef struct _scene_graph_node
     system_resizable_vector attached_meshes;
     system_dag_node         dag_node;
     void*                   data;
-    system_timeline_time    last_update_frame_time;
+    system_timeline_time    last_update_time;
     _scene_graph_node*      parent_node;
     PFNUPDATEMATRIXPROC     pUpdateMatrix;
     system_matrix4x4        transformation_matrix;
@@ -161,16 +162,16 @@ typedef struct _scene_graph_node
 
     _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
     {
-        attached_cameras               = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_lights                = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_meshes                = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        dag_node                       = NULL;
-        last_update_frame_time         = -1;
-        parent_node                    = in_parent_node;
-        pUpdateMatrix                  = NULL;
-        transformation_matrix          = NULL;
-        transformation_matrix_index    = -1;
-        type                           = NODE_TYPE_UNKNOWN;
+        attached_cameras            = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_lights             = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_meshes             = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        dag_node                    = NULL;
+        last_update_time            = -1;
+        parent_node                 = in_parent_node;
+        pUpdateMatrix               = NULL;
+        transformation_matrix       = NULL;
+        transformation_matrix_index = -1;
+        type                        = NODE_TYPE_UNKNOWN;
     }
 
     ~_scene_graph_node()
@@ -232,15 +233,23 @@ typedef struct _scene_graph
     system_resizable_vector nodes;
     _scene_graph_node*      root_node_ptr;
 
+    system_critical_section node_compute_cs;
+    system_resizable_vector node_compute_vector;
+
     system_resizable_vector sorted_nodes; /* filled by compute() */
     system_read_write_mutex sorted_nodes_rw_mutex;
 
+    system_critical_section compute_lock_cs;
+
     _scene_graph()
     {
+        compute_lock_cs       = system_critical_section_create();
         dag                   = NULL;
-        dirty                 = false;
+        dirty                 = true;
         dirty_time            = 0;
         last_compute_time     = -1;
+        node_compute_cs       = system_critical_section_create();
+        node_compute_vector   = NULL;
         nodes                 = NULL;
         root_node_ptr         = NULL;
         sorted_nodes          = NULL;
@@ -249,11 +258,32 @@ typedef struct _scene_graph
 
     ~_scene_graph()
     {
+        if (compute_lock_cs != NULL)
+        {
+            system_critical_section_release(compute_lock_cs);
+
+            compute_lock_cs = NULL;
+        }
+
         if (dag != NULL)
         {
             system_dag_release(dag);
 
             dag = NULL;
+        }
+
+        if (node_compute_cs != NULL)
+        {
+            system_critical_section_release(node_compute_cs);
+
+            node_compute_cs = NULL;
+        }
+
+        if (node_compute_vector != NULL)
+        {
+            system_resizable_vector_release(node_compute_vector);
+
+            node_compute_vector = NULL;
         }
 
         if (sorted_nodes != NULL)
@@ -283,6 +313,36 @@ PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*    
 
     system_matrix4x4_set_to_identity(result);
     return result;
+}
+
+/** TODO */
+PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull _scene_graph_node*   node_ptr,
+                                                             __in           system_timeline_time time)
+{
+    if (node_ptr->transformation_matrix != NULL)
+    {
+        system_matrix4x4_release(node_ptr->transformation_matrix);
+
+        node_ptr->transformation_matrix = NULL;
+    }
+
+    if (node_ptr->type != NODE_TYPE_ROOT)
+    {
+        ASSERT_DEBUG_SYNC(node_ptr->parent_node->last_update_time == time,
+                          "Parent node's update time does not match the computation time!");
+
+        node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
+                                                                  node_ptr->parent_node->transformation_matrix,
+                                                                  time);
+    }
+    else
+    {
+        node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
+                                                                  NULL,
+                                                                  time);
+    }
+
+    node_ptr->last_update_time = time;
 }
 
 /** TODO */
@@ -1090,6 +1150,16 @@ PRIVATE bool _scene_graph_update_sorted_nodes(__in __notnull _scene_graph* graph
         if (system_dag_solve(graph_ptr->dag) )
         {
             graph_ptr->dirty = false;
+
+            system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
+                                         ACCESS_WRITE);
+            {
+                getter_result = system_dag_get_topologically_sorted_node_values(graph_ptr->dag,
+                                                                                graph_ptr->sorted_nodes);
+            }
+            system_read_write_mutex_unlock(graph_ptr->sorted_nodes_rw_mutex,
+                                           ACCESS_WRITE);
+
         }
         else
         {
@@ -1099,15 +1169,10 @@ PRIVATE bool _scene_graph_update_sorted_nodes(__in __notnull _scene_graph* graph
             goto end;
         }
     }
-
-    system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
-                                 ACCESS_WRITE);
+    else
     {
-        getter_result = system_dag_get_topologically_sorted_node_values(graph_ptr->dag,
-                                                                        graph_ptr->sorted_nodes);
+        getter_result = true;
     }
-    system_read_write_mutex_unlock(graph_ptr->sorted_nodes_rw_mutex,
-                                   ACCESS_WRITE);
 
 end:
     return getter_result;
@@ -1318,6 +1383,10 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
         goto end;
     }
 
+    /* Sanity check */
+    ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
+                      "Graph not locked");
+
     /* Retrieve nodes in topological order */
     bool getter_result = _scene_graph_update_sorted_nodes(graph_ptr);
 
@@ -1352,27 +1421,10 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
                 goto end_unlock_sorted_nodes;
             }
 
-            /* Update transformation matrix, assuming this is not a root node. */
-            parent_node_ptr = (_scene_graph_node*) node_ptr->parent_node;
-
-            if (node_ptr->transformation_matrix != NULL)
+            /* Update transformation matrix */
+            if (node_ptr->last_update_time != time)
             {
-                system_matrix4x4_release(node_ptr->transformation_matrix);
-
-                node_ptr->transformation_matrix = NULL;
-            }
-
-            if (node_ptr->type != NODE_TYPE_ROOT)
-            {
-                node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                          parent_node_ptr->transformation_matrix,
-                                                                          time);
-            }
-            else
-            {
-                node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                          NULL,
-                                                                          time);
+                _scene_graph_compute_node_transformation_matrix(node_ptr, time);
             }
 
             ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix != NULL,
@@ -1389,6 +1441,90 @@ end_unlock_sorted_nodes:
 
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph          graph,
+                                                 __in __notnull scene_graph_node     node,
+                                                 __in           system_timeline_time time)
+{
+    _scene_graph* graph_ptr = (_scene_graph*) graph;
+
+    /* Sanity check */
+    ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
+                      "Graph not locked");
+
+    /* We take a different approach in this function. We use an internally stored cache of
+     * nodes to store a chain of nodes necessary to calculate transformation matrix for
+     * each of the nodes. We proceed in the reverse order when calculating the matrices in
+     * order to adhere to the parent->child dependencies.
+     *
+     * This function is significantly faster compared to the full-blown compute() version
+     * but it only processes the nodes that are required to come up with the final transformation
+     * matrix for the requested node. As such, it would be excruciantigly slow for full graph
+     * processing, but is absolutely fine if we need to retrieve transformation matrix for
+     * a particular node. (eg. as when we need to compute the path for a given node)
+     */
+
+    /* Cache the node chain */
+    _scene_graph_node* current_node_ptr = (_scene_graph_node*) node;
+    _scene_graph_node* node_ptr         = (_scene_graph_node*) node;
+
+    system_critical_section_enter(graph_ptr->node_compute_cs);
+
+    if (graph_ptr->node_compute_vector == NULL)
+    {
+        graph_ptr->node_compute_vector = system_resizable_vector_create(4, /* capacity */
+                                                                        sizeof(_scene_graph_node*) );
+
+        ASSERT_DEBUG_SYNC(graph_ptr->node_compute_vector != NULL,
+                          "Could not create a node compute vector");
+        if (graph_ptr->node_compute_vector == NULL)
+        {
+            goto end;
+        }
+    }
+
+    while (current_node_ptr != NULL)
+    {
+        system_resizable_vector_push(graph_ptr->node_compute_vector,
+                                     current_node_ptr);
+
+        current_node_ptr = current_node_ptr->parent_node;
+    } /* while (current_node_ptr != NULL) */
+
+    /* Compute the transformation matrices for cached nodes */
+    const int n_cached_nodes = (int) system_resizable_vector_get_amount_of_elements(graph_ptr->node_compute_vector);
+
+    for (int n_cached_node  = n_cached_nodes - 1;
+             n_cached_node >= 0;
+           --n_cached_node)
+    {
+        if (!system_resizable_vector_get_element_at(graph_ptr->node_compute_vector,
+                                                    n_cached_node,
+                                                   &current_node_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve cached node");
+
+            goto end;
+        }
+
+        if (current_node_ptr->last_update_time != time)
+        {
+            _scene_graph_compute_node_transformation_matrix(current_node_ptr,
+                                                            time);
+        }
+    } /* for (all cached nodes) */
+
+    /* Job done! */
+end:
+    if (graph_ptr->node_compute_vector != NULL)
+    {
+        system_resizable_vector_clear(graph_ptr->node_compute_vector);
+    }
+
+    system_critical_section_leave(graph_ptr->node_compute_cs);
 }
 
 /** Please see header for specification */
@@ -1630,6 +1766,12 @@ end:
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
+{
+    system_critical_section_enter( ((_scene_graph*) graph)->compute_lock_cs);
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_graph_node          node,
                                                       __in            scene_graph_node_property property,
                                                       __out __notnull void*                     out_result)
@@ -1742,6 +1884,8 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
+    scene_graph_lock(graph);
+
     if (graph_ptr->dirty                           ||
         graph_ptr->last_compute_time != frame_time)
     {
@@ -1798,17 +1942,10 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
             }
 
             /* Update the matrix */
-            if (node_ptr->last_update_frame_time != frame_time)
+            if (node_ptr->last_update_time != frame_time)
             {
-                /* Carry on */
-                system_matrix4x4 new_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                      (node_ptr->parent_node) ? node_ptr->parent_node->transformation_matrix : NULL,
-                                                                      frame_time);
-
-                system_matrix4x4_release(node_ptr->transformation_matrix);
-
-                node_ptr->last_update_frame_time = frame_time;
-                node_ptr->transformation_matrix  = new_matrix;
+                _scene_graph_compute_node_transformation_matrix(node_ptr,
+                                                                frame_time);
             }
 
             /* Any cameras / meshes attached? */
@@ -1879,13 +2016,21 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                                 goto end;
                             }
                         } /* for (all attached objects) */
-                    }
+                    } /* for (all three iterations) */
                 } /* if (it makes sense to fire event call-backs) */
             } /* if (n_attached_objects != 0) */
         } /* for (all sorted nodes) */
     } /* "sorted nodes" lock */
 
 end:
+    scene_graph_unlock(graph);
+
     system_read_write_mutex_unlock(graph_ptr->sorted_nodes_rw_mutex,
                                    ACCESS_READ);
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void scene_graph_unlock(__in __notnull scene_graph graph)
+{
+    system_critical_section_leave( ((_scene_graph*) graph)->compute_lock_cs);
 }

@@ -133,6 +133,8 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
     uint32_t sample_delta_time    = 1000 / n_samples_per_second;
     float*   vertex_traveller_ptr = result_vertex_data;
 
+    scene_graph_lock(graph);
+
     for (uint32_t n_sample = 0;
                   n_sample < n_samples;
                 ++n_sample)
@@ -140,7 +142,9 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
         /* Update the graph's projection matrices */
         system_timeline_time sample_time = system_time_get_timeline_time_for_msec(sample_delta_time * n_sample);
 
-        scene_graph_compute(graph, sample_time);
+        scene_graph_compute_node(graph,
+                                 node,
+                                 sample_time);
 
         /* Retrieve the node's transformation matrix */
         system_matrix4x4 transformation_matrix = NULL;
@@ -229,6 +233,8 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
     {
         *out_view_vector_lines_data = result_view_vector_data;
     }
+
+    scene_graph_unlock(graph);
 
 end:
     if (!result)

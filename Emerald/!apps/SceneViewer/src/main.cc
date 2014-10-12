@@ -323,30 +323,34 @@ void _render_scene(ogl_context          context,
                                                 OGL_SCENE_RENDERER_PROPERTY_GRAPH,
                                                &scene_renderer_graph);
 
-                scene_graph_compute(scene_renderer_graph,
-                                    frame_time);
+                scene_graph_lock(scene_renderer_graph);
+                {
+                    scene_graph_compute(scene_renderer_graph,
+                                        frame_time);
 
-                /* Retrieve node that contains the transformation matrix for the camera */
-                scene_graph_node scene_camera_node                  = NULL;
-                system_matrix4x4 scene_camera_transformation_matrix = NULL;
+                    /* Retrieve node that contains the transformation matrix for the camera */
+                    scene_graph_node scene_camera_node                  = NULL;
+                    system_matrix4x4 scene_camera_transformation_matrix = NULL;
 
-                scene_camera_get_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
-                                         &scene_camera_node);
+                    scene_camera_get_property(camera_ptr->camera,
+                                              SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+                                             &scene_camera_node);
 
-                scene_graph_node_get_property(scene_camera_node,
-                                              SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
-                                             &scene_camera_transformation_matrix);
+                    scene_graph_node_get_property(scene_camera_node,
+                                                  SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
+                                                 &scene_camera_transformation_matrix);
 
-                /* For the view matrix, we need to take the inverse of the transformation matrix */
-                system_matrix4x4_set_from_matrix4x4(view, scene_camera_transformation_matrix);
-                system_matrix4x4_invert            (view);
+                    /* For the view matrix, we need to take the inverse of the transformation matrix */
+                    system_matrix4x4_set_from_matrix4x4(view, scene_camera_transformation_matrix);
+                    system_matrix4x4_invert            (view);
 
-                const float* view_matrix_data = system_matrix4x4_get_row_major_data(view);
+                    const float* view_matrix_data = system_matrix4x4_get_row_major_data(view);
 
-                camera_location[0] = view_matrix_data[0];
-                camera_location[1] = view_matrix_data[1];
-                camera_location[2] = view_matrix_data[2];
+                    camera_location[0] = view_matrix_data[0];
+                    camera_location[1] = view_matrix_data[1];
+                    camera_location[2] = view_matrix_data[2];
+                }
+                scene_graph_unlock(scene_renderer_graph);
             }
         } /* if (camera_ptr != NULL) */
     }
