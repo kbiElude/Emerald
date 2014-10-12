@@ -614,10 +614,6 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
                                        border_width_bg_uniform->location,
                                        sizeof(border_width_bg) / sizeof(float) / 2,
                                        border_width_bg);
-    dropdown_ptr->pGLProgramUniform4fv(program_label_bg_id,
-                                       x1y1x2y2_label_bg_uniform->location,
-                                       1, /* count */
-                                       dropdown_ptr->label_bg_x1y1x2y2);
     dropdown_ptr->pGLProgramUniform4fv(program_id,
                                        stop_data_uniform->location,
                                        sizeof(stop_data) / sizeof(float) / 4,
@@ -825,6 +821,150 @@ PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dro
     } /* for (all entries) */
 }
 
+PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_dropdown* dropdown_ptr,
+                                              __in_ecount(2) __notnull const float*      x1y1)
+{
+    system_window window        = NULL;
+    int           window_height = 0;
+    int           window_width  = 0;
+
+    ogl_context_get_property(dropdown_ptr->context,
+                             OGL_CONTEXT_PROPERTY_WINDOW,
+                            &window);
+
+    system_window_get_dimensions(window,
+                                &window_width,
+                                &window_height);
+
+    /* Retrieve maximum width & height needed to render the text strings.
+     * We will use this data to compute x2y2 */
+    const unsigned int n_strings       = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries) - 1;
+    unsigned int       text_max_height = 0;
+    unsigned int       text_max_width  = 0;
+
+    for (unsigned int n_entry = 0;
+                      n_entry < n_strings;
+                    ++n_entry)
+    {
+        _ogl_ui_dropdown_entry* entry_ptr = NULL;
+
+        if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
+                                                   n_entry,
+                                                  &entry_ptr) )
+        {
+            const ogl_text_string_id& string_id   = entry_ptr->string_id;
+            unsigned int              text_height = 0;
+            unsigned int              text_width  = 0;
+
+            ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
+                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                              string_id,
+                                             &text_height);
+            ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
+                                              OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                              string_id,
+                                             &text_width);
+
+            if (text_height > text_max_height)
+            {
+                text_max_height = text_height;
+            }
+
+            if (text_width > text_max_width)
+            {
+                text_max_width = text_width;
+            }
+        } /* if (entry descriptor was retrieved successfully) */
+    } /* for (all text strings) */
+
+    const float x2y2[2] =
+    {
+        x1y1[0] + float(text_max_width + BUTTON_WIDTH_PX) / window_width,
+        x1y1[1] + float(text_max_height)                  / window_height
+    };
+
+    /* Calculate various vectors needed for rendering */
+    dropdown_ptr->separator_delta_y   = fabs(x2y2[1] - x1y1[1]);
+    dropdown_ptr->slider_delta_y      = 0;
+    dropdown_ptr->slider_delta_y_base = 0;
+    dropdown_ptr->slider_height       = float(MAX_N_ENTRIES_VISIBLE) / float(n_strings);
+    dropdown_ptr->slider_separator_y  = float(SLIDER_Y_SEPARATOR_PX) / window_height;
+    dropdown_ptr->x1y1x2y2[0]         =     x1y1[0];
+    dropdown_ptr->x1y1x2y2[1]         = 1 - x2y2[1];
+    dropdown_ptr->x1y1x2y2[2]         =     x2y2[0];
+    dropdown_ptr->x1y1x2y2[3]         = 1 - x1y1[1];
+    dropdown_ptr->button_x1y1x2y2[0]  = dropdown_ptr->x1y1x2y2[2] - float(BUTTON_WIDTH_PX) / window_width;
+    dropdown_ptr->button_x1y1x2y2[1]  = dropdown_ptr->x1y1x2y2[1];
+    dropdown_ptr->button_x1y1x2y2[2]  = dropdown_ptr->x1y1x2y2[2];
+    dropdown_ptr->button_x1y1x2y2[3]  = dropdown_ptr->x1y1x2y2[3];
+    dropdown_ptr->drop_x1y2x2y1[0]    = dropdown_ptr->x1y1x2y2[0];
+    dropdown_ptr->drop_x1y2x2y1[1]    = dropdown_ptr->x1y1x2y2[1] + 1.0f / window_height;
+    dropdown_ptr->drop_x1y2x2y1[2]    = dropdown_ptr->x1y1x2y2[2];
+    dropdown_ptr->drop_x1y2x2y1[3]    = dropdown_ptr->drop_x1y2x2y1[1] - float((MAX_N_ENTRIES_VISIBLE) * dropdown_ptr->separator_delta_y);
+
+    if (dropdown_ptr->slider_height > 1.0f)
+    {
+        dropdown_ptr->slider_height = 1.0f;
+    }
+
+    /* We can now position the text strings */
+    _ogl_ui_dropdown_update_entry_strings   (dropdown_ptr, false);
+    _ogl_ui_dropdown_update_entry_positions (dropdown_ptr);
+    _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
+
+    /* Set up the label */
+    unsigned int text_height = 0;
+    unsigned int text_width  = 0;
+             int text_xy[2]  = {0};
+       const int x1y1_ss[2]  =
+    {
+        int(x1y1[0] * float(window_width) ),
+        int(x1y1[1] * float(window_height))
+    };
+       const int y2_ss = int(x2y2[1] * float(window_height));
+
+    if (dropdown_ptr->label_string_id == -1)
+    {
+        dropdown_ptr->label_string_id = ogl_text_add_string(dropdown_ptr->text_renderer);
+    }
+
+    ogl_text_set(dropdown_ptr->text_renderer,
+                 dropdown_ptr->label_string_id,
+                 system_hashed_ansi_string_get_buffer(dropdown_ptr->label_text) );
+
+    ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
+                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                      dropdown_ptr->label_string_id,
+                                     &text_height);
+    ogl_text_get_text_string_property(dropdown_ptr->text_renderer,
+                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                      dropdown_ptr->label_string_id,
+                                     &text_width);
+    ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
+                                      dropdown_ptr->label_string_id,
+                                      OGL_TEXT_STRING_PROPERTY_COLOR,
+                                      _ui_dropdown_label_text_color);
+
+    text_xy[0] = x1y1_ss[0] - text_width - LABEL_X_SEPARATOR_PX;
+    text_xy[1] = x1y1_ss[1] + text_height + ((y2_ss - x1y1_ss[1]) - int(text_height)) / 2;
+
+    ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
+                                      dropdown_ptr->label_string_id,
+                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
+                                      text_xy);
+
+    dropdown_ptr->label_x1y1[0] = float(text_xy[0]) / float(window_width);
+    dropdown_ptr->label_x1y1[1] = 1.0f - float(text_xy[1]) / float(window_height);
+
+    /* Set up coordinates of the dimmed background underneath the label */
+    text_xy[0] -= LABEL_X_SEPARATOR_PX * 2;
+
+    dropdown_ptr->label_bg_x1y1x2y2[0] =        float(text_xy[0])               / float(window_width);
+    dropdown_ptr->label_bg_x1y1x2y2[1] = 1.0f - float(y2_ss) / float(window_height);
+    dropdown_ptr->label_bg_x1y1x2y2[2] = x1y1[0];
+    dropdown_ptr->label_bg_x1y1x2y2[3] = 1.0f - x1y1[1];
+}
+
 /** Please see header for specification */
 PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
 {
@@ -988,6 +1128,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                        dropdown_ptr->program_bg_x1y1x2y2_uniform_location,
                                        1, /* count */
                                        dropdown_ptr->drop_x1y2x2y1);
+
+    dropdown_ptr->pGLProgramUniform4fv(program_label_bg_id,
+                                       dropdown_ptr->program_label_bg_x1y1x2y2_uniform_location,
+                                       1, /* count */
+                                       dropdown_ptr->label_bg_x1y1x2y2);
 
     /* Draw */
     if (dropdown_ptr->is_droparea_visible)
@@ -1173,6 +1318,7 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
         new_dropdown->is_lbm_on           = false;
         new_dropdown->is_droparea_visible = false;
         new_dropdown->is_slider_lbm       = false;
+        new_dropdown->label_string_id     = -1;
         new_dropdown->label_text          = label_text;
         new_dropdown->n_selected_entry    = n_selected_entry;
         new_dropdown->pfn_fire_proc_ptr   = pfn_fire_proc_ptr;
@@ -1282,129 +1428,8 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
          */
         _ogl_ui_dropdown_update_entry_strings(new_dropdown, false);
 
-        /* Retrieve maximum width & height needed to render the text strings.
-         * We will use this data to compute x2y2 */
-        unsigned int text_max_height = 0;
-        unsigned int text_max_width  = 0;
-
-        for (unsigned int n_entry = 0;
-                          n_entry < n_strings;
-                        ++n_entry)
-        {
-            _ogl_ui_dropdown_entry* entry_ptr = NULL;
-
-            if (system_resizable_vector_get_element_at(new_dropdown->entries,
-                                                       n_entry,
-                                                      &entry_ptr) )
-            {
-                const ogl_text_string_id& string_id   = entry_ptr->string_id;
-                unsigned int              text_height = 0;
-                unsigned int              text_width  = 0;
-
-                ogl_text_get_text_string_property(new_dropdown->text_renderer,
-                                                  OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                                  string_id,
-                                                 &text_height);
-                ogl_text_get_text_string_property(new_dropdown->text_renderer,
-                                                  OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                                  string_id,
-                                                 &text_width);
-
-                if (text_height > text_max_height)
-                {
-                    text_max_height = text_height;
-                }
-
-                if (text_width > text_max_width)
-                {
-                    text_max_width = text_width;
-                }
-            } /* if (entry descriptor was retrieved successfully) */
-        } /* for (all text strings) */
-
-        const float x2y2[2] =
-        {
-            x1y1[0] + float(text_max_width + BUTTON_WIDTH_PX) / window_width,
-            x1y1[1] + float(text_max_height)                  / window_height
-        };
-
-        /* Calculate various vectors needed for rendering */
-        new_dropdown->separator_delta_y   = fabs(x2y2[1] - x1y1[1]);
-        new_dropdown->slider_delta_y      = 0;
-        new_dropdown->slider_delta_y_base = 0;
-        new_dropdown->slider_height       = float(MAX_N_ENTRIES_VISIBLE) / float(n_strings);
-        new_dropdown->slider_separator_y  = float(SLIDER_Y_SEPARATOR_PX) / window_height;
-        new_dropdown->x1y1x2y2[0]         =     x1y1[0];
-        new_dropdown->x1y1x2y2[1]         = 1 - x2y2[1];
-        new_dropdown->x1y1x2y2[2]         =     x2y2[0];
-        new_dropdown->x1y1x2y2[3]         = 1 - x1y1[1];
-        new_dropdown->button_x1y1x2y2[0]  = new_dropdown->x1y1x2y2[2] - float(BUTTON_WIDTH_PX) / window_width;
-        new_dropdown->button_x1y1x2y2[1]  = new_dropdown->x1y1x2y2[1];
-        new_dropdown->button_x1y1x2y2[2]  = new_dropdown->x1y1x2y2[2];
-        new_dropdown->button_x1y1x2y2[3]  = new_dropdown->x1y1x2y2[3];
-        new_dropdown->drop_x1y2x2y1[0]    = new_dropdown->x1y1x2y2[0];
-        new_dropdown->drop_x1y2x2y1[1]    = new_dropdown->x1y1x2y2[1] + 1.0f / window_height;
-        new_dropdown->drop_x1y2x2y1[2]    = new_dropdown->x1y1x2y2[2];
-        new_dropdown->drop_x1y2x2y1[3]    = new_dropdown->drop_x1y2x2y1[1] - float((MAX_N_ENTRIES_VISIBLE) * new_dropdown->separator_delta_y);
-
-        if (new_dropdown->slider_height > 1.0f)
-        {
-            new_dropdown->slider_height = 1.0f;
-        }
-
-        /* We can now position the text strings */
-        _ogl_ui_dropdown_update_entry_strings   (new_dropdown, false);
-        _ogl_ui_dropdown_update_entry_positions (new_dropdown);
-        _ogl_ui_dropdown_update_entry_visibility(new_dropdown);
-
-        /* Set up the label */
-        unsigned int text_height = 0;
-        unsigned int text_width  = 0;
-                 int text_xy[2]  = {0};
-           const int x1y1_ss[2]  =
-        {
-            int(x1y1[0] * float(window_width) ),
-            int(x1y1[1] * float(window_height))
-        };
-           const int y2_ss = int(x2y2[1] * float(window_height));
-
-        new_dropdown->label_string_id = ogl_text_add_string(text_renderer);
-
-        ogl_text_set(text_renderer,
-                     new_dropdown->label_string_id,
-                     system_hashed_ansi_string_get_buffer(new_dropdown->label_text) );
-
-        ogl_text_get_text_string_property(text_renderer,
-                                          OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
-                                          new_dropdown->label_string_id,
-                                         &text_height);
-        ogl_text_get_text_string_property(text_renderer,
-                                          OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                          new_dropdown->label_string_id,
-                                         &text_width);
-        ogl_text_set_text_string_property(text_renderer,
-                                          new_dropdown->label_string_id,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          _ui_dropdown_label_text_color);
-
-        text_xy[0] = x1y1_ss[0] - text_width - LABEL_X_SEPARATOR_PX;
-        text_xy[1] = x1y1_ss[1] + text_height + ((y2_ss - x1y1_ss[1]) - int(text_height)) / 2;
-
-        ogl_text_set_text_string_property(text_renderer,
-                                          new_dropdown->label_string_id,
-                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                          text_xy);
-
-        new_dropdown->label_x1y1[0] = float(text_xy[0]) / float(window_width);
-        new_dropdown->label_x1y1[1] = 1.0f - float(text_xy[1]) / float(window_height);
-
-        /* Set up coordinates of the dimmed background underneath the label */
-        text_xy[0] -= LABEL_X_SEPARATOR_PX * 2;
-
-        new_dropdown->label_bg_x1y1x2y2[0] =        float(text_xy[0])               / float(window_width);
-        new_dropdown->label_bg_x1y1x2y2[1] = 1.0f - float(y2_ss) / float(window_height);
-        new_dropdown->label_bg_x1y1x2y2[2] = x1y1[0];
-        new_dropdown->label_bg_x1y1x2y2[3] = 1.0f - x1y1[1];
+        /* Update sub-control sizes */
+        _ogl_ui_dropdown_update_position(new_dropdown, x1y1);
 
         /* Retrieve the rendering program */
         new_dropdown->program           = ogl_ui_get_registered_program(instance, ui_dropdown_program_name);
@@ -1689,4 +1714,31 @@ PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
 
         _ogl_ui_dropdown_update_entry_positions(dropdown_ptr);
     } /* if (!dropdown_ptr->is_lbm_on) */
+}
+
+/* Please see header for spec */
+PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
+                                         __in __notnull int         property_value,
+                                         __in __notnull const void* data)
+{
+    _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) dropdown;
+
+    switch (property_value)
+    {
+        case OGL_UI_DROPDOWN_PROPERTY_X1Y1:
+        {
+            __analysis_assume(sizeof(data) == sizeof(float) * 2);
+
+            _ogl_ui_dropdown_update_position(dropdown_ptr,
+                                             (const float*) data);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ogl_ui_dropdown property");
+        }
+    } /* switch (property_value) */
 }

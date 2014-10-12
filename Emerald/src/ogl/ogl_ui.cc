@@ -835,7 +835,7 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
         new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = ogl_ui_dropdown_on_lbm_up;
         new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = ogl_ui_dropdown_on_mouse_move;
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = ogl_ui_dropdown_on_mouse_wheel;
-        new_ui_control_ptr->pfn_set_property_func_ptr   = NULL;
+        new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_dropdown_set_property;
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {

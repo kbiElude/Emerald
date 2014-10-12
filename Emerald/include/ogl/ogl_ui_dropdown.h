@@ -22,6 +22,7 @@ typedef enum
     OGL_UI_DROPDOWN_PROPERTY_LABEL_BG_X1Y1X2Y2,   /* not settable, float[4] */
     OGL_UI_DROPDOWN_PROPERTY_LABEL_X1Y1,          /* not settable, float[2] */
     OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,            /* not settable, float[4] */
+    OGL_UI_DROPDOWN_PROPERTY_X1Y1,                /*     settable, float[2] */
 };
 
 
@@ -68,5 +69,10 @@ PUBLIC void ogl_ui_dropdown_on_mouse_move(      void*  internal_instance,
 /** TODO */
 PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
                                            float wheel_delta);
+
+/** TODO */
+PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
+                                         __in __notnull int         property_value,
+                                         __in __notnull const void* data);
 
 #endif /* OGL_UI_DROPDOWN_H */

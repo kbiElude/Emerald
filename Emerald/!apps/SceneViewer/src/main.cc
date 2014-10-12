@@ -61,6 +61,8 @@ system_hashed_ansi_string  _selected_scene_data_filename = NULL;
 scene                      _test_scene                   = NULL;
 ogl_text                   _text_renderer                = NULL;
 ogl_ui                     _ui                           = NULL;
+ogl_ui_control             _ui_active_camera_control     = NULL;
+ogl_ui_control             _ui_active_path_control       = NULL;
 system_window              _window                       = NULL;
 system_event               _window_closed_event          = system_event_create(true, false);
 
@@ -88,6 +90,25 @@ void _on_active_camera_changed    (void* fire_proc_user_arg,
                                    void* event_user_arg);
 void _on_shown_camera_path_changed(void* fire_proc_user_arg,
                                    void* event_user_arg);
+void _update_ui_controls_location ();
+
+/** TODO */
+void _callback_on_dropdown_switch(ogl_ui_control control,
+                                  int            callback_id,
+                                  void*          callback_subscriber_data,
+                                  void*          callback_data)
+{
+    ogl_rendering_handler rendering_handler = NULL;
+
+    system_window_get_rendering_handler(_window,
+                                       &rendering_handler);
+
+    ogl_rendering_handler_lock_bound_context(rendering_handler);
+    {
+        _update_ui_controls_location();
+    }
+    ogl_rendering_handler_unlock_bound_context(rendering_handler);
+}
 
 /** TODO */
 void _init_cameras()
@@ -496,36 +517,69 @@ void _setup_ui()
                         system_hashed_ansi_string_create("UI") );
 
     /* Create camera selector */
-    ogl_ui_control active_camera_control = ogl_ui_add_dropdown(_ui,
-                                                               system_resizable_vector_get_amount_of_elements(_cameras),
-                                                               _camera_names,
-                                                               _camera_indices,
-                                                               _active_camera_index,
-                                                               system_hashed_ansi_string_create("Active camera:"),
-                                                               active_camera_dropdown_x1y1,
-                                                               _on_active_camera_changed,
-                                                               NULL);
+    _ui_active_camera_control = ogl_ui_add_dropdown(_ui,
+                                                    system_resizable_vector_get_amount_of_elements(_cameras),
+                                                    _camera_names,
+                                                    _camera_indices,
+                                                    _active_camera_index,
+                                                    system_hashed_ansi_string_create("Active camera:"),
+                                                    active_camera_dropdown_x1y1,
+                                                    _on_active_camera_changed,
+                                                    NULL);
 
     /* Create camera path selector */
     float next_ui_control_x1y1[2];
     float prev_ui_control_x1y1x2y2[4];
 
-    ogl_ui_get_property(active_camera_control,
+    ogl_ui_get_property(_ui_active_camera_control,
                         OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
                         prev_ui_control_x1y1x2y2);
 
     next_ui_control_x1y1[0] = active_camera_dropdown_x1y1[0];
     next_ui_control_x1y1[1] = 1.0f - (prev_ui_control_x1y1x2y2[1] - 1.0f / 720.0f);
 
-    ogl_ui_add_dropdown(_ui,
-                        system_resizable_vector_get_amount_of_elements(_cameras),
-                        _camera_path_names,
-                        _camera_path_indices,
-                        _active_camera_path_index,
-                        system_hashed_ansi_string_create("Show camera path for:"),
-                        next_ui_control_x1y1,
-                        _on_shown_camera_path_changed,
-                        NULL);
+    _ui_active_path_control = ogl_ui_add_dropdown(_ui,
+                                                  system_resizable_vector_get_amount_of_elements(_cameras),
+                                                  _camera_path_names,
+                                                  _camera_path_indices,
+                                                  _active_camera_path_index,
+                                                  system_hashed_ansi_string_create("Show camera path for:"),
+                                                  next_ui_control_x1y1,
+                                                  _on_shown_camera_path_changed,
+                                                  NULL);
+
+    /* Register for call-backs */
+    ogl_ui_register_control_callback(_ui,
+                                     _ui_active_camera_control,
+                                     OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
+                                     _callback_on_dropdown_switch,
+                                     NULL); /* callback_proc_user_arg */
+}
+
+/** TODO */
+void _update_ui_controls_location()
+{
+    float active_path_dy;
+    float new_active_path_x1y1x2y2   [4];
+    float prev_active_camera_x1y1x2y2[4];
+    float prev_active_path_x1y1x2y2  [4];
+
+    ogl_ui_get_property(_ui_active_camera_control,
+                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
+                        prev_active_camera_x1y1x2y2);
+    ogl_ui_get_property(_ui_active_path_control,
+                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
+                        prev_active_path_x1y1x2y2);
+
+    active_path_dy              = fabs(prev_active_path_x1y1x2y2[3] - prev_active_path_x1y1x2y2[1]);
+    new_active_path_x1y1x2y2[0] = prev_active_path_x1y1x2y2[0];
+    new_active_path_x1y1x2y2[1] = 1.0f - (prev_active_camera_x1y1x2y2[1] - 1.0f / 720.0f);
+    new_active_path_x1y1x2y2[2] = prev_active_path_x1y1x2y2[2];
+    new_active_path_x1y1x2y2[3] = new_active_path_x1y1x2y2[1] - active_path_dy;
+
+    ogl_ui_set_property(_ui_active_path_control,
+                        OGL_UI_DROPDOWN_PROPERTY_X1Y1,
+                        new_active_path_x1y1x2y2);
 }
 
 /** Entry point */
