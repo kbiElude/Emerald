@@ -1409,11 +1409,15 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
         /* Retrieve the rendering program */
         new_dropdown->program           = ogl_ui_get_registered_program(instance, ui_dropdown_program_name);
         new_dropdown->program_bg        = ogl_ui_get_registered_program(instance, ui_dropdown_bg_program_name);
+        new_dropdown->program_label_bg  = ogl_ui_get_registered_program(instance, ui_dropdown_label_bg_program_name);
         new_dropdown->program_separator = ogl_ui_get_registered_program(instance, ui_dropdown_separator_program_name);
+        new_dropdown->program_slider    = ogl_ui_get_registered_program(instance, ui_dropdown_slider_program_name);
 
         if (new_dropdown->program           == NULL ||
             new_dropdown->program_bg        == NULL ||
-            new_dropdown->program_separator == NULL)
+            new_dropdown->program_label_bg  == NULL ||
+            new_dropdown->program_separator == NULL ||
+            new_dropdown->program_slider    == NULL)
         {
             _ogl_ui_dropdown_init_program(instance,
                                           new_dropdown);

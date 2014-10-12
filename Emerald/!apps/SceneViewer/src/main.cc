@@ -20,6 +20,7 @@
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_uber.h"
 #include "ogl/ogl_ui.h"
+#include "ogl/ogl_ui_dropdown.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -38,11 +39,15 @@
 #include <string>
 #include <sstream>
 
+uint32_t                   _active_camera_index          = 0;
+uint32_t                   _active_camera_path_index     = 0; /* none */
 float                      _animation_duration_float     = 0.0f;
 system_timeline_time       _animation_duration_time      = 0;
 system_critical_section    _camera_cs                    = NULL;
 void**                     _camera_indices               = NULL;
 system_hashed_ansi_string* _camera_names                 = NULL;
+void**                     _camera_path_indices          = NULL;
+system_hashed_ansi_string* _camera_path_names            = NULL;
 system_resizable_vector    _cameras                      = NULL;
 ogl_context                _context                      = NULL;
 system_matrix4x4           _current_matrix               = NULL;
@@ -52,7 +57,6 @@ ogl_pipeline               _pipeline                     = NULL;
 uint32_t                   _pipeline_stage_id            = -1;
 system_timeline_time       _scene_duration               = 0;
 ogl_scene_renderer         _scene_renderer               = NULL;
-uint32_t                   _selected_camera_index        = 0;
 system_hashed_ansi_string  _selected_scene_data_filename = NULL;
 scene                      _test_scene                   = NULL;
 ogl_text                   _text_renderer                = NULL;
@@ -80,8 +84,10 @@ typedef struct _camera
 } _camera;
 
 /* Forward declarations */
-void _on_camera_changed(void* fire_proc_user_arg,
-                        void* event_user_arg);
+void _on_active_camera_changed    (void* fire_proc_user_arg,
+                                   void* event_user_arg);
+void _on_shown_camera_path_changed(void* fire_proc_user_arg,
+                                   void* event_user_arg);
 
 /** TODO */
 void _init_cameras()
@@ -139,7 +145,7 @@ void _init_cameras()
         system_resizable_vector_push(_cameras, flyby_camera);
     }
 
-    /* Create the list of camera names */
+    /* Create the list of camera names that will be shown under "active camera" dropdown */
     const uint32_t n_total_cameras = system_resizable_vector_get_amount_of_elements(_cameras);
 
     _camera_indices = new void*                    [n_total_cameras];
@@ -151,23 +157,51 @@ void _init_cameras()
     {
         _camera* current_camera = NULL;
 
-        system_resizable_vector_get_element_at(_cameras, n_camera, &current_camera);
+        system_resizable_vector_get_element_at(_cameras,
+                                               n_camera,
+                                              &current_camera);
 
         _camera_indices[n_camera] = (void*) n_camera;
         _camera_names  [n_camera] = current_camera->name;
     }
 
+    /* Create the list of camera names that will be shown under "show camera path" dropdown */
+    _camera_path_indices = new void*                    [n_total_cameras];
+    _camera_path_names   = new system_hashed_ansi_string[n_total_cameras];
+
+    for (uint32_t n_camera = 0;
+                  n_camera < n_total_cameras;
+                ++n_camera)
+    {
+        if (n_camera == 0)
+        {
+            _camera_path_indices[n_camera] = (void*) -1;
+            _camera_path_names  [n_camera] = system_hashed_ansi_string_create("None");
+        }
+        else
+        {
+            _camera* current_camera = NULL;
+
+            system_resizable_vector_get_element_at(_cameras,
+                                                   n_camera - 1,
+                                                  &current_camera);
+
+            _camera_path_indices[n_camera] = (void*) (n_camera - 1);
+            _camera_path_names  [n_camera] = current_camera->name;
+        }
+    }
+
     /* Set up the selected camera */
-    _on_camera_changed(NULL, (void*) _selected_camera_index);
+    _on_active_camera_changed(NULL, (void*) _active_camera_index);
 }
 
-/** Dropdown call-back handler */
-void _on_camera_changed(void* fire_proc_user_arg,
-                        void* event_user_arg)
+/** "Active camera" dropdown call-back handler */
+void _on_active_camera_changed(void* fire_proc_user_arg,
+                               void* event_user_arg)
 {
     system_critical_section_enter(_camera_cs);
     {
-        _selected_camera_index = (unsigned int) event_user_arg;
+        _active_camera_index = (unsigned int) event_user_arg;
 
         /* Release camera-specific projection matrix */
         if (_projection_matrix != NULL)
@@ -181,7 +215,7 @@ void _on_camera_changed(void* fire_proc_user_arg,
         _camera* camera_ptr = NULL;
 
         system_resizable_vector_get_element_at(_cameras,
-                                               _selected_camera_index,
+                                               _active_camera_index,
                                               &camera_ptr);
 
         ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve camera descriptor");
@@ -208,37 +242,6 @@ void _on_camera_changed(void* fire_proc_user_arg,
                                                                                            1280 / 720.0f,
                                                                                            znear,
                                                                                            zfar);
-
-                /* Configure the curve renderer to show the camera path */
-                scene_graph_node     camera_node              = NULL;
-                const float          curve_color[4]           = {1.0f, 1.0f, 1.0f, 1.0f};
-                scene_graph          graph                    = NULL;
-
-                scene_get_property(_test_scene,
-                                   SCENE_PROPERTY_GRAPH,
-                                  &graph);
-
-                camera_node = scene_graph_get_node_for_object(graph,
-                                                              SCENE_OBJECT_TYPE_CAMERA,
-                                                              camera_ptr->camera);
-                ASSERT_DEBUG_SYNC(camera_node != NULL,
-                                  "Could not retrieve owner node for selected camera.");
-
-                if (_curve_renderer_item_id != -1)
-                {
-                    ogl_curve_renderer_delete_curve(_curve_renderer,
-                                                    _curve_renderer_item_id);
-
-                    _curve_renderer_item_id = -1;
-                }
-
-                _curve_renderer_item_id = ogl_curve_renderer_add_scene_graph_node_curve(_curve_renderer,
-                                                                                        graph,
-                                                                                        camera_node,
-                                                                                        curve_color,
-                                                                                        _scene_duration,
-                                                                                        15,      /* n_samples_per_second */
-                                                                                        10.0f); /* view_vector_length */
             }
             else
             {
@@ -250,6 +253,58 @@ void _on_camera_changed(void* fire_proc_user_arg,
         } /* if (camera_ptr != NULL) */
     }
     system_critical_section_leave(_camera_cs);
+}
+
+/* "Show camera path" dropdown call-back handler */
+void _on_shown_camera_path_changed(void* fire_proc_user_arg,
+                                   void* event_user_arg)
+{
+    _active_camera_path_index = (uint32_t) event_user_arg;
+
+    if (_curve_renderer_item_id != -1)
+    {
+        ogl_curve_renderer_delete_curve(_curve_renderer,
+                                        _curve_renderer_item_id);
+
+        _curve_renderer_item_id = -1;
+    }
+
+    if (_active_camera_path_index != -1) /* None */
+    {
+        /* Retrieve the camera descriptor */
+        _camera* camera_ptr = NULL;
+
+        system_resizable_vector_get_element_at(_cameras,
+                                               _active_camera_path_index,
+                                              &camera_ptr);
+
+        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve camera descriptor");
+        if (camera_ptr != NULL)
+        {
+            /* Configure the curve renderer to show the camera path */
+            scene_graph_node     camera_node              = NULL;
+            const float          curve_color[4]           = {1.0f, 1.0f, 1.0f, 1.0f};
+            scene_graph          graph                    = NULL;
+
+            scene_get_property(_test_scene,
+                               SCENE_PROPERTY_GRAPH,
+                              &graph);
+
+            camera_node = scene_graph_get_node_for_object(graph,
+                                                          SCENE_OBJECT_TYPE_CAMERA,
+                                                          camera_ptr->camera);
+            ASSERT_DEBUG_SYNC(camera_node != NULL,
+                              "Could not retrieve owner node for selected camera.");
+
+            _curve_renderer_item_id = ogl_curve_renderer_add_scene_graph_node_curve(_curve_renderer,
+                                                                                    graph,
+                                                                                    camera_node,
+                                                                                    curve_color,
+                                                                                    _scene_duration,
+                                                                                    15,      /* n_samples_per_second */
+                                                                                    10.0f); /* view_vector_length */
+       }
+    }
 }
 
 /** Rendering handler */
@@ -284,6 +339,7 @@ void _render_scene(ogl_context          context,
 
     /* Update view matrix */
     float            camera_location[4] = {0, 0, 0, 0};
+    bool             is_flyby_active    = false;
     system_matrix4x4 view               = system_matrix4x4_create();
 
     system_critical_section_enter(_camera_cs);
@@ -291,14 +347,16 @@ void _render_scene(ogl_context          context,
         _camera* camera_ptr = NULL;
 
         system_resizable_vector_get_element_at(_cameras,
-                                               _selected_camera_index,
+                                               _active_camera_index,
                                               &camera_ptr);
 
-        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve current camera descriptor");
+        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve active camera descriptor");
         if (camera_ptr != NULL)
         {
             if (camera_ptr->is_flyby)
             {
+                is_flyby_active = true;
+
                 ogl_flyby_lock();
                 {
                     ogl_flyby_update(_context);
@@ -366,8 +424,19 @@ void _render_scene(ogl_context          context,
                                           frame_time
                                          );
 
-    /* Draw curves marked as active */
-    if (_curve_renderer_item_id != -1)
+    /* Draw curves marked as active.
+     *
+     * NOTE: For some scenes (eg. the introductory one used in "Suxx") the curve renderer
+     *       seems to be running into precision issues. These appear to be introduced when
+     *       inverting the camera transformation matrix to obtain the view matrix. They
+     *       cause the camera path spline to be incorrectly clipped when it gets too close
+     *       to the camera. At the same time, the issue does not reproduce when the spline
+     *       is viewed from a non-graph camera (the "flyby" one).
+     *
+     *       This isn't much of an issue for us, so we just show the paths when in flyby
+     *       mode. Should this ever become a problem, please investigate.
+     **/
+    if (_curve_renderer_item_id != -1 && is_flyby_active)
     {
         const ogl_context_gl_entrypoints* entry_points = NULL;
         system_matrix4x4                  vp           = system_matrix4x4_create_by_mul(_projection_matrix, view);
@@ -403,10 +472,10 @@ void _rendering_rbm_callback_handler(system_window           window,
 
 void _setup_ui()
 {
-    const float  dropdown_x1y1[2]  = {0.7f, 0.1f};
-    const float  text_default_size = 0.5f;
-    int          window_height     = 0;
-    int          window_width      = 0;
+    const float  active_camera_dropdown_x1y1[2] = {0.7f, 0.1f};
+    const float  text_default_size              = 0.5f;
+    int          window_height                  = 0;
+    int          window_width                   = 0;
 
     system_window_get_dimensions(_window,
                                 &window_width,
@@ -427,14 +496,35 @@ void _setup_ui()
                         system_hashed_ansi_string_create("UI") );
 
     /* Create camera selector */
+    ogl_ui_control active_camera_control = ogl_ui_add_dropdown(_ui,
+                                                               system_resizable_vector_get_amount_of_elements(_cameras),
+                                                               _camera_names,
+                                                               _camera_indices,
+                                                               _active_camera_index,
+                                                               system_hashed_ansi_string_create("Active camera:"),
+                                                               active_camera_dropdown_x1y1,
+                                                               _on_active_camera_changed,
+                                                               NULL);
+
+    /* Create camera path selector */
+    float next_ui_control_x1y1[2];
+    float prev_ui_control_x1y1x2y2[4];
+
+    ogl_ui_get_property(active_camera_control,
+                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
+                        prev_ui_control_x1y1x2y2);
+
+    next_ui_control_x1y1[0] = active_camera_dropdown_x1y1[0];
+    next_ui_control_x1y1[1] = 1.0f - (prev_ui_control_x1y1x2y2[1] - 1.0f / 720.0f);
+
     ogl_ui_add_dropdown(_ui,
                         system_resizable_vector_get_amount_of_elements(_cameras),
-                        _camera_names,
-                        _camera_indices,
-                        _selected_camera_index,
-                        system_hashed_ansi_string_create("Selected camera:"),
-                        dropdown_x1y1,
-                        _on_camera_changed,
+                        _camera_path_names,
+                        _camera_path_indices,
+                        _active_camera_path_index,
+                        system_hashed_ansi_string_create("Show camera path for:"),
+                        next_ui_control_x1y1,
+                        _on_shown_camera_path_changed,
                         NULL);
 }
 
@@ -581,6 +671,20 @@ end:
     if (_camera_names != NULL)
     {
         delete [] _camera_names;
+
+        _camera_names = NULL;
+    }
+
+    if (_camera_path_indices != NULL)
+    {
+        delete [] _camera_path_indices;
+
+        _camera_path_indices = NULL;
+    }
+
+    if (_camera_path_names != NULL)
+    {
+        delete [] _camera_path_names;
 
         _camera_names = NULL;
     }
