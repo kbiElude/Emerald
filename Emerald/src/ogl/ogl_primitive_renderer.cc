@@ -53,6 +53,7 @@ typedef struct _ogl_primitive_renderer_dataset
 {
     GLfloat            color_data[4];
     unsigned int       draw_first;
+    unsigned int       instance_id;
     ogl_primitive_type primitive_type;
     unsigned int       n_vertices;
     unsigned int       n_vertices_allocated;
@@ -60,11 +61,12 @@ typedef struct _ogl_primitive_renderer_dataset
 
     _ogl_primitive_renderer_dataset()
     {
-        draw_first            = -1;
-        n_vertices            = 0;
-        n_vertices_allocated  = 0;
-        primitive_type        = OGL_PRIMITIVE_TYPE_UNDEFINED;
-        vertex_data           = NULL;
+        draw_first           = -1;
+        instance_id          = -1;
+        n_vertices           = 0;
+        n_vertices_allocated = 0;
+        primitive_type       = OGL_PRIMITIVE_TYPE_UNDEFINED;
+        vertex_data          = NULL;
 
         memset(color_data, 0, sizeof(color_data) );
     }
@@ -214,7 +216,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                                                              dataset_ptr->draw_first,
                                                              dataset_ptr->n_vertices,
                                                              1, /* primcount */
-                                                             renderer_ptr->draw_dataset_ids[n]);
+                                                             dataset_ptr->instance_id);
         }
         else
         {
@@ -503,6 +505,7 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
     /* Cache the data */
     unsigned int current_color_offset  = data_color_offset;
     unsigned int current_vertex_offset = data_vertex_offset;
+    unsigned int n_current_item        = 0;
 
     for (unsigned int n_item = 0;
                       n_item < n_datasets;
@@ -515,7 +518,8 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
                                                   &dataset_ptr) &&
             dataset_ptr != NULL)
         {
-            dataset_ptr->draw_first = (current_vertex_offset - data_vertex_offset) / sizeof(float) / 3;
+            dataset_ptr->draw_first  = (current_vertex_offset - data_vertex_offset) / sizeof(float) / 3;
+            dataset_ptr->instance_id = n_current_item;
 
             memcpy((char*) renderer_ptr->bo_data + current_color_offset,
                    dataset_ptr->color_data,
@@ -526,6 +530,7 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
 
             current_color_offset  += sizeof(float) * 4;
             current_vertex_offset += sizeof(float) * 3 * dataset_ptr->n_vertices;
+            n_current_item        ++;
         }
     } /* for (all dataset items) */
 
