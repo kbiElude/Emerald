@@ -689,6 +689,22 @@ PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matrix4x4 matrix,
+                                                      __in           float            value)
+{
+    _system_matrix4x4_descriptor* matrix_ptr = (_system_matrix4x4_descriptor*) matrix;
+
+    for (unsigned char n = 0; n < 16; ++n)
+    {
+        matrix_ptr->data[n] = value;
+    }
+
+    memcpy(matrix_ptr->column_major_data,
+           matrix_ptr->data,
+           sizeof(float) * 16);
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_matrix4x4 matrix)
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;

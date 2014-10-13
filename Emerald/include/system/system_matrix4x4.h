@@ -157,6 +157,10 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull system_matrix4x4,
 PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system_matrix4x4,
                                                __in __notnull __ecount(3) const float* xyz);
 
+/** TODO */
+PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matrix4x4,
+                                                      __in           float);
+
 /** Resets 4x4 matrix object to identity matrix. Result is stored in the object.
  *
  *  @param system_matrix4x4 4x4 matrix object to set to identity amtrix.

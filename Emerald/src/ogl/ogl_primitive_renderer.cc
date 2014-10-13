@@ -445,6 +445,9 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
                                                    renderer_ptr->bo_data_size,
                                                    renderer_ptr->bo_data);
     }
+
+    /* The calls above reset the cached MVP */
+    system_matrix4x4_set_to_float(renderer_ptr->bo_mvp, 0.0f);
 }
 
 /** Please see header for specification */
