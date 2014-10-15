@@ -141,6 +141,8 @@ typedef struct
     ogl_text                  text_renderer;
     ogl_ui                    ui; /* NOT reference-counted */
 
+    bool visible;
+
     /* Cached func ptrs */
     PFNGLDISABLEPROC           pGLDisable;
     PFNGLDRAWARRAYSPROC        pGLDrawArrays;
@@ -789,16 +791,23 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdo
 /** TODO */
 PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dropdown* dropdown_ptr)
 {
-    const unsigned int n_entries       = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
-    static const bool  visibility_true = true;
+    const unsigned int n_entries  = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
 
     ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
                                       dropdown_ptr->current_entry_string_id,
                                       OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                     &visibility_true);
+                                     &dropdown_ptr->visible);
+
+    if (dropdown_ptr->label_string_id != -1)
+    {
+        ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
+                                          dropdown_ptr->label_string_id,
+                                          OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                         &dropdown_ptr->visible);
+    }
 
     for (unsigned int n_entry = 0;
-                      n_entry < n_entries - 1; /* exclude bar string */
+                      n_entry < n_entries;
                     ++n_entry)
     {
         _ogl_ui_dropdown_entry* entry_ptr = NULL;
@@ -807,10 +816,24 @@ PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dro
                                                    n_entry,
                                                   &entry_ptr) )
         {
-            ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
-                                              entry_ptr->string_id,
-                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
-                                             &dropdown_ptr->is_droparea_visible);
+            if (n_entry < (n_entries - 1) )
+            {
+                bool visibility = dropdown_ptr->is_droparea_visible &&
+                                  dropdown_ptr->visible;
+
+                ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
+                                                  entry_ptr->string_id,
+                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                 &visibility);
+            }
+            else
+            {
+                /* Bar string */
+                ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
+                                                  entry_ptr->string_id,
+                                                  OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                                 &dropdown_ptr->visible);
+            }
         }
         else
         {
@@ -1019,6 +1042,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     system_window_get_dimensions(window,
                                  window_wh + 0,
                                  window_wh + 1);
+
+    if (!dropdown_ptr->visible)
+    {
+        return;
+    }
 
     /* Update brightness if necessary */
     float brightness = dropdown_ptr->current_gpu_brightness_level;
@@ -1324,6 +1352,7 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
         new_dropdown->pfn_fire_proc_ptr   = pfn_fire_proc_ptr;
         new_dropdown->text_renderer       = text_renderer;
         new_dropdown->ui                  = instance;
+        new_dropdown->visible             = true;
 
         ogl_context_retain(new_dropdown->context);
 
@@ -1467,6 +1496,11 @@ PUBLIC bool ogl_ui_dropdown_is_over(void*        internal_instance,
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
     float             inversed_y   = 1.0f - xy[1];
 
+    if (!dropdown_ptr->visible)
+    {
+        return false;
+    }
+
     /* Store the hover UV location. Position it relative to the drop area, so that
      * we can pass the pair during the draw call.*/
     if (!dropdown_ptr->is_lbm_on)
@@ -1530,6 +1564,11 @@ PUBLIC void ogl_ui_dropdown_on_lbm_down(void*        internal_instance,
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
     float             inversed_y = 1.0f - xy[1];
 
+    if (!dropdown_ptr->visible)
+    {
+        return;
+    }
+
     if (xy[0]      >= dropdown_ptr->button_x1y1x2y2[0] && xy[0]      <= dropdown_ptr->button_x1y1x2y2[2] &&
         inversed_y >= dropdown_ptr->button_x1y1x2y2[1] && inversed_y <= dropdown_ptr->button_x1y1x2y2[3] &&
         !dropdown_ptr->is_lbm_on)
@@ -1567,6 +1606,11 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
 {
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
     float             inversed_y = 1.0f - xy[1];
+
+    if (!dropdown_ptr->visible)
+    {
+        return;
+    }
 
     dropdown_ptr->is_lbm_on                   = false;
     dropdown_ptr->force_gpu_brightness_update = true;
@@ -1666,6 +1710,11 @@ PUBLIC void ogl_ui_dropdown_on_mouse_move(void*        internal_instance,
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
     float             inversed_y   = 1.0f - xy[1];
 
+    if (!dropdown_ptr->visible)
+    {
+        return;
+    }
+
     if (dropdown_ptr->is_slider_lbm)
     {
         const float slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
@@ -1692,6 +1741,11 @@ PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
                                            float wheel_delta)
 {
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
+
+    if (!dropdown_ptr->visible)
+    {
+        return;
+    }
 
     if (!dropdown_ptr->is_lbm_on &&
         dropdown_ptr->is_droparea_visible)
@@ -1725,6 +1779,15 @@ PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
 
     switch (property_value)
     {
+        case OGL_UI_DROPDOWN_PROPERTY_VISIBLE:
+        {
+            dropdown_ptr->visible = *(bool*) data;
+
+            _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
+
+            break;
+        }
+
         case OGL_UI_DROPDOWN_PROPERTY_X1Y1:
         {
             __analysis_assume(sizeof(data) == sizeof(float) * 2);

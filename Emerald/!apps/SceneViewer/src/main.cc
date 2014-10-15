@@ -245,6 +245,7 @@ void _on_active_camera_changed(void* fire_proc_user_arg,
             if (!camera_ptr->is_flyby)
             {
                 /* Create projection matrix */
+                bool  new_visibility = false;
                 float yfov;
                 float zfar;
                 float znear;
@@ -263,13 +264,29 @@ void _on_active_camera_changed(void* fire_proc_user_arg,
                                                                                            1280 / 720.0f,
                                                                                            znear,
                                                                                            zfar);
+
+                if (_ui_active_path_control != NULL)
+                {
+                    ogl_ui_set_property(_ui_active_path_control,
+                                        OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
+                                       &new_visibility);
+                }
             }
             else
             {
+                bool new_visibility = true;
+
                 _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,
                                                                                            1280 / 720.0f,
                                                                                            1.0f,
                                                                                            10000.0f);
+
+                if (_ui_active_path_control != NULL)
+                {
+                    ogl_ui_set_property(_ui_active_path_control,
+                                        OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
+                                       &new_visibility);
+                    }
             }
         } /* if (camera_ptr != NULL) */
     }
@@ -547,6 +564,10 @@ void _setup_ui()
                                                   next_ui_control_x1y1,
                                                   _on_shown_camera_path_changed,
                                                   NULL);
+
+    /* Update the visibility of the UI controls */
+    _on_active_camera_changed(NULL,
+                              (void*) _active_camera_index);
 
     /* Register for call-backs */
     ogl_ui_register_control_callback(_ui,
