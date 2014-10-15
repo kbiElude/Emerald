@@ -5,6 +5,7 @@ cmake_minimum_required (VERSION 2.6)
 
 ADD_SUBDIRECTORY(ColladaConverter)
 ADD_SUBDIRECTORY(ES31AppTemplate)
+ADD_SUBDIRECTORY(LW-AnimationDataExtractor)
 ADD_SUBDIRECTORY(SceneViewer)
 ADD_SUBDIRECTORY(TextureCompressor)
 ADD_SUBDIRECTORY(Test-DOF)
