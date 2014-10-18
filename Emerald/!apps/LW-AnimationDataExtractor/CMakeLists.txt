@@ -14,7 +14,7 @@ INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
 FILE(GLOB GeneralIncludes "${LW-AnimationDataExtractor_BINARY_DIR}/*.h")
 FILE(GLOB GeneralSources "${LW-AnimationDataExtractor_BINARY_DIR}/*.c" "${LW-AnimationDataExtractor_BINARY_DIR}/serv.def")
 
-SET(AllLW-AnimationDataExtractorSources ${GeneralSources} )
+SET(AllLW-AnimationDataExtractorSources ${GeneralIncludes} ${GeneralSources} )
 
 set (CMAKE_LINK_DEF_FILE_FLAG "/DEF:serv.def") 
 
@@ -25,3 +25,6 @@ SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 
 SOURCE_GROUP ("General includes" FILES ${GeneralIncludes})
 SOURCE_GROUP ("General sources" FILES ${GeneralSources})
+
+TARGET_LINK_LIBRARIES(LW-AnimationDataExtractor EMERALD)
+ADD_DEPENDENCIES(LW-AnimationDataExtractor EMERALD)
