@@ -433,7 +433,7 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_conta
             ASSERT_DEBUG_SYNC(curve_segment_ptr->segment != NULL, "Segment data is null!");
             if (curve_segment_ptr->segment != NULL)
             {
-                result = curve_segment_add_node(segment,
+                result = curve_segment_add_node(curve_segment_ptr->segment,
                                                 time,
                                                 value,
                                                 out_node_id);
@@ -444,21 +444,21 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_node(__in __notnull  curve_conta
 
                     system_variant_set_float          (property_variant,
                                                        bias);
-                    curve_segment_modify_node_property(segment,
+                    curve_segment_modify_node_property(curve_segment_ptr->segment,
                                                       *out_node_id,
                                                        CURVE_SEGMENT_NODE_PROPERTY_BIAS,
                                                        property_variant);
 
                     system_variant_set_float          (property_variant,
                                                        continuity);
-                    curve_segment_modify_node_property(segment,
+                    curve_segment_modify_node_property(curve_segment_ptr->segment,
                                                       *out_node_id,
                                                        CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY,
                                                        property_variant);
 
                     system_variant_set_float          (property_variant,
                                                        tension);
-                    curve_segment_modify_node_property(segment,
+                    curve_segment_modify_node_property(curve_segment_ptr->segment,
                                                       *out_node_id,
                                                        CURVE_SEGMENT_NODE_PROPERTY_TENSION,
                                                        property_variant);

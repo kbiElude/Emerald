@@ -40,6 +40,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/jpeg-6b")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/libpng-1.2.36")
+INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/lwsdk")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/tinyxml2")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/zlib-1.2.3")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/modules/system/include")
@@ -54,6 +55,8 @@ FILE(GLOB GeneralIncludes "${EMERALD_BINARY_DIR}/include/*.h")
 FILE(GLOB GeneralSources "${EMERALD_BINARY_DIR}/src/*.cc")
 FILE(GLOB GFXIncludes "${EMERALD_BINARY_DIR}/include/gfx/*.h")
 FILE(GLOB GFXSources "${EMERALD_BINARY_DIR}/src/gfx/*.cc")
+FILE(GLOB LWIncludes "${EMERALD_BINARY_DIR}/include/lw/*.h")
+FILE(GLOB LWSources "${EMERALD_BINARY_DIR}/src/lw/*.cc")
 FILE(GLOB MeshIncludes "${EMERALD_BINARY_DIR}/include/mesh/*.h")
 FILE(GLOB MeshSources "${EMERALD_BINARY_DIR}/src/mesh/*.cc")
 FILE(GLOB OpenGLIncludes "${EMERALD_BINARY_DIR}/include/ogl/*.h")
@@ -104,6 +107,7 @@ SET(AllSources ${GeneralSources}
                ${ColladaSources}
                ${SystemSources} 
                ${CurveSources} 
+               ${LWSources}
                ${GFXSources}
                ${OpenGLSources} 
                ${WebcamSources} 
@@ -124,6 +128,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
     ${ColladaIncludes}
     ${CurveIncludes} 
     ${GeneralIncludes}
+    ${LWIncludes}
     ${GFXIncludes} 
     ${SystemIncludes} 
     ${OpenGLIncludes} 
@@ -159,7 +164,8 @@ SOURCE_GROUP ("General includes" FILES ${GeneralIncludes})
 SOURCE_GROUP ("General sources" FILES ${GeneralSources})
 SOURCE_GROUP ("GFX includes" FILES ${GFXIncludes})
 SOURCE_GROUP ("GFX sources" FILES ${GFXSources})
-SOURCE_GROUP ("LW Exporter sources" FILES ${LWExporterSources})
+SOURCE_GROUP ("Lightwave includes" FILES ${LWIncludes})
+SOURCE_GROUP ("Lightwave sources" FILES ${LWSources})
 SOURCE_GROUP ("Mesh includes" FILES ${MeshIncludes})
 SOURCE_GROUP ("Mesh sources" FILES ${MeshSources})
 SOURCE_GROUP ("Object Manager includes" FILES ${ObjectManagerIncludes})
