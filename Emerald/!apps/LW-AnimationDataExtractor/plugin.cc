@@ -11,6 +11,7 @@
 #include "curve/curve_container.h"
 #include "lw/lw_curve_dataset.h"
 #include "system/system_assertions.h"
+#include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_resizable_vector.h"
@@ -46,9 +47,10 @@ typedef struct _curve_key
 } _curve_key;
 
 
-LWChannelInfo*   channel_info_ptr = NULL;
-LWEnvelopeFuncs* envelope_ptr     = NULL;
-LWItemInfo*      item_info_ptr    = NULL;
+LWChannelInfo*   channel_info_ptr  = NULL;
+LWEnvelopeFuncs* envelope_ptr      = NULL;
+LWItemInfo*      item_info_ptr     = NULL;
+LWMessageFuncs*  message_funcs_ptr = NULL;
 
 /* Forward declarations. */
 curve_container                            CreateCurveFromEnvelope                             (const char*   object_name,
@@ -379,13 +381,17 @@ XCALL_(int) ExportAnimationData(int         version,
        return AFUNC_BADVERSION;
     }
 
+    /* Retrieve func ptr structures */
+    channel_info_ptr  = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
+    envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
+    item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
+    message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+
+    /* Inform the user that we're generating the dataset */
+    message_funcs_ptr->info("Extracting curve data..", NULL);
+
     /* Create a lw_curve_dataset container */
     lw_curve_dataset curve_dataset = lw_curve_dataset_create(system_hashed_ansi_string_create("Curve dataset") );
-
-    /* Retrieve func ptr structures */
-    channel_info_ptr = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
-    envelope_ptr     = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
-    item_info_ptr    = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
 
     /* Iterate over all object types .. */
     for (  n_item = 0;
@@ -427,6 +433,9 @@ XCALL_(int) ExportAnimationData(int         version,
                                            current_emerald_type,
                                            curve_name,
                                            curve);
+
+                /* Curve has been taken over by the dataset, so we're OK to release the curve */
+                curve_container_release(curve);
             } /* while (channels exist) */
 
             /* Iterate to the next item of the current type.*/
@@ -434,15 +443,37 @@ XCALL_(int) ExportAnimationData(int         version,
         }
     } /* for (all items) */
 
-#if 0
-    /* Store the dataset */
-    system_file_serializer serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create("C:\\temp\\test.data") );
+    message_funcs_ptr->info("Extracted curve data! Please select target file to store the blob.", NULL);
 
-    lw_curve_dataset_save         (curve_dataset, serializer);
-    system_file_serializer_release(serializer);
-#endif
+    /* Check where the user wants to store the data */
+    system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE,
+                                                                                   system_hashed_ansi_string_create("*"),
+                                                                                   system_hashed_ansi_string_create("Emerald Curve Dataset"),
+                                                                                   system_hashed_ansi_string_create("Select target Emerald Curve Dataset file") );
+
+    if (filename != NULL)
+    {
+        message_funcs_ptr->info("Saving curve data..", NULL);
+
+        /* Store the dataset */
+        system_file_serializer serializer = system_file_serializer_create_for_writing(filename);
+
+        lw_curve_dataset_save         (curve_dataset, serializer);
+        system_file_serializer_release(serializer);
+
+        message_funcs_ptr->info("Curve Dataset saved.", NULL);
+    }
+    else
+    {
+        message_funcs_ptr->warning("Curve Dataset NOT saved.", NULL);
+    }
 
     /* done! */
+    if (curve_dataset != NULL)
+    {
+        lw_curve_dataset_release(curve_dataset);
+    }
+
     return AFUNC_OK;
 }
 
