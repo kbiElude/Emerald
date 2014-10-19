@@ -11,6 +11,12 @@
 
 typedef enum
 {
+    SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
+    SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE
+} system_file_enumerator_file_operation;
+
+typedef enum
+{
     SYSTEM_FILE_ENUMERATOR_FILE_PROPERTY_FILE_NAME /* not settable, system_hashed_ansi_string */
 } system_file_enumerator_file_property;
 
@@ -25,9 +31,10 @@ typedef enum
  *  This function DOES NOT require a system_file_enumerator instance.
  *
  **/
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in __notnull system_hashed_ansi_string filter,
-                                                                                       __in __notnull system_hashed_ansi_string filter_name,
-                                                                                       __in __notnull system_hashed_ansi_string dialog_title);
+PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in           system_file_enumerator_file_operation operation,
+                                                                                       __in __notnull system_hashed_ansi_string             filter,
+                                                                                       __in __notnull system_hashed_ansi_string             filter_name,
+                                                                                       __in __notnull system_hashed_ansi_string             dialog_title);
 
 /** TODO */
 PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(__in __notnull system_hashed_ansi_string file_pattern);

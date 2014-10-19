@@ -644,7 +644,8 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     _curve_renderer = ogl_curve_renderer_create(_context, system_hashed_ansi_string_create("Curve renderer") );
 
     /* Let the user select the scene file */
-    _selected_scene_data_filename = system_file_enumerator_choose_file_via_ui(system_hashed_ansi_string_create("*.scene"),
+    _selected_scene_data_filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
+                                                                              system_hashed_ansi_string_create("*.scene"),
                                                                               system_hashed_ansi_string_create("Emerald Scene files"),
                                                                               system_hashed_ansi_string_create("Select Emerald Scene file") );
 

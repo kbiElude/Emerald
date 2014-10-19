@@ -113,9 +113,10 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in __notnull system_hashed_ansi_string filter,
-                                                                                       __in __notnull system_hashed_ansi_string filter_name,
-                                                                                       __in __notnull system_hashed_ansi_string dialog_title)
+PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in           system_file_enumerator_file_operation operation,
+                                                                                       __in __notnull system_hashed_ansi_string             filter,
+                                                                                       __in __notnull system_hashed_ansi_string             filter_name,
+                                                                                       __in __notnull system_hashed_ansi_string             dialog_title)
 {
     char                      buffer[MAX_PATH];
     OPENFILENAME              config;
@@ -138,7 +139,7 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_
 
         memset(&config, 0, sizeof(config) );
 
-        config.Flags           = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+        config.Flags           = ((operation == SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD) ? OFN_FILEMUSTEXIST : 0) | OFN_PATHMUSTEXIST;
         config.lStructSize     = sizeof(config);
         config.lpstrFile       = buffer;
         config.lpstrFilter     = filter_adapted_raw_ptr;
@@ -147,7 +148,16 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_
         config.nMaxFile        = MAX_PATH;
 
         /* Show the dialog */
-        BOOL execution_result = ::GetOpenFileName(&config);
+        BOOL execution_result = FALSE;
+
+        if (operation == SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD)
+        {
+            execution_result = ::GetOpenFileName(&config);
+        }
+        else
+        {
+            execution_result = ::GetSaveFileName(&config);
+        }
 
         delete [] filter_adapted_raw_ptr;
         filter_adapted_raw_ptr = NULL;

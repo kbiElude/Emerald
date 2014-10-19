@@ -249,7 +249,8 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         NULL);
 
     /* Let the user select the DAE file */
-    _selected_collada_data_file = system_file_enumerator_choose_file_via_ui(system_hashed_ansi_string_create("*.dae"),
+    _selected_collada_data_file = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
+                                                                            system_hashed_ansi_string_create("*.dae"),
                                                                             system_hashed_ansi_string_create("COLLADA files"),
                                                                             system_hashed_ansi_string_create("Select COLLADA file") );
 
