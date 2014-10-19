@@ -18,6 +18,7 @@
 struct _read_write_mutex_descriptor
 {
     system_critical_section cs_write;
+    volatile unsigned int   n_read_locks;
     volatile unsigned int   n_write_locks;
     system_semaphore        semaphore;
     DWORD                   write_owner_thread_id;
@@ -33,6 +34,7 @@ PRIVATE void _init_read_write_mutex(_read_write_mutex_descriptor* descriptor)
     if (descriptor != NULL)
     {
         descriptor->cs_write              = system_critical_section_create();
+        descriptor->n_read_locks          = 0;
         descriptor->n_write_locks         = 0;
         descriptor->semaphore             = system_semaphore_create(MAX_SEMAPHORE_COUNT);
         descriptor->write_owner_thread_id = 0;
@@ -94,6 +96,14 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mute
     /* Whatever the rqeuested access is, ignore multiple lock requests if the calling thread owns the mtuex for write access */
     bool can_continue = true;
 
+    if (access_type == ACCESS_READ && descriptor->write_owner_thread_id == current_thread_id)
+    {
+        /* Ignore the request - the caller already owns a write lock. */
+        descriptor->n_read_locks++;
+
+        return;
+    }
+
     if (access_type == ACCESS_WRITE && descriptor->write_owner_thread_id == current_thread_id)
     {
         system_critical_section_enter(descriptor->cs_write);
@@ -132,17 +142,26 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mute
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_read_write_mutex_unlock(__in system_read_write_mutex mutex, __in system_read_write_mutex_access_type access_type)
 {
-    _read_write_mutex_descriptor* descriptor = (_read_write_mutex_descriptor*) mutex;
+    DWORD                         current_thread_id = system_threads_get_thread_id();
+    _read_write_mutex_descriptor* descriptor        = (_read_write_mutex_descriptor*) mutex;
 
     if (access_type == ACCESS_READ)
     {
-        system_semaphore_leave(descriptor->semaphore);
+        if (descriptor->write_owner_thread_id == current_thread_id)
+        {
+            ASSERT_DEBUG_SYNC(descriptor->n_read_locks > 0,
+                              "Invalid unlock request");
+
+            descriptor->n_read_locks--;
+        }
+        else
+        {
+            system_semaphore_leave(descriptor->semaphore);
+        }
     }
     else
     {
         ASSERT_DEBUG_SYNC(access_type == ACCESS_WRITE, "Cannot unlock - unrecognized access type requested (%d)", access_type);
-
-        DWORD current_thread_id = system_threads_get_thread_id();
 
         //system_critical_section_enter(descriptor->cs_write);
         {
@@ -151,6 +170,9 @@ PUBLIC EMERALD_API void system_read_write_mutex_unlock(__in system_read_write_mu
 
             if (descriptor->n_write_locks == 1)
             {
+                ASSERT_DEBUG_SYNC(descriptor->n_read_locks == 0,
+                                  "Read locks acquired when about to release a write lock. Please release all read locks prior to releasing a write lock");
+
                 descriptor->write_owner_thread_id = 0;
                 descriptor->n_write_locks         = 0;
 

@@ -12,7 +12,7 @@ INCLUDE_DIRECTORIES("${LW-AnimationDataExtractor_BINARY_DIR}")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
 
 FILE(GLOB GeneralIncludes "${LW-AnimationDataExtractor_BINARY_DIR}/*.h")
-FILE(GLOB GeneralSources "${LW-AnimationDataExtractor_BINARY_DIR}/*.c" "${LW-AnimationDataExtractor_BINARY_DIR}/serv.def")
+FILE(GLOB GeneralSources "${LW-AnimationDataExtractor_BINARY_DIR}/*.cc" "${LW-AnimationDataExtractor_BINARY_DIR}/serv.def")
 
 SET(AllLW-AnimationDataExtractorSources ${GeneralIncludes} ${GeneralSources} )
 
