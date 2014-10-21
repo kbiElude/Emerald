@@ -6,9 +6,11 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "lw/lw_curve_dataset.h"
+#include "scene/scene.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -48,10 +50,27 @@ typedef struct _lw_curve_dataset_object
     }
 } _lw_curve_dataset_object;
 
+typedef enum
+{
+    LW_CURVE_TYPE_POSITION_X,
+    LW_CURVE_TYPE_POSITION_Y,
+    LW_CURVE_TYPE_POSITION_Z,
+    LW_CURVE_TYPE_ROTATION_B,
+    LW_CURVE_TYPE_ROTATION_H,
+    LW_CURVE_TYPE_ROTATION_P,
+    LW_CURVE_TYPE_SCALE_X,
+    LW_CURVE_TYPE_SCALE_Y,
+    LW_CURVE_TYPE_SCALE_Z,
+
+    LW_CURVE_TYPE_UNDEFINED
+} _lw_curve_type;
+
+
 typedef struct
 {
     system_hash64map object_to_item_vector_map; /* "object name" hashed_ansi_string -> vector of _lw_curve_dataset_item* items */
     system_hash64map object_to_properties_map;  /* "object name" hashed ansi string -> _lw_curve_dataset_object* */
+
     REFCOUNT_INSERT_VARIABLES
 } _lw_curve_dataset;
 
@@ -61,6 +80,29 @@ typedef struct
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(lw_curve_dataset, lw_curve_dataset, _lw_curve_dataset);
 
+
+/** TODO */
+PRIVATE void _lw_curve_dataset_apply_to_camera(__in           _lw_curve_type  curve_type,
+                                               __in __notnull curve_container new_curve,
+                                               __in __notnull scene_camera    camera)
+{
+}
+
+/** TODO */
+PRIVATE void _lw_curve_dataset_apply_to_light(__in            _lw_curve_type  curve_type,
+                                               __in __notnull curve_container new_curve,
+                                               __in __notnull scene_light     light)
+{
+    // TODO
+}
+
+/** TODO */
+PRIVATE void _lw_curve_dataset_apply_to_mesh(__in           _lw_curve_type  curve_type,
+                                             __in __notnull curve_container new_curve,
+                                             __in __notnull scene_mesh      mesh)
+{
+    // TODO
+}
 
 /** TODO */
 PRIVATE void _lw_curve_dataset_release(__in __notnull __deallocate(mem) void* ptr)
@@ -221,6 +263,148 @@ PUBLIC EMERALD_API void lw_curve_dataset_add_curve(__in __notnull lw_curve_datas
 
     /* Add the new item */
     system_resizable_vector_push(item_vector, item_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_dataset dataset,
+                                                        __in           scene            scene)
+{
+    _lw_curve_dataset* dataset_ptr = (_lw_curve_dataset*) dataset;
+    const uint32_t     n_objects   = system_hash64map_get_amount_of_elements(dataset_ptr->object_to_item_vector_map);
+
+    ASSERT_DEBUG_SYNC(n_objects == system_hash64map_get_amount_of_elements(dataset_ptr->object_to_properties_map),
+                      "Map corruption detected");
+
+    /* Iterate over all objects we have curves for. */
+    for (uint32_t n_object = 0;
+                  n_object < n_objects;
+                ++n_object)
+    {
+        _lw_curve_dataset_item*   item_ptr   = NULL;
+        system_hash64             item_hash  = -1;
+        _lw_curve_dataset_object* object_ptr = NULL;
+
+        /* Retrieve descriptors */
+        if (!system_hash64map_get_element_at(dataset_ptr->object_to_item_vector_map,
+                                             n_object,
+                                            &item_ptr,
+                                            &item_hash) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve item descriptor for object at index [%d]",
+                              n_object);
+
+            goto end;
+        }
+
+        if (!system_hash64map_get(dataset_ptr->object_to_properties_map,
+                                  item_hash,
+                                 &object_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve object descriptor.");
+
+            goto end;
+        }
+
+        /* Match the curve name to one of the predefined curve types */
+        static const system_hashed_ansi_string position_x_curve_name = system_hashed_ansi_string_create("Position.X");
+        static const system_hashed_ansi_string position_y_curve_name = system_hashed_ansi_string_create("Position.Y");
+        static const system_hashed_ansi_string position_z_curve_name = system_hashed_ansi_string_create("Position.Z");
+        static const system_hashed_ansi_string rotation_b_curve_name = system_hashed_ansi_string_create("Rotation.B");
+        static const system_hashed_ansi_string rotation_h_curve_name = system_hashed_ansi_string_create("Rotation.H");
+        static const system_hashed_ansi_string rotation_p_curve_name = system_hashed_ansi_string_create("Rotation.P");
+        static const system_hashed_ansi_string scale_x_curve_name    = system_hashed_ansi_string_create("Scale.X");
+        static const system_hashed_ansi_string scale_y_curve_name    = system_hashed_ansi_string_create("Scale.Y");
+        static const system_hashed_ansi_string scale_z_curve_name    = system_hashed_ansi_string_create("Scale.Z");
+
+        system_hash64  curve_name_hash = system_hashed_ansi_string_get_hash(item_ptr->name);
+        _lw_curve_type curve_type      = LW_CURVE_TYPE_UNDEFINED;
+
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(position_x_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_X;else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(position_y_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_Y;else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(position_z_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_Z;else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(rotation_b_curve_name) ) curve_type = LW_CURVE_TYPE_ROTATION_B;else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(rotation_h_curve_name) ) curve_type = LW_CURVE_TYPE_ROTATION_H;else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(rotation_p_curve_name) ) curve_type = LW_CURVE_TYPE_ROTATION_P;else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(scale_x_curve_name) )    curve_type = LW_CURVE_TYPE_SCALE_X;   else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(scale_y_curve_name) )    curve_type = LW_CURVE_TYPE_SCALE_Y;   else
+        if (curve_name_hash == system_hashed_ansi_string_get_hash(scale_z_curve_name) )    curve_type = LW_CURVE_TYPE_SCALE_Z;   else
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized curve type");
+        }
+
+        /* Let the object-specific handler take care of the request */
+        switch (object_ptr->object_type)
+        {
+            case LW_CURVE_DATASET_OBJECT_TYPE_CAMERA:
+            {
+                scene_camera found_camera = scene_get_camera_by_name(scene,
+                                                                     item_ptr->object_name);
+
+                ASSERT_ALWAYS_SYNC(found_camera != NULL,
+                                   "Could not find a camera named [%s]",
+                                   system_hashed_ansi_string_get_buffer(item_ptr->object_name) );
+
+                if (found_camera != NULL)
+                {
+                    _lw_curve_dataset_apply_to_camera(curve_type,
+                                                      item_ptr->curve,
+                                                      found_camera);
+                }
+
+                break;
+            }
+
+            case LW_CURVE_DATASET_OBJECT_TYPE_LIGHT:
+            {
+                scene_light found_light = scene_get_light_by_name(scene,
+                                                                  item_ptr->object_name);
+
+                ASSERT_ALWAYS_SYNC(found_light != NULL,
+                                   "Could not find a light named [%s]",
+                                   system_hashed_ansi_string_get_buffer(item_ptr->object_name) );
+
+                if (found_light != NULL)
+                {
+                    _lw_curve_dataset_apply_to_light(curve_type,
+                                                     item_ptr->curve,
+                                                     found_light);
+                }
+
+                break;
+            }
+
+            case LW_CURVE_DATASET_OBJECT_TYPE_MESH:
+            {
+                scene_mesh found_mesh = scene_get_mesh_instance_by_name(scene,
+                                                                        item_ptr->object_name);
+
+                ASSERT_ALWAYS_SYNC(found_mesh != NULL,
+                                   "Could not find a mesh named [%s]",
+                                   system_hashed_ansi_string_get_buffer(item_ptr->object_name) );
+
+                if (found_mesh != NULL)
+                {
+                    _lw_curve_dataset_apply_to_mesh(curve_type,
+                                                    item_ptr->curve,
+                                                    found_mesh);
+                }
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Unrecognized LW curve data-set object type");
+            }
+        } /* switch (object_ptr->object_type) */
+    } /* for (all objects) */
 
 end:
     ;

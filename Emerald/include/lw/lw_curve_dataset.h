@@ -6,6 +6,7 @@
 #define LW_CURVE_DATASET_H
 
 #include "curve/curve_types.h"
+#include "scene/scene_types.h"
 #include "system/system_types.h"
 
 
@@ -30,6 +31,10 @@ PUBLIC EMERALD_API void lw_curve_dataset_add_curve(__in __notnull lw_curve_datas
                                                    __in           lw_curve_dataset_object_type object_type,
                                                    __in __notnull system_hashed_ansi_string    curve_name,
                                                    __in __notnull curve_container              curve);
+
+/** TODO */
+PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_dataset dataset,
+                                                        __in           scene            scene);
 
 /** TODO */
 PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull system_hashed_ansi_string name);
