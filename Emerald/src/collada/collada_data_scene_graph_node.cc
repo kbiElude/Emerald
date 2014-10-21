@@ -27,11 +27,13 @@
 typedef struct _collada_data_scene_graph_node_item
 {
     void*                        data;
+    system_hashed_ansi_string    sid;
     _collada_data_node_item_type type;
 
     explicit _collada_data_scene_graph_node_item()
     {
         data = NULL;
+        sid  = NULL;
         type = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
     }
 } _collada_data_scene_graph_node_item;
@@ -140,7 +142,8 @@ PUBLIC collada_data_scene_graph_node collada_data_scene_graph_node_create(__in _
 
 /** TODO */
 PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_create(__in           _collada_data_node_item_type type,
-                                                                                    __in __notnull void*                        data)
+                                                                                    __in __notnull void*                        data,
+                                                                                    __in __notnull system_hashed_ansi_string    sid)
 {
     _collada_data_scene_graph_node_item* new_node_item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item();
 
@@ -151,6 +154,7 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
     }
 
     new_node_item_ptr->data = data;
+    new_node_item_ptr->sid  = sid;
     new_node_item_ptr->type = type;
 
 end:
@@ -251,7 +255,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
             /* Wrap the descriptor in an item descriptor */
             new_node_item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_CAMERA_INSTANCE,
-                                                                      new_camera_instance);
+                                                                      new_camera_instance,
+                                                                      NULL /* sid */);
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_controller"))
@@ -279,7 +284,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
             /* Wrap the descriptor in an item */
             new_node_item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE,
-                                                                      new_geometry_instance);
+                                                                      new_geometry_instance,
+                                                                      NULL /* sid */);
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_light"))
@@ -297,7 +303,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
             /* Wrap the descriptor in an item descriptor */
             new_node_item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_LIGHT_INSTANCE,
-                                                                      new_light_instance);
+                                                                      new_light_instance,
+                                                                      NULL /* sid */);
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "node"))
@@ -418,6 +425,13 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_item_get_property(__in  __
         case COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_DATA_HANDLE:
         {
             *((void**)out_result) = node_item_ptr->data;
+
+            break;
+        }
+
+        case COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_SID:
+        {
+            *((system_hashed_ansi_string*) out_result) = node_item_ptr->sid;
 
             break;
         }

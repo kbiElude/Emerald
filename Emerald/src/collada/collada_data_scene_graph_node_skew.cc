@@ -16,6 +16,12 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_skew_cre
     const char*                        text          = element_ptr->GetText();
     const char*                        traveller_ptr = text;
 
+    /* Read SID */
+    const char* sid = element_ptr->Attribute("sid");
+
+    ASSERT_ALWAYS_SYNC(sid != NULL,
+                       "Could not read <skew> node's SID");
+
     /* Retrieve matrix data */
     float data[7];
 
@@ -35,7 +41,9 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_skew_cre
     }
 
     /* Wrap the descriptor in an item */
-    item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION, new_transformation);
+    item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION,
+                                                     new_transformation,
+                                                     system_hashed_ansi_string_create(sid) );
 
 end:
     return item;

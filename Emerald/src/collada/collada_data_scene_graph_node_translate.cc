@@ -16,6 +16,12 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translat
     const char*                        text          = element_ptr->GetText();
     const char*                        traveller_ptr = text;
 
+    /* Read SID */
+    const char* sid = element_ptr->Attribute("sid");
+
+    ASSERT_ALWAYS_SYNC(sid != NULL,
+                       "Could not read <translate> node's SID");
+
     /* Retrieve matrix data */
     float data[3];
 
@@ -33,7 +39,9 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translat
     }
 
     /* Wrap in an item descriptor */
-    item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION, new_transformation);
+    item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION,
+                                                     new_transformation,
+                                                     system_hashed_ansi_string_create(sid) );
 
 end:
     return item;

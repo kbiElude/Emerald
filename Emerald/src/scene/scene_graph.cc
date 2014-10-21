@@ -42,11 +42,14 @@ typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*                data,
 
 typedef struct _scene_graph_node_matrix4x4_static
 {
-    system_matrix4x4 matrix;
+    system_matrix4x4     matrix;
+    scene_graph_node_tag tag;
 
-    explicit _scene_graph_node_matrix4x4_static(system_matrix4x4 in_matrix)
+    explicit _scene_graph_node_matrix4x4_static(system_matrix4x4     in_matrix,
+                                                scene_graph_node_tag in_tag)
     {
         matrix = system_matrix4x4_create();
+        tag    = in_tag;
 
         system_matrix4x4_set_from_matrix4x4(matrix, in_matrix);
     }
@@ -64,11 +67,15 @@ typedef struct _scene_graph_node_matrix4x4_static
 
 typedef struct _scene_graph_node_rotation_dynamic
 {
-    curve_container curves[4]; /* angle, axis xyz */
-    system_variant  variant_float;
+    curve_container      curves[4]; /* angle, axis xyz */
+    scene_graph_node_tag tag;
+    system_variant       variant_float;
 
-    explicit _scene_graph_node_rotation_dynamic(__in_ecount(4) __notnull curve_container* in_curves)
+    explicit _scene_graph_node_rotation_dynamic(__in_ecount(4) __notnull curve_container*     in_curves,
+                                                __in                     scene_graph_node_tag in_tag)
     {
+        tag = in_tag;
+
         for (uint32_t n_curve = 0;
                       n_curve < 4;
                     ++n_curve)
@@ -106,11 +113,15 @@ typedef struct _scene_graph_node_rotation_dynamic
 
 typedef struct _scene_graph_node_translation_dynamic
 {
-    curve_container curves[3];
-    system_variant  variant_float;
+    curve_container      curves[3];
+    scene_graph_node_tag tag;
+    system_variant       variant_float;
 
-    explicit _scene_graph_node_translation_dynamic(__in_ecount(3) __notnull curve_container* in_curves)
+    explicit _scene_graph_node_translation_dynamic(__in_ecount(3) __notnull curve_container*     in_curves,
+                                                   __in                     scene_graph_node_tag in_tag)
     {
+        tag = in_tag;
+
         for (uint32_t n_curve = 0;
                       n_curve < 3;
                     ++n_curve)
@@ -156,6 +167,7 @@ typedef struct _scene_graph_node
     system_timeline_time    last_update_time;
     _scene_graph_node*      parent_node;
     PFNUPDATEMATRIXPROC     pUpdateMatrix;
+    scene_graph_node_tag    tag;
     system_matrix4x4        transformation_matrix;
     int                     transformation_matrix_index;
     _node_type              type;
@@ -169,6 +181,7 @@ typedef struct _scene_graph_node
         last_update_time            = -1;
         parent_node                 = in_parent_node;
         pUpdateMatrix               = NULL;
+        tag                         = SCENE_GRAPH_NODE_TAG_UNDEFINED;
         transformation_matrix       = NULL;
         transformation_matrix_index = -1;
         type                        = NODE_TYPE_UNKNOWN;
@@ -510,14 +523,17 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__i
                                                                              __in __notnull scene_graph            result_graph,
                                                                              __in __notnull scene_graph_node       parent_node)
 {
-    scene_graph_node result_node       = NULL;
-    system_matrix4x4 serialized_matrix = NULL;
+    scene_graph_node     result_node       = NULL;
+    system_matrix4x4     serialized_matrix = NULL;
+    scene_graph_node_tag serialized_tag    = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
-    if (system_file_serializer_read_matrix4x4(serializer, &serialized_matrix) )
+    if (system_file_serializer_read_matrix4x4(serializer,                         &serialized_matrix) &&
+        system_file_serializer_read          (serializer, sizeof(serialized_tag), &serialized_tag) )
     {
         result_node = scene_graph_add_static_matrix4x4_transformation_node(result_graph,
                                                                            parent_node,
-                                                                           serialized_matrix);
+                                                                           serialized_matrix,
+                                                                           serialized_tag);
 
         ASSERT_DEBUG_SYNC(result_node != NULL,
                           "Static matrix4x4 transformation node serialization failed.");
@@ -534,8 +550,9 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
                                                                              __in __notnull scene_graph            result_graph,
                                                                              __in __notnull scene_graph_node       parent_node)
 {
-    scene_graph_node result_node          = NULL;
-    curve_container  serialized_curves[4] = {NULL, NULL, NULL, NULL};
+    scene_graph_node     result_node          = NULL;
+    curve_container      serialized_curves[4] = {NULL, NULL, NULL, NULL};
+    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
     for (unsigned int n = 0;
                       n < 4;
@@ -551,9 +568,20 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
         }
     }
 
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not read tag info");
+
+        goto end;
+    }
+
     result_node = scene_graph_add_rotation_dynamic_node(result_graph,
                                                         parent_node,
-                                                        serialized_curves);
+                                                        serialized_curves,
+                                                        serialized_tag);
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
                       "Could not add rotation dynamic node");
@@ -579,8 +607,9 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                                                                                 __in __notnull scene_graph            result_graph,
                                                                                 __in __notnull scene_graph_node       parent_node)
 {
-    scene_graph_node result_node          = NULL;
-    curve_container  serialized_curves[3] = {NULL, NULL, NULL};
+    scene_graph_node     result_node          = NULL;
+    curve_container      serialized_curves[3] = {NULL, NULL, NULL};
+    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
     for (unsigned int n = 0;
                       n < 3;
@@ -596,10 +625,20 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
         }
     }
 
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Node tag serialization failed");
+
+        goto end;
+    }
 
     result_node = scene_graph_add_translation_dynamic_node(result_graph,
                                                            parent_node,
-                                                           serialized_curves);
+                                                           serialized_curves,
+                                                           serialized_tag);
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
                       "Could not add translation dynamic node");
@@ -624,8 +663,15 @@ end:
 PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer              serializer,
                                                                  __in __notnull _scene_graph_node_matrix4x4_static* data_ptr)
 {
-    return system_file_serializer_write_matrix4x4(serializer,
-                                                  data_ptr->matrix);
+    bool result = true;
+
+    result &= system_file_serializer_write_matrix4x4(serializer,
+                                                     data_ptr->matrix);
+    result &= system_file_serializer_write          (serializer,
+                                                     sizeof(data_ptr->tag),
+                                                    &data_ptr->tag);
+
+    return result;
 }
 
 /** TODO */
@@ -644,6 +690,10 @@ PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull 
                                                                data_ptr->curves[n]);
     }
 
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+
     return result;
 }
 
@@ -661,6 +711,10 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnu
     {
         result &= system_file_serializer_write_curve_container(serializer, data_ptr->curves[n]);
     }
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
 
     return result;
 }
@@ -1179,9 +1233,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in           __notnull scene_graph      graph,
-                                                                          __in           __notnull scene_graph_node parent_node,
-                                                                          __in_ecount(4) __notnull curve_container* rotation_vector_curves)
+PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                          __in           __notnull scene_graph_node     parent_node,
+                                                                          __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
+                                                                          __in                     scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr       = (_scene_graph*) graph;
     _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
@@ -1194,8 +1249,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in  
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves, tag);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
     new_node_ptr->type          = NODE_TYPE_ROTATION_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_rotation_dynamic;
 
@@ -1215,9 +1271,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__in           __notnull scene_graph      graph,
-                                                                             __in           __notnull scene_graph_node parent_node,
-                                                                             __in_ecount(3) __notnull curve_container* translation_vector_curves)
+PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                             __in           __notnull scene_graph_node     parent_node,
+                                                                             __in_ecount(3) __notnull curve_container*     translation_vector_curves,
+                                                                             __in                     scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr       = (_scene_graph*) graph;
     _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
@@ -1230,8 +1287,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__i
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves, tag);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
     new_node_ptr->type          = NODE_TYPE_TRANSLATION_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_dynamic;
 
@@ -1285,9 +1343,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformation_node(__in __notnull scene_graph      graph,
-                                                                                         __in __notnull scene_graph_node parent_node,
-                                                                                         __in __notnull system_matrix4x4 matrix)
+PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
+                                                                                         __in __notnull scene_graph_node     parent_node,
+                                                                                         __in __notnull system_matrix4x4     matrix,
+                                                                                         __in           scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr       = (_scene_graph*) graph;
     _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
@@ -1300,8 +1359,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformat
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix, tag);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
     new_node_ptr->type          = NODE_TYPE_STATIC_MATRIX4X4;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
 

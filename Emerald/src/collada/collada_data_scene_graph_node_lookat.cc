@@ -16,6 +16,12 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_lookat_c
     const char*                        text          = element_ptr->GetText();
     const char*                        traveller_ptr = text;
 
+    /* Read SID */
+    const char* sid = element_ptr->Attribute("sid");
+
+    ASSERT_ALWAYS_SYNC(sid != NULL,
+                       "Could not read <lookat> node's SID");
+
     /* Retrieve matrix data */
     float data[9];
 
@@ -32,7 +38,9 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_lookat_c
     if (new_transformation != NULL)
     {
         /* Wrap the transformation in an item */
-        item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION, new_transformation);
+        item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION,
+                                                         new_transformation,
+                                                         system_hashed_ansi_string_create(sid) );
     }
 
 end:

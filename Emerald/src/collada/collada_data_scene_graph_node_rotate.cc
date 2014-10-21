@@ -24,6 +24,12 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_rotate_c
              data + 0, data + 1, data + 2,
              data + 3);
 
+    /* Read SID */
+    const char* sid = element_ptr->Attribute("sid");
+
+    ASSERT_ALWAYS_SYNC(sid != NULL,
+                       "Could not read <rotate> node's SID");
+
     /* Instantiate new descriptor */
     collada_data_transformation new_transformation = collada_data_transformation_create_rotate(element_ptr, data);
 
@@ -34,7 +40,9 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_rotate_c
     }
 
     /* Wrap the transformation in an item descriptor */
-    item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION, new_transformation);
+    item = collada_data_scene_graph_node_item_create(COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION,
+                                                     new_transformation,
+                                                     system_hashed_ansi_string_create(sid) );
 end:
     return item;
 }

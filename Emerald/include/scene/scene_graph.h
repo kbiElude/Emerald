@@ -19,6 +19,22 @@ typedef void (*PFNINSERTMESHPROC)             (__in __notnull scene_mesh       m
 typedef void (*PFNNEWTRANSFORMATIONMATRIXPROC)(__in __notnull system_matrix4x4 transformation_matrix,
                                                __in_opt       void*            user_arg);
 
+/* Special node tags. These are created from node SIDs and are used to mark
+ * recognized transformation types. Later on, when applying curves from
+ * lw_curve_dataset, these tags are used to recognize graph nodes that correspond
+ * to transformations described by the curves.
+ */
+typedef enum
+{
+    SCENE_GRAPH_NODE_TAG_ROTATE_X,
+    SCENE_GRAPH_NODE_TAG_ROTATE_Y,
+    SCENE_GRAPH_NODE_TAG_ROTATE_Z,
+    SCENE_GRAPH_NODE_TAG_SCALE,
+    SCENE_GRAPH_NODE_TAG_TRANSLATE,
+
+    SCENE_GRAPH_NODE_TAG_UNDEFINED
+} scene_graph_node_tag;
+
 typedef enum
 {
     SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX /* not settable, system_matrix4x4 */
@@ -41,19 +57,22 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_add_general_node(__in __notnull 
                                                                  __in __notnull scene_graph_node parent_node);
 
 /** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in           __notnull scene_graph      graph,
-                                                                          __in           __notnull scene_graph_node parent_node,
-                                                                          __in_ecount(4) __notnull curve_container* rotation_vector_curves);
+PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                          __in           __notnull scene_graph_node     parent_node,
+                                                                          __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
+                                                                          __in                     scene_graph_node_tag tag);
 
 /** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformation_node(__in __notnull scene_graph      graph,
-                                                                                         __in __notnull scene_graph_node parent_node,
-                                                                                         __in __notnull system_matrix4x4 matrix);
+PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
+                                                                                         __in __notnull scene_graph_node     parent_node,
+                                                                                         __in __notnull system_matrix4x4     matrix,
+                                                                                         __in           scene_graph_node_tag tag);
 
 /** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__in           __notnull scene_graph      graph,
-                                                                             __in           __notnull scene_graph_node parent_node,
-                                                                             __in_ecount(3) __notnull curve_container* translation_vector_curves);
+PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                             __in           __notnull scene_graph_node     parent_node,
+                                                                             __in_ecount(3) __notnull curve_container*     translation_vector_curves,
+                                                                             __in                     scene_graph_node_tag tag);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_graph        graph,

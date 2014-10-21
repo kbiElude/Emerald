@@ -14,6 +14,7 @@
 typedef enum collada_data_scene_graph_node_item_property
 {
     COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_DATA_HANDLE, /* not settable, void* */
+    COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_SID,         /* not settable, system_hashed_ansi_string */
     COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_TYPE         /* not settable, _collada_data_node_item_type */
 };
 
@@ -40,7 +41,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
 /** TODO */
 PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_create(__in           _collada_data_node_item_type type,
-                                                                                    __in __notnull void*                        data);
+                                                                                    __in __notnull void*                        data,
+                                                                                    __in __notnull system_hashed_ansi_string    sid);
 
 /** TODO */
 PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(__in      __notnull collada_data_scene_graph_node       node,

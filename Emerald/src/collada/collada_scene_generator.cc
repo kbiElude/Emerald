@@ -63,7 +63,8 @@ PRIVATE void             _collada_scene_generator_process_light_instance_node_it
                                                                                       __in __notnull void*                         node_item_data);
 PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item   (__in __notnull scene_graph                   graph,
                                                                                       __in __notnull scene_graph_node              parent_node,
-                                                                                      __in __notnull void*                         node_item_data);
+                                                                                      __in __notnull void*                         node_item_data,
+                                                                                      __in __notnull system_hashed_ansi_string     node_item_sid);
 
 /** TODO */
 PRIVATE curve_container _collada_scene_generator_create_curve_container_from_collada_value(__in __notnull collada_value value)
@@ -681,6 +682,7 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(__in __notnull c
     {
         collada_data_scene_graph_node_item node_item      = NULL;
         void*                              node_item_data = NULL;
+        system_hashed_ansi_string          node_item_sid  = NULL;
         _collada_data_node_item_type       node_item_type = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
 
         collada_data_scene_graph_node_get_node_item(node,
@@ -691,6 +693,9 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(__in __notnull c
                                                         COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_DATA_HANDLE,
                                                        &node_item_data);
         collada_data_scene_graph_node_item_get_property(node_item,
+                                                        COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_SID,
+                                                       &node_item_sid);
+        collada_data_scene_graph_node_item_get_property(node_item,
                                                         COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_TYPE,
                                                        &node_item_type);
 
@@ -699,28 +704,44 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(__in __notnull c
             case COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION:
             {
                 /* NOTE: Subsequent transformations are dependent so current_node must be updated */
-                current_node = _collada_scene_generator_process_transformation_node_item(graph, current_node, node_item_data);
+                current_node = _collada_scene_generator_process_transformation_node_item(graph,
+                                                                                         current_node,
+                                                                                         node_item_data,
+                                                                                         node_item_sid);
 
                 break;
             } /* case COLLADA_DATA_NODE_ITEM_TYPE_TRANSFORMATION: */
 
             case COLLADA_DATA_NODE_ITEM_TYPE_CAMERA_INSTANCE:
             {
-                _collada_scene_generator_process_camera_instance_node_item(data, scene, graph, current_node, node_item_data);
+                _collada_scene_generator_process_camera_instance_node_item(data,
+                                                                           scene,
+                                                                           graph,
+                                                                           current_node,
+                                                                           node_item_data);
 
                 break;
             }
 
             case COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE:
             {
-                _collada_scene_generator_process_geometry_instance_node_item(data, scene, graph, current_node, node_item_data, context);
+                _collada_scene_generator_process_geometry_instance_node_item(data,
+                                                                             scene,
+                                                                             graph,
+                                                                             current_node,
+                                                                             node_item_data,
+                                                                             context);
 
                 break;
             } /* case COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE: */
 
             case COLLADA_DATA_NODE_ITEM_TYPE_LIGHT_INSTANCE:
             {
-                _collada_scene_generator_process_light_instance_node_item(data, scene, graph, current_node, node_item_data);
+                _collada_scene_generator_process_light_instance_node_item(data,
+                                                                          scene,
+                                                                          graph,
+                                                                          current_node,
+                                                                          node_item_data);
 
                 break;
             }
@@ -943,9 +964,10 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
 }
 
 /** TODO */
-PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item(__in __notnull scene_graph      graph,
-                                                                                   __in __notnull scene_graph_node parent_node,
-                                                                                   __in __notnull void*            node_item_data)
+PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_item(__in __notnull scene_graph               graph,
+                                                                                   __in __notnull scene_graph_node          parent_node,
+                                                                                   __in __notnull void*                     node_item_data,
+                                                                                   __in __notnull system_hashed_ansi_string node_item_sid)
 {
     scene_graph_node                  result              = NULL;
     _collada_data_transformation_type transformation_type = COLLADA_DATA_TRANSFORMATION_TYPE_UNDEFINED;
@@ -981,7 +1003,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                 result = scene_graph_add_static_matrix4x4_transformation_node(graph,
                                                                               parent_node,
-                                                                              transformation_matrix);
+                                                                              transformation_matrix,
+                                                                              SCENE_GRAPH_NODE_TAG_UNDEFINED);
             }
             system_matrix4x4_release(transformation_matrix);
 
@@ -990,11 +1013,22 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
         case COLLADA_DATA_TRANSFORMATION_TYPE_ROTATE:
         {
-            float            rotation_angle                 = 0.0f;
-            collada_value    rotation_angle_collada_value   = NULL;
-            float            rotation_axis[3]               = {0};
-            collada_value    rotation_axis_collada_value[3] = {NULL};
+            float                rotation_angle                 = 0.0f;
+            collada_value        rotation_angle_collada_value   = NULL;
+            float                rotation_axis[3]               = {0};
+            collada_value        rotation_axis_collada_value[3] = {NULL};
+            scene_graph_node_tag result_node_tag                = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
+            /* Convert SID to a node tag.
+             *
+             * NOTE: LW uses <rotate> nodes for pivot orientation, so we do not want sanity
+             *       checks in here.
+             */
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "rotateX")) result_node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_X;else
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "rotateY")) result_node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Y;else
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "rotateZ")) result_node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Z;
+
+            /* Carry on */
             collada_data_transformation_get_rotate_properties( (collada_data_transformation) node_item_data,
                                                                rotation_axis_collada_value,
                                                               &rotation_angle_collada_value);
@@ -1043,7 +1077,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                 result = scene_graph_add_rotation_dynamic_node(graph,
                                                                parent_node,
-                                                               rotation_vector_curves);
+                                                               rotation_vector_curves,
+                                                               result_node_tag);
 
                 /* The former call will retain the curve container array, so we're safe
                  * to release it here */
@@ -1075,7 +1110,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                 result = scene_graph_add_static_matrix4x4_transformation_node(graph,
                                                                               parent_node,
-                                                                              rotation_matrix);
+                                                                              rotation_matrix,
+                                                                              result_node_tag);
 
                 system_matrix4x4_release(rotation_matrix);
             }
@@ -1085,9 +1121,18 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
         case COLLADA_DATA_TRANSFORMATION_TYPE_SCALE:
         {
-            system_matrix4x4 scale_matrix                  = system_matrix4x4_create();
-            collada_value    scale_vector_collada_value[3] = {NULL};
-            float            scale_vector[3]               = {0};
+            scene_graph_node_tag result_node_tag               = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+            system_matrix4x4     scale_matrix                  = system_matrix4x4_create();
+            collada_value        scale_vector_collada_value[3] = {NULL};
+            float                scale_vector[3]               = {0};
+
+            /* Convert SID to a node tag */
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "scale")) result_node_tag = SCENE_GRAPH_NODE_TAG_SCALE;else
+            {
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Unrecognized COLLADA scale node SID");
+            }
+
             {
                 /* TODO: If necessary, introduce support for collada_data_animation */
                 collada_data_transformation_get_scale_properties( (collada_data_transformation) node_item_data,
@@ -1107,7 +1152,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                 result = scene_graph_add_static_matrix4x4_transformation_node(graph,
                                                                               parent_node,
-                                                                              scale_matrix);
+                                                                              scale_matrix,
+                                                                              result_node_tag);
             }
             system_matrix4x4_release(scale_matrix);
 
@@ -1116,8 +1162,16 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
         case COLLADA_DATA_TRANSFORMATION_TYPE_TRANSLATE:
         {
-            system_matrix4x4 translation_matrix                  = system_matrix4x4_create();
-            collada_value    translation_vector_collada_value[3] = {NULL};
+            scene_graph_node_tag result_node_tag                     = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+            system_matrix4x4     translation_matrix                  = system_matrix4x4_create();
+            collada_value        translation_vector_collada_value[3] = {NULL};
+
+            /* Convert SID to a node tag.
+             *
+             * NOTE: LW uses a number of <translate> nodes to compensate for pivot rotation.
+             *       We definitely do not want a sanity check here.
+             **/
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "translate")) result_node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
 
             {
                 collada_data_transformation_get_translate_properties( (collada_data_transformation) node_item_data,
@@ -1159,7 +1213,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                     result = scene_graph_add_translation_dynamic_node(graph,
                                                                       parent_node,
-                                                                      translation_vector_curves);
+                                                                      translation_vector_curves,
+                                                                      result_node_tag);
 
                     /* The former call will retain the curve container array, so we're safe
                      * to release it here */
@@ -1188,7 +1243,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                     result = scene_graph_add_static_matrix4x4_transformation_node(graph,
                                                                                   parent_node,
-                                                                                  translation_matrix);
+                                                                                  translation_matrix,
+                                                                                  result_node_tag);
                 }
             }
             system_matrix4x4_release(translation_matrix);
