@@ -40,6 +40,10 @@ typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*                data,
                                                 system_matrix4x4     current_matrix,
                                                 system_timeline_time time);
 
+/* Forward declarations */
+PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*      data,
+                                            __in                          _node_type type);
+
 typedef struct _scene_graph_node_matrix4x4_static
 {
     system_matrix4x4     matrix;
@@ -159,6 +163,7 @@ typedef struct _scene_graph_node_translation_dynamic
 
 typedef struct _scene_graph_node
 {
+    /* Make sure to update scene_graph_replace_node(), if you add or remove any of the existing fields */
     system_resizable_vector attached_cameras;
     system_resizable_vector attached_lights;
     system_resizable_vector attached_meshes;
@@ -215,30 +220,7 @@ typedef struct _scene_graph_node
             attached_meshes = NULL;
         }
 
-        if (data != NULL)
-        {
-            switch (type)
-            {
-                case NODE_TYPE_ROOT:
-                {
-                    /* Nothing to do here */
-                    break;
-                }
-
-                case NODE_TYPE_STATIC_MATRIX4X4:
-                {
-                    delete (_scene_graph_node_matrix4x4_static*) data;
-
-                    data = NULL;
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false, "Unrecognized node type");
-                }
-            } /* switch (type) */
-        } /* if (data != NULL) */
+        _scene_graph_node_release_data(data, type);
     }
 } _scene_graph_node;
 
@@ -1028,6 +1010,36 @@ end_error:
 
 end:
     return result;
+}
+
+/** TODO */
+PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*      data,
+                                            __in                          _node_type type)
+{
+    if (data != NULL)
+    {
+        switch (type)
+        {
+            case NODE_TYPE_ROOT:
+            {
+                /* Nothing to do here */
+                break;
+            }
+
+            case NODE_TYPE_STATIC_MATRIX4X4:
+            {
+                delete (_scene_graph_node_matrix4x4_static*) data;
+
+                data = NULL;
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false, "Unrecognized node type");
+            }
+        } /* switch (type) */
+    } /* if (data != NULL) */
 }
 
 /** TODO */
@@ -1919,6 +1931,121 @@ PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull
     }
 
     return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void scene_graph_node_replace(__in __notnull scene_graph      graph,
+                                                 __in __notnull scene_graph_node dst_node,
+                                                 __in __notnull scene_graph_node src_node)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*)      graph;
+    _scene_graph_node* dst_node_ptr = (_scene_graph_node*) dst_node;
+    _scene_graph_node* src_node_ptr = (_scene_graph_node*) src_node;
+
+    /* This function makes several assumptions in order to avoid a deep destruction of the
+     * node.
+     */
+    ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(dst_node_ptr->attached_cameras) == 0 &&
+                      system_resizable_vector_get_amount_of_elements(dst_node_ptr->attached_lights)  == 0 &&
+                      system_resizable_vector_get_amount_of_elements(dst_node_ptr->attached_meshes)  == 0 &&
+                      system_resizable_vector_get_amount_of_elements(src_node_ptr->attached_cameras) == 0 &&
+                      system_resizable_vector_get_amount_of_elements(src_node_ptr->attached_lights)  == 0 &&
+                      system_resizable_vector_get_amount_of_elements(src_node_ptr->attached_meshes)  == 0,
+                      "scene_graph_replace_node() does not support replacement for nodes with attach objects.");
+
+    if (dst_node_ptr->data != NULL)
+    {
+        _scene_graph_node_release_data(dst_node_ptr->data,
+                                       dst_node_ptr->type);
+    }
+
+    /* Copy data from the source node */
+    dst_node_ptr->data = src_node_ptr->data;
+    src_node_ptr->data = NULL;
+
+    dst_node_ptr->pUpdateMatrix = src_node_ptr->pUpdateMatrix;
+    dst_node_ptr->type          = src_node_ptr->type;
+
+    /* Release the source node */
+    delete src_node_ptr;
+    src_node_ptr = NULL;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void scene_graph_node_set_property(__in __notnull scene_graph_node          node,
+                                                      __in           scene_graph_node_property property,
+                                                      __in __notnull void*                     data)
+{
+    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
+
+    /* If this is a curve property that the caller intends to replace, retrieve its index */
+    int curve_index = -1;
+
+    switch (property)
+    {
+        case SCENE_GRAPH_NODE_PROPERTY_CURVE_X: curve_index = 0; break;
+        case SCENE_GRAPH_NODE_PROPERTY_CURVE_Y: curve_index = 1; break;
+        case SCENE_GRAPH_NODE_PROPERTY_CURVE_Z: curve_index = 2; break;
+        case SCENE_GRAPH_NODE_PROPERTY_CURVE_W: curve_index = 3; break;
+    }
+
+    switch (node_ptr->type)
+    {
+        case NODE_TYPE_ROTATION_DYNAMIC:
+        {
+            /* Only curve properties apply here */
+            _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) node_ptr->data;
+
+            ASSERT_DEBUG_SYNC(curve_index != -1,
+                              "Unrecognized curve property");
+
+            if (curve_index != -1)
+            {
+                curve_container new_curve = *((curve_container*) data);
+
+                if (node_data_ptr->curves[curve_index] != NULL)
+                {
+                    curve_container_release(node_data_ptr->curves[curve_index]);
+                }
+
+                node_data_ptr->curves[curve_index] = new_curve;
+                curve_container_retain(new_curve);
+            } /* if (curve_index != -1) */
+
+            break;
+        } /* case NODE_TYPE_ROTATION_DYNAMIC: */
+
+        case NODE_TYPE_TRANSLATION_DYNAMIC:
+        {
+            /* Only curve properties apply here */
+            _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) node_ptr->data;
+
+            ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
+                              "Unrecognized curve property");
+
+            if (curve_index != -1 && curve_index < 3)
+            {
+                curve_container new_curve = *((curve_container*) data);
+
+                if (node_data_ptr->curves[curve_index] != NULL)
+                {
+                    curve_container_release(node_data_ptr->curves[curve_index]);
+                }
+
+                node_data_ptr->curves[curve_index] = new_curve;
+                curve_container_retain(new_curve);
+            } /* if (curve_index != -1) */
+
+            break;
+        } /* case NODE_TYPE_TRANSLATION_DYNAMIC:*/
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported node type");
+        }
+    } /* switch (node_ptr->type) */
+
 }
 
 /* Please see header for specification */

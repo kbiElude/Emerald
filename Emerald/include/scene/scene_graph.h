@@ -38,6 +38,18 @@ typedef enum
 
 typedef enum
 {
+    /* NOTE: Curve containers are not available for all node types! Trying to set
+     *       a curve container for a node that does not support it will result in
+     *       an assertion failure.
+     */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_X,              /*     settable, curve_container. Releases former curve container
+                                                     *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_Y,              /*     settable, curve_container. Releases former curve container
+                                                     *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_Z,              /*     settable, curve_container. Releases former curve container
+                                                     *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_W,              /*     settable, curve_container. Releases former curve container
+                                                     *               and retains the passed one upon setting. */
     SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX /* not settable, system_matrix4x4 */
 } scene_graph_node_property;
 
@@ -138,13 +150,24 @@ PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull
                                                                  __in            scene_graph_node_tag tag,
                                                                  __out __notnull scene_graph_node*    out_result_node);
 
-/** TODO */
-PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph);
+/** TODO.
+ *
+ *  NOTE: src_node is released inside the function. DO NOT reuse or release after
+ *        execution flow returns to the caller.
+ *  NOTE: Not *all* properties are copied. Please check the implementation for details.
+ *
+ **/
+PUBLIC EMERALD_API void scene_graph_node_replace(__in                __notnull scene_graph      graph,
+                                                 __in                __notnull scene_graph_node dst_node,
+                                                 __in __post_invalid __notnull scene_graph_node src_node);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_graph_replace_node(__in __notnull scene_graph      graph,
-                                                 __in __notnull scene_graph_node old_node,
-                                                 __in __notnull scene_graph_node new_node);
+PUBLIC EMERALD_API void scene_graph_node_set_property(__in __notnull scene_graph_node          node,
+                                                      __in           scene_graph_node_property property,
+                                                      __in __notnull void*                     data);
+
+/** TODO */
+PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph);
 
 /** TODO.
  *

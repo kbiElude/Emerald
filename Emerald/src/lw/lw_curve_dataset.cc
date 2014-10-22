@@ -15,6 +15,7 @@
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_variant.h"
 
 /** Internal type definition */
 typedef struct _lw_curve_dataset_item
@@ -72,6 +73,10 @@ typedef struct
     system_hash64map object_to_item_vector_map; /* "object name" hashed_ansi_string -> vector of _lw_curve_dataset_item* items */
     system_hash64map object_to_properties_map;  /* "object name" hashed ansi string -> _lw_curve_dataset_object* */
 
+    /* Helper stuff */
+    curve_container zeroCurve;
+    curve_container oneCurve;
+
     REFCOUNT_INSERT_VARIABLES
 } _lw_curve_dataset;
 
@@ -83,9 +88,11 @@ REFCOUNT_INSERT_IMPLEMENTATION(lw_curve_dataset, lw_curve_dataset, _lw_curve_dat
 
 
 /** TODO */
-PRIVATE void _lw_curve_dataset_apply_to_node(__in           _lw_curve_type   curve_type,
-                                             __in __notnull curve_container  new_curve,
-                                             __in __notnull scene_graph_node node)
+PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* dataset_ptr,
+                                             __in           _lw_curve_type     curve_type,
+                                             __in __notnull curve_container    new_curve,
+                                             __in __notnull scene_graph        graph,
+                                             __in __notnull scene_graph_node   node)
 {
     scene_graph_node_tag node_tag = SCENE_GRAPH_NODE_TAG_UNDEFINED;
     bool                 result   = true;
@@ -156,25 +163,90 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in           _lw_curve_type   cur
     /* The transformation node we now have needs to use a new transformation.
      * There are two cases to consider:
      *
-     * 1) (easier case) There is a 1:1 mapping between COLLADA file and LW curves.
-     *                  This happens for rotation.
-     * 2) (tricky case) LW uses 1D curve per each channel, whereas COLLADA file
-     *                  defines a single node for the transformation. That's the
-     *                  case with scale and translation.
+     * 1) There is a 1:1 mapping between COLLADA file and LW curves.
+     *    This happens for rotation, where the LW curve describes the
+     *    angle, and the rotation axis is predefined & static.
+     * 2) LW uses 1D curve per each channel, whereas COLLADA file
+     *    defines a single node for the transformation. That's the
+     *    case with scale and translation.
      */
-    if (curve_type == LW_CURVE_TYPE_ROTATION_B ||
-        curve_type == LW_CURVE_TYPE_ROTATION_H ||
-        curve_type == LW_CURVE_TYPE_ROTATION_P)
+
+    switch (curve_type)
     {
-        /* Easy peasy. Just create a new rotation node and replace the former
-         * one with the one we've just created. */
-        //scene_graph_node new_rotation_node = scene_graph_add_rotation_dynamic_node(
-        /* TODO */
-    }
-    else
-    {
-        /* TODO */
-    }
+        case LW_CURVE_TYPE_ROTATION_B:
+        {
+            curve_container rotation_curves[4] = {NULL};
+
+            rotation_curves[0] = new_curve; /* angle */
+
+            if (curve_type == LW_CURVE_TYPE_ROTATION_B)
+            {
+                rotation_curves[1] = dataset_ptr->zeroCurve; /* x */
+                rotation_curves[2] = dataset_ptr->zeroCurve; /* y */
+                rotation_curves[3] = dataset_ptr->oneCurve;  /* z */
+            }
+            else
+            if (curve_type == LW_CURVE_TYPE_ROTATION_H)
+            {
+                rotation_curves[1] = dataset_ptr->zeroCurve; /* x */
+                rotation_curves[2] = dataset_ptr->oneCurve;  /* y */
+                rotation_curves[3] = dataset_ptr->zeroCurve; /* z */
+            }
+            else
+            {
+                rotation_curves[1] = dataset_ptr->oneCurve;  /* x */
+                rotation_curves[2] = dataset_ptr->zeroCurve; /* y */
+                rotation_curves[3] = dataset_ptr->zeroCurve; /* z */
+            }
+
+            scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
+                                                                                      rotation_curves,
+                                                                                      SCENE_GRAPH_NODE_TAG_ROTATE_Z);
+
+            ASSERT_DEBUG_SYNC(rotation_node != NULL,
+                              "Could not create a rotation dynamic node");
+
+            /* NOTE: This call releases rotation_node, which suits us just fine. */
+            scene_graph_node_replace(graph,
+                                     node,
+                                     rotation_node);
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_POSITION_X:
+        {
+            scene_graph_node_set_property(node,
+                                          SCENE_GRAPH_NODE_PROPERTY_CURVE_X,
+                                         &new_curve);
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_POSITION_Y:
+        {
+            scene_graph_node_set_property(node,
+                                          SCENE_GRAPH_NODE_PROPERTY_CURVE_Y,
+                                         &new_curve);
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_POSITION_Z:
+        {
+            scene_graph_node_set_property(node,
+                                          SCENE_GRAPH_NODE_PROPERTY_CURVE_Z,
+                                         &new_curve);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve type");
+        }
+    } /* switch (curve_type) */
 
 end:
     ;
@@ -250,6 +322,20 @@ PRIVATE void _lw_curve_dataset_release(__in __notnull __deallocate(mem) void* pt
 
         system_hash64map_release(dataset_ptr->object_to_properties_map);
         dataset_ptr->object_to_properties_map = NULL;
+    }
+
+    if (dataset_ptr->oneCurve != NULL)
+    {
+        curve_container_release(dataset_ptr->oneCurve);
+
+        dataset_ptr->oneCurve = NULL;
+    }
+
+    if (dataset_ptr->zeroCurve != NULL)
+    {
+        curve_container_release(dataset_ptr->zeroCurve);
+
+        dataset_ptr->zeroCurve = NULL;
     }
 }
 
@@ -495,8 +581,10 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
         if (owner_node != NULL)
         {
-            _lw_curve_dataset_apply_to_node(curve_type,
+            _lw_curve_dataset_apply_to_node(dataset_ptr,
+                                            curve_type,
                                             item_ptr->curve,
+                                            graph,
                                             owner_node);
         } /* if (owner_node != NULL) */
     } /* for (all objects) */
@@ -527,6 +615,30 @@ PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull syste
     result_instance->object_to_item_vector_map = system_hash64map_create(sizeof(_lw_curve_dataset_item*) );
     result_instance->object_to_properties_map  = system_hash64map_create(sizeof(_lw_curve_dataset_object*) );
 
+    /* Set up helper fields */
+    system_variant helper_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    result_instance->oneCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                               " zero curve"),
+                                                       SYSTEM_VARIANT_FLOAT);
+    result_instance->zeroCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " zero curve"),
+                                                        SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (helper_variant,
+                                      1.0f);
+    curve_container_set_default_value(result_instance->oneCurve,
+                                      helper_variant);
+
+    system_variant_set_float         (helper_variant,
+                                      0.0f);
+    curve_container_set_default_value(result_instance->zeroCurve,
+                                      helper_variant);
+
+    system_variant_release(helper_variant);
+    helper_variant = NULL;
+
+    /* Set up reference counting */
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_instance,
                                                    _lw_curve_dataset_release,
                                                    OBJECT_TYPE_LW_CURVE_DATASET,
