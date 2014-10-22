@@ -170,6 +170,7 @@ typedef struct _scene_graph_node
     scene_graph_node_tag    tag;
     system_matrix4x4        transformation_matrix;
     int                     transformation_matrix_index;
+    scene_graph_node        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
     _node_type              type;
 
     _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
@@ -185,6 +186,10 @@ typedef struct _scene_graph_node
         transformation_matrix       = NULL;
         transformation_matrix_index = -1;
         type                        = NODE_TYPE_UNKNOWN;
+
+        memset(transformation_nodes_by_tag,
+               0,
+               sizeof(transformation_nodes_by_tag) );
     }
 
     ~_scene_graph_node()
@@ -246,6 +251,8 @@ typedef struct _scene_graph
     system_resizable_vector nodes;
     _scene_graph_node*      root_node_ptr;
 
+    scene_graph_node        node_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
+
     system_critical_section node_compute_cs;
     system_resizable_vector node_compute_vector;
 
@@ -267,6 +274,10 @@ typedef struct _scene_graph
         root_node_ptr         = NULL;
         sorted_nodes          = NULL;
         sorted_nodes_rw_mutex = NULL;
+
+        memset(node_by_tag,
+               0,
+               sizeof(node_by_tag) );
     }
 
     ~_scene_graph()
@@ -550,6 +561,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
                                                                              __in __notnull scene_graph            result_graph,
                                                                              __in __notnull scene_graph_node       parent_node)
 {
+    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
     scene_graph_node     result_node          = NULL;
     curve_container      serialized_curves[4] = {NULL, NULL, NULL, NULL};
     scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
@@ -586,6 +598,12 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
     ASSERT_DEBUG_SYNC(result_node != NULL,
                       "Could not add rotation dynamic node");
 
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
 end:
     for (unsigned int n = 0;
                       n < 4;
@@ -607,6 +625,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                                                                                 __in __notnull scene_graph            result_graph,
                                                                                 __in __notnull scene_graph_node       parent_node)
 {
+    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
     scene_graph_node     result_node          = NULL;
     curve_container      serialized_curves[3] = {NULL, NULL, NULL};
     scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
@@ -642,6 +661,12 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
                       "Could not add translation dynamic node");
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
 
 end:
     for (unsigned int n = 0;
@@ -956,6 +981,25 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
                                           SCENE_OBJECT_TYPE_MESH,
                                           attached_mesh_instance);
     } /* for (all attached lights) */
+
+    /* If there are any objects attached to this node, cache the transformation nodes. */
+    _scene_graph*      graph_ptr    = (_scene_graph*)      result_graph;
+    _scene_graph_node* new_node_ptr = (_scene_graph_node*) new_node;
+
+    if (n_attached_cameras        > 0 ||
+        n_attached_lights         > 0 ||
+        n_attached_mesh_instances > 0)
+    {
+        memcpy(new_node_ptr->transformation_nodes_by_tag,
+               graph_ptr->node_by_tag,
+               sizeof(graph_ptr->node_by_tag) );
+    }
+    else
+    {
+        memset(new_node_ptr->transformation_nodes_by_tag,
+               0,
+               sizeof(new_node_ptr->transformation_nodes_by_tag) );
+    }
 
     /* All done */
     system_resizable_vector_push(serialized_nodes, new_node);
