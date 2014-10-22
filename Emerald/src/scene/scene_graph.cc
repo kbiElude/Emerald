@@ -541,13 +541,16 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__i
     if (system_file_serializer_read_matrix4x4(serializer,                         &serialized_matrix) &&
         system_file_serializer_read          (serializer, sizeof(serialized_tag), &serialized_tag) )
     {
-        result_node = scene_graph_add_static_matrix4x4_transformation_node(result_graph,
-                                                                           parent_node,
-                                                                           serialized_matrix,
-                                                                           serialized_tag);
+        result_node = scene_graph_create_static_matrix4x4_transformation_node(result_graph,
+                                                                              serialized_matrix,
+                                                                              serialized_tag);
 
         ASSERT_DEBUG_SYNC(result_node != NULL,
                           "Static matrix4x4 transformation node serialization failed.");
+
+        scene_graph_add_node(result_graph,
+                             parent_node,
+                             result_node);
 
         system_matrix4x4_release(serialized_matrix);
         serialized_matrix = NULL;
@@ -590,13 +593,16 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
         goto end;
     }
 
-    result_node = scene_graph_add_rotation_dynamic_node(result_graph,
-                                                        parent_node,
-                                                        serialized_curves,
-                                                        serialized_tag);
+    result_node = scene_graph_create_rotation_dynamic_node(result_graph,
+                                                           serialized_curves,
+                                                           serialized_tag);
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
                       "Could not add rotation dynamic node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
 
     /* Cache the node by its tag */
     if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
@@ -654,13 +660,16 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
         goto end;
     }
 
-    result_node = scene_graph_add_translation_dynamic_node(result_graph,
-                                                           parent_node,
-                                                           serialized_curves,
-                                                           serialized_tag);
+    result_node = scene_graph_create_translation_dynamic_node(result_graph,
+                                                              serialized_curves,
+                                                              serialized_tag);
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
                       "Could not add translation dynamic node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
 
     /* Cache the node by its tag */
     if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
@@ -805,8 +814,14 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
 
         case NODE_TYPE_GENERAL:
         {
-            new_node = scene_graph_add_general_node(result_graph,
-                                                    parent_node);
+            new_node = scene_graph_create_general_node(result_graph);
+
+            ASSERT_DEBUG_SYNC(new_node != NULL,
+                              "Created general node is NULL");
+
+            scene_graph_add_node(result_graph,
+                                 parent_node,
+                                 new_node);
 
             break;
         }
@@ -1277,33 +1292,26 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                          __in           __notnull scene_graph_node     parent_node,
-                                                                          __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
-                                                                          __in                     scene_graph_node_tag tag)
+PUBLIC EMERALD_API void scene_graph_add_node(__in __notnull scene_graph      graph,
+                                             __in __notnull scene_graph_node parent_node,
+                                             __in __notnull scene_graph_node node)
 {
-    _scene_graph*      graph_ptr       = (_scene_graph*) graph;
+    _scene_graph*      graph_ptr       = (_scene_graph*)      graph;
+    _scene_graph_node* node_ptr        = (_scene_graph_node*) node;
     _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
-    _scene_graph_node* new_node_ptr    = new (std::nothrow) _scene_graph_node(parent_node_ptr);
 
-    if (new_node_ptr == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+    ASSERT_DEBUG_SYNC(parent_node != NULL,
+                      "Parent node is NULL?");
+    ASSERT_DEBUG_SYNC(node_ptr->parent_node == NULL,
+                      "Node already has a parent");
+    node_ptr->parent_node = (_scene_graph_node*) parent_node;
 
-        goto end;
-    }
-
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves, tag);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
-    new_node_ptr->tag           = tag;
-    new_node_ptr->type          = NODE_TYPE_ROTATION_DYNAMIC;
-    new_node_ptr->pUpdateMatrix = _scene_graph_compute_rotation_dynamic;
-
-    if (!system_dag_add_connection(graph_ptr->dag, parent_node_ptr->dag_node, new_node_ptr->dag_node) )
+    if (!system_dag_add_connection(graph_ptr->dag,
+                                   parent_node_ptr->dag_node,
+                                   node_ptr->dag_node) )
     {
         ASSERT_ALWAYS_SYNC(false, "Could not add connection to DAG");
 
-        /* TODO: This is going to leak. Oh well. */
         goto end;
     }
 
@@ -1311,119 +1319,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in  
     graph_ptr->dirty_time = system_time_now();
 
 end:
-    return (scene_graph_node) new_node_ptr;
+    ;
 }
-
-/** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                             __in           __notnull scene_graph_node     parent_node,
-                                                                             __in_ecount(3) __notnull curve_container*     translation_vector_curves,
-                                                                             __in                     scene_graph_node_tag tag)
-{
-    _scene_graph*      graph_ptr       = (_scene_graph*) graph;
-    _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
-    _scene_graph_node* new_node_ptr    = new (std::nothrow) _scene_graph_node(parent_node_ptr);
-
-    if (new_node_ptr == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
-
-        goto end;
-    }
-
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves, tag);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
-    new_node_ptr->tag           = tag;
-    new_node_ptr->type          = NODE_TYPE_TRANSLATION_DYNAMIC;
-    new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_dynamic;
-
-    if (!system_dag_add_connection(graph_ptr->dag, parent_node_ptr->dag_node, new_node_ptr->dag_node) )
-    {
-        ASSERT_ALWAYS_SYNC(false, "Could not add connection to DAG");
-
-        /* TODO: This is going to leak. Oh well. */
-        goto end;
-    }
-
-    graph_ptr->dirty      = true;
-    graph_ptr->dirty_time = system_time_now();
-
-end:
-    return (scene_graph_node) new_node_ptr;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_general_node(__in __notnull scene_graph      graph,
-                                                                 __in __notnull scene_graph_node parent_node)
-{
-    _scene_graph*      graph_ptr       = (_scene_graph*) graph;
-    _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
-    _scene_graph_node* new_node_ptr    = new (std::nothrow) _scene_graph_node(parent_node_ptr);
-
-    if (new_node_ptr == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
-
-        goto end;
-    }
-
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
-    new_node_ptr->type          = NODE_TYPE_GENERAL;
-    new_node_ptr->pUpdateMatrix = _scene_graph_compute_general;
-
-    if (!system_dag_add_connection(graph_ptr->dag, parent_node_ptr->dag_node, new_node_ptr->dag_node) )
-    {
-        ASSERT_ALWAYS_SYNC(false, "Could not add connection to DAG");
-
-        /* TODO: This is going to leak. Oh well. */
-        goto end;
-    }
-
-    graph_ptr->dirty      = true;
-    graph_ptr->dirty_time = system_time_now();
-
-end:
-    return (scene_graph_node) new_node_ptr;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
-                                                                                         __in __notnull scene_graph_node     parent_node,
-                                                                                         __in __notnull system_matrix4x4     matrix,
-                                                                                         __in           scene_graph_node_tag tag)
-{
-    _scene_graph*      graph_ptr       = (_scene_graph*) graph;
-    _scene_graph_node* parent_node_ptr = (_scene_graph_node*) parent_node;
-    _scene_graph_node* new_node_ptr    = new (std::nothrow) _scene_graph_node(parent_node_ptr);
-
-    if (new_node_ptr == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
-
-        goto end;
-    }
-
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix, tag);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
-    new_node_ptr->tag           = tag;
-    new_node_ptr->type          = NODE_TYPE_STATIC_MATRIX4X4;
-    new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
-
-    if (!system_dag_add_connection(graph_ptr->dag, parent_node_ptr->dag_node, new_node_ptr->dag_node) )
-    {
-        ASSERT_ALWAYS_SYNC(false, "Could not add connection to DAG");
-
-        /* TODO: This is going to leak. Oh well. */
-        goto end;
-    }
-
-    graph_ptr->dirty      = true;
-    graph_ptr->dirty_time = system_time_now();
-
-end:
-    return (scene_graph_node) new_node_ptr;
-}
-
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_graph        graph,
@@ -1674,6 +1571,103 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                             __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
+                                                                             __in                     scene_graph_node_tag tag)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+
+    if (new_node_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+
+        goto end;
+    }
+
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves, tag);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
+    new_node_ptr->type          = NODE_TYPE_ROTATION_DYNAMIC;
+    new_node_ptr->pUpdateMatrix = _scene_graph_compute_rotation_dynamic;
+
+end:
+    return (scene_graph_node) new_node_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                                __in_ecount(3) __notnull curve_container*     translation_vector_curves,
+                                                                                __in                     scene_graph_node_tag tag)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+
+    if (new_node_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+
+        goto end;
+    }
+
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves, tag);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
+    new_node_ptr->type          = NODE_TYPE_TRANSLATION_DYNAMIC;
+    new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_dynamic;
+
+end:
+    return (scene_graph_node) new_node_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnull scene_graph graph)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+
+    if (new_node_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+
+        goto end;
+    }
+
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->type          = NODE_TYPE_GENERAL;
+    new_node_ptr->pUpdateMatrix = _scene_graph_compute_general;
+
+end:
+    return (scene_graph_node) new_node_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
+                                                                                            __in __notnull system_matrix4x4     matrix,
+                                                                                            __in           scene_graph_node_tag tag)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+
+    if (new_node_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+
+        goto end;
+    }
+
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix, tag);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
+    new_node_ptr->type          = NODE_TYPE_STATIC_MATRIX4X4;
+    new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
+
+end:
+    return (scene_graph_node) new_node_ptr;
+}
+
+
+/** Please see header for specification */
 PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnull scene_graph        graph,
                                                                     __in           _scene_object_type object_type,
                                                                     __in __notnull void*              object)
@@ -1897,6 +1891,34 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
                               "Unrecognized scene_graph_node property");
         }
     } /* switch (property) */
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull scene_graph_node     node,
+                                                                 __in            scene_graph_node_tag tag,
+                                                                 __out __notnull scene_graph_node*    out_result_node)
+{
+    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
+    bool               result   = true;
+
+    ASSERT_DEBUG_SYNC(tag < SCENE_GRAPH_NODE_TAG_COUNT,
+                      "Invalid tag");
+    ASSERT_DEBUG_SYNC(out_result_node != NULL,
+                      "Output pointer is NULL");
+
+    if (tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        ASSERT_DEBUG_SYNC(node_ptr->transformation_nodes_by_tag[tag] != NULL,
+                          "Requested transformation node is NULL");
+
+        *out_result_node = node_ptr->transformation_nodes_by_tag[tag];
+    } /* if (tag < SCENE_GRAPH_NODE_TAG_COUNT) */
+    else
+    {
+        result = false;
+    }
+
+    return result;
 }
 
 /* Please see header for specification */

@@ -7,6 +7,7 @@
 #include "curve/curve_container.h"
 #include "lw/lw_curve_dataset.h"
 #include "scene/scene.h"
+#include "scene/scene_graph.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
@@ -75,33 +76,108 @@ typedef struct
 } _lw_curve_dataset;
 
 
-/** Internal variables */ 
+/** Internal variables */
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(lw_curve_dataset, lw_curve_dataset, _lw_curve_dataset);
 
 
 /** TODO */
-PRIVATE void _lw_curve_dataset_apply_to_camera(__in           _lw_curve_type  curve_type,
-                                               __in __notnull curve_container new_curve,
-                                               __in __notnull scene_camera    camera)
+PRIVATE void _lw_curve_dataset_apply_to_node(__in           _lw_curve_type   curve_type,
+                                             __in __notnull curve_container  new_curve,
+                                             __in __notnull scene_graph_node node)
 {
-}
+    scene_graph_node_tag node_tag = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    bool                 result   = true;
 
-/** TODO */
-PRIVATE void _lw_curve_dataset_apply_to_light(__in            _lw_curve_type  curve_type,
-                                               __in __notnull curve_container new_curve,
-                                               __in __notnull scene_light     light)
-{
-    // TODO
-}
+    switch (curve_type)
+    {
+        case LW_CURVE_TYPE_POSITION_X:
+        case LW_CURVE_TYPE_POSITION_Y:
+        case LW_CURVE_TYPE_POSITION_Z:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
 
-/** TODO */
-PRIVATE void _lw_curve_dataset_apply_to_mesh(__in           _lw_curve_type  curve_type,
-                                             __in __notnull curve_container new_curve,
-                                             __in __notnull scene_mesh      mesh)
-{
-    // TODO
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_B:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Z;
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_H:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Y;
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_P:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_X;
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_SCALE_X:
+        case LW_CURVE_TYPE_SCALE_Y:
+        case LW_CURVE_TYPE_SCALE_Z:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_SCALE;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized LW curve type");
+        }
+    } /* switch (curve_type) */
+
+    /* Retrieve a scene graph node that describes the transformation we need to update */
+    scene_graph_node transformation_node = NULL;
+
+    result = scene_graph_node_get_transformation_node(node,
+                                                      node_tag,
+                                                     &transformation_node);
+
+    if (!result || transformation_node == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve transformation node");
+
+        goto end;
+    }
+
+    /* The transformation node we now have needs to use a new transformation.
+     * There are two cases to consider:
+     *
+     * 1) (easier case) There is a 1:1 mapping between COLLADA file and LW curves.
+     *                  This happens for rotation.
+     * 2) (tricky case) LW uses 1D curve per each channel, whereas COLLADA file
+     *                  defines a single node for the transformation. That's the
+     *                  case with scale and translation.
+     */
+    if (curve_type == LW_CURVE_TYPE_ROTATION_B ||
+        curve_type == LW_CURVE_TYPE_ROTATION_H ||
+        curve_type == LW_CURVE_TYPE_ROTATION_P)
+    {
+        /* Easy peasy. Just create a new rotation node and replace the former
+         * one with the one we've just created. */
+        //scene_graph_node new_rotation_node = scene_graph_add_rotation_dynamic_node(
+        /* TODO */
+    }
+    else
+    {
+        /* TODO */
+    }
+
+end:
+    ;
 }
 
 /** TODO */
@@ -278,6 +354,13 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
     ASSERT_DEBUG_SYNC(n_objects == system_hash64map_get_amount_of_elements(dataset_ptr->object_to_properties_map),
                       "Map corruption detected");
 
+    /* Retrieve scene graph */
+    scene_graph graph = NULL;
+
+    scene_get_property(scene,
+                       SCENE_PROPERTY_GRAPH,
+                      &graph);
+
     /* Iterate over all objects we have curves for. */
     for (uint32_t n_object = 0;
                   n_object < n_objects;
@@ -338,7 +421,9 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
                                "Unrecognized curve type");
         }
 
-        /* Let the object-specific handler take care of the request */
+        /* Retrieve a graph node that owns the object */
+        scene_graph_node owner_node = NULL;
+
         switch (object_ptr->object_type)
         {
             case LW_CURVE_DATASET_OBJECT_TYPE_CAMERA:
@@ -352,9 +437,9 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 if (found_camera != NULL)
                 {
-                    _lw_curve_dataset_apply_to_camera(curve_type,
-                                                      item_ptr->curve,
-                                                      found_camera);
+                    owner_node = scene_graph_get_node_for_object(graph,
+                                                                 SCENE_OBJECT_TYPE_CAMERA,
+                                                                 found_camera);
                 }
 
                 break;
@@ -371,9 +456,9 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 if (found_light != NULL)
                 {
-                    _lw_curve_dataset_apply_to_light(curve_type,
-                                                     item_ptr->curve,
-                                                     found_light);
+                    owner_node = scene_graph_get_node_for_object(graph,
+                                                                 SCENE_OBJECT_TYPE_LIGHT,
+                                                                 found_light);
                 }
 
                 break;
@@ -390,9 +475,9 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 if (found_mesh != NULL)
                 {
-                    _lw_curve_dataset_apply_to_mesh(curve_type,
-                                                    item_ptr->curve,
-                                                    found_mesh);
+                    owner_node = scene_graph_get_node_for_object(graph,
+                                                                 SCENE_OBJECT_TYPE_MESH,
+                                                                 found_mesh);
                 }
 
                 break;
@@ -404,6 +489,16 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
                                    "Unrecognized LW curve data-set object type");
             }
         } /* switch (object_ptr->object_type) */
+
+        ASSERT_ALWAYS_SYNC(owner_node != NULL,
+                           "Could not identify owner node for scene object");
+
+        if (owner_node != NULL)
+        {
+            _lw_curve_dataset_apply_to_node(curve_type,
+                                            item_ptr->curve,
+                                            owner_node);
+        } /* if (owner_node != NULL) */
     } /* for (all objects) */
 
 end:

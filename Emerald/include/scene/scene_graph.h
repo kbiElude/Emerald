@@ -54,26 +54,9 @@ typedef enum
 } _scene_object_type;
 
 /** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_general_node(__in __notnull scene_graph      graph,
-                                                                 __in __notnull scene_graph_node parent_node);
-
-/** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_rotation_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                          __in           __notnull scene_graph_node     parent_node,
-                                                                          __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
-                                                                          __in                     scene_graph_node_tag tag);
-
-/** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
-                                                                                         __in __notnull scene_graph_node     parent_node,
-                                                                                         __in __notnull system_matrix4x4     matrix,
-                                                                                         __in           scene_graph_node_tag tag);
-
-/** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_add_translation_dynamic_node(__in           __notnull scene_graph          graph,
-                                                                             __in           __notnull scene_graph_node     parent_node,
-                                                                             __in_ecount(3) __notnull curve_container*     translation_vector_curves,
-                                                                             __in                     scene_graph_node_tag tag);
+PUBLIC EMERALD_API void scene_graph_add_node(__in __notnull scene_graph,
+                                             __in __notnull scene_graph_node parent_node,
+                                             __in __notnull scene_graph_node node);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_graph        graph,
@@ -101,6 +84,24 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
 
 /** TODO. */
 PUBLIC EMERALD_API scene_graph scene_graph_create();
+
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnull scene_graph graph);
+
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                             __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
+                                                                             __in                     scene_graph_node_tag tag);
+
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
+                                                                                            __in __notnull system_matrix4x4     matrix,
+                                                                                            __in           scene_graph_node_tag tag);
+
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                                __in_ecount(3) __notnull curve_container*     translation_vector_curves,
+                                                                                __in                     scene_graph_node_tag tag);
 
 /** TODO.
  **/
@@ -133,7 +134,17 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
                                                       __out __notnull void*                     out_result);
 
 /** TODO */
+PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull scene_graph_node     node,
+                                                                 __in            scene_graph_node_tag tag,
+                                                                 __out __notnull scene_graph_node*    out_result_node);
+
+/** TODO */
 PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph);
+
+/** TODO */
+PUBLIC EMERALD_API void scene_graph_replace_node(__in __notnull scene_graph      graph,
+                                                 __in __notnull scene_graph_node old_node,
+                                                 __in __notnull scene_graph_node new_node);
 
 /** TODO.
  *
