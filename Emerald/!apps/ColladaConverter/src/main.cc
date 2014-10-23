@@ -358,11 +358,23 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     ogl_rendering_handler_stop(window_rendering_handler);
 
 end:
-    collada_data_release      (_test_collada_data);
-    ogl_pipeline_release      (_pipeline);
-    ogl_scene_renderer_release(_scene_renderer);
-    system_window_close       (_window);
-    system_event_release      (_window_closed_event);
+    if (_test_collada_data != NULL)
+    {
+        collada_data_release(_test_collada_data);
+    }
+
+    if (_pipeline != NULL)
+    {
+        ogl_pipeline_release(_pipeline);
+    }
+
+    if (_scene_renderer != NULL)
+    {
+        ogl_scene_renderer_release(_scene_renderer);
+    }
+
+    system_window_close (_window);
+    system_event_release(_window_closed_event);
 
     return 0;
 }
