@@ -2026,7 +2026,7 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
 
                 if (use_pre_behavior_value)
                 {
-                    result = curve_segment_get_node( (curve_segment) first_curve_segment,
+                    result = curve_segment_get_node( first_curve_segment->segment,
                                                      0,
                                                     &node_time,
                                                      out_result);
@@ -2035,10 +2035,10 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
                 {
                     uint32_t n_nodes = 0;
 
-                    curve_segment_get_amount_of_nodes( (curve_segment) first_curve_segment,
+                    curve_segment_get_amount_of_nodes( first_curve_segment->segment,
                                                       &n_nodes);
 
-                    result = curve_segment_get_node( (curve_segment) first_curve_segment,
+                    result = curve_segment_get_node( first_curve_segment->segment,
                                                      n_nodes - 1,
                                                     &node_time,
                                                      out_result);

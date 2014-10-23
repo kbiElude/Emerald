@@ -1200,7 +1200,10 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
              * NOTE: LW uses a number of <translate> nodes to compensate for pivot rotation.
              *       We definitely do not want a sanity check here.
              **/
-            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "translate")) result_node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "translate"))
+            {
+                result_node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
+            }
 
             {
                 collada_data_transformation_get_translate_properties( (collada_data_transformation) node_item_data,

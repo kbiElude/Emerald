@@ -21,28 +21,13 @@
 #include "system/system_variant.h"
 
 /* Private declarations */
-typedef enum
-{
-    /* NOTE: For serialization compatibility, always make sure to add
-     *       new node types right BEFORE the very last item.
-     */
-    NODE_TYPE_ROOT,
-    NODE_TYPE_GENERAL,
-    NODE_TYPE_STATIC_MATRIX4X4,
-    NODE_TYPE_TRANSLATION_DYNAMIC,
-    NODE_TYPE_ROTATION_DYNAMIC,
-
-    /* Always last */
-    NODE_TYPE_UNKNOWN
-} _node_type;
-
 typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*                data,
                                                 system_matrix4x4     current_matrix,
                                                 system_timeline_time time);
 
 /* Forward declarations */
-PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*      data,
-                                            __in                          _node_type type);
+PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*                 data,
+                                            __in                          scene_graph_node_type type);
 
 typedef struct _scene_graph_node_matrix4x4_static
 {
@@ -115,6 +100,52 @@ typedef struct _scene_graph_node_rotation_dynamic
     }
 } _scene_graph_node_rotation_dynamic;
 
+typedef struct _scene_graph_node_scale_dynamic
+{
+    curve_container      curves[3]; /* xyz */
+    scene_graph_node_tag tag;
+    system_variant       variant_float;
+
+    explicit _scene_graph_node_scale_dynamic(__in_ecount(3) __notnull curve_container*     in_curves,
+                                             __in                     scene_graph_node_tag in_tag)
+    {
+        tag = in_tag;
+
+        for (uint32_t n_curve = 0;
+                      n_curve < 3;
+                    ++n_curve)
+        {
+            curves[n_curve] = in_curves[n_curve];
+
+            curve_container_retain(curves[n_curve]);
+        }
+
+        variant_float = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    }
+
+    ~_scene_graph_node_scale_dynamic()
+    {
+        for (uint32_t n_curve = 0;
+                      n_curve < 3;
+                    ++n_curve)
+        {
+            if (curves[n_curve] != NULL)
+            {
+                curve_container_release(curves[n_curve]);
+
+                curves[n_curve] = NULL;
+            }
+        }
+
+        if (variant_float != NULL)
+        {
+            system_variant_release(variant_float);
+
+            variant_float = NULL;
+        }
+    }
+} _scene_graph_node_scale_dynamic;
+
 typedef struct _scene_graph_node_translation_dynamic
 {
     curve_container      curves[3];
@@ -176,7 +207,7 @@ typedef struct _scene_graph_node
     system_matrix4x4        transformation_matrix;
     int                     transformation_matrix_index;
     scene_graph_node        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
-    _node_type              type;
+    scene_graph_node_type   type;
 
     _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
     {
@@ -190,7 +221,7 @@ typedef struct _scene_graph_node
         tag                         = SCENE_GRAPH_NODE_TAG_UNDEFINED;
         transformation_matrix       = NULL;
         transformation_matrix_index = -1;
-        type                        = NODE_TYPE_UNKNOWN;
+        type                        = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
         memset(transformation_nodes_by_tag,
                0,
@@ -332,7 +363,7 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull _sce
         node_ptr->transformation_matrix = NULL;
     }
 
-    if (node_ptr->type != NODE_TYPE_ROOT)
+    if (node_ptr->type != SCENE_GRAPH_NODE_TYPE_ROOT)
     {
         ASSERT_DEBUG_SYNC(node_ptr->parent_node->last_update_time == time,
                           "Parent node's update time does not match the computation time!");
@@ -393,6 +424,42 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull vo
 
     system_matrix4x4_set_to_identity(new_matrix);
     system_matrix4x4_rotate         (new_matrix, DEG_TO_RAD(rotation[0]), rotation + 1);
+
+    result = system_matrix4x4_create_by_mul(current_matrix, new_matrix);
+    system_matrix4x4_release(new_matrix);
+
+    return result;
+}
+
+/** TODO */
+PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*                data,
+                                                            __in __notnull system_matrix4x4     current_matrix,
+                                                            __in           system_timeline_time time)
+{
+    _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) data;
+    system_matrix4x4                 new_matrix    = system_matrix4x4_create();
+    system_matrix4x4                 result        = NULL;
+    float                            scale[3];
+
+    for (uint32_t n_component = 0;
+                  n_component < 3;
+                ++n_component)
+    {
+        if (!curve_container_get_value(node_data_ptr->curves[n_component],
+                                       time,
+                                       false, /* should_force */
+                                       node_data_ptr->variant_float) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "curve_container_get_value() failed.");
+        }
+
+        system_variant_get_float(node_data_ptr->variant_float,
+                                 scale + n_component);
+    } /* for (three components) */
+
+    system_matrix4x4_set_to_identity(new_matrix);
+    system_matrix4x4_scale          (new_matrix, scale);
 
     result = system_matrix4x4_create_by_mul(current_matrix, new_matrix);
     system_matrix4x4_release(new_matrix);
@@ -609,6 +676,73 @@ end:
 }
 
 /** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer serializer,
+                                                                          __in __notnull scene_graph            result_graph,
+                                                                          __in __notnull scene_graph_node       parent_node)
+{
+    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
+    scene_graph_node     result_node          = NULL;
+    curve_container      serialized_curves[3] = {NULL, NULL, NULL};
+    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        if (!system_file_serializer_read_curve_container(serializer,
+                                                         serialized_curves + n) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Dynamic scale transformation node serialization failed.");
+
+            goto end;
+        }
+    }
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not read tag info");
+
+        goto end;
+    }
+
+    result_node = scene_graph_create_scale_dynamic_node(result_graph,
+                                                        serialized_curves,
+                                                        serialized_tag);
+
+    ASSERT_DEBUG_SYNC(result_node != NULL,
+                      "Could not add scale dynamic node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
+end:
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        if (serialized_curves[n] != NULL)
+        {
+            curve_container_release(serialized_curves[n]);
+
+            serialized_curves[n] = NULL;
+        }
+    }
+
+    return result_node;
+}
+
+/** TODO */
 PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer serializer,
                                                                                 __in __notnull scene_graph            result_graph,
                                                                                 __in __notnull scene_graph_node       parent_node)
@@ -626,7 +760,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                                                          serialized_curves + n) )
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Dynamic translatioon transformation node serialization failed.");
+                              "Dynamic translation transformation node serialization failed.");
 
             goto end;
         }
@@ -714,6 +848,29 @@ PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull 
 }
 
 /** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer           serializer,
+                                                              __in __notnull _scene_graph_node_scale_dynamic* data_ptr)
+{
+    bool result = true;
+
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
+
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               data_ptr->curves[n]);
+    }
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+
+    return result;
+}
+
+/** TODO */
 PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer                 serializer,
                                                                     __in __notnull _scene_graph_node_translation_dynamic* data_ptr)
 {
@@ -747,7 +904,7 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     bool               result             = true;
 
     /* Retrieve node type */
-    _node_type node_type = NODE_TYPE_UNKNOWN;
+    scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
     result &= system_file_serializer_read(serializer,
                                           sizeof(node_type),
@@ -762,7 +919,7 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     scene_graph_node parent_node    = NULL;
     unsigned int     parent_node_id = 0;
 
-    if (node_type != NODE_TYPE_ROOT)
+    if (node_type != SCENE_GRAPH_NODE_TYPE_ROOT)
     {
         result &= system_file_serializer_read(serializer,
                                               sizeof(parent_node_id),
@@ -786,7 +943,7 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
 
     switch (node_type)
     {
-        case NODE_TYPE_ROOT:
+        case SCENE_GRAPH_NODE_TYPE_ROOT:
         {
             /* Nothing to serialize */
             new_node = parent_node;
@@ -794,7 +951,7 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
             break;
         }
 
-        case NODE_TYPE_GENERAL:
+        case SCENE_GRAPH_NODE_TYPE_GENERAL:
         {
             new_node = scene_graph_create_general_node(result_graph);
 
@@ -808,7 +965,25 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
             break;
         }
 
-        case NODE_TYPE_STATIC_MATRIX4X4:
+        case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
+        {
+            new_node = _scene_graph_load_scene_graph_node_rotation_dynamic(serializer,
+                                                                           result_graph,
+                                                                           parent_node);
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
+        {
+            new_node = _scene_graph_load_scene_graph_node_scale_dynamic(serializer,
+                                                                        result_graph,
+                                                                        parent_node);
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
         {
             new_node = _scene_graph_load_scene_graph_node_matrix4x4_static(serializer,
                                                                            result_graph,
@@ -817,20 +992,11 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
             break;
         }
 
-        case NODE_TYPE_TRANSLATION_DYNAMIC:
+        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
         {
             new_node = _scene_graph_load_scene_graph_node_translation_dynamic(serializer,
                                                                               result_graph,
                                                                               parent_node);
-
-            break;
-        }
-
-        case NODE_TYPE_ROTATION_DYNAMIC:
-        {
-            new_node = _scene_graph_load_scene_graph_node_rotation_dynamic(serializer,
-                                                                           result_graph,
-                                                                           parent_node);
 
             break;
         }
@@ -1013,22 +1179,46 @@ end:
 }
 
 /** TODO */
-PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*      data,
-                                            __in                          _node_type type)
+PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*                 data,
+                                            __in                          scene_graph_node_type type)
 {
     if (data != NULL)
     {
         switch (type)
         {
-            case NODE_TYPE_ROOT:
+            case SCENE_GRAPH_NODE_TYPE_ROOT:
             {
                 /* Nothing to do here */
                 break;
             }
 
-            case NODE_TYPE_STATIC_MATRIX4X4:
+            case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
+            {
+                delete (_scene_graph_node_rotation_dynamic*) data;
+
+                data = NULL;
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
+            {
+                delete (_scene_graph_node_scale_dynamic*) data;
+
+                data = NULL;
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
             {
                 delete (_scene_graph_node_matrix4x4_static*) data;
+
+                data = NULL;
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
+            {
+                delete (_scene_graph_node_translation_dynamic*) data;
 
                 data = NULL;
                 break;
@@ -1060,7 +1250,7 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     /* Store parent node ID */
     unsigned int parent_node_id = 0;
 
-    if (node_ptr->type != NODE_TYPE_ROOT)
+    if (node_ptr->type != SCENE_GRAPH_NODE_TYPE_ROOT)
     {
         if (!system_hash64map_get(node_ptr_to_id_map,
                                   (system_hash64) node_ptr->parent_node,
@@ -1082,19 +1272,37 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
      */
     switch (node_ptr->type)
     {
-        case NODE_TYPE_ROOT:
+        case SCENE_GRAPH_NODE_TYPE_ROOT:
         {
             /* Nothing to serialize */
             break;
         }
 
-        case NODE_TYPE_GENERAL:
+        case SCENE_GRAPH_NODE_TYPE_GENERAL:
         {
             /* Parent node already serialized, so nothing more to serialize */
             break;
         }
 
-        case NODE_TYPE_STATIC_MATRIX4X4:
+        case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
+        {
+            /* Save curve container data */
+            result &= _scene_graph_save_scene_graph_node_rotation_dynamic(serializer,
+                                                                          (_scene_graph_node_rotation_dynamic*) node_ptr->data);
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
+        {
+            /* Save curve container data */
+            result &= _scene_graph_save_scene_graph_node_scale_dynamic(serializer,
+                                                                       (_scene_graph_node_scale_dynamic*) node_ptr->data);
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
         {
             /* Save matrix data */
             result &= _scene_graph_save_scene_graph_node_matrix4x4_static(serializer,
@@ -1103,20 +1311,11 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
             break;
         }
 
-        case NODE_TYPE_TRANSLATION_DYNAMIC:
+        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_translation_dynamic(serializer,
                                                                              (_scene_graph_node_translation_dynamic*) node_ptr->data);
-
-            break;
-        }
-
-        case NODE_TYPE_ROTATION_DYNAMIC:
-        {
-            /* Save curve container data */
-            result &= _scene_graph_save_scene_graph_node_rotation_dynamic(serializer,
-                                                                          (_scene_graph_node_rotation_dynamic*) node_ptr->data);
 
             break;
         }
@@ -1400,6 +1599,11 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
     ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
                       "Graph not locked");
 
+    /* Reset tagged nodes */
+    memset(graph_ptr->node_by_tag,
+           0,
+           sizeof(graph_ptr->node_by_tag) );
+
     /* Retrieve nodes in topological order */
     bool getter_result = _scene_graph_update_sorted_nodes(graph_ptr);
 
@@ -1411,7 +1615,11 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
         goto end;
     }
 
-    /* Iterate through all nodes and calculate transformation matrices */
+    /* Iterate through all nodes and:
+     *
+     * 1) calculate transformation matrices
+     * 2) Update tagged nodes.
+     **/
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
     {
@@ -1433,6 +1641,27 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
                 ASSERT_DEBUG_SYNC(false, "");
                 goto end_unlock_sorted_nodes;
             }
+
+            /* Update graph's tagged notes */
+
+            /* TODO: This really should be a static assert */
+            ASSERT_DEBUG_SYNC(SCENE_GRAPH_NODE_TAG_COUNT == SCENE_GRAPH_NODE_TAG_UNDEFINED,
+                              "");
+
+            if (node_ptr->tag < SCENE_GRAPH_NODE_TAG_COUNT)
+            {
+                graph_ptr->node_by_tag[node_ptr->tag] = (scene_graph_node) node_ptr;
+            }
+
+            /* Assign the tagged nodes to the node */
+            
+            /* TODO: This really should be a static assert */
+            ASSERT_DEBUG_SYNC(sizeof(node_ptr->transformation_nodes_by_tag) == sizeof(graph_ptr->node_by_tag),
+                              "Size mismatch");
+
+            memcpy(node_ptr->transformation_nodes_by_tag,
+                   graph_ptr->node_by_tag,
+                   sizeof(node_ptr->transformation_nodes_by_tag) );
 
             /* Update transformation matrix */
             if (node_ptr->last_update_time != time)
@@ -1575,7 +1804,7 @@ PUBLIC EMERALD_API scene_graph scene_graph_create()
 
     /* Set up root node */
     new_graph->root_node_ptr->dag_node      = system_dag_add_node(new_graph->dag, new_graph->root_node_ptr);
-    new_graph->root_node_ptr->type          = NODE_TYPE_ROOT;
+    new_graph->root_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_ROOT;
     new_graph->root_node_ptr->pUpdateMatrix = _scene_graph_compute_root_node;
 
 end:
@@ -1600,8 +1829,33 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__i
     new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves, tag);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
     new_node_ptr->tag           = tag;
-    new_node_ptr->type          = NODE_TYPE_ROTATION_DYNAMIC;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_rotation_dynamic;
+
+end:
+    return (scene_graph_node) new_node_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                          __in_ecount(3) __notnull curve_container*     scale_vector_curves,
+                                                                          __in                     scene_graph_node_tag tag)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+
+    if (new_node_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+
+        goto end;
+    }
+
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_scale_dynamic(scale_vector_curves, tag);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC;
+    new_node_ptr->pUpdateMatrix = _scene_graph_compute_scale_dynamic;
 
 end:
     return (scene_graph_node) new_node_ptr;
@@ -1625,7 +1879,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
     new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves, tag);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
     new_node_ptr->tag           = tag;
-    new_node_ptr->type          = NODE_TYPE_TRANSLATION_DYNAMIC;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_dynamic;
 
 end:
@@ -1646,7 +1900,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnu
     }
 
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
-    new_node_ptr->type          = NODE_TYPE_GENERAL;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_GENERAL;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_general;
 
 end:
@@ -1671,7 +1925,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
     new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix, tag);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
     new_node_ptr->tag           = tag;
-    new_node_ptr->type          = NODE_TYPE_STATIC_MATRIX4X4;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
 
 end:
@@ -1890,9 +2144,23 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
 
     switch (property)
     {
+        case SCENE_GRAPH_NODE_PROPERTY_TAG:
+        {
+            *(scene_graph_node_tag*) out_result = node_ptr->tag;
+
+            break;
+        }
+
         case SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX:
         {
             *(system_matrix4x4*) out_result = node_ptr->transformation_matrix;
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_PROPERTY_TYPE:
+        {
+            *(scene_graph_node_type*) out_result = node_ptr->type;
 
             break;
         }
@@ -1991,53 +2259,58 @@ PUBLIC EMERALD_API void scene_graph_node_set_property(__in __notnull scene_graph
 
     switch (node_ptr->type)
     {
-        case NODE_TYPE_ROTATION_DYNAMIC:
+        case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
+        case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
+        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
         {
             /* Only curve properties apply here */
-            _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) node_ptr->data;
+            curve_container* curves = NULL;
 
-            ASSERT_DEBUG_SYNC(curve_index != -1,
-                              "Unrecognized curve property");
+            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC)
+            {
+                _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) node_ptr->data;
+
+                ASSERT_DEBUG_SYNC(curve_index != -1,
+                                  "Unrecognized curve property");
+
+                curves = node_data_ptr->curves;
+            }
+            else
+            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC)
+            {
+                _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) node_ptr->data;
+
+                ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
+                                  "Unrecognized curve property");
+
+                curves = node_data_ptr->curves;
+            }
+            else
+            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC)
+            {
+                _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) node_ptr->data;
+
+                ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
+                                  "Unrecognized curve property");
+
+                curves = node_data_ptr->curves;
+            }
 
             if (curve_index != -1)
             {
                 curve_container new_curve = *((curve_container*) data);
 
-                if (node_data_ptr->curves[curve_index] != NULL)
+                if (curves[curve_index] != NULL)
                 {
-                    curve_container_release(node_data_ptr->curves[curve_index]);
+                    curve_container_release(curves[curve_index]);
                 }
 
-                node_data_ptr->curves[curve_index] = new_curve;
+                curves[curve_index] = new_curve;
                 curve_container_retain(new_curve);
             } /* if (curve_index != -1) */
 
             break;
-        } /* case NODE_TYPE_ROTATION_DYNAMIC: */
-
-        case NODE_TYPE_TRANSLATION_DYNAMIC:
-        {
-            /* Only curve properties apply here */
-            _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) node_ptr->data;
-
-            ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
-                              "Unrecognized curve property");
-
-            if (curve_index != -1 && curve_index < 3)
-            {
-                curve_container new_curve = *((curve_container*) data);
-
-                if (node_data_ptr->curves[curve_index] != NULL)
-                {
-                    curve_container_release(node_data_ptr->curves[curve_index]);
-                }
-
-                node_data_ptr->curves[curve_index] = new_curve;
-                curve_container_retain(new_curve);
-            } /* if (curve_index != -1) */
-
-            break;
-        } /* case NODE_TYPE_TRANSLATION_DYNAMIC:*/
+        } /* case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC: */
 
         default:
         {

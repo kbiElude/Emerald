@@ -402,7 +402,7 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene     
         scene_light               light      = NULL;
         system_hashed_ansi_string light_name = NULL;
 
-        if (system_resizable_vector_get_element_at(scene_ptr->mesh_instances,
+        if (system_resizable_vector_get_element_at(scene_ptr->lights,
                                                    n_light,
                                                   &light) )
         {

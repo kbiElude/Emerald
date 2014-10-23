@@ -425,6 +425,58 @@ PUBLIC EMERALD_API system_timeline_time curve_segment_get_modification_time(__in
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool curve_segment_get_node_at_time(__in  __notnull curve_segment          segment,
+                                                       __in            system_timeline_time   node_time,
+                                                       __out __notnull curve_segment_node_id* out_node_id)
+{
+    _curve_segment_ptr curve_segment_ptr = (_curve_segment*) segment;
+    unsigned int       n_current_node    = 0;
+    bool               result            = true;
+
+    while (true)
+    {
+        /* TODO: If it makes any difference, provide per-interpolation implementation of the routine */
+        curve_segment_node_id current_node_id = -1;
+
+        result = curve_segment_ptr->pfn_get_node_by_index(curve_segment_ptr->segment_data,
+                                                          n_current_node,
+                                                         &current_node_id);
+
+        if (!result)
+        {
+            break;
+        }
+
+        /* What is the time of the node? */
+        system_timeline_time current_node_time = -1;
+
+        if (!curve_segment_ptr->pfn_get_node(curve_segment_ptr->segment_data,
+                                             current_node_id,
+                                            &current_node_time,
+                                             NULL) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "pfn_get_node() failed");
+
+            result = false;
+            break;
+        }
+
+        if (current_node_time == node_time)
+        {
+            *out_node_id = current_node_id;
+
+            break;
+        }
+
+        /* Iterate */
+        n_current_node++;
+    } /* while (true) */
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC bool curve_segment_get_node_by_index(__in  __notnull curve_segment          segment,
                                             __in            uint32_t               node_index,
                                             __out __notnull curve_segment_node_id* out_node_id)

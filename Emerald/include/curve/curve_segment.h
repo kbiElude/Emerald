@@ -112,6 +112,11 @@ PUBLIC EMERALD_API bool curve_segment_get_node(__in  __notnull   curve_segment,
                                                      __maybenull system_variant);
 
 /** TODO */
+PUBLIC EMERALD_API bool curve_segment_get_node_at_time(__in  __notnull curve_segment,
+                                                       __in            system_timeline_time,
+                                                       __out __notnull curve_segment_node_id*);
+
+/** TODO */
 PUBLIC bool curve_segment_get_node_by_index(__in  __notnull curve_segment,
                                             __in            uint32_t,
                                             __out __notnull curve_segment_node_id*);

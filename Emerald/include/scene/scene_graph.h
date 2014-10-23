@@ -38,19 +38,37 @@ typedef enum
 
 typedef enum
 {
+    /* NOTE: For serialization compatibility, always make sure to add
+     *       new node types right BEFORE the very last item.
+     */
+    SCENE_GRAPH_NODE_TYPE_ROOT,
+    SCENE_GRAPH_NODE_TYPE_GENERAL,
+    SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC,
+    SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC,
+    SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4,
+    SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC,
+
+    /* Always last */
+    SCENE_GRAPH_NODE_TYPE_UNKNOWN
+} scene_graph_node_type;
+
+typedef enum
+{
     /* NOTE: Curve containers are not available for all node types! Trying to set
      *       a curve container for a node that does not support it will result in
      *       an assertion failure.
      */
-    SCENE_GRAPH_NODE_PROPERTY_CURVE_X,              /*     settable, curve_container. Releases former curve container
-                                                     *               and retains the passed one upon setting. */
-    SCENE_GRAPH_NODE_PROPERTY_CURVE_Y,              /*     settable, curve_container. Releases former curve container
-                                                     *               and retains the passed one upon setting. */
-    SCENE_GRAPH_NODE_PROPERTY_CURVE_Z,              /*     settable, curve_container. Releases former curve container
-                                                     *               and retains the passed one upon setting. */
-    SCENE_GRAPH_NODE_PROPERTY_CURVE_W,              /*     settable, curve_container. Releases former curve container
-                                                     *               and retains the passed one upon setting. */
-    SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX /* not settable, system_matrix4x4 */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_X,               /*     settable, curve_container. Releases former curve container
+                                                      *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_Y,               /*     settable, curve_container. Releases former curve container
+                                                      *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_Z,               /*     settable, curve_container. Releases former curve container
+                                                      *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_CURVE_W,               /*     settable, curve_container. Releases former curve container
+                                                      *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_TAG,                   /* not settable, scene_graph_node_tag */
+    SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX, /* not settable, system_matrix4x4 */
+    SCENE_GRAPH_NODE_PROPERTY_TYPE                   /* not settable, scene_graph_node_type */
 } scene_graph_node_property;
 
 typedef enum
@@ -104,6 +122,11 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnu
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__in           __notnull scene_graph          graph,
                                                                              __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
                                                                              __in                     scene_graph_node_tag tag);
+
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(__in           __notnull scene_graph          graph,
+                                                                          __in_ecount(3) __notnull curve_container*     scale_vector_curves,
+                                                                          __in                     scene_graph_node_tag tag);
 
 /** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
