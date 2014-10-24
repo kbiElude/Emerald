@@ -16,6 +16,8 @@
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_variant.h"
+#include <string>
+
 
 /** Internal type definition */
 typedef struct _lw_curve_dataset_item
@@ -325,6 +327,43 @@ end:
 }
 
 /** TODO */
+PRIVATE system_hashed_ansi_string _lw_curve_dataset_get_lw_adjusted_object_name(__in            unsigned int              n_iteration,
+                                                                                __out_opt       unsigned int*             out_n_supported_iterations,
+                                                                                __in  __notnull system_hashed_ansi_string name)
+{
+    std::string name_string;
+
+    if (name != NULL)
+    {
+        name_string = system_hashed_ansi_string_get_buffer(name);
+
+        if (n_iteration & (1 << 0) )
+        {
+            /* Replace spaces with _, just as the exporter does. */
+            std::size_t token_location = std::string::npos;
+
+            while ( (token_location = name_string.find(" ") ) != std::string::npos)
+            {
+                name_string.replace(token_location, 1, "_");
+            }
+        }
+
+        if (n_iteration & (1 << 1) )
+        {
+            /* Append _1 */
+            name_string.append("_1");
+        }
+    } /* if (name != NULL) */
+
+    if (out_n_supported_iterations != NULL)
+    {
+        *out_n_supported_iterations = 4;
+    }
+
+    return system_hashed_ansi_string_create(name_string.c_str() );
+}
+
+/** TODO */
 PRIVATE void _lw_curve_dataset_release(__in __notnull __deallocate(mem) void* ptr)
 {
     _lw_curve_dataset* dataset_ptr = (_lw_curve_dataset*) ptr;
@@ -601,14 +640,28 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
             }
 
             /* Retrieve a graph node that owns the object */
-            scene_graph_node owner_node = NULL;
+            unsigned int     n_lw_name_iterations = 0;
+            scene_graph_node owner_node           = NULL;
+
+            _lw_curve_dataset_get_lw_adjusted_object_name(0, /* n_iteration */
+                                                         &n_lw_name_iterations,
+                                                          NULL);
 
             switch (object_ptr->object_type)
             {
                 case LW_CURVE_DATASET_OBJECT_TYPE_CAMERA:
                 {
-                    scene_camera found_camera = scene_get_camera_by_name(scene,
-                                                                         item_ptr->object_name);
+                    scene_camera found_camera = NULL;
+
+                    for (unsigned int n_lw_name_iteration = 0;
+                                      n_lw_name_iteration < n_lw_name_iterations && found_camera == NULL;
+                                    ++n_lw_name_iteration)
+                    {
+                        found_camera = scene_get_camera_by_name(scene,
+                                                                _lw_curve_dataset_get_lw_adjusted_object_name(n_lw_name_iteration,
+                                                                                                              NULL,
+                                                                                                              item_ptr->object_name) );
+                    }
 
                     if (found_camera != NULL)
                     {
@@ -629,8 +682,17 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 case LW_CURVE_DATASET_OBJECT_TYPE_LIGHT:
                 {
-                    scene_light found_light = scene_get_light_by_name(scene,
-                                                                      item_ptr->object_name);
+                    scene_light found_light = NULL;
+
+                    for (unsigned int n_lw_name_iteration = 0;
+                                      n_lw_name_iteration < n_lw_name_iterations && found_light == NULL;
+                                    ++n_lw_name_iteration)
+                    {
+                        found_light = scene_get_light_by_name(scene,
+                                                              _lw_curve_dataset_get_lw_adjusted_object_name(n_lw_name_iteration,
+                                                                                                            NULL,
+                                                                                                            item_ptr->object_name) );
+                    }
 
                     if (found_light != NULL)
                     {
@@ -651,8 +713,17 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 case LW_CURVE_DATASET_OBJECT_TYPE_MESH:
                 {
-                    scene_mesh found_mesh = scene_get_mesh_instance_by_name(scene,
-                                                                            item_ptr->object_name);
+                    scene_mesh found_mesh = NULL;
+
+                    for (unsigned int n_lw_name_iteration = 0;
+                                      n_lw_name_iteration < n_lw_name_iterations && found_mesh == NULL;
+                                    ++n_lw_name_iteration)
+                    {
+                        found_mesh = scene_get_mesh_instance_by_name(scene,
+                                                                     _lw_curve_dataset_get_lw_adjusted_object_name(n_lw_name_iteration,
+                                                                                                                   NULL,
+                                                                                                                   item_ptr->object_name) );
+                    }
 
                     if (found_mesh != NULL)
                     {
