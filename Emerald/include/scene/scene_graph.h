@@ -66,6 +66,7 @@ typedef enum
                                                       *               and retains the passed one upon setting. */
     SCENE_GRAPH_NODE_PROPERTY_CURVE_W,               /*     settable, curve_container. Releases former curve container
                                                       *               and retains the passed one upon setting. */
+    SCENE_GRAPH_NODE_PROPERTY_PARENT_NODE,           /* not settable, scene_graph_node */
     SCENE_GRAPH_NODE_PROPERTY_TAG,                   /* not settable, scene_graph_node_tag */
     SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX, /* not settable, system_matrix4x4 */
     SCENE_GRAPH_NODE_PROPERTY_TYPE                   /* not settable, scene_graph_node_type */

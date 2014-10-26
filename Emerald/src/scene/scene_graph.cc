@@ -2144,6 +2144,13 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
 
     switch (property)
     {
+        case SCENE_GRAPH_NODE_PROPERTY_PARENT_NODE:
+        {
+            *(scene_graph_node*) out_result = (scene_graph_node) node_ptr->parent_node;
+
+            break;
+        }
+
         case SCENE_GRAPH_NODE_PROPERTY_TAG:
         {
             *(scene_graph_node_tag*) out_result = node_ptr->tag;

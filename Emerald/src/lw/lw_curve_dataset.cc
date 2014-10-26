@@ -113,13 +113,14 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         case LW_CURVE_TYPE_ROTATION_B:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Z;
-
+            return; /* TODO */
             break;
         }
 
         case LW_CURVE_TYPE_ROTATION_H:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Y;
+            return; /* TODO */
 
             break;
         }
@@ -127,6 +128,7 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         case LW_CURVE_TYPE_ROTATION_P:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_X;
+            return; /* TODO */
 
             break;
         }
@@ -136,6 +138,7 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         case LW_CURVE_TYPE_SCALE_Z:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_SCALE;
+            return; /* TODO */
 
             break;
         }
@@ -169,7 +172,7 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
     {
         scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
-        scene_graph_node_get_property(owner_node,
+        scene_graph_node_get_property(transformation_node,
                                       SCENE_GRAPH_NODE_PROPERTY_TYPE,
                                      &node_type);
 
@@ -202,7 +205,7 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
     {
         scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
-        scene_graph_node_get_property(owner_node,
+        scene_graph_node_get_property(transformation_node,
                                       SCENE_GRAPH_NODE_PROPERTY_TYPE,
                                      &node_type);
 
@@ -229,6 +232,129 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         }
     } /* if (node_tag == SCENE_GRAPH_NODE_TAG_SCALE) */
 
+    /* For a proper match, translation curves need to be adjusted:
+     *
+     * 1) X, Y, Z curves need to be multipled by 100
+     * 2) Z curve needs to additionally be multiplied by -1.
+     */
+    if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE)
+    {
+        int            multiplier   = 100;
+        system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+        if (curve_type == LW_CURVE_TYPE_POSITION_Z)
+        {
+            multiplier *= -1;
+        }
+
+        /* Iterate through all curve nodes and adjust the values */
+        unsigned int n_curve_segments = 0;
+
+        curve_container_get_property(new_curve,
+                                     CURVE_CONTAINER_PROPERTY_N_SEGMENTS,
+                                    &n_curve_segments);
+
+        for (unsigned int n_curve_segment = 0;
+                          n_curve_segment < n_curve_segments;
+                        ++n_curve_segment)
+        {
+            unsigned int     n_segment_nodes = -1;
+            curve_segment_id segment_id      = -1;
+
+            if (!curve_container_get_segment_id_for_nth_segment(new_curve,
+                                                                n_curve_segment,
+                                                               &segment_id) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve curve segment at index [%d]",
+                                  n_curve_segment);
+
+                continue;
+            }
+
+            curve_container_get_segment_property(new_curve,
+                                                 segment_id,
+                                                 CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES,
+                                                &n_segment_nodes);
+
+            for (unsigned int n_segment_node = 0;
+                              n_segment_node < n_segment_nodes;
+                            ++n_segment_node)
+            {
+                curve_segment_node_id node_id    = -1;
+                system_timeline_time  node_time  = 0;
+                float                 node_value = FLT_MAX;
+
+                if (!curve_container_get_node_id_for_node_at(new_curve,
+                                                             segment_id,
+                                                             n_segment_node,
+                                                            &node_id) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve curve segment node at index [%d]",
+                                      n_segment_node);
+
+                    continue;
+                }
+
+                if (!curve_container_get_general_node_data(new_curve,
+                                                           segment_id,
+                                                           node_id,
+                                                          &node_time,
+                                                           temp_variant) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve curve segment node value");
+
+                    continue;
+                }
+
+                system_variant_get_float(temp_variant,
+                                        &node_value);
+
+                node_value *= multiplier;
+
+                system_variant_set_float(temp_variant,
+                                         node_value);
+
+                if (!curve_container_modify_node(new_curve,
+                                                 segment_id,
+                                                 node_id,
+                                                 node_time,
+                                                 temp_variant) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not update node properties");
+                }
+            } /* for (all curve segment nodes) */
+        } /* for (all curve segments) */
+
+        /* Also adjust default value */
+        float default_value = FLT_MAX;
+
+        if (!curve_container_get_default_value(new_curve,
+                                               false, /* should_force */
+                                               temp_variant) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve default curve value");
+        }
+
+        system_variant_get_float(temp_variant,
+                                &default_value);
+
+        default_value *= multiplier;
+
+        system_variant_set_float(temp_variant,
+                                 default_value);
+
+        curve_container_set_default_value(new_curve,
+                                          temp_variant);
+
+        /* Release the variant */
+        system_variant_release(temp_variant);
+    }
+
     /* The transformation node we now have needs to use a new transformation.
      * There are two cases to consider:
      *
@@ -239,7 +365,6 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
      *    defines a single node for the transformation. That's the
      *    case with scale and translation.
      */
-
     switch (curve_type)
     {
         case LW_CURVE_TYPE_POSITION_X:
@@ -806,7 +931,7 @@ PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull syste
     system_variant helper_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     result_instance->oneCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                               " zero curve"),
+                                                                                                               " one curve"),
                                                        SYSTEM_VARIANT_FLOAT);
     result_instance->zeroCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                 " zero curve"),
