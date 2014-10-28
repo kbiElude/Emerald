@@ -481,8 +481,16 @@ PRIVATE void _curve_editor_dialog_update_ui_curve_edit_buttons(_curve_editor_mai
                           (system_hash64) curve_node_handle,
                          &descriptor);
 
-    ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle,
-                   (descriptor->window == NULL) ? TRUE : FALSE);
+    if (descriptor != NULL)
+    {
+        ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle,
+                       descriptor->window != NULL ? TRUE : FALSE);
+    }
+    else
+    {
+        ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle,
+                       TRUE);
+    }
 }
 
 /** TODO */
@@ -546,7 +554,7 @@ PRIVATE void _curve_editor_dialog_update_ui_curve_details(_curve_editor_main_win
 
     /* Configure default value editboxes' visibility */
     ::EnableWindow(descriptor_ptr->curve_editbox_window_handle,     TRUE);
-    ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle, FALSE);
+    ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle, TRUE);
 }
 
 /** TODO */
@@ -667,12 +675,6 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
                     switch ( LOWORD(wparam) )
                     {
                         case IDC_CURVE_EDITOR_MAIN_EDIT_CURVE: _curve_editor_dialog_handle_edit_request(descriptor); break;
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Unrecognized BN_CLICKED owner");
-                        }
                     } /* switch(lParam) */
 
                     break;

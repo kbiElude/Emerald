@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include <stdlib.h>
+#include "curve_editor/curve_editor_general.h"
 #include "lw/lw_curve_dataset.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
@@ -332,6 +333,9 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 
     ogl_flyby_activate(_context, camera_position);
     ogl_flyby_set_movement_delta(_context, 1.25f);
+
+    /* Show the curve editor */
+    curve_editor_show(_context);
 
     /* Construct the pipeline object */
     _pipeline = ogl_pipeline_create(_context,

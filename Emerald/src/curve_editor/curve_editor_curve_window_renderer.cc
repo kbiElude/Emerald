@@ -1560,7 +1560,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 
     string_table[0] = "Curve window renderer text renderer for ";
 
-    descriptor->text_renderer = ogl_text_create(system_hashed_ansi_string_create_by_merging_strings(5, string_table),
+    descriptor->text_renderer = ogl_text_create(system_hashed_ansi_string_create_by_merging_strings(2, string_table),
                                                 descriptor->context,
                                                 system_resources_get_meiryo_font_table(),
                                                 window_rect.right  - window_rect.left,

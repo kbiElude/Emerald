@@ -549,8 +549,9 @@ PUBLIC EMERALD_API void gfx_image_set_global_property(__in     gfx_image_propert
              *       Take this as a warning - everything should be fine *but* this scenario
              *       was not tested.
              */
-            ASSERT_DEBUG_SYNC(_alternative_filename_getter_proc_ptr == NULL,
-                              "Alternative filename getter func ptr is not NULL");
+            ASSERT_DEBUG_SYNC(_alternative_filename_getter_proc_ptr == NULL ||
+                              _alternative_filename_getter_proc_ptr == value,
+                              "TODO: Unsupported scenario");
 
             _alternative_filename_getter_proc_ptr = (PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR) value;
 
