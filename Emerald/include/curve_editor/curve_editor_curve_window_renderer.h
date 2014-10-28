@@ -26,6 +26,7 @@ PUBLIC void curve_editor_curve_window_renderer_redraw(__in __notnull curve_edito
 PUBLIC void curve_editor_curve_window_renderer_release(__in __post_invalid curve_editor_curve_window_renderer);
 
 /** TODO */
-PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull curve_editor_curve_window_renderer, __in __ecount(4) int* x1y1x2y2);
+PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_editor_curve_window_renderer,
+                                                      __in __ecount(4) int*                               x1y1x2y2);
 
 #endif /* CURVE_EDITOR_CURVE_WINDOW_RENDERER_H */
