@@ -71,6 +71,10 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_index(__in __notnull scene    
                                                         __in           unsigned int index);
 
 /** TODO */
+PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene                     scene,
+                                                       __in           system_hashed_ansi_string name);
+
+/** TODO */
 PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull scene        scene,
                                                                __in           unsigned int index);
 

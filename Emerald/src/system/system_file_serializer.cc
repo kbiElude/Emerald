@@ -323,20 +323,6 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
         goto end;
     }
 
-    /* Enforce the properties */
-    if (is_pre_post_behavior_on)
-    {
-        curve_container_set_property(*result_container,
-                                     CURVE_CONTAINER_PROPERTY_PRE_POST_BEHAVIOR_STATUS,
-                                    &is_pre_post_behavior_on);
-        curve_container_set_property(*result_container,
-                                     CURVE_CONTAINER_PROPERTY_PRE_BEHAVIOR,
-                                    &pre_behavior);
-        curve_container_set_property(*result_container,
-                                     CURVE_CONTAINER_PROPERTY_POST_BEHAVIOR,
-                                    &post_behavior);
-    }
-
     /* Iterate through all segments */
     for (uint32_t n_segment = 0; n_segment < n_segments; ++n_segment)
     {
@@ -565,12 +551,21 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                     /* Add the node first */
                     curve_segment_node_id new_node_id = (curve_segment_node_id) -1;
 
-                    if (!curve_segment_add_node(tcb_segment, current_node->time, current_node->value, &new_node_id) )
+                    if (!curve_segment_add_node(tcb_segment,
+                                                current_node->time,
+                                                current_node->value,
+                                               &new_node_id) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Could not add a node to TCB curve segment");
+                        /* It is OK if we get here, assuming that the node has already been created. */
+                        if (!curve_segment_get_node_at_time(tcb_segment,
+                                                            current_node->time,
+                                                           &new_node_id) )
+                        {
+                            ASSERT_DEBUG_SYNC(false, "Could not add a node to TCB curve segment");
 
-                        goto end;
-                    }
+                            goto end;
+                        } /* if (node does not exist) */
+                    } /* if (failed to add a node) */
 
                     /* Adjust TCB properties for the node */
                     system_variant_set_float(temp_variant,  current_node->bias);
@@ -627,6 +622,20 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                 &segment_threshold);
         }
     } /* for (uint32_t n_segment = 0; n_segment < n_segments; ++n_segment)*/
+
+    /* Enforce the properties */
+    if (is_pre_post_behavior_on)
+    {
+        curve_container_set_property(*result_container,
+                                     CURVE_CONTAINER_PROPERTY_PRE_BEHAVIOR,
+                                    &pre_behavior);
+        curve_container_set_property(*result_container,
+                                     CURVE_CONTAINER_PROPERTY_POST_BEHAVIOR,
+                                    &post_behavior);
+        curve_container_set_property(*result_container,
+                                     CURVE_CONTAINER_PROPERTY_PRE_POST_BEHAVIOR_STATUS,
+                                    &is_pre_post_behavior_on);
+    }
 
     result = true;
 

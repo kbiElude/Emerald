@@ -9,7 +9,7 @@
 #include "system/system_types.h"
 
 
-/** Calculates a 64-bit hash for a raw text pointer. 
+/** Calculates a 64-bit hash for a raw text pointer.
  *
  *  This function is not exported.
  *
@@ -19,6 +19,7 @@
  *
  *  @return Hash value.
  */
-PUBLIC system_hash64 system_hash64_calculate(__in __notnull const char* text, uint32_t length);
+PUBLIC system_hash64 system_hash64_calculate(__in __notnull const char* text,
+                                                            uint32_t    length);
 
 #endif /* SYSTEM_HASH64_H */

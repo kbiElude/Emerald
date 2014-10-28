@@ -6,12 +6,18 @@
 #include "shared.h"
 #include "curve/curve_container.h"
 #include "lw/lw_curve_dataset.h"
+#include "scene/scene.h"
+#include "scene/scene_graph.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_variant.h"
+#include <string>
+
 
 /** Internal type definition */
 typedef struct _lw_curve_dataset_item
@@ -48,19 +54,439 @@ typedef struct _lw_curve_dataset_object
     }
 } _lw_curve_dataset_object;
 
+typedef enum
+{
+    LW_CURVE_TYPE_POSITION_X,
+    LW_CURVE_TYPE_POSITION_Y,
+    LW_CURVE_TYPE_POSITION_Z,
+    LW_CURVE_TYPE_ROTATION_B,
+    LW_CURVE_TYPE_ROTATION_H,
+    LW_CURVE_TYPE_ROTATION_P,
+    LW_CURVE_TYPE_SCALE_X,
+    LW_CURVE_TYPE_SCALE_Y,
+    LW_CURVE_TYPE_SCALE_Z,
+
+    LW_CURVE_TYPE_UNDEFINED
+} _lw_curve_type;
+
+
 typedef struct
 {
     system_hash64map object_to_item_vector_map; /* "object name" hashed_ansi_string -> vector of _lw_curve_dataset_item* items */
     system_hash64map object_to_properties_map;  /* "object name" hashed ansi string -> _lw_curve_dataset_object* */
+
+    /* Helper stuff */
+    curve_container zeroCurve;
+    curve_container oneCurve;
+
     REFCOUNT_INSERT_VARIABLES
 } _lw_curve_dataset;
 
 
-/** Internal variables */ 
+/** Internal variables */
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(lw_curve_dataset, lw_curve_dataset, _lw_curve_dataset);
 
+
+/** TODO */
+PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* dataset_ptr,
+                                             __in           _lw_curve_type     curve_type,
+                                             __in __notnull curve_container    new_curve,
+                                             __in __notnull scene_graph        graph,
+                                             __in __notnull scene_graph_node   owner_node)
+{
+    scene_graph_node_tag node_tag = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    bool                 result   = true;
+
+    switch (curve_type)
+    {
+        case LW_CURVE_TYPE_POSITION_X:
+        case LW_CURVE_TYPE_POSITION_Y:
+        case LW_CURVE_TYPE_POSITION_Z:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_B:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Z;
+            return; /* TODO */
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_H:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Y;
+            return; /* TODO */
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_P:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_X;
+            return; /* TODO */
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_SCALE_X:
+        case LW_CURVE_TYPE_SCALE_Y:
+        case LW_CURVE_TYPE_SCALE_Z:
+        {
+            node_tag = SCENE_GRAPH_NODE_TAG_SCALE;
+            return; /* TODO */
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized LW curve type");
+        }
+    } /* switch (curve_type) */
+
+    /* Retrieve a scene graph node that describes the transformation we need to update */
+    scene_graph_node transformation_node = NULL;
+
+    result = scene_graph_node_get_transformation_node(owner_node,
+                                                      node_tag,
+                                                     &transformation_node);
+
+    if (!result || transformation_node == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve transformation node");
+
+        goto end;
+    }
+
+    /* Translation node may have been initialized as a matrix node type. In
+     * order to feed curve-driven components, we need to use a different node.
+     */
+    if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE)
+    {
+        scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
+
+        scene_graph_node_get_property(transformation_node,
+                                      SCENE_GRAPH_NODE_PROPERTY_TYPE,
+                                     &node_type);
+
+        if (node_type != SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC)
+        {
+            curve_container neutral_curves[] =
+            {
+                dataset_ptr->zeroCurve, /* x */
+                dataset_ptr->zeroCurve, /* y */
+                dataset_ptr->zeroCurve  /* z */
+            };
+
+            /* Create a dynamic translation node */
+            scene_graph_node new_translation_node = scene_graph_create_translation_dynamic_node(graph,
+                                                                                                neutral_curves,
+                                                                                                SCENE_GRAPH_NODE_TAG_TRANSLATE);
+
+            ASSERT_DEBUG_SYNC(new_translation_node != NULL,
+                              "Could not spawn a dynamic translation scene graph node");
+
+            scene_graph_node_replace(graph,
+                                     transformation_node,
+                                     new_translation_node);
+        }
+    } /* if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE) */
+    else
+
+    /* Same holds for scale nodes */
+    if (node_tag == SCENE_GRAPH_NODE_TAG_SCALE)
+    {
+        scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
+
+        scene_graph_node_get_property(transformation_node,
+                                      SCENE_GRAPH_NODE_PROPERTY_TYPE,
+                                     &node_type);
+
+        if (node_type != SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC)
+        {
+            curve_container neutral_curves[] =
+            {
+                dataset_ptr->oneCurve, /* x */
+                dataset_ptr->oneCurve, /* y */
+                dataset_ptr->oneCurve  /* z */
+            };
+
+            /* Create a dynamic scale node */
+            scene_graph_node new_scale_node = scene_graph_create_scale_dynamic_node(graph,
+                                                                                    neutral_curves,
+                                                                                    SCENE_GRAPH_NODE_TAG_SCALE);
+
+            ASSERT_DEBUG_SYNC(new_scale_node != NULL,
+                              "Could not spawn a dynamic scale scene graph node");
+
+            scene_graph_node_replace(graph,
+                                     transformation_node,
+                                     new_scale_node);
+        }
+    } /* if (node_tag == SCENE_GRAPH_NODE_TAG_SCALE) */
+
+    /* For a proper match, translation curves need to be adjusted:
+     *
+     * 1) X, Y, Z curves need to be multipled by 100
+     * 2) Z curve needs to additionally be multiplied by -1.
+     */
+    if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE)
+    {
+        int            multiplier   = 100;
+        system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+        if (curve_type == LW_CURVE_TYPE_POSITION_Z)
+        {
+            multiplier *= -1;
+        }
+
+        /* Iterate through all curve nodes and adjust the values */
+        unsigned int n_curve_segments = 0;
+
+        curve_container_get_property(new_curve,
+                                     CURVE_CONTAINER_PROPERTY_N_SEGMENTS,
+                                    &n_curve_segments);
+
+        for (unsigned int n_curve_segment = 0;
+                          n_curve_segment < n_curve_segments;
+                        ++n_curve_segment)
+        {
+            unsigned int     n_segment_nodes = -1;
+            curve_segment_id segment_id      = -1;
+
+            if (!curve_container_get_segment_id_for_nth_segment(new_curve,
+                                                                n_curve_segment,
+                                                               &segment_id) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve curve segment at index [%d]",
+                                  n_curve_segment);
+
+                continue;
+            }
+
+            curve_container_get_segment_property(new_curve,
+                                                 segment_id,
+                                                 CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES,
+                                                &n_segment_nodes);
+
+            for (unsigned int n_segment_node = 0;
+                              n_segment_node < n_segment_nodes;
+                            ++n_segment_node)
+            {
+                curve_segment_node_id node_id    = -1;
+                system_timeline_time  node_time  = 0;
+                float                 node_value = FLT_MAX;
+
+                if (!curve_container_get_node_id_for_node_at(new_curve,
+                                                             segment_id,
+                                                             n_segment_node,
+                                                            &node_id) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve curve segment node at index [%d]",
+                                      n_segment_node);
+
+                    continue;
+                }
+
+                if (!curve_container_get_general_node_data(new_curve,
+                                                           segment_id,
+                                                           node_id,
+                                                          &node_time,
+                                                           temp_variant) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve curve segment node value");
+
+                    continue;
+                }
+
+                system_variant_get_float(temp_variant,
+                                        &node_value);
+
+                node_value *= multiplier;
+
+                system_variant_set_float(temp_variant,
+                                         node_value);
+
+                if (!curve_container_modify_node(new_curve,
+                                                 segment_id,
+                                                 node_id,
+                                                 node_time,
+                                                 temp_variant) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not update node properties");
+                }
+            } /* for (all curve segment nodes) */
+        } /* for (all curve segments) */
+
+        /* Also adjust default value */
+        float default_value = FLT_MAX;
+
+        if (!curve_container_get_default_value(new_curve,
+                                               false, /* should_force */
+                                               temp_variant) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve default curve value");
+        }
+
+        system_variant_get_float(temp_variant,
+                                &default_value);
+
+        default_value *= multiplier;
+
+        system_variant_set_float(temp_variant,
+                                 default_value);
+
+        curve_container_set_default_value(new_curve,
+                                          temp_variant);
+
+        /* Release the variant */
+        system_variant_release(temp_variant);
+    }
+
+    /* The transformation node we now have needs to use a new transformation.
+     * There are two cases to consider:
+     *
+     * 1) There is a 1:1 mapping between COLLADA file and LW curves.
+     *    This happens for rotation, where the LW curve describes the
+     *    angle, and the rotation axis is predefined & static.
+     * 2) LW uses 1D curve per each channel, whereas COLLADA file
+     *    defines a single node for the transformation. That's the
+     *    case with scale and translation.
+     */
+    switch (curve_type)
+    {
+        case LW_CURVE_TYPE_POSITION_X:
+        case LW_CURVE_TYPE_SCALE_X:
+        {
+            scene_graph_node_set_property(transformation_node,
+                                          SCENE_GRAPH_NODE_PROPERTY_CURVE_X,
+                                         &new_curve);
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_POSITION_Y:
+        case LW_CURVE_TYPE_SCALE_Y:
+        {
+            scene_graph_node_set_property(transformation_node,
+                                          SCENE_GRAPH_NODE_PROPERTY_CURVE_Y,
+                                         &new_curve);
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_POSITION_Z:
+        case LW_CURVE_TYPE_SCALE_Z:
+        {
+            scene_graph_node_set_property(transformation_node,
+                                          SCENE_GRAPH_NODE_PROPERTY_CURVE_Z,
+                                         &new_curve);
+
+            break;
+        }
+
+        case LW_CURVE_TYPE_ROTATION_B:
+        case LW_CURVE_TYPE_ROTATION_H:
+        case LW_CURVE_TYPE_ROTATION_P:
+        {
+            curve_container rotation_curves[4] = {NULL};
+
+            rotation_curves[0] = new_curve; /* angle */
+
+            if (curve_type == LW_CURVE_TYPE_ROTATION_B)
+            {
+                rotation_curves[1] = dataset_ptr->zeroCurve; /* x */
+                rotation_curves[2] = dataset_ptr->zeroCurve; /* y */
+                rotation_curves[3] = dataset_ptr->oneCurve;  /* z */
+            }
+            else
+            if (curve_type == LW_CURVE_TYPE_ROTATION_H)
+            {
+                rotation_curves[1] = dataset_ptr->zeroCurve; /* x */
+                rotation_curves[2] = dataset_ptr->oneCurve;  /* y */
+                rotation_curves[3] = dataset_ptr->zeroCurve; /* z */
+            }
+            else
+            {
+                rotation_curves[1] = dataset_ptr->oneCurve;  /* x */
+                rotation_curves[2] = dataset_ptr->zeroCurve; /* y */
+                rotation_curves[3] = dataset_ptr->zeroCurve; /* z */
+            }
+
+            scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
+                                                                                      rotation_curves,
+                                                                                      SCENE_GRAPH_NODE_TAG_ROTATE_Z);
+
+            ASSERT_DEBUG_SYNC(rotation_node != NULL,
+                              "Could not create a rotation dynamic node");
+
+            /* NOTE: This call releases rotation_node, which suits us just fine. */
+            scene_graph_node_replace(graph,
+                                     transformation_node,
+                                     rotation_node);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve type");
+        }
+    } /* switch (curve_type) */
+
+end:
+    ;
+}
+
+/** TODO */
+PRIVATE system_hashed_ansi_string _lw_curve_dataset_get_lw_adjusted_object_name(__in            unsigned int              n_iteration,
+                                                                                __out_opt       unsigned int*             out_n_supported_iterations,
+                                                                                __in  __notnull system_hashed_ansi_string name)
+{
+    std::string name_string;
+
+    if (name != NULL)
+    {
+        name_string = system_hashed_ansi_string_get_buffer(name);
+
+        if (n_iteration & (1 << 0) )
+        {
+            /* Replace spaces with _, just as the exporter does. */
+            std::size_t token_location = std::string::npos;
+
+            while ( (token_location = name_string.find(" ") ) != std::string::npos)
+            {
+                name_string.replace(token_location, 1, "_");
+            }
+        }
+
+        if (n_iteration & (1 << 1) )
+        {
+            /* Append _1 */
+            name_string.append("_1");
+        }
+    } /* if (name != NULL) */
+
+    if (out_n_supported_iterations != NULL)
+    {
+        *out_n_supported_iterations = 4;
+    }
+
+    return system_hashed_ansi_string_create(name_string.c_str() );
+}
 
 /** TODO */
 PRIVATE void _lw_curve_dataset_release(__in __notnull __deallocate(mem) void* ptr)
@@ -132,6 +558,20 @@ PRIVATE void _lw_curve_dataset_release(__in __notnull __deallocate(mem) void* pt
 
         system_hash64map_release(dataset_ptr->object_to_properties_map);
         dataset_ptr->object_to_properties_map = NULL;
+    }
+
+    if (dataset_ptr->oneCurve != NULL)
+    {
+        curve_container_release(dataset_ptr->oneCurve);
+
+        dataset_ptr->oneCurve = NULL;
+    }
+
+    if (dataset_ptr->zeroCurve != NULL)
+    {
+        curve_container_release(dataset_ptr->zeroCurve);
+
+        dataset_ptr->zeroCurve = NULL;
     }
 }
 
@@ -220,7 +660,246 @@ PUBLIC EMERALD_API void lw_curve_dataset_add_curve(__in __notnull lw_curve_datas
     curve_container_retain(curve);
 
     /* Add the new item */
-    system_resizable_vector_push(item_vector, item_ptr);
+    system_resizable_vector_push(item_vector,
+                                 item_ptr);
+
+end:
+    ;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_dataset dataset,
+                                                        __in           scene            scene)
+{
+    _lw_curve_dataset* dataset_ptr = (_lw_curve_dataset*) dataset;
+    const uint32_t     n_objects   = system_hash64map_get_amount_of_elements(dataset_ptr->object_to_item_vector_map);
+
+    ASSERT_DEBUG_SYNC(n_objects == system_hash64map_get_amount_of_elements(dataset_ptr->object_to_properties_map),
+                      "Map corruption detected");
+
+    /* Retrieve scene graph */
+    scene_graph graph = NULL;
+
+    scene_get_property(scene,
+                       SCENE_PROPERTY_GRAPH,
+                      &graph);
+
+    /* Iterate over all objects we have curves for. */
+    for (uint32_t n_object = 0;
+                  n_object < n_objects;
+                ++n_object)
+    {
+        _lw_curve_dataset_item*   item_ptr    = NULL;
+        system_hash64             item_hash   = -1;
+        system_resizable_vector   item_vector = NULL;
+        _lw_curve_dataset_object* object_ptr  = NULL;
+
+        /* Retrieve descriptors */
+        if (!system_hash64map_get_element_at(dataset_ptr->object_to_item_vector_map,
+                                             n_object,
+                                            &item_vector,
+                                            &item_hash) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve curve vector for object at index [%d]",
+                              n_object);
+
+            goto end;
+        }
+
+        if (!system_hash64map_get(dataset_ptr->object_to_properties_map,
+                                  item_hash,
+                                 &object_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve object descriptor.");
+
+            goto end;
+        }
+
+        /* Iterate over all curves defined for the object */
+        const uint32_t n_object_curves = system_resizable_vector_get_amount_of_elements(item_vector);
+
+        for (uint32_t n_object_curve = 0;
+                      n_object_curve < n_object_curves;
+                    ++n_object_curve)
+        {
+            if (!system_resizable_vector_get_element_at(item_vector,
+                                                        n_object_curve,
+                                                       &item_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve item descriptor at index [%d] for object at index [%d]",
+                                  n_object_curve,
+                                  n_object);
+
+                goto end;
+            }
+
+            /* Match the curve name to one of the predefined curve types */
+            static const system_hashed_ansi_string position_x_curve_name = system_hashed_ansi_string_create("Position.X");
+            static const system_hashed_ansi_string position_y_curve_name = system_hashed_ansi_string_create("Position.Y");
+            static const system_hashed_ansi_string position_z_curve_name = system_hashed_ansi_string_create("Position.Z");
+            static const system_hashed_ansi_string rotation_b_curve_name = system_hashed_ansi_string_create("Rotation.B");
+            static const system_hashed_ansi_string rotation_h_curve_name = system_hashed_ansi_string_create("Rotation.H");
+            static const system_hashed_ansi_string rotation_p_curve_name = system_hashed_ansi_string_create("Rotation.P");
+            static const system_hashed_ansi_string scale_x_curve_name    = system_hashed_ansi_string_create("Scale.X");
+            static const system_hashed_ansi_string scale_y_curve_name    = system_hashed_ansi_string_create("Scale.Y");
+            static const system_hashed_ansi_string scale_z_curve_name    = system_hashed_ansi_string_create("Scale.Z");
+
+            system_hash64  curve_name_hash = system_hashed_ansi_string_get_hash(item_ptr->name);
+            _lw_curve_type curve_type      = LW_CURVE_TYPE_UNDEFINED;
+
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(position_x_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_X;else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(position_y_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_Y;else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(position_z_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_Z;else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(rotation_b_curve_name) ) curve_type = LW_CURVE_TYPE_ROTATION_B;else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(rotation_h_curve_name) ) curve_type = LW_CURVE_TYPE_ROTATION_H;else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(rotation_p_curve_name) ) curve_type = LW_CURVE_TYPE_ROTATION_P;else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(scale_x_curve_name) )    curve_type = LW_CURVE_TYPE_SCALE_X;   else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(scale_y_curve_name) )    curve_type = LW_CURVE_TYPE_SCALE_Y;   else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(scale_z_curve_name) )    curve_type = LW_CURVE_TYPE_SCALE_Z;   else
+            {
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Unrecognized curve type");
+            }
+
+            /* Retrieve a graph node that owns the object */
+            unsigned int     n_lw_name_iterations = 0;
+            scene_graph_node owner_node           = NULL;
+
+            _lw_curve_dataset_get_lw_adjusted_object_name(0, /* n_iteration */
+                                                         &n_lw_name_iterations,
+                                                          NULL);
+
+            switch (object_ptr->object_type)
+            {
+                case LW_CURVE_DATASET_OBJECT_TYPE_CAMERA:
+                {
+                    scene_camera found_camera = NULL;
+
+                    for (unsigned int n_lw_name_iteration = 0;
+                                      n_lw_name_iteration < n_lw_name_iterations && found_camera == NULL;
+                                    ++n_lw_name_iteration)
+                    {
+                        found_camera = scene_get_camera_by_name(scene,
+                                                                _lw_curve_dataset_get_lw_adjusted_object_name(n_lw_name_iteration,
+                                                                                                              NULL,
+                                                                                                              item_ptr->object_name) );
+                    }
+
+                    if (found_camera != NULL)
+                    {
+                        owner_node = scene_graph_get_node_for_object(graph,
+                                                                     SCENE_OBJECT_TYPE_CAMERA,
+                                                                     found_camera);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Could not find a camera named [%s] - it will not have its curve adjusted.",
+                                  system_hashed_ansi_string_get_buffer(item_ptr->object_name) );
+
+                        continue;
+                    }
+
+                    break;
+                }
+
+                case LW_CURVE_DATASET_OBJECT_TYPE_LIGHT:
+                {
+                    scene_light found_light = NULL;
+
+                    for (unsigned int n_lw_name_iteration = 0;
+                                      n_lw_name_iteration < n_lw_name_iterations && found_light == NULL;
+                                    ++n_lw_name_iteration)
+                    {
+                        found_light = scene_get_light_by_name(scene,
+                                                              _lw_curve_dataset_get_lw_adjusted_object_name(n_lw_name_iteration,
+                                                                                                            NULL,
+                                                                                                            item_ptr->object_name) );
+                    }
+
+                    if (found_light != NULL)
+                    {
+                        owner_node = scene_graph_get_node_for_object(graph,
+                                                                     SCENE_OBJECT_TYPE_LIGHT,
+                                                                     found_light);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Could not find a light named [%s] - it will not have its curve adjusted.",
+                                  system_hashed_ansi_string_get_buffer(item_ptr->object_name) );
+
+                        continue;
+                    }
+
+                    break;
+                }
+
+                case LW_CURVE_DATASET_OBJECT_TYPE_MESH:
+                {
+                    scene_mesh found_mesh = NULL;
+
+                    for (unsigned int n_lw_name_iteration = 0;
+                                      n_lw_name_iteration < n_lw_name_iterations && found_mesh == NULL;
+                                    ++n_lw_name_iteration)
+                    {
+                        found_mesh = scene_get_mesh_instance_by_name(scene,
+                                                                     _lw_curve_dataset_get_lw_adjusted_object_name(n_lw_name_iteration,
+                                                                                                                   NULL,
+                                                                                                                   item_ptr->object_name) );
+                    }
+
+                    if (found_mesh != NULL)
+                    {
+                        owner_node = scene_graph_get_node_for_object(graph,
+                                                                     SCENE_OBJECT_TYPE_MESH,
+                                                                     found_mesh);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Could not find a mesh named [%s] - object will not have its curve adjusted.",
+                                  system_hashed_ansi_string_get_buffer(item_ptr->object_name) );
+
+                        continue;
+                    }
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_ALWAYS_SYNC(false,
+                                       "Unrecognized LW curve data-set object type");
+                }
+            } /* switch (object_ptr->object_type) */
+
+            ASSERT_ALWAYS_SYNC(owner_node != NULL,
+                               "Could not identify owner node for scene object");
+
+            if (owner_node != NULL)
+            {
+                /* Owner node is just a placeholder for the items. Make sure the node tag is valid */
+                scene_graph_node_tag node_tag = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+
+                scene_graph_node_get_property(owner_node,
+                                              SCENE_GRAPH_NODE_PROPERTY_TAG,
+                                             &node_tag);
+
+                ASSERT_DEBUG_SYNC(node_tag == SCENE_GRAPH_NODE_TAG_UNDEFINED,
+                                  "Node that references items should be a placeholder node!");
+
+                /* Depending on the curve type, we need to retrieve node with a rotation/scale/translation
+                 * tag, which actually controls the transformation.
+                 */
+                _lw_curve_dataset_apply_to_node(dataset_ptr,
+                                                curve_type,
+                                                item_ptr->curve,
+                                                graph,
+                                                owner_node);
+            } /* if (owner_node != NULL) */
+        } /* for (all object curves) */
+    } /* for (all objects) */
 
 end:
     ;
@@ -248,6 +927,30 @@ PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull syste
     result_instance->object_to_item_vector_map = system_hash64map_create(sizeof(_lw_curve_dataset_item*) );
     result_instance->object_to_properties_map  = system_hash64map_create(sizeof(_lw_curve_dataset_object*) );
 
+    /* Set up helper fields */
+    system_variant helper_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    result_instance->oneCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                               " one curve"),
+                                                       SYSTEM_VARIANT_FLOAT);
+    result_instance->zeroCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " zero curve"),
+                                                        SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (helper_variant,
+                                      1.0f);
+    curve_container_set_default_value(result_instance->oneCurve,
+                                      helper_variant);
+
+    system_variant_set_float         (helper_variant,
+                                      0.0f);
+    curve_container_set_default_value(result_instance->zeroCurve,
+                                      helper_variant);
+
+    system_variant_release(helper_variant);
+    helper_variant = NULL;
+
+    /* Set up reference counting */
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_instance,
                                                    _lw_curve_dataset_release,
                                                    OBJECT_TYPE_LW_CURVE_DATASET,

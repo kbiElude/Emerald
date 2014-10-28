@@ -1087,14 +1087,14 @@ PUBLIC EMERALD_API curve_segment curve_container_get_segment(__in __notnull curv
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API void curve_container_get_segment_property(__in  __notnull curve_container                  container,
+PUBLIC EMERALD_API bool curve_container_get_segment_property(__in  __notnull curve_container                  container,
                                                              __in            curve_segment_id                 segment_id,
                                                              __in            curve_container_segment_property property,
                                                              __out __notnull void*                            out_result)
 {
     _curve_container_ptr   curve_container = (_curve_container_ptr) container;
     _curve_container_data* curve_data_ptr  = &curve_container->data;
-    bool                   result          = false;
+    bool                   result          = true;
 
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
@@ -1105,8 +1105,6 @@ PUBLIC EMERALD_API void curve_container_get_segment_property(__in  __notnull cur
                                       segment_id,
                                      &curve_segment);
 
-        ASSERT_DEBUG_SYNC(result,
-                          "Curve segment descriptor was not found.");
         if (result)
         {
             switch (property)
@@ -1158,6 +1156,8 @@ PUBLIC EMERALD_API void curve_container_get_segment_property(__in  __notnull cur
     }
     system_read_write_mutex_unlock(curve_data_ptr->segments_read_write_mutex,
                                    ACCESS_READ);
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -2026,7 +2026,7 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
 
                 if (use_pre_behavior_value)
                 {
-                    result = curve_segment_get_node( (curve_segment) first_curve_segment,
+                    result = curve_segment_get_node( first_curve_segment->segment,
                                                      0,
                                                     &node_time,
                                                      out_result);
@@ -2035,10 +2035,10 @@ PRIVATE bool _curve_container_get_pre_post_behavior_value(__in  __notnull curve_
                 {
                     uint32_t n_nodes = 0;
 
-                    curve_segment_get_amount_of_nodes( (curve_segment) first_curve_segment,
+                    curve_segment_get_amount_of_nodes( first_curve_segment->segment,
                                                       &n_nodes);
 
-                    result = curve_segment_get_node( (curve_segment) first_curve_segment,
+                    result = curve_segment_get_node( first_curve_segment->segment,
                                                      n_nodes - 1,
                                                     &node_time,
                                                      out_result);

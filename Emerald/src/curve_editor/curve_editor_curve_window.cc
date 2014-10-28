@@ -27,8 +27,7 @@
 /* Private definitions */
 typedef struct
 {
-    curve_container        curve;
-    curve_window_dimension curve_dimension;
+    curve_container curve;
 
     /* Control window handles */
     HWND window_handle;
@@ -438,11 +437,10 @@ PRIVATE volatile void _curve_editor_curve_window_initialize_renderer(__in __notn
     /* Curve window creation needs to be serialized */
     system_critical_section_enter(descriptor_ptr->serialization_cs);
     {
-        descriptor_ptr->renderer = curve_editor_curve_window_renderer_create(descriptor_ptr->name, 
-                                                                             descriptor_ptr->window_handle_view, 
+        descriptor_ptr->renderer = curve_editor_curve_window_renderer_create(descriptor_ptr->name,
+                                                                             descriptor_ptr->window_handle_view,
                                                                              descriptor_ptr->context,
-                                                                             descriptor_ptr->curve, 
-                                                                             descriptor_ptr->curve_dimension,
+                                                                             descriptor_ptr->curve,
                                                                              (curve_editor_curve_window) descriptor_ptr);
         ASSERT_DEBUG_SYNC(descriptor_ptr->renderer != NULL, "Could not create renderer");
     }
@@ -521,11 +519,16 @@ PRIVATE void _curve_editor_curve_window_initialize_dialog(__in __notnull _curve_
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_init_curve_editor_curve_window(_curve_editor_curve_window* descriptor, curve_container curve, uint8_t n_dimension, PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC release_callback_handler, void* release_callback_handler_arg, ogl_context context, system_hashed_ansi_string name, system_critical_section serialization_cs)
+PRIVATE void _curve_editor_curve_window_init_curve_editor_curve_window(_curve_editor_curve_window*                descriptor,
+                                                                       curve_container                            curve,
+                                                                       PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC release_callback_handler,
+                                                                       void*                                      release_callback_handler_arg,
+                                                                       ogl_context                                context,
+                                                                       system_hashed_ansi_string                  name,
+                                                                       system_critical_section                    serialization_cs)
 {
     descriptor->context                          = context;
     descriptor->curve                            = curve;
-    descriptor->curve_dimension                  = n_dimension;
     descriptor->dialog_created_event             = system_event_create(true, false);
     descriptor->dialog_thread_event              = NULL;
     descriptor->name                             = name;
@@ -581,7 +584,8 @@ PRIVATE void _curve_editor_curve_window_release(_curve_editor_curve_window* desc
     /* Call back if asked */
     if (descriptor->release_callback_handler != NULL)
     {
-        descriptor->release_callback_handler(descriptor->release_callback_handler_arg, descriptor->curve, descriptor->curve_dimension);
+        descriptor->release_callback_handler(descriptor->release_callback_handler_arg,
+                                             descriptor->curve);
     }
 
     /* Release the descriptor */
@@ -591,14 +595,22 @@ PRIVATE void _curve_editor_curve_window_release(_curve_editor_curve_window* desc
 /* Please see header for specification */
 PUBLIC void curve_editor_curve_window_create_static_segment_handler(void* arg)
 {
+    system_variant_type                                        curve_type     = SYSTEM_VARIANT_UNDEFINED;
     _curve_window_renderer_segment_creation_callback_argument* data           = (_curve_window_renderer_segment_creation_callback_argument*) arg;
     curve_segment_id                                           new_segment_id = 0;
-    system_variant                                             value_variant  = system_variant_create(curve_container_get_data_type(data->curve) );
+    system_variant                                             value_variant  = NULL;
 
-    curve_container_get_default_value(data->curve, data->curve_dimension, false, value_variant);
+    curve_container_get_property(data->curve,
+                                 CURVE_CONTAINER_PROPERTY_DATA_TYPE,
+                                &curve_type);
+
+    value_variant = system_variant_create(curve_type);
+
+    curve_container_get_default_value(data->curve,
+                                      false,
+                                      value_variant);
 
     if (!curve_container_add_static_value_segment(data->curve,
-                                                  data->curve_dimension,
                                                   data->start_time,
                                                   data->end_time,
                                                   value_variant,
@@ -617,18 +629,29 @@ PUBLIC void curve_editor_curve_window_create_static_segment_handler(void* arg)
 /* Please see header for specification */
 PUBLIC void curve_editor_curve_window_create_lerp_segment_handler(void* arg)
 {
+    system_variant_type                                        curve_data_type      = SYSTEM_VARIANT_UNDEFINED;
     _curve_window_renderer_segment_creation_callback_argument* data                 = (_curve_window_renderer_segment_creation_callback_argument*) arg;
     curve_segment_id                                           new_segment_id       = 0;
     float                                                      start_value;
-    system_variant                                             start_value_variant  = system_variant_create(curve_container_get_data_type(data->curve) );
-    system_variant                                             end_value_variant    = system_variant_create(curve_container_get_data_type(data->curve) );
+    system_variant                                             start_value_variant  = NULL;
+    system_variant                                             end_value_variant    = NULL;
 
-    curve_container_get_default_value(data->curve, data->curve_dimension, false, start_value_variant);
-    system_variant_get_float         (start_value_variant, &start_value);
-    system_variant_set_float_forced  (end_value_variant,   start_value + 1.0f);
+    curve_container_get_property(data->curve,
+                                 CURVE_CONTAINER_PROPERTY_DATA_TYPE,
+                                &curve_data_type);
+
+    start_value_variant = system_variant_create(curve_data_type);
+    end_value_variant   = system_variant_create(curve_data_type);
+
+    curve_container_get_default_value(data->curve,
+                                      false,
+                                      start_value_variant);
+    system_variant_get_float         (start_value_variant,
+                                     &start_value);
+    system_variant_set_float_forced  (end_value_variant,
+                                      start_value + 1.0f);
 
     if (!curve_container_add_lerp_segment(data->curve,
-                                          data->curve_dimension,
                                           data->start_time,
                                           data->end_time,
                                           start_value_variant,
@@ -649,16 +672,26 @@ PUBLIC void curve_editor_curve_window_create_lerp_segment_handler(void* arg)
 /* Please see header for specification */
 PUBLIC void curve_editor_curve_window_create_tcb_segment_handler(void* arg)
 {
+    system_variant_type                                        curve_data_type     = SYSTEM_VARIANT_UNDEFINED;
     _curve_window_renderer_segment_creation_callback_argument* data                = (_curve_window_renderer_segment_creation_callback_argument*) arg;
     curve_segment_id                                           new_segment_id      = 0;
-    system_variant                                             start_value_variant = system_variant_create(curve_container_get_data_type(data->curve) );
-    system_variant                                             end_value_variant   = system_variant_create(curve_container_get_data_type(data->curve) );
+    system_variant                                             start_value_variant = NULL;
+    system_variant                                             end_value_variant   = NULL;
 
-    curve_container_get_default_value(data->curve, data->curve_dimension, false, start_value_variant);
-    system_variant_set_float_forced  (end_value_variant, 1.0f);
+    curve_container_get_property(data->curve,
+                                 CURVE_CONTAINER_PROPERTY_DATA_TYPE,
+                                &curve_data_type);
+
+    start_value_variant = system_variant_create(curve_data_type);
+    end_value_variant   = system_variant_create(curve_data_type);
+
+    curve_container_get_default_value(data->curve,
+                                      false,
+                                      start_value_variant);
+    system_variant_set_float_forced  (end_value_variant,
+                                      1.0f);
 
     if (!curve_container_add_tcb_segment(data->curve,
-                                         data->curve_dimension,
                                          data->start_time,
                                          data->end_time,
                                          start_value_variant,
@@ -683,7 +716,11 @@ PUBLIC void curve_editor_curve_window_create_tcb_segment_handler(void* arg)
 }
 
 /* Please see header for specification */
-PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ogl_context context, curve_container curve, uint8_t n_dimension, PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC release_callback_handler, void* owner, system_critical_section serialization_cs)
+PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ogl_context                                context,
+                                                                curve_container                            curve,
+                                                                PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC release_callback_handler,
+                                                                void*                                      owner,
+                                                                system_critical_section                    serialization_cs)
 {
     /** Allocate space for the object */
     _curve_editor_curve_window* result = new (std::nothrow) _curve_editor_curve_window;
@@ -692,7 +729,19 @@ PUBLIC curve_editor_curve_window curve_editor_curve_window_show(ogl_context cont
     if (result != NULL)
     {
         /* Initialize the descriptor with default values */
-        _curve_editor_curve_window_init_curve_editor_curve_window(result, curve, n_dimension, release_callback_handler, owner, context, curve_container_get_name(curve), serialization_cs);
+        system_hashed_ansi_string curve_name = NULL;
+
+        curve_container_get_property(curve,
+                                     CURVE_CONTAINER_PROPERTY_NAME,
+                                    &curve_name);
+
+        _curve_editor_curve_window_init_curve_editor_curve_window(result,
+                                                                  curve,
+                                                                  release_callback_handler,
+                                                                  owner,
+                                                                  context,
+                                                                  curve_name,
+                                                                  serialization_cs);
 
         /* Spawn a new thread for the dialog */
         system_threads_spawn(_curve_editor_curve_window_dialog_thread_entrypoint, result, &result->dialog_thread_event);
@@ -876,7 +925,8 @@ PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window, cur
     }
     else
     {
-        curve_segment      selected_segment = curve_container_get_segment(curve_window_ptr->curve, curve_window_ptr->curve_dimension, segment_id);
+        curve_segment      selected_segment = curve_container_get_segment(curve_window_ptr->curve,
+                                                                          segment_id);
         curve_segment_type selected_segment_type;
 
         if (selected_segment != NULL && curve_segment_get_type(selected_segment, &selected_segment_type) )

@@ -386,6 +386,49 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_index(__in __notnull scene    
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene                     scene,
+                                                       __in __notnull system_hashed_ansi_string name)
+{
+    _scene*            scene_ptr = (_scene*) scene;
+    const unsigned int n_lights  = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
+    scene_light        result    = NULL;
+
+    LOG_INFO("scene_get_light_by_name(): slow code-path call");
+
+    for (unsigned int n_light = 0;
+                      n_light < n_lights;
+                    ++n_light)
+    {
+        scene_light               light      = NULL;
+        system_hashed_ansi_string light_name = NULL;
+
+        if (system_resizable_vector_get_element_at(scene_ptr->lights,
+                                                   n_light,
+                                                  &light) )
+        {
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_NAME,
+                                    &light_name);
+
+            if (system_hashed_ansi_string_is_equal_to_hash_string(light_name, name) )
+            {
+                result = light;
+
+                break;
+            }
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                             "Could not retrieve light at index [%d]",
+                             n_light);
+        }
+    }
+
+    return result;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull scene        scene,
                                                                __in           unsigned int index)
 {

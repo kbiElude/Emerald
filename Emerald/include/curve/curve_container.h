@@ -235,7 +235,7 @@ PUBLIC EMERALD_API bool curve_container_get_node_property(__in __notnull  curve_
                                                           __out __notnull system_variant);
 
 /** TODO */
-PUBLIC EMERALD_API void curve_container_get_segment_property(__in  __notnull curve_container,
+PUBLIC EMERALD_API bool curve_container_get_segment_property(__in  __notnull curve_container,
                                                              __in            curve_segment_id,
                                                              __in            curve_container_segment_property,
                                                              __out __notnull void*);

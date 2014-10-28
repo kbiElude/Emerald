@@ -79,6 +79,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_NAME:
+        {
+            *((system_hashed_ansi_string*) out_result) = light_ptr->name;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_TYPE:
         {
             *((scene_light_type*) out_result) = light_ptr->type;

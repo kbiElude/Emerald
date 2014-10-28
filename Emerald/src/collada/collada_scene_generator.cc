@@ -660,8 +660,14 @@ PRIVATE void _collada_scene_generator_process_collada_data_node(__in __notnull c
         case COLLADA_DATA_NODE_TYPE_NODE:
         {
             /* This corresponds to a general node in scene graph speak */
-            new_scene_graph_node = scene_graph_add_general_node(graph, parent_node);
+            new_scene_graph_node = scene_graph_create_general_node(graph);
 
+            ASSERT_DEBUG_SYNC(new_scene_graph_node != NULL,
+                              "Could not create a general scene graph node");
+
+            scene_graph_add_node(graph,
+                                 parent_node,
+                                 new_scene_graph_node);
             break;
         }
 
@@ -1001,10 +1007,15 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                 system_matrix4x4_set_from_row_major_raw(transformation_matrix,
                                                         transformation_matrix_data);
 
-                result = scene_graph_add_static_matrix4x4_transformation_node(graph,
-                                                                              parent_node,
-                                                                              transformation_matrix,
-                                                                              SCENE_GRAPH_NODE_TAG_UNDEFINED);
+                result = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                 transformation_matrix,
+                                                                                 SCENE_GRAPH_NODE_TAG_UNDEFINED);
+
+                ASSERT_DEBUG_SYNC(result != NULL, "Could not create a static matrix 4x4 transformation node");
+
+                scene_graph_add_node(graph,
+                                     parent_node,
+                                     result);
             }
             system_matrix4x4_release(transformation_matrix);
 
@@ -1075,10 +1086,16 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                     rotation_vector_curves[n_component] = _collada_scene_generator_create_curve_container_from_collada_value(collada_values[n_component]);
                 } /* for (all components) */
 
-                result = scene_graph_add_rotation_dynamic_node(graph,
-                                                               parent_node,
-                                                               rotation_vector_curves,
-                                                               result_node_tag);
+                result = scene_graph_create_rotation_dynamic_node(graph,
+                                                                  rotation_vector_curves,
+                                                                  result_node_tag);
+
+                ASSERT_DEBUG_SYNC(result != NULL,
+                                  "Could not create a scene graph rotation dynamic node");
+
+                scene_graph_add_node(graph,
+                                     parent_node,
+                                     result);
 
                 /* The former call will retain the curve container array, so we're safe
                  * to release it here */
@@ -1108,10 +1125,16 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                 system_matrix4x4_set_to_identity(rotation_matrix);
                 system_matrix4x4_rotate         (rotation_matrix, DEG_TO_RAD(rotation_angle), rotation_axis);
 
-                result = scene_graph_add_static_matrix4x4_transformation_node(graph,
-                                                                              parent_node,
-                                                                              rotation_matrix,
-                                                                              result_node_tag);
+                result = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                 rotation_matrix,
+                                                                                 result_node_tag);
+
+                ASSERT_DEBUG_SYNC(result != NULL,
+                                  "Could not create a scene graph 4x4 matrix transformation node");
+
+                scene_graph_add_node(graph,
+                                     parent_node,
+                                     result);
 
                 system_matrix4x4_release(rotation_matrix);
             }
@@ -1150,10 +1173,16 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                 system_matrix4x4_set_to_identity(scale_matrix);
                 system_matrix4x4_scale          (scale_matrix, scale_vector);
 
-                result = scene_graph_add_static_matrix4x4_transformation_node(graph,
-                                                                              parent_node,
-                                                                              scale_matrix,
-                                                                              result_node_tag);
+                result = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                 scale_matrix,
+                                                                                 result_node_tag);
+
+                ASSERT_DEBUG_SYNC(result != NULL,
+                                  "Could not create a scene graph 4x4 static matrix transformation node");
+
+                scene_graph_add_node(graph,
+                                     parent_node,
+                                     result);
             }
             system_matrix4x4_release(scale_matrix);
 
@@ -1171,7 +1200,10 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
              * NOTE: LW uses a number of <translate> nodes to compensate for pivot rotation.
              *       We definitely do not want a sanity check here.
              **/
-            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "translate")) result_node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
+            if (system_hashed_ansi_string_is_equal_to_raw_string(node_item_sid, "translate"))
+            {
+                result_node_tag = SCENE_GRAPH_NODE_TAG_TRANSLATE;
+            }
 
             {
                 collada_data_transformation_get_translate_properties( (collada_data_transformation) node_item_data,
@@ -1211,10 +1243,16 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                         translation_vector_curves[n_component] = _collada_scene_generator_create_curve_container_from_collada_value(translation_vector_collada_value[n_component]);
                     } /* for (all components) */
 
-                    result = scene_graph_add_translation_dynamic_node(graph,
-                                                                      parent_node,
-                                                                      translation_vector_curves,
-                                                                      result_node_tag);
+                    result = scene_graph_create_translation_dynamic_node(graph,
+                                                                         translation_vector_curves,
+                                                                         result_node_tag);
+
+                    ASSERT_DEBUG_SYNC(result != NULL,
+                                      "Could not create a scene graph translation dynamic node");
+
+                    scene_graph_add_node(graph,
+                                         parent_node,
+                                         result);
 
                     /* The former call will retain the curve container array, so we're safe
                      * to release it here */
@@ -1241,10 +1279,16 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
                     system_matrix4x4_set_to_identity(translation_matrix);
                     system_matrix4x4_translate      (translation_matrix, translation_vector);
 
-                    result = scene_graph_add_static_matrix4x4_transformation_node(graph,
-                                                                                  parent_node,
-                                                                                  translation_matrix,
-                                                                                  result_node_tag);
+                    result = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                     translation_matrix,
+                                                                                     result_node_tag);
+
+                    ASSERT_DEBUG_SYNC(result != NULL,
+                                      "Could not create a scene graph static matrix4x4 transformation node");
+
+                    scene_graph_add_node(graph,
+                                         parent_node,
+                                         result);
                 }
             }
             system_matrix4x4_release(translation_matrix);

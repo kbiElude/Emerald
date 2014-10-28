@@ -16,6 +16,7 @@ typedef enum scene_light_property
 {
     SCENE_LIGHT_PROPERTY_DIFFUSE,   /* Settable,     float[3] */
     SCENE_LIGHT_PROPERTY_DIRECTION, /* Settable,     float[3] */
+    SCENE_LIGHT_PROPERTY_NAME,      /* Not settable, system_hashed_ansi_string */
     SCENE_LIGHT_PROPERTY_TYPE,      /* Not settable, scene_light_type */
 
     /* Always last */

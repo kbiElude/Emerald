@@ -17,7 +17,11 @@ PUBLIC EMERALD_API void curve_editor_curve_window_hide(curve_editor_curve_window
 PUBLIC EMERALD_API void curve_editor_curve_window_redraw(curve_editor_curve_window);
 
 /** TODO */
-PUBLIC EMERALD_API curve_editor_curve_window curve_editor_curve_window_show(ogl_context, curve_container, uint8_t, PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC, void*, system_critical_section);
+PUBLIC EMERALD_API curve_editor_curve_window curve_editor_curve_window_show(ogl_context,
+                                                                            curve_container,
+                                                                            PFNONCURVEWINDOWRELEASECALLBACKHANDLERPROC,
+                                                                            void*,
+                                                                            system_critical_section);
 
 /** TODO. Called back with node id by the renderer.
  *

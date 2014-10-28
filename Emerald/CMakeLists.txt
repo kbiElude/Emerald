@@ -5,7 +5,7 @@ cmake_minimum_required (VERSION 2.8)
 project (EMERALD) 
 
 # Options
-OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code" OFF)
+OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code" ON)
 OPTION(INCLUDE_OBJECT_MANAGER  "Should include object manager code (incl. resource leaking detection)" ON)
 OPTION(INCLUDE_OPENCL          "Should include OpenCL code" OFF)
 OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
