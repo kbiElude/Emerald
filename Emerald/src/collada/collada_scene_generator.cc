@@ -80,14 +80,40 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
 
     /* Generate an unique ID for the curve.
      *
-     * NOTE: we could theoretically construct this string by merging the COLLADA node path, but
-     *       this would consume significant amounts of memory that's just not worth it.
+     * This is an easy task for collada_value's that hold animation data.
+     *
+     * For float values, this is not trivial and would involve merging
+     * COLLADA node paths, which is not really that much useful, given the
+     * fact we're talking static values here.
+     *
      * TODO: Improve if necessary.
      */
     static int        curve_counter = 0;
     std::stringstream curve_name_sstream;
 
-    curve_name_sstream << "Curve " << (curve_counter++);
+    if (value_type == COLLADA_VALUE_TYPE_COLLADA_DATA_ANIMATION)
+    {
+        collada_data_animation    value_animation    = NULL;
+        system_hashed_ansi_string value_animation_id = NULL;
+
+        collada_value_get_property(value,
+                                   COLLADA_VALUE_PROPERTY_COLLADA_DATA_ANIMATION,
+                                  &value_animation);
+
+        ASSERT_DEBUG_SYNC(value_animation != NULL,
+                          "COLLADA value holds a NULL animation instance");
+
+        collada_data_animation_get_property(value_animation,
+                                            COLLADA_DATA_ANIMATION_PROPERTY_ID,
+                                           &value_animation_id);
+
+        curve_name_sstream << system_hashed_ansi_string_get_buffer(value_animation_id);
+    }
+    else
+    {
+        /* Fall-back path */
+        curve_name_sstream << "Curve " << (curve_counter++);
+    }
 
     value_id = system_hashed_ansi_string_create(curve_name_sstream.str().c_str() );
 
