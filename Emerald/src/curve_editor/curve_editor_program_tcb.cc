@@ -66,33 +66,43 @@ PRIVATE void _curve_editor_program_tcb_release(void* in)
 
 
 /** TODO */
-PRIVATE void _curve_editor_program_tcb_create_renderer_callback(__in __notnull ogl_context context, void* curve_editor_program_tcb)
+PRIVATE void _curve_editor_program_tcb_create_renderer_callback(__in __notnull ogl_context context,
+                                                                               void*       curve_editor_program_tcb)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
     _curve_editor_program_tcb*        result_ptr   = (_curve_editor_program_tcb*) curve_editor_program_tcb;
     GLuint                            program_id   = ogl_program_get_id(result_ptr->program);
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    result_ptr->nodes_buffer_uniform_block_index = entry_points->pGLGetUniformBlockIndex(program_id, "NodesBuffer");
-    ASSERT_DEBUG_SYNC(result_ptr->nodes_buffer_uniform_block_index != -1, "Could not retrieve uniform block index for NodesBuffer");
+    result_ptr->nodes_buffer_uniform_block_index = entry_points->pGLGetUniformBlockIndex(program_id,
+                                                                                         "NodesBuffer");
+
+    ASSERT_DEBUG_SYNC(result_ptr->nodes_buffer_uniform_block_index != -1,
+                      "Could not retrieve uniform block index for NodesBuffer");
 
     /* Configure the binding for the program */
     entry_points->pGLUseProgram         (program_id);
-    entry_points->pGLUniformBlockBinding(program_id, result_ptr->nodes_buffer_uniform_block_index, 0);
+    entry_points->pGLUniformBlockBinding(program_id,
+                                         result_ptr->nodes_buffer_uniform_block_index,
+                                         0);
     entry_points->pGLUseProgram         (0);
 
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "GL error in _curve_editor_program_tcb_create_renderer_callback()");
+    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                      "GL error in _curve_editor_program_tcb_create_renderer_callback()");
 }
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull ogl_context               context,
+                                                                __in __notnull system_hashed_ansi_string name)
 {
     _curve_editor_program_tcb* result = new (std::nothrow) _curve_editor_program_tcb;
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Out of memroy while instantiating TCB program object.");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Out of memroy while instantiating TCB program object.");
+
     if (result != NULL)
     {
         /* Reset the structure */
@@ -202,7 +212,9 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         /* Create the program */
         result->program = ogl_program_create(context, name);
 
-        ASSERT_DEBUG_SYNC(result->program != NULL, "ogl_program_create() failed");
+        ASSERT_DEBUG_SYNC(result->program != NULL,
+                          "ogl_program_create() failed");
+
         if (result->program == NULL)
         {
             LOG_ERROR("Could not create tcb curve program.");
@@ -211,10 +223,19 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         }
 
         /* Create the shaders */
-        result->fragment_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name), " FP"));
-        result->vertex_shader   = ogl_shader_create(context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name), " VP"));
+        result->fragment_shader = ogl_shader_create(context,
+                                                    SHADER_TYPE_FRAGMENT,
+                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                            " FP"));
+        result->vertex_shader   = ogl_shader_create(context,
+                                                    SHADER_TYPE_VERTEX,
+                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                            " VP"));
 
-        ASSERT_DEBUG_SYNC(result->fragment_shader != NULL && result->vertex_shader != NULL, "ogl_shader_create() failed");
+        ASSERT_DEBUG_SYNC(result->fragment_shader != NULL &&
+                          result->vertex_shader   != NULL,
+                          "ogl_shader_create() failed");
+
         if (result->fragment_shader == NULL || result->vertex_shader == NULL)
         {
             LOG_ERROR("Could not create tcb curve fragment / vertex shader.");
@@ -226,11 +247,14 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         system_hashed_ansi_string fp_shader_body = system_hashed_ansi_string_create(fp_body_stream.str().c_str() );
         system_hashed_ansi_string vp_shader_body = system_hashed_ansi_string_create(vp_body_stream.str().c_str() );
         bool                      b_result       = false;
-        
-        b_result  = ogl_shader_set_body(result->fragment_shader, fp_shader_body);
-        b_result &= ogl_shader_set_body(result->vertex_shader,   vp_shader_body);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_shader_set_body() failed");
+        b_result  = ogl_shader_set_body(result->fragment_shader,
+                                        fp_shader_body);
+        b_result &= ogl_shader_set_body(result->vertex_shader,
+                                        vp_shader_body);
+
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_shader_set_body() failed");
         if (!b_result)
         {
             LOG_ERROR("Could not set tcb curve fragment / vertex shader body.");
@@ -239,10 +263,14 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         }
 
         /* Attach shaders to the program */
-        b_result  = ogl_program_attach_shader(result->program, result->fragment_shader);
-        b_result &= ogl_program_attach_shader(result->program, result->vertex_shader);
+        b_result  = ogl_program_attach_shader(result->program,
+                                              result->fragment_shader);
+        b_result &= ogl_program_attach_shader(result->program,
+                                              result->vertex_shader);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_program_attach_shader() failed");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_program_attach_shader() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not attach shader(s) to lerp curve program.");
@@ -253,7 +281,9 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         /* Link the program */
         b_result = ogl_program_link(result->program);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_program_link() failed");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_program_link() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not link tcb curve program");
@@ -270,15 +300,31 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         const ogl_program_uniform_descriptor* start_x_uniform_descriptor      = NULL;
         const ogl_program_uniform_descriptor* val_range_uniform_descriptor    = NULL;
 
-        b_result  = ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("delta_time"),   &delta_time_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("delta_x"),      &delta_x_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("node_indexes"), &node_indexes_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("should_round"), &should_round_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("start_time"),   &start_time_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("start_x"),      &start_x_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("val_range"),    &val_range_uniform_descriptor);
+        b_result  = ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("delta_time"),
+                                                   &delta_time_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("delta_x"),
+                                                   &delta_x_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("node_indexes"),
+                                                   &node_indexes_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("should_round"),
+                                                   &should_round_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("start_time"),
+                                                   &start_time_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("start_x"),
+                                                   &start_x_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("val_range"),
+                                                   &val_range_uniform_descriptor);
 
-        ASSERT_DEBUG_SYNC(b_result, "Could not retrieve delta_time/delta_x/start_time/start_x uniform descriptor.");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "Could not retrieve delta_time/delta_x/start_time/start_x uniform descriptor.");
+
         if (b_result)
         {
             result->delta_time_location   = delta_time_uniform_descriptor->location;
@@ -291,13 +337,16 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         }
 
         /* Configure uniform block binding */
-        ogl_context_request_callback_from_context_thread(context, _curve_editor_program_tcb_create_renderer_callback, result);
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _curve_editor_program_tcb_create_renderer_callback,
+                                                         result);
         
         /* Add to the object manager */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result, 
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                        _curve_editor_program_tcb_release,
                                                        OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_TCB,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Curve Editor Programs (TCB)\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Curve Editor Programs (TCB)\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (curve_editor_program_tcb) result;

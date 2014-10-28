@@ -14,7 +14,6 @@ PUBLIC curve_editor_curve_window_renderer curve_editor_curve_window_renderer_cre
                                                                                     __in __notnull HWND,
                                                                                     __in __notnull ogl_context,
                                                                                     __in           curve_container,
-                                                                                    __in           curve_window_dimension,
                                                                                     __in __notnull curve_editor_curve_window);
 
 /** TODO */

@@ -250,7 +250,9 @@ typedef enum
     SYSTEM_VARIANT_ANSI_STRING,
     SYSTEM_VARIANT_BOOL,
     SYSTEM_VARIANT_INTEGER,
-    SYSTEM_VARIANT_FLOAT
+    SYSTEM_VARIANT_FLOAT,
+
+    SYSTEM_VARIANT_UNDEFINED
 } system_variant_type;
 
 /** A variant instance */
