@@ -56,7 +56,7 @@
 #define COLOR_AXES                 {1.0f, 0.0f, 0.0f, 0.5f}
 #define HEIGHT_SEPARATORS_PX       ( 32  )
 #define LENGTH_SEPARATORS_PX       ( 16  )
-#define MAX_SCREEN_HEIGHT          ( 16.0f)
+#define MAX_SCREEN_HEIGHT_DEFAULT  ( 16.0f)
 #define MAX_SCREEN_WIDTH_DEFAULT   ( 32.0f)
 #define MIN_SCREEN_HEIGHT          ( 0.1f)
 #define MIN_SCREEN_WIDTH           ( 0.1f)
@@ -102,6 +102,7 @@ typedef struct
     HWND                      view_window_handle;
     system_window             window;
 
+    float                     max_screen_height;
     float                     max_screen_width;
     int                       mouse_x; /* Used when drawing the surface */
     int                       mouse_y; /* Used when drawing the surface */
@@ -1675,6 +1676,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
     descriptor->float_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
     descriptor->hovered_curve_segment_id  = -1;
     descriptor->is_left_button_down       = false;
+    descriptor->max_screen_height         = MAX_SCREEN_HEIGHT_DEFAULT;
     descriptor->max_screen_width          = MAX_SCREEN_WIDTH_DEFAULT;
     descriptor->mouse_x                   = 0;
     descriptor->mouse_y                   = 0;
@@ -2723,7 +2725,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_wheel(system_window   
             float new_height = renderer_ptr->y_height / 0.5f;
             float new_y1     = renderer_ptr->y1 - renderer_ptr->y_height * 0.5f;
 
-            if (new_height <= MAX_SCREEN_HEIGHT)
+            if (new_height <= renderer_ptr->max_screen_height)
             {
                 renderer_ptr->y1       = new_y1;
                 renderer_ptr->y_height = new_height;
@@ -3460,6 +3462,13 @@ PUBLIC void curve_editor_curve_window_renderer_set_property(__in __notnull curve
 
     switch (property)
     {
+        case CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_HEIGHT:
+        {
+            renderer_ptr->max_screen_height = *(float*) data;
+
+            break;
+        }
+
         case CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
         {
             renderer_ptr->max_screen_width = *(float*) data;

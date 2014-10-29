@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2014)
  *
  */
 #ifndef CURVE_EDITOR_CURVE_WINDOW_H
@@ -12,7 +12,8 @@
 
 typedef enum
 {
-    CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH, /* float, settable. expressed in seconds. */
+    CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_HEIGHT, /* float, settable */
+    CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,  /* float, settable. expressed in seconds. */
 } curve_editor_curve_window_property;
 
 /** TODO */

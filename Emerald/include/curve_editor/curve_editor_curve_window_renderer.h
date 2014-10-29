@@ -11,7 +11,8 @@
 
 typedef enum
 {
-    CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH /* float, expressed in s. settable. */
+    CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_HEIGHT, /* float.                 settable. */
+    CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH   /* float, expressed in s. settable. */
 } curve_editor_curve_window_renderer_property;
 
 /** TODO */
