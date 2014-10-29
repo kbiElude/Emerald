@@ -57,7 +57,7 @@
 #define HEIGHT_SEPARATORS_PX       ( 32  )
 #define LENGTH_SEPARATORS_PX       ( 16  )
 #define MAX_SCREEN_HEIGHT          ( 16.0f)
-#define MAX_SCREEN_WIDTH           ( 2.0f)
+#define MAX_SCREEN_WIDTH_DEFAULT   ( 32.0f)
 #define MIN_SCREEN_HEIGHT          ( 0.1f)
 #define MIN_SCREEN_WIDTH           ( 0.1f)
 #define NODE_SIZE_PX               ( 12 )
@@ -102,6 +102,7 @@ typedef struct
     HWND                      view_window_handle;
     system_window             window;
 
+    float                     max_screen_width;
     int                       mouse_x; /* Used when drawing the surface */
     int                       mouse_y; /* Used when drawing the surface */
     float                     mouse_y_value;
@@ -1674,6 +1675,7 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
     descriptor->float_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
     descriptor->hovered_curve_segment_id  = -1;
     descriptor->is_left_button_down       = false;
+    descriptor->max_screen_width          = MAX_SCREEN_WIDTH_DEFAULT;
     descriptor->mouse_x                   = 0;
     descriptor->mouse_y                   = 0;
     descriptor->name                      = name;
@@ -2747,7 +2749,7 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_wheel(system_window   
             float new_width = renderer_ptr->x_width / 0.5f;
             float new_x1    = renderer_ptr->x1 - renderer_ptr->x_width * 0.5f;
 
-            if (new_width <= MAX_SCREEN_WIDTH)
+            if (new_width <= renderer_ptr->max_screen_width)
             {
                 renderer_ptr->x1      = new_x1;
                 renderer_ptr->x_width = new_width;
@@ -3447,4 +3449,28 @@ PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_edi
                                                                x1y1x2y2);
     ogl_rendering_handler_play                                (renderer_ptr->rendering_handler,
                                                                0);
+}
+
+/* Please see header for spec */
+PUBLIC void curve_editor_curve_window_renderer_set_property(__in __notnull curve_editor_curve_window_renderer          renderer,
+                                                            __in           curve_editor_curve_window_renderer_property property,
+                                                            __in __notnull void*                                       data)
+{
+    _curve_editor_curve_window_renderer* renderer_ptr = (_curve_editor_curve_window_renderer*) renderer;
+
+    switch (property)
+    {
+        case CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
+        {
+            renderer_ptr->max_screen_width = *(float*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve_editor_curve_window_renderer property");
+        }
+    } /* switch (property) */
 }

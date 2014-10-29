@@ -946,3 +946,29 @@ PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window, cur
         }
     }
 }
+
+/** Please see header for specification */
+PUBLIC void curve_editor_curve_window_set_property(__in __notnull curve_editor_curve_window          window,
+                                                   __in           curve_editor_curve_window_property property,
+                                                   __in __notnull void*                              data)
+{
+    _curve_editor_curve_window* window_ptr = (_curve_editor_curve_window*) window;
+
+    switch (property)
+    {
+        case CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
+        {
+            curve_editor_curve_window_renderer_set_property(window_ptr->renderer,
+                                                            CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,
+                                                            data);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve_editor_curve_window_property value");
+        }
+    } /* switch (property) */
+}

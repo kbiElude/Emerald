@@ -10,6 +10,11 @@
 #include "curve_editor/curve_editor_types.h"
 #include "ogl/ogl_types.h"
 
+typedef enum
+{
+    CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH, /* float, settable. expressed in seconds. */
+} curve_editor_curve_window_property;
+
 /** TODO */
 PUBLIC EMERALD_API void curve_editor_curve_window_hide(curve_editor_curve_window);
 
@@ -29,6 +34,11 @@ PUBLIC EMERALD_API curve_editor_curve_window curve_editor_curve_window_show(ogl_
  *  action static and editbox components are hidden
  **/
 PUBLIC void curve_editor_select_node(curve_editor_curve_window, curve_segment_id, curve_segment_node_id);
+
+/** TODO */
+PUBLIC void curve_editor_curve_window_set_property(__in __notnull curve_editor_curve_window          window,
+                                                   __in           curve_editor_curve_window_property property,
+                                                   __in __notnull void*                              data);
 
 /** TODO. Called back with 2 floats <start, end x> */
 PUBLIC void curve_editor_curve_window_create_static_segment_handler(void*);
