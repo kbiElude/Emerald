@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "curve_editor/curve_editor_general.h"
 #include "curve_editor/curve_editor_types.h"
 #include "curve_editor/curve_editor_main_window.h"
 #include "ogl/ogl_types.h"
@@ -74,6 +75,37 @@ PUBLIC EMERALD_API bool curve_editor_hide()
     system_critical_section_leave(global_cs);
 
     return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void curve_editor_set_property(__in __notnull ogl_context           context,
+                                                  __in           curve_editor_property property,
+                                                  __in __notnull void*                 data)
+{
+    system_critical_section_enter(global_cs);
+    {
+        if (main_window != NULL)
+        {
+            switch (property)
+            {
+                case CURVE_EDITOR_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
+                {
+                    curve_editor_main_window_set_property(main_window,
+                                                          CURVE_EDITOR_MAIN_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,
+                                                          data);
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized curve_editor_property value");
+                }
+            } /* switch (property) */
+        }
+    }
+    system_critical_section_leave(global_cs);
 }
 
 /* Please see header for specification */

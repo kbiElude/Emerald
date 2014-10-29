@@ -335,7 +335,10 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     ogl_flyby_set_movement_delta(_context, 1.25f);
 
     /* Show the curve editor */
-    curve_editor_show(_context);
+    curve_editor_show        (_context);
+    curve_editor_set_property(_context,
+                              CURVE_EDITOR_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,
+                              &_animation_duration_float);
 
     /* Construct the pipeline object */
     _pipeline = ogl_pipeline_create(_context,

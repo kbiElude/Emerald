@@ -943,3 +943,49 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
     delete main_window_ptr;
     main_window_ptr = NULL;
 }
+
+/* Please see header for specification */
+PUBLIC void curve_editor_main_window_set_property(__in __notnull __post_invalid curve_editor_main_window          window,
+                                                  __in                          curve_editor_main_window_property property,
+                                                  __in __notnull                void*                             data)
+{
+    _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
+
+    system_critical_section_enter(window_ptr->serialization_cs);
+    {
+        switch (property)
+        {
+            case CURVE_EDITOR_MAIN_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
+            {
+                uint32_t n_windows = system_hash64map_get_amount_of_elements(window_ptr->curve_node_handle_to_curve_window_map_array_descriptor);
+
+                for (uint32_t n_window = 0;
+                              n_window < n_windows;
+                            ++n_window)
+                {
+                    _window_map_array_descriptor* entry_ptr = NULL;
+
+                    if (system_hash64map_get_element_at(window_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                                        n_window,
+                                                       &entry_ptr,
+                                                        NULL) )
+                    {
+                        curve_editor_curve_window_set_property(entry_ptr->window,
+                                                               CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,
+                                                               data);
+                    } /* if (entry descriptor was found) */
+
+                } /* for (all spawned windows) */
+
+                break;
+            } /* case CURVE_EDITOR_MAIN_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH: */
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized curve_editor_main_window_property value");
+            }
+        } /* switch (property) */
+    }
+    system_critical_section_leave(window_ptr->serialization_cs);
+}

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -19,7 +19,7 @@
 #include "system/system_threads.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
-
+#include <float.h>
 
 #define WM_CUSTOMIZEDSHUTDOWN (WM_USER + 1)
 
@@ -83,10 +83,14 @@ typedef struct
 } _curve_editor_curve_window;
 
 /* Forward declarations */
-PRIVATE void _curve_editor_curve_window_initialize_dialog (__in __notnull _curve_editor_curve_window*, HWND dialog_handle);
-PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_window*, uint32_t);
-PRIVATE void _curve_editor_curve_window_on_resize         (_curve_editor_curve_window* descriptor, unsigned int new_width, unsigned int new_height);
-PRIVATE void _curve_editor_curve_window_release           (_curve_editor_curve_window* descriptor);
+PRIVATE void _curve_editor_curve_window_initialize_dialog (__in __notnull _curve_editor_curve_window*,
+                                                                          HWND                        dialog_handle);
+PRIVATE void _curve_editor_curve_window_on_property_edited(               _curve_editor_curve_window*,
+                                                                          uint32_t);
+PRIVATE void _curve_editor_curve_window_on_resize         (               _curve_editor_curve_window* descriptor,
+                                                                          unsigned int                new_width,
+                                                                          unsigned int                new_height);
+PRIVATE void _curve_editor_curve_window_release           (               _curve_editor_curve_window* descriptor);
 
 
 /** TODO */
@@ -98,7 +102,10 @@ PRIVATE volatile void _curve_editor_curve_window_dialog_close_button_handler(voi
 }
 
 /** TODO */
-PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND dialog_handle, UINT message_id, WPARAM wparam, LPARAM lparam)
+PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND   dialog_handle,
+                                                                        UINT   message_id,
+                                                                        WPARAM wparam,
+                                                                        LPARAM lparam)
 {
     switch (message_id)
     {
@@ -107,8 +114,11 @@ PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND dia
             /* In order to close the dialog, we need to perform the whole process from another thread. Otherwise we'll get a classical thread lock-up,
              * as curve_editor_curve_window_release() blocks until the window thread exits, which can't happen from within a message handler.
              */
-            _curve_editor_curve_window*        descriptor = (_curve_editor_curve_window*) ::GetWindowLongPtr(dialog_handle, GWLP_USERDATA);
-            system_thread_pool_task_descriptor task       = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL, _curve_editor_curve_window_dialog_close_button_handler, descriptor);
+            _curve_editor_curve_window*        descriptor = (_curve_editor_curve_window*) ::GetWindowLongPtr(dialog_handle,
+                                                                                                             GWLP_USERDATA);
+            system_thread_pool_task_descriptor task       = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                                   _curve_editor_curve_window_dialog_close_button_handler,
+                                                                                                                   descriptor);
 
             system_thread_pool_submit_single_task(task);
             break;
@@ -194,7 +204,10 @@ PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND dia
 
                 system_window_get_handle(renderer_window, &renderer_window_handle);
 
-                ::SendMessageA(renderer_window_handle, WM_MOUSEWHEEL, wparam, lparam);
+                ::SendMessageA(renderer_window_handle,
+                               WM_MOUSEWHEEL,
+                               wparam,
+                               lparam);
             }
 
             return 1;
@@ -205,7 +218,8 @@ PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND dia
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_window* descriptor_ptr, uint32_t n_property)
+PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_window* descriptor_ptr,
+                                                           uint32_t                    n_property)
 {
     /* Retrieve edit-box text */
     HWND editbox_handle = (n_property == 0 ? descriptor_ptr->window_handle_property_1_editbox :
@@ -239,7 +253,10 @@ PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_w
         {
             system_variant variant = system_variant_create(edited_segment_variant_type);
 
-            system_variant_set_ansi_string(variant, text != NULL ? system_hashed_ansi_string_create(text) : system_hashed_ansi_string_get_default_empty_string(), true);
+            system_variant_set_ansi_string(variant,
+                                           text != NULL ? system_hashed_ansi_string_create                  (text) :
+                                                          system_hashed_ansi_string_get_default_empty_string(),
+                                           true);
 
             switch (edited_segment_type)
             {
@@ -248,9 +265,16 @@ PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_w
                 {
                     system_timeline_time node_time = -1;
 
-                    if (curve_segment_get_node(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, &node_time, NULL) )
+                    if (curve_segment_get_node(descriptor_ptr->edited_segment,
+                                               descriptor_ptr->edited_segment_node_id,
+                                              &node_time,
+                                               NULL) )
                     {
-                        curve_segment_modify_node_time_value(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, node_time, variant, true);
+                        curve_segment_modify_node_time_value(descriptor_ptr->edited_segment,
+                                                             descriptor_ptr->edited_segment_node_id,
+                                                             node_time,
+                                                             variant,
+                                                             true);
                     }
 
                     break;
@@ -262,18 +286,42 @@ PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_w
                     {
                         switch (n_property)
                         {
-                            case 0: curve_segment_modify_node_property(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, CURVE_SEGMENT_NODE_PROPERTY_BIAS,       variant); break;
-                            case 1: curve_segment_modify_node_property(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY, variant); break;
-                            case 2: curve_segment_modify_node_property(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, CURVE_SEGMENT_NODE_PROPERTY_TENSION,    variant); break;
+                            case 0: curve_segment_modify_node_property(descriptor_ptr->edited_segment,
+                                                                       descriptor_ptr->edited_segment_node_id,
+                                                                       CURVE_SEGMENT_NODE_PROPERTY_BIAS,
+                                                                       variant);
+
+                                    break;
+
+                            case 1: curve_segment_modify_node_property(descriptor_ptr->edited_segment,
+                                                                       descriptor_ptr->edited_segment_node_id,
+                                                                       CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY,
+                                                                       variant);
+
+                                    break;
+
+                            case 2: curve_segment_modify_node_property(descriptor_ptr->edited_segment,
+                                                                       descriptor_ptr->edited_segment_node_id,
+                                                                       CURVE_SEGMENT_NODE_PROPERTY_TENSION,
+                                                                       variant);
+
+                                    break;
                         }
                     }
                     else
                     {
                         system_timeline_time node_time = -1;
 
-                        if (curve_segment_get_node(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, &node_time, NULL) )
+                        if (curve_segment_get_node(descriptor_ptr->edited_segment,
+                                                   descriptor_ptr->edited_segment_node_id,
+                                                  &node_time,
+                                                   NULL) )
                         {
-                            curve_segment_modify_node_time_value(descriptor_ptr->edited_segment, descriptor_ptr->edited_segment_node_id, node_time, variant, true);
+                            curve_segment_modify_node_time_value(descriptor_ptr->edited_segment,
+                                                                 descriptor_ptr->edited_segment_node_id,
+                                                                 node_time,
+                                                                 variant,
+                                                                 true);
                         }
                     }
 
@@ -298,7 +346,9 @@ PRIVATE void _curve_editor_curve_window_on_property_edited(_curve_editor_curve_w
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* descriptor, unsigned int new_width, unsigned int new_height)
+PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* descriptor,
+                                                  unsigned int                new_width,
+                                                  unsigned int                new_height)
 {
     int x_size_frame = ::GetSystemMetrics(SM_CXSIZEFRAME);
     int y_border     = ::GetSystemMetrics(SM_CYBORDER);
@@ -311,11 +361,16 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     /* Help group-box should rescale horizontally, and move vertically as the window gets rescaled. */
     int y2 = new_height - (descriptor->ref_window_rect.bottom               - descriptor->ref_window_rect_help_groupbox.bottom - y_size_frame);
     int y1 = y2 -         (descriptor->ref_window_rect_help_groupbox.bottom - descriptor->ref_window_rect_help_groupbox.top);
-    
+
     int x1 = descriptor->ref_window_rect_help_groupbox.left - descriptor->ref_window_rect.left - dx;
     int x2 = x1 + int(float(new_width) / float(descriptor->ref_client_width) * (descriptor->ref_window_rect_help_groupbox.right - descriptor->ref_window_rect_help_groupbox.left) );
 
-    ::MoveWindow(descriptor->window_handle_help_groupbox, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_help_groupbox,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     int cached_help_groupbox_x2 = x2;
     int cached_help_groupbox_y1 = y1;
@@ -326,8 +381,6 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     y2 = cached_help_groupbox_y1 - (descriptor->ref_window_rect_help_groupbox.top - descriptor->ref_window_rect_view.bottom);
     y1 = descriptor->ref_window_rect_view.top - descriptor->ref_window_rect.top - dy;
 
-    //::MoveWindow(descriptor->window_handle_view, x1, y1, x2 - x1, y2 - y1, FALSE);
-
     int cached_renderer_x1y1x2y2[4] = {x1, y1, x2, y2};
 
     /* Help static should behave similarly */
@@ -337,7 +390,12 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x1 = descriptor->ref_window_rect_help_static.left - descriptor->ref_window_rect.left - dx;
     x2 = x1 + int(float(new_width) / float(descriptor->ref_client_width) * (descriptor->ref_window_rect_help_static.right - descriptor->ref_window_rect_help_static.left) );
 
-    ::MoveWindow(descriptor->window_handle_help_static, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_help_static,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     /* Actions group-box  */
     y2 = new_height - (descriptor->ref_window_rect.bottom - descriptor->ref_window_rect_actions_groupbox.bottom - y_size_frame);
@@ -346,7 +404,12 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x2 = new_width               - (descriptor->ref_window_rect.right - descriptor->ref_window_rect_actions_groupbox.right - x_size_frame);
     x1 = cached_help_groupbox_x2 + (descriptor->ref_window_rect_actions_groupbox.left - descriptor->ref_window_rect_help_groupbox.right);
 
-    ::MoveWindow(descriptor->window_handle_actions_groupbox, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_actions_groupbox,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     int cached_actions_groupbox_x1 = x1;
 
@@ -356,7 +419,12 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x1 = cached_actions_groupbox_x1 + (descriptor->ref_window_rect_property_1_static.left   - descriptor->ref_window_rect_actions_groupbox.left);
     x2 = x1 +                         (descriptor->ref_window_rect_property_1_static.right  - descriptor->ref_window_rect_property_1_static.left);
 
-    ::MoveWindow(descriptor->window_handle_property_1_static, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_1_static,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     int cached_property1_static_x2 = x2;
 
@@ -365,7 +433,12 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x1 = cached_actions_groupbox_x1 + (descriptor->ref_window_rect_property_1_static.left   - descriptor->ref_window_rect_actions_groupbox.left);
     x2 = x1 +                         (descriptor->ref_window_rect_property_1_static.right  - descriptor->ref_window_rect_property_1_static.left);
 
-    ::MoveWindow(descriptor->window_handle_property_2_static, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_2_static,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     int cached_property2_static_x2 = x2;
 
@@ -374,7 +447,12 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x1 = cached_actions_groupbox_x1 + (descriptor->ref_window_rect_property_1_static.left   - descriptor->ref_window_rect_actions_groupbox.left);
     x2 = x1 +                         (descriptor->ref_window_rect_property_1_static.right  - descriptor->ref_window_rect_property_1_static.left);
 
-    ::MoveWindow(descriptor->window_handle_property_3_static, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_3_static,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     int cached_property3_static_x2 = x2;
 
@@ -383,7 +461,12 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x1 = cached_actions_groupbox_x1 + (descriptor->ref_window_rect_property_1_static.left   - descriptor->ref_window_rect_actions_groupbox.left);
     x2 = x1 +                         (descriptor->ref_window_rect_property_1_static.right  - descriptor->ref_window_rect_property_1_static.left);
 
-    ::MoveWindow(descriptor->window_handle_property_4_static, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_4_static,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     /* Followed by editboxes */
     y2 = new_height                 - (descriptor->ref_window_rect.bottom                    - descriptor->ref_window_rect_property_1_editbox.bottom - y_size_frame);
@@ -391,34 +474,58 @@ PRIVATE void _curve_editor_curve_window_on_resize(_curve_editor_curve_window* de
     x2 = new_width                  - (descriptor->ref_window_rect.right                     - descriptor->ref_window_rect_property_1_editbox.right - x_size_frame);
     x1 = cached_property1_static_x2 + (descriptor->ref_window_rect_property_1_editbox.left   - descriptor->ref_window_rect_property_1_static.right);
 
-    ::MoveWindow(descriptor->window_handle_property_1_editbox, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_1_editbox,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     y2 = new_height                 - (descriptor->ref_window_rect.bottom                    - descriptor->ref_window_rect_property_2_editbox.bottom - y_size_frame);
     y1 = y2                         - (descriptor->ref_window_rect_property_2_editbox.bottom - descriptor->ref_window_rect_property_2_editbox.top);
     x2 = new_width                  - (descriptor->ref_window_rect.right                     - descriptor->ref_window_rect_property_2_editbox.right - x_size_frame);
     x1 = cached_property2_static_x2 + (descriptor->ref_window_rect_property_2_editbox.left   - descriptor->ref_window_rect_property_2_static.right);
 
-    ::MoveWindow(descriptor->window_handle_property_2_editbox, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_2_editbox,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     y2 = new_height                 - (descriptor->ref_window_rect.bottom                    - descriptor->ref_window_rect_property_3_editbox.bottom - y_size_frame);
     y1 = y2                         - (descriptor->ref_window_rect_property_3_editbox.bottom - descriptor->ref_window_rect_property_3_editbox.top);
     x2 = new_width                  - (descriptor->ref_window_rect.right                     - descriptor->ref_window_rect_property_3_editbox.right - x_size_frame);
     x1 = cached_property1_static_x2 + (descriptor->ref_window_rect_property_3_editbox.left   - descriptor->ref_window_rect_property_3_static.right);
 
-    ::MoveWindow(descriptor->window_handle_property_3_editbox, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_3_editbox,
+                 x1,
+                 y1,
+                 x2 - x1,
+                 y2 - y1,
+                 FALSE);
 
     y2 = new_height                 - (descriptor->ref_window_rect.bottom                    - descriptor->ref_window_rect_property_4_editbox.bottom - y_size_frame);
     y1 = y2                         - (descriptor->ref_window_rect_property_4_editbox.bottom - descriptor->ref_window_rect_property_4_editbox.top);
     x2 = new_width                  - (descriptor->ref_window_rect.right                     - descriptor->ref_window_rect_property_4_editbox.right - x_size_frame);
     x1 = cached_property1_static_x2 + (descriptor->ref_window_rect_property_4_editbox.left   - descriptor->ref_window_rect_property_4_static.right);
 
-    ::MoveWindow(descriptor->window_handle_property_4_editbox, x1, y1, x2 - x1, y2 - y1, FALSE);
+    ::MoveWindow(descriptor->window_handle_property_4_editbox,
+        x1,
+        y1,
+        x2 - x1,
+        y2 - y1,
+        FALSE);
 
     /* Issue window redraw */
-    ::RedrawWindow(descriptor->window_handle, NULL, NULL, RDW_ERASE | RDW_INVALIDATE | RDW_ERASENOW);
+    ::RedrawWindow(descriptor->window_handle,
+                   NULL,
+                   NULL,
+                   RDW_ERASE | RDW_INVALIDATE | RDW_ERASENOW);
 
     /* Redraw the renderer view */
-    curve_editor_curve_window_renderer_resize(descriptor->renderer, cached_renderer_x1y1x2y2);
+    curve_editor_curve_window_renderer_resize(descriptor->renderer,
+                                              cached_renderer_x1y1x2y2);
 }
 
 /** TODO */
@@ -426,7 +533,11 @@ PRIVATE void _curve_editor_curve_window_dialog_thread_entrypoint(void* descripto
 {
     _curve_editor_curve_window* descriptor_ptr = (_curve_editor_curve_window*) descriptor;
 
-    ::DialogBoxParamA(_global_instance, MAKEINTRESOURCE(IDD_CURVE_EDITOR_CURVE), HWND_DESKTOP, _curve_editor_curve_window_dialog_message_handler, (LPARAM) descriptor_ptr);
+    ::DialogBoxParamA(_global_instance,
+                      MAKEINTRESOURCE(IDD_CURVE_EDITOR_CURVE),
+                      HWND_DESKTOP,
+                      _curve_editor_curve_window_dialog_message_handler,
+                      (LPARAM) descriptor_ptr);
 }
 
 /** TODO */
@@ -442,13 +553,93 @@ PRIVATE volatile void _curve_editor_curve_window_initialize_renderer(__in __notn
                                                                              descriptor_ptr->context,
                                                                              descriptor_ptr->curve,
                                                                              (curve_editor_curve_window) descriptor_ptr);
+
         ASSERT_DEBUG_SYNC(descriptor_ptr->renderer != NULL, "Could not create renderer");
+
+        /* Timeline height should be rescaled so that it fits the whole curve. */
+        system_variant_type curve_data_type    = SYSTEM_VARIANT_UNDEFINED;
+        float               max_height         = 0.0f;
+        uint32_t            n_segments         = 0;
+        float               node_value         = 0.0f;
+        float               node_value_min     = FLT_MAX;
+        float               node_value_max     = FLT_MIN;
+        system_variant      node_value_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+        curve_container_get_property(descriptor_ptr->curve,
+                                     CURVE_CONTAINER_PROPERTY_DATA_TYPE,
+                                    &curve_data_type);
+        curve_container_get_property(descriptor_ptr->curve,
+                                     CURVE_CONTAINER_PROPERTY_N_SEGMENTS,
+                                    &n_segments);
+
+        ASSERT_DEBUG_SYNC(curve_data_type == SYSTEM_VARIANT_FLOAT,
+                          "TODO");
+
+        for (uint32_t n_segment = 0;
+                      n_segment < n_segments;
+                    ++n_segment)
+        {
+            uint32_t         n_segment_nodes = 0;
+            curve_segment_id segment_id      = -1;
+
+            curve_container_get_segment_id_for_nth_segment(descriptor_ptr->curve,
+                                                           n_segment,
+                                                          &segment_id);
+
+            curve_container_get_segment_property(descriptor_ptr->curve,
+                                                 segment_id,
+                                                 CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES,
+                                                &n_segment_nodes);
+
+            for (uint32_t n_segment_node = 0;
+                          n_segment_node < n_segment_nodes;
+                        ++n_segment_node)
+            {
+                curve_segment_node_id segment_node_id = -1;
+
+                curve_container_get_node_id_for_node_at(descriptor_ptr->curve,
+                                                        segment_id,
+                                                        n_segment_node,
+                                                       &segment_node_id);
+
+                curve_container_get_general_node_data(descriptor_ptr->curve,
+                                                      segment_id,
+                                                      segment_node_id,
+                                                      NULL, /* node_time */
+                                                      node_value_variant);
+
+                system_variant_get_float(node_value_variant,
+                                        &node_value);
+
+                if (node_value > node_value_max)
+                {
+                    node_value_max = node_value;
+                }
+
+                if (node_value < node_value_min)
+                {
+                    node_value_min = node_value;
+                }
+            } /* for (all segment nodes) */
+        } /* for (all curve segments) */
+
+        system_variant_release(node_value_variant);
+
+        max_height = fabs(node_value_max - node_value_min) * 5.0f;
+
+        if (max_height > 0.0f)
+        {
+            curve_editor_curve_window_renderer_set_property(descriptor_ptr->renderer,
+                                                            CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_HEIGHT,
+                                                           &max_height);
+        }
     }
     system_critical_section_leave(descriptor_ptr->serialization_cs);
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_initialize_dialog(__in __notnull _curve_editor_curve_window* descriptor, HWND dialog_handle)
+PRIVATE void _curve_editor_curve_window_initialize_dialog(__in __notnull _curve_editor_curve_window* descriptor,
+                                                                         HWND                        dialog_handle)
 {
     descriptor->edited_segment                     = NULL;
     descriptor->edited_segment_node_id             = -1;
@@ -509,13 +700,15 @@ PRIVATE void _curve_editor_curve_window_initialize_dialog(__in __notnull _curve_
     curve_editor_select_node( (curve_editor_curve_window) descriptor, -1, -1);
 
     /* Renderer must be initialized from a separate thread */
-    system_thread_pool_task_descriptor renderer_initialization_task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL, _curve_editor_curve_window_initialize_renderer, descriptor);
+    system_thread_pool_task_descriptor renderer_initialization_task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                                             _curve_editor_curve_window_initialize_renderer,
+                                                                                                                             descriptor);
 
     ASSERT_DEBUG_SYNC(renderer_initialization_task != NULL, "Could not create renderer initialization task.");
     if (renderer_initialization_task != NULL)
     {
         system_thread_pool_submit_single_task(renderer_initialization_task);
-    }    
+    }
 }
 
 /** TODO */
@@ -562,7 +755,10 @@ PRIVATE void _curve_editor_curve_window_release(_curve_editor_curve_window* desc
     }
 
     /* Close the window in the first place and wait till the window thread dies down */
-    ::SendMessage(descriptor->window_handle, WM_CUSTOMIZEDSHUTDOWN, 0, 0);
+    ::SendMessage(descriptor->window_handle,
+                  WM_CUSTOMIZEDSHUTDOWN,
+                  0,
+                  0);
 
     system_event_wait_single_infinite(descriptor->dialog_thread_event);
 
@@ -773,13 +969,18 @@ PUBLIC EMERALD_API void curve_editor_curve_window_redraw(curve_editor_curve_wind
 PRIVATE void _curve_editor_use_variant_for_editbox(system_variant variant, HWND editbox_handle)
 {
     system_hashed_ansi_string value_has;
-    
-    system_variant_get_ansi_string(variant,        true, &value_has);    
-    ::SetWindowTextA              (editbox_handle, system_hashed_ansi_string_get_buffer(value_has) );
+
+    system_variant_get_ansi_string(variant,
+                                   true,
+                                  &value_has);
+    ::SetWindowTextA              (editbox_handle,
+                                   system_hashed_ansi_string_get_buffer(value_has) );
 }
 
 /** TODO */
-PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_window_ptr, curve_segment segment, curve_segment_node_id node_id)
+PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_window_ptr,
+                                            curve_segment               segment,
+                                            curve_segment_node_id       node_id)
 {
     ::SetWindowTextA(curve_window_ptr->window_handle_property_1_static, "1st value:");
     ::SetWindowTextA(curve_window_ptr->window_handle_property_2_static, "2nd value:");
@@ -799,7 +1000,8 @@ PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_wi
     system_variant_type  data_variant_type  = (system_variant_type) -1;
     system_timeline_time node_time          = -1;
 
-    if (curve_segment_get_node_value_variant_type(segment, &data_variant_type) )
+    if (curve_segment_get_node_value_variant_type(segment,
+                                                 &data_variant_type) )
     {
         start_data_variant = system_variant_create(data_variant_type);
         end_data_variant   = system_variant_create(data_variant_type);
@@ -809,8 +1011,10 @@ PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_wi
             if (curve_segment_get_node(segment, 0, &node_time, start_data_variant) &&
                 curve_segment_get_node(segment, 1, &node_time, end_data_variant) )
             {
-                _curve_editor_use_variant_for_editbox(start_data_variant, curve_window_ptr->window_handle_property_1_editbox);
-                _curve_editor_use_variant_for_editbox(end_data_variant,   curve_window_ptr->window_handle_property_2_editbox);
+                _curve_editor_use_variant_for_editbox(start_data_variant,
+                                                      curve_window_ptr->window_handle_property_1_editbox);
+                _curve_editor_use_variant_for_editbox(end_data_variant,
+                                                      curve_window_ptr->window_handle_property_2_editbox);
             }
         }
         curve_window_ptr->should_ignore_change_notifications = false;
@@ -821,7 +1025,9 @@ PRIVATE void _curve_editor_select_lerp_node(_curve_editor_curve_window* curve_wi
 }
 
 /** TODO */
-PRIVATE void _curve_editor_select_static_node(_curve_editor_curve_window* curve_window_ptr, curve_segment segment, curve_segment_node_id node_id)
+PRIVATE void _curve_editor_select_static_node(_curve_editor_curve_window* curve_window_ptr,
+                                              curve_segment               segment,
+                                              curve_segment_node_id       node_id)
 {
     ::SetWindowTextA(curve_window_ptr->window_handle_property_1_static, "Value:");
 
@@ -839,15 +1045,20 @@ PRIVATE void _curve_editor_select_static_node(_curve_editor_curve_window* curve_
     system_variant_type  data_variant_type = (system_variant_type) -1;
     system_timeline_time node_time         = -1;
 
-    if (curve_segment_get_node_value_variant_type(segment, &data_variant_type) )
+    if (curve_segment_get_node_value_variant_type(segment,
+                                                 &data_variant_type) )
     {
         data_variant = system_variant_create(data_variant_type);
 
-        if (curve_segment_get_node(segment, 0, &node_time, data_variant) )
+        if (curve_segment_get_node(segment,
+                                   0,
+                                  &node_time,
+                                   data_variant) )
         {
             curve_window_ptr->should_ignore_change_notifications = true;
             {
-                _curve_editor_use_variant_for_editbox(data_variant, curve_window_ptr->window_handle_property_1_editbox);
+                _curve_editor_use_variant_for_editbox(data_variant,
+                                                      curve_window_ptr->window_handle_property_1_editbox);
             }
             curve_window_ptr->should_ignore_change_notifications = false;
         }
@@ -857,7 +1068,9 @@ PRIVATE void _curve_editor_select_static_node(_curve_editor_curve_window* curve_
 }
 
 /** TODO */
-PRIVATE void _curve_editor_select_tcb_node(_curve_editor_curve_window* curve_window_ptr, curve_segment segment, curve_segment_node_id node_id)
+PRIVATE void _curve_editor_select_tcb_node(_curve_editor_curve_window* curve_window_ptr,
+                                           curve_segment               segment,
+                                           curve_segment_node_id       node_id)
 {
     ::SetWindowTextA(curve_window_ptr->window_handle_property_1_static, "Bias:");
     ::SetWindowTextA(curve_window_ptr->window_handle_property_2_static, "Continuity:");
@@ -881,7 +1094,8 @@ PRIVATE void _curve_editor_select_tcb_node(_curve_editor_curve_window* curve_win
     system_timeline_time node_time          = -1;
     system_variant       tension_variant    = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
-    if (curve_segment_get_node_value_variant_type(segment, &data_variant_type) )
+    if (curve_segment_get_node_value_variant_type(segment,
+                                                 &data_variant_type) )
     {
         data_variant = system_variant_create(data_variant_type);
 
@@ -892,10 +1106,14 @@ PRIVATE void _curve_editor_select_tcb_node(_curve_editor_curve_window* curve_win
         {
             curve_window_ptr->should_ignore_change_notifications = true;
             {
-                _curve_editor_use_variant_for_editbox(bias_variant,       curve_window_ptr->window_handle_property_1_editbox);
-                _curve_editor_use_variant_for_editbox(continuity_variant, curve_window_ptr->window_handle_property_2_editbox);
-                _curve_editor_use_variant_for_editbox(tension_variant,    curve_window_ptr->window_handle_property_3_editbox);
-                _curve_editor_use_variant_for_editbox(data_variant,       curve_window_ptr->window_handle_property_4_editbox);
+                _curve_editor_use_variant_for_editbox(bias_variant,
+                                                      curve_window_ptr->window_handle_property_1_editbox);
+                _curve_editor_use_variant_for_editbox(continuity_variant,
+                                                      curve_window_ptr->window_handle_property_2_editbox);
+                _curve_editor_use_variant_for_editbox(tension_variant,
+                                                      curve_window_ptr->window_handle_property_3_editbox);
+                _curve_editor_use_variant_for_editbox(data_variant,
+                                                      curve_window_ptr->window_handle_property_4_editbox);
             }
             curve_window_ptr->should_ignore_change_notifications = false;
         }
@@ -908,7 +1126,9 @@ PRIVATE void _curve_editor_select_tcb_node(_curve_editor_curve_window* curve_win
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window, curve_segment_id segment_id, curve_segment_node_id node_id)
+PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window,
+                                     curve_segment_id          segment_id,
+                                     curve_segment_node_id     node_id)
 {
     _curve_editor_curve_window* curve_window_ptr = (_curve_editor_curve_window*) curve_window;
 
@@ -933,9 +1153,22 @@ PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window, cur
         {
             switch (selected_segment_type)
             {
-                case CURVE_SEGMENT_STATIC: _curve_editor_select_static_node(curve_window_ptr, selected_segment, node_id); break;
-                case CURVE_SEGMENT_LERP:   _curve_editor_select_lerp_node  (curve_window_ptr, selected_segment, node_id); break;
-                case CURVE_SEGMENT_TCB:    _curve_editor_select_tcb_node   (curve_window_ptr, selected_segment, node_id); break;
+                case CURVE_SEGMENT_STATIC: _curve_editor_select_static_node(curve_window_ptr,
+                                                                            selected_segment,
+                                                                            node_id);
+
+                                           break;
+
+                case CURVE_SEGMENT_LERP:   _curve_editor_select_lerp_node(curve_window_ptr,
+                                                                          selected_segment,
+                                                                          node_id);
+
+                                           break;
+
+                case CURVE_SEGMENT_TCB:    _curve_editor_select_tcb_node(curve_window_ptr,
+                                                                         selected_segment, node_id);
+
+                                           break;
 
                 default: ASSERT_DEBUG_SYNC(false, "Unknown segment type [%d]", selected_segment_type);
             }
@@ -945,4 +1178,39 @@ PUBLIC void curve_editor_select_node(curve_editor_curve_window curve_window, cur
             curve_window_ptr->edited_segment_node_id = node_id;
         }
     }
+}
+
+/** Please see header for specification */
+PUBLIC void curve_editor_curve_window_set_property(__in __notnull curve_editor_curve_window          window,
+                                                   __in           curve_editor_curve_window_property property,
+                                                   __in __notnull void*                              data)
+{
+    _curve_editor_curve_window* window_ptr = (_curve_editor_curve_window*) window;
+
+    switch (property)
+    {
+        case CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_HEIGHT:
+        {
+            curve_editor_curve_window_renderer_set_property(window_ptr->renderer,
+                                                            CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_HEIGHT,
+                                                            data);
+
+            break;
+        }
+
+        case CURVE_EDITOR_CURVE_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
+        {
+            curve_editor_curve_window_renderer_set_property(window_ptr->renderer,
+                                                            CURVE_EDITOR_CURVE_WINDOW_RENDERER_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH,
+                                                            data);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve_editor_curve_window_property value");
+        }
+    } /* switch (property) */
 }
