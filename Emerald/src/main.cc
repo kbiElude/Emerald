@@ -8,6 +8,7 @@
 #include "main.h"
 /* Modules */
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
@@ -66,8 +67,9 @@ void main_init()
 
     _system_log_init();
 
+    system_callback_manager_init  ();
     system_hashed_ansi_string_init();
-    
+
     _system_time_init();
     _system_assertions_init();
     _system_threads_init();

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -8,6 +8,7 @@
 #include "curve/curve_constants.h"
 #include "curve/curve_segment.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -175,6 +176,11 @@ PRIVATE void _curve_container_release(__inout __notnull __deallocate(mem) void* 
     _curve_container_ptr curve_container_ptr = (_curve_container_ptr) container;
 
     _deinit_curve_container_data(&curve_container_ptr->data);
+
+    /* Inform any subscribers about the event */
+    system_callback_manager_call_back(system_callback_manager_get(),
+                                      CALLBACK_ID_CURVE_CONTAINER_DELETED,
+                                      NULL);
 }
 
 /* TODO */
@@ -544,7 +550,12 @@ PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in system_
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_container,
                                                    _curve_container_release,
                                                    OBJECT_TYPE_CURVE_CONTAINER,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Curves\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Curves\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
+
+    system_callback_manager_call_back(system_callback_manager_get(),
+                                      CALLBACK_ID_CURVE_CONTAINER_ADDED,
+                                      NULL); /* callback_proc_data */
 
     /* Return the container */
     return (curve_container) new_container;

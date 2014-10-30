@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -18,6 +18,7 @@
 #include "object_manager/object_manager_item.h"
 #include "ogl/ogl_context.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
 #include "system/system_hash64.h"
@@ -331,6 +332,15 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
                                                     object_manager_directory   parent_directory,
                                                     system_hashed_ansi_string  directory_registry_path)
 {
+    if (parent_node_handle == NULL)
+    {
+        /* Clean up the UI */
+        TreeView_DeleteAllItems(descriptor_ptr->curves_tree_window_handle);
+
+        /* Clean up internal data */
+        system_hash64map_clear(descriptor_ptr->node_handle_to_registry_path_map);
+    }
+
     /* Recreate sub-directory structure first - subdirectory names need to be sorted beforehand. */
     uint32_t n_subdirectories = object_manager_directory_get_amount_of_subdirectories_for_directory(parent_directory);
 
@@ -462,8 +472,6 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
                                                                                             system_hashed_ansi_string_get_buffer(item_name) ),
                                     NULL,
                                     NULL);
-
-
         }
 
         system_resizable_vector_release(item_names);
@@ -816,6 +824,14 @@ PRIVATE void _curve_editor_main_window_initialize_dialog(_curve_editor_main_wind
     }
 }
 
+/** TODO */
+PRIVATE void _curve_editor_main_window_on_curves_changed_callback(const void* callback_data,
+                                                                        void* user_arg)
+{
+    static volatile int n = 0;
+
+    /* TODO */
+}
 
 /* Please see header for specification */
 PUBLIC curve_editor_main_window curve_editor_main_window_create(               PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC on_release_callback_handler_func,
@@ -843,6 +859,19 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
 
         /* Block till everything is ready */
         system_event_wait_single_infinite(result->dialog_created_event);
+
+        /* Sign for the call-backs */
+        system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
+                                                        CALLBACK_ID_CURVE_CONTAINER_ADDED,
+                                                        CALLBACK_SYNCHRONICITY_ASYNCHRONOUS,
+                                                        _curve_editor_main_window_on_curves_changed_callback,
+                                                        NULL); /* callback_proc_user_arg */
+
+        system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
+                                                        CALLBACK_ID_CURVE_CONTAINER_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_ASYNCHRONOUS,
+                                                        _curve_editor_main_window_on_curves_changed_callback,
+                                                        NULL); /* callback_proc_user_arg */
     }
 
     return (curve_editor_main_window) result;
@@ -853,6 +882,17 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
 PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve_editor_main_window main_window)
 {
     _curve_editor_main_window* main_window_ptr = (_curve_editor_main_window*) main_window;
+
+    /* Sign out of the call-backs before we continue with actual destruction */
+    system_callback_manager_unsubscribe_from_callbacks(system_callback_manager_get(),
+                                                       CALLBACK_ID_CURVE_CONTAINER_ADDED,
+                                                       _curve_editor_main_window_on_curves_changed_callback,
+                                                       NULL); /* callback_proc_user_arg */
+
+    system_callback_manager_unsubscribe_from_callbacks(system_callback_manager_get(),
+                                                       CALLBACK_ID_CURVE_CONTAINER_DELETED,
+                                                       _curve_editor_main_window_on_curves_changed_callback,
+                                                       NULL); /* callback_proc_user_arg */
 
     /* Call back release handler */
     main_window_ptr->on_release_callback_handler_func();
