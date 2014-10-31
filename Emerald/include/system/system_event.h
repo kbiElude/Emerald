@@ -17,7 +17,8 @@
  *
  *  @return Event handle object.
  */
-PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset, bool start_state);
+PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset,
+                                                               bool start_state);
 
 /** Releases an event synchronisation object.
  *
@@ -59,7 +60,8 @@ PUBLIC EMERALD_API void system_event_wait_single_infinite(__in __notnull system_
  *
  *  @return true if timed out, false otherwise.
  **/
-PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_event, system_timeline_time);
+PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_event,
+                                                                        system_timeline_time);
 
 /** Waits infinitely on multiple objects. Function can either block till one of the events become available or
  *  till all of them are free.
@@ -70,7 +72,9 @@ PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_e
  *
  *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
  */
-PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __ecount(n_elements) const system_event*, __in size_t n_elements, bool);
+PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __ecount(n_elements) const system_event*,
+                                                              __in                                size_t              n_elements,
+                                                                                                  bool);
 
 /** Waits on multiple objects until user-defined amount of time passes. Function can either block till one of the events become available or
  *  till all of them are free.
@@ -83,6 +87,10 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __e
  *
  *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
  */
-PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in __notnull __ecount(n_elements) const system_event*, __in size_t n_elements, bool, system_timeline_time, __out __notnull bool*);
+PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in  __notnull __ecount(n_elements) const system_event*,
+                                                             __in                                 size_t               n_elements,
+                                                                                                  bool,
+                                                                                                  system_timeline_time,
+                                                             __out __notnull                      bool*);
 
 #endif /* SYSTEM_EVENT_H */

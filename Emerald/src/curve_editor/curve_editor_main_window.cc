@@ -13,6 +13,7 @@
 #include "curve_editor/curve_editor_types.h"
 #include "curve_editor/curve_editor_curve_window.h"
 #include "curve_editor/curve_editor_main_window.h"
+#include "curve_editor/curve_editor_watchdog.h"
 #include "object_manager/object_manager_directory.h"
 #include "object_manager/object_manager_general.h"
 #include "object_manager/object_manager_item.h"
@@ -49,8 +50,9 @@ typedef struct
     HWND type_static_window_handle;
     HWND curve_editbox_window_handle;
 
-    ogl_context context;
-    HWND        window_handle;
+    ogl_context           context;
+    curve_editor_watchdog watchdog;
+    HWND                  window_handle;
 
     system_event     dialog_created_event;
     system_event     dialog_thread_event;
@@ -793,6 +795,7 @@ PRIVATE void _curve_editor_init_descriptor(_curve_editor_main_window*           
     descriptor->should_handle_en_change_notifications                  = true;
     descriptor->type_static_window_handle                              = NULL;
     descriptor->curve_editbox_window_handle                            = NULL;
+    descriptor->watchdog                                               = curve_editor_watchdog_create();
     descriptor->window_handle                                          = NULL;
 }
 
@@ -828,9 +831,9 @@ PRIVATE void _curve_editor_main_window_initialize_dialog(_curve_editor_main_wind
 PRIVATE void _curve_editor_main_window_on_curves_changed_callback(const void* callback_data,
                                                                         void* user_arg)
 {
-    static volatile int n = 0;
+    _curve_editor_main_window* main_window_ptr = (_curve_editor_main_window*) user_arg;
 
-    /* TODO */
+    curve_editor_watchdog_signal(main_window_ptr->watchdog);
 }
 
 /* Please see header for specification */
@@ -865,13 +868,13 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
                                                         CALLBACK_ID_CURVE_CONTAINER_ADDED,
                                                         CALLBACK_SYNCHRONICITY_ASYNCHRONOUS,
                                                         _curve_editor_main_window_on_curves_changed_callback,
-                                                        NULL); /* callback_proc_user_arg */
+                                                        result); /* callback_proc_user_arg */
 
         system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
                                                         CALLBACK_ID_CURVE_CONTAINER_DELETED,
                                                         CALLBACK_SYNCHRONICITY_ASYNCHRONOUS,
                                                         _curve_editor_main_window_on_curves_changed_callback,
-                                                        NULL); /* callback_proc_user_arg */
+                                                        result); /* callback_proc_user_arg */
     }
 
     return (curve_editor_main_window) result;
@@ -887,12 +890,15 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
     system_callback_manager_unsubscribe_from_callbacks(system_callback_manager_get(),
                                                        CALLBACK_ID_CURVE_CONTAINER_ADDED,
                                                        _curve_editor_main_window_on_curves_changed_callback,
-                                                       NULL); /* callback_proc_user_arg */
+                                                       main_window_ptr);
 
     system_callback_manager_unsubscribe_from_callbacks(system_callback_manager_get(),
                                                        CALLBACK_ID_CURVE_CONTAINER_DELETED,
                                                        _curve_editor_main_window_on_curves_changed_callback,
-                                                       NULL); /* callback_proc_user_arg */
+                                                       main_window_ptr);
+
+    /* Release the watchdog */
+    curve_editor_watchdog_release(main_window_ptr->watchdog);
 
     /* Call back release handler */
     main_window_ptr->on_release_callback_handler_func();

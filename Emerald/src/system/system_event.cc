@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -57,7 +57,8 @@ PUBLIC EMERALD_API void system_event_wait_single_infinite(__in __notnull system_
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_event event, system_timeline_time timeout)
+PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_event         event,
+                                                                        system_timeline_time timeout)
 {
     uint32_t n_secs = 0;
 

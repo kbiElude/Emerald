@@ -18,6 +18,7 @@ DECLARE_HANDLE(curve_editor_program_lerp);
 DECLARE_HANDLE(curve_editor_program_quadselector);
 DECLARE_HANDLE(curve_editor_program_static);
 DECLARE_HANDLE(curve_editor_program_tcb);
+DECLARE_HANDLE(curve_editor_watchdog);
 
 /* Internal types */
 typedef struct
