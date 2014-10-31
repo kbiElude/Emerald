@@ -21,8 +21,11 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
 PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve_editor_main_window);
 
 /** TODO */
-PUBLIC void curve_editor_main_window_set_property(__in __notnull __post_invalid curve_editor_main_window          window,
-                                                  __in                          curve_editor_main_window_property property,
-                                                  __in __notnull                void*                             data);
+PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_main_window          window,
+                                                  __in           curve_editor_main_window_property property,
+                                                  __in __notnull void*                             data);
+
+/** TODO */
+PUBLIC void curve_editor_main_window_update_curve_list(__in __notnull curve_editor_main_window window);
 
 #endif /* CURVE_EDITOR_MAIN_WINDOW_H */

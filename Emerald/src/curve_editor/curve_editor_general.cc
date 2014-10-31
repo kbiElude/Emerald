@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -10,7 +10,7 @@
 #include "ogl/ogl_types.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
-
+#include "system/system_log.h"
 
 /* Private variables */
 PRIVATE system_critical_section  global_cs   = NULL;
@@ -126,4 +126,17 @@ PUBLIC EMERALD_API bool curve_editor_show(ogl_context context)
     system_critical_section_leave(global_cs);
 
     return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void curve_editor_update_curve_list()
+{
+    system_critical_section_enter(global_cs);
+    {
+        if (main_window != NULL)
+        {
+            curve_editor_main_window_update_curve_list(main_window);
+        }
+    }
+    system_critical_section_leave(global_cs);
 }

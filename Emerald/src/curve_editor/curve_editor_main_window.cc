@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -13,11 +13,13 @@
 #include "curve_editor/curve_editor_types.h"
 #include "curve_editor/curve_editor_curve_window.h"
 #include "curve_editor/curve_editor_main_window.h"
+#include "curve_editor/curve_editor_watchdog.h"
 #include "object_manager/object_manager_directory.h"
 #include "object_manager/object_manager_general.h"
 #include "object_manager/object_manager_item.h"
 #include "ogl/ogl_context.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
 #include "system/system_hash64.h"
@@ -48,8 +50,9 @@ typedef struct
     HWND type_static_window_handle;
     HWND curve_editbox_window_handle;
 
-    ogl_context context;
-    HWND        window_handle;
+    ogl_context           context;
+    curve_editor_watchdog watchdog;
+    HWND                  window_handle;
 
     system_event     dialog_created_event;
     system_event     dialog_thread_event;
@@ -331,6 +334,15 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
                                                     object_manager_directory   parent_directory,
                                                     system_hashed_ansi_string  directory_registry_path)
 {
+    if (parent_node_handle == NULL)
+    {
+        /* Clean up the UI */
+        TreeView_DeleteAllItems(descriptor_ptr->curves_tree_window_handle);
+
+        /* Clean up internal data */
+        system_hash64map_clear(descriptor_ptr->node_handle_to_registry_path_map);
+    }
+
     /* Recreate sub-directory structure first - subdirectory names need to be sorted beforehand. */
     uint32_t n_subdirectories = object_manager_directory_get_amount_of_subdirectories_for_directory(parent_directory);
 
@@ -462,8 +474,6 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
                                                                                             system_hashed_ansi_string_get_buffer(item_name) ),
                                     NULL,
                                     NULL);
-
-
         }
 
         system_resizable_vector_release(item_names);
@@ -785,6 +795,7 @@ PRIVATE void _curve_editor_init_descriptor(_curve_editor_main_window*           
     descriptor->should_handle_en_change_notifications                  = true;
     descriptor->type_static_window_handle                              = NULL;
     descriptor->curve_editbox_window_handle                            = NULL;
+    descriptor->watchdog                                               = curve_editor_watchdog_create();
     descriptor->window_handle                                          = NULL;
 }
 
@@ -816,6 +827,14 @@ PRIVATE void _curve_editor_main_window_initialize_dialog(_curve_editor_main_wind
     }
 }
 
+/** TODO */
+PRIVATE void _curve_editor_main_window_on_curves_changed_callback(const void* callback_data,
+                                                                        void* user_arg)
+{
+    _curve_editor_main_window* main_window_ptr = (_curve_editor_main_window*) user_arg;
+
+    curve_editor_watchdog_signal(main_window_ptr->watchdog);
+}
 
 /* Please see header for specification */
 PUBLIC curve_editor_main_window curve_editor_main_window_create(               PFNONMAINWINDOWRELEASECALLBACKHANDLERPROC on_release_callback_handler_func,
@@ -843,6 +862,19 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
 
         /* Block till everything is ready */
         system_event_wait_single_infinite(result->dialog_created_event);
+
+        /* Sign for the call-backs */
+        system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
+                                                        CALLBACK_ID_CURVE_CONTAINER_ADDED,
+                                                        CALLBACK_SYNCHRONICITY_ASYNCHRONOUS,
+                                                        _curve_editor_main_window_on_curves_changed_callback,
+                                                        result); /* callback_proc_user_arg */
+
+        system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
+                                                        CALLBACK_ID_CURVE_CONTAINER_DELETED,
+                                                        CALLBACK_SYNCHRONICITY_ASYNCHRONOUS,
+                                                        _curve_editor_main_window_on_curves_changed_callback,
+                                                        result); /* callback_proc_user_arg */
     }
 
     return (curve_editor_main_window) result;
@@ -853,6 +885,20 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
 PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve_editor_main_window main_window)
 {
     _curve_editor_main_window* main_window_ptr = (_curve_editor_main_window*) main_window;
+
+    /* Sign out of the call-backs before we continue with actual destruction */
+    system_callback_manager_unsubscribe_from_callbacks(system_callback_manager_get(),
+                                                       CALLBACK_ID_CURVE_CONTAINER_ADDED,
+                                                       _curve_editor_main_window_on_curves_changed_callback,
+                                                       main_window_ptr);
+
+    system_callback_manager_unsubscribe_from_callbacks(system_callback_manager_get(),
+                                                       CALLBACK_ID_CURVE_CONTAINER_DELETED,
+                                                       _curve_editor_main_window_on_curves_changed_callback,
+                                                       main_window_ptr);
+
+    /* Release the watchdog */
+    curve_editor_watchdog_release(main_window_ptr->watchdog);
 
     /* Call back release handler */
     main_window_ptr->on_release_callback_handler_func();
@@ -945,9 +991,9 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_main_window_set_property(__in __notnull __post_invalid curve_editor_main_window          window,
-                                                  __in                          curve_editor_main_window_property property,
-                                                  __in __notnull                void*                             data)
+PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_main_window          window,
+                                                  __in           curve_editor_main_window_property property,
+                                                  __in __notnull void*                             data)
 {
     _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
 
@@ -988,4 +1034,22 @@ PUBLIC void curve_editor_main_window_set_property(__in __notnull __post_invalid 
         } /* switch (property) */
     }
     system_critical_section_leave(window_ptr->serialization_cs);
+}
+
+/* Please see header for specification */
+PUBLIC void curve_editor_main_window_update_curve_list(__in __notnull curve_editor_main_window window)
+{
+    _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
+
+    /* Unselect any item that may have been selected */
+    TreeView_Select(window_ptr->curves_tree_window_handle,
+                    NULL,
+                    TVGN_CARET);
+
+    /* Re-create the treeview */
+    _curve_editor_dialog_update_curve_tree(window_ptr,
+                                           NULL,
+                                           object_manager_get_directory(system_hashed_ansi_string_create("Curves") ),
+                                           system_hashed_ansi_string_create("\\Curves\\")
+                                          );
 }

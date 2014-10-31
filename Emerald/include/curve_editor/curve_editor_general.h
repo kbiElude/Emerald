@@ -21,6 +21,9 @@ PUBLIC void _curve_editor_deinit();
 PUBLIC void _curve_editor_init();
 
 /** TODO */
+PUBLIC EMERALD_API bool curve_editor_hide();
+
+/** TODO */
 PUBLIC EMERALD_API void curve_editor_set_property(__in __notnull ogl_context           context,
                                                   __in           curve_editor_property property,
                                                   __in __notnull void*                 data);
@@ -29,6 +32,6 @@ PUBLIC EMERALD_API void curve_editor_set_property(__in __notnull ogl_context    
 PUBLIC EMERALD_API bool curve_editor_show(ogl_context);
 
 /** TODO */
-PUBLIC EMERALD_API bool curve_editor_hide();
+PUBLIC EMERALD_API void curve_editor_update_curve_list();
 
 #endif /* CURVE_EDITOR_GENERAL_H */
