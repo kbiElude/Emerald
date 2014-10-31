@@ -991,9 +991,9 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
 }
 
 /* Please see header for specification */
-PUBLIC void curve_editor_main_window_set_property(__in __notnull __post_invalid curve_editor_main_window          window,
-                                                  __in                          curve_editor_main_window_property property,
-                                                  __in __notnull                void*                             data)
+PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_main_window          window,
+                                                  __in           curve_editor_main_window_property property,
+                                                  __in __notnull void*                             data)
 {
     _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
 
@@ -1034,4 +1034,22 @@ PUBLIC void curve_editor_main_window_set_property(__in __notnull __post_invalid 
         } /* switch (property) */
     }
     system_critical_section_leave(window_ptr->serialization_cs);
+}
+
+/* Please see header for specification */
+PUBLIC void curve_editor_main_window_update_curve_list(__in __notnull curve_editor_main_window window)
+{
+    _curve_editor_main_window* window_ptr = (_curve_editor_main_window*) window;
+
+    /* Unselect any item that may have been selected */
+    TreeView_Select(window_ptr->curves_tree_window_handle,
+                    NULL,
+                    TVGN_CARET);
+
+    /* Re-create the treeview */
+    _curve_editor_dialog_update_curve_tree(window_ptr,
+                                           NULL,
+                                           object_manager_get_directory(system_hashed_ansi_string_create("Curves") ),
+                                           system_hashed_ansi_string_create("\\Curves\\")
+                                          );
 }

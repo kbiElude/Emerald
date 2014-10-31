@@ -131,7 +131,12 @@ PUBLIC EMERALD_API bool curve_editor_show(ogl_context context)
 /* Please see header for specification */
 PUBLIC EMERALD_API void curve_editor_update_curve_list()
 {
-    volatile static int n = 0;
-
-    LOG_INFO("update_curve_list() %d", n++);
+    system_critical_section_enter(global_cs);
+    {
+        if (main_window != NULL)
+        {
+            curve_editor_main_window_update_curve_list(main_window);
+        }
+    }
+    system_critical_section_leave(global_cs);
 }
