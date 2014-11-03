@@ -1363,7 +1363,9 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                                                descriptor_ptr,
                                                                entry_points);
 
-            tcb_segment_ptr->status = STATUS_NO_REUPLOAD_NEEDED;
+            tcb_segment_ptr->status                    = STATUS_NO_REUPLOAD_NEEDED;
+            tcb_segment_ptr->tcb_ubo_modification_time = system_time_now();
+
             break;
         }
 
@@ -1377,11 +1379,11 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                                                descriptor_ptr,
                                                                entry_points);
 
-            tcb_segment_ptr->status = STATUS_NO_REUPLOAD_NEEDED;
+            tcb_segment_ptr->tcb_ubo_modification_time = system_time_now();
+            tcb_segment_ptr->status                    = STATUS_NO_REUPLOAD_NEEDED;
+
             break;
         }
-
-        tcb_segment_ptr->tcb_ubo_modification_time = system_time_now();
     }
 
     /* Draw a line strip, separate for each node-node region */
@@ -1400,37 +1402,62 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
     uint32_t                node_d_time_msec = 0;
     system_variant_type     segment_data_type;
 
-    curve_segment_get_node_in_order(segment, 0, &node_b_id);
-    curve_segment_get_node_in_order(segment, 1, &node_c_id);
-    
+    curve_segment_get_node_in_order(segment,
+                                    0,
+                                   &node_b_id);
+    curve_segment_get_node_in_order(segment,
+                                    1,
+                                   &node_c_id);
+
     if (n_nodes > 2)
     {
-        curve_segment_get_node_in_order(segment, 2, &node_d_id);
+        curve_segment_get_node_in_order(segment,
+                                        2,
+                                       &node_d_id);
     }
 
-    curve_segment_get_node(segment, node_b_id, &node_b_time, NULL);
-    curve_segment_get_node(segment, node_c_id, &node_c_time, NULL);
+    curve_segment_get_node(segment,
+                           node_b_id,
+                          &node_b_time,
+                           NULL);
+    curve_segment_get_node(segment,
+                           node_c_id,
+                          &node_c_time,
+                           NULL);
 
     if (n_nodes > 2)
     {
-        curve_segment_get_node(segment, node_d_id, &node_d_time, NULL);
+        curve_segment_get_node(segment,
+                               node_d_id,
+                              &node_d_time,
+                              NULL);
     }
 
     node_indexes[1] = node_b_id;
     node_indexes[2] = node_c_id;
     node_indexes[3] = node_d_id;
 
-    system_time_get_msec_for_timeline_time(node_b_time, &node_b_time_msec);
-    system_time_get_msec_for_timeline_time(node_c_time, &node_c_time_msec);
-    system_time_get_msec_for_timeline_time(node_d_time, &node_d_time_msec);
+    system_time_get_msec_for_timeline_time(node_b_time,
+                                          &node_b_time_msec);
+    system_time_get_msec_for_timeline_time(node_c_time,
+                                          &node_c_time_msec);
+    system_time_get_msec_for_timeline_time(node_d_time,
+                                          &node_d_time_msec);
 
-    curve_segment_get_node_value_variant_type(segment, &segment_data_type);
+    ASSERT_DEBUG_SYNC(node_b_time < node_c_time &&
+                      node_c_time < node_d_time,
+                      "Nodes are not sorted in order!");
+
+    curve_segment_get_node_value_variant_type(segment,
+                                             &segment_data_type);
 
     entry_points->pGLProgramUniform1i(program_id,
                                       _globals->tcb_curve_should_round_location,
                                       segment_data_type == SYSTEM_VARIANT_INTEGER);
 
-    for (uint32_t n_node = 0; n_node < n_nodes - 1; ++n_node)
+    for (uint32_t n_node = 0;
+                  n_node < n_nodes - 1;
+                ++n_node)
     {
         float node_b_ss =       LERP_FROM_A_B_TO_C_D(float(node_b_time_msec) / 1000.0f,
                                                      descriptor_ptr->x1,
@@ -1454,7 +1481,13 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                            _globals->tcb_curve_start_x_location,
                                            node_b_ss);
 
-        entry_points->pGLDrawArrays(GL_LINE_STRIP, 0, width_px);
+        ASSERT_DEBUG_SYNC(width_px > 0,
+                          "Invalid width (in pixels): %d",
+                          width_px);
+
+        entry_points->pGLDrawArrays(GL_LINE_STRIP,
+                                    0,
+                                    width_px);
 
         /* Update node indexes */
         node_indexes[0] = node_indexes[1];
@@ -1468,8 +1501,13 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
         {
             node_d_id = -1;
 
-            curve_segment_get_node_in_order(segment, n_node + 3, &node_d_id);
-            curve_segment_get_node         (segment, node_d_id , &node_d_time, NULL);
+            curve_segment_get_node_in_order(segment,
+                                            n_node + 3,
+                                           &node_d_id);
+            curve_segment_get_node         (segment,
+                                            node_d_id,
+                                           &node_d_time,
+                                            NULL);
 
             node_indexes[3] = node_d_id;
         }
@@ -1479,10 +1517,31 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
             node_d_time     = 0;
         }
 
-        system_time_get_msec_for_timeline_time(node_a_time, &node_a_time_msec);
-        system_time_get_msec_for_timeline_time(node_b_time, &node_b_time_msec);
-        system_time_get_msec_for_timeline_time(node_c_time, &node_c_time_msec);
-        system_time_get_msec_for_timeline_time(node_d_time, &node_d_time_msec);
+        system_time_get_msec_for_timeline_time(node_a_time,
+                                              &node_a_time_msec);
+        system_time_get_msec_for_timeline_time(node_b_time,
+                                              &node_b_time_msec);
+
+        if (node_indexes[2] != -1)
+        {
+            system_time_get_msec_for_timeline_time(node_c_time,
+                                                  &node_c_time_msec);
+            
+            ASSERT_DEBUG_SYNC(node_b_time < node_c_time,
+                          "Nodes are not sorted in order!");
+        }
+
+        if (node_indexes[3] != -1)
+        {
+            system_time_get_msec_for_timeline_time(node_d_time,
+                                                  &node_d_time_msec);
+
+            ASSERT_DEBUG_SYNC(node_c_time < node_d_time,
+                              "Nodes are not sorted in order!");
+        }
+
+        ASSERT_DEBUG_SYNC(node_a_time < node_b_time,
+                          "Nodes are not sorted in order!");
     }
 
     /* Draw nodes */
@@ -2808,7 +2867,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         /* Draw background */
         entry_points->pGLUseProgram(ogl_program_get_id(_globals->bg_program) );
         entry_points->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        
+
         /* Draw axes */
         float axis_x    = LERP_FROM_A_B_TO_C_D(0,
                                                descriptor_ptr->x1,

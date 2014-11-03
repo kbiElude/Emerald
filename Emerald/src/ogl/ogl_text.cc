@@ -280,8 +280,9 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
     if (text_ptr->data_buffer_to == NULL)
     {
         /* Generate texture buffer we will use to map the texture object onto the data buffer object*/
-        text_ptr->data_buffer_to = ogl_texture_create(context, system_hashed_ansi_string_create_by_merging_two_strings("System text renderer ",
-                                                                                                                       system_hashed_ansi_string_get_buffer(text_ptr->name) ));
+        text_ptr->data_buffer_to = ogl_texture_create(context,
+                                                      system_hashed_ansi_string_create_by_merging_two_strings("System text renderer ",
+                                                                                                              system_hashed_ansi_string_get_buffer(text_ptr->name) ));
 
         ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
                           "Could not create a texture object for texture buffer.");

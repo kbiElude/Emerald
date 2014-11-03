@@ -480,21 +480,21 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                 } /* for (uint32_t n_node = 0; n_node < n_segment_nodes; ++n_node) */
 
                 /* Now that we've read all the nodes, we can retrieve start & end node descriptors */
-                _node_descriptor* start_node        = NULL;
-                float             start_node_tcb[3] = {0};
-                _node_descriptor* end_node          = NULL;
-                float             end_node_tcb[3]   = {0};
+                _node_descriptor* first_node          = NULL;
+                float             first_node_tcb[3]   = {0};
+                _node_descriptor* second_node         = NULL;
+                float             second_node_tcb[3]  = {0};
 
-                if (!system_resizable_vector_get_element_at(nodes, 0,                   &start_node) ||
-                    !system_resizable_vector_get_element_at(nodes, (n_segment_nodes-1), &end_node) )
+                if (!system_resizable_vector_get_element_at(nodes, 0, &first_node) ||
+                    !system_resizable_vector_get_element_at(nodes, 1, &second_node) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve start/end node descriptor");
+                    ASSERT_DEBUG_SYNC(false, "Could not retrieve node descriptors");
 
                     goto end;
                 }
 
-                start_node_tcb[0] = start_node->tension; start_node_tcb[1] = start_node->continuity; start_node_tcb[2] = start_node->bias;
-                end_node_tcb  [0] = end_node->tension;   end_node_tcb  [1] = end_node->continuity;   end_node_tcb  [2] = end_node->bias;
+                first_node_tcb [0] = first_node->tension;  first_node_tcb [1] = first_node->continuity;  first_node_tcb [2] = first_node->bias;
+                second_node_tcb[0] = second_node->tension; second_node_tcb[1] = second_node->continuity; second_node_tcb[2] = second_node->bias;
 
                 /* Spawn the segment */
 #if 0
@@ -508,16 +508,16 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                              spawned_segment_id) )
 #else
                 if (!curve_container_add_tcb_segment(*result_container,
-                                                     segment_start_time,
-                                                     segment_end_time,
-                                                     start_node->value,
-                                                     start_node->tension,
-                                                     start_node->continuity,
-                                                     start_node->bias,
-                                                     end_node->value,
-                                                     end_node->tension,
-                                                     end_node->continuity,
-                                                     end_node->bias,
+                                                     first_node->time,
+                                                     second_node->time,
+                                                     first_node->value,
+                                                     first_node->tension,
+                                                     first_node->continuity,
+                                                     first_node->bias,
+                                                     second_node->value,
+                                                     second_node->tension,
+                                                     second_node->continuity,
+                                                     second_node->bias,
                                                     &spawned_segment_id) )
 #endif
                 {
@@ -537,11 +537,13 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                     goto end;
                 }
 
-                for (uint32_t n_node = 1; n_node < n_segment_nodes - 1; ++n_node)
+                for (uint32_t n_node = 2; n_node < n_segment_nodes; ++n_node)
                 {
                     _node_descriptor* current_node = NULL;
 
-                    if (!system_resizable_vector_get_element_at(nodes, n_node, &current_node) )
+                    if (!system_resizable_vector_get_element_at(nodes,
+                                                                n_node,
+                                                               &current_node) )
                     {
                         ASSERT_DEBUG_SYNC(false, "Could not retrieve node descriptor");
 
@@ -580,7 +582,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
 
                         goto end;
                     }
-                } /* for (int n_node = 1; n_node < n_segment_nodes - 1; ++n_node)*/
+                } /* for (int n_node = 2; n_node < n_segment_nodes; ++n_node)*/
 
                 /* All right - we're safe to release the resizable vector now */
                 if (nodes != NULL)

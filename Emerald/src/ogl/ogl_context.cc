@@ -373,9 +373,18 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum source,GLenu
             default:                           severity_name = "?!";  break;
         }
 
-        sprintf_s(local_message, "[Id:%d] [Source:%s] Type:[%s] Severity:[%s]: %s", id, source_name, type_name, severity_name, message);
+        sprintf_s(local_message,
+                  "[Id:%d] [Source:%s] Type:[%s] Severity:[%s]: %s",
+                  id,
+                  source_name,
+                  type_name,
+                  severity_name,
+                  message);
 
         LOG_INFO("%s", local_message);
+
+        ASSERT_DEBUG_SYNC(type != GL_DEBUG_TYPE_ERROR_ARB,
+                          "GL error detected");
     }
 }
 
@@ -2042,7 +2051,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                               0
                                                               };
                             HGLRC     wgl_rendering_context = pWGLCreateContextAttribs(window_dc,
-                                                                                       (share_context != NULL ? ((_ogl_context*)share_context)->wgl_rendering_context : NULL), 
+                                                                                       (share_context != NULL ? ((_ogl_context*)share_context)->wgl_rendering_context : NULL),
                                                                                        wgl_attrib_list);
 
                             /* Sharing? Unlock corresponding renderer thread */
@@ -2062,11 +2071,12 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
 
                                 ASSERT_ALWAYS_SYNC(_result != NULL, "Out of memory when creating ogl_context instance.");
                                 if (_result != NULL)
-                                {                                    
+                                {
                                     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(_result,
                                                                                    _ogl_context_release,
                                                                                    OBJECT_TYPE_OGL_CONTEXT,
-                                                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\", system_hashed_ansi_string_get_buffer(name) )
+                                                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
+                                                                                                                                           system_hashed_ansi_string_get_buffer(name) )
                                                                                    );
 
                                     memset(&_result->limits,
@@ -2230,8 +2240,16 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                             #ifdef _DEBUG
                                             {
                                                 /* Debug build! Go ahead and regitser for callbacks */
-                                                _result->entry_points_gl_arb_debug_output.pGLDebugMessageCallbackARB(_ogl_context_debug_message_gl_callback, _result);
-                                                _result->entry_points_gl_arb_debug_output.pGLDebugMessageControlARB (GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, true);
+                                                _result->entry_points_gl_arb_debug_output.pGLDebugMessageCallbackARB(_ogl_context_debug_message_gl_callback,
+                                                                                                                     _result);
+                                                _result->entry_points_gl_arb_debug_output.pGLDebugMessageControlARB (GL_DONT_CARE,
+                                                                                                                     GL_DONT_CARE,
+                                                                                                                     GL_DONT_CARE,
+                                                                                                                     0,
+                                                                                                                     NULL,
+                                                                                                                     true);
+
+                                                _result->entry_points_gl.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
                                                 ASSERT_DEBUG_SYNC(_result->entry_points_gl.pGLGetError() == GL_NO_ERROR,
                                                                   "Could not set up OpenGL debug output callbacks!");

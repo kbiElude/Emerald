@@ -221,9 +221,6 @@ curve_container CreateCurveFromEnvelope(const char*   object_name,
              * We're asserting here that envelope uses a single interpolation type, so we're OK
              * to spawn a single segment for the very first key, and then re-use that segment for
              * all subsequent nodes. This may require fixing.
-             *
-             * NOTE: We need to multiply X, Y, Z components by 100 to match COLLADA scaling.
-             *       Furthermore, Z needs to be multiplied by -1.
              */
             ASSERT_DEBUG_SYNC(prev_key->type == next_key->type,
                               "Key segment types do not match");

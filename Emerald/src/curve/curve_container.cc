@@ -1551,14 +1551,18 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
     system_read_write_mutex_lock(curve_container_data->segments_read_write_mutex,
                                  ACCESS_WRITE);
 
-    size_t curr_place_iterator = system_resizable_vector_find                  (curve_container_data->segments_order,
-                                                                                (void*) segment_id);
-    size_t n_segment_orders    = system_resizable_vector_get_amount_of_elements(curve_container_data->segments_order);
+    size_t curr_segments_order_iterator = system_resizable_vector_find                  (curve_container_data->segments_order,
+                                                                                         (void*) segment_id);
+    size_t n_segment_orders             = system_resizable_vector_get_amount_of_elements(curve_container_data->segments_order);
 
-    ASSERT_DEBUG_SYNC(curr_place_iterator != ITEM_NOT_FOUND, "Could not find requested segment [%d]",
+    ASSERT_DEBUG_SYNC(curr_segments_order_iterator != ITEM_NOT_FOUND, "Could not find requested segment [%d]",
                       segment_id);
-    if (curr_place_iterator == ITEM_NOT_FOUND)
+
+    if (curr_segments_order_iterator == ITEM_NOT_FOUND)
     {
+        ASSERT_DEBUG_SYNC(false,
+                          "Curve segment not found");
+
         goto end;
     }
 
@@ -1566,6 +1570,9 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
         new_segment_end_time   < 0                     ||
         new_segment_start_time >= new_segment_end_time)
     {
+        ASSERT_DEBUG_SYNC(false,
+                          "New segment times are invalid");
+
         goto end;
     }
 
@@ -1577,7 +1584,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
         goto end;
     }
 
-    // Cache current tiems;
+    // Cache current times
     _curve_container_segment_ptr curr_place_segment = NULL;
     system_timeline_time         former_start_time  = 0;
     system_timeline_time         former_end_time    = 0;
@@ -1591,16 +1598,16 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
 
     // Update time of encapsulated nodes. We need to cache node order before starting the operation because the order
     // usually changes as we iterate.
-    curve_segment           segment    = curr_place_segment->segment;
-    uint32_t                n_nodes    = 0;
-    system_resizable_vector node_order = NULL;
+    system_resizable_vector internal_node_order = NULL;
+    uint32_t                n_nodes             = 0;
+    curve_segment           segment             = curr_place_segment->segment;
 
     result = curve_segment_get_amount_of_nodes(segment,
                                               &n_nodes);
     ASSERT_DEBUG_SYNC(result, "Could not retrieve amount of curve nodes.");
 
-    node_order = system_resizable_vector_create(n_nodes,
-                                                sizeof(uint32_t) );
+    internal_node_order = system_resizable_vector_create(n_nodes,
+                                                         sizeof(uint32_t) );
 
     for (uint32_t n_node = 0;
                   n_node < n_nodes;
@@ -1610,24 +1617,28 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
 
         // Order nodes in following order: first, last, second, third, etc..
         result = curve_segment_get_node_in_order(segment,
-                                                 (n_node == 0 ? 0 : (n_node == 1 ? n_nodes - 1 : n_node - 1)),
+                                                 (n_node == 0 ? 0 :
+                                                                (n_node == 1 ? n_nodes - 1 :
+                                                                               n_node  - 1)),
                                                 &n_ordered_node);
-        ASSERT_DEBUG_SYNC(result, "curve_segment_get_node_in_order() failed.");
 
-        system_resizable_vector_push(node_order,
+        ASSERT_DEBUG_SYNC(result,
+                          "curve_segment_get_node_in_order() failed.");
+
+        system_resizable_vector_push(internal_node_order,
                                      (void*) n_ordered_node);
     }
 
-    for (uint32_t n_node = 0;
-                  n_node < n_nodes;
-                ++n_node)
+    for (uint32_t n_internal_order_node = 0;
+                  n_internal_order_node < n_nodes;
+                ++n_internal_order_node)
     {
         curve_segment_node_id node_id        = 0;
         uint32_t              n_ordered_node = 0;
         bool                  result_get;
 
-        result_get = system_resizable_vector_get_element_at(node_order,
-                                                            n_node,
+        result_get = system_resizable_vector_get_element_at(internal_node_order,
+                                                            n_internal_order_node,
                                                            &n_ordered_node);
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve element from node order vector.");
@@ -1646,7 +1657,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
             result = curve_segment_get_node(segment,
                                             node_id,
                                            &node_time,
-                                           NULL);
+                                            NULL);
             ASSERT_DEBUG_SYNC(result,
                               "Could not get node info [id=%d]",
                               node_id);
@@ -1655,6 +1666,8 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
             {
                 system_timeline_time time_delta;
 
+                /* Move nodes relative to the new segment start time.
+                 * For the very last node, use the end time. */
                 if (n_ordered_node != 1)
                 {
                     time_delta = new_segment_start_time - former_start_time;
@@ -1672,19 +1685,8 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
                 ASSERT_DEBUG_SYNC(result, "Could not modify node.");
                 if (!result)
                 {
-                    if (n_node == 0)
-                    {
-                        // No need to revert.
-                        goto end;
-                    }
-                    else
-                    {
-                        // TODO
-                        ASSERT_DEBUG_SYNC(false, "Could not revert - not implemented");
-
-                        goto end;
-                    }
-                } /* if (curve_segment_modify_node(segment, node_id, node_time, NULL, true) ) */
+                    goto end;
+                } /* if (!result) */
             } /* if (curve_segment_get_node(segment, node_id, &node_time, NULL) ) */
         } /* if (curve_segment_get_node_id_for_node_in_order(segment, n_ordered_node, &node_id) ) */
     } /* for (uint32_t n_node = 0; n_node < n_nodes; ++n_node)*/
@@ -1692,14 +1694,14 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
     // Verify that the segment order we have at the moment is still correct.
     bool needs_update = false;
 
-    if (curr_place_iterator != 0)
+    if (curr_segments_order_iterator != 0)
     {
         curve_segment_id             prev_segment_id    = 0;
         _curve_container_segment_ptr prev_curve_segment = NULL;
         bool                         result_get         = false;
 
         result_get = system_resizable_vector_get_element_at(curve_container_data->segments_order,
-                                                            curr_place_iterator - 1,
+                                                            curr_segments_order_iterator - 1,
                                                            &prev_segment_id);
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve previous curve segment id.");
@@ -1714,14 +1716,14 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
         }
     }
 
-    if (!needs_update && (curr_place_iterator + 1 != n_segment_orders) )
+    if (!needs_update && (curr_segments_order_iterator + 1 != n_segment_orders) )
     {
         curve_segment_id             next_segment_id    = 0;
         _curve_container_segment_ptr next_curve_segment = NULL;
         bool                         result_get         = false;
 
         result_get = system_resizable_vector_get_element_at(curve_container_data->segments_order,
-                                                            curr_place_iterator + 1,
+                                                            curr_segments_order_iterator + 1,
                                                            &next_segment_id);
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve next segment id.");
@@ -1776,7 +1778,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
     }
 
     // Dealloc objects we allocated if this point is reached.
-    system_resizable_vector_release(node_order);
+    system_resizable_vector_release(internal_node_order);
 
 end:
     curve_container_data->is_set_segment_times_call_in_place = false;

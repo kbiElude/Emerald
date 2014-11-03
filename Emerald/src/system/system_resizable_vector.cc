@@ -101,16 +101,20 @@ PRIVATE void _system_resizable_vector_resize(system_resizable_vector resizable_v
                           "About to resize a vector without RW mutex locked for write operations");
     }
 
-    ASSERT_DEBUG_SYNC(new_capacity > descriptor->capacity, "The new capacity requested is smaller than existing capacity.");
+    ASSERT_DEBUG_SYNC(new_capacity > descriptor->capacity,
+                      "The new capacity requested is smaller than existing capacity.");
+
     if (new_capacity > descriptor->capacity)
     {
-        CopyMemory(new_elements, descriptor->elements, descriptor->element_size * descriptor->capacity);
+        CopyMemory(new_elements,
+                   descriptor->elements,
+                   descriptor->element_size * descriptor->capacity);
+
+        delete [] descriptor->elements;
+
+        descriptor->capacity = new_capacity;
+        descriptor->elements = new_elements;
     }
-
-    delete [] descriptor->elements;
-
-    descriptor->capacity = new_capacity;
-    descriptor->elements = new_elements;
 }
 
 
@@ -310,20 +314,27 @@ PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(__in            s
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_READ);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_READ);
     }
 
     if (descriptor->n_elements > index)
     {
-        memcpy(result, (char*) descriptor->elements + descriptor->element_size * index, descriptor->element_size);
+        memcpy(result,
+               (char*) descriptor->elements + descriptor->element_size * index,
+               descriptor->element_size);
 
         bool_result = true;
     }
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_READ);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_READ);
     }
+
+    ASSERT_DEBUG_SYNC(bool_result,
+                      "Could not retrieve requested vector element");
 
     return bool_result;
 }
@@ -337,45 +348,65 @@ PUBLIC EMERALD_API void system_resizable_vector_insert_element_at(__in system_re
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_WRITE);
     }
 
-    ASSERT_DEBUG_SYNC(index < descriptor->capacity, "Cannot insert element at index %d - capacity would be exceeded", index);
+    ASSERT_DEBUG_SYNC(index < descriptor->capacity,
+                      "Cannot insert element at index %d - capacity would be exceeded",
+                      index);
+
     if (index < descriptor->capacity)
     {
         if (descriptor->n_elements + 1 >= descriptor->capacity)
         {
-            _system_resizable_vector_resize(resizable_vector, (descriptor->capacity << 1) );
+            _system_resizable_vector_resize(resizable_vector,
+                                            (descriptor->capacity << 1)
+                                           );
         }
 
         if (descriptor->n_elements != index)
         {
-            char*  src_ptr         =  (char*) descriptor->elements + (index    )            * descriptor->element_size;
-            char*  dst_ptr         =  (char*) descriptor->elements + (index + 1)            * descriptor->element_size;
-            size_t n_bytes_to_move = ((char*) descriptor->elements + descriptor->n_elements * descriptor->element_size - src_ptr);
+            char* src_ptr = (char*) descriptor->elements + index * descriptor->element_size;
 
-            ASSERT_DEBUG_SYNC(dst_ptr + n_bytes_to_move <= (char*)descriptor->elements + descriptor->capacity * descriptor->element_size, "Sanity check failure");
+            #ifdef _DEBUG
+            {
+                char*  dst_ptr         =  (char*) descriptor->elements + (index + 1)            * descriptor->element_size;
+                size_t n_bytes_to_move = ((char*) descriptor->elements + descriptor->n_elements * descriptor->element_size - src_ptr);
+
+                ASSERT_DEBUG_SYNC(dst_ptr + n_bytes_to_move <= (char*)descriptor->elements +
+                                                                      descriptor->capacity * descriptor->element_size,
+                                  "Sanity check failure");
+            }
+            #endif
 
             char* end_element_ptr = (char*) descriptor->elements + descriptor->n_elements * descriptor->element_size;
             char* data_ptr        = end_element_ptr - descriptor->element_size;
 
+            /* Move elements from [index] onward till the last entry, one element at a time */
             for (char* traveller_ptr  = end_element_ptr;
                        traveller_ptr != src_ptr;
                        traveller_ptr -= descriptor->element_size, data_ptr -= descriptor->element_size)
             {
-                memcpy(traveller_ptr, data_ptr, descriptor->element_size);
+                memcpy(traveller_ptr,
+                       data_ptr,
+                       descriptor->element_size);
             }
+
+            /* We have a free slot at [index] at this point */
         }
 
-        CopyMemory((char*) descriptor->elements + index * descriptor->element_size,
-                  &element,
-                  descriptor->element_size);
+        memcpy((char*) descriptor->elements + index * descriptor->element_size,
+               &element,
+               descriptor->element_size);
+
         ++descriptor->n_elements;
     }
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_WRITE);
     }
 }
 
