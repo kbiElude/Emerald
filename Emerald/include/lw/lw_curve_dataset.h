@@ -25,6 +25,11 @@ typedef enum
     LW_CURVE_DATASET_OBJECT_TYPE_MESH
 } lw_curve_dataset_object_type;
 
+typedef enum
+{
+    LW_CURVE_DATASET_PROPERTY_FPS, /* settable, double */
+} lw_curve_dataset_property;
+
 /** TODO */
 PUBLIC EMERALD_API void lw_curve_dataset_add_curve(__in __notnull lw_curve_dataset             dataset,
                                                    __in __notnull system_hashed_ansi_string    object_name,
@@ -40,11 +45,21 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull system_hashed_ansi_string name);
 
 /** TODO */
+PUBLIC EMERALD_API void lw_curve_dataset_get_property(__in  __notnull lw_curve_dataset          dataset,
+                                                      __in            lw_curve_dataset_property property,
+                                                      __out __notnull void*                     out_result);
+
+/** TODO */
 PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_load(__in __notnull system_hashed_ansi_string name,
                                                           __in __notnull system_file_serializer    serializer);
 
 /** TODO */
 PUBLIC EMERALD_API void lw_curve_dataset_save(__in __notnull lw_curve_dataset       dataset,
                                               __in __notnull system_file_serializer serializer);
+
+/** TODO */
+PUBLIC EMERALD_API void lw_curve_dataset_set_property(__in __notnull lw_curve_dataset          dataset,
+                                                      __in           lw_curve_dataset_property property,
+                                                      __in __notnull void*                     data);
 
 #endif /* LW_CURVE_DATASET_H */

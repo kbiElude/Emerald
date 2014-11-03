@@ -14,6 +14,10 @@ REFCOUNT_INSERT_DECLARATIONS(scene, scene)
 
 enum scene_property
 {
+    SCENE_PROPERTY_FPS,                    /*     settable, float. By default set to 0 which
+                                            *               disables scene graph computation's FPS
+                                            *               limiter which is needed for correct LW
+                                            *               animation playback. */
     SCENE_PROPERTY_GRAPH,                  /* not settable, scene_graph */
     SCENE_PROPERTY_MAX_ANIMATION_DURATION, /*     settable, float */
     SCENE_PROPERTY_N_CAMERAS,              /* not settable, uint32_t */

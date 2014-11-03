@@ -1481,13 +1481,16 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                            _globals->tcb_curve_start_x_location,
                                            node_b_ss);
 
-        ASSERT_DEBUG_SYNC(width_px > 0,
+        ASSERT_DEBUG_SYNC(width_px >= 0,
                           "Invalid width (in pixels): %d",
                           width_px);
 
-        entry_points->pGLDrawArrays(GL_LINE_STRIP,
-                                    0,
-                                    width_px);
+        if (width_px > 0)
+        {
+            entry_points->pGLDrawArrays(GL_LINE_STRIP,
+                                        0,
+                                        width_px);
+        }
 
         /* Update node indexes */
         node_indexes[0] = node_indexes[1];
@@ -3100,23 +3103,23 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                                0,
                                                2);
 
-            /* Update text to be drawn */
-            char  buffer[32];
-            float value = LERP_FROM_A_B_TO_C_D(bottom_y_px + HEIGHT_SEPARATORS_PX,
-                                               0,
-                                               window_height,
-                                               descriptor_ptr->y1,
-                                               (descriptor_ptr->y1 + descriptor_ptr->y_height) );
-
-            sprintf_s(buffer, 32, "%8.2f", value);
-
-            ogl_text_set(descriptor_ptr->text_renderer,
-                         n_text_strings_used,
-                         buffer);
-
-            /* Draw corresponding value */
             if (n_text_strings_used < descriptor_ptr->n_text_strings)
             {
+                /* Update text to be drawn */
+                char  buffer[32];
+                float value = LERP_FROM_A_B_TO_C_D(bottom_y_px + HEIGHT_SEPARATORS_PX,
+                                                   0,
+                                                   window_height,
+                                                   descriptor_ptr->y1,
+                                                   (descriptor_ptr->y1 + descriptor_ptr->y_height) );
+
+                sprintf_s(buffer, 32, "%8.2f", value);
+
+                ogl_text_set(descriptor_ptr->text_renderer,
+                             n_text_strings_used,
+                             buffer);
+
+                /* Draw corresponding value */
                 int text_height     = 0;
                 int text_width      = 0;
 
@@ -3178,12 +3181,12 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                   y_value,
                   system_hashed_ansi_string_get_buffer(curve_value) );
 
-        ogl_text_set(descriptor_ptr->text_renderer,
-                     n_text_strings_used,
-                     buffer);
-
         if (n_text_strings_used < descriptor_ptr->n_text_strings)
         {
+            ogl_text_set(descriptor_ptr->text_renderer,
+                         n_text_strings_used,
+                         buffer);
+
             ogl_text_set_text_string_property(descriptor_ptr->text_renderer,
                                               n_text_strings_used,
                                               OGL_TEXT_STRING_PROPERTY_POSITION_PX,

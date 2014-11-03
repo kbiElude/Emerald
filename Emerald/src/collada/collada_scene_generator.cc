@@ -305,7 +305,7 @@ PRIVATE void _collada_scene_generator_create_scene_graph(__in __notnull collada_
                                                          __in __notnull scene              result_scene,
                                                          __in __notnull ogl_context        context)
 {
-    scene_graph scene_graph = scene_graph_create();
+    scene_graph scene_graph = scene_graph_create(result_scene);
 
     ASSERT_DEBUG_SYNC(scene_graph != NULL, "Could not create a scene graph instance");
     if (scene_graph == NULL)
@@ -333,9 +333,6 @@ PRIVATE void _collada_scene_generator_create_scene_graph(__in __notnull collada_
                                                        scene_graph,
                                                        scene_to_dag_node_map,
                                                        context);
-
-    /* Pass the graph over to the scene container */
-    scene_set_graph(result_scene, scene_graph);
 
 end:
     if (scene_to_dag_node_map != NULL)

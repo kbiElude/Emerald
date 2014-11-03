@@ -72,6 +72,7 @@ typedef enum
 
 typedef struct
 {
+    float            fps;
     system_hash64map object_to_item_vector_map; /* "object name" hashed_ansi_string -> vector of _lw_curve_dataset_item* items */
     system_hash64map object_to_properties_map;  /* "object name" hashed ansi string -> _lw_curve_dataset_object* */
 
@@ -901,6 +902,11 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
         } /* for (all object curves) */
     } /* for (all objects) */
 
+    /* Also lock the FPS limiter to what the test scene uses */
+    scene_set_property(scene,
+                       SCENE_PROPERTY_FPS,
+                      &dataset_ptr->fps);
+
 end:
     ;
 }
@@ -924,6 +930,7 @@ PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull syste
            0,
            sizeof(*result_instance) );
 
+    result_instance->fps                       = 0.0f;
     result_instance->object_to_item_vector_map = system_hash64map_create(sizeof(_lw_curve_dataset_item*) );
     result_instance->object_to_properties_map  = system_hash64map_create(sizeof(_lw_curve_dataset_object*) );
 
@@ -972,6 +979,30 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void lw_curve_dataset_get_property(__in  __notnull lw_curve_dataset          dataset,
+                                                      __in            lw_curve_dataset_property property,
+                                                      __out __notnull void*                     out_result)
+{
+    _lw_curve_dataset* dataset_ptr = (_lw_curve_dataset*) dataset;
+
+    switch (property)
+    {
+        case LW_CURVE_DATASET_PROPERTY_FPS:
+        {
+            *(float*) out_result = dataset_ptr->fps;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized lw_curve_dataset_property value");
+        }
+    } /* switch (property) */
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_load(__in __notnull system_hashed_ansi_string name,
                                                           __in __notnull system_file_serializer    serializer)
 {
@@ -989,6 +1020,9 @@ PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_load(__in __notnull system_
     uint32_t           n_objects    = 0;
     system_hash64map   object_props = system_hash64map_create(sizeof(_lw_curve_dataset_object*) );
 
+    system_file_serializer_read(serializer,
+                                sizeof(result_ptr->fps),
+                               &result_ptr->fps);
     system_file_serializer_read(serializer,
                                 sizeof(n_objects),
                                &n_objects);
@@ -1112,6 +1146,11 @@ PUBLIC EMERALD_API void lw_curve_dataset_save(__in __notnull lw_curve_dataset   
 {
     _lw_curve_dataset* dataset_ptr = (_lw_curve_dataset*) dataset;
 
+    /* Store the miscellaneous properties */
+    system_file_serializer_write(serializer,
+                                 sizeof(dataset_ptr->fps),
+                                &dataset_ptr->fps);
+
     /* Store the map entries */
     const uint32_t n_objects = system_hash64map_get_amount_of_elements(dataset_ptr->object_to_item_vector_map);
 
@@ -1190,3 +1229,26 @@ end:
     ;
 }
 
+/** Please see header for specification */
+PUBLIC EMERALD_API void lw_curve_dataset_set_property(__in __notnull lw_curve_dataset          dataset,
+                                                      __in           lw_curve_dataset_property property,
+                                                      __in __notnull void*                     data)
+{
+    _lw_curve_dataset* dataset_ptr = (_lw_curve_dataset*) dataset;
+
+    switch (property)
+    {
+        case LW_CURVE_DATASET_PROPERTY_FPS:
+        {
+            dataset_ptr->fps = *(float*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized lw_curve_dataset_property value");
+        }
+    } /* switch (property) */
+}

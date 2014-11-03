@@ -35,6 +35,7 @@ typedef struct
     system_resizable_vector   mesh_instances;
     system_resizable_vector   textures; /* TODO: make this a hash64 map hashed by texture_id */
 
+    float                     fps;
     scene_graph               graph;
     float                     max_animation_duration;
     system_hashed_ansi_string name;
@@ -253,6 +254,7 @@ PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               c
 
         new_scene->cameras                = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY, sizeof(void*) );
         new_scene->curves                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY, sizeof(void*) );
+        new_scene->fps                    = 0;
         new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY, sizeof(void*) );
         new_scene->mesh_instances         = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY, sizeof(void*) );
         new_scene->max_animation_duration = 0.0f;
@@ -486,6 +488,13 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
 
     switch (property)
     {
+        case SCENE_PROPERTY_FPS:
+        {
+            *(float*) out_result = scene_ptr->fps;
+
+            break;
+        }
+
         case SCENE_PROPERTY_GRAPH:
         {
             *((scene_graph*) out_result) = scene_ptr->graph;
@@ -609,6 +618,7 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
 
     /* Read basic stuff */
     float                     scene_animation_duration = 0.0f;
+    unsigned int              scene_fps                = 0;
     system_hashed_ansi_string scene_name               = NULL;
     uint32_t                  n_scene_cameras          = 0;
     uint32_t                  n_scene_curves           = 0;
@@ -619,6 +629,9 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
 
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &scene_name);
+    result &= system_file_serializer_read                   (serializer,
+                                                             sizeof(scene_fps),
+                                                            &scene_fps);
     result &= system_file_serializer_read                   (serializer,
                                                              sizeof(scene_animation_duration),
                                                             &scene_animation_duration);
@@ -928,7 +941,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     }
 
     /* Load the scene graph */
-    scene_graph new_graph = scene_graph_load(serializer,
+    scene_graph new_graph = scene_graph_load(result_scene,
+                                             serializer,
                                              serialized_scene_cameras,
                                              serialized_scene_lights,
                                              serialized_scene_mesh_instances);
@@ -942,10 +956,10 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
         goto end_error;
     }
 
-    scene_set_graph(result_scene,
-                    new_graph);
-
     /* Set other scene properties */
+    scene_set_property(result_scene,
+                       SCENE_PROPERTY_FPS,
+                      &scene_fps);
     scene_set_property(result_scene,
                        SCENE_PROPERTY_MAX_ANIMATION_DURATION,
                       &scene_animation_duration);
@@ -1170,6 +1184,9 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
     /* Store basic stuff */
     system_file_serializer_write_hashed_ansi_string(serializer,
                                                     scene_ptr->name);
+    system_file_serializer_write                   (serializer,
+                                                    sizeof(scene_ptr->fps),
+                                                   &scene_ptr->fps);
     system_file_serializer_write                   (serializer,
                                                     sizeof(scene_ptr->max_animation_duration),
                                                    &scene_ptr->max_animation_duration);
@@ -1559,6 +1576,13 @@ PUBLIC EMERALD_API void scene_set_property(__in __notnull scene          scene,
 
     switch (property)
     {
+        case SCENE_PROPERTY_FPS:
+        {
+            scene_ptr->fps = *(float*) data;
+
+            break;
+        }
+
         case SCENE_PROPERTY_MAX_ANIMATION_DURATION:
         {
             scene_ptr->max_animation_duration = *(float*) data;

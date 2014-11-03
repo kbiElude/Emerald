@@ -279,8 +279,16 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     system_variant temp_variant2 = system_variant_create(variant_type);
     system_variant temp_variant3 = system_variant_create(variant_type);
 
+    const char* curve_name_ptr = system_hashed_ansi_string_get_buffer(curve_name);
+
+    if (strcmp(curve_name_ptr, "04_s1Position.Y") == 0)
+    {
+        int a = 1; a++;
+    }
+
     /* Instantiate the curve */
-    *result_container = curve_container_create(curve_name, variant_type);
+    *result_container = curve_container_create(curve_name,
+                                               variant_type);
 
     if (*result_container == NULL)
     {
@@ -480,10 +488,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                 } /* for (uint32_t n_node = 0; n_node < n_segment_nodes; ++n_node) */
 
                 /* Now that we've read all the nodes, we can retrieve start & end node descriptors */
-                _node_descriptor* first_node          = NULL;
-                float             first_node_tcb[3]   = {0};
-                _node_descriptor* second_node         = NULL;
-                float             second_node_tcb[3]  = {0};
+                _node_descriptor* first_node  = NULL;
+                _node_descriptor* second_node = NULL;
 
                 if (!system_resizable_vector_get_element_at(nodes, 0, &first_node) ||
                     !system_resizable_vector_get_element_at(nodes, 1, &second_node) )
@@ -493,20 +499,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                     goto end;
                 }
 
-                first_node_tcb [0] = first_node->tension;  first_node_tcb [1] = first_node->continuity;  first_node_tcb [2] = first_node->bias;
-                second_node_tcb[0] = second_node->tension; second_node_tcb[1] = second_node->continuity; second_node_tcb[2] = second_node->bias;
-
                 /* Spawn the segment */
-#if 0
-                if (!curve_segment_create_tcb(start_node->time,
-                                              start_node_tcb,
-                                              start_node->value,
-                                              end_node->time,
-                                              end_node_tcb,
-                                              end_node->value,
-                                             *result_container,
-                                             spawned_segment_id) )
-#else
                 if (!curve_container_add_tcb_segment(*result_container,
                                                      first_node->time,
                                                      second_node->time,
@@ -519,7 +512,6 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                      second_node->continuity,
                                                      second_node->bias,
                                                     &spawned_segment_id) )
-#endif
                 {
                     ASSERT_DEBUG_SYNC(false, "Could not create TCB curve");
 
@@ -558,10 +550,12 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                 current_node->value,
                                                &new_node_id) )
                     {
+#if 0
                         /* It is OK if we get here, assuming that the node has already been created. */
                         if (!curve_segment_get_node_at_time(tcb_segment,
                                                             current_node->time,
                                                            &new_node_id) )
+#endif
                         {
                             ASSERT_DEBUG_SYNC(false, "Could not add a node to TCB curve segment");
 
@@ -1181,9 +1175,12 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                     /* Node time / value */
                     system_timeline_time node_time = (system_timeline_time) -1;
 
-                    if (!curve_segment_get_node(segment, node_id, &node_time, temp_variant) )
+                    if (!curve_segment_get_node(segment,
+                                                node_id,
+                                               &node_time,
+                                                temp_variant) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Cannot query TCB curve segment node general property");
+                        ASSERT_DEBUG_SYNC(false, "Cannot query TCB curve segment node general properties");
 
                         goto end;
                     }

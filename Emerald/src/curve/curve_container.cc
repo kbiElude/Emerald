@@ -1503,10 +1503,19 @@ PUBLIC EMERALD_API void curve_container_set_segment_property(__in __notnull curv
 
             case CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME:
             {
+#if 0
+                /* NOTE: This call used to be here but messed up stuff. The call modifies
+                 *       nodes_order which can be used by the caller.
+                 *
+                 *       If you really need to make this call, refactor curve_container.
+                 *       It's a bloody mess anyway.
+                 */
                 curve_container_set_segment_times(curve,
                                                   segment_id,
                                                   segment_ptr->start_time,
                                                   *(system_timeline_time*) in_data);
+#endif
+                segment_ptr->end_time = *(system_timeline_time*) in_data;
 
                 break;
             }
