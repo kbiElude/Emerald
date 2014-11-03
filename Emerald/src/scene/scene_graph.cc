@@ -6,6 +6,7 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
@@ -262,6 +263,7 @@ typedef struct _scene_graph
     system_timeline_time    dirty_time;
     system_timeline_time    last_compute_time;
     system_resizable_vector nodes;
+    scene                   owner_scene;
     _scene_graph_node*      root_node_ptr;
 
     scene_graph_node        node_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
@@ -339,6 +341,50 @@ typedef struct _scene_graph
     }
 } _scene_graph;
 
+
+/** TODO */
+PRIVATE system_timeline_time _scene_graph_align_time_to_fps(__in __notnull scene_graph          graph,
+                                                            __in           system_timeline_time time)
+{
+    float         fps       = 0.0f;
+    _scene_graph* graph_ptr = (_scene_graph*) graph;
+
+    scene_get_property(graph_ptr->owner_scene,
+                       SCENE_PROPERTY_FPS,
+                      &fps);
+
+    /* Only adjust if FPS limiter is enabled */
+    if (fabs(fps) > 1e-5f)
+    {
+        /* How many milliseconds per frame? */
+        const unsigned int ms_per_frame = (unsigned int) (1000.0f /* ms */ / fps);
+
+        /* Find the aligned time */
+        const unsigned int ms_per_frame_boundary       = ms_per_frame / 2;
+              unsigned int time_ms                     = 0;
+              unsigned int time_ms_modulo_ms_per_frame = 0;
+
+        system_time_get_msec_for_timeline_time(time,
+                                              &time_ms);
+
+        time_ms_modulo_ms_per_frame = time_ms % ms_per_frame;
+
+        if (time_ms_modulo_ms_per_frame <= ms_per_frame_boundary)
+        {
+            /* Align to the previous closest frame */
+            time_ms -= time_ms_modulo_ms_per_frame;
+        }
+        else
+        {
+            /* Align to the next closest frame */
+            time_ms += ms_per_frame - time_ms_modulo_ms_per_frame;
+        }
+
+        time = system_time_get_timeline_time_for_msec(time_ms);
+    }
+
+    return time;
+}
 
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*                data,
@@ -1589,6 +1635,9 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
+    /* Compute time needs to be aligned to the FPS setting of the owner scene. */
+    time = _scene_graph_align_time_to_fps(graph, time);
+
     if (graph_ptr->last_compute_time == time)
     {
         /* No need to re-compute stuff. */
@@ -1696,6 +1745,9 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
     ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
                       "Graph not locked");
 
+    /* Compute time needs to be aligned to the FPS setting of the owner scene. */
+    time = _scene_graph_align_time_to_fps(graph, time);
+
     /* We take a different approach in this function. We use an internally stored cache of
      * nodes to store a chain of nodes necessary to calculate transformation matrix for
      * each of the nodes. We proceed in the reverse order when calculating the matrices in
@@ -1770,7 +1822,7 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph scene_graph_create()
+PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene owner_scene)
 {
     _scene_graph* new_graph = new (std::nothrow) _scene_graph;
 
@@ -1781,10 +1833,14 @@ PUBLIC EMERALD_API scene_graph scene_graph_create()
         goto end;
     }
 
+    ASSERT_ALWAYS_SYNC(owner_scene != NULL,
+                       "Owner scene is NULL");
+
     /* Initialize the descriptor. */
     new_graph->dag                   = system_dag_create             ();
     new_graph->nodes                 = system_resizable_vector_create(4 /* capacity */,
                                                                       sizeof(_scene_graph_node*) );
+    new_graph->owner_scene           = owner_scene;
     new_graph->sorted_nodes          = system_resizable_vector_create(4 /* capacity */,
                                                                       sizeof(_scene_graph_node*) );
     new_graph->sorted_nodes_rw_mutex = system_read_write_mutex_create();
@@ -1800,12 +1856,17 @@ PUBLIC EMERALD_API scene_graph scene_graph_create()
         goto end;
     }
 
-    system_resizable_vector_push(new_graph->nodes, new_graph->root_node_ptr);
+    system_resizable_vector_push(new_graph->nodes,
+                                 new_graph->root_node_ptr);
 
     /* Set up root node */
     new_graph->root_node_ptr->dag_node      = system_dag_add_node(new_graph->dag, new_graph->root_node_ptr);
     new_graph->root_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_ROOT;
     new_graph->root_node_ptr->pUpdateMatrix = _scene_graph_compute_root_node;
+
+    /* Associate the instance with the owner scene */
+    scene_set_graph(owner_scene,
+                    (scene_graph) new_graph);
 
 end:
     return (scene_graph) new_graph;
@@ -2035,43 +2096,14 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_root_node(__in __notnull sce
     return (scene_graph_node) ((_scene_graph*) graph)->root_node_ptr;
 }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph)
-{
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
-
-    if (graph_ptr->dag != NULL)
-    {
-        system_dag_release(graph_ptr->dag);
-
-        graph_ptr->dag = NULL;
-    }
-
-    if (graph_ptr->nodes != NULL)
-    {
-        _scene_graph_node* node_ptr = NULL;
-
-        while (system_resizable_vector_pop(graph_ptr->nodes, &node_ptr) )
-        {
-            delete node_ptr;
-
-            node_ptr = NULL;
-        }
-
-        system_resizable_vector_release(graph_ptr->nodes);
-        graph_ptr->nodes = NULL;
-    }
-
-    /* Root node is not deallocated since it's a part of nodes container */
-}
-
 /* Please see header for specification */
-PUBLIC scene_graph scene_graph_load(__in __notnull system_file_serializer  serializer,
+PUBLIC scene_graph scene_graph_load(__in __notnull scene                   owner_scene,
+                                    __in __notnull system_file_serializer  serializer,
                                     __in __notnull system_resizable_vector serialized_scene_cameras,
                                     __in __notnull system_resizable_vector serialized_scene_lights,
                                     __in __notnull system_resizable_vector serialized_scene_mesh_instances)
 {
-    scene_graph result = scene_graph_create();
+    scene_graph result = scene_graph_create(owner_scene);
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "Could not create a scene graph instance");
@@ -2325,7 +2357,36 @@ PUBLIC EMERALD_API void scene_graph_node_set_property(__in __notnull scene_graph
                               "Unsupported node type");
         }
     } /* switch (node_ptr->type) */
+}
 
+/** Please see header for specification */
+PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph)
+{
+    _scene_graph* graph_ptr = (_scene_graph*) graph;
+
+    if (graph_ptr->dag != NULL)
+    {
+        system_dag_release(graph_ptr->dag);
+
+        graph_ptr->dag = NULL;
+    }
+
+    if (graph_ptr->nodes != NULL)
+    {
+        _scene_graph_node* node_ptr = NULL;
+
+        while (system_resizable_vector_pop(graph_ptr->nodes, &node_ptr) )
+        {
+            delete node_ptr;
+
+            node_ptr = NULL;
+        }
+
+        system_resizable_vector_release(graph_ptr->nodes);
+        graph_ptr->nodes = NULL;
+    }
+
+    /* Root node is not deallocated since it's a part of nodes container */
 }
 
 /* Please see header for specification */
@@ -2418,6 +2479,9 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
     scene_graph_lock(graph);
+
+    /* Align the frame time if FPS limiter is on */
+    frame_time = _scene_graph_align_time_to_fps(graph, frame_time);
 
     if (graph_ptr->dirty                           ||
         graph_ptr->last_compute_time != frame_time)

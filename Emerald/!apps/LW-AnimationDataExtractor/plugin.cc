@@ -3,7 +3,7 @@
 #include <lwserver.h>  /* all plug-ins need this        */
 #include <lwgeneric.h> /* for the LayoutGeneric class   */
 #include <lwenvel.h>   /* Animation envelopes           */
-#include <lwrender.h>  /* Item info                     */
+#include <lwrender.h>  /* Scene & Item info             */
 #include <lwhost.h>    /* for the LWMessageFuncs global */
 #include <stdio.h>     /* for NULL #define              */
 #include <Windows.h>
@@ -51,6 +51,7 @@ LWChannelInfo*   channel_info_ptr  = NULL;
 LWEnvelopeFuncs* envelope_ptr      = NULL;
 LWItemInfo*      item_info_ptr     = NULL;
 LWMessageFuncs*  message_funcs_ptr = NULL;
+LWSceneInfo*     scene_info_ptr    = NULL;
 
 /* Forward declarations. */
 curve_container                            CreateCurveFromEnvelope                             (const char*   object_name,
@@ -221,9 +222,6 @@ curve_container CreateCurveFromEnvelope(const char*   object_name,
              * We're asserting here that envelope uses a single interpolation type, so we're OK
              * to spawn a single segment for the very first key, and then re-use that segment for
              * all subsequent nodes. This may require fixing.
-             *
-             * NOTE: We need to multiply X, Y, Z components by 100 to match COLLADA scaling.
-             *       Furthermore, Z needs to be multiplied by -1.
              */
             ASSERT_DEBUG_SYNC(prev_key->type == next_key->type,
                               "Key segment types do not match");
@@ -389,12 +387,20 @@ XCALL_(int) ExportAnimationData(int         version,
     envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
     message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    scene_info_ptr    = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
 
     /* Inform the user that we're generating the dataset */
     message_funcs_ptr->info("Extracting curve data..", NULL);
 
     /* Create a lw_curve_dataset container */
     lw_curve_dataset curve_dataset = lw_curve_dataset_create(system_hashed_ansi_string_create("Curve dataset") );
+
+    /* Extract miscellaneous properties */
+    float fps = (float) scene_info_ptr->framesPerSecond;
+
+    lw_curve_dataset_set_property(curve_dataset,
+                                  LW_CURVE_DATASET_PROPERTY_FPS,
+                                 &fps);
 
     /* Iterate over all object types .. */
     for (  n_item = 0;

@@ -328,6 +328,37 @@ PUBLIC bool curve_segment_tcb_add_node(__in  __notnull curve_segment_data     se
     uint32_t                 n_node_order_elements = system_resizable_vector_get_amount_of_elements(segment_data_ptr->nodes_order);
     bool                     result                = false;
 
+    #ifdef _DEBUG
+    {
+        /* Verify the nodes really are in order. */
+        uint32_t             n_order_node_ids = system_resizable_vector_get_amount_of_elements(segment_data_ptr->nodes_order);
+        system_timeline_time previous_time    = -1;
+
+        for (uint32_t n_order_node_id = 0;
+                      n_order_node_id < n_order_node_ids;
+                    ++n_order_node_id)
+        {
+            curve_segment_node_id         current_node_id = -1;
+            _curve_segment_data_tcb_node* current_node_ptr = NULL;
+
+            system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
+                                                   n_order_node_id,
+                                                  &current_node_id);
+            system_resizable_vector_get_element_at(segment_data_ptr->nodes,
+                                                   current_node_id,
+                                                  &current_node_ptr);
+
+            if (previous_time != -1)
+            {
+                ASSERT_DEBUG_SYNC(current_node_ptr->time > previous_time,
+                                  "Nodes are NOT sorted in order");
+            }
+
+            previous_time = current_node_ptr->time;
+        } /* for (all order node ids) */
+    }
+    #endif
+
     /* Make sure no other node exists with given time */
     for (uint32_t n_node = 0;
                   n_node < n_node_elements;
@@ -341,46 +372,44 @@ PUBLIC bool curve_segment_tcb_add_node(__in  __notnull curve_segment_data     se
 
         if (node_ptr->time == node_time)
         {
+            ASSERT_DEBUG_SYNC(false,
+                              "Requested node is already defined");
+
             return false;
         }
     }
 
     /* Find suitable place for the node */
-    uint32_t n_node_order             = n_node_order_elements;
-    uint32_t n_node_order_to_place_at = n_node_order_elements;
+    uint32_t n_node_order_to_place_at = -1;
 
-    for (n_node_order = 0;
-         n_node_order < n_node_order_elements;
-       ++n_node_order)
+    for (n_node_order_to_place_at = 0;
+         n_node_order_to_place_at < n_node_order_elements;
+       ++n_node_order_to_place_at)
     {
         curve_segment_node_id         node_order_id       = 0;
         _curve_segment_data_tcb_node* node_descriptor_ptr = 0;
 
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
-                                               n_node_order,
+                                               n_node_order_to_place_at,
                                               &node_order_id);
         system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                node_order_id,
                                               &node_descriptor_ptr);
 
-        if (node_descriptor_ptr->time > node_time)
+        if (node_time < node_descriptor_ptr->time)
         {
             break;
         }
     }
 
-    if (n_node_order_elements != 0)
-    {
-        n_node_order_to_place_at = n_node_order;
-    }
-
     /* Add the node */
-    uint32_t                      node_id        = system_resizable_vector_get_amount_of_elements(segment_data_ptr->nodes);
+    uint32_t                      node_id        = n_node_elements;
     float                         new_node_value = 0;
     _curve_segment_data_tcb_node* new_node_ptr   = new (std::nothrow) _curve_segment_data_tcb_node;
-    
+
     ASSERT_DEBUG_SYNC(new_node_ptr != NULL,
                       "Could not allocate space for new TCB node structure.");
+
     if (new_node_ptr != NULL)
     {
         system_variant_get_float         (node_value,
@@ -391,48 +420,69 @@ PUBLIC bool curve_segment_tcb_add_node(__in  __notnull curve_segment_data     se
 
         /* POTENTIAL CULPRIT: WE DO NOT MODIFY TCB AT THIS POINT AS OPPOSED TO ORIGINAL IMPL */
 
-        system_resizable_vector_push(segment_data_ptr->nodes, new_node_ptr);
+        system_resizable_vector_push(segment_data_ptr->nodes,
+                                     new_node_ptr);
 
         *out_node_id = node_id;
 
+        /* Insert nodes order entry */
+        system_resizable_vector_insert_element_at(segment_data_ptr->nodes_order,
+                                                  n_node_order_to_place_at,
+                                                  (void*) node_id);
+
+        #ifdef _DEBUG
+        {
+            /* Verify the nodes really are in order. */
+            uint32_t             n_order_node_ids = system_resizable_vector_get_amount_of_elements(segment_data_ptr->nodes_order);
+            system_timeline_time previous_time    = -1;
+
+            for (uint32_t n_order_node_id = 0;
+                          n_order_node_id < n_order_node_ids;
+                        ++n_order_node_id)
+            {
+                curve_segment_node_id         current_node_id = -1;
+                _curve_segment_data_tcb_node* current_node_ptr = NULL;
+
+                system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
+                                                       n_order_node_id,
+                                                      &current_node_id);
+                system_resizable_vector_get_element_at(segment_data_ptr->nodes,
+                                                       current_node_id,
+                                                      &current_node_ptr);
+
+                if (previous_time != -1)
+                {
+                    ASSERT_DEBUG_SYNC(current_node_ptr->time > previous_time,
+                                      "Nodes are NOT sorted in order");
+                }
+
+                previous_time = current_node_ptr->time;
+            } /* for (all order node ids) */
+        }
+        #endif
+
         /* Update segment if the start or end time are about to change */
-        if (n_node_order_elements    > 1 &&
-            n_node_order_to_place_at == 0)
+        if (n_node_order_elements > 1)
         {
             ASSERT_DEBUG_SYNC(segment_data_ptr->curve != NULL,
                               "Curve is NULL.");
 
-            if (segment_data_ptr->curve != NULL)
+            if (n_node_order_to_place_at == 0)
             {
                 curve_container_set_segment_property(segment_data_ptr->curve,
                                                      segment_data_ptr->id,
                                                      CURVE_CONTAINER_SEGMENT_PROPERTY_START_TIME,
                                                      &node_time);
             }
-        }
-        else
-        if (n_node_order_elements    >  1                     &&
-            n_node_order_to_place_at == n_node_order_elements)
-        {
-            curve_segment_node_id         nodes_order_last_id                  = 0; 
-            _curve_segment_data_tcb_node* node_at_last_node_in_nodes_order_ptr = 0;
-
-            system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
-                                                   n_node_order_elements - 1,
-                                                  &nodes_order_last_id);
-            system_resizable_vector_get_element_at(segment_data_ptr->nodes,
-                                                   nodes_order_last_id,
-                                                  &node_at_last_node_in_nodes_order_ptr);
-
-            curve_container_set_segment_property(segment_data_ptr->curve,
-                                                 segment_data_ptr->id,
-                                                 CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME,
-                                                &node_at_last_node_in_nodes_order_ptr->time);
-        }
-        /* Insert nodes order entry */
-        system_resizable_vector_insert_element_at(segment_data_ptr->nodes_order,
-                                                  n_node_order_to_place_at,
-                                                  (void*) node_id);
+            else
+            if (n_node_order_to_place_at == n_node_order_elements)
+            {
+                curve_container_set_segment_property(segment_data_ptr->curve,
+                                                     segment_data_ptr->id,
+                                                     CURVE_CONTAINER_SEGMENT_PROPERTY_END_TIME,
+                                                     &node_time);
+            }
+        } /* if (n_node_order_elements > 1) */
 
         result = true;
     }
@@ -613,7 +663,10 @@ PUBLIC bool curve_segment_tcb_get_node(__in __notnull    curve_segment_data segm
 
     if (node_ptr != NULL)
     {
-        *out_node_time = node_ptr->time;
+        if (out_node_time != NULL)
+        {
+            *out_node_time = node_ptr->time;
+        }
 
         if (out_node_value != NULL)
         {
@@ -647,6 +700,7 @@ PUBLIC bool curve_segment_tcb_get_node_id_for_node_index(__in __notnull  curve_s
     }
 
     *out_node_id = node_index;
+
     return true;
 }
 
@@ -1137,7 +1191,7 @@ PUBLIC bool curve_segment_tcb_modify_node_time(__in __notnull curve_segment_data
                 return false;
             }
         }
-        
+
         if (is_start_node)
         {
             curve_container_set_segment_property(segment_data_ptr->curve,

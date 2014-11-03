@@ -114,7 +114,7 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
 
 
 /** TODO. */
-PUBLIC EMERALD_API scene_graph scene_graph_create();
+PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene owner_scene);
 
 /** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnull scene_graph graph);
@@ -153,7 +153,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_root_node(__in __notnull sce
  *  NOTE: For internal use only.
  *
  **/
-PUBLIC scene_graph scene_graph_load(__in __notnull system_file_serializer  serializer,
+PUBLIC scene_graph scene_graph_load(__in __notnull scene                   owner_scene,
+                                    __in __notnull system_file_serializer  serializer,
                                     __in __notnull system_resizable_vector serialized_scene_cameras,
                                     __in __notnull system_resizable_vector serialized_scene_lights,
                                     __in __notnull system_resizable_vector serialized_scene_mesh_instances);
