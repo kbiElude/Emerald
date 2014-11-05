@@ -114,14 +114,13 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         case LW_CURVE_TYPE_ROTATION_B:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Z;
-            return; /* TODO */
+
             break;
         }
 
         case LW_CURVE_TYPE_ROTATION_H:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_Y;
-            return; /* TODO */
 
             break;
         }
@@ -129,7 +128,6 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         case LW_CURVE_TYPE_ROTATION_P:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_ROTATE_X;
-            return; /* TODO */
 
             break;
         }
@@ -139,7 +137,6 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         case LW_CURVE_TYPE_SCALE_Z:
         {
             node_tag = SCENE_GRAPH_NODE_TAG_SCALE;
-            return; /* TODO */
 
             break;
         }
@@ -200,7 +197,6 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         }
     } /* if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE) */
     else
-
     /* Same holds for scale nodes */
     if (node_tag == SCENE_GRAPH_NODE_TAG_SCALE)
     {
@@ -237,13 +233,26 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
      *
      * 1) X, Y, Z curves need to be multipled by 100
      * 2) Z curve needs to additionally be multiplied by -1.
+     *
+     * For rotation curves:
+     *
+     * 1) X and Y rotations need to be multiplied by -1.
      */
-    if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE)
+    if (node_tag   == SCENE_GRAPH_NODE_TAG_TRANSLATE ||
+        curve_type == LW_CURVE_TYPE_ROTATION_H       ||
+        curve_type == LW_CURVE_TYPE_ROTATION_P)
     {
-        int            multiplier   = 100;
+        int            multiplier   = 1;
         system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
-        if (curve_type == LW_CURVE_TYPE_POSITION_Z)
+        if (node_tag == SCENE_GRAPH_NODE_TAG_TRANSLATE)
+        {
+            multiplier = 100;
+        }
+
+        if (curve_type == LW_CURVE_TYPE_POSITION_Z ||
+            curve_type == LW_CURVE_TYPE_ROTATION_H ||
+            curve_type == LW_CURVE_TYPE_ROTATION_P)
         {
             multiplier *= -1;
         }
@@ -428,7 +437,8 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
 
             scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
                                                                                       rotation_curves,
-                                                                                      SCENE_GRAPH_NODE_TAG_ROTATE_Z);
+                                                                                      true,     /* LW exports rotation angles in radians */
+                                                                                      node_tag);
 
             ASSERT_DEBUG_SYNC(rotation_node != NULL,
                               "Could not create a rotation dynamic node");

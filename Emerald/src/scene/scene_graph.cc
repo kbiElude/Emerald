@@ -59,12 +59,15 @@ typedef struct _scene_graph_node_rotation_dynamic
 {
     curve_container      curves[4]; /* angle, axis xyz */
     scene_graph_node_tag tag;
+    bool                 uses_radians;
     system_variant       variant_float;
 
     explicit _scene_graph_node_rotation_dynamic(__in_ecount(4) __notnull curve_container*     in_curves,
-                                                __in                     scene_graph_node_tag in_tag)
+                                                __in                     scene_graph_node_tag in_tag,
+                                                __in                     bool                 in_uses_radians)
     {
-        tag = in_tag;
+        tag          = in_tag;
+        uses_radians = in_uses_radians;
 
         for (uint32_t n_curve = 0;
                       n_curve < 4;
@@ -469,9 +472,13 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull vo
     } /* for (three components) */
 
     system_matrix4x4_set_to_identity(new_matrix);
-    system_matrix4x4_rotate         (new_matrix, DEG_TO_RAD(rotation[0]), rotation + 1);
+    system_matrix4x4_rotate         (new_matrix,
+                                     node_data_ptr->uses_radians ? rotation[0] : DEG_TO_RAD(rotation[0]),
+                                     rotation + 1);
 
-    result = system_matrix4x4_create_by_mul(current_matrix, new_matrix);
+    result = system_matrix4x4_create_by_mul(current_matrix,
+                                            new_matrix);
+
     system_matrix4x4_release(new_matrix);
 
     return result;
@@ -663,6 +670,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
     scene_graph_node     result_node          = NULL;
     curve_container      serialized_curves[4] = {NULL, NULL, NULL, NULL};
     scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    bool                 uses_radians         = false;
 
     for (unsigned int n = 0;
                       n < 4;
@@ -680,16 +688,20 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
 
     if (!system_file_serializer_read(serializer,
                                      sizeof(serialized_tag),
-                                    &serialized_tag) )
+                                    &serialized_tag)        ||
+        !system_file_serializer_read(serializer,
+                                     sizeof(uses_radians),
+                                    &uses_radians) )
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Could not read tag info");
+                          "Could not read node data");
 
         goto end;
     }
 
     result_node = scene_graph_create_rotation_dynamic_node(result_graph,
                                                            serialized_curves,
+                                                           uses_radians,
                                                            serialized_tag);
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
@@ -889,6 +901,9 @@ PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull 
     result &= system_file_serializer_write(serializer,
                                            sizeof(data_ptr->tag),
                                           &data_ptr->tag);
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->uses_radians),
+                                          &data_ptr->uses_radians);
 
     return result;
 }
@@ -1232,6 +1247,7 @@ PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void* 
     {
         switch (type)
         {
+            case SCENE_GRAPH_NODE_TYPE_GENERAL:
             case SCENE_GRAPH_NODE_TYPE_ROOT:
             {
                 /* Nothing to do here */
@@ -1875,6 +1891,7 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__in           __notnull scene_graph          graph,
                                                                              __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
+                                                                             __in                     bool                 expressed_in_radians,
                                                                              __in                     scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
@@ -1887,7 +1904,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__i
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves, tag);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_rotation_dynamic(rotation_vector_curves,
+                                                                                        tag,
+                                                                                        expressed_in_radians);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC;

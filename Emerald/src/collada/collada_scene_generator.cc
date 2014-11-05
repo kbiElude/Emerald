@@ -1111,6 +1111,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                 result = scene_graph_create_rotation_dynamic_node(graph,
                                                                   rotation_vector_curves,
+                                                                  false, /* COLLADA uses degrees for angle representation */
                                                                   result_node_tag);
 
                 ASSERT_DEBUG_SYNC(result != NULL,

@@ -279,13 +279,6 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     system_variant temp_variant2 = system_variant_create(variant_type);
     system_variant temp_variant3 = system_variant_create(variant_type);
 
-    const char* curve_name_ptr = system_hashed_ansi_string_get_buffer(curve_name);
-
-    if (strcmp(curve_name_ptr, "04_s1Position.Y") == 0)
-    {
-        int a = 1; a++;
-    }
-
     /* Instantiate the curve */
     *result_container = curve_container_create(curve_name,
                                                variant_type);

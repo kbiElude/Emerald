@@ -122,6 +122,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnu
 /** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__in           __notnull scene_graph          graph,
                                                                              __in_ecount(4) __notnull curve_container*     rotation_vector_curves,
+                                                                             __in                     bool                 expressed_in_radians,
                                                                              __in                     scene_graph_node_tag tag);
 
 /** TODO */
