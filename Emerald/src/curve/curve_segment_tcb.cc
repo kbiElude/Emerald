@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -52,6 +52,7 @@ double _get_curve_time_for_time(__in __notnull  _curve_segment_data_tcb* segment
     system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                            0,
                                           &first_nodes_order_id);
+
     system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                            last_nodes_order_id,
                                           &node_at_last_node_in_nodes_order_ptr);
@@ -79,6 +80,7 @@ double _get_curve_time_for_time(__in __notnull  _curve_segment_data_tcb* segment
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                n_next_node_iterator,
                                               &next_node_id);
+
         system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                next_node_id,
                                               &next_node_ptr);
@@ -93,6 +95,7 @@ double _get_curve_time_for_time(__in __notnull  _curve_segment_data_tcb* segment
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_node_iterator,
                                                   &node_id);
+
             system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                    node_id,
                                                   &node_ptr);
@@ -155,6 +158,7 @@ double _get_curve_time_for_time(__in __notnull  _curve_segment_data_tcb* segment
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_next_node_iterator,
                                                   &next_node_id);
+
             system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                    node_id,
                                                   &node_ptr);
@@ -929,6 +933,7 @@ PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data   s
     uint32_t                      next_next_node_order_iterator = n_nodes_order_elements;
     float                         in;
     float                         out;
+
     double                        curve_time = _get_curve_time_for_time(segment_data_ptr,
                                                                         time,
                                                                        &node_id,
@@ -985,6 +990,7 @@ PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data   s
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                prev_node_order_iterator,
                                               &prev_node_order_id);
+
         system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                prev_node_order_id,
                                               &prev_node_ptr);
@@ -1000,6 +1006,7 @@ PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data   s
     /* Incoming tangent */
     a = (1.0f - next_node_ptr->tension) * (1.0f - next_node_ptr->continuity) * (1.0f + next_node_ptr->bias);
     b = (1.0f - next_node_ptr->tension) * (1.0f + next_node_ptr->continuity) * (1.0f - next_node_ptr->bias);
+    d = next_node_ptr->value - node_ptr->value;
 
     if (next_next_node_order_iterator != n_nodes_order_elements)
     {
@@ -1008,11 +1015,12 @@ PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data   s
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                next_next_node_order_iterator,
                                               &next_next_node_order_id);
+
         system_resizable_vector_get_element_at(segment_data_ptr->nodes,
                                                next_next_node_order_id,
                                               &next_next_node_ptr);
 
-        t  = float(next_next_node_ptr->time - node_ptr->time) / float(next_next_node_ptr->time - node_ptr->time);
+        t  = float(next_node_ptr->time - node_ptr->time) / float(next_next_node_ptr->time - node_ptr->time);
         in = float(t * (b * (next_next_node_ptr->value - next_node_ptr->value) + a * d));
     }
     else
@@ -1029,7 +1037,8 @@ PUBLIC bool curve_segment_tcb_get_value(__in    __notnull curve_segment_data   s
     double h4                = t3 - t2;
     double h3                = h4 - t2 + curve_time_double;
 
-    system_variant_set_float_forced(out_result, float(h1 * node_ptr->value + h2 * next_node_ptr->value + h3 * out + h4 * in) );
+    system_variant_set_float_forced(out_result,
+                                    float(h1 * node_ptr->value + h2 * next_node_ptr->value + h3 * out + h4 * in) );
 
     return true;
 }
