@@ -546,13 +546,19 @@ PRIVATE _collada_mesh_generator_input_data* _collada_mesh_generator_generate_inp
             goto end;
         }
 
-        for (unsigned int input_set = 0; input_set < n_sets; ++input_set)
+        for (unsigned int input_set = 0;
+                          input_set < n_sets;
+                        ++input_set)
         {
             _collada_mesh_generator_input_data_stream* stream_ptr = NULL;
 
-            if (system_resizable_vector_get_element_at(result->streams, input_set, &stream_ptr) )
+            if (system_resizable_vector_get_element_at(result->streams,
+                                                       input_set,
+                                                      &stream_ptr) )
             {
-                memcpy(traveller_ptr, stream_ptr->array_data, stream_ptr->array_data_size);
+                memcpy(traveller_ptr,
+                       stream_ptr->array_data,
+                       stream_ptr->array_data_size);
 
                 traveller_ptr += stream_ptr->array_data_size;
             }
@@ -841,27 +847,27 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
     }
 
     /* Retrieve geometry properties */
-    system_hashed_ansi_string geometry_name = NULL;
+    system_hashed_ansi_string geometry_id = NULL;
 
     collada_data_geometry_get_property(geometry,
                                        COLLADA_DATA_GEOMETRY_PROPERTY_ID,
-                                       &geometry_name);
+                                       &geometry_id);
 
     /* Name is potentially NULL. If this is the case, come with our own one */
     static int name_counter = 1;
 
-    if (system_hashed_ansi_string_get_length(geometry_name) == 0)
+    if (system_hashed_ansi_string_get_length(geometry_id) == 0)
     {
         /* Use enough characters to fit really large numbers */
         char temp[24];
 
         sprintf_s(temp, "Emerald%d", name_counter++);
 
-        geometry_name = system_hashed_ansi_string_create(temp);
+        geometry_id = system_hashed_ansi_string_create(temp);
     }
 
     /* Instantiate new mesh */
-    result = mesh_create(MESH_SAVE_SUPPORT, geometry_name);
+    result = mesh_create(MESH_SAVE_SUPPORT, geometry_id);
 
     if (result == NULL)
     {
@@ -964,7 +970,7 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
             if (input_data[n_input_type] != NULL)
             {
                 const _collada_data_input_type input_type  = input_types[n_input_type];
-                const unsigned int             n_streams   = system_resizable_vector_get_amount_of_elements(input_data[n_input_type]->streams);
+                const unsigned int             n_streams   = system_resizable_vector_get_amount_of_elements                                     (input_data[n_input_type]->streams);
                 mesh_layer_data_stream_type    stream_type = _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type(input_type);
 
                 for (unsigned int n_set = 0; n_set < n_streams; ++n_set)
@@ -1013,6 +1019,11 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
         } /* for (all supported COLLADA data input types) */
     } /* for (all polylists) */
 
+    if (system_hashed_ansi_string_contains(geometry_id, system_hashed_ansi_string_create("blok6__7__lib") ))
+    {
+        int a = 1; a++;
+    }
+
     /* If no data on normals is in the COLLADA container, we need to generate them
      * manually..
      */
@@ -1033,7 +1044,7 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
             const char* blob_name_strings[] =
             {
                 "collada_mesh_",
-                system_hashed_ansi_string_get_buffer(geometry_name)
+                system_hashed_ansi_string_get_buffer(geometry_id)
             };
             size_t      n_blob_name_strings = sizeof(blob_name_strings) /
                                               sizeof(blob_name_strings[0]);
@@ -1134,8 +1145,12 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
                                                     &n_normal_items,
                                                     &normal_data_ptr);
 
-                    system_file_serializer_write(serializer, sizeof(n_normal_items),            &n_normal_items);
-                    system_file_serializer_write(serializer, n_normal_items * sizeof(float) * 3, normal_data_ptr);
+                    system_file_serializer_write(serializer,
+                                                 sizeof(n_normal_items),
+                                                &n_normal_items);
+                    system_file_serializer_write(serializer,
+                                                 n_normal_items * sizeof(float) * 3,
+                                                 normal_data_ptr);
                 } /* for (all layers) */
 
                 /* All done */

@@ -498,32 +498,35 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
     /* Process all workloads */
     const unsigned int n_workloads = system_hash64map_get_amount_of_elements(workloads_map);
 
-    for (unsigned int n_workload = 0;
-                      n_workload < n_workloads;
-                    ++n_workload)
+    if (n_workloads > 0)
     {
-        _texture_loader_workload* current_workload = NULL;
-
-        if (system_hash64map_get_element_at(workloads_map, n_workload, &current_workload, NULL /* pOutHash */) )
+        for (unsigned int n_workload = 0;
+                          n_workload < n_workloads;
+                        ++n_workload)
         {
-            /* Before we set off, update the descriptor so that it tells how many workloads
-             * we will be launching */
-            current_workload->n_workloads_to_process = n_workloads;
+            _texture_loader_workload* current_workload = NULL;
 
-            system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_IDLE,
-                                                                                                             _collada_scene_generator_process_workload,
-                                                                                                             current_workload);
+            if (system_hash64map_get_element_at(workloads_map, n_workload, &current_workload, NULL /* pOutHash */) )
+            {
+                /* Before we set off, update the descriptor so that it tells how many workloads
+                 * we will be launching */
+                current_workload->n_workloads_to_process = n_workloads;
 
-            system_thread_pool_submit_single_task(task);
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve workload descriptor");
-        }
-    } /* for (all workloads) */
+                system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_IDLE,
+                                                                                                                 _collada_scene_generator_process_workload,
+                                                                                                                 current_workload);
 
-    /* Wait for the processing to finish */
-    system_event_wait_single_infinite(workloads_processed_event);
+                system_thread_pool_submit_single_task(task);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false, "Could not retrieve workload descriptor");
+            }
+        } /* for (all workloads) */
+
+        /* Wait for the processing to finish */
+        system_event_wait_single_infinite(workloads_processed_event);
+    } /* if (n_workloads > 0) */
 
     /* Release stuff before we continue */
     system_event_release(workloads_processed_event);

@@ -1495,6 +1495,8 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                 if (n_sets == 0)
                 {
                     /* We will use vertex indices in this case */
+                    ASSERT_DEBUG_SYNC(n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                      "Stream data corrupt");
                     ASSERT_DEBUG_SYNC(stream_usage[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
                                       "No index data set defined for vertex data.");
 
@@ -1668,8 +1670,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                         {
                                             ASSERT_DEBUG_SYNC(data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT, "TODO");
 
-                                            uint32_t stream_n_components = 0;
-                                            uint32_t stream_n_sets       = 0;
+                                            mesh_layer_data_stream_type actual_stream_type  = (mesh_layer_data_stream_type) n_data_stream_type;
+                                            uint32_t                    stream_n_components = 0;
+                                            uint32_t                    stream_n_sets       = 0;
 
                                             _mesh_get_stream_data_properties(mesh_ptr,
                                                                              (mesh_layer_data_stream_type) n_data_stream_type,
@@ -1685,27 +1688,29 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                                             if (stream_n_sets == 0)
                                             {
-                                                /* Re-use vertex index data set */
-                                                stream_n_sets = 1;
+                                                /* Re-use vertex data set, but only if it's the normals data we're missing. */
+                                                ASSERT_DEBUG_SYNC(n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                                  "No data-set defined for an enabled data stream!");
+
+                                                actual_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
+                                                stream_n_sets      = 1;
                                             }
 
                                             for (unsigned int n_set = 0;
                                                               n_set < stream_n_sets;
                                                             ++n_set)
                                             {
-                                                mesh_layer_data_stream_type actual_stream_type = (mesh_layer_data_stream_type) n_data_stream_type;
-                                                unsigned int                pass_index_data    = 0;
+                                                unsigned int pass_index_data = 0;
 
-                                                if (system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[actual_stream_type]) == 0)
-                                                {
-                                                    actual_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
-                                                }
-
+                                                ASSERT_DEBUG_SYNC(pass_ptr->index_data_maps[actual_stream_type] != NULL,
+                                                                  "");
                                                 if (pass_ptr->index_data_maps[actual_stream_type] != NULL)
                                                 {
                                                     _mesh_layer_pass_index_data* set_index_data = NULL;
 
-                                                    if (!system_hash64map_get(pass_ptr->index_data_maps[actual_stream_type], n_set, &set_index_data) )
+                                                    if (!system_hash64map_get(pass_ptr->index_data_maps[actual_stream_type],
+                                                                              n_set,
+                                                                             &set_index_data) )
                                                     {
                                                         ASSERT_DEBUG_SYNC(false, "Could not retrieve set's index data");
                                                     }
@@ -1901,23 +1906,30 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                                                           NULL,  /* init_fn */
                                                                           NULL); /* deinit_fn */
 
-    for (unsigned int n_layer = 0; n_layer < n_layers; ++n_layer)
+    for (unsigned int n_layer = 0;
+                      n_layer < n_layers;
+                    ++n_layer)
     {
         system_hash64map index_to_vec3_map = system_hash64map_create(sizeof(void*) );
         _mesh_layer*     layer_ptr         = NULL;
 
-        if (system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr) )
+        if (system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                   n_layer,
+                                                  &layer_ptr) )
         {
             _mesh_layer_data_stream* vertex_data_stream_ptr = NULL;
             const float*             vertex_data_ptr        = NULL;
 
-            if (system_hash64map_contains(layer_ptr->data_streams, MESH_LAYER_DATA_STREAM_TYPE_NORMALS) )
+            if (system_hash64map_contains(layer_ptr->data_streams,
+                                          MESH_LAYER_DATA_STREAM_TYPE_NORMALS) )
             {
                 /* Normal data defined for this layer, move on */
                 continue;
             }
 
-            if (!system_hash64map_get(layer_ptr->data_streams, MESH_LAYER_DATA_STREAM_TYPE_VERTICES, &vertex_data_stream_ptr) )
+            if (!system_hash64map_get(layer_ptr->data_streams,
+                                      MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                     &vertex_data_stream_ptr) )
             {
                 ASSERT_DEBUG_SYNC(false, "Could not retrieve vertex data stream for mesh layer [%d]", n_layer);
 
@@ -1930,11 +1942,15 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
             unsigned int       max_index      = 0;
             const unsigned int n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
 
-            for (unsigned int n_layer_pass = 0; n_layer_pass < n_layer_passes; ++n_layer_pass)
+            for (unsigned int n_layer_pass = 0;
+                              n_layer_pass < n_layer_passes;
+                            ++n_layer_pass)
             {
                 _mesh_layer_pass* layer_pass_ptr = NULL;
 
-                if (system_resizable_vector_get_element_at(layer_ptr->passes, n_layer_pass, &layer_pass_ptr) )
+                if (system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                           n_layer_pass,
+                                                          &layer_pass_ptr) )
                 {
                     const unsigned int n_indices = layer_pass_ptr->n_elements;
 
@@ -1964,61 +1980,63 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 
                     for (unsigned int n_index = 0; n_index < n_indices; n_index += 3)
                     {
-                        const uint32_t vertex1_index = index_data_ptr->data[n_index + 0];
+                        const uint32_t vertex1_index = index_data_ptr->data[n_index + 2];
                         const uint32_t vertex2_index = index_data_ptr->data[n_index + 1];
-                        const uint32_t vertex3_index = index_data_ptr->data[n_index + 2];
+                        const uint32_t vertex3_index = index_data_ptr->data[n_index + 0];
                         const float*   vertex1_data =  vertex_data_ptr + 3 /* components */ * vertex1_index;
                         const float*   vertex2_data =  vertex_data_ptr + 3 /* components */ * vertex2_index;
                         const float*   vertex3_data =  vertex_data_ptr + 3 /* components */ * vertex3_index;
 
                         /* Calculate the normal vector */
-                        float b_minus_a           [3];
-                        float c_minus_a           [3];
+                        float a_minus_b           [3];
+                        float c_minus_b           [3];
                         float result_normal_vector[3];
 
-                        system_math_vector_minus3(vertex2_data, vertex1_data, b_minus_a);
-                        system_math_vector_minus3(vertex3_data, vertex1_data, c_minus_a);
-                        system_math_vector_cross3(b_minus_a,    c_minus_a,    result_normal_vector);
+                        system_math_vector_minus3(vertex1_data, vertex2_data, a_minus_b);
+                        system_math_vector_minus3(vertex3_data, vertex2_data, c_minus_b);
+                        system_math_vector_cross3(a_minus_b,    c_minus_b,    result_normal_vector);
 
                         /* Add the vector to vectors assigned to each point */
-                        struct _item
+                        const uint32_t indices[] = 
                         {
-                            uint32_t     index;
-                            const float* data;
-                        } items[] =
-                        {
-                            {vertex1_index, vertex1_data},
-                            {vertex2_index, vertex2_data},
-                            {vertex3_index, vertex3_data}
+                            vertex1_index,
+                            vertex2_index,
+                            vertex3_index
                         };
-                        const unsigned int n_items = sizeof(items) / sizeof(items[0]);
+                        const unsigned int n_indices = sizeof(indices) / sizeof(indices[0]);
 
-                        for (unsigned int n_item = 0; n_item < n_items; ++n_item)
+                        for (unsigned int n_index = 0; n_index < n_indices; ++n_index)
                         {
-                            const _item& current_item         = items[n_item];
-                            float*       assigned_normal_data = NULL;
+                            float*         assigned_normal_data = NULL;
+                            const uint32_t vertex_index         = indices[n_index];
 
-                            if (!system_hash64map_get(index_to_vec3_map, current_item.index, &assigned_normal_data) )
+                            if (!system_hash64map_get(index_to_vec3_map,
+                                                      vertex_index,
+                                                     &assigned_normal_data) )
                             {
                                 /* No normal assigned to the point yet */
                                 assigned_normal_data = (float*) system_resource_pool_get_from_pool(vec3_resource_pool);
 
-                                memcpy(assigned_normal_data, result_normal_vector, sizeof(float) * 3);
+                                memcpy(assigned_normal_data,
+                                       result_normal_vector,
+                                       sizeof(result_normal_vector) );
 
                                 system_hash64map_insert(index_to_vec3_map,
-                                                        current_item.index,
+                                                        (system_hash64) vertex_index,
                                                         assigned_normal_data,
                                                         NULL,  /* on_remove_callback_fn */
                                                         NULL); /* on_remove_callback arg */
                             }
                             else
                             {
-                                system_math_vector_add3(assigned_normal_data, result_normal_vector, assigned_normal_data);
+                                system_math_vector_add3(assigned_normal_data,
+                                                        result_normal_vector,
+                                                        assigned_normal_data);
                             }
 
-                            if (current_item.index > max_index)
+                            if (vertex_index > max_index)
                             {
-                                max_index = current_item.index;
+                                max_index = vertex_index;
                             }
                         } /* for (all three triangle vertices) */
                     } /* for (all triangle indices) */
@@ -2042,7 +2060,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                               n_current_index < n_index_to_vec3_map_indices;
                             ++n_current_index)
             {
-                system_hash64 current_index = 0;
+                system_hash64 current_index = -1;
                 float*        index_normal  = NULL;
 
                 if (system_hash64map_get_element_at(index_to_vec3_map,
