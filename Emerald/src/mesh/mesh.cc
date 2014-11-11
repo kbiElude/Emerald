@@ -90,7 +90,6 @@ typedef struct
 {
     void*                            data;
     mesh_layer_data_stream_data_type data_type;
-    bool                             gl_ordered; /* Tells if the data needs not be re-ordered during GL data generation. Only used for SH data seiralization */
     unsigned int                     n_components;
     unsigned int                     n_items;
     unsigned int                     required_bit_alignment;
@@ -181,7 +180,9 @@ PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_resu
             _mesh_layer_pass_index_data* index_data_ptr = NULL;
             const uint32_t               n_sets         = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[n_data_stream_type]);
 
-            for (uint32_t n_set = 0; n_set < n_sets; ++n_set)
+            for (uint32_t n_set = 0;
+                          n_set < n_sets;
+                        ++n_set)
             {
                 uint32_t unique_set_id = 0;
 
@@ -211,9 +212,12 @@ PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_resu
         } /* if (index data available for given data stream type) */
     } /* for (all data stream types) */
 
-    ASSERT_DEBUG_SYNC(sizeof(void*) == sizeof(uint32_t), "32-bit only logic");
+    ASSERT_DEBUG_SYNC(sizeof(void*) == sizeof(uint32_t),
+                      "32-bit only logic");
 
-    memcpy(out_result + n_current_word, layer_pass_ptr->material, sizeof(layer_pass_ptr->material) );
+    memcpy(out_result + n_current_word,
+           layer_pass_ptr->material,
+           sizeof(layer_pass_ptr->material) );
 }
 
 /** TODO */
@@ -259,11 +263,15 @@ PRIVATE uint32_t _mesh_get_total_number_of_sets(_mesh_layer* layer_ptr)
     const uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
           uint32_t result   = 0;
 
-    for (uint32_t n_pass = 0; n_pass < n_passes; ++n_pass)
+    for (uint32_t n_pass = 0;
+                  n_pass < n_passes;
+                ++n_pass)
     {
         const _mesh_layer_pass* pass_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(layer_ptr->passes, n_pass, &pass_ptr) )
+        if (system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                   n_pass,
+                                                  &pass_ptr) )
         {
             /* Count how many words BST keys will consist of for this pass */
             for (unsigned int n_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
@@ -732,7 +740,6 @@ PRIVATE void _mesh_init_mesh_layer_data_stream(_mesh_layer_data_stream* new_mesh
 {
     new_mesh_layer_data_stream->data                   = NULL;
     new_mesh_layer_data_stream->data_type              = MESH_LAYER_DATA_STREAM_DATA_TYPE_UNKNOWN;
-    new_mesh_layer_data_stream->gl_ordered             = false;
     new_mesh_layer_data_stream->n_components           = 0;
     new_mesh_layer_data_stream->n_items                = 0;
     new_mesh_layer_data_stream->required_bit_alignment = 0;
@@ -754,355 +761,6 @@ PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass)
         new_mesh_layer_pass->set_id_to_unique_set_id[stream_type] = system_hash64map_create(sizeof(uint32_t) );
     }
 }
-
-#if 0
-
-/** TODO. Rework if needed! This implementation does not support stream data sets. */
-PRIVATE void _mesh_merge_meshes(__in __notnull _mesh* new_mesh_ptr, __in uint32_t n_meshes, __in_ecount(n_meshes) __notnull _mesh** meshes)
-{
-    /* The approach we take here is to merge all layers into one. */
-    ASSERT_ALWAYS_SYNC(!new_mesh_ptr->gl_storage_initialized, "Merging not allowed for meshes that have already had GL buffers generated.");
-    if (!new_mesh_ptr->gl_storage_initialized)
-    {
-        /* Iterate through all submitted meshes and count how much space we need to allocate for unique stream data. */
-        uint32_t n_total_layers                                                = 0;
-        uint32_t n_total_unique_stream_data[MESH_LAYER_DATA_STREAM_TYPE_COUNT] = {0};
-
-        memset(n_total_unique_stream_data, 0, sizeof(n_total_unique_stream_data) );
-
-        for (uint32_t n_mesh = 0; n_mesh < n_meshes; ++n_mesh)
-        {
-            _mesh*   src_mesh_ptr      = (_mesh*) meshes[n_mesh];
-            uint32_t n_src_mesh_layers = system_resizable_vector_get_amount_of_elements(src_mesh_ptr->layers);
-
-            n_total_layers += n_src_mesh_layers;
-
-            for (uint32_t n_mesh_layer = 0; n_mesh_layer < n_src_mesh_layers; ++n_mesh_layer)
-            {
-                _mesh_layer* src_mesh_layer_ptr = NULL;
-
-                if (system_resizable_vector_get_element_at(src_mesh_ptr->layers, n_mesh_layer, &src_mesh_layer_ptr) )
-                {
-                    for (unsigned int n_data_stream = 0;
-                                      n_data_stream < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                    ++n_data_stream)
-                    {
-                        _mesh_layer_data_stream* stream_ptr = NULL;
-
-                        if (system_hash64map_get(src_mesh_layer_ptr->data_streams, n_data_stream, &stream_ptr) &&
-                            stream_ptr != NULL)
-                        {
-                            n_total_unique_stream_data[n_data_stream] += stream_ptr->n_items;
-                        }
-                    }
-                } /* if (system_resizable_vector_get_element_at(src_mesh_ptr->layers, &src_mesh_layer_ptr) ) */
-                else
-                {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve mesh layer descriptor");
-                }
-            } /* for (uint32_t n_mesh_layer = 0; n_mesh_layer < n_src_mesh_layers; ++n_mesh_layer) */
-        } /* for (uint32_t n_mesh = 0; n_mesh < n_meshes; ++n_mesh) */
-
-        /* Allocate space for the buffers. We want the data merged into one layer */
-        typedef struct
-        {
-            mesh_material    material;
-            uint32_t*        updated_stream_data_indices[MESH_LAYER_DATA_STREAM_TYPE_COUNT];
-            uint32_t         n_indices;
-        } _mesh_layer_pass_merge_data;
-
-        typedef struct
-        {
-            uint32_t                     n_passes;
-            _mesh_layer_pass_merge_data* passes;
-        } _mesh_layer_merge_data;
-
-        float*                   new_unique_data[MESH_LAYER_DATA_STREAM_TYPE_COUNT] = {NULL};
-        _mesh_layer_merge_data** new_layers_merge_data                              = new (std::nothrow) _mesh_layer_merge_data*[n_total_layers];
-
-        memset(new_unique_data, 0, sizeof(new_unique_data) );
-
-        for (unsigned int n_stream_type = 0;
-                          n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                        ++n_stream_type)
-        {
-            if (n_total_unique_stream_data[n_stream_type] != 0)
-            {
-                /* TODO: We always assume 3 components are used here. not necessarily true for texcoords, etc. */
-                ASSERT_ALWAYS_SYNC(n_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS ||
-                                   n_stream_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                   "TODO");
-
-                new_unique_data[n_stream_type] = new (std::nothrow) float [n_total_unique_stream_data[n_stream_type] * 3];
-                ASSERT_ALWAYS_SYNC(new_unique_data[n_stream_type] != NULL, "Out of memory");
-            }
-        }
-
-        /* Allocate buffers to hold merged data streams. While we're at it, verify that all meshes offer the
-         * required streams. It's not necessarily a problem if they don't but we should log a warning if
-         * this happens.
-         */
-        for (unsigned int n_stream_type = 0;
-                          n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                        ++n_stream_type)
-        {
-#if _DEBUG
-            if (new_unique_data[n_stream_type] != NULL)
-            {
-                for (uint32_t n_mesh = 0; n_mesh < n_meshes; ++n_mesh)
-                {
-                    _mesh*   src_mesh_ptr      = (_mesh*) meshes[n_mesh];
-                    uint32_t n_src_mesh_layers = system_resizable_vector_get_amount_of_elements(src_mesh_ptr->layers);
-
-                    for (uint32_t n_mesh_layer = 0; n_mesh_layer < n_src_mesh_layers; ++n_mesh_layer)
-                    {
-                        _mesh_layer* src_mesh_layer_ptr = NULL;
-
-                        if (system_resizable_vector_get_element_at(src_mesh_ptr->layers, n_mesh_layer, &src_mesh_layer_ptr) )
-                        {
-                            if (!system_hash64map_contains(src_mesh_layer_ptr->data_streams, n_stream_type) )
-                            {
-                                /* TODO: This code-path was not verified hence the assertion failure */
-                                LOG_ERROR("A data stream of type [%d] is needed for merging but mesh [%d] layer [%d] does not offer it!",
-                                          n_stream_type,
-                                          n_mesh,
-                                          n_mesh_layer);
-
-                                ASSERT_DEBUG_SYNC(false, "");
-                            }
-                        }
-                    }
-                }
-            } /* if (new_unique_data[n_stream_type] != NULL) */
-#endif
-
-            if (new_unique_data[n_stream_type] != NULL)
-            {
-                new_mesh_ptr->merged_mesh_unique_data_stream_start_offsets[n_stream_type] = new (std::nothrow) uint32_t[n_meshes];
-            }
-        }
-
-        if (new_layers_merge_data != NULL)
-        {
-            /* Good. Now we can start copying stuff around */
-            uint32_t current_data_stream_index[MESH_LAYER_DATA_STREAM_TYPE_COUNT] = {0};
-            uint32_t current_layer_index                                          = 0;
-
-            memset(current_data_stream_index, 0, sizeof(current_data_stream_index) );
-
-            for (uint32_t n_mesh = 0; n_mesh < n_meshes; ++n_mesh)
-            {
-                _mesh*   src_mesh_ptr      = (_mesh*) meshes[n_mesh];
-                uint32_t n_src_mesh_layers = system_resizable_vector_get_amount_of_elements(src_mesh_ptr->layers);
-
-                ASSERT_DEBUG_SYNC(n_src_mesh_layers == 1, "TODO");
-                for (uint32_t n_mesh_layer = 0; n_mesh_layer < n_src_mesh_layers; ++n_mesh_layer, ++current_layer_index)
-                {
-                    _mesh_layer* src_mesh_layer_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(src_mesh_ptr->layers, n_mesh_layer, &src_mesh_layer_ptr) )
-                    {
-                        for (unsigned int n_stream_data_type = 0;
-                                          n_stream_data_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                        ++n_stream_data_type)
-                        {
-                            _mesh_layer_data_stream* data_stream_ptr = NULL;
-
-                            system_hash64map_get(src_mesh_layer_ptr->data_streams,
-                                                 n_stream_data_type,
-                                                 &data_stream_ptr);
-
-                            if (data_stream_ptr != NULL)
-                            {
-                                memcpy(new_unique_data[n_stream_data_type] + current_data_stream_index[n_stream_data_type] * 3,
-                                       data_stream_ptr->data,
-                                       sizeof(float) * 3 * data_stream_ptr->n_items);
-                            }
-                        } /* for (all stream data types) */
-
-                        /* Allocate space for updated layer indices */
-                        uint32_t n_layer_passes = system_resizable_vector_get_amount_of_elements(src_mesh_layer_ptr->passes);
-
-                        new_layers_merge_data[current_layer_index] = new (std::nothrow) _mesh_layer_merge_data[n_layer_passes];
-
-                        ASSERT_ALWAYS_SYNC(new_layers_merge_data[current_layer_index] != NULL, "Out of memory");
-                        if (new_layers_merge_data[current_layer_index] != NULL)
-                        {
-                            new_layers_merge_data[current_layer_index]->n_passes = n_layer_passes;
-                            new_layers_merge_data[current_layer_index]->passes   = new (std::nothrow) _mesh_layer_pass_merge_data[n_layer_passes];
-
-                            ASSERT_ALWAYS_SYNC(new_layers_merge_data[current_layer_index]->passes != NULL, "Out of memory");
-                            if (new_layers_merge_data[current_layer_index]->passes != NULL)
-                            {
-                                for (uint32_t n_layer_pass = 0; n_layer_pass < n_layer_passes; ++n_layer_pass)
-                                {
-                                    _mesh_layer_pass* src_mesh_layer_pass_ptr = NULL;
-
-                                    if (system_resizable_vector_get_element_at(src_mesh_layer_ptr->passes, n_layer_pass, &src_mesh_layer_pass_ptr))
-                                    {
-                                        new_layers_merge_data[current_layer_index]->passes[n_layer_pass].n_indices = src_mesh_layer_pass_ptr->n_elements;
-
-                                        /* Store updated indices */
-                                        new_layers_merge_data[current_layer_index]->passes[n_layer_pass].material = src_mesh_layer_pass_ptr->material;
-
-                                        if (src_mesh_layer_pass_ptr->n_elements != 0)
-                                        {
-                                            for (unsigned int n_data_stream_type  = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
-                                                              n_data_stream_type != MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                                            ++n_data_stream_type)
-                                            {
-                                                /* Only copy stuff around IF source offers the stream */
-                                                if (src_mesh_layer_pass_ptr->index_data[n_data_stream_type] != NULL)
-                                                {
-                                                    new_layers_merge_data[current_layer_index]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type] = new (std::nothrow) uint32_t[src_mesh_layer_pass_ptr->n_elements];
-
-                                                    ASSERT_ALWAYS_SYNC(new_layers_merge_data[current_layer_index]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type] != NULL,
-                                                                       "Out of memory");
-
-                                                    if (new_layers_merge_data[current_layer_index]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type] != NULL)
-                                                    {
-                                                        uint32_t* dst_ptr = new_layers_merge_data[current_layer_index]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type];
-                                                        uint32_t* src_ptr = src_mesh_layer_pass_ptr->index_data[n_data_stream_type];
-
-                                                        for (uint32_t index = 0; index < src_mesh_layer_pass_ptr->n_elements; ++index)
-                                                        {
-                                                            *dst_ptr = *src_ptr + current_data_stream_index[n_data_stream_type];
-
-                                                            dst_ptr++;
-                                                            src_ptr++;
-                                                        }
-                                                    }
-
-                                                }
-                                            } /* if (updated normal indices and updated vertex indices buffers ain't NULL) */
-                                        } /* if (src_mesh_layer_pass_ptr->n_elements != 0) */
-                                        else
-                                        {
-                                            memset(new_layers_merge_data[current_layer_index]->passes[n_layer_pass].updated_stream_data_indices,
-                                                   0,
-                                                   sizeof(new_layers_merge_data[current_layer_index]->passes[n_layer_pass].updated_stream_data_indices) );
-                                        }
-                                    } /* if (system_resizable_vector_get_element_at(src_mesh_layer_ptr->passes, n_layer_pass, &src_mesh_layer_pass_ptr)) */
-                                    else
-                                    {
-                                        ASSERT_DEBUG_SYNC(false, "Could not retrieve mesh layer pass descriptor");
-                                    }
-                                } /* for (uint32_t n_layer_pass = 0; n_layer_pass < n_layer_passes; ++n_layer_pass) */
-                            } /* if (new_layers_merge_data[current_layer_index]->passes != NULL) */
-                        } /* if (new_layers_normal_indices[current_layer_index] != NULL) */
-
-                        /* Update normal/vertex indices */
-                        for (unsigned int n_data_stream_type = 0;
-                                          n_data_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                        ++n_data_stream_type)
-                        {
-                            if (new_mesh_ptr->merged_mesh_unique_data_stream_start_offsets[n_data_stream_type] != NULL)
-                            {
-                                new_mesh_ptr->merged_mesh_unique_data_stream_start_offsets[n_data_stream_type][n_mesh] = current_data_stream_index[n_data_stream_type];
-                            }
-                        }
-
-                        for (unsigned int n_stream_data_type = 0;
-                                          n_stream_data_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                        ++n_stream_data_type)
-                        {
-                            _mesh_layer_data_stream* data_stream_ptr = NULL;
-
-                            system_hash64map_get(src_mesh_layer_ptr->data_streams,
-                                                 n_stream_data_type,
-                                                 &data_stream_ptr);
-
-                            if (data_stream_ptr != NULL)
-                            {
-                                current_data_stream_index[n_stream_data_type] += data_stream_ptr->n_items;
-                            }
-                        }
-                    } /* if (system_resizable_vector_get_element_at(src_mesh_ptr->layers, n_mesh_layer, &src_mesh_layer_ptr) ) */
-                } /* for (uint32_t n_mesh_layer = 0; n_mesh_layer < n_src_mesh_layers; ++n_mesh_layer) */
-            } /* for (uint32_t n_mesh = 0; n_mesh < n_meshes; ++n_mesh) */
-
-            /* Excellent! At this point we've gathered all data needed to create a single-layered mesh representation of all the meshes we analysed. */
-            mesh_layer_id new_layer_id = mesh_add_layer((mesh) new_mesh_ptr);
-
-            for (unsigned int n_stream_data_type = 0;
-                              n_stream_data_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                            ++n_stream_data_type)
-            {
-                /* Only add a data stream if at least one item is defined */
-                if (n_total_unique_stream_data[n_stream_data_type] != 0)
-                {
-                    ASSERT_DEBUG_SYNC(n_stream_data_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS ||
-                                      n_stream_data_type == MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                      "TODO");
-                    ASSERT_DEBUG_SYNC(new_unique_data[n_stream_data_type] != NULL,
-                                      "Unique data buffer is NULL");
-
-                    mesh_add_layer_data_stream((mesh) new_mesh_ptr,
-                                                      new_layer_id,
-                                                      (mesh_layer_data_stream_type) n_stream_data_type,
-                                                      n_total_unique_stream_data[n_stream_data_type],
-                                                      new_unique_data[n_stream_data_type]);
-                }
-            }
-
-            for (uint32_t n_layer = 0; n_layer < n_total_layers; ++n_layer)
-            {
-                for (uint32_t n_layer_pass = 0; n_layer_pass < new_layers_merge_data[n_layer]->n_passes; ++n_layer_pass)
-                {
-                    if (new_layers_merge_data[n_layer]->passes[n_layer_pass].n_indices > 0)
-                    {
-                        mesh_layer_pass_id new_pass_id = 0;
-
-                        new_pass_id = mesh_add_layer_pass((mesh) new_mesh_ptr,
-                                                          0, /* the only valid layer id */
-                                                          new_layers_merge_data[n_layer]->passes[n_layer_pass].material,
-                                                          new_layers_merge_data[n_layer]->passes[n_layer_pass].n_indices);
-
-                        for (unsigned int n_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
-                                          n_data_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                        ++n_data_stream_type)
-                        {
-                            if (new_layers_merge_data[n_layer]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type] != NULL)
-                            {
-                                mesh_add_layer_pass_index_data((mesh) new_mesh_ptr,
-                                                               0, /* the only valid layer id */
-                                                               new_pass_id,
-                                                               (mesh_layer_data_stream_type) n_data_stream_type,
-                                                               new_layers_merge_data[n_layer]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type]);
-                            }
-                        }
-                    }
-                } /* for (uint32_t n_layer_pass = 0; n_layer_pass < new_layers_merge_data[n_layer]->n_passes; ++n_layer_pass) */
-            } /* for (uint32_t n_layer = 0; n_layer < n_total_layers; ++n_layer) */
-
-            /* Clean up - our job here is done! */
-            for (uint32_t n_layer = 0; n_layer < n_total_layers; ++n_layer)
-            {
-                for (uint32_t n_layer_pass = 0; n_layer_pass < new_layers_merge_data[n_layer]->n_passes; ++n_layer_pass)
-                {
-                    for (unsigned int n_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
-                                      n_data_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                    ++n_data_stream_type)
-                    {
-                        if (new_layers_merge_data[n_layer]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type] != NULL)
-                        {
-                            delete [] new_layers_merge_data[n_layer]->passes[n_layer_pass].updated_stream_data_indices[n_data_stream_type];
-                        }
-                    }
-                } /* for (uint32_t_n_layer_pass = 0; n_layer_pass < new_layers_merge_data[n_layer]->n_passes; ++n_layer_pass) */
-
-                delete [] new_layers_merge_data[n_layer]->passes;
-            } /* for (uint32_t n_layer = 0; n_layer < n_total_layers; ++n_layer) */
-
-            delete [] new_layers_merge_data;
-            new_layers_merge_data = NULL;
-        } /* if (new_unique_normals != NULL && new_unique_vertices != NULL) */
-
-        /* Update merge-specific properties of the final mesh */
-        new_mesh_ptr->n_merged_meshes = n_meshes;
-    } /* if (!new_mesh_ptr->gl_storage_initialized) */
-}
-#endif
 
 /** TODO */
 PRIVATE void _mesh_release_renderer_callback(ogl_context context, void* arg)
@@ -1396,7 +1054,8 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
     mesh_layer_pass_id result_id      = -1;
 
     /* Sanity checks */
-    ASSERT_ALWAYS_SYNC(!mesh_ptr->gl_storage_initialized,    "Cannot add mesh layer passes after GL storage has been initialized");
+    ASSERT_ALWAYS_SYNC(!mesh_ptr->gl_storage_initialized,
+                       "Cannot add mesh layer passes after GL storage has been initialized");
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &mesh_layer_ptr) &&
         mesh_layer_ptr                 != NULL)
@@ -1574,43 +1233,6 @@ PUBLIC EMERALD_API mesh mesh_create(__in           mesh_creation_flags       fla
     return (mesh) new_mesh;
 }
 
-#if 0
-
-/* TODO: Commented out as dependent _mesh_merge_meshes() needs a rework.
-
-/* Please see header for specification */
-PUBLIC EMERALD_API mesh mesh_create_from_meshes(__in                            mesh_creation_flags       flags,
-                                                __in                  __notnull system_hashed_ansi_string name,
-                                                __in                            uint32_t                  n_meshes,
-                                                __in_ecount(n_meshes) __notnull mesh*                     meshes)
-{
-    _mesh* new_mesh = NULL;
-    
-    ASSERT_ALWAYS_SYNC(n_meshes >= 1, "Invalid mesh_create_from_meshes() call");
-    if (n_meshes >= 1)
-    {
-        new_mesh = new (std::nothrow) _mesh;
-
-        ASSERT_DEBUG_SYNC(new_mesh != NULL, "Out of memory");
-        if (new_mesh != NULL)
-        {
-            _mesh_init_mesh   (new_mesh, name, flags);
-            _mesh_merge_meshes(new_mesh, n_meshes, (_mesh**) meshes);
-
-            new_mesh->n_sh_bands      = ((_mesh**)meshes)[0]->n_sh_bands;
-            new_mesh->n_sh_components = ((_mesh**)meshes)[0]->n_sh_components;
-
-            REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_mesh, 
-                                                           _mesh_release, 
-                                                           OBJECT_TYPE_MESH, 
-                                                           system_hashed_ansi_string_create_by_merging_two_strings("\\Meshes\\", system_hashed_ansi_string_get_buffer(name)) );
-        }
-    }
-
-    return (mesh) new_mesh;
-}
-#endif
-
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 {
@@ -1638,9 +1260,12 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
     {
         _mesh_layer* layer_ptr = NULL;
 
-        system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
+        system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                               n_layer,
+                                              &layer_ptr);
 
-        ASSERT_ALWAYS_SYNC(layer_ptr != NULL, "Could not retrieve mesh layer descriptor");
+        ASSERT_ALWAYS_SYNC(layer_ptr != NULL,
+                           "Could not retrieve mesh layer descriptor");
         if (layer_ptr != NULL)
         {
             const _mesh_layer_data_stream* stream_data_ptr = NULL;
@@ -1653,7 +1278,8 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                   n_item < stream_data_ptr->n_items;
                                 ++n_item)
                 {
-                    const float* vertex_data = (const float*) stream_data_ptr->data + stream_data_ptr->n_components * n_item;
+                    const float* vertex_data = (const float*) stream_data_ptr->data +
+                                                              stream_data_ptr->n_components * n_item;
 
                     for (int n_dimension = 0;
                              n_dimension < 3; /* x, y, z */
@@ -1689,18 +1315,21 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
      *
      * Vertices may also use different surface ids. This must also be taken into consideration.
      **/
-    for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
     {
         _mesh_layer* layer_ptr = NULL;
 
-        system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
+        system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                               n_layer,
+                                              &layer_ptr);
 
         ASSERT_ALWAYS_SYNC(layer_ptr != NULL, "Could not retrieve mesh layer descriptor");
         if (layer_ptr != NULL)
         {
             /* 1. Determine how many words BST key needs to consist of */
-            uint32_t n_pass_key_words = _mesh_get_total_number_of_sets(layer_ptr) +
-                                        sizeof(mesh_material) / sizeof(uint32_t); /* Count in material representation */
+            uint32_t n_pass_key_words = _mesh_get_total_number_of_sets(layer_ptr) + 1; /* Count in material representation */
 
             if (n_pass_key_words > n_datastreams_surfaceid_key_words)
             {
@@ -1710,30 +1339,39 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
     } /* for (all layers) */
 
     /* 2. Allocate space for a BST key */
-    uint32_t* key_ptr = new (std::nothrow) uint32_t[2 /* unique set id + index */ * n_datastreams_surfaceid_key_words];
+    uint32_t* key_ptr  = new (std::nothrow) uint32_t[2 /* unique set id + index */ * n_datastreams_surfaceid_key_words];
+    uint32_t  key_size = 2 /* unique set id + index */ * n_datastreams_surfaceid_key_words * sizeof(uint32_t);
 
-    ASSERT_ALWAYS_SYNC(key_ptr != NULL, "Out of memory");
-    memset(key_ptr, 0, 2 /* unique set id + index */ * n_datastreams_surfaceid_key_words);
+    ASSERT_ALWAYS_SYNC(key_ptr != NULL,
+                       "Out of memory");
 
     /* 3. Build BST. Also count total number of indices the mesh uses */
     for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
     {
         _mesh_layer* layer_ptr = NULL;
 
-        system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
+        system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                               n_layer,
+                                              &layer_ptr);
 
         ASSERT_ALWAYS_SYNC(layer_ptr != NULL, "Could not retrieve mesh layer descriptor");
         if (layer_ptr != NULL)
         {
             const uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
 
-            for (uint32_t n_pass = 0; n_pass < n_passes; ++n_pass)
+            for (uint32_t n_pass = 0;
+                          n_pass < n_passes;
+                        ++n_pass)
             {
                 const _mesh_layer_pass* pass_ptr = NULL;
 
-                if (system_resizable_vector_get_element_at(layer_ptr->passes, n_pass, &pass_ptr) )
+                if (system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                           n_pass,
+                                                          &pass_ptr) )
                 {
-                    for (uint32_t n_element = 0; n_element < pass_ptr->n_elements; ++n_element)
+                    for (uint32_t n_element = 0;
+                                  n_element < pass_ptr->n_elements;
+                                ++n_element)
                     {
                         /* Form the key.
                          *
@@ -1745,8 +1383,12 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                          *       If necessary, please fix - putting a debug-only assertion check to guard against
                          *       the glitch.
                          */
-                        ASSERT_DEBUG_SYNC(_mesh_get_total_number_of_sets(layer_ptr) + sizeof(mesh_material) / sizeof(uint32_t) == n_datastreams_surfaceid_key_words,
+                        ASSERT_DEBUG_SYNC((_mesh_get_total_number_of_sets(layer_ptr) + 1) == n_datastreams_surfaceid_key_words,
                                           "Key size mismatch");
+
+                        memset(key_ptr,
+                               0,
+                               key_size);
 
                         _mesh_get_index_key(key_ptr,
                                             pass_ptr,
@@ -1755,7 +1397,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                         /* Insert the entry into the binary search tree */
                         if (datastreams_surfaceid_bst == NULL)
                         {
-                            datastreams_surfaceid_bst = system_bst_create(sizeof(uint32_t) * n_datastreams_surfaceid_key_words * 2 /* set id + index */,
+                            datastreams_surfaceid_bst = system_bst_create(key_size,
                                                                           sizeof(uint32_t),
                                                                           _mesh_is_key_uint32_lower,
                                                                           _mesh_is_key_uint32_equal,
@@ -1768,7 +1410,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                         {
                             uint32_t temp = 0;
 
-                            if (!system_bst_get(datastreams_surfaceid_bst, (system_bst_key) key_ptr, (system_bst_value*) &temp) )
+                            if (!system_bst_get(datastreams_surfaceid_bst,
+                                                (system_bst_key) key_ptr,
+                                                (system_bst_value*) &temp) )
                             {
                                 system_bst_insert(datastreams_surfaceid_bst,
                                                   (system_bst_key)   key_ptr,
@@ -1815,6 +1459,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
         {
             mesh_ptr->gl_processed_data_stream_start_offset[n_data_stream_type] = -1;
         }
+
         mesh_ptr->gl_processed_data_size   = 0;
         mesh_ptr->gl_processed_data_stride = 0;
 
@@ -1853,14 +1498,10 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                     ASSERT_DEBUG_SYNC(stream_usage[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
                                       "No index data set defined for vertex data.");
 
-                    /* No data sets for given data stream type */
                     n_sets = 1;
                 }
 
                 ASSERT_DEBUG_SYNC(stream_data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT, "TODO: Unsupported stream data type");
-#if 0
-                mesh_ptr->gl_bo_unique_data_stream_data[n_data_stream_type]  = new (std::nothrow) float[n_different_layer_elements * stream_n_components];
-#endif
 
                 /* Align if necessary */
                 uint32_t padding = 0;
@@ -1904,7 +1545,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
             mesh_ptr->gl_index_type = MESH_INDEX_TYPE_UNSIGNED_INT;
         }
 
-        mesh_ptr->gl_processed_data_size = mesh_ptr->gl_processed_data_size + mesh_ptr->gl_processed_data_total_elements * index_size;
+        mesh_ptr->gl_processed_data_size += mesh_ptr->gl_processed_data_total_elements * index_size;
 
         /* Allocate space for GL data */
         mesh_ptr->gl_processed_data = new (std::nothrow) float[mesh_ptr->gl_processed_data_size];
@@ -1913,7 +1554,8 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
         if (mesh_ptr->gl_processed_data != NULL)
         {
             /* Insert indices data */
-            void* elements_traveller_ptr = (uint32_t*) ((char*) mesh_ptr->gl_processed_data + (mesh_ptr->gl_processed_data_size - mesh_ptr->gl_processed_data_total_elements * index_size));
+            void* elements_traveller_ptr = (uint32_t*) ((char*) mesh_ptr->gl_processed_data +
+                                                        (mesh_ptr->gl_processed_data_size - mesh_ptr->gl_processed_data_total_elements * index_size) );
 
             for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
             {
@@ -1921,7 +1563,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                 system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
 
-                ASSERT_ALWAYS_SYNC(layer_ptr != NULL, "Could not retrieve mesh layer descriptor");
+                ASSERT_ALWAYS_SYNC(layer_ptr != NULL,
+                                   "Could not retrieve mesh layer descriptor");
+
                 if (layer_ptr != NULL)
                 {
                     uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
@@ -1932,19 +1576,33 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                         uint32_t          min_index = -1;
                         _mesh_layer_pass* pass_ptr  = NULL;
 
-                        if (system_resizable_vector_get_element_at(layer_ptr->passes, n_pass, &pass_ptr) && pass_ptr != NULL)
+                        if (system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                                   n_pass,
+                                                                  &pass_ptr) &&
+                            pass_ptr != NULL)
                         {
-                            pass_ptr->gl_bo_elements_offset = (char*) elements_traveller_ptr - (char*) mesh_ptr->gl_processed_data;
+                            pass_ptr->gl_bo_elements_offset = (char*) elements_traveller_ptr -
+                                                              (char*) mesh_ptr->gl_processed_data;
 
-                            for (uint32_t n_element = 0; n_element < pass_ptr->n_elements; ++n_element)
+                            for (uint32_t n_element = 0;
+                                          n_element < pass_ptr->n_elements;
+                                        ++n_element)
                             {
                                 uint32_t final_index = 0;
 
                                 /* Form the key */
-                                _mesh_get_index_key(key_ptr, pass_ptr, n_element);
+                                memset(key_ptr,
+                                       0,
+                                       key_size);
+
+                                _mesh_get_index_key(key_ptr,
+                                                    pass_ptr,
+                                                    n_element);
 
                                 /* Find the final index */
-                                if (system_bst_get(datastreams_surfaceid_bst, (system_bst_key) key_ptr, (system_bst_value*) &final_index) )
+                                if (system_bst_get(datastreams_surfaceid_bst,
+                                                   (system_bst_key) key_ptr,
+                                                   (system_bst_value*) &final_index) )
                                 {
                                     /* Update max/min index values for the pass */
                                     if (max_index == -1                            ||
@@ -1995,7 +1653,6 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                         }
                                     } /* switch (index_size) */
 
-
                                     /* Fill the attribute data buffer */
                                     for (unsigned int n_data_stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
                                                       n_data_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -2003,7 +1660,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                     {
                                         _mesh_layer_data_stream* data_stream_ptr = NULL;
 
-                                        system_hash64map_get(layer_ptr->data_streams, n_data_stream_type, &data_stream_ptr);
+                                        system_hash64map_get(layer_ptr->data_streams,
+                                                             n_data_stream_type,
+                                                            &data_stream_ptr);
 
                                         if (data_stream_ptr != NULL)
                                         {
@@ -2030,41 +1689,36 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                 stream_n_sets = 1;
                                             }
 
-                                            for (unsigned int n_set = 0; n_set < stream_n_sets; ++n_set)
+                                            for (unsigned int n_set = 0;
+                                                              n_set < stream_n_sets;
+                                                            ++n_set)
                                             {
-                                                unsigned int pass_index_data = 0;
+                                                mesh_layer_data_stream_type actual_stream_type = (mesh_layer_data_stream_type) n_data_stream_type;
+                                                unsigned int                pass_index_data    = 0;
 
-                                                if (!data_stream_ptr->gl_ordered)
+                                                if (system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[actual_stream_type]) == 0)
                                                 {
-                                                    mesh_layer_data_stream_type actual_stream_type = (mesh_layer_data_stream_type) n_data_stream_type;
+                                                    actual_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
+                                                }
 
-                                                    if (system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[actual_stream_type]) == 0)
+                                                if (pass_ptr->index_data_maps[actual_stream_type] != NULL)
+                                                {
+                                                    _mesh_layer_pass_index_data* set_index_data = NULL;
+
+                                                    if (!system_hash64map_get(pass_ptr->index_data_maps[actual_stream_type], n_set, &set_index_data) )
                                                     {
-                                                        actual_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
+                                                        ASSERT_DEBUG_SYNC(false, "Could not retrieve set's index data");
                                                     }
-
-                                                    if (pass_ptr->index_data_maps[actual_stream_type] != NULL)
+                                                    else
                                                     {
-                                                        _mesh_layer_pass_index_data* set_index_data = NULL;
-
-                                                        if (!system_hash64map_get(pass_ptr->index_data_maps[actual_stream_type], n_set, &set_index_data) )
-                                                        {
-                                                            ASSERT_DEBUG_SYNC(false, "Could not retrieve set's index data");
-                                                        }
-                                                        else
-                                                        {
-                                                            unsigned int src_index = _mesh_get_source_index_from_index_key(key_ptr,
-                                                                                                                           pass_ptr,
-                                                                                                                           (mesh_layer_data_stream_type) actual_stream_type,
-                                                                                                                           n_set);
-
-                                                            pass_index_data = src_index;
-                                                        }
+                                                        pass_index_data = _mesh_get_source_index_from_index_key(key_ptr,
+                                                                                                                pass_ptr,
+                                                                                                                (mesh_layer_data_stream_type) actual_stream_type,
+                                                                                                                n_set);
                                                     }
-                                                } /* if (!data_stream_ptr->gl_ordered) */
+                                                }
 
                                                 /* We can finally do a memcpy()! */
-                                                const uint32_t index                    = (data_stream_ptr->gl_ordered ? final_index : pass_index_data);
                                                 const uint32_t n_bytes_for_element_data = sizeof(float) * n_different_layer_elements * stream_n_components;
 
                                                 memcpy((char*) mesh_ptr->gl_processed_data                                         + /* update processed data buffer */
@@ -2072,12 +1726,12 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                                mesh_ptr->gl_processed_data_stride * n_set * pass_ptr->n_elements   + /* move to current set */
                                                                mesh_ptr->gl_processed_data_stride * final_index,                     /* identify processed index */
                                                        (float*)data_stream_ptr->data                                               +
-                                                               n_set * n_bytes_for_element_data                                    + /* move to current set */
+                                                               n_set * n_bytes_for_element_data / sizeof(float)                    + /* move to current set */
                                                                data_stream_ptr->n_components                                       *
-                                                               index,
+                                                               pass_index_data,
                                                        sizeof(float) * data_stream_ptr->n_components);
-                                            }
-                                        } /* for (all sets) */
+                                            } /* for (all sets) */
+                                        }
                                     }
                                 }
                                 else
@@ -2091,14 +1745,14 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                             pass_ptr->gl_elements_min_index = min_index;
 
                             /* Store GPU-side elements representation so that user apps can access it (needed for KDtree intersection) */
-                            pass_ptr->gl_elements = new (std::nothrow) uint32_t[pass_ptr->n_elements];
+                            pass_ptr->gl_elements = new (std::nothrow) uint32_t[pass_ptr->n_elements * sizeof(unsigned int) / index_size];
 
                             ASSERT_ALWAYS_SYNC(pass_ptr->gl_elements != NULL, "Out of memory");
                             if (pass_ptr->gl_elements != NULL)
                             {
                                 memcpy(pass_ptr->gl_elements,
                                        (char*)mesh_ptr->gl_processed_data + pass_ptr->gl_bo_elements_offset,
-                                       sizeof(uint32_t) * pass_ptr->n_elements);
+                                       index_size * pass_ptr->n_elements);
                             }
                         } /* if (system_resizable_vector_get_element_at(layer_ptr->passes, n_pass, &pass_ptr) && pass_ptr != NULL) */
                         else

@@ -262,8 +262,8 @@ void _on_active_camera_changed(void* fire_proc_user_arg,
 
                 _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(yfov,
                                                                                            1280 / 720.0f,
-                                                                                           znear,
-                                                                                           zfar);
+                                                                                           znear * 100.0f,
+                                                                                           zfar * 100.0f);
 
                 if (_ui_active_path_control != NULL)
                 {
