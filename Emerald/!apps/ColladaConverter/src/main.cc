@@ -150,6 +150,9 @@ void _on_load_curve_dataset_clicked(void* not_used,
 
             system_file_serializer_release(dataset_serializer);
             dataset_serializer = NULL;
+
+            lw_curve_dataset_release(dataset);
+            dataset = NULL;
         } /* if (dataset_serializer != NULL) */
     } /* if (filename != NULL) */
 }

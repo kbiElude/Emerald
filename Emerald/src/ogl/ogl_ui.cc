@@ -234,16 +234,25 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
                                                      ui_ptr);
 
     /* Release all controls */
-    while (system_resizable_vector_get_element_at(ui_ptr->controls,
-                                                  0,
-                                                 &ui_control_ptr) )
+    while (system_resizable_vector_get_amount_of_elements(ui_ptr->controls) > 0)
     {
-        _ogl_ui_control_deinit(ui_control_ptr);
+        if (!system_resizable_vector_get_element_at(ui_ptr->controls,
+                                                    0,
+                                                   &ui_control_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve UI control descriptor");
+        }
+        else
+        {
+            _ogl_ui_control_deinit(ui_control_ptr);
 
-        delete ui_control_ptr;
-        ui_control_ptr = NULL;
+            delete ui_control_ptr;
+            ui_control_ptr = NULL;
 
-        system_resizable_vector_delete_element_at(ui_ptr->controls, 0);
+            system_resizable_vector_delete_element_at(ui_ptr->controls,
+                                                      0);
+        }
     }
 
     system_resizable_vector_release(ui_ptr->controls);

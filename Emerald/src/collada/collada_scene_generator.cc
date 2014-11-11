@@ -906,7 +906,9 @@ PRIVATE void _collada_scene_generator_process_geometry_instance_node_item(__in _
     mesh = collada_data_get_emerald_mesh_by_name(data, context, mesh_name);
     ASSERT_DEBUG_SYNC(mesh != NULL, "Mesh is NULL");
 
-    bool result = scene_add_mesh_instance(scene, mesh, instance_name);
+    bool result = scene_add_mesh_instance(scene,
+                                          mesh,
+                                          instance_name);
     ASSERT_ALWAYS_SYNC(result, "Could not add a mesh instance");
 
     if (result)

@@ -16,6 +16,7 @@
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_variant.h"
+#include <sstream>
 #include <string>
 
 
@@ -75,16 +76,15 @@ typedef struct
     float            fps;
     system_hash64map object_to_item_vector_map; /* "object name" hashed_ansi_string -> vector of _lw_curve_dataset_item* items */
     system_hash64map object_to_properties_map;  /* "object name" hashed ansi string -> _lw_curve_dataset_object* */
-
-    /* Helper stuff */
-    curve_container zeroCurve;
-    curve_container oneCurve;
+    unsigned int     predefined_curve_counter;
 
     REFCOUNT_INSERT_VARIABLES
 } _lw_curve_dataset;
 
 
-/** Internal variables */
+/** Forward declarations */
+PRIVATE curve_container _lw_curve_dataset_create_predefined_curve(__in __notnull _lw_curve_dataset* dataset_ptr,
+                                                                  __in           float              value);
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(lw_curve_dataset, lw_curve_dataset, _lw_curve_dataset);
@@ -178,9 +178,9 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         {
             curve_container neutral_curves[] =
             {
-                dataset_ptr->zeroCurve, /* x */
-                dataset_ptr->zeroCurve, /* y */
-                dataset_ptr->zeroCurve  /* z */
+                _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f), /* x */
+                _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f), /* y */
+                _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f)  /* z */
             };
 
             /* Create a dynamic translation node */
@@ -210,9 +210,9 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
         {
             curve_container neutral_curves[] =
             {
-                dataset_ptr->oneCurve, /* x */
-                dataset_ptr->oneCurve, /* y */
-                dataset_ptr->oneCurve  /* z */
+                _lw_curve_dataset_create_predefined_curve(dataset_ptr, 1.0f), /* x */
+                _lw_curve_dataset_create_predefined_curve(dataset_ptr, 1.0f), /* y */
+                _lw_curve_dataset_create_predefined_curve(dataset_ptr, 1.0f), /* z */
             };
 
             /* Create a dynamic scale node */
@@ -417,22 +417,22 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
 
             if (curve_type == LW_CURVE_TYPE_ROTATION_B)
             {
-                rotation_curves[1] = dataset_ptr->zeroCurve; /* x */
-                rotation_curves[2] = dataset_ptr->zeroCurve; /* y */
-                rotation_curves[3] = dataset_ptr->oneCurve;  /* z */
+                rotation_curves[1] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f); /* x */
+                rotation_curves[2] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f); /* y */
+                rotation_curves[3] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 1.0f); /* z */
             }
             else
             if (curve_type == LW_CURVE_TYPE_ROTATION_H)
             {
-                rotation_curves[1] = dataset_ptr->zeroCurve; /* x */
-                rotation_curves[2] = dataset_ptr->oneCurve;  /* y */
-                rotation_curves[3] = dataset_ptr->zeroCurve; /* z */
+                rotation_curves[1] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f); /* x */
+                rotation_curves[2] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 1.0f); /* y */
+                rotation_curves[3] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f); /* z */
             }
             else
             {
-                rotation_curves[1] = dataset_ptr->oneCurve;  /* x */
-                rotation_curves[2] = dataset_ptr->zeroCurve; /* y */
-                rotation_curves[3] = dataset_ptr->zeroCurve; /* z */
+                rotation_curves[1] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 1.0f); /* x */
+                rotation_curves[2] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f); /* y */
+                rotation_curves[3] = _lw_curve_dataset_create_predefined_curve(dataset_ptr, 0.0f); /* z */
             }
 
             scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
@@ -460,6 +460,31 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
 
 end:
     ;
+}
+
+/** TODO */
+PRIVATE curve_container _lw_curve_dataset_create_predefined_curve(__in __notnull _lw_curve_dataset* dataset_ptr,
+                                                                  __in           float              value)
+{
+    std::stringstream helper_sstream;
+    system_variant    helper_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    curve_container   result         = NULL;
+
+    helper_sstream << "Static curve "
+                   << (dataset_ptr->predefined_curve_counter++);
+
+    result = curve_container_create(system_hashed_ansi_string_create(helper_sstream.str().c_str() ),
+                                    SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (helper_variant,
+                                      value);
+    curve_container_set_default_value(result,
+                                      helper_variant);
+
+    system_variant_release(helper_variant);
+    helper_variant = NULL;
+
+    return result;
 }
 
 /** TODO */
@@ -569,20 +594,6 @@ PRIVATE void _lw_curve_dataset_release(__in __notnull __deallocate(mem) void* pt
 
         system_hash64map_release(dataset_ptr->object_to_properties_map);
         dataset_ptr->object_to_properties_map = NULL;
-    }
-
-    if (dataset_ptr->oneCurve != NULL)
-    {
-        curve_container_release(dataset_ptr->oneCurve);
-
-        dataset_ptr->oneCurve = NULL;
-    }
-
-    if (dataset_ptr->zeroCurve != NULL)
-    {
-        curve_container_release(dataset_ptr->zeroCurve);
-
-        dataset_ptr->zeroCurve = NULL;
     }
 }
 
@@ -943,29 +954,6 @@ PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull syste
     result_instance->fps                       = 0.0f;
     result_instance->object_to_item_vector_map = system_hash64map_create(sizeof(_lw_curve_dataset_item*) );
     result_instance->object_to_properties_map  = system_hash64map_create(sizeof(_lw_curve_dataset_object*) );
-
-    /* Set up helper fields */
-    system_variant helper_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
-
-    result_instance->oneCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                               " one curve"),
-                                                       SYSTEM_VARIANT_FLOAT);
-    result_instance->zeroCurve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " zero curve"),
-                                                        SYSTEM_VARIANT_FLOAT);
-
-    system_variant_set_float         (helper_variant,
-                                      1.0f);
-    curve_container_set_default_value(result_instance->oneCurve,
-                                      helper_variant);
-
-    system_variant_set_float         (helper_variant,
-                                      0.0f);
-    curve_container_set_default_value(result_instance->zeroCurve,
-                                      helper_variant);
-
-    system_variant_release(helper_variant);
-    helper_variant = NULL;
 
     /* Set up reference counting */
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_instance,

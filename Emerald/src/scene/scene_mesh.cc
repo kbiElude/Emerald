@@ -56,7 +56,9 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in __notnull system_hashed_ans
     ASSERT_DEBUG_SYNC(new_scene_mesh != NULL, "Out of memory");
     if (new_scene_mesh != NULL)
     {
-        _scene_mesh_init(new_scene_mesh, name, geometry);
+        _scene_mesh_init(new_scene_mesh,
+                         name,
+                         geometry);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_mesh,
                                                        _scene_mesh_release,

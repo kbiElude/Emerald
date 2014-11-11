@@ -145,6 +145,7 @@ PUBLIC EMERALD_API bool scene_add_camera(__in __notnull scene        scene_insta
         system_resizable_vector_push(scene_ptr->cameras,
                                      new_camera);
 
+        scene_camera_retain(new_camera);
         result = true;
     }
 
@@ -160,7 +161,8 @@ PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene       scene_instanc
 
     if (system_resizable_vector_find(scene_ptr->curves, curve_instance) == ITEM_NOT_FOUND)
     {
-        system_resizable_vector_push(scene_ptr->curves, curve_instance);
+        system_resizable_vector_push(scene_ptr->curves,
+                                     curve_instance);
 
         scene_curve_retain(curve_instance);
         result = true;
@@ -198,6 +200,7 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(__in __notnull scene    
     system_resizable_vector_push(scene_ptr->mesh_instances,
                                  mesh);
 
+    scene_mesh_retain(mesh);
     return result;
 }
 
@@ -208,14 +211,15 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene            
 {
     bool           result           = true;
     _scene*        scene_ptr        = (_scene*) scene;
-    scene_mesh     new_instance     = scene_mesh_create(name, mesh_data);
+    scene_mesh     new_instance     = scene_mesh_create(name, mesh_data); /* retains */
     const uint32_t n_mesh_instances = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
 
     scene_mesh_set_property(new_instance,
                             SCENE_MESH_PROPERTY_ID,
                            &n_mesh_instances);
 
-    system_resizable_vector_push(scene_ptr->mesh_instances, new_instance);
+    system_resizable_vector_push(scene_ptr->mesh_instances,
+                                 new_instance);
 
     return result;
 }
@@ -980,6 +984,32 @@ end:
 
     if (mesh_id_to_mesh_map != NULL)
     {
+        /* All mesh instances can be released, since they should've been
+         * retained by scene_mesh_load().
+         */
+        const uint32_t n_meshes = system_hash64map_get_amount_of_elements(mesh_id_to_mesh_map);
+
+        for (uint32_t n_mesh = 0;
+                      n_mesh < n_meshes;
+                    ++n_mesh)
+        {
+            mesh current_mesh = NULL;
+
+            if (system_hash64map_get_element_at(mesh_id_to_mesh_map,
+                                                n_mesh,
+                                               &current_mesh,
+                                                NULL) ) /* outHash */
+            {
+                mesh_release(current_mesh);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh instance at index [%d]",
+                                  n_mesh);
+            }
+        } /* for (all meshes) */
+
         system_hash64map_release(mesh_id_to_mesh_map);
 
         mesh_id_to_mesh_map = NULL;
@@ -987,22 +1017,94 @@ end:
 
     if (serialized_scene_cameras != NULL)
     {
-        system_resizable_vector_release(serialized_scene_cameras);
+        /* All camera instances can be released, since they should've been
+         * retained by scene_camera_load().
+         */
+        const uint32_t n_cameras = system_resizable_vector_get_amount_of_elements(serialized_scene_cameras);
 
+        for (uint32_t n_camera = 0;
+                      n_camera < n_cameras;
+                    ++n_camera)
+        {
+            scene_camera current_camera = NULL;
+
+            if (system_resizable_vector_get_element_at(serialized_scene_cameras,
+                                                       n_camera,
+                                                      &current_camera) )
+            {
+                scene_camera_release(current_camera);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve scene_camera instance at index [%d]",
+                                  n_camera);
+            }
+        } /* for (all cameras) */
+
+        system_resizable_vector_release(serialized_scene_cameras);
         serialized_scene_cameras = NULL;
     }
 
     if (serialized_scene_lights != NULL)
     {
-        system_resizable_vector_release(serialized_scene_lights);
+        /* All light instances can be released, since they should've been
+         * retained by scene_light_load().
+         */
+        const uint32_t n_lights = system_resizable_vector_get_amount_of_elements(serialized_scene_lights);
 
+        for (uint32_t n_light = 0;
+                      n_light < n_lights;
+                    ++n_light)
+        {
+            scene_light current_light = NULL;
+
+            if (system_resizable_vector_get_element_at(serialized_scene_lights,
+                                                       n_light,
+                                                      &current_light) )
+            {
+                scene_light_release(current_light);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve scene_light instance at index [%d]",
+                                  n_light);
+            }
+        } /* for (all lights) */
+
+        system_resizable_vector_release(serialized_scene_lights);
         serialized_scene_lights = NULL;
     }
 
     if (serialized_scene_mesh_instances != NULL)
     {
-        system_resizable_vector_release(serialized_scene_mesh_instances);
+        /* All light instances can be released, since they should've been
+         * retained by scene_light_load().
+         */
+        const uint32_t n_scene_meshes = system_resizable_vector_get_amount_of_elements(serialized_scene_mesh_instances);
 
+        for (uint32_t n_scene_mesh = 0;
+                      n_scene_mesh < n_scene_meshes;
+                    ++n_scene_mesh)
+        {
+            scene_mesh current_mesh_instance = NULL;
+
+            if (system_resizable_vector_get_element_at(serialized_scene_mesh_instances,
+                                                       n_scene_mesh,
+                                                      &current_mesh_instance) )
+            {
+                scene_mesh_release(current_mesh_instance);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve scene_mesh instance at index [%d]",
+                                  n_scene_mesh);
+            }
+        } /* for (all scene mesh instances) */
+
+        system_resizable_vector_release(serialized_scene_mesh_instances);
         serialized_scene_mesh_instances = NULL;
     }
 

@@ -297,51 +297,6 @@ typedef struct _scene_graph
                0,
                sizeof(node_by_tag) );
     }
-
-    ~_scene_graph()
-    {
-        if (compute_lock_cs != NULL)
-        {
-            system_critical_section_release(compute_lock_cs);
-
-            compute_lock_cs = NULL;
-        }
-
-        if (dag != NULL)
-        {
-            system_dag_release(dag);
-
-            dag = NULL;
-        }
-
-        if (node_compute_cs != NULL)
-        {
-            system_critical_section_release(node_compute_cs);
-
-            node_compute_cs = NULL;
-        }
-
-        if (node_compute_vector != NULL)
-        {
-            system_resizable_vector_release(node_compute_vector);
-
-            node_compute_vector = NULL;
-        }
-
-        if (sorted_nodes != NULL)
-        {
-            system_resizable_vector_release(sorted_nodes);
-
-            sorted_nodes = NULL;
-        }
-
-        if (sorted_nodes_rw_mutex != NULL)
-        {
-            system_read_write_mutex_release(sorted_nodes_rw_mutex);
-
-            sorted_nodes_rw_mutex = NULL;
-        }
-    }
 } _scene_graph;
 
 
@@ -1591,6 +1546,9 @@ PUBLIC EMERALD_API void scene_graph_add_node(__in __notnull scene_graph      gra
     graph_ptr->dirty      = true;
     graph_ptr->dirty_time = system_time_now();
 
+    system_resizable_vector_push(graph_ptr->nodes,
+                                 node_ptr);
+
 end:
     ;
 }
@@ -2383,6 +2341,13 @@ PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
+    if (graph_ptr->compute_lock_cs != NULL)
+    {
+        system_critical_section_release(graph_ptr->compute_lock_cs);
+
+        graph_ptr->compute_lock_cs = NULL;
+    }
+
     if (graph_ptr->dag != NULL)
     {
         system_dag_release(graph_ptr->dag);
@@ -2405,7 +2370,36 @@ PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_
         graph_ptr->nodes = NULL;
     }
 
+    if (graph_ptr->node_compute_cs != NULL)
+    {
+        system_critical_section_release(graph_ptr->node_compute_cs);
+
+        graph_ptr->node_compute_cs = NULL;
+    }
+
+    if (graph_ptr->node_compute_vector != NULL)
+    {
+        system_resizable_vector_release(graph_ptr->node_compute_vector);
+
+        graph_ptr->node_compute_vector = NULL;
+    }
+
+    if (graph_ptr->sorted_nodes != NULL)
+    {
+        system_resizable_vector_release(graph_ptr->sorted_nodes);
+
+        graph_ptr->sorted_nodes = NULL;
+    }
+
+    if (graph_ptr->sorted_nodes_rw_mutex != NULL)
+    {
+        system_read_write_mutex_release(graph_ptr->sorted_nodes_rw_mutex);
+
+        graph_ptr->sorted_nodes_rw_mutex = NULL;
+    }
+
     /* Root node is not deallocated since it's a part of nodes container */
+    delete graph_ptr;
 }
 
 /* Please see header for specification */
