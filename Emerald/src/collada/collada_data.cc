@@ -1711,11 +1711,6 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                     system_file_serializer_release(serializer);
                 }
 
-                if (system_hashed_ansi_string_contains(geometry_id, system_hashed_ansi_string_create("blok6__7__lib") ))
-                {
-                    int a = 1; a++;
-                }
-
                 if (!has_loaded_blob)
                 {
                     /* Need to generate indexed data */
