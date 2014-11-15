@@ -1019,11 +1019,6 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
         } /* for (all supported COLLADA data input types) */
     } /* for (all polylists) */
 
-    if (system_hashed_ansi_string_contains(geometry_id, system_hashed_ansi_string_create("blok6__7__lib") ))
-    {
-        int a = 1; a++;
-    }
-
     /* If no data on normals is in the COLLADA container, we need to generate them
      * manually..
      */
