@@ -13,6 +13,7 @@
 #include "sh/sh_types.h"
 #include "system/system_bst.h"
 #include "system/system_file_serializer.h"
+#include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_math_vector.h"
@@ -147,6 +148,19 @@ typedef struct
     uint32_t  gl_elements_max_index;
     uint32_t  gl_elements_min_index;
 } _mesh_layer_pass;
+
+/** TODO: Used for normal data generation */
+typedef struct _mesh_polygon
+{
+    unsigned int n_mesh_layer;
+    unsigned int n_mesh_layer_pass;
+    unsigned int triangle_index;
+
+    _mesh_layer*      layer_ptr;
+    _mesh_layer_pass* layer_pass_ptr;
+    float             polygon_normal[3];
+    float*            vertex_data   [3];
+} _mesh_polygon;
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(mesh, mesh, _mesh);
@@ -292,21 +306,85 @@ PRIVATE uint32_t _mesh_get_total_number_of_sets(_mesh_layer* layer_ptr)
 }
 
 /** TODO */
-PRIVATE bool _mesh_is_key_uint32_lower(size_t key_size, void* arg1, void* arg2)
+PRIVATE bool _mesh_is_key_float_lower(size_t key_size, void* arg1, void* arg2)
 {
-    uint32_t* arg1_uint = (uint32_t*) arg1;
-    uint32_t* arg2_uint = (uint32_t*) arg2;
-    bool      result    = true;
+    float*        arg1_float = (float*) arg1;
+    system_hash64 arg1_hash  = system_hash64_calculate((const char*) arg1, key_size);
+    float*        arg2_float = (float*) arg2;
+    system_hash64 arg2_hash  = system_hash64_calculate((const char*) arg2, key_size);
+    bool          result     = true;
+
+    if (arg1_hash != arg2_hash)
+    {
+        result = (arg1_hash < arg2_hash);
+    }
+    else
+    {
+        /* Take the slow route */
+        for (unsigned int n_key_item = 0;
+                          n_key_item < key_size / sizeof(float);
+                        ++n_key_item)
+        {
+            if (arg1_float[n_key_item] >= arg2_float[n_key_item])
+            {
+                result = false;
+
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _mesh_is_key_float_equal(size_t key_size, void* arg1, void* arg2)
+{
+    float* arg1_float = (float*) arg1;
+    float* arg2_float = (float*) arg2;
+    bool   result     = true;
 
     for (unsigned int n_key_item = 0;
-                      n_key_item < key_size / sizeof(uint32_t);
+                      n_key_item < key_size / sizeof(float);
                     ++n_key_item)
     {
-        if (!(arg1_uint[n_key_item] < arg2_uint[n_key_item]))
+        if (fabs(arg1_float[n_key_item] - arg2_float[n_key_item]) > 1e-5f)
         {
             result = false;
 
             break;
+        }
+    }
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _mesh_is_key_uint32_lower(size_t key_size, void* arg1, void* arg2)
+{
+    uint32_t*     arg1_uint = (uint32_t*) arg1;
+    system_hash64 arg1_hash = system_hash64_calculate( (const char*) arg1, key_size);
+    uint32_t*     arg2_uint = (uint32_t*) arg2;
+    system_hash64 arg2_hash = system_hash64_calculate( (const char*) arg2, key_size);
+    bool          result    = true;
+
+    if (arg1_hash != arg2_hash)
+    {
+        result = (arg1_hash < arg2_hash);
+    }
+    else
+    {
+        /* Take the slow route */
+        for (unsigned int n_key_item = 0;
+                          n_key_item < key_size / sizeof(uint32_t);
+                        ++n_key_item)
+        {
+            if (!(arg1_uint[n_key_item] < arg2_uint[n_key_item]))
+            {
+                result = false;
+
+                break;
+            }
         }
     }
 
@@ -1000,7 +1078,9 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
                                                   &data_stream_ptr->n_components,
                                                   &data_stream_ptr->required_bit_alignment);
 
-                ASSERT_DEBUG_SYNC(data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT, "TODO");
+                ASSERT_DEBUG_SYNC(data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT,
+                                  "TODO");
+
                 unsigned int component_size = (data_stream_ptr->data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT) ? 4 : 1;
 
                 data_stream_ptr->data    = new (std::nothrow) unsigned char[data_stream_ptr->n_components * component_size * n_items];
@@ -1015,12 +1095,18 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
                 }
                 else
                 {
-                    memcpy(data_stream_ptr->data, data, data_stream_ptr->n_components * component_size * n_items);
+                    memcpy(data_stream_ptr->data,
+                           data,
+                           data_stream_ptr->n_components * component_size * n_items);
 
                     /* Store the stream */
                     system_hash64 temp = type;
 
-                    system_hash64map_insert(layer_ptr->data_streams, temp, data_stream_ptr, NULL, NULL);
+                    system_hash64map_insert(layer_ptr->data_streams,
+                                            temp,
+                                            data_stream_ptr,
+                                            NULL,
+                                            NULL);
 
                     /* Update modification timestamp */
                     mesh_instance->timestamp_last_modified = system_time_now();
@@ -1145,9 +1231,12 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh      
     {
         _mesh_layer_pass* pass_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(mesh_layer_ptr->passes, layer_pass_id, &pass_ptr))
+        if (system_resizable_vector_get_element_at(mesh_layer_ptr->passes,
+                                                   layer_pass_id,
+                                                  &pass_ptr))
         {
-            if (!system_hash64map_contains(pass_ptr->index_data_maps[stream_type], set_id) )
+            if (!system_hash64map_contains(pass_ptr->index_data_maps[stream_type],
+                                           set_id) )
             {
                 _mesh_layer_pass_index_data* new_data_set = new (std::nothrow) _mesh_layer_pass_index_data;
 
@@ -1893,32 +1982,63 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 {
-    _mesh*             mesh_ptr = (_mesh*) mesh;
-    const unsigned int n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    /* TODO: Should we move this to mesh_normal_data_generation.cc or sth? */
+    system_resizable_vector allocated_polygon_vectors  = system_resizable_vector_create                (4, /* capacity */
+                                                                                                        sizeof(system_resizable_vector) );
+    system_resource_pool    mesh_polygon_resource_pool = system_resource_pool_create                   (sizeof(_mesh_polygon),
+                                                                                                        4,     /* n_elements_to_preallocate */
+                                                                                                        NULL,  /* init_fn */
+                                                                                                        NULL); /* deinit_fn */
+    _mesh*                  mesh_ptr                   = (_mesh*) mesh;
+    const unsigned int      n_layers                   = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    system_resource_pool    vec3_resource_pool         = system_resource_pool_create                   (sizeof(float) * 3,
+                                                                                                        4,     /* n_elements_to_preallocate */
+                                                                                                        NULL,  /* init_fn */
+                                                                                                        NULL); /* deinit_fn */
 
-    ASSERT_DEBUG_SYNC(!mesh_ptr->gl_storage_initialized, "mesh_generate_normal_data() called after GL storage has been initialized.");
+    ASSERT_DEBUG_SYNC(!mesh_ptr->gl_storage_initialized,
+                      "mesh_generate_normal_data() called after GL storage has been initialized.");
 
-    LOG_INFO("Generating normal data for mesh [%s] ...", system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
+    /* Determine which vertices are used by which polygons and store that
+     * information in a BST,
+     *
+     * Key is a float[3], which corresponds to X, Y, Z location of the vertex.
+     * Epsilon of 1e-5 is assumed.
+     *
+     * Value is a system_resizable_vector, storing _mesh_polygon* entries.
+     **/
+    system_bst vertex_to_polygon_vector_bst = NULL;
 
-    /* Iterate over all layers */
-    system_resource_pool vec3_resource_pool = system_resource_pool_create(sizeof(float) * 3,
-                                                                          4,     /* n_elements_to_preallocate */
-                                                                          NULL,  /* init_fn */
-                                                                          NULL); /* deinit_fn */
-
-    for (unsigned int n_layer = 0;
-                      n_layer < n_layers;
-                    ++n_layer)
+    for (unsigned int n_iteration = 0;
+                      n_iteration < 2; /* 1. vertex-to-polygon BST construction.
+                                          2. per-polygon normal calculation */
+                    ++n_iteration)
     {
-        system_hash64map index_to_vec3_map = system_hash64map_create(sizeof(void*) );
-        _mesh_layer*     layer_ptr         = NULL;
+        LOG_INFO("Generating normal data for mesh [%s] (iteration %d/3) ...",
+                 system_hashed_ansi_string_get_buffer(mesh_ptr->name),
+                 n_iteration + 1);
 
-        if (system_resizable_vector_get_element_at(mesh_ptr->layers,
-                                                   n_layer,
-                                                  &layer_ptr) )
+        for (unsigned int n_layer = 0;
+                          n_layer < n_layers;
+                        ++n_layer)
         {
+            /* Retrieve raw vertex data */
+            _mesh_layer*             layer_ptr              = NULL;
+            unsigned int             n_layer_passes         = 0;
             _mesh_layer_data_stream* vertex_data_stream_ptr = NULL;
             const float*             vertex_data_ptr        = NULL;
+
+            if (!system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                        n_layer,
+                                                       &layer_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Layer descriptor unavailable");
+
+                continue;
+            }
+
+            n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
 
             if (system_hash64map_contains(layer_ptr->data_streams,
                                           MESH_LAYER_DATA_STREAM_TYPE_NORMALS) )
@@ -1938,176 +2058,504 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 
             vertex_data_ptr = (const float*) vertex_data_stream_ptr->data;
 
-            /* Retrieve per-vertex normals first.. */
-            unsigned int       max_index      = 0;
-            const unsigned int n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
-
+            /* Iterate over all layer passes */
             for (unsigned int n_layer_pass = 0;
                               n_layer_pass < n_layer_passes;
                             ++n_layer_pass)
             {
                 _mesh_layer_pass* layer_pass_ptr = NULL;
+                unsigned int      n_indices      = 0;
 
-                if (system_resizable_vector_get_element_at(layer_ptr->passes,
-                                                           n_layer_pass,
-                                                          &layer_pass_ptr) )
+                if (!system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                            n_layer_pass,
+                                                           &layer_pass_ptr) )
                 {
-                    const unsigned int n_indices = layer_pass_ptr->n_elements;
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve layer pass descriptor for mesh layer [%d]",
+                                      n_layer);
 
-                    /* Iterate over triangles.
-                     *
-                     * TODO: The implementation below is memory-inefficient because it allocates the maximum-size
-                     *       buffer for every single layer pass we  process. Large scenes may eat notable amount of
-                     *       memory. Optimize if necessary.
-                     */
-                    _mesh_layer_pass_index_data* index_data_ptr     = NULL;
-                    uint32_t                     n_vertex_data_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]);
+                    continue;
+                }
 
-                    if (n_vertex_data_sets != 1)
+                n_indices = layer_pass_ptr->n_elements;
+
+                /* Run iteration-specific code */
+                switch (n_iteration)
+                {
+                    case 0:
                     {
-                        ASSERT_DEBUG_SYNC(n_vertex_data_sets == 1,
-                                          "Unsupported number of vertex data sets");
+                        /* Vertex-to-polygon BST construction */
+                        _mesh_layer_pass_index_data* index_data_ptr     = NULL;
+                        uint32_t                     n_vertex_data_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]);
 
-                        goto end;
-                    }
-                    else
-                    {
+                        if (n_vertex_data_sets != 1)
+                        {
+                            ASSERT_DEBUG_SYNC(n_vertex_data_sets == 1,
+                                              "Unsupported number of vertex data sets");
+
+                            continue;
+                        }
+
                         system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
                                                         0,     /* set id */
                                                         &index_data_ptr,
                                                         NULL); /* pOutHash */
-                    }
 
-                    for (unsigned int n_index = 0; n_index < n_indices; n_index += 3)
+                        for (unsigned int n_index = 0;
+                                          n_index < n_indices;
+                                          n_index += 3)
+                        {
+                            /* For each triangle polygon, create a _mesh_polygon instance */
+                            const uint32_t vertex_indices[] =
+                            {
+                                index_data_ptr->data[n_index + 0],
+                                index_data_ptr->data[n_index + 1],
+                                index_data_ptr->data[n_index + 2]
+                            };
+                            const float* vertex_data[] =
+                            {
+                                vertex_data_ptr + 3 /* components */ * vertex_indices[0],
+                                vertex_data_ptr + 3 /* components */ * vertex_indices[1],
+                                vertex_data_ptr + 3 /* components */ * vertex_indices[2]
+                            };
+
+                            _mesh_polygon* new_polygon_ptr = (_mesh_polygon*) system_resource_pool_get_from_pool(mesh_polygon_resource_pool);
+
+                            new_polygon_ptr->layer_ptr         = layer_ptr;
+                            new_polygon_ptr->layer_pass_ptr    = layer_pass_ptr;
+                            new_polygon_ptr->n_mesh_layer      = n_layer;
+                            new_polygon_ptr->n_mesh_layer_pass = n_layer_pass;
+                            new_polygon_ptr->triangle_index    = n_index / 3;
+
+                            memcpy(new_polygon_ptr->vertex_data,
+                                   vertex_data,
+                                   sizeof(vertex_data) );
+
+                            /* Assign the descriptor to each vertex */
+                            unsigned int start_vertex_index = 0;
+
+                            if (vertex_to_polygon_vector_bst == NULL)
+                            {
+                                system_resizable_vector new_vector = system_resizable_vector_create(4, /* capacity */
+                                                                                                    sizeof(_mesh_polygon*) );
+
+                                system_resizable_vector_push(allocated_polygon_vectors,
+                                                             new_vector);
+                                system_resizable_vector_push(new_vector,
+                                                             new_polygon_ptr);
+
+                                vertex_to_polygon_vector_bst = system_bst_create(sizeof(float)    * 3,            /* key size */
+                                                                                 sizeof(system_resizable_vector), /* value size */
+                                                                                 _mesh_is_key_float_lower,
+                                                                                 _mesh_is_key_float_equal,
+                                                                                 (system_bst_key)   vertex_data[0],
+                                                                                 (system_bst_value) &new_vector);
+
+                                start_vertex_index = 1;
+                            }
+
+                            for (unsigned int n_vertex_index = start_vertex_index;
+                                              n_vertex_index < 3;
+                                            ++n_vertex_index)
+                            {
+                                system_resizable_vector polygon_vector = NULL;
+
+                                if (!system_bst_get(vertex_to_polygon_vector_bst,
+                                                    (system_bst_key)     vertex_data[n_vertex_index],
+                                                    (system_bst_value*) &polygon_vector) )
+                                {
+                                    polygon_vector = system_resizable_vector_create(4, /* capacity */
+                                                                                    sizeof(_mesh_polygon*) );
+
+                                    system_resizable_vector_push(allocated_polygon_vectors,
+                                                                 polygon_vector);
+
+                                    system_bst_insert(vertex_to_polygon_vector_bst,
+                                                      (system_bst_key)   vertex_data[n_vertex_index],
+                                                      (system_bst_value) &polygon_vector);
+                                }
+
+                                system_resizable_vector_push(polygon_vector,
+                                                             new_polygon_ptr);
+                            } /* for (all triangle vertices) */
+                        } /* for (all polygon indices defined for the layer) */
+
+                        break;
+                    } /* case (0th iteration) */
+
+                    case 1:
                     {
-                        const uint32_t vertex1_index = index_data_ptr->data[n_index + 2];
-                        const uint32_t vertex2_index = index_data_ptr->data[n_index + 1];
-                        const uint32_t vertex3_index = index_data_ptr->data[n_index + 0];
-                        const float*   vertex1_data =  vertex_data_ptr + 3 /* components */ * vertex1_index;
-                        const float*   vertex2_data =  vertex_data_ptr + 3 /* components */ * vertex2_index;
-                        const float*   vertex3_data =  vertex_data_ptr + 3 /* components */ * vertex3_index;
+                        /* Per-polygon normal calculation */
+                        const uint32_t n_polygon_vectors = system_resizable_vector_get_amount_of_elements(allocated_polygon_vectors);
 
-                        /* Calculate the normal vector */
-                        float a_minus_b           [3];
-                        float c_minus_b           [3];
-                        float result_normal_vector[3];
+                        ASSERT_DEBUG_SYNC(n_polygon_vectors != 0,
+                                          "No polygon vectors found for mesh");
 
-                        system_math_vector_minus3(vertex1_data, vertex2_data, a_minus_b);
-                        system_math_vector_minus3(vertex3_data, vertex2_data, c_minus_b);
-                        system_math_vector_cross3(a_minus_b,    c_minus_b,    result_normal_vector);
-
-                        /* Add the vector to vectors assigned to each point */
-                        const uint32_t indices[] = 
+                        for (uint32_t n_polygon_vector = 0;
+                                      n_polygon_vector < n_polygon_vectors;
+                                    ++n_polygon_vector)
                         {
-                            vertex1_index,
-                            vertex2_index,
-                            vertex3_index
-                        };
-                        const unsigned int n_indices = sizeof(indices) / sizeof(indices[0]);
+                            uint32_t                n_polygon_vector_items = 0;
+                            system_resizable_vector polygon_vector         = NULL;
 
-                        for (unsigned int n_index = 0; n_index < n_indices; ++n_index)
-                        {
-                            float*         assigned_normal_data = NULL;
-                            const uint32_t vertex_index         = indices[n_index];
-
-                            if (!system_hash64map_get(index_to_vec3_map,
-                                                      vertex_index,
-                                                     &assigned_normal_data) )
+                            if (!system_resizable_vector_get_element_at(allocated_polygon_vectors,
+                                                                        n_polygon_vector,
+                                                                       &polygon_vector) )
                             {
-                                /* No normal assigned to the point yet */
-                                assigned_normal_data = (float*) system_resource_pool_get_from_pool(vec3_resource_pool);
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Could not retrieve polygon vector descriptor");
 
-                                memcpy(assigned_normal_data,
-                                       result_normal_vector,
-                                       sizeof(result_normal_vector) );
-
-                                system_hash64map_insert(index_to_vec3_map,
-                                                        (system_hash64) vertex_index,
-                                                        assigned_normal_data,
-                                                        NULL,  /* on_remove_callback_fn */
-                                                        NULL); /* on_remove_callback arg */
-                            }
-                            else
-                            {
-                                system_math_vector_add3(assigned_normal_data,
-                                                        result_normal_vector,
-                                                        assigned_normal_data);
+                                continue;
                             }
 
-                            if (vertex_index > max_index)
+                            n_polygon_vector_items = system_resizable_vector_get_amount_of_elements(polygon_vector);
+
+                            for (uint32_t n_polygon_vector_item = 0;
+                                          n_polygon_vector_item < n_polygon_vector_items;
+                                        ++n_polygon_vector_item)
                             {
-                                max_index = vertex_index;
+                                _mesh_polygon* polygon_ptr = NULL;
+
+                                if (!system_resizable_vector_get_element_at(polygon_vector,
+                                                                            n_polygon_vector_item,
+                                                                           &polygon_ptr) )
+                                {
+                                    ASSERT_DEBUG_SYNC(false,
+                                                      "Could not retrieve polygon vector descriptor");
+
+                                    continue;
+                                }
+
+                                /* Calculate the normal vector */
+                                float b_minus_a[3];
+                                float c_minus_a[3];
+
+                                system_math_vector_minus3    (polygon_ptr->vertex_data[1],
+                                                              polygon_ptr->vertex_data[0],
+                                                              b_minus_a);
+                                system_math_vector_minus3    (polygon_ptr->vertex_data[2],
+                                                              polygon_ptr->vertex_data[0],
+                                                              c_minus_a);
+                                system_math_vector_cross3    (b_minus_a,
+                                                              c_minus_a,
+                                                              polygon_ptr->polygon_normal);
+                                system_math_vector_normalize3(polygon_ptr->polygon_normal,
+                                                              polygon_ptr->polygon_normal);
                             }
-                        } /* for (all three triangle vertices) */
-                    } /* for (all triangle indices) */
-                } /* if (layer pass descriptor exists) */
-                else
-                {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve layer pass descriptor for mesh layer [%d]", n_layer);
-                }
+                        } /* for (all polygons) */
+
+                        break;
+                    } /* case (1st iteration) */
+
+                    default: ASSERT_DEBUG_SYNC(false,
+                                               "Unrecognized iteration index");
+                } /* switch (n_iteration) */
             } /* for (all layer passes) */
+        } /* for (all layers) */
+    } /* for( all iterations) */
 
-            /* Normalize normal vectors we have computed and assign them to relevant vertices */
-            const unsigned int n_index_to_vec3_map_indices = system_hash64map_get_amount_of_elements(index_to_vec3_map);
+    /* Compute per-vertex normals. */
+    ASSERT_ALWAYS_SYNC(n_layers != 0,
+                       "Zero layers defined for the mesh");
 
-            ASSERT_DEBUG_SYNC(n_index_to_vec3_map_indices != 0,
-                              "Index->vec3 map is empty");
+    for (unsigned int n_layer = 0;
+                      n_layer < n_layers;
+                    ++n_layer)
+    {
+        /* Retrieve layer vertex data */
+        _mesh_layer*             layer_ptr              = NULL;
+        _mesh_layer_data_stream* vertex_data_stream_ptr = NULL;
 
-            float* normal_data_stream = new (std::nothrow) float[(max_index + 1) * 3 /* components */];
-            ASSERT_ALWAYS_SYNC(normal_data_stream != NULL, "Out of memory");
+        if (!system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                    n_layer,
+                                                   &layer_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Layer descriptor unavailable");
 
-            for (unsigned int n_current_index = 0;
-                              n_current_index < n_index_to_vec3_map_indices;
-                            ++n_current_index)
+            continue;
+        }
+
+        if (!system_hash64map_get(layer_ptr->data_streams,
+                                  MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
+                                 &vertex_data_stream_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve vertex data stream for mesh layer [%d]",
+                              n_layer);
+
+            continue;
+        }
+
+        /* We will need to iterate over all polygons. */
+        const uint32_t n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+
+        for (uint32_t n_layer_pass = 0;
+                      n_layer_pass < n_layer_passes;
+                    ++n_layer_pass)
+        {
+            unsigned int*                layer_pass_index_data            = NULL;
+            float*                       layer_pass_normal_data           = NULL;
+            _mesh_layer_pass*            layer_pass_ptr                   = NULL;
+            _mesh_layer_pass_index_data* layer_pass_vertex_index_data_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                        n_layer_pass,
+                                                       &layer_pass_ptr) )
             {
-                system_hash64 current_index = -1;
-                float*        index_normal  = NULL;
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve layer pass descriptor");
 
-                if (system_hash64map_get_element_at(index_to_vec3_map,
-                                                    n_current_index,
-                                                    &index_normal,
-                                                    &current_index) )
-                {
-                    /* Normalize the vector */
-                    system_math_vector_normalize3(index_normal, index_normal);
-
-                    /* Store it in the stream */
-                    memcpy(normal_data_stream + 3 * current_index,
-                           index_normal,
-                           sizeof(float) * 3);
-                }
-                else
-                {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve summed normal for index [%d]", current_index);
-                }
+                continue;
             }
 
-            /* Add the data stream */
+            /* Allocate buffer to hold the normal data.
+             *
+             * NOTE: Per-vertex normals will be held individually for each defined vertex,
+             *       in the order given by the indices. This is to ensure that the vertices,
+             *       which are used many times in a single layer pass, are assigned unique
+             *       normals. The normal vectors may be different, given that they will be
+             *       calculated for a different set of owning polygons.
+             *       This may appear to be space-ineffective, but bear in mind that all the
+             *       layer data will eventually be combined when forming the GL blob.
+             */
+            layer_pass_index_data  = new (std::nothrow) unsigned int[layer_pass_ptr->n_elements];
+            layer_pass_normal_data = new (std::nothrow) float       [layer_pass_ptr->n_elements * 3 /* components */];
+
+            ASSERT_ALWAYS_SYNC(layer_pass_normal_data != NULL && layer_pass_index_data != NULL,
+                               "Out of memory");
+
+            memset(layer_pass_normal_data,
+                   0,
+                   sizeof(float) * layer_pass_ptr->n_elements * 3 /* components */);
+
+            if (system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) == 0)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "No vertices defined for a mesh layer pass");
+
+                continue;
+            }
+
+            system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                            0,     /* set id */
+                                           &layer_pass_vertex_index_data_ptr,
+                                            NULL); /* pOutHash */
+
+            for (unsigned int n_current_triangle = 0;
+                              n_current_triangle < layer_pass_ptr->n_elements / 3;
+                            ++n_current_triangle)
+            {
+                const uint32_t vertices_indices[] =
+                {
+                    layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 0],
+                    layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 1],
+                    layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 2]
+                };
+                const float* vertices_data[] =
+                {
+                    (float*) vertex_data_stream_ptr->data + 3 /* components */ * vertices_indices[0],
+                    (float*) vertex_data_stream_ptr->data + 3 /* components */ * vertices_indices[1],
+                    (float*) vertex_data_stream_ptr->data + 3 /* components */ * vertices_indices[2]
+                };
+                const unsigned int n_vertices = sizeof(vertices_data) / sizeof(vertices_data[0]);
+
+                /* Fill the index array */
+                layer_pass_index_data[n_current_triangle * 3 + 0] = n_current_triangle * 3;
+                layer_pass_index_data[n_current_triangle * 3 + 1] = n_current_triangle * 3 + 1;
+                layer_pass_index_data[n_current_triangle * 3 + 2] = n_current_triangle * 3 + 2;
+
+                /* Find the polygon-specific normal vector data. It's the same for all polygon vertices,
+                 * so we need not run it in the triangle vertex loop. */
+                float*                  current_triangle_polygon_normal      = NULL;
+                system_resizable_vector current_triangle_polygon_vector      = NULL;
+                uint32_t                current_triangle_polygon_vector_size = 0;
+
+                if (!system_bst_get(vertex_to_polygon_vector_bst,
+                                    (system_bst_key)     vertices_data[0],
+                                    (system_bst_value*) &current_triangle_polygon_vector) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Polygon vertex was not recognized");
+
+                    continue;
+                }
+
+                current_triangle_polygon_vector_size = system_resizable_vector_get_amount_of_elements(current_triangle_polygon_vector);
+
+                for (unsigned int n_triangle_polygon_vector_item = 0;
+                                  n_triangle_polygon_vector_item < current_triangle_polygon_vector_size;
+                                ++n_triangle_polygon_vector_item)
+                {
+                    _mesh_polygon* current_triangle_polygon_ptr = NULL;
+
+                    if (!system_resizable_vector_get_element_at(current_triangle_polygon_vector,
+                                                                n_triangle_polygon_vector_item,
+                                                               &current_triangle_polygon_ptr) )
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not find triangle polygon descriptor");
+
+                        continue;
+                    }
+
+                    if (current_triangle_polygon_ptr->layer_pass_ptr == layer_pass_ptr     &&
+                        current_triangle_polygon_ptr->layer_ptr      == layer_ptr          &&
+                        current_triangle_polygon_ptr->triangle_index == n_current_triangle)
+                    {
+                        current_triangle_polygon_normal = current_triangle_polygon_ptr->polygon_normal;
+
+                        break;
+                    }
+                } /* for (all triangle polygon vector items) */
+
+                ASSERT_DEBUG_SYNC(current_triangle_polygon_normal != NULL,
+                                  "Current triangle polygon normal is NULL");
+
+                /* Iterate over all triangle vertices */
+                for (unsigned int n_vertex = 0;
+                                  n_vertex < n_vertices;
+                                ++n_vertex)
+                {
+                    const unsigned int      current_vertex_index      = vertices_indices[n_vertex];
+                    const float*            triangle_vertex_data      = vertices_data   [n_vertex];
+                    float                   triangle_vertex_normal[3] =
+                    {
+                        current_triangle_polygon_normal[0],
+                        current_triangle_polygon_normal[1],
+                        current_triangle_polygon_normal[2]
+                    };
+                    system_resizable_vector triangle_vertex_polygon_vector = NULL;
+
+/* TODO: This needs to be enabled only for materials that utilize vertex smoothing! ---->*/
+
+                    /* Find all polygons that share the vertex */
+                    unsigned int n_triangle_vertex_polygon_vector_items = 0;
+
+                    if (!system_bst_get(vertex_to_polygon_vector_bst,
+                                        (system_bst_key)    (vertices_data[n_vertex]),
+                                        (system_bst_value*) &triangle_vertex_polygon_vector) )
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not find a polygon vector for input vertex");
+
+                        continue;
+                    }
+
+                    n_triangle_vertex_polygon_vector_items = system_resizable_vector_get_amount_of_elements(triangle_vertex_polygon_vector);
+
+                    for (unsigned int n_triangle_vertex_polygon_vector_item = 0;
+                                      n_triangle_vertex_polygon_vector_item < n_triangle_vertex_polygon_vector_items;
+                                    ++n_triangle_vertex_polygon_vector_item)
+                    {
+                        _mesh_polygon* triangle_vertex_polygon_ptr = NULL;
+
+                        if (!system_resizable_vector_get_element_at(triangle_vertex_polygon_vector,
+                                                                    n_triangle_vertex_polygon_vector_item,
+                                                                   &triangle_vertex_polygon_ptr) )
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not retrieve triangle vertex polygon item");
+
+                            continue;
+                        }
+
+                        /* For the purpose of per-vertex normal calculation, only consider normals
+                         * coming from polygons other than the currently processed one */
+                        if (triangle_vertex_polygon_ptr->layer_pass_ptr == layer_pass_ptr     &&
+                            triangle_vertex_polygon_ptr->layer_ptr      == layer_ptr          &&
+                            triangle_vertex_polygon_ptr->triangle_index != n_current_triangle)
+                        {
+                            float angle = acos(triangle_vertex_polygon_ptr->polygon_normal[0] * current_triangle_polygon_normal[0] +
+                                               triangle_vertex_polygon_ptr->polygon_normal[1] * current_triangle_polygon_normal[1] +
+                                               triangle_vertex_polygon_ptr->polygon_normal[2] * current_triangle_polygon_normal[2]);
+
+                            /* TODO: TEMPORARILY USE THE DEFAULT LW SMOOTHING ANGLE VALUE */
+                            if (angle <= 89.0f / 360.0f * 2.0f * 3.14152965f)
+                            {
+                                system_math_vector_add3(triangle_vertex_normal,                      /* a */
+                                                        triangle_vertex_polygon_ptr->polygon_normal, /* b */
+                                                        triangle_vertex_normal);                     /* result */
+                            }
+                        }
+                    } /* for (all triangle vertex polygon vector items) */
+/* TODO <----- */
+
+                    system_math_vector_normalize3(triangle_vertex_normal,
+                                                  triangle_vertex_normal);
+
+                    /* Store the result per-vertex normal */
+                    memcpy(layer_pass_normal_data + 3 /* components */ * layer_pass_index_data[n_current_triangle * 3 + n_vertex],
+                           triangle_vertex_normal,
+                           sizeof(float) * 3 /* components */);
+                } /* for (all triangle vertices) */
+            } /* for (all pass-specific triangles) */
+
+            /* Add the data stream as well as the index data
+             *
+             * TODO: The mesh_add_layer_pass_index_data() call assumes only one set is ever defined.
+             *       FIX IF NEEDED.
+             */
+            ASSERT_DEBUG_SYNC(system_hash64map_get_amount_of_elements(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) == 1,
+                              "Layer pass uses != 1 sets which is not supported.");
+
             mesh_add_layer_data_stream(mesh,
                                        n_layer,
                                        MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                       max_index + 1,
-                                       normal_data_stream);
+                                       layer_pass_ptr->n_elements,
+                                       layer_pass_normal_data);
 
-            /* Release the buffer */
-            delete [] normal_data_stream;
-            normal_data_stream = NULL;
-        } /* if (layer descriptor exists) */
-        else
-        {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve descriptor of layer [%d]", n_layer);
-        }
+            mesh_add_layer_pass_index_data(mesh,
+                                           n_layer,
+                                           n_layer_pass,
+                                           MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                           0, /* set id */
+                                           layer_pass_index_data,
+                                           0, /* min_index */
+                                           layer_pass_ptr->n_elements - 1);
 
-        if (index_to_vec3_map != NULL)
-        {
-            system_hash64map_release(index_to_vec3_map);
-        }
+            /* OK, we can release the buffers */
+            if (layer_pass_index_data != NULL)
+            {
+                delete [] layer_pass_index_data;
+
+                layer_pass_index_data = NULL;
+            }
+
+            if (layer_pass_normal_data != NULL)
+            {
+                delete [] layer_pass_normal_data;
+
+                layer_pass_normal_data = NULL;
+            }
+        } /* for (all layer passes) */
     } /* for (all layers) */
 
     /* Update modification timestamp */
     mesh_ptr->timestamp_last_modified = system_time_now();
 
 end:
+    if (allocated_polygon_vectors != NULL)
+    {
+        system_resizable_vector vector_item = NULL;
+
+        while (system_resizable_vector_pop(allocated_polygon_vectors,
+                                          &vector_item) )
+        {
+            system_resizable_vector_release(vector_item);
+
+            vector_item = NULL;
+        }
+
+        system_resizable_vector_release(allocated_polygon_vectors);
+        allocated_polygon_vectors = NULL;
+    }
+
+    if (mesh_polygon_resource_pool != NULL)
+    {
+        system_resource_pool_release(mesh_polygon_resource_pool);
+    }
+
     if (vec3_resource_pool != NULL)
     {
         system_resource_pool_release(vec3_resource_pool);
