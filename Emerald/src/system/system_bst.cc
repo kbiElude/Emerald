@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2014)
  *
  */
 #include "shared.h"
@@ -47,7 +47,7 @@ PRIVATE void _init_system_bst_node(__in __notnull _system_bst_node* node_ptr,
 
 /* Please see header for specification */
 PUBLIC EMERALD_API system_bst system_bst_create(__in           size_t                       key_size,
-                                                __in           size_t                       value_size, 
+                                                __in           size_t                       value_size,
                                                 __in __notnull system_bst_value_lower_func  key_lower_func,
                                                 __in __notnull system_bst_value_equals_func key_equals_func,
                                                 __in __notnull system_bst_key               initial_key,
@@ -73,7 +73,9 @@ PUBLIC EMERALD_API system_bst system_bst_create(__in           size_t           
         memcpy(key_copy,   initial_key,   key_size);
         memcpy(value_copy, initial_value, value_size);
 
-        _init_system_bst_node(&new_instance->root, (system_bst_key) key_copy, (system_bst_value) value_copy);
+        _init_system_bst_node(&new_instance->root,
+                              (system_bst_key) key_copy,
+                              (system_bst_value) value_copy);
     }
 
     return (system_bst) new_instance;
@@ -90,18 +92,24 @@ PUBLIC EMERALD_API bool system_bst_get(__in  __notnull   system_bst        bst,
 
     while (current_node != NULL)
     {
-        if (bst_ptr->key_equals_func(bst_ptr->key_size, current_node->key, key) )
+        if (bst_ptr->key_equals_func(bst_ptr->key_size,
+                                     current_node->key,
+                                     key) )
         {
             if (result != NULL)
             {
-                memcpy(result, current_node->value, bst_ptr->value_size);
+                memcpy(result,
+                       current_node->value,
+                       bst_ptr->value_size);
             }
 
             logical_result = true;
             break;
         }
-        
-        if (bst_ptr->key_lower_func(bst_ptr->key_size, current_node->key, key) )
+
+        if (bst_ptr->key_lower_func(bst_ptr->key_size,
+                                    current_node->key,
+                                    key) )
         {
             if (current_node->left != NULL)
             {
@@ -142,7 +150,9 @@ PUBLIC EMERALD_API void system_bst_insert(__in __notnull system_bst       bst,
     {
         previous_node = current_node;
 
-        if (bst_ptr->key_lower_func(bst_ptr->key_size, current_node->key, key) )
+        if (bst_ptr->key_lower_func(bst_ptr->key_size,
+                                    current_node->key,
+                                    key) )
         {
             current_node = current_node->left;
             is_lower_eq  = true;
@@ -158,23 +168,31 @@ PUBLIC EMERALD_API void system_bst_insert(__in __notnull system_bst       bst,
     system_bst_key   key_copy   = (system_bst_key)   system_linear_alloc_pin_get_from_pool(bst_ptr->key_allocator);
     system_bst_value value_copy = (system_bst_value) system_linear_alloc_pin_get_from_pool(bst_ptr->value_allocator);
 
-    memcpy(key_copy,   key,   bst_ptr->key_size);
-    memcpy(value_copy, value, bst_ptr->value_size);
+    memcpy(key_copy,
+           key,
+           bst_ptr->key_size);
+    memcpy(value_copy,
+           value,
+           bst_ptr->value_size);
 
     if (is_lower_eq)
     {
         previous_node->left = (_system_bst_node*) system_linear_alloc_pin_get_from_pool(bst_ptr->node_allocator);
 
-        _init_system_bst_node(previous_node->left, key_copy, value_copy);
+        _init_system_bst_node(previous_node->left,
+                              key_copy,
+                              value_copy);
     }
     else
     {
         previous_node->right = (_system_bst_node*) system_linear_alloc_pin_get_from_pool(bst_ptr->node_allocator);
 
-        _init_system_bst_node(previous_node->right, key_copy, value_copy);
+        _init_system_bst_node(previous_node->right,
+                              key_copy,
+                              value_copy);
     }
 }
-                                          
+
 /* Please see header for specification */
 PUBLIC EMERALD_API void system_bst_release(__in __notnull system_bst bst)
 {
@@ -184,10 +202,12 @@ PUBLIC EMERALD_API void system_bst_release(__in __notnull system_bst bst)
     {
         system_linear_alloc_pin_release(bst_ptr->key_allocator);
     }
+
     if (bst_ptr->node_allocator != NULL)
     {
         system_linear_alloc_pin_release(bst_ptr->node_allocator);
     }
+
     if (bst_ptr->value_allocator != NULL)
     {
         system_linear_alloc_pin_release(bst_ptr->value_allocator);
