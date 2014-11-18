@@ -78,12 +78,15 @@ typedef struct _mesh_material
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
     ogl_uber                  uber;
 
+    float vertex_smoothing_angle;
+
     _mesh_material()
     {
-        context = NULL;
-        dirty   = true;
-        name    = NULL;
-        uber    = NULL;
+        context                = NULL;
+        dirty                  = true;
+        name                   = NULL;
+        uber                   = NULL;
+        vertex_smoothing_angle = -1.0f;
     }
 
     REFCOUNT_INSERT_VARIABLES
@@ -247,6 +250,30 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
     }
 
     return material_ptr->uber;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material          material,
+                                                   __in            mesh_material_property property,
+                                                   __out __notnull void*                  out_result)
+{
+    const _mesh_material* material_ptr = (_mesh_material*) material;
+
+    switch (property)
+    {
+        case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
+        {
+            *(float*) out_result = material_ptr->vertex_smoothing_angle;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_property value");
+        }
+    } /* switch (property) */
 }
 
 /* Please see header for specification */
@@ -592,6 +619,30 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
     } /* for (all shading properties) */
 
     return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
+                                                   __in           mesh_material_property property,
+                                                   __in __notnull void*                  data)
+{
+    _mesh_material* material_ptr = (_mesh_material*) material;
+
+    switch (property)
+    {
+        case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
+        {
+            material_ptr->vertex_smoothing_angle = *(float*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_property value");
+        }
+    } /* switch (property) */
 }
 
 /* Please see header for specification */

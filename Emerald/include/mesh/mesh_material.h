@@ -32,6 +32,13 @@ typedef enum
 
 typedef enum
 {
+    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable, float. Negative value indicates
+                                                    * vertex smoothing is disabled. */
+
+} mesh_material_property;
+
+typedef enum
+{
     MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE,
@@ -111,6 +118,11 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
                                                        __in_opt           scene         scene);
 
 /** TODO */
+PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material          material,
+                                                   __in            mesh_material_property property,
+                                                   __out __notnull void*                  out_result);
+
+/** TODO */
 PUBLIC EMERALD_API mesh_material_shading mesh_material_get_shading(__in __notnull mesh_material material);
 
 /** TODO */
@@ -142,6 +154,11 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
 /** TODO */
 PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
                                __in __notnull mesh_material          material);
+
+/** TODO */
+PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
+                                                   __in           mesh_material_property property,
+                                                   __in __notnull void*                  data);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_shading(__in __notnull mesh_material         material,
