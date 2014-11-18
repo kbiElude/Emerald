@@ -22,6 +22,7 @@ static const system_hashed_ansi_string _object_type_gfx_bfg_font_table_hashed_an
 static const system_hashed_ansi_string _object_type_gfx_image_hashed_ansi_string                             = system_hashed_ansi_string_create("GFX Images");
 static const system_hashed_ansi_string _object_type_lw_curve_dataset_hashed_ansi_string                      = system_hashed_ansi_string_create("Lightwave curve data-sets");
 static const system_hashed_ansi_string _object_type_lw_dataset_hashed_ansi_string                            = system_hashed_ansi_string_create("Lightwave data-sets");
+static const system_hashed_ansi_string _object_type_lw_material_dataset_hashed_ansi_string                   = system_hashed_ansi_string_create("Lightwave material data-sets");
 static const system_hashed_ansi_string _object_type_mesh_hashed_ansi_string                                  = system_hashed_ansi_string_create("Meshes");
 static const system_hashed_ansi_string _object_type_mesh_material_hashed_ansi_string                         = system_hashed_ansi_string_create("Mesh Materials");
 static const system_hashed_ansi_string _object_type_ocl_context_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenCL Contexts");
@@ -98,6 +99,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_GFX_IMAGE:                                       return _object_type_gfx_image_hashed_ansi_string;
         case OBJECT_TYPE_LW_CURVE_DATASET:                                return _object_type_lw_curve_dataset_hashed_ansi_string;
         case OBJECT_TYPE_LW_DATASET:                                      return _object_type_lw_dataset_hashed_ansi_string;
+        case OBJECT_TYPE_LW_MATERIAL_DATASET:                             return _object_type_lw_material_dataset_hashed_ansi_string;
         case OBJECT_TYPE_MESH:                                            return _object_type_mesh_hashed_ansi_string;
         case OBJECT_TYPE_MESH_MATERIAL:                                   return _object_type_mesh_material_hashed_ansi_string;
         case OBJECT_TYPE_OCL_CONTEXT:                                     return _object_type_ocl_context_hashed_ansi_string;

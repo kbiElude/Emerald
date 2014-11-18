@@ -6,13 +6,15 @@
 #include "shared.h"
 #include "lw/lw_dataset.h"
 #include "lw/lw_curve_dataset.h"
+#include "lw/lw_material_dataset.h"
 #include "system/system_log.h"
 
 
 /** Internal type definitions */
 typedef struct
 {
-    lw_curve_dataset curves;
+    lw_curve_dataset    curves;
+    lw_material_dataset materials;
 
     REFCOUNT_INSERT_VARIABLES
 } _lw_dataset;
@@ -33,6 +35,13 @@ PRIVATE void _lw_dataset_release(void* arg)
 
         dataset_ptr->curves = NULL;
     }
+
+    if (dataset_ptr->materials != NULL)
+    {
+        lw_material_dataset_release(dataset_ptr->materials);
+
+        dataset_ptr->materials = NULL;
+    }
 }
 
 
@@ -46,6 +55,12 @@ PUBLIC EMERALD_API void lw_dataset_apply_to_scene(__in __notnull lw_dataset data
     {
         lw_curve_dataset_apply_to_scene(dataset_ptr->curves,
                                         scene);
+    }
+
+    if (dataset_ptr->materials != NULL)
+    {
+        lw_material_dataset_apply_to_scene(dataset_ptr->materials,
+                                           scene);
     }
 }
 
@@ -114,6 +129,11 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_load(__in __notnull system_hashed_ansi_
         dataset_ptr->curves = lw_curve_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                             " curve data-set"),
                                                     serializer);
+
+        /* Load the material data-set */
+        dataset_ptr->materials = lw_material_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                  " material data-set"),
+                                                          serializer);
     }
 
     return dataset;
@@ -131,4 +151,11 @@ PUBLIC EMERALD_API void lw_dataset_save(__in __notnull lw_dataset             da
 
     lw_curve_dataset_save(dataset_ptr->curves,
                           serializer);
+
+    /* Store the material data-set */
+    ASSERT_ALWAYS_SYNC(dataset_ptr->materials != NULL,
+                       "Material data-set is NULL");
+
+    lw_material_dataset_save(dataset_ptr->materials,
+                             serializer);
 }
