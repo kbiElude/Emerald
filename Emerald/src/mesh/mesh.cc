@@ -2298,6 +2298,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
             float*                       layer_pass_normal_data           = NULL;
             _mesh_layer_pass*            layer_pass_ptr                   = NULL;
             _mesh_layer_pass_index_data* layer_pass_vertex_index_data_ptr = NULL;
+            float                        vertex_smoothing_angle           = 0.0f;
 
             if (!system_resizable_vector_get_element_at(layer_ptr->passes,
                                                         n_layer_pass,
@@ -2308,6 +2309,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 
                 continue;
             }
+
+            /* Retrieve vertex smoothing information */
+            mesh_material_get_property(layer_pass_ptr->material,
+                                       MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                                      &vertex_smoothing_angle);
 
             /* Allocate buffer to hold the normal data.
              *
@@ -2427,59 +2433,59 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                     };
                     system_resizable_vector triangle_vertex_polygon_vector = NULL;
 
-/* TODO: This needs to be enabled only for materials that utilize vertex smoothing! ---->*/
-
-                    /* Find all polygons that share the vertex */
-                    unsigned int n_triangle_vertex_polygon_vector_items = 0;
-
-                    if (!system_bst_get(vertex_to_polygon_vector_bst,
-                                        (system_bst_key)    (vertices_data[n_vertex]),
-                                        (system_bst_value*) &triangle_vertex_polygon_vector) )
+                    if (vertex_smoothing_angle >= 0.0f)
                     {
-                        ASSERT_DEBUG_SYNC(false,
-                                          "Could not find a polygon vector for input vertex");
+                        /* Find all polygons that share the vertex */
+                        unsigned int n_triangle_vertex_polygon_vector_items = 0;
 
-                        continue;
-                    }
-
-                    n_triangle_vertex_polygon_vector_items = system_resizable_vector_get_amount_of_elements(triangle_vertex_polygon_vector);
-
-                    for (unsigned int n_triangle_vertex_polygon_vector_item = 0;
-                                      n_triangle_vertex_polygon_vector_item < n_triangle_vertex_polygon_vector_items;
-                                    ++n_triangle_vertex_polygon_vector_item)
-                    {
-                        _mesh_polygon* triangle_vertex_polygon_ptr = NULL;
-
-                        if (!system_resizable_vector_get_element_at(triangle_vertex_polygon_vector,
-                                                                    n_triangle_vertex_polygon_vector_item,
-                                                                   &triangle_vertex_polygon_ptr) )
+                        if (!system_bst_get(vertex_to_polygon_vector_bst,
+                                            (system_bst_key)    (vertices_data[n_vertex]),
+                                            (system_bst_value*) &triangle_vertex_polygon_vector) )
                         {
                             ASSERT_DEBUG_SYNC(false,
-                                              "Could not retrieve triangle vertex polygon item");
+                                              "Could not find a polygon vector for input vertex");
 
                             continue;
                         }
 
-                        /* For the purpose of per-vertex normal calculation, only consider normals
-                         * coming from polygons other than the currently processed one */
-                        if (triangle_vertex_polygon_ptr->layer_pass_ptr == layer_pass_ptr     &&
-                            triangle_vertex_polygon_ptr->layer_ptr      == layer_ptr          &&
-                            triangle_vertex_polygon_ptr->triangle_index != n_current_triangle)
-                        {
-                            float angle = acos(triangle_vertex_polygon_ptr->polygon_normal[0] * current_triangle_polygon_normal[0] +
-                                               triangle_vertex_polygon_ptr->polygon_normal[1] * current_triangle_polygon_normal[1] +
-                                               triangle_vertex_polygon_ptr->polygon_normal[2] * current_triangle_polygon_normal[2]);
+                        n_triangle_vertex_polygon_vector_items = system_resizable_vector_get_amount_of_elements(triangle_vertex_polygon_vector);
 
-                            /* TODO: TEMPORARILY USE THE DEFAULT LW SMOOTHING ANGLE VALUE */
-                            if (angle <= 89.0f / 360.0f * 2.0f * 3.14152965f)
+                        for (unsigned int n_triangle_vertex_polygon_vector_item = 0;
+                                          n_triangle_vertex_polygon_vector_item < n_triangle_vertex_polygon_vector_items;
+                                        ++n_triangle_vertex_polygon_vector_item)
+                        {
+                            _mesh_polygon* triangle_vertex_polygon_ptr = NULL;
+
+                            if (!system_resizable_vector_get_element_at(triangle_vertex_polygon_vector,
+                                                                        n_triangle_vertex_polygon_vector_item,
+                                                                       &triangle_vertex_polygon_ptr) )
                             {
-                                system_math_vector_add3(triangle_vertex_normal,                      /* a */
-                                                        triangle_vertex_polygon_ptr->polygon_normal, /* b */
-                                                        triangle_vertex_normal);                     /* result */
+                                ASSERT_DEBUG_SYNC(false,
+                                                  "Could not retrieve triangle vertex polygon item");
+
+                                continue;
                             }
-                        }
-                    } /* for (all triangle vertex polygon vector items) */
-/* TODO <----- */
+
+                            /* For the purpose of per-vertex normal calculation, only consider normals
+                             * coming from polygons other than the currently processed one */
+                            if (triangle_vertex_polygon_ptr->layer_pass_ptr == layer_pass_ptr     &&
+                                triangle_vertex_polygon_ptr->layer_ptr      == layer_ptr          &&
+                                triangle_vertex_polygon_ptr->triangle_index != n_current_triangle)
+                            {
+                                float angle = acos(triangle_vertex_polygon_ptr->polygon_normal[0] * current_triangle_polygon_normal[0] +
+                                                   triangle_vertex_polygon_ptr->polygon_normal[1] * current_triangle_polygon_normal[1] +
+                                                   triangle_vertex_polygon_ptr->polygon_normal[2] * current_triangle_polygon_normal[2]);
+
+                                /* TODO: TEMPORARILY USE THE DEFAULT LW SMOOTHING ANGLE VALUE */
+                                if (angle <= vertex_smoothing_angle / 360.0f * 2.0f * 3.14152965f)
+                                {
+                                    system_math_vector_add3(triangle_vertex_normal,                      /* a */
+                                                            triangle_vertex_polygon_ptr->polygon_normal, /* b */
+                                                            triangle_vertex_normal);                     /* result */
+                                }
+                            }
+                        } /* for (all triangle vertex polygon vector items) */
+                    } /* if (vertex_smoothing_angle >= 0.0f) */
 
                     system_math_vector_normalize3(triangle_vertex_normal,
                                                   triangle_vertex_normal);
