@@ -76,6 +76,12 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_create(__in __notnull system_hashed_ans
                0,
                sizeof(_lw_dataset) );
 
+        /* Instantiate sub-datasets */
+        dataset_ptr->curves    = lw_curve_dataset_create   (system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                    " curves") );
+        dataset_ptr->materials = lw_material_dataset_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                    " materials") );
+
         /* Register the instance */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(dataset_ptr,
                                                        _lw_dataset_release,
@@ -105,6 +111,13 @@ PUBLIC EMERALD_API void lw_dataset_get_property(__in  __notnull lw_dataset      
             break;
         }
 
+        case LW_DATASET_PROPERTY_MATERIAL_DATASET:
+        {
+            *(lw_material_dataset*) out_result = dataset_ptr->materials;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -126,11 +139,25 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_load(__in __notnull system_hashed_ansi_
         _lw_dataset* dataset_ptr = (_lw_dataset*) dataset;
 
         /* Load the curve data-set */
+        if (dataset_ptr->curves != NULL)
+        {
+            lw_curve_dataset_release(dataset_ptr->curves);
+
+            dataset_ptr->curves = NULL;
+        }
+
         dataset_ptr->curves = lw_curve_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                             " curve data-set"),
                                                     serializer);
 
         /* Load the material data-set */
+        if (dataset_ptr->materials != NULL)
+        {
+            lw_material_dataset_release(dataset_ptr->materials);
+
+            dataset_ptr->materials = NULL;
+        }
+
         dataset_ptr->materials = lw_material_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                   " material data-set"),
                                                           serializer);

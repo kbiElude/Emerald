@@ -1,7 +1,10 @@
 #define _MSWIN
 
-#include "plugin_curves.h"
+#include "shared.h"
+#include "lw/lw_curve_dataset.h"
+
 #include "plugin.h"
+#include "plugin_curves.h"
 #include <Windows.h>
 
 #include "curve/curve_container.h"
@@ -349,7 +352,7 @@ curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBeha
 }
 
 /** TODO */
-lw_curve_dataset GetCurveDataset()
+void FillCurveDataset(lw_dataset dataset)
 {
     struct _item
     {
@@ -362,9 +365,13 @@ lw_curve_dataset GetCurveDataset()
         {LWI_CAMERA, LW_CURVE_DATASET_OBJECT_TYPE_CAMERA}
     };
 
-          lw_curve_dataset curve_dataset = lw_curve_dataset_create(system_hashed_ansi_string_create("Curve data-set") );
+          lw_curve_dataset curve_dataset = NULL;
           unsigned int     n_item        = 0;
     const unsigned int     n_items       = sizeof(items) / sizeof(items[0]);
+
+    lw_dataset_get_property(dataset,
+                            LW_DATASET_PROPERTY_CURVE_DATASET,
+                           &curve_dataset);
 
     /* Extract miscellaneous properties */
     float fps = (float) scene_info_ptr->framesPerSecond;
@@ -422,6 +429,4 @@ lw_curve_dataset GetCurveDataset()
             current_lw_item_id = item_info_ptr->next(current_lw_item_id);
         }
     } /* for (all items) */
-
-    return curve_dataset;
 }

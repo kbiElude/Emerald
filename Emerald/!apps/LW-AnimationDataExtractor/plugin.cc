@@ -4,6 +4,8 @@
 #include <Windows.h>
 
 #include "plugin.h"
+#include "plugin_curves.h"
+#include "plugin_materials.h"
 #include "curve/curve_container.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
@@ -19,6 +21,7 @@ LWEnvelopeFuncs* envelope_ptr      = NULL;
 LWItemInfo*      item_info_ptr     = NULL;
 LWMessageFuncs*  message_funcs_ptr = NULL;
 LWSceneInfo*     scene_info_ptr    = NULL;
+LWSurfaceFuncs*  surface_funcs_ptr = NULL;
 
 /* Forward declarations. */
 XCALL_(int) ExportData(int         version,
@@ -37,17 +40,25 @@ XCALL_(int) ExportData(int         version,
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
     message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
     scene_info_ptr    = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
+    surface_funcs_ptr = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
 
-    /* Inform the user that we're generating the dataset */
-    message_funcs_ptr->info("Extracting curve data..", NULL);
+    /* Spawn a Lightwave data-set instance */
+    lw_dataset dataset = lw_dataset_create(system_hashed_ansi_string_create("Dataset") );
 
     /* Extract curve data */
-    lw_curve_dataset curve_dataset = GetCurveDataset();
+    message_funcs_ptr->info("Extracting curve data..", NULL);
 
+    FillCurveDataset(dataset);
+
+    /* Extract surface data */
+    message_funcs_ptr->info("Extracting surface data..", NULL);
+
+    FillMaterialDataset(dataset);
+
+    /* Check where the user wants to store the data */
     message_funcs_ptr->info("Please select target file to store the blob.",
                             NULL);
 
-    /* Check where the user wants to store the data */
     system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE,
                                                                                    system_hashed_ansi_string_create("*"),
                                                                                    system_hashed_ansi_string_create("Emerald Curve Dataset"),
@@ -55,25 +66,25 @@ XCALL_(int) ExportData(int         version,
 
     if (filename != NULL)
     {
-        message_funcs_ptr->info("Saving curve data..", NULL);
+        message_funcs_ptr->info("Saving data..", NULL);
 
         /* Store the dataset */
         system_file_serializer serializer = system_file_serializer_create_for_writing(filename);
 
-        lw_curve_dataset_save         (curve_dataset, serializer);
+        lw_dataset_save               (dataset, serializer);
         system_file_serializer_release(serializer);
 
-        message_funcs_ptr->info("Curve Dataset saved.", NULL);
+        message_funcs_ptr->info("Lightwave Dataset saved.", NULL);
     }
     else
     {
-        message_funcs_ptr->warning("Curve Dataset NOT saved.", NULL);
+        message_funcs_ptr->warning("Lightwave Dataset NOT saved.", NULL);
     }
 
     /* done! */
-    if (curve_dataset != NULL)
+    if (dataset != NULL)
     {
-        lw_curve_dataset_release(curve_dataset);
+        lw_dataset_release(dataset);
     }
 
     return AFUNC_OK;
