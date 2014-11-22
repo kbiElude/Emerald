@@ -484,16 +484,14 @@ PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool(system_
 PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_instance,
                                               __in      void*      renderer)
 {
-    _ogl_scene_renderer*    renderer_ptr                    = (_ogl_scene_renderer*) renderer;
-    mesh_material           material                        = NULL;
-    float                   material_vertex_smoothing_angle = 0.0f;
-    mesh                    mesh_gpu                        = NULL;
-    uint32_t                mesh_id                         = -1;
-    system_resizable_vector mesh_materials                  = NULL;
-    bool                    mesh_needs_gl_update            = false;
-    ogl_uber                mesh_uber                       = NULL;
-    float                   mesh_vertex_smoothing_angle     = 0.0f;
-    unsigned int            n_mesh_materials                = 0;
+    _ogl_scene_renderer*    renderer_ptr         = (_ogl_scene_renderer*) renderer;
+    mesh_material           material             = NULL;
+    mesh                    mesh_gpu             = NULL;
+    uint32_t                mesh_id              = -1;
+    system_resizable_vector mesh_materials       = NULL;
+    bool                    mesh_needs_gl_update = false;
+    ogl_uber                mesh_uber            = NULL;
+    unsigned int            n_mesh_materials     = 0;
 
     scene_mesh_get_property(scene_mesh_instance,
                             SCENE_MESH_PROPERTY_MESH,
@@ -502,9 +500,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
     if (!mesh_get_property(mesh_gpu,
                            MESH_PROPERTY_MATERIALS,
                           &mesh_materials)                      ||
-        !mesh_get_property(mesh_gpu,
-                           MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-                          &mesh_vertex_smoothing_angle)         ||
         !mesh_get_property(mesh_gpu,
                            MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
                           &mesh_needs_gl_update) )
@@ -548,21 +543,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
                                                    &material) )
         {
             ASSERT_DEBUG_SYNC(false, "Could not retrieve mesh material at index [%d]", n_mesh_material);
-        }
-
-        /* Materials can have their vertex smoothing angle changed in real-time. Make sure
-         * the angle currently reported by the mesh matches the one required for the material.
-         * If not, it is an error, as the normal data should've been adjusted at the setting time,
-         * not at the draw call time.
-         */
-        mesh_material_get_property(material,
-                                   MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-                                  &material_vertex_smoothing_angle);
-
-        if (fabs(material_vertex_smoothing_angle - mesh_vertex_smoothing_angle) >= 1e-5f)
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Normal data is not using the correct vertex smoothing angle");
         }
 
         /* Retrieve ogl_uber that can render the material for the currently processed

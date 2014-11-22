@@ -450,6 +450,7 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                     if (component_element_ptr != NULL)
                     {
                         tinyxml2::XMLElement* attribute_element_ptr        = component_element_ptr->FirstChildElement("attribute");
+                        tinyxml2::XMLElement* root_attribute_element_ptr   = attribute_element_ptr;
                         tinyxml2::XMLElement* shader_attribute_element_ptr = NULL;
 
                         /* Find the "Shader" attribute */
@@ -578,6 +579,42 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                                 } /* if (component_element_ptr != NULL) */
                             } /* if (connected_component_element_ptr != NULL) */
                         } /* if (projection_attribute_element_ptr != NULL) */
+
+                        /* If UV Map Name was not found, it can still be defined under <attribute> with sid="Name",
+                         * under the <string> node.
+                         */
+                        if (new_effect_ptr->uv_map_name == system_hashed_ansi_string_get_default_empty_string() )
+                        {
+                            tinyxml2::XMLElement* name_element_ptr = NULL;
+
+                            attribute_element_ptr = root_attribute_element_ptr;
+
+                            while (attribute_element_ptr != NULL)
+                            {
+                                const char* attribute_sid = attribute_element_ptr->Attribute("sid");
+
+                                if (strcmp(attribute_sid, "Name") == 0)
+                                {
+                                    name_element_ptr = attribute_element_ptr;
+
+                                    break;
+                                }
+
+                                /* "Shader" attribute was not found, iterate */
+                                attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
+                            }; /* while (attribute_element_ptr != NULL) */
+
+                            if (name_element_ptr != NULL)
+                            {
+                                tinyxml2::XMLElement* string_element_ptr = name_element_ptr->FirstChildElement("string");
+
+                                if (string_element_ptr != NULL)
+                                {
+                                    /* UV map name information is present! */
+                                    new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(string_element_ptr->GetText() );
+                                }
+                            }
+                        } /* if (uv map name data was not found) */
                     } /* if (component_element_ptr != NULL) */
                 } /* if (shaders_element_ptr != NULL) */
             } /* if (technique_element_ptr != NULL) */

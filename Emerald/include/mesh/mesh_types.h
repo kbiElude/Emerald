@@ -28,13 +28,6 @@ typedef enum
     MESH_PROPERTY_N_SH_BANDS,                                    /* settable ONCE, uint32_t                */
     MESH_PROPERTY_TIMESTAMP_MODIFICATION,                        /* not settable,  system_timeline_time    */
 
-    /* not settable, float.
-     *
-     * This property describes the angle that was used to generate the normals data.
-     * In order to change the setting, please update the relevant mesh material setting.
-     */
-    MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,                        /* not settable,  float  */
-
     /* not settable, bool.
      *
      * This property tells that a rendering thread should call mesh_fill_gl_buffers() ASAP
@@ -61,6 +54,7 @@ typedef enum
     MESH_LAYER_PROPERTY_MATERIAL,                   /* not settable, mesh_material                                                   */
     MESH_LAYER_PROPERTY_N_ELEMENTS,                 /* not settable, uint32_t                                                        */
     MESH_LAYER_PROPERTY_N_TRIANGLES,                /* not settable, uint32_t                                                        */
+    MESH_LAYER_PROPERTY_VERTEX_SMOOTHING_ANGLE,     /*     settable, float.   setter does not invoke GL blob re-generation!          */
 } mesh_layer_property;
 
 typedef enum

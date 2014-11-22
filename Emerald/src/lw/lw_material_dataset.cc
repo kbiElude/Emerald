@@ -129,9 +129,10 @@ PUBLIC EMERALD_API void lw_material_dataset_apply_to_scene(__in __notnull lw_mat
                   n_mesh_instance < n_mesh_instances;
                 ++n_mesh_instance)
     {
-        scene_mesh mesh_instance      = NULL;
-        mesh       mesh_instance_mesh = NULL;
-        uint32_t   n_mesh_layers      = 0;
+        scene_mesh                mesh_instance      = NULL;
+        mesh                      mesh_instance_mesh = NULL;
+        system_hashed_ansi_string mesh_instance_name = NULL;
+        uint32_t                  n_mesh_layers      = 0;
 
         if ((mesh_instance = scene_get_mesh_instance_by_index(scene,
                                                               n_mesh_instance)) == NULL)
@@ -146,6 +147,9 @@ PUBLIC EMERALD_API void lw_material_dataset_apply_to_scene(__in __notnull lw_mat
         scene_mesh_get_property(mesh_instance,
                                 SCENE_MESH_PROPERTY_MESH,
                                &mesh_instance_mesh);
+        scene_mesh_get_property(mesh_instance,
+                                SCENE_MESH_PROPERTY_NAME,
+                               &mesh_instance_name);
 
         mesh_get_property(mesh_instance_mesh,
                           MESH_PROPERTY_N_LAYERS,
@@ -196,8 +200,12 @@ PUBLIC EMERALD_API void lw_material_dataset_apply_to_scene(__in __notnull lw_mat
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Mesh layer pass material does not define a recognized UV map name");
+                    /* TODO: The matching mechanism does not always work correctly. It needs a smarter approach,
+                     *       but for now we'll have to live with what we have.
+                     */
+                    LOG_FATAL("Mesh layer pass material for mesh [%s] does not define a recognized UV map name [%s]",
+                              system_hashed_ansi_string_get_buffer(mesh_instance_name),
+                              system_hashed_ansi_string_get_buffer(mesh_layer_pass_material_uv_map_name) );
                 }
             } /* for (all mesh layer passes) */
         } /* for (all mesh layers) */

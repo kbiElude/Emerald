@@ -62,7 +62,6 @@ typedef struct
     mesh_creation_flags  creation_flags;
     uint32_t             n_sh_bands;      /* can be 0 ! */
     sh_components        n_sh_components; /* can be 0 ! */
-    float                smoothing_angle; /* As was used for generating the normals data. */
     system_timeline_time timestamp_last_modified;
 
     /* Other */
@@ -129,7 +128,8 @@ typedef struct _mesh_layer_pass_index_data
 typedef struct
 {
     mesh_material material;
-    uint32_t     n_elements;
+    uint32_t      n_elements;
+    float         smoothing_angle; /* As was used for generating the normals data. */
 
     /** Some stream types can be assigned multiple sets in COLLADA.
      *  The hash-map maps stream set index to _mesh_layer_pass_index_data*,
@@ -828,7 +828,6 @@ PRIVATE void _mesh_init_mesh(__in __notnull _mesh*                    new_mesh,
     new_mesh->n_sh_components                       = SH_COMPONENTS_UNDEFINED;
     new_mesh->name                                  = name;
     new_mesh->set_id_counter                        = 0;
-    new_mesh->smoothing_angle                       = 0.0f;
     new_mesh->timestamp_last_modified               = system_time_now();
 
     for (unsigned int n_stream_type = 0;
@@ -871,6 +870,7 @@ PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass)
     new_mesh_layer_pass->gl_elements           = NULL;
     new_mesh_layer_pass->material              = NULL;
     new_mesh_layer_pass->n_elements            = 0;
+    new_mesh_layer_pass->smoothing_angle       = 0.0f;
 
     for (mesh_layer_data_stream_type stream_type  = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
                                      stream_type != MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -936,8 +936,12 @@ PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_
 
             if (layer_pass_ptr->material == src_material)
             {
-                found_dependant_layers   = true;
-                needs_normals_data_regen = true;
+                found_dependant_layers = true;
+
+                if (fabs(layer_pass_ptr->smoothing_angle - material_vsa) > 1e-5f)
+                {
+                    needs_normals_data_regen = true;
+                }
             }
         } /* for (all mesh layer passes) */
     } /* for (all mesh layers) */
@@ -947,27 +951,19 @@ PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_
 
     if (needs_normals_data_regen)
     {
-        /* TODO: This code-path will crash if the layer data is unavailable. Add necessary guards to throw
-         *       a reasonable error in such case.
-         */
-        if (fabs(mesh_ptr->smoothing_angle - material_vsa) > 1e-5f)
-        {
-            LOG_INFO("Mesh [%s] is being re-configured to use a different smoothing angle. Re-generating normal data.",
-                     system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
+        LOG_INFO("Mesh [%s] is being re-configured to use a different smoothing angle. Re-generating normal data.",
+                 system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
 
-            mesh_ptr->smoothing_angle = material_vsa;
+        /* Release any data that's already been created */
+        mesh_free_single_indexed_representation( (mesh) mesh_ptr);
+        _mesh_release_normals_data             (mesh_ptr);
 
-            /* Release any data that's already been created */
-            mesh_free_single_indexed_representation( (mesh) mesh_ptr);
-            _mesh_release_normals_data             (mesh_ptr);
+        /* Generate normal data */
+        mesh_generate_normal_data( (mesh) mesh_ptr);
 
-            /* Generate normal data */
-            mesh_generate_normal_data( (mesh) mesh_ptr);
-
-            /* Update GL blob */
-            mesh_fill_gl_buffers( (mesh) mesh_ptr,
-                                 mesh_ptr->gl_context);
-        }
+        /* Update GL blob */
+        mesh_fill_gl_buffers( (mesh) mesh_ptr,
+                             mesh_ptr->gl_context);
     } /* if (needs_normals_data_regen) */
 }
 
@@ -1550,6 +1546,13 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh      
                                                 new_data_set,
                                                 NULL,  /* on_remove_callback */
                                                 NULL); /* on_remove_callback_user_arg */
+
+                        if (system_hash64map_contains(pass_ptr->set_id_to_unique_set_id[stream_type],
+                                                      set_id) )
+                        {
+                            system_hash64map_remove(pass_ptr->set_id_to_unique_set_id[stream_type],
+                                                    set_id);
+                        }
 
                         system_hash64map_insert(pass_ptr->set_id_to_unique_set_id[stream_type],
                                                 set_id,
@@ -2640,7 +2643,6 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
             float*                       layer_pass_normal_data           = NULL;
             _mesh_layer_pass*            layer_pass_ptr                   = NULL;
             _mesh_layer_pass_index_data* layer_pass_vertex_index_data_ptr = NULL;
-            float                        vertex_smoothing_angle           = 0.0f;
 
             if (!system_resizable_vector_get_element_at(layer_ptr->passes,
                                                         n_layer_pass,
@@ -2655,7 +2657,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
             /* Retrieve vertex smoothing information */
             mesh_material_get_property(layer_pass_ptr->material,
                                        MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-                                      &vertex_smoothing_angle);
+                                      &layer_pass_ptr->smoothing_angle);
 
             /* Allocate buffer to hold the normal data.
              *
@@ -2775,7 +2777,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                     };
                     system_resizable_vector triangle_vertex_polygon_vector = NULL;
 
-                    if (vertex_smoothing_angle >= 0.0f)
+                    if (layer_pass_ptr->smoothing_angle > 0.0f)
                     {
                         /* Find all polygons that share the vertex */
                         unsigned int n_triangle_vertex_polygon_vector_items = 0;
@@ -2818,7 +2820,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                                    triangle_vertex_polygon_ptr->polygon_normal[1] * current_triangle_polygon_normal[1] +
                                                    triangle_vertex_polygon_ptr->polygon_normal[2] * current_triangle_polygon_normal[2]);
 
-                                if (angle <= vertex_smoothing_angle)
+                                if (angle <= layer_pass_ptr->smoothing_angle)
                                 {
                                     system_math_vector_add3(triangle_vertex_normal,                      /* a */
                                                             triangle_vertex_polygon_ptr->polygon_normal, /* b */
@@ -3140,13 +3142,6 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
             break;
         }
 
-        case MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE:
-        {
-            *(float*) result = mesh_ptr->smoothing_angle;
-
-            break;
-        }
-
         default:
         {
             ASSERT_ALWAYS_SYNC(false, "Unrecognized mesh property [%d]", property);
@@ -3322,8 +3317,7 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
     /* Read mesh name */
     float                     aabb_max[4];
     float                     aabb_min[4];
-    system_hashed_ansi_string mesh_name       = NULL;
-    float                     smoothing_angle = 0.0f;
+    system_hashed_ansi_string mesh_name   = NULL;
 
     system_file_serializer_read                   (serializer,
                                                    sizeof(aabb_max),
@@ -3333,9 +3327,6 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                                                    aabb_min);
     system_file_serializer_read_hashed_ansi_string(serializer,
                                                   &mesh_name);
-    system_file_serializer_read                   (serializer,
-                                                    sizeof(smoothing_angle),
-                                                   &smoothing_angle);
 
     /* Create result instance before we continue */
     result = mesh_create(flags,
@@ -3350,12 +3341,6 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
         mesh_ptr->gl_context = context;
 
         ogl_context_retain(context);
-
-        /* Set smoothing angle. Note we're not using the setter here, as
-         * it would trigger normal data re-generation, which is not something
-         * we really need when loading baked data :)
-         */
-        mesh_ptr->smoothing_angle = smoothing_angle;
 
         /* Set AABB box props */
         mesh_set_property(result,
@@ -3468,6 +3453,7 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                 uint32_t layer_pass_gl_elements_min_index = 0;
                 uint32_t layer_pass_material_id           = 0;
                 uint32_t layer_pass_n_elements            = 0;
+                float    layer_pass_smoothing_angle       = 0.0f;
 
                 /* Read the layer pass properties */
                 system_file_serializer_read(serializer,
@@ -3482,6 +3468,9 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                 system_file_serializer_read(serializer,
                                             sizeof(layer_pass_n_elements),
                                            &layer_pass_n_elements);
+                system_file_serializer_read(serializer,
+                                            sizeof(layer_pass_smoothing_angle),
+                                           &layer_pass_smoothing_angle);
 
                 /* Map the material ID to actual material instance. */
                 mesh_material layer_pass_material = NULL;
@@ -3521,6 +3510,12 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                                         current_pass_id,
                                         MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX,
                                        &layer_pass_gl_elements_min_index);
+                mesh_set_layer_property(result,
+                                        current_layer,
+                                        current_pass_id,
+                                        MESH_LAYER_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                                       &layer_pass_smoothing_angle);
+
             } /* for (all layer passes) */
         } /* for (size_t n_layer = 0; n_layer < n_layers; ++n_layer) */
 
@@ -3591,9 +3586,6 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                                                     mesh_ptr->aabb_min);
     system_file_serializer_write_hashed_ansi_string(serializer,
                                                     mesh_ptr->name);
-    system_file_serializer_write                   (serializer,
-                                                    sizeof(mesh_ptr->smoothing_angle),
-                                                   &mesh_ptr->smoothing_angle);
 
     /* Serialize processed GL data buffer */
     ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data      != NULL &&
@@ -3698,6 +3690,9 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                     system_file_serializer_write(serializer,
                                                  sizeof(pass_ptr->n_elements),
                                                 &pass_ptr->n_elements);
+                    system_file_serializer_write(serializer,
+                                                 sizeof(pass_ptr->smoothing_angle),
+                                                &pass_ptr->smoothing_angle);
 
                     /* Material name */
                     system_hashed_ansi_string material_name = mesh_material_get_name(pass_ptr->material);
@@ -3846,6 +3841,13 @@ PUBLIC EMERALD_API void mesh_set_layer_property(__in __notnull mesh             
                 case MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX:
                 {
                     mesh_layer_pass_ptr->gl_elements_min_index = *((uint32_t*) data);
+
+                    break;
+                }
+
+                case MESH_LAYER_PROPERTY_VERTEX_SMOOTHING_ANGLE:
+                {
+                    mesh_layer_pass_ptr->smoothing_angle = *((float*) data);
 
                     break;
                 }
