@@ -565,6 +565,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 
         if (block_until_available)
         {
+            system_critical_section_enter(rendering_handler_ptr->callback_request_cs);
+
             should_continue = true;
         }
         else
@@ -574,14 +576,12 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 
         if (should_continue)
         {
-            system_critical_section_enter(rendering_handler_ptr->callback_request_cs);
-            {
-                rendering_handler_ptr->callback_request_user_arg = user_arg;
-                rendering_handler_ptr->pfn_callback_proc         = pfn_callback_proc;
+            rendering_handler_ptr->callback_request_user_arg = user_arg;
+            rendering_handler_ptr->pfn_callback_proc         = pfn_callback_proc;
 
-                system_event_set                 (rendering_handler_ptr->callback_request_event);
-                system_event_wait_single_infinite(rendering_handler_ptr->callback_request_ack_event);
-            }
+            system_event_set                 (rendering_handler_ptr->callback_request_event);
+            system_event_wait_single_infinite(rendering_handler_ptr->callback_request_ack_event);
+
             system_critical_section_leave(rendering_handler_ptr->callback_request_cs);
         }
 

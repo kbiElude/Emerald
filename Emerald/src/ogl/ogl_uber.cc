@@ -544,11 +544,6 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
             ogl_program_release(uber_ptr->program);
         }
 
-        if (uber_ptr->context != NULL)
-        {
-            ogl_context_release(uber_ptr->context);
-        }
-
         if (uber_ptr->bo_data != NULL)
         {
             delete [] uber_ptr->bo_data;
@@ -1175,7 +1170,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->bo_data                       = NULL;
         result->bo_data_size                  = -1;
         result->bo_data_vertex_offset         = -1;
-        result->context                       = context;
+        result->context                       = context;    /* DO NOT retain, or face circular dependencies! */
         result->current_camera_location_dirty = true;
         result->current_vp                    = system_matrix4x4_create();
         result->current_vp_dirty              = true;
@@ -1216,9 +1211,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Ubers\\", system_hashed_ansi_string_get_buffer(name)) );
 
         /* Create a program with the shaders we were provided */
-        ogl_context_retain(context);
-
-        result->program = ogl_program_create(context, name);
+        result->program = ogl_program_create(context,
+                                             name);
 
         ASSERT_ALWAYS_SYNC(result->program != NULL, "Cannot instantiate uber program");
         if (result->program != NULL)

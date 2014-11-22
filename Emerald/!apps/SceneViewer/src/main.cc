@@ -712,9 +712,11 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 
 end:
     ogl_curve_renderer_release(_curve_renderer);
-    ogl_pipeline_release      (_pipeline);
     scene_release             (_test_scene);
     ogl_scene_renderer_release(_scene_renderer);
+    ogl_ui_release            (_ui);
+    ogl_text_release          (_text_renderer);
+    ogl_pipeline_release      (_pipeline);
     system_window_close       (_window);
     system_event_release      (_window_closed_event);
 
