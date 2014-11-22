@@ -3349,6 +3349,8 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
         /* Set GL context */
         mesh_ptr->gl_context = context;
 
+        ogl_context_retain(context);
+
         /* Set smoothing angle. Note we're not using the setter here, as
          * it would trigger normal data re-generation, which is not something
          * we really need when loading baked data :)

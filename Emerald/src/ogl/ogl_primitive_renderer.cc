@@ -351,13 +351,6 @@ PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
         instance_ptr->bo_mvp = NULL;
     }
 
-    if (instance_ptr->context != NULL)
-    {
-        ogl_context_release(instance_ptr->context);
-
-        instance_ptr->context = NULL;
-    }
-
     if (instance_ptr->datasets != NULL)
     {
         _ogl_primitive_renderer_dataset* dataset_ptr = NULL;
@@ -741,7 +734,7 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
                sizeof(*renderer_ptr) );
 
         renderer_ptr->bo_mvp                          = system_matrix4x4_create();
-        renderer_ptr->context                         = context;
+        renderer_ptr->context                         = context; /* DO NOT retain the context - otherwise you'll get a circular dependency! */
         renderer_ptr->datasets                        = system_resizable_vector_create(4, /* capacity */
                                                         sizeof(_ogl_primitive_renderer_dataset*) );
         renderer_ptr->dirty                           = true;
@@ -749,9 +742,6 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
 
         _ogl_primitive_renderer_init_program(renderer_ptr);
         _ogl_primitive_renderer_init_vao    (renderer_ptr);
-
-        /* Retain the rendering context */
-        ogl_context_retain(context);
 
         /* Register the instance */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(renderer_ptr,
