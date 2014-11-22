@@ -25,9 +25,9 @@ typedef enum
     MESH_PROPERTY_NAME,                                          /* not settable,  system_hashed_ansi_string */
     MESH_PROPERTY_N_GL_UNIQUE_VERTICES,                          /* not settable,  uint32_t                */
     MESH_PROPERTY_N_LAYERS,                                      /* not settable,  uint32_t                */
-    MESH_PROPERTY_N_MESHES_MERGED,                               /* not settable,  uint32_t                */
     MESH_PROPERTY_N_SH_BANDS,                                    /* settable ONCE, uint32_t                */
     MESH_PROPERTY_TIMESTAMP_MODIFICATION,                        /* not settable,  system_timeline_time    */
+    MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,                        /* settable,      float                   */
 } mesh_property;
 
 typedef enum
@@ -78,7 +78,7 @@ typedef int mesh_creation_flags;
 
 const int MESH_SAVE_SUPPORT              = 0x1;
 const int MESH_KDTREE_GENERATION_SUPPORT = 0x2;
-const int MESH_MERGE_SUPPORT             = 0x4;
+//const int MESH_MERGE_SUPPORT             = 0x4; <- support for merging was removed in Nov 2014.
 
 
 typedef uint32_t mesh_layer_id;

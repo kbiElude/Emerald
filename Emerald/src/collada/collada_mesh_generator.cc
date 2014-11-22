@@ -154,7 +154,11 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __
     {
         case COLLADA_DATA_SHADING_LAMBERT:
         {
-            mesh_material_set_shading(material, MESH_MATERIAL_SHADING_LAMBERT);
+            mesh_material_shading shading_type = MESH_MATERIAL_SHADING_LAMBERT;
+
+            mesh_material_set_property(material,
+                                       MESH_MATERIAL_PROPERTY_SHADING,
+                                      &shading_type);
 
             break;
         }
@@ -677,12 +681,22 @@ PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(__in __notnu
                                           &material_symbol_name);
 
         /* Identify material instance */
-        collada_data_material material        = NULL;
-        collada_data_effect   material_effect = _collada_mesh_generator_get_geometry_effect(geometry, current_polylist);
+        collada_data_material     material                    = NULL;
+        collada_data_effect       material_effect             = _collada_mesh_generator_get_geometry_effect(geometry,
+                                                                                                            current_polylist);
+        system_hashed_ansi_string material_effect_uv_map_name = NULL;
+
+        collada_data_effect_get_property(material_effect,
+                                         COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME,
+                                        &material_effect_uv_map_name);
 
         /* Create a mesh_material instance out of the effect */
         result_mesh_material = mesh_material_create(material_symbol_name,
                                                     context);
+
+        mesh_material_set_property(result_mesh_material,
+                                   MESH_MATERIAL_PROPERTY_UV_MAP_NAME,
+                                  &material_effect_uv_map_name);
 
         _collada_mesh_generator_configure_mesh_material_from_effect(context,
                                                                     material_effect,

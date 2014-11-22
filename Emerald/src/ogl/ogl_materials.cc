@@ -183,8 +183,15 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
     /* We only check the properties that affect how the shaders are built */
 
     /* 1. Shading */
-    mesh_material_shading material_a_shading = mesh_material_get_shading(material_a);
-    mesh_material_shading material_b_shading = mesh_material_get_shading(material_b);
+    mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+    mesh_material_shading material_b_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+
+    mesh_material_get_property(material_a,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &material_a_shading);
+    mesh_material_get_property(material_b,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &material_b_shading);
 
     if (material_a_shading != material_b_shading)
     {
@@ -286,7 +293,11 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     ASSERT_ALWAYS_SYNC(new_uber != NULL, "Could not spawn an uber instance");
     if (new_uber != NULL)
     {
-        mesh_material_shading material_shading = mesh_material_get_shading(material);
+        mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+
+        mesh_material_get_property(material,
+                                   MESH_MATERIAL_PROPERTY_SHADING,
+                                  &material_shading);
 
         if (material_shading == MESH_MATERIAL_SHADING_LAMBERT || material_shading == MESH_MATERIAL_SHADING_PHONG)
         {
@@ -574,16 +585,20 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
 /** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
-    mesh_material special_material_normal           = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),            materials_ptr->context);
-    mesh_material special_material_texcoord_ambient = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord (ambient)"), materials_ptr->context);
-    mesh_material special_material_texcoord_diffuse = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord (diffuse)"), materials_ptr->context);
+    mesh_material_shading shading_type                      = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
+    mesh_material         special_material_normal           = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),            materials_ptr->context);
+    mesh_material         special_material_texcoord_ambient = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord (ambient)"), materials_ptr->context);
+    mesh_material         special_material_texcoord_diffuse = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord (diffuse)"), materials_ptr->context);
 
-    mesh_material_set_shading(special_material_normal,
-                              MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE);
-    mesh_material_set_shading(special_material_texcoord_ambient,
-                              MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE);
-    mesh_material_set_shading(special_material_texcoord_diffuse,
-                              MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE);
+    mesh_material_set_property(special_material_normal,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &shading_type);
+    mesh_material_set_property(special_material_texcoord_ambient,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &shading_type);
+    mesh_material_set_property(special_material_texcoord_diffuse,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &shading_type);
 
     mesh_material_set_shading_property_to_input_fragment_attribute(special_material_normal,
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,

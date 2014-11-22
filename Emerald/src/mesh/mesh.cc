@@ -60,11 +60,8 @@ typedef struct
     mesh_creation_flags  creation_flags;
     uint32_t             n_sh_bands;      /* can be 0 ! */
     sh_components        n_sh_components; /* can be 0 ! */
+    float                smoothing_angle; /* As was used for generating the normals data. */
     system_timeline_time timestamp_last_modified;
-
-    /* Properties specific to meshes created by merging more than 1 mesh */
-    uint32_t* merged_mesh_unique_data_stream_start_offsets[MESH_LAYER_DATA_STREAM_TYPE_COUNT];
-    uint32_t  n_merged_meshes;
 
     /* Other */
     system_resizable_vector layers;    /* contains _mesh_layer instances */
@@ -781,14 +778,12 @@ PRIVATE void _mesh_init_mesh(__in __notnull _mesh*                    new_mesh,
     new_mesh->layers                  = system_resizable_vector_create(START_LAYERS, sizeof(void*) );
     new_mesh->materials               = system_resizable_vector_create(4 /* capacity */, sizeof(mesh_material) );
     new_mesh->n_gl_unique_vertices    = 0;
-    new_mesh->n_merged_meshes         = 0;
     new_mesh->n_sh_bands              = 0;
     new_mesh->n_sh_components         = SH_COMPONENTS_UNDEFINED;
     new_mesh->name                    = name;
     new_mesh->set_id_counter          = 0;
+    new_mesh->smoothing_angle         = 0.0f;
     new_mesh->timestamp_last_modified = system_time_now();
-
-    memset(new_mesh->merged_mesh_unique_data_stream_start_offsets, NULL, sizeof(new_mesh->merged_mesh_unique_data_stream_start_offsets) );
 
     for (unsigned int n_stream_type = 0;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -1873,7 +1868,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
     }
 
     /* If saving support is not required, we can deallocate all the data buffers at this point! */
-    if (!((mesh_ptr->creation_flags & MESH_SAVE_SUPPORT) || (mesh_ptr->creation_flags & MESH_MERGE_SUPPORT)))
+    if (!((mesh_ptr->creation_flags & MESH_SAVE_SUPPORT) ))
     {
         for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
         {
@@ -2659,16 +2654,6 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(__in  __notnull mesh
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_get_merged_meshes_unique_data_stream_offset(__in  __notnull mesh                        mesh_instance,
-                                                                         __in            mesh_layer_data_stream_type stream_type,
-                                                                         __out __notnull uint32_t**                  out_result)
-{
-    _mesh* mesh_ptr = (_mesh*) mesh_instance;
-
-    *out_result = mesh_ptr->merged_mesh_unique_data_stream_start_offsets[stream_type];
-}
-
-/* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance,
                                           __in  __notnull mesh_property property,
                                           __out __notnull void*         result)
@@ -2778,13 +2763,6 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
             break;
         }
 
-        case MESH_PROPERTY_N_MESHES_MERGED:
-        {
-            *((uint32_t*)result) = mesh_ptr->n_merged_meshes;
-
-            break;
-        }
-
         case MESH_PROPERTY_N_GL_UNIQUE_VERTICES:
         {
             *((uint32_t*)result) = mesh_ptr->n_gl_unique_vertices;
@@ -2802,6 +2780,13 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
         case MESH_PROPERTY_TIMESTAMP_MODIFICATION:
         {
             *((system_timeline_time*)result) = mesh_ptr->timestamp_last_modified;
+
+            break;
+        }
+
+        case MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE:
+        {
+            *(float*) result = mesh_ptr->smoothing_angle;
 
             break;
         }
@@ -2827,7 +2812,7 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh       
 {
     _mesh*       mesh_ptr       = (_mesh*) instance;
     _mesh_layer* mesh_layer_ptr = NULL;
-    bool         result         = false;
+    bool         result         = true;
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers,
                                                n_layer,
@@ -2908,6 +2893,7 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh       
                 {
                     ASSERT_ALWAYS_SYNC(false, "Unrecognized mesh layer property");
 
+                    result = false;
                     break;
                 }
             } /* switch(property) */
@@ -2915,11 +2901,15 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh       
         else
         {
             ASSERT_ALWAYS_SYNC(false, "Cannot retrieve mesh layer pass descriptor");
+
+            result = false;
         }
     }
     else
     {
         ASSERT_ALWAYS_SYNC(false, "Cannot retrieve mesh layer descriptor");
+
+        result = false;
     }
 
     return result;
@@ -2976,7 +2966,8 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
     /* Read mesh name */
     float                     aabb_max[4];
     float                     aabb_min[4];
-    system_hashed_ansi_string mesh_name = NULL;
+    system_hashed_ansi_string mesh_name       = NULL;
+    float                     smoothing_angle = 0.0f;
 
     system_file_serializer_read                   (serializer,
                                                    sizeof(aabb_max),
@@ -2986,6 +2977,9 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                                                    aabb_min);
     system_file_serializer_read_hashed_ansi_string(serializer,
                                                   &mesh_name);
+    system_file_serializer_read                   (serializer,
+                                                    sizeof(smoothing_angle),
+                                                   &smoothing_angle);
 
     /* Create result instance before we continue */
     result = mesh_create(flags,
@@ -2998,6 +2992,12 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
 
         /* Set GL context */
         mesh_ptr->gl_context = context;
+
+        /* Set smoothing angle. Note we're not using the setter here, as
+         * it would trigger normal data re-generation, which is not something
+         * we really need when loading baked data :)
+         */
+        mesh_ptr->smoothing_angle = smoothing_angle;
 
         /* Set AABB box props */
         mesh_set_property(result,
@@ -3233,6 +3233,9 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                                                     mesh_ptr->aabb_min);
     system_file_serializer_write_hashed_ansi_string(serializer,
                                                     mesh_ptr->name);
+    system_file_serializer_write                   (serializer,
+                                                    sizeof(mesh_ptr->smoothing_angle),
+                                                   &mesh_ptr->smoothing_angle);
 
     /* Serialize processed GL data buffer */
     ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data      != NULL &&
@@ -3577,6 +3580,25 @@ PUBLIC EMERALD_API void mesh_set_property(__in __notnull mesh          instance,
                 }
 
                 break;
+            }
+
+            case MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE:
+            {
+                /* TODO: This code-path will crash if the layer data is unavailable. Add necessary guards to throw
+                 *       a reasonable error in such case.
+                 */
+                float smoothing_angle = *(float*) value;
+
+                if (fabs(mesh_ptr->smoothing_angle - smoothing_angle) > 1e-5f)
+                {
+                    LOG_INFO("Mesh [%s] is being re-configured to use a different smoothing angle. Re-generating normal data.",
+                             system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
+
+                    mesh_ptr->smoothing_angle = smoothing_angle;
+
+                    mesh_generate_normal_data(instance);
+                    break;
+                }
             }
 
             default:

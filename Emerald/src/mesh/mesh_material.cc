@@ -78,7 +78,8 @@ typedef struct _mesh_material
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
     ogl_uber                  uber;
 
-    float vertex_smoothing_angle;
+    system_hashed_ansi_string uv_map_name; /* NULL by default, needs to be manually set */
+    float                     vertex_smoothing_angle;
 
     _mesh_material()
     {
@@ -86,7 +87,8 @@ typedef struct _mesh_material
         dirty                  = true;
         name                   = NULL;
         uber                   = NULL;
-        vertex_smoothing_angle = -1.0f;
+        uv_map_name            = NULL;
+        vertex_smoothing_angle = 0.0f;
     }
 
     REFCOUNT_INSERT_VARIABLES
@@ -133,8 +135,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hash
     {
         ASSERT_DEBUG_SYNC(name != NULL, "Name is NULL");
 
-        new_material->context = context;
-        new_material->name    = name;
+        new_material->context     = context;
+        new_material->name        = name;
+        new_material->uv_map_name = NULL;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material,
                                                        _mesh_material_release,
@@ -261,6 +264,27 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
     switch (property)
     {
+        case MESH_MATERIAL_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result = material_ptr->name;
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_SHADING:
+        {
+            *(mesh_material_shading*) out_result = material_ptr->shading;
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_UV_MAP_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result = material_ptr->uv_map_name;
+
+            break;
+        }
+
         case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
         {
             *(float*) out_result = material_ptr->vertex_smoothing_angle;
@@ -274,12 +298,6 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
                               "Unrecognized mesh_material_property value");
         }
     } /* switch (property) */
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API mesh_material_shading mesh_material_get_shading(__in __notnull mesh_material material)
-{
-    return ((_mesh_material*) material)->shading;
 }
 
 /* Please see header for specification */
@@ -389,7 +407,9 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
         goto end_error;
     }
 
-    mesh_material_set_shading(new_material, shading_type);
+    mesh_material_set_property(new_material,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &shading_type);
 
     /* Iterate over all properties */
     for (mesh_material_shading_property property = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
@@ -630,6 +650,21 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
     switch (property)
     {
+        case MESH_MATERIAL_PROPERTY_SHADING:
+        {
+            material_ptr->dirty   = true;
+            material_ptr->shading = *(mesh_material_shading*) data;
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_UV_MAP_NAME:
+        {
+            material_ptr->uv_map_name = *(system_hashed_ansi_string*) data;
+
+            break;
+        }
+
         case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
         {
             material_ptr->vertex_smoothing_angle = *(float*) data;
@@ -643,16 +678,6 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
                               "Unrecognized mesh_material_property value");
         }
     } /* switch (property) */
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading(__in __notnull mesh_material         material,
-                                                  __in           mesh_material_shading shading)
-{
-    _mesh_material* material_ptr = (_mesh_material*) material;
-
-    material_ptr->dirty   = true;
-    material_ptr->shading = shading;
 }
 
 /* Please see header for specification */

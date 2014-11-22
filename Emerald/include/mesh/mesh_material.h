@@ -32,7 +32,10 @@ typedef enum
 
 typedef enum
 {
-    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable, float. Negative value indicates
+    MESH_MATERIAL_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
+    MESH_MATERIAL_PROPERTY_SHADING,                /* settable,     mesh_material_shading */
+    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,            /* settable,     system_hashed_ansi_string */
+    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable,     float. Negative value indicates
                                                     * vertex smoothing is disabled. */
 
 } mesh_material_property;
@@ -123,9 +126,6 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
                                                    __out __notnull void*                  out_result);
 
 /** TODO */
-PUBLIC EMERALD_API mesh_material_shading mesh_material_get_shading(__in __notnull mesh_material material);
-
-/** TODO */
 PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_property_attachment_type(__in __notnull mesh_material                  material,
                                                                                                         __in           mesh_material_shading_property property);
 
@@ -159,10 +159,6 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
                                                    __in           mesh_material_property property,
                                                    __in __notnull void*                  data);
-
-/** TODO */
-PUBLIC EMERALD_API void mesh_material_set_shading(__in __notnull mesh_material         material,
-                                                  __in           mesh_material_shading shading);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_attribute(__in __notnull mesh_material                          material,

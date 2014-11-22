@@ -6,7 +6,12 @@
 #include "shared.h"
 #include "lw/lw_dataset.h"
 #include "lw/lw_material_dataset.h"
+#include "mesh/mesh.h"
+#include "mesh/mesh_material.h"
+#include "scene/scene.h"
+#include "scene/scene_mesh.h"
 #include "system/system_file_serializer.h"
+#include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 
@@ -21,7 +26,7 @@ typedef struct _lw_material_dataset_material
     explicit _lw_material_dataset_material(system_hashed_ansi_string in_name)
     {
         name            = in_name;
-        smoothing_angle = -1.0f;
+        smoothing_angle = 0.0f;
     }
 
 } _lw_material_dataset_material;
@@ -29,6 +34,7 @@ typedef struct _lw_material_dataset_material
 typedef struct
 {
     system_resizable_vector materials;
+    system_hash64map        materials_by_name;
 
     REFCOUNT_INSERT_VARIABLES
 } _lw_material_dataset;
@@ -59,6 +65,13 @@ PRIVATE void _lw_material_dataset_release(void* arg)
 
         dataset_ptr->materials = NULL;
     } /* if (dataset_ptr->materials != NULL) */
+
+    if (dataset_ptr->materials_by_name != NULL)
+    {
+        system_hash64map_release(dataset_ptr->materials_by_name);
+
+        dataset_ptr->materials_by_name = NULL;
+    }
 }
 
 
@@ -81,6 +94,13 @@ PUBLIC EMERALD_API lw_material_dataset_material_id lw_material_dataset_add_mater
 
         system_resizable_vector_push(dataset_ptr->materials,
                                      new_material_ptr);
+
+        /* Store the material by name */
+        system_hash64map_insert(dataset_ptr->materials_by_name,
+                                system_hashed_ansi_string_get_hash(name),
+                                new_material_ptr,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
     }
 
     return result_id;
@@ -92,7 +112,94 @@ PUBLIC EMERALD_API void lw_material_dataset_apply_to_scene(__in __notnull lw_mat
 {
     _lw_material_dataset* dataset_ptr = (_lw_material_dataset*) dataset;
 
-    // ..
+    /* Iterate over all objects in the scene. Materials are defined on the layer pass level
+     * so for each traversed object, go over all the layer passes available.
+     */
+    uint32_t n_mesh_instances = 0;
+
+    scene_get_property(scene,
+                       SCENE_PROPERTY_N_MESH_INSTANCES,
+                      &n_mesh_instances);
+
+    for (uint32_t n_mesh_instance = 0;
+                  n_mesh_instance < n_mesh_instances;
+                ++n_mesh_instance)
+    {
+        scene_mesh mesh_instance      = NULL;
+        mesh       mesh_instance_mesh = NULL;
+        uint32_t   n_mesh_layers      = 0;
+
+        if ((mesh_instance = scene_get_mesh_instance_by_index(scene,
+                                                              n_mesh_instance)) == NULL)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh instance at index [%d]",
+                              n_mesh_instance);
+
+            continue;
+        }
+
+        scene_mesh_get_property(mesh_instance,
+                                SCENE_MESH_PROPERTY_MESH,
+                               &mesh_instance_mesh);
+
+        mesh_get_property(mesh_instance_mesh,
+                          MESH_PROPERTY_N_LAYERS,
+                         &n_mesh_layers);
+
+        for (uint32_t n_mesh_layer = 0;
+                      n_mesh_layer < n_mesh_layers;
+                    ++n_mesh_layer)
+        {
+            uint32_t n_mesh_layer_passes = mesh_get_amount_of_layer_passes(mesh_instance_mesh,
+                                                                           n_mesh_layer);
+
+            for (uint32_t n_mesh_layer_pass = 0;
+                          n_mesh_layer_pass < n_mesh_layer_passes;
+                        ++n_mesh_layer_pass)
+            {
+                mesh_material             mesh_layer_pass_material             = NULL;
+                system_hashed_ansi_string mesh_layer_pass_material_uv_map_name = NULL;
+
+                if (!mesh_get_layer_pass_property(mesh_instance_mesh,
+                                                  n_mesh_layer,
+                                                  n_mesh_layer_pass,
+                                                  MESH_LAYER_PROPERTY_MATERIAL,
+                                                 &mesh_layer_pass_material) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve material for a mesh layer pass");
+
+                    continue;
+                }
+
+                /* Retrieve the mesh material name */
+                mesh_material_get_property(mesh_layer_pass_material,
+                                           MESH_MATERIAL_PROPERTY_UV_MAP_NAME,
+                                          &mesh_layer_pass_material_uv_map_name);
+
+                /* Is this a material that is described by the LW material dataset? */
+                _lw_material_dataset_material* lw_material_ptr = NULL;
+
+                if (system_hash64map_get(dataset_ptr->materials_by_name,
+                                         system_hashed_ansi_string_get_hash(mesh_layer_pass_material_uv_map_name),
+                                        &lw_material_ptr) )
+                {
+                    /* It is. Update the smoothing angle.
+                     *
+                     * NOTE: This means the normal data will need to be re-generated! */
+                    mesh_material_set_property(mesh_layer_pass_material,
+                                               MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                                              &lw_material_ptr->smoothing_angle);
+                }
+                else
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Mesh layer pass material does not define a recognized UV map name");
+                }
+            } /* for (all mesh layer passes) */
+        } /* for (all mesh layers) */
+    } /* for (all mesh instances) */
 }
 
 /* Please see header for specification */
@@ -107,8 +214,9 @@ PUBLIC EMERALD_API lw_material_dataset lw_material_dataset_create(__in __notnull
                0,
                sizeof(_lw_material_dataset) );
 
-        dataset_ptr->materials = system_resizable_vector_create(4, /* capacity */
-                                                                sizeof(_lw_material_dataset*) );
+        dataset_ptr->materials         = system_resizable_vector_create(4, /* capacity */
+                                                                        sizeof(_lw_material_dataset*) );
+        dataset_ptr->materials_by_name = system_hash64map_create       (sizeof(_lw_material_dataset*) );
 
         /* Register the instance */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(dataset_ptr,

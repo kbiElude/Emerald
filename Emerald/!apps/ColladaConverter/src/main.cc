@@ -6,7 +6,7 @@
 #include "shared.h"
 #include <stdlib.h>
 #include "curve_editor/curve_editor_general.h"
-#include "lw/lw_curve_dataset.h"
+#include "lw/lw_dataset.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
@@ -117,7 +117,7 @@ void _on_load_curve_dataset_clicked(void* not_used,
     /* Ask the user to provide us with the dataset file location */
     system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
                                                                                    system_hashed_ansi_string_create("*"),
-                                                                                   system_hashed_ansi_string_create("LW curve data-set"),
+                                                                                   system_hashed_ansi_string_create("LW data-set"),
                                                                                    system_hashed_ansi_string_create("Select LW curve data-set file.") );
 
     if (filename != NULL)
@@ -126,8 +126,8 @@ void _on_load_curve_dataset_clicked(void* not_used,
 
         if (dataset_serializer != NULL)
         {
-            lw_curve_dataset dataset = lw_curve_dataset_load(system_hashed_ansi_string_create("LW curve data-set"),
-                                                             dataset_serializer);
+            lw_dataset dataset = lw_dataset_load(system_hashed_ansi_string_create("LW data-set"),
+                                                 dataset_serializer);
 
             if (dataset != NULL)
             {
@@ -142,8 +142,8 @@ void _on_load_curve_dataset_clicked(void* not_used,
 
                 scene_graph_lock(graph);
                 {
-                    lw_curve_dataset_apply_to_scene(dataset,
-                                                    _test_scene);
+                    lw_dataset_apply_to_scene(dataset,
+                                              _test_scene);
                 }
                 scene_graph_unlock(graph);
             }
@@ -151,7 +151,7 @@ void _on_load_curve_dataset_clicked(void* not_used,
             system_file_serializer_release(dataset_serializer);
             dataset_serializer = NULL;
 
-            lw_curve_dataset_release(dataset);
+            lw_dataset_release(dataset);
             dataset = NULL;
         } /* if (dataset_serializer != NULL) */
     } /* if (filename != NULL) */
