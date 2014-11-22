@@ -187,7 +187,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in bool                         
                          cinfo.output_width,
                          cinfo.output_height,
                          1, /* row_alignment */
-                         GL_RGB8,
+                         GL_SRGB8,
                          false,
                          temp_buffer,
                          row_stride * cinfo.output_height,

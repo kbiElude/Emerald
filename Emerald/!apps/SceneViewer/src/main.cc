@@ -453,14 +453,24 @@ void _render_scene(ogl_context          context,
     system_critical_section_leave(_camera_cs);
 
     /* Traverse the scene graph */
-    ogl_scene_renderer_render_scene_graph(_scene_renderer,
-                                          view,
-                                          _projection_matrix,
-                                          camera_location,
-                                          RENDER_MODE_REGULAR,
-                                          HELPER_VISUALIZATION_NONE,
-                                          frame_time
-                                         );
+    const ogl_context_gl_entrypoints* entry_points = NULL;
+
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
+    {
+        ogl_scene_renderer_render_scene_graph(_scene_renderer,
+                                              view,
+                                              _projection_matrix,
+                                              camera_location,
+                                              RENDER_MODE_REGULAR,
+                                              HELPER_VISUALIZATION_NONE,
+                                              frame_time
+                                             );
+    }
+    entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
 
     /* Draw curves marked as active.
      *

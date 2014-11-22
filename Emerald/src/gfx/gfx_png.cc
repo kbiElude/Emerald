@@ -155,7 +155,7 @@ PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                         
                          png_info_ptr->width,
                          png_info_ptr->height,
                          1,
-                         GL_RGB8,
+                         GL_SRGB8,
                          false,                  /* is_compressed */
                          data_ptr,
                         !should_load_from_file,  /* should_cache_data_ptr */

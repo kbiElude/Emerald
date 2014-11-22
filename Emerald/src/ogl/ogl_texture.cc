@@ -366,6 +366,7 @@ PRIVATE void _ogl_texture_get_texture_format_type_from_internalformat(__in      
     switch (internalformat)
     {
         case GL_RGB8:
+        case GL_SRGB8:
         {
             *out_format = GL_RGB;
             *out_type   = GL_UNSIGNED_BYTE;

@@ -287,22 +287,23 @@ PRIVATE bool _ogl_set_pixel_format_multisampling(_ogl_context* context_ptr, uint
         ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS, context_ptr->pfd, &alpha_bits);
         ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS,              context_ptr->pfd, &depth_bits);
 
-        int   attributes[]       = {WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
-                                    WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
-                                    WGL_ACCELERATION_ARB,   WGL_FULL_ACCELERATION_ARB,
-                                    WGL_COLOR_BITS_ARB,     rgb_bits[0] + rgb_bits[1] + rgb_bits[2],
-                                    WGL_ALPHA_BITS_ARB,     alpha_bits,
-                                    WGL_DEPTH_BITS_ARB,     depth_bits,
-                                    WGL_STENCIL_BITS_ARB,   0,
-                                    WGL_DOUBLE_BUFFER_ARB,  GL_TRUE,
-                                    WGL_SAMPLE_BUFFERS_ARB, GL_TRUE,
-                                    WGL_SAMPLES_ARB,        n_samples,
+        int   attributes[]       = {WGL_DRAW_TO_WINDOW_ARB,           GL_TRUE,
+                                    WGL_SUPPORT_OPENGL_ARB,           GL_TRUE,
+                                    WGL_ACCELERATION_ARB,             WGL_FULL_ACCELERATION_ARB,
+                                    WGL_COLOR_BITS_ARB,               rgb_bits[0] + rgb_bits[1] + rgb_bits[2],
+                                    WGL_ALPHA_BITS_ARB,               alpha_bits,
+                                    WGL_DEPTH_BITS_ARB,               depth_bits,
+                                    WGL_STENCIL_BITS_ARB,             0,
+                                    WGL_DOUBLE_BUFFER_ARB,            GL_TRUE,
+                                    WGL_SAMPLE_BUFFERS_ARB,           GL_TRUE,
+                                    WGL_SAMPLES_ARB,                  n_samples,
+                                    WGL_FRAMEBUFFER_SRGB_CAPABLE_EXT, GL_TRUE,
                                     0,                      0};
         float float_attributes[] = {0.0f, 0.0f};
         UINT  n_pixel_formats    = 0;
         int   pixel_format       = 0;
 
-        result = (pWGLChoosePixelFormatARB(context_ptr->device_context_handle, 
+        result = (pWGLChoosePixelFormatARB(context_ptr->device_context_handle,
                                            attributes,
                                            float_attributes,
                                            1,

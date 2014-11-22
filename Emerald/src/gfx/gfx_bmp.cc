@@ -139,7 +139,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in bool                         
                          header_ptr->width,
                          header_ptr->height,
                          4, /* row_alignment */
-                         GL_RGB8,
+                         GL_SRGB8,
                          false,
                          in_data_ptr + sizeof(BITMAPFILEHEADER) + sizeof(bitmap_info_header),
                          gfx_image_get_data_size(GL_RGB8,
