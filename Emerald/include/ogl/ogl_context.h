@@ -101,7 +101,7 @@ PUBLIC EMERALD_API bool ogl_context_is_extension_supported(__in __notnull ogl_co
 /** TODO */
 PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context);
 
-/** Blocks until user-specified entry-point finishes executing. The entry-point WILL be called
+/** Blocks by default until user-specified entry-point finishes executing. The entry-point WILL be called
  *  a different thread, that is currently bound to GL context described by @param ogl_context.
  *
  *  @param ogl_context                                GL context to use. Cannot be NULL.
@@ -112,7 +112,8 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context);
  **/
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __notnull ogl_context,
                                                                          __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
-                                                                         __in           void*);
+                                                                         __in           void*,
+                                                                         __in           bool block_until_available = true);
 /** TODO */
 PUBLIC EMERALD_API void ogl_context_retrieve_multisampling_info(__in  __notnull ogl_context,
                                                                 __out __notnull uint32_t*,

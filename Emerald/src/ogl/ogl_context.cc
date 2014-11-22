@@ -196,20 +196,6 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
 {
     _ogl_context* context_ptr = (_ogl_context*) ptr;
 
-    deinit_ogl_context_gl_info(&context_ptr->info);
-
-    ogl_pixel_format_descriptor_release(context_ptr->pfd);
-
-    if (::wglDeleteContext(context_ptr->wgl_rendering_context) == FALSE)
-    {
-        LOG_ERROR("wglDeleteContext() failed.");
-    }
-
-    if (context_ptr->opengl32_dll_handle != NULL)
-    {
-        ::FreeLibrary(context_ptr->opengl32_dll_handle);
-    }
-
     if (context_ptr->bo_bindings != NULL)
     {
         ogl_context_bo_bindings_release(context_ptr->bo_bindings);
@@ -264,6 +250,20 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
         delete [] context_ptr->limits.program_binary_formats;
 
         context_ptr->limits.program_binary_formats = NULL;
+    }
+
+
+    deinit_ogl_context_gl_info         (&context_ptr->info);
+    ogl_pixel_format_descriptor_release(context_ptr->pfd);
+
+    if (::wglDeleteContext(context_ptr->wgl_rendering_context) == FALSE)
+    {
+        LOG_ERROR("wglDeleteContext() failed.");
+    }
+
+    if (context_ptr->opengl32_dll_handle != NULL)
+    {
+        ::FreeLibrary(context_ptr->opengl32_dll_handle);
     }
 }
 
@@ -2681,7 +2681,8 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __notnull ogl_context                                context,
                                                                          __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback,
-                                                                         __in           void*                                      user_arg)
+                                                                         __in           void*                                      user_arg,
+                                                                         __in           bool                                       block_until_available)
 {
     bool                  result            = false;
     _ogl_context*         context_ptr       = (_ogl_context*) context;
@@ -2690,10 +2691,16 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __
     result = system_window_get_rendering_handler(context_ptr->window,
                                                 &rendering_handler);
 
-    ASSERT_DEBUG_SYNC(result && rendering_handler != NULL, "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
-    if (result && rendering_handler != NULL)
+    ASSERT_DEBUG_SYNC(result && rendering_handler != NULL,
+                      "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
+
+    if (result &&
+        rendering_handler != NULL)
     {
-        result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler, pfn_callback, user_arg);
+        result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
+                                                                            pfn_callback,
+                                                                            user_arg,
+                                                                            block_until_available);
     }
     else
     {

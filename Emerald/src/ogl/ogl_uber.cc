@@ -230,7 +230,9 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
     /* Create a VAO if one is needed */
     _ogl_uber_vao* vao_ptr = NULL;
 
-    if (!system_hash64map_get(uber_ptr->mesh_to_vao_descriptor_map, (system_hash64) mesh, &vao_ptr) )
+    if (!system_hash64map_get(uber_ptr->mesh_to_vao_descriptor_map,
+                              (system_hash64) mesh,
+                             &vao_ptr) )
     {
         vao_ptr = new (std::nothrow) _ogl_uber_vao;
 
@@ -306,7 +308,8 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
 
     /* Bind the BO as a data source for the indexed draw calls */
     entrypoints->pGLBindVertexArray(vao_ptr->vao_id);
-    entrypoints->pGLBindBuffer     (GL_ELEMENT_ARRAY_BUFFER, mesh_bo_id);
+    entrypoints->pGLBindBuffer     (GL_ELEMENT_ARRAY_BUFFER,
+                                    mesh_bo_id);
 
     /* Iterate over all layers.. */
     uint32_t n_layers = 0;
@@ -315,7 +318,9 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                       MESH_PROPERTY_N_LAYERS,
                      &n_layers);
 
-    for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
     {
         const uint32_t n_layer_passes = mesh_get_amount_of_layer_passes(mesh, n_layer);
 
@@ -383,16 +388,34 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                 int32_t                        shader_uv_attribute_location;
             } attachments[] =
             {
-                {MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,   uber_ptr->ambient_sampler_uniform_location,  uber_ptr->ambient_vec4_uniform_location,  uber_ptr->object_ambient_uv_attribute_location},
-                {MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,   uber_ptr->diffuse_sampler_uniform_location,  uber_ptr->diffuse_vec4_uniform_location,  uber_ptr->object_diffuse_uv_attribute_location},
-                {MESH_MATERIAL_SHADING_PROPERTY_EMISSION,  uber_ptr->emission_sampler_uniform_location, uber_ptr->emission_vec4_uniform_location, uber_ptr->object_emission_uv_attribute_location},
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                    uber_ptr->ambient_sampler_uniform_location,
+                    uber_ptr->ambient_vec4_uniform_location,
+                    uber_ptr->object_ambient_uv_attribute_location
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                    uber_ptr->diffuse_sampler_uniform_location,
+                    uber_ptr->diffuse_vec4_uniform_location,
+                    uber_ptr->object_diffuse_uv_attribute_location
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
+                    uber_ptr->emission_sampler_uniform_location,
+                    uber_ptr->emission_vec4_uniform_location,
+                    uber_ptr->object_emission_uv_attribute_location
+                },
             };
             const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
 
             for (uint32_t n_attachment = 0; n_attachment < n_attachments; ++n_attachment)
             {
                 const _attachment&                      attachment      = attachments[n_attachment];
-                const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material, attachment.property);
+                const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
+                                                                                                                             attachment.property);
 
                 switch (attachment_type)
                 {
@@ -438,11 +461,15 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                       &vao_ptr->mesh_modification_timestamp);
 
     /* Add the VAO descriptor to the map */
-    system_hash64map_insert(uber_ptr->mesh_to_vao_descriptor_map,
-                            (system_hash64) mesh,
-                            vao_ptr,
-                            NULL,  /* on_remove_callback_proc */
-                            NULL); /* on_remove_callback_proc_user_arg */
+    if (!system_hash64map_contains(uber_ptr->mesh_to_vao_descriptor_map,
+                                   (system_hash64) mesh) )
+    {
+        system_hash64map_insert(uber_ptr->mesh_to_vao_descriptor_map,
+                                (system_hash64) mesh,
+                                vao_ptr,
+                                NULL,  /* on_remove_callback_proc */
+                                NULL); /* on_remove_callback_proc_user_arg */
+    }
 
 end:
     ;
@@ -1334,7 +1361,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                                   &vao_ptr) )
         {
             /* No VAO initialized? Pity, one should have been created a long time ago.. */
-            _ogl_uber_bake_mesh_vao(uber_ptr, mesh_gpu);
+            _ogl_uber_bake_mesh_vao(uber_ptr,
+                                    mesh_gpu);
 
             /* Retrieve the new VAO descriptor */
             system_hash64map_get(uber_ptr->mesh_to_vao_descriptor_map,
@@ -1365,7 +1393,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                          system_hashed_ansi_string_get_buffer(mesh_name)
                         );
 
-                _ogl_uber_bake_mesh_vao(uber_ptr, mesh_gpu);
+                _ogl_uber_bake_mesh_vao(uber_ptr,
+                                        mesh_gpu);
             }
         }
 

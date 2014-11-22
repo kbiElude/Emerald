@@ -11,6 +11,7 @@
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
+#include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
@@ -71,6 +72,7 @@ typedef struct _mesh_material_property
 
 typedef struct _mesh_material
 {
+    system_callback_manager   callback_manager;
     ogl_context               context;
     bool                      dirty;
     system_hashed_ansi_string name;
@@ -83,6 +85,7 @@ typedef struct _mesh_material
 
     _mesh_material()
     {
+        callback_manager       = NULL;
         context                = NULL;
         dirty                  = true;
         name                   = NULL;
@@ -119,6 +122,14 @@ PRIVATE void _mesh_material_release(void* data_ptr)
             material_ptr->shading_properties[current_property].texture_data.texture = NULL;
         }
     }
+
+    /* Release callback manager */
+    if (material_ptr->callback_manager != NULL)
+    {
+        system_callback_manager_release(material_ptr->callback_manager);
+
+        material_ptr->callback_manager = NULL;
+    }
 }
 
 
@@ -135,9 +146,10 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hash
     {
         ASSERT_DEBUG_SYNC(name != NULL, "Name is NULL");
 
-        new_material->context     = context;
-        new_material->name        = name;
-        new_material->uv_map_name = NULL;
+        new_material->callback_manager = system_callback_manager_create( (_callback_id) MESH_MATERIAL_CALLBACK_ID_COUNT);
+        new_material->context          = context;
+        new_material->name             = name;
+        new_material->uv_map_name      = NULL;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material,
                                                        _mesh_material_release,
@@ -264,6 +276,13 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
     switch (property)
     {
+        case MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result = material_ptr->callback_manager;
+
+            break;
+        }
+
         case MESH_MATERIAL_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = material_ptr->name;
@@ -394,6 +413,17 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
     {
         goto end_error;
     }
+
+    /* Set the VSA */
+    float vertex_smoothing_angle = 0.0f;
+
+    result &= system_file_serializer_read(serializer,
+                                          sizeof(vertex_smoothing_angle),
+                                         &vertex_smoothing_angle);
+
+    mesh_material_set_property(new_material,
+                               MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                              &vertex_smoothing_angle);
 
     /* Set the material shading type */
     mesh_material_shading shading_type = MESH_MATERIAL_SHADING_UNKNOWN;
@@ -560,6 +590,9 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
                                                               material_ptr->name);
     result &= system_file_serializer_write                   (serializer,
+                                                              sizeof(material_ptr->vertex_smoothing_angle),
+                                                             &material_ptr->vertex_smoothing_angle);
+    result &= system_file_serializer_write                   (serializer,
                                                               sizeof(material_ptr->shading),
                                                              &material_ptr->shading);
 
@@ -668,6 +701,11 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
         case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
         {
             material_ptr->vertex_smoothing_angle = *(float*) data;
+
+            /* Call back registered parties. */
+            system_callback_manager_call_back(material_ptr->callback_manager,
+                                              MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
+                                              material);
 
             break;
         }

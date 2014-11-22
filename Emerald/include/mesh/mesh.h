@@ -84,6 +84,18 @@ PUBLIC EMERALD_API mesh mesh_create_from_meshes(__in                            
 PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance);
 
 /** TODO */
+PUBLIC EMERALD_API void mesh_delete_layer_data_stream(__in __notnull mesh                        mesh,
+                                                      __in __notnull mesh_layer_id               layer_id,
+                                                      __in __notnull mesh_layer_data_stream_type type);
+
+/** TODO */
+PUBLIC EMERALD_API bool mesh_delete_layer_pass_index_data(__in __notnull mesh                        mesh_instance,
+                                                          __in           mesh_layer_id               layer_id,
+                                                          __in           mesh_layer_pass_id          layer_pass_id,
+                                                          __in           mesh_layer_data_stream_type stream_type,
+                                                          __in           unsigned int                set_id);
+
+/** TODO */
 PUBLIC EMERALD_API bool mesh_fill_gl_buffers(__in __notnull mesh,
                                              __in __notnull ogl_context);
 

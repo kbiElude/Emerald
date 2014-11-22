@@ -191,7 +191,7 @@ PRIVATE volatile void _system_callback_manager_call_back_handler(__in __notnull 
 
 /** Please see header for spec */
 PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_manager callback_manager,
-                                              __in           _callback_id            callback_id,
+                                              __in           int                     callback_id,
                                               __in __notnull void*                   callback_proc_data)
 {
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
@@ -356,7 +356,7 @@ PUBLIC void system_callback_manager_release(__in __notnull system_callback_manag
 
 /** Please see header for spec */
 PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __notnull system_callback_manager callback_manager,
-                                                                        __in           _callback_id            callback_id,
+                                                                        __in           int                     callback_id,
                                                                         __in __notnull _callback_synchronicity callback_synchronicity,
                                                                         __in __notnull PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
                                                                         __in __notnull void*                   callback_proc_user_arg)
@@ -389,7 +389,7 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __n
 
 /** Please see header for spec */
 PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(__in __notnull system_callback_manager callback_manager,
-                                                                           __in           _callback_id            callback_id,
+                                                                           __in           int                     callback_id,
                                                                            __in __notnull PFNSYSTEMCALLBACKPROC   pfn_callback_proc,
                                                                            __in __notnull void*                   callback_proc_user_arg)
 {

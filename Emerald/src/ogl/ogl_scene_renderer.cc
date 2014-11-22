@@ -490,6 +490,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
     mesh                    mesh_gpu                        = NULL;
     uint32_t                mesh_id                         = -1;
     system_resizable_vector mesh_materials                  = NULL;
+    bool                    mesh_needs_gl_update            = false;
     ogl_uber                mesh_uber                       = NULL;
     float                   mesh_vertex_smoothing_angle     = 0.0f;
     unsigned int            n_mesh_materials                = 0;
@@ -500,18 +501,24 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
 
     if (!mesh_get_property(mesh_gpu,
                            MESH_PROPERTY_MATERIALS,
-                          &mesh_materials) )
+                          &mesh_materials)                      ||
+        !mesh_get_property(mesh_gpu,
+                           MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                          &mesh_vertex_smoothing_angle)         ||
+        !mesh_get_property(mesh_gpu,
+                           MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
+                          &mesh_needs_gl_update) )
     {
         ASSERT_DEBUG_SYNC(false,
-                          "Mesh rejected MESH_PROPERTY_MATERIALS query");
+                          "Mesh queries rejected");
     }
 
-    if (!mesh_get_property(mesh_gpu,
-                           MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-                          &mesh_vertex_smoothing_angle) )
+    if (mesh_needs_gl_update)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Mesh rejected MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE query");
+        LOG_ERROR("Performance warning: executing deferred mesh_fill_gl_buffers() call.");
+
+        mesh_fill_gl_buffers(mesh_gpu,
+                             ogl_context_get_current_context() );
     }
 
     scene_mesh_get_property(scene_mesh_instance,
@@ -545,6 +552,8 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
 
         /* Materials can have their vertex smoothing angle changed in real-time. Make sure
          * the angle currently reported by the mesh matches the one required for the material.
+         * If not, it is an error, as the normal data should've been adjusted at the setting time,
+         * not at the draw call time.
          */
         mesh_material_get_property(material,
                                    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
@@ -552,13 +561,8 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
 
         if (fabs(material_vertex_smoothing_angle - mesh_vertex_smoothing_angle) >= 1e-5f)
         {
-            LOG_ERROR("Performance hit: Normal data needs to be re-generated for a mesh!");
-
-            mesh_set_property(mesh_gpu,
-                              MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-                             &material_vertex_smoothing_angle);
-
-            mesh_vertex_smoothing_angle = material_vertex_smoothing_angle;
+            ASSERT_DEBUG_SYNC(false,
+                              "Normal data is not using the correct vertex smoothing angle");
         }
 
         /* Retrieve ogl_uber that can render the material for the currently processed

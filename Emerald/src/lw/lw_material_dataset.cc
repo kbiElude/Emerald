@@ -185,9 +185,7 @@ PUBLIC EMERALD_API void lw_material_dataset_apply_to_scene(__in __notnull lw_mat
                                          system_hashed_ansi_string_get_hash(mesh_layer_pass_material_uv_map_name),
                                         &lw_material_ptr) )
                 {
-                    /* It is. Update the smoothing angle.
-                     *
-                     * NOTE: This means the normal data will need to be re-generated! */
+                    /* It is. Update the smoothing angle. */
                     mesh_material_set_property(mesh_layer_pass_material,
                                                MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
                                               &lw_material_ptr->smoothing_angle);

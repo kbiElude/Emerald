@@ -14,6 +14,15 @@ REFCOUNT_INSERT_DECLARATIONS(mesh_material, mesh_material)
 
 typedef enum
 {
+    MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED, /* vertex smoothing angle changed; callback_proc_data: source mesh_material instance */
+
+    /* Always last */
+    MESH_MATERIAL_CALLBACK_ID_COUNT
+} mesh_material_callback_id;
+
+
+typedef enum
+{
     MESH_MATERIAL_DATA_VECTOR_LIGHT_VECTOR,
     MESH_MATERIAL_DATA_VECTOR_VIEW_VECTOR,
 
@@ -32,6 +41,7 @@ typedef enum
 
 typedef enum
 {
+    MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager */
     MESH_MATERIAL_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
     MESH_MATERIAL_PROPERTY_SHADING,                /* settable,     mesh_material_shading */
     MESH_MATERIAL_PROPERTY_UV_MAP_NAME,            /* settable,     system_hashed_ansi_string */

@@ -12,6 +12,7 @@
 #include "ogl/ogl_texture.h"
 #include "sh/sh_types.h"
 #include "system/system_bst.h"
+#include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64.h"
 #include "system/system_hash64map.h"
@@ -53,6 +54,7 @@ typedef struct
     ogl_context      gl_context;
     _mesh_index_type gl_index_type;
     bool             gl_storage_initialized;
+    bool             gl_thread_fill_gl_buffers_call_needed;
 
     /* Properties */
     float                aabb_max   [4]; /* model-space */
@@ -84,13 +86,20 @@ typedef struct
     system_resizable_vector passes; /* contains _mesh_layer_pass* elements */
 } _mesh_layer;
 
-typedef struct
+typedef struct _mesh_layer_data_stream
 {
     void*                            data;
     mesh_layer_data_stream_data_type data_type;
     unsigned int                     n_components;
     unsigned int                     n_items;
     unsigned int                     required_bit_alignment;
+
+    ~_mesh_layer_data_stream()
+    {
+        delete [] data;
+
+        data = NULL;
+    }
 } _mesh_layer_data_stream;
 
 typedef struct _mesh_layer_pass_index_data
@@ -165,8 +174,9 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh, mesh, _mesh);
 /** Forward declarations */
 PRIVATE void _mesh_deinit_mesh_layer     (__in __notnull const _mesh* mesh_ptr, __in __notnull _mesh_layer*      layer_ptr, bool do_full_deinit);
 PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh* mesh_ptr, __in __notnull _mesh_layer_pass* pass_ptr,  bool do_full_deinit);
-PRIVATE bool _mesh_is_key_uint32_equal   (void* arg1, void* arg2);
-PRIVATE bool _mesh_is_key_uint32_lower   (void* arg1, void* arg2);
+PRIVATE bool _mesh_is_key_uint32_equal   (                     void*  arg1,                    void*             arg2);
+PRIVATE bool _mesh_is_key_uint32_lower   (                     void*  arg1,                    void*             arg2);
+PRIVATE void _mesh_release_normals_data  (__in __notnull       _mesh* mesh_ptr);
 
 #ifdef _DEBUG
     PRIVATE void _mesh_verify_context_type(__in __notnull ogl_context);
@@ -411,7 +421,9 @@ PRIVATE bool _mesh_is_key_uint32_equal(size_t key_size, void* arg1, void* arg2)
 }
 
 /** TODO */
-PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr, _mesh_layer* layer_ptr, bool do_full_deinit)
+PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
+                                     _mesh_layer* layer_ptr,
+                                     bool         do_full_deinit)
 {
     /* Release data streams. These should not be released at this point if KD tree
      * generation functionality is required
@@ -424,7 +436,10 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr, _mesh_layer* layer_p
             _mesh_layer_data_stream* data_stream_ptr  = NULL;
             system_hash64            temp;
 
-            while (system_hash64map_get_element_at(layer_ptr->data_streams, 0, &data_stream_ptr, &temp) )
+            while (system_hash64map_get_element_at(layer_ptr->data_streams,
+                                                   0,
+                                                  &data_stream_ptr,
+                                                  &temp) )
             {
                 delete data_stream_ptr;
                 data_stream_ptr = NULL;
@@ -466,7 +481,9 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr, _mesh_layer* layer_p
 }
 
 /** TODO */
-PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh* mesh_ptr, __in __notnull _mesh_layer_pass* pass_ptr, bool do_full_deinit)
+PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh*            mesh_ptr,
+                                          __in __notnull       _mesh_layer_pass* pass_ptr,
+                                                                bool             do_full_deinit)
 {
     for (unsigned int n_stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -524,7 +541,8 @@ PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh* mesh_ptr, 
 }
 
 /** TODO */
-PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context, void* arg)
+PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
+                                                     void*        arg)
 {
     _mesh*                                                    mesh_ptr         = (_mesh*) arg;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -540,22 +558,32 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context, void* 
                             &dsa_entry_points);
 
     /* Generate BO to hold the data */
-    entry_points->pGLGenBuffers(1,
-                               &mesh_ptr->gl_bo_id);
-
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "glGenBuffers() failed");
-
-    /* Copy the data to VRAM.
-     *
-     * Use immutable storage if supported. Mesh data will not be changed
-     * throughout the life-time of the object.
-     */
     bool is_buffer_storage_supported = false;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
                             &is_buffer_storage_supported);
 
+    if (is_buffer_storage_supported      &&
+        mesh_ptr->gl_bo_id          != 0)
+    {
+        entry_points->pGLDeleteBuffers(1,
+                                      &mesh_ptr->gl_bo_id);
+
+        mesh_ptr->gl_bo_id = 0;
+    }
+
+    if (mesh_ptr->gl_bo_id == 0)
+    {
+        entry_points->pGLGenBuffers(1,
+                                   &mesh_ptr->gl_bo_id);
+    }
+
+    /* Copy the data to VRAM.
+     *
+     * Use immutable storage if supported. Mesh data will not be changed
+     * throughout the life-time of the object.
+     */
     if (is_buffer_storage_supported)
     {
         dsa_entry_points->pGLNamedBufferStorageEXT(mesh_ptr->gl_bo_id,
@@ -571,7 +599,8 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context, void* 
                                                 GL_STATIC_DRAW);
     }
 
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not copy mesh data to VRAM");
+    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                      "Could not copy mesh data to VRAM");
 
     /* Create TBO for the BO */
     if (mesh_ptr->n_sh_bands != 0)
@@ -579,6 +608,13 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context, void* 
         ASSERT_DEBUG_SYNC(mesh_ptr->n_sh_bands == 3 ||
                           mesh_ptr->n_sh_bands == 4,
                           "Only 3 or 4 SH bands are supported");
+
+        if (mesh_ptr->gl_tbo != NULL)
+        {
+            ogl_texture_release(mesh_ptr->gl_tbo);
+
+            mesh_ptr->gl_tbo = NULL;
+        }
 
         mesh_ptr->gl_tbo = ogl_texture_create(context,
                                               system_hashed_ansi_string_create_by_merging_two_strings("Mesh ",
@@ -602,7 +638,8 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context, void* 
     }
 
     /* Mark mesh as GL-initialized */
-    mesh_ptr->gl_storage_initialized = true;
+    mesh_ptr->gl_thread_fill_gl_buffers_call_needed = false;
+    mesh_ptr->gl_storage_initialized                = true;
 }
 
 /** TODO */
@@ -618,11 +655,15 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(__in      __notnull _mesh*    
 
         *out_n_stream_sets = 0;
 
-        if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &layer_ptr) )
+        if (system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                   layer_id,
+                                                  &layer_ptr) )
         {
             _mesh_layer_pass* pass_ptr = NULL;
 
-            if (system_resizable_vector_get_element_at(layer_ptr->passes, layer_pass_id, &pass_ptr) )
+            if (system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                       layer_pass_id,
+                                                      &pass_ptr) )
             {
                 if (pass_ptr->index_data_maps[stream_type] != NULL)
                 {
@@ -636,12 +677,16 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(__in      __notnull _mesh*    
             }
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Cannot retrieve pass descriptor at index [%d]", layer_pass_id);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Cannot retrieve pass descriptor at index [%d]",
+                                  layer_pass_id);
             }
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Cannot retrieve layer descriptor at index [%d]", layer_id);
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot retrieve layer descriptor at index [%d]",
+                              layer_id);
         }
     }
 }
@@ -765,25 +810,26 @@ PRIVATE void _mesh_init_mesh(__in __notnull _mesh*                    new_mesh,
     memset(new_mesh->aabb_max, 0, sizeof(new_mesh->aabb_max) );
     memset(new_mesh->aabb_min, 0, sizeof(new_mesh->aabb_min) );
 
-    new_mesh->aabb_max[3] = 1;
-    new_mesh->aabb_min[3] = 1;
-    new_mesh->creation_flags          = flags;
-    new_mesh->gl_bo_id                = 0;
-    new_mesh->gl_context              = NULL;
-    new_mesh->gl_index_type           = MESH_INDEX_TYPE_UNKNOWN;
-    new_mesh->gl_processed_data       = NULL;
-    new_mesh->gl_processed_data_size  = 0;
-    new_mesh->gl_storage_initialized  = false;
-    new_mesh->gl_tbo                  = 0;
-    new_mesh->layers                  = system_resizable_vector_create(START_LAYERS, sizeof(void*) );
-    new_mesh->materials               = system_resizable_vector_create(4 /* capacity */, sizeof(mesh_material) );
-    new_mesh->n_gl_unique_vertices    = 0;
-    new_mesh->n_sh_bands              = 0;
-    new_mesh->n_sh_components         = SH_COMPONENTS_UNDEFINED;
-    new_mesh->name                    = name;
-    new_mesh->set_id_counter          = 0;
-    new_mesh->smoothing_angle         = 0.0f;
-    new_mesh->timestamp_last_modified = system_time_now();
+    new_mesh->aabb_max[3]                           = 1;
+    new_mesh->aabb_min[3]                           = 1;
+    new_mesh->creation_flags                        = flags;
+    new_mesh->gl_bo_id                              = 0;
+    new_mesh->gl_context                            = NULL;
+    new_mesh->gl_index_type                         = MESH_INDEX_TYPE_UNKNOWN;
+    new_mesh->gl_processed_data                     = NULL;
+    new_mesh->gl_processed_data_size                = 0;
+    new_mesh->gl_storage_initialized                = false;
+    new_mesh->gl_tbo                                = 0;
+    new_mesh->gl_thread_fill_gl_buffers_call_needed = false;
+    new_mesh->layers                                = system_resizable_vector_create(START_LAYERS, sizeof(void*) );
+    new_mesh->materials                             = system_resizable_vector_create(4 /* capacity */, sizeof(mesh_material) );
+    new_mesh->n_gl_unique_vertices                  = 0;
+    new_mesh->n_sh_bands                            = 0;
+    new_mesh->n_sh_components                       = SH_COMPONENTS_UNDEFINED;
+    new_mesh->name                                  = name;
+    new_mesh->set_id_counter                        = 0;
+    new_mesh->smoothing_angle                       = 0.0f;
+    new_mesh->timestamp_last_modified               = system_time_now();
 
     for (unsigned int n_stream_type = 0;
                       n_stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -836,6 +882,195 @@ PRIVATE void _mesh_init_mesh_layer_pass(_mesh_layer_pass* new_mesh_layer_pass)
 }
 
 /** TODO */
+PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_data,
+                                            __in __notnull       void* user_arg)
+{
+    _mesh*        mesh_ptr     = (_mesh*)        user_arg;
+    float         material_vsa = 0.0f;
+    mesh_material src_material = (mesh_material) callback_data;
+
+    mesh_material_get_property(src_material,
+                               MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                              &material_vsa);
+
+    /* Is the Vertex Smoothing Angle setting different we used to generate normals data
+     * different from the new value? */
+    bool           found_dependant_layers   = false;
+    const uint32_t n_layers                 = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    bool           needs_normals_data_regen = false;
+
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers && !needs_normals_data_regen;
+                ++n_layer)
+    {
+        _mesh_layer* layer_ptr      = NULL;
+        uint32_t     n_layer_passes = 0;
+
+        if (!system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                    n_layer,
+                                                   &layer_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh layer descriptor");
+
+            continue;
+        }
+
+        n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+
+        for (uint32_t n_layer_pass = 0;
+                      n_layer_pass < n_layer_passes && !needs_normals_data_regen;
+                    ++n_layer_pass)
+        {
+            _mesh_layer_pass* layer_pass_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                        n_layer_pass,
+                                                       &layer_pass_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh layer pass descriptor");
+
+                continue;
+            }
+
+            if (layer_pass_ptr->material == src_material)
+            {
+                found_dependant_layers   = true;
+                needs_normals_data_regen = true;
+            }
+        } /* for (all mesh layer passes) */
+    } /* for (all mesh layers) */
+
+    ASSERT_DEBUG_SYNC(found_dependant_layers,
+                      "Redundant call-back detected!");
+
+    if (needs_normals_data_regen)
+    {
+        /* TODO: This code-path will crash if the layer data is unavailable. Add necessary guards to throw
+         *       a reasonable error in such case.
+         */
+        if (fabs(mesh_ptr->smoothing_angle - material_vsa) > 1e-5f)
+        {
+            LOG_INFO("Mesh [%s] is being re-configured to use a different smoothing angle. Re-generating normal data.",
+                     system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
+
+            mesh_ptr->smoothing_angle = material_vsa;
+
+            /* Release any data that's already been created */
+            mesh_free_single_indexed_representation( (mesh) mesh_ptr);
+            _mesh_release_normals_data             (mesh_ptr);
+
+            /* Generate normal data */
+            mesh_generate_normal_data( (mesh) mesh_ptr);
+
+            /* Update GL blob */
+            mesh_fill_gl_buffers( (mesh) mesh_ptr,
+                                 mesh_ptr->gl_context);
+        }
+    } /* if (needs_normals_data_regen) */
+}
+
+/** TODO */
+PRIVATE void _mesh_release_normals_data(__in __notnull _mesh* mesh_ptr)
+{
+    const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
+    {
+        _mesh_layer* layer_ptr      = NULL;
+        uint32_t     n_layer_passes = 0;
+
+        if (!system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                    n_layer,
+                                                   &layer_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh layer descriptor");
+
+            continue;
+        }
+
+        /* Release data stream, if there's any defined for normal data */
+        _mesh_layer_data_stream* normals_data_stream_ptr = NULL;
+
+        if (system_hash64map_contains(layer_ptr->data_streams,
+                                      (system_hash64) MESH_LAYER_DATA_STREAM_TYPE_NORMALS) )
+        {
+            if (!system_hash64map_get_element_at(layer_ptr->data_streams,
+                                                 (system_hash64) MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
+                                                &normals_data_stream_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve normals data stream descriptor");
+
+                continue;
+            }
+
+            delete normals_data_stream_ptr;
+            normals_data_stream_ptr = NULL;
+
+            system_hash64map_remove(layer_ptr->data_streams,
+                                    (system_hash64) MESH_LAYER_DATA_STREAM_TYPE_NORMALS);
+        } /* if (system_hash64map_contains(layer_ptr->data_streams, (system_hash64) MESH_LAYER_DATA_STREAM_TYPE_NORMALS) */
+
+        /* Release layer pass data */
+        n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+
+        for (uint32_t n_layer_pass = 0;
+                      n_layer_pass < n_layer_passes;
+                    ++n_layer_pass)
+        {
+            _mesh_layer_pass* pass_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                        n_layer_pass,
+                                                       &pass_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh layer pass descriptor");
+
+                continue;
+            }
+
+            /* Any index data streams defined for normals data? */
+            if (pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS] != NULL)
+            {
+                const uint32_t n_index_data_entries = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS]);
+
+                for (uint32_t n_index_data_entry = 0;
+                              n_index_data_entry < n_index_data_entries;
+                            ++n_index_data_entry)
+                {
+                    system_hash64                index_data_hash = -1;
+                    _mesh_layer_pass_index_data* index_data_ptr  = NULL;
+
+                    if (!system_hash64map_get_element_at(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS],
+                                                         0, /* n_entry */
+                                                        &index_data_ptr,
+                                                        &index_data_hash) )
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not retrieve index data descriptor");
+
+                        continue;
+                    }
+
+                    delete index_data_ptr;
+                    index_data_ptr = NULL;
+
+                    system_hash64map_remove(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS],
+                                            index_data_hash);
+                } /* for (all index data entries) */
+            } /* if (pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS] != NULL) */
+        } /* for (all mesh layer passes) */
+    } /* for (all mesh layers) */
+}
+
+/** TODO */
 PRIVATE void _mesh_release_renderer_callback(ogl_context context, void* arg)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -863,6 +1098,38 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
 {
     _mesh* mesh = (_mesh*) arg;
 
+    /* Sign out of material call-backs */
+    const uint32_t n_materials = system_resizable_vector_get_amount_of_elements(mesh->materials);
+
+    for (uint32_t n_material = 0;
+                  n_material < n_materials;
+                ++n_material)
+    {
+        system_callback_manager callback_manager = NULL;
+        mesh_material           material         = NULL;
+
+        if (!system_resizable_vector_get_element_at(mesh->materials,
+                                                    n_material,
+                                                   &material) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh material at index [%d]",
+                              n_material);
+
+            continue;
+        }
+
+        mesh_material_get_property(material,
+                                   MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+                                  &callback_manager);
+
+        system_callback_manager_unsubscribe_from_callbacks(callback_manager,
+                                                           MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
+                                                           _mesh_material_setting_changed,
+                                                           mesh);
+    } /* for (all mesh materials) */
+
+    /* Carry on with the usual release process */
     if (mesh->layers != NULL)
     {
         /* Release layers */
@@ -870,12 +1137,15 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
         {
             _mesh_layer* layer = NULL;
 
-            system_resizable_vector_pop(mesh->layers, &layer);
+            system_resizable_vector_pop(mesh->layers,
+                                        &layer);
 
             ASSERT_DEBUG_SYNC(layer != NULL, "Cannot release layer info - layer is NULL");
             if (layer != NULL)
             {
-                _mesh_deinit_mesh_layer(mesh, layer, true);
+                _mesh_deinit_mesh_layer(mesh,
+                                        layer,
+                                        true);
 
                 delete layer;
             }
@@ -885,25 +1155,23 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
     } /* if (mesh->layers != NULL) */
 
     /* Release GL stuff */
-    if (mesh->gl_storage_initialized)
+    if (mesh->gl_processed_data != NULL)
     {
-        /* Release non-VRAM GL stuff */
-        if (mesh->gl_processed_data != NULL)
-        {
-            delete [] mesh->gl_processed_data;
+        delete [] mesh->gl_processed_data;
 
-            mesh->gl_processed_data = NULL;
-        }
+        mesh->gl_processed_data = NULL;
+    }
 
-        /* Request rendering thread call-back */
-        ogl_context_request_callback_from_context_thread(mesh->gl_context, _mesh_release_renderer_callback, mesh);
+    /* Request rendering thread call-back */
+    ogl_context_request_callback_from_context_thread(mesh->gl_context,
+                                                     _mesh_release_renderer_callback,
+                                                     mesh);
 
-        if (mesh->gl_context != NULL)
-        {
-            ogl_context_release(mesh->gl_context);
+    if (mesh->gl_context != NULL)
+    {
+        ogl_context_release(mesh->gl_context);
 
-            mesh->gl_context = NULL;
-        }
+        mesh->gl_context = NULL;
     }
 
     /* Release other helper structures */
@@ -1022,9 +1290,6 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
     _mesh_layer* layer_ptr     = NULL;
     _mesh*       mesh_instance = (_mesh*) mesh;
 
-    ASSERT_ALWAYS_SYNC(!mesh_instance->gl_storage_initialized,    "Cannot add mesh layers after GL storage has been initialized");
-    ASSERT_ALWAYS_SYNC( mesh_instance->n_gl_unique_vertices == 0, "GL buffer's contents already initialized");
-
     /* Store amount of SH bands if this is a SH data stream. */
     if (type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS ||
         type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS)
@@ -1057,10 +1322,13 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
         }
     }
 
-    if (system_resizable_vector_get_element_at(mesh_instance->layers, layer_id, &layer_ptr) )
+    if (system_resizable_vector_get_element_at(mesh_instance->layers,
+                                               layer_id,
+                                              &layer_ptr) )
     {
         /* Make sure the stream has not already been added */
-        if (!system_hash64map_contains(layer_ptr->data_streams, type) )
+        if (!system_hash64map_contains(layer_ptr->data_streams,
+                                       type) )
         {
             _mesh_layer_data_stream* data_stream_ptr = new (std::nothrow) _mesh_layer_data_stream;
 
@@ -1109,18 +1377,23 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
             }
             else
             {
-                ASSERT_ALWAYS_SYNC(false, "Out of memory");
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Out of memory");
             }
         }
         else
         {
             /** TODO: This will be hit for multiple texcoord streams and needs to be expanded! */
-            ASSERT_ALWAYS_SYNC(false, "Data stream [%x] has already been added to mesh", type);
+            ASSERT_ALWAYS_SYNC(false,
+                               "Data stream [%x] has already been added to mesh",
+                               type);
         }
     } /* if (system_resizable_vector_get_element_at(mesh_instance->layers, layer_id, &layer_ptr) ) */
     else
     {
-        ASSERT_ALWAYS_SYNC(false, "Could not retrieve layer at index [%d]", layer_id);
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not retrieve layer at index [%d]",
+                           layer_id);
     }
 }
 
@@ -1138,8 +1411,10 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
     ASSERT_ALWAYS_SYNC(!mesh_ptr->gl_storage_initialized,
                        "Cannot add mesh layer passes after GL storage has been initialized");
 
-    if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &mesh_layer_ptr) &&
-        mesh_layer_ptr                 != NULL)
+    if (system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                               layer_id,
+                                              &mesh_layer_ptr) &&
+        mesh_layer_ptr != NULL)
     {
         _mesh_layer_pass* new_layer_pass_ptr = new (std::nothrow) _mesh_layer_pass;
 
@@ -1157,11 +1432,15 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
                 bool               is_material_cached = false;
                 const unsigned int n_materials_cached = system_resizable_vector_get_amount_of_elements(mesh_ptr->materials);
 
-                for (unsigned int n_material = 0; n_material < n_materials_cached; ++n_material)
+                for (unsigned int n_material = 0;
+                                  n_material < n_materials_cached;
+                                ++n_material)
                 {
                     mesh_material cached_material = NULL;
 
-                    if (system_resizable_vector_get_element_at(mesh_ptr->materials, n_material, &cached_material) )
+                    if (system_resizable_vector_get_element_at(mesh_ptr->materials,
+                                                               n_material,
+                                                              &cached_material) )
                     {
                         if (cached_material == material)
                         {
@@ -1178,12 +1457,27 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
 
                 if (!is_material_cached)
                 {
-                    system_resizable_vector_push(mesh_ptr->materials, material);
+                    system_resizable_vector_push(mesh_ptr->materials,
+                                                 material);
+
+                    /* Sign up for important call-backs */
+                    system_callback_manager callback_manager = NULL;
+
+                    mesh_material_get_property(material,
+                                               MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+                                              &callback_manager);
+
+                    system_callback_manager_subscribe_for_callbacks(callback_manager,
+                                                                    MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
+                                                                    CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                                    _mesh_material_setting_changed,
+                                                                    mesh_ptr);
                 }
             } /* if (material != NULL) */
 
             /* Add new pass */
-            system_resizable_vector_push(mesh_layer_ptr->passes, new_layer_pass_ptr);
+            system_resizable_vector_push(mesh_layer_ptr->passes,
+                                         new_layer_pass_ptr);
 
             /* Update modification timestamp */
             mesh_ptr->timestamp_last_modified = system_time_now();
@@ -1216,9 +1510,6 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh      
     _mesh_layer*       mesh_layer_ptr = NULL;
     bool               result         = false;
     mesh_layer_pass_id result_id      = -1;
-
-    ASSERT_ALWAYS_SYNC(!mesh_ptr->gl_storage_initialized,    "Cannot add mesh layer passes after GL storage has been initialized");
-    ASSERT_ALWAYS_SYNC( mesh_ptr->n_gl_unique_vertices == 0, "GL buffer's contents already initialized");
 
     if (system_resizable_vector_get_element_at(mesh_ptr->layers, layer_id, &mesh_layer_ptr) &&
         mesh_layer_ptr                 != NULL                                              &&
@@ -1282,12 +1573,16 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh      
         }
         else
         {
-            ASSERT_ALWAYS_SYNC(false, "Layer pass [%x] was not recognized", layer_pass_id);
+            ASSERT_ALWAYS_SYNC(false,
+                               "Layer pass [%x] was not recognized",
+                               layer_pass_id);
         }
     }
     else
     {
-        ASSERT_ALWAYS_SYNC(false, "Could not retrieve mesh layer with id [%d]", layer_id);
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not retrieve mesh layer with id [%d]",
+                           layer_id);
     }
 
     return result;
@@ -1325,7 +1620,8 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
           uint32_t n_indices_used_so_far = 0;
     const uint32_t sh_alignment          = mesh_ptr->n_sh_bands * 4;
 
-    ASSERT_DEBUG_SYNC(mesh_ptr->n_gl_unique_vertices == 0, "Number of unique vertices must be 0");
+    ASSERT_DEBUG_SYNC(mesh_ptr->n_gl_unique_vertices == 0,
+                      "Number of unique vertices must be 0");
 
     /* Reset amount of unique vertices and total number of elements */
     mesh_ptr->gl_processed_data_total_elements = 0;
@@ -1337,10 +1633,14 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
     uint32_t   n_different_layer_elements                     = 0;
     bool       stream_usage[MESH_LAYER_DATA_STREAM_TYPE_COUNT];
 
-    memset(stream_usage, 0, sizeof(stream_usage) );
+    memset(stream_usage,
+           0,
+           sizeof(stream_usage) );
 
     /* Iterate through vertex data streams and calculate axis-aligned bounding boxes for each layer. */
-    for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
     {
         _mesh_layer* layer_ptr = NULL;
 
@@ -1430,7 +1730,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                        "Out of memory");
 
     /* 3. Build BST. Also count total number of indices the mesh uses */
-    for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
     {
         _mesh_layer* layer_ptr = NULL;
 
@@ -1634,20 +1936,32 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
         mesh_ptr->gl_processed_data_size += mesh_ptr->gl_processed_data_total_elements * index_size;
 
         /* Allocate space for GL data */
+        if (mesh_ptr->gl_processed_data != NULL)
+        {
+            delete [] mesh_ptr->gl_processed_data;
+
+            mesh_ptr->gl_processed_data = NULL;
+        }
+
         mesh_ptr->gl_processed_data = new (std::nothrow) float[mesh_ptr->gl_processed_data_size];
 
-        ASSERT_ALWAYS_SYNC(mesh_ptr->gl_processed_data != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(mesh_ptr->gl_processed_data != NULL,
+                           "Out of memory");
         if (mesh_ptr->gl_processed_data != NULL)
         {
             /* Insert indices data */
             void* elements_traveller_ptr = (uint32_t*) ((char*) mesh_ptr->gl_processed_data +
                                                         (mesh_ptr->gl_processed_data_size - mesh_ptr->gl_processed_data_total_elements * index_size) );
 
-            for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+            for (uint32_t n_layer = 0;
+                          n_layer < n_layers;
+                        ++n_layer)
             {
                 _mesh_layer* layer_ptr = NULL;
 
-                system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
+                system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                       n_layer,
+                                                      &layer_ptr);
 
                 ASSERT_ALWAYS_SYNC(layer_ptr != NULL,
                                    "Could not retrieve mesh layer descriptor");
@@ -1834,6 +2148,13 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                             pass_ptr->gl_elements_min_index = min_index;
 
                             /* Store GPU-side elements representation so that user apps can access it (needed for KDtree intersection) */
+                            if (pass_ptr->gl_elements != NULL)
+                            {
+                                delete [] pass_ptr->gl_elements;
+
+                                pass_ptr->gl_elements = NULL;
+                            }
+
                             pass_ptr->gl_elements = new (std::nothrow) uint32_t[pass_ptr->n_elements * sizeof(unsigned int) / index_size];
 
                             ASSERT_ALWAYS_SYNC(pass_ptr->gl_elements != NULL, "Out of memory");
@@ -1870,16 +2191,23 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
     /* If saving support is not required, we can deallocate all the data buffers at this point! */
     if (!((mesh_ptr->creation_flags & MESH_SAVE_SUPPORT) ))
     {
-        for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+        for (uint32_t n_layer = 0;
+                      n_layer < n_layers;
+                    ++n_layer)
         {
             _mesh_layer* layer_ptr = NULL;
 
-            system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
+            system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                   n_layer,
+                                                  &layer_ptr);
 
-            ASSERT_ALWAYS_SYNC(layer_ptr != NULL, "Could not retrieve mesh layer descriptor");
+            ASSERT_ALWAYS_SYNC(layer_ptr != NULL,
+                               "Could not retrieve mesh layer descriptor");
             if (layer_ptr != NULL)
             {
-                _mesh_deinit_mesh_layer(mesh_ptr, layer_ptr, false);
+                _mesh_deinit_mesh_layer(mesh_ptr,
+                                        layer_ptr,
+                                        false); /* do_full_deinit */
             }
         }
     }
@@ -1889,29 +2217,43 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool mesh_fill_gl_buffers(__in __notnull mesh instance, __in __notnull ogl_context context)
+PUBLIC EMERALD_API bool mesh_fill_gl_buffers(__in __notnull mesh        instance,
+                                             __in __notnull ogl_context context)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
 
-    ASSERT_DEBUG_SYNC(!mesh_ptr->gl_storage_initialized, "OpenGL buffers already initialized!");
-    if (!mesh_ptr->gl_storage_initialized)
+    /* Before we block renderer thread, we need to convert the loaded data into single-indexed representation.
+     * We do not store it, since it's very likely to be bigger than n-indexed one we use for serialization. */
+    if (mesh_ptr->gl_processed_data_size == 0)
     {
-        /* Before we block renderer thread, we need to convert the loaded data into single-indexed representation.
-         * We do not store it, since it's very likely to be bigger than n-indexed one we use for serialization.
-         *
-         * User may have already called the function, so make sure we do not reallocate the buffers in such case. */
-        if (mesh_ptr->gl_processed_data_size == 0)
-        {
-            mesh_create_single_indexed_representation(instance);
-        }
+        mesh_create_single_indexed_representation(instance);
+    }
 
-        /* Request renderer thread call-back */
+    /* Request renderer thread call-back */
+    if (mesh_ptr->gl_context == NULL)
+    {
         mesh_ptr->gl_context = context;
-        result               = true;
 
-        ogl_context_retain                              (context);
-        ogl_context_request_callback_from_context_thread(context, _mesh_fill_gl_buffers_renderer_callback, mesh_ptr);
+        ogl_context_retain(context);
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(mesh_ptr->gl_context == context,
+                          "Inter-context sharing of meshes is not supported");
+    }
+
+    if (!ogl_context_request_callback_from_context_thread(context,
+                                                          _mesh_fill_gl_buffers_renderer_callback,
+                                                          mesh_ptr,
+                                                          false) ) /* block_until_available */
+    {
+        /* Rendering thread unavailable - postpone the upload process until the draw call time. */
+        mesh_ptr->gl_thread_fill_gl_buffers_call_needed = true;
+    }
+    else
+    {
+        result = true;
 
         /* Update modification timestamp */
         mesh_ptr->timestamp_last_modified = system_time_now();
@@ -1938,7 +2280,9 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
     {
         _mesh_layer* layer_ptr = NULL;
 
-        system_resizable_vector_get_element_at(mesh_ptr->layers, n_layer, &layer_ptr);
+        system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                               n_layer,
+                                              &layer_ptr);
 
         ASSERT_ALWAYS_SYNC(layer_ptr != NULL, "Could not retrieve mesh layer descriptor");
         if (layer_ptr != NULL)
@@ -1949,7 +2293,10 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
             {
                 _mesh_layer_pass* pass_ptr = NULL;
 
-                if (system_resizable_vector_get_element_at(layer_ptr->passes, n_pass, &pass_ptr) && pass_ptr != NULL)
+                if (system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                           n_pass,
+                                                          &pass_ptr) &&
+                    pass_ptr != NULL)
                 {
                     pass_ptr->gl_bo_elements_offset = 0;
 
@@ -1990,9 +2337,6 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                                                                                         4,     /* n_elements_to_preallocate */
                                                                                                         NULL,  /* init_fn */
                                                                                                         NULL); /* deinit_fn */
-
-    ASSERT_DEBUG_SYNC(!mesh_ptr->gl_storage_initialized,
-                      "mesh_generate_normal_data() called after GL storage has been initialized.");
 
     /* Determine which vertices are used by which polygons and store that
      * information in a BST,
@@ -2253,6 +2597,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
     ASSERT_ALWAYS_SYNC(n_layers != 0,
                        "Zero layers defined for the mesh");
 
+    LOG_INFO("Generating normal data for mesh [%s] (iteration 3/3) ...",
+             system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
+
     for (unsigned int n_layer = 0;
                       n_layer < n_layers;
                     ++n_layer)
@@ -2471,8 +2818,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                                    triangle_vertex_polygon_ptr->polygon_normal[1] * current_triangle_polygon_normal[1] +
                                                    triangle_vertex_polygon_ptr->polygon_normal[2] * current_triangle_polygon_normal[2]);
 
-                                /* TODO: TEMPORARILY USE THE DEFAULT LW SMOOTHING ANGLE VALUE */
-                                if (angle <= vertex_smoothing_angle / 360.0f * 2.0f * 3.14152965f)
+                                if (angle <= vertex_smoothing_angle)
                                 {
                                     system_math_vector_add3(triangle_vertex_normal,                      /* a */
                                                             triangle_vertex_polygon_ptr->polygon_normal, /* b */
@@ -2493,6 +2839,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
             } /* for (all pass-specific triangles) */
 
             /* Add the data stream as well as the index data
+             *
+             * We need not worry about adding duplicate normal streams, since mesh_add_layer_*() will throw
+             * an assertion failure if the data is already defined.
              *
              * TODO: The mesh_add_layer_pass_index_data() call assumes only one set is ever defined.
              *       FIX IF NEEDED.
@@ -2729,6 +3078,13 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
             ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized, "Cannot query GL TBO id - GL storage not initialized");
 
             *((ogl_texture*)result) = mesh_ptr->gl_tbo;
+            break;
+        }
+
+        case MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED:
+        {
+            *(bool*) result = mesh_ptr->gl_thread_fill_gl_buffers_call_needed;
+
             break;
         }
 
@@ -3580,25 +3936,6 @@ PUBLIC EMERALD_API void mesh_set_property(__in __notnull mesh          instance,
                 }
 
                 break;
-            }
-
-            case MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE:
-            {
-                /* TODO: This code-path will crash if the layer data is unavailable. Add necessary guards to throw
-                 *       a reasonable error in such case.
-                 */
-                float smoothing_angle = *(float*) value;
-
-                if (fabs(mesh_ptr->smoothing_angle - smoothing_angle) > 1e-5f)
-                {
-                    LOG_INFO("Mesh [%s] is being re-configured to use a different smoothing angle. Re-generating normal data.",
-                             system_hashed_ansi_string_get_buffer(mesh_ptr->name) );
-
-                    mesh_ptr->smoothing_angle = smoothing_angle;
-
-                    mesh_generate_normal_data(instance);
-                    break;
-                }
             }
 
             default:

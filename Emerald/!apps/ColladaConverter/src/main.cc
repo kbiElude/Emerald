@@ -55,6 +55,7 @@ ogl_ui_control            _ui_convert_button            = NULL;
 ogl_ui_control            _ui_load_curve_dataset_button = NULL;
 system_window             _window                       = NULL;
 system_event              _window_closed_event          = system_event_create(true, false);
+ogl_rendering_handler     _window_rendering_handler     = NULL;
 
 system_matrix4x4 _projection_matrix = NULL;
 GLuint           _vao_id            = 0;
@@ -140,12 +141,12 @@ void _on_load_curve_dataset_clicked(void* not_used,
                                    SCENE_PROPERTY_GRAPH,
                                   &graph);
 
-                scene_graph_lock(graph);
+                ogl_rendering_handler_stop(_window_rendering_handler);
                 {
                     lw_dataset_apply_to_scene(dataset,
                                               _test_scene);
                 }
-                scene_graph_unlock(graph);
+                ogl_rendering_handler_play(_window_rendering_handler, 0);
             }
 
             system_file_serializer_release(dataset_serializer);
@@ -261,7 +262,7 @@ void _setup_ui()
                                            NULL);
 
     _ui_load_curve_dataset_button = ogl_ui_add_button(_ui,
-                                                      system_hashed_ansi_string_create("Load curve dataset"),
+                                                      system_hashed_ansi_string_create("Load dataset"),
                                                       load_curve_dataset_button_x1y1,
                                                       _on_load_curve_dataset_clicked,
                                                       NULL);
@@ -270,34 +271,33 @@ void _setup_ui()
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
-    float                 camera_position[3]       = {0, 0, 0};
-    bool                  context_result           = false;
-    ogl_rendering_handler window_rendering_handler = NULL;
-    int                   window_size    [2]       = {1280, 720};
-    int                   window_x1y1x2y2[4]       = {0};
+    float camera_position[3] = {0, 0, 0};
+    bool  context_result     = false;
+    int   window_size    [2] = {1280, 720};
+    int   window_x1y1x2y2[4] = {0};
 
     /* Carry on */
     system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            0,
-                                                                            false,
-                                                                            false,
-                                                                            true);
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                            60,
-                                                                            _rendering_handler,
-                                                                            NULL);
-    context_result           = system_window_get_context                   (_window,
-                                                                           &_context);
+    _window                   = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
+                                                                             window_x1y1x2y2,
+                                                                             system_hashed_ansi_string_create("Test window"),
+                                                                             false,
+                                                                             0,
+                                                                             false,
+                                                                             false,
+                                                                             true);
+    _window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                             60,
+                                                                             _rendering_handler,
+                                                                             NULL);
+    context_result            = system_window_get_context                   (_window,
+                                                                            &_context);
 
     ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
 
     system_window_set_rendering_handler(_window,
-                                        window_rendering_handler);
+                                        _window_rendering_handler);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
@@ -360,12 +360,12 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     _setup_ui();
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler, 0);
+    ogl_rendering_handler_play(_window_rendering_handler, 0);
 
     system_event_wait_single_infinite(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(window_rendering_handler);
+    ogl_rendering_handler_stop(_window_rendering_handler);
 
 end:
     if (_test_collada_data != NULL)

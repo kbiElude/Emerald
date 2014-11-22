@@ -202,7 +202,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                 system_event_set                 (rendering_handler->unbind_context_request_ack_event);
                 system_event_wait_single_infinite(rendering_handler->bind_context_request_event);
-                
+
                 ogl_context_bind_to_current_thread(rendering_handler->context);
 
                 system_event_set(rendering_handler->bind_context_request_ack_event);
@@ -547,7 +547,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_
 /** Please see header for specification. */
 PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(__in __notnull ogl_rendering_handler                      rendering_handler,
                                                                                    __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC pfn_callback_proc,
-                                                                                   __in           void*                                      user_arg)
+                                                                                   __in           void*                                      user_arg,
+                                                                                   __in           bool                                       block_until_available)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
@@ -555,18 +556,36 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
     if (rendering_handler_ptr->thread_id == system_threads_get_thread_id() )
     {
         pfn_callback_proc(rendering_handler_ptr->context, user_arg);
+
+        result = true;
     }
     else
     {
-        system_critical_section_enter(rendering_handler_ptr->callback_request_cs);
-        {
-            rendering_handler_ptr->callback_request_user_arg = user_arg;
-            rendering_handler_ptr->pfn_callback_proc         = pfn_callback_proc;
+        bool should_continue = false;
 
-            system_event_set                 (rendering_handler_ptr->callback_request_event);
-            system_event_wait_single_infinite(rendering_handler_ptr->callback_request_ack_event);
+        if (block_until_available)
+        {
+            should_continue = true;
         }
-        system_critical_section_leave(rendering_handler_ptr->callback_request_cs);
+        else
+        {
+            should_continue = system_critical_section_try_enter(rendering_handler_ptr->callback_request_cs);
+        }
+
+        if (should_continue)
+        {
+            system_critical_section_enter(rendering_handler_ptr->callback_request_cs);
+            {
+                rendering_handler_ptr->callback_request_user_arg = user_arg;
+                rendering_handler_ptr->pfn_callback_proc         = pfn_callback_proc;
+
+                system_event_set                 (rendering_handler_ptr->callback_request_event);
+                system_event_wait_single_infinite(rendering_handler_ptr->callback_request_ack_event);
+            }
+            system_critical_section_leave(rendering_handler_ptr->callback_request_cs);
+        }
+
+        result = should_continue;
     }
 
     return result;
@@ -595,7 +614,7 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_
             system_critical_section_enter(rendering_handler_ptr->rendering_cs);
             {
                 system_event_reset(rendering_handler_ptr->playback_in_progress_event);
-                
+
                 rendering_handler_ptr->playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
             }
             system_critical_section_leave(rendering_handler_ptr->rendering_cs);
