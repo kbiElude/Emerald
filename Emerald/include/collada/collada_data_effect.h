@@ -14,6 +14,7 @@
 enum collada_data_effect_property
 {
     COLLADA_DATA_EFFECT_PROPERTY_ID,
+    COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME, /* NOTE: LW-specific */
 
     /* always last */
     COLLADA_DATA_EFFECT_COUNT

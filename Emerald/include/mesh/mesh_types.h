@@ -25,9 +25,23 @@ typedef enum
     MESH_PROPERTY_NAME,                                          /* not settable,  system_hashed_ansi_string */
     MESH_PROPERTY_N_GL_UNIQUE_VERTICES,                          /* not settable,  uint32_t                */
     MESH_PROPERTY_N_LAYERS,                                      /* not settable,  uint32_t                */
-    MESH_PROPERTY_N_MESHES_MERGED,                               /* not settable,  uint32_t                */
     MESH_PROPERTY_N_SH_BANDS,                                    /* settable ONCE, uint32_t                */
     MESH_PROPERTY_TIMESTAMP_MODIFICATION,                        /* not settable,  system_timeline_time    */
+
+    /* not settable, float.
+     *
+     * This property describes the angle that was used to generate the normals data.
+     * In order to change the setting, please update the relevant mesh material setting.
+     */
+    MESH_PROPERTY_VERTEX_SMOOTHING_ANGLE,                        /* not settable,  float  */
+
+    /* not settable, bool.
+     *
+     * This property tells that a rendering thread should call mesh_fill_gl_buffers() ASAP
+     * from the rendering thread. Raised, if CPU-side GL blob was updated and the rendering
+     * thread was unavailable at the modification time.
+     */
+     MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED
 } mesh_property;
 
 typedef enum
@@ -76,9 +90,12 @@ typedef enum
 /* Mesh creation flags */
 typedef int mesh_creation_flags;
 
+/* Keeps mesh layer & layer pass data after GL buffers are created.
+ * This allows to change eg. vertex smoothing angles for baked objects.
+ */
 const int MESH_SAVE_SUPPORT              = 0x1;
 const int MESH_KDTREE_GENERATION_SUPPORT = 0x2;
-const int MESH_MERGE_SUPPORT             = 0x4;
+//const int MESH_MERGE_SUPPORT             = 0x4; <- support for merging was removed in Nov 2014.
 
 
 typedef uint32_t mesh_layer_id;

@@ -43,7 +43,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thread(__in __notnull ogl_rendering_handler,
                                                                                    __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
-                                                                                   __in            void*);
+                                                                                   __in           void*,
+                                                                                   __in           bool block_until_available = true);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_rendering_handler_set_fps_counter_visibility(__in __notnull ogl_rendering_handler,

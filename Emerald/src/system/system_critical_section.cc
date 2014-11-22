@@ -118,7 +118,7 @@ PUBLIC EMERALD_API bool system_critical_section_try_enter(__in system_critical_s
 
     if (descriptor != NULL)
     {
-        if (::TryEnterCriticalSection(&descriptor->cs) == TRUE)
+        if (::TryEnterCriticalSection(&descriptor->cs) != 0)
         {
             result = true;
 
