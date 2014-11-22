@@ -402,7 +402,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                                               "\n"
                                                                               "gl_Position   = world_vertex_temp * vp;\n"
                                                                               "world_vertex  = world_vertex_temp.xyz;\n"
-                                                                              "out_vs_normal = (normal_matrix * vec4(object_normal, 0)).xyz;\n"
+                                                                              "out_vs_normal = (vec4(object_normal, 0) * normal_matrix).xyz;\n"
                                                                               "view_vector   = normalize(world_camera.xyz - world_vertex.xyz);\n"
                                                                               "\n"));
 
