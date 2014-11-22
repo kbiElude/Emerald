@@ -19,12 +19,14 @@
 /** Internal type definitions */
 typedef struct _lw_material_dataset_material
 {
-    system_hashed_ansi_string name;
-    float                     smoothing_angle;
+    lw_material_dataset_material_id id;
+    system_hashed_ansi_string       name;
+    float                           smoothing_angle;
 
     /* Constructor */
     explicit _lw_material_dataset_material(system_hashed_ansi_string in_name)
     {
+        id              = -1;
         name            = in_name;
         smoothing_angle = 0.0f;
     }
@@ -91,6 +93,8 @@ PUBLIC EMERALD_API lw_material_dataset_material_id lw_material_dataset_add_mater
     {
         /* Form the material ID */
         result_id = system_resizable_vector_get_amount_of_elements(dataset_ptr->materials);
+
+        new_material_ptr->id = result_id;
 
         system_resizable_vector_push(dataset_ptr->materials,
                                      new_material_ptr);
@@ -227,6 +231,31 @@ PUBLIC EMERALD_API lw_material_dataset lw_material_dataset_create(__in __notnull
     }
 
     return (lw_material_dataset) dataset_ptr;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API bool lw_material_dataset_get_material_by_name(__in  __notnull lw_material_dataset              dataset,
+                                                                 __in  __notnull system_hashed_ansi_string        name,
+                                                                 __out __notnull lw_material_dataset_material_id* out_result_id)
+{
+    _lw_material_dataset*          dataset_ptr  = (_lw_material_dataset*) dataset;
+    _lw_material_dataset_material* material_ptr = NULL;
+    bool                           result       = false;
+
+    if (system_hash64map_contains(dataset_ptr->materials_by_name,
+                                  system_hashed_ansi_string_get_hash(name) ))
+    {
+        result = system_hash64map_get(dataset_ptr->materials_by_name,
+                                      system_hashed_ansi_string_get_hash(name),
+                                     &material_ptr);
+
+        if (result && out_result_id != NULL)
+        {
+            *out_result_id = material_ptr->id;
+        }
+    }
+
+    return result;
 }
 
 /* Please see header for specification */

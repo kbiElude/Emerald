@@ -34,6 +34,11 @@ PUBLIC EMERALD_API void lw_material_dataset_apply_to_scene(__in __notnull lw_mat
 PUBLIC EMERALD_API lw_material_dataset lw_material_dataset_create(__in __notnull system_hashed_ansi_string name);
 
 /** TODO */
+PUBLIC EMERALD_API bool lw_material_dataset_get_material_by_name(__in  __notnull lw_material_dataset              dataset,
+                                                                 __in  __notnull system_hashed_ansi_string        name,
+                                                                 __out __notnull lw_material_dataset_material_id* out_result_id);
+
+/** TODO */
 PUBLIC EMERALD_API void lw_material_dataset_get_material_property(__in  __notnull lw_material_dataset                   dataset,
                                                                   __in            lw_material_dataset_material_id       material_id,
                                                                   __in  __notnull lw_material_dataset_material_property property,
