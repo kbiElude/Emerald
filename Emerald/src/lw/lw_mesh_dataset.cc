@@ -6,7 +6,10 @@
 #include "shared.h"
 #include "lw/lw_dataset.h"
 #include "lw/lw_mesh_dataset.h"
+#include "mesh/mesh.h"
+#include "scene/scene.h"
 #include "system/system_file_serializer.h"
+#include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 
@@ -39,6 +42,156 @@ typedef struct
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(lw_mesh_dataset, lw_mesh_dataset, _lw_mesh_dataset);
 
+
+/** TODO */
+PRIVATE void _lw_mesh_dataset_get_collada_mesh_name(__in_opt  system_hashed_ansi_string  in_name,
+                                                    __in      uint32_t                   n_iteration,
+                                                    __out_opt uint32_t*                  out_n_iterations,
+                                                    __out_opt system_hashed_ansi_string* out_result)
+{
+    if (out_n_iterations != NULL)
+    {
+        *out_n_iterations = 2;
+    }
+
+    if (out_result != NULL)
+    {
+        const char* in_name_raw      = system_hashed_ansi_string_get_buffer(in_name);
+        uint32_t    in_name_length   = strlen(in_name_raw);
+        uint32_t    temp_buffer_size = in_name_length + 1 + ((n_iteration == 1) ? 2 : 0);
+        char*       temp_buffer      = new char[temp_buffer_size];
+
+        memset(temp_buffer,
+               0,
+               temp_buffer_size);
+
+        memcpy(temp_buffer,
+               in_name_raw,
+               in_name_length);
+
+        /* Replace spaces with underlines */
+        for (uint32_t n_character = 0;
+                      n_character < temp_buffer_size - 1;
+                    ++n_character)
+        {
+            if (temp_buffer[n_character] == ' ')
+            {
+                temp_buffer[n_character] = '_';
+            }
+        }
+
+        if (n_iteration == 1)
+        {
+            temp_buffer[in_name_length    ] = '_';
+            temp_buffer[in_name_length + 1] = '1';
+        }
+
+        /* Form the result */
+        *out_result = system_hashed_ansi_string_create(temp_buffer);
+
+        delete [] temp_buffer;
+        temp_buffer = NULL;
+    }
+}
+
+/** TODO */
+PRIVATE system_hash64map _lw_mesh_dataset_get_filename_to_mesh_name_map(__in __notnull lw_mesh_dataset dataset)
+{
+    _lw_mesh_dataset* dataset_ptr = (_lw_mesh_dataset*) dataset;
+    const uint32_t    n_meshes    = system_resizable_vector_get_amount_of_elements(dataset_ptr->meshes);
+    system_hash64map  result      = system_hash64map_create                       (sizeof(_lw_mesh_dataset_mesh*) );
+
+    for (uint32_t n_mesh = 0;
+                  n_mesh < n_meshes;
+                ++n_mesh)
+    {
+        system_hash64          mesh_filename_hash = 0;
+        _lw_mesh_dataset_mesh* mesh_ptr           = NULL;
+
+        if (!system_resizable_vector_get_element_at(dataset_ptr->meshes,
+                                                    n_mesh,
+                                                   &mesh_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh descriptor");
+
+            continue;
+        }
+
+        mesh_filename_hash = system_hashed_ansi_string_get_hash(mesh_ptr->filename);
+
+        if (!system_hash64map_contains(result,
+                                       mesh_filename_hash) )
+        {
+            system_hash64map_insert(result,
+                                    mesh_filename_hash,
+                                    mesh_ptr->name,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+    } /* for (all meshes) */
+
+    return result;
+}
+
+/** TODO */
+PRIVATE system_hash64map _lw_mesh_dataset_get_filename_to_vector_of_meshes_map(__in __notnull lw_mesh_dataset dataset)
+{
+    _lw_mesh_dataset* dataset_ptr = (_lw_mesh_dataset*) dataset;
+    const uint32_t    n_meshes    = system_resizable_vector_get_amount_of_elements(dataset_ptr->meshes);
+    system_hash64map  result      = system_hash64map_create(sizeof(system_resizable_vector) );
+
+    for (uint32_t n_mesh = 0;
+                  n_mesh < n_meshes;
+                ++n_mesh)
+    {
+        system_hash64           mesh_filename_hash = 0;
+        _lw_mesh_dataset_mesh*  mesh_ptr           = NULL;
+        system_resizable_vector mesh_vector        = NULL;
+
+        if (!system_resizable_vector_get_element_at(dataset_ptr->meshes,
+                                                    n_mesh,
+                                                   &mesh_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot retrieve mesh descriptor");
+
+            continue;
+        }
+
+        mesh_filename_hash = system_hashed_ansi_string_get_hash(mesh_ptr->filename);
+
+        if (!system_hash64map_contains(result,
+                                       mesh_filename_hash) )
+        {
+            system_resizable_vector new_vector = system_resizable_vector_create(4, /* capacity */
+                                                                                sizeof(_lw_mesh_dataset_mesh*) );
+
+            system_hash64map_insert(result,
+                                    mesh_filename_hash,
+                                    new_vector,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+
+        if (!system_hash64map_get(result,
+                                  mesh_filename_hash,
+                                 &mesh_vector)        ||
+            mesh_vector == NULL)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot retrieve mesh vector");
+
+            continue;
+        }
+
+        system_resizable_vector_push(mesh_vector,
+                                     mesh_ptr);
+    } /* for (all meshes) */
+
+    /* All done */
+    return result;
+}
 
 /** TODO */
 PRIVATE void _lw_mesh_dataset_release(void* arg)
@@ -93,9 +246,139 @@ PUBLIC EMERALD_API lw_mesh_dataset_mesh_id lw_mesh_dataset_add_mesh(__in __notnu
 PUBLIC EMERALD_API void lw_mesh_dataset_apply_to_scene(__in __notnull lw_mesh_dataset dataset,
                                                        __in           scene           scene)
 {
-    _lw_mesh_dataset* dataset_ptr = (_lw_mesh_dataset*) dataset;
+    _lw_mesh_dataset* dataset_ptr                      = (_lw_mesh_dataset*) dataset;
+    uint32_t          n_lw_mesh_getter_name_iterations = 0;
+    const uint32_t    n_meshes                         = system_resizable_vector_get_amount_of_elements(dataset_ptr->meshes);
 
-    // ..
+    _lw_mesh_dataset_get_collada_mesh_name(NULL,
+                                           0,
+                                          &n_lw_mesh_getter_name_iterations,
+                                           NULL);
+
+    /* 1. Objects that share the same vertex/normal/etc. data are represented by the same filename.
+     *    Map each file name to one of the objects that uses the data defined by the file.
+     *    We will use this information to make all other meshes, which use the same resources,
+     *    instantiated.
+     */
+    system_hash64map filename_to_mesh_name_map = _lw_mesh_dataset_get_filename_to_mesh_name_map(dataset);
+
+    /* 2. Retrieve a map that maps filenames to a vector of meshes. This will be useful to avoid the O(n^2)
+     *    complexity in the final step. */
+    system_hash64map filename_to_vector_of_meshes_map = _lw_mesh_dataset_get_filename_to_vector_of_meshes_map(dataset);
+
+    /* 3. Iterate over all filenames. For all meshes that have a different name than the one stored
+     *    in filename_to_mesh_name_map, drop all the stored data and toggle mesh instantiation, pointing
+     *    to the "base" object whose name we know from the filename_to_mesh_name map.
+     */
+    const uint32_t n_filename_to_vector_of_meshes_map_entries = system_hash64map_get_amount_of_elements(filename_to_vector_of_meshes_map);
+
+    for (uint32_t n_filename = 0;
+                  n_filename < n_filename_to_vector_of_meshes_map_entries;
+                ++n_filename)
+    {
+        system_hash64           base_filename_hash         = 0;
+        uint32_t                n_vector_of_meshes_entries = 0;
+        system_resizable_vector vector_of_meshes           = NULL;
+
+        if (!system_hash64map_get_element_at(filename_to_vector_of_meshes_map,
+                                             n_filename,
+                                            &vector_of_meshes,
+                                            &base_filename_hash) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh vector");
+
+            continue;
+        }
+
+        /* Retrieve name of the base mesh, whose data all other meshes built of the same vertex data
+         * should use. */
+        scene_mesh                base_mesh           = NULL;
+        system_hashed_ansi_string base_mesh_name      = NULL;
+        system_hashed_ansi_string base_mesh_name_copy = NULL;
+
+        if (!system_hash64map_get(filename_to_mesh_name_map,
+                                  base_filename_hash,
+                                 &base_mesh_name_copy) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve base mesh name.");
+
+            continue;
+        }
+
+        for (unsigned int n_iteration = 0;
+                          n_iteration < n_lw_mesh_getter_name_iterations && base_mesh == NULL;
+                        ++n_iteration)
+        {
+            base_mesh_name = base_mesh_name_copy;
+
+            _lw_mesh_dataset_get_collada_mesh_name(base_mesh_name,
+                                                   n_iteration,
+                                                   NULL, /* out_n_iterations */
+                                                  &base_mesh_name);
+
+            /* Retrieve the scene mesh instance */
+            base_mesh = scene_get_mesh_instance_by_name(scene,
+                                                        base_mesh_name);
+        }
+
+        if (base_mesh == NULL)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve base mesh.");
+
+            continue;
+        }
+
+        /* Iterate over all meshes which use the same source file data */
+        n_vector_of_meshes_entries = system_resizable_vector_get_amount_of_elements(vector_of_meshes);
+
+        ASSERT_DEBUG_SYNC(n_vector_of_meshes_entries >= 1,
+                          "Mesh vector found but holds no items");
+
+        for (uint32_t n_mesh_entry = 0;
+                      n_mesh_entry < n_vector_of_meshes_entries;
+                    ++n_mesh_entry)
+        {
+            _lw_mesh_dataset_mesh* mesh_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(vector_of_meshes,
+                                                        n_mesh_entry,
+                                                       &mesh_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh descriptor");
+
+                break;
+            }
+
+            /* Skip base meshes */
+            if (system_hashed_ansi_string_is_equal_to_hash_string(mesh_ptr->name,
+                                                                  base_mesh_name) )
+            {
+                continue;
+            }
+
+            /* Convert the mesh instance to an instantiated version. */
+            // TODO
+        } /* for (all mesh entries) */
+    } /* for (all file names) */
+
+    /* All done. OK to release the reosurces */
+    if (filename_to_mesh_name_map != NULL)
+    {
+        system_hash64map_release(filename_to_mesh_name_map);
+
+        filename_to_mesh_name_map = NULL;
+    }
+
+    if (filename_to_vector_of_meshes_map != NULL)
+    {
+        system_hash64map_release(filename_to_vector_of_meshes_map);
+
+        filename_to_vector_of_meshes_map = NULL;
+    }
 }
 
 /* Please see header for specification */
