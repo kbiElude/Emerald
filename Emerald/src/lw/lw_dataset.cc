@@ -7,6 +7,7 @@
 #include "lw/lw_dataset.h"
 #include "lw/lw_curve_dataset.h"
 #include "lw/lw_material_dataset.h"
+#include "lw/lw_mesh_dataset.h"
 #include "system/system_log.h"
 
 
@@ -15,6 +16,7 @@ typedef struct
 {
     lw_curve_dataset    curves;
     lw_material_dataset materials;
+    lw_mesh_dataset     meshes;
 
     REFCOUNT_INSERT_VARIABLES
 } _lw_dataset;
@@ -42,6 +44,13 @@ PRIVATE void _lw_dataset_release(void* arg)
 
         dataset_ptr->materials = NULL;
     }
+
+    if (dataset_ptr->meshes != NULL)
+    {
+        lw_mesh_dataset_release(dataset_ptr->meshes);
+
+        dataset_ptr->meshes = NULL;
+    }
 }
 
 
@@ -62,6 +71,12 @@ PUBLIC EMERALD_API void lw_dataset_apply_to_scene(__in __notnull lw_dataset data
         lw_material_dataset_apply_to_scene(dataset_ptr->materials,
                                            scene);
     }
+
+    if (dataset_ptr->meshes != NULL)
+    {
+        lw_mesh_dataset_apply_to_scene(dataset_ptr->meshes,
+                                       scene);
+    }
 }
 
 /* Please see header for specification */
@@ -81,6 +96,8 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_create(__in __notnull system_hashed_ans
                                                                                                                     " curves") );
         dataset_ptr->materials = lw_material_dataset_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                     " materials") );
+        dataset_ptr->meshes    = lw_mesh_dataset_create    (system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                    " meshes") );
 
         /* Register the instance */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(dataset_ptr,
@@ -114,6 +131,13 @@ PUBLIC EMERALD_API void lw_dataset_get_property(__in  __notnull lw_dataset      
         case LW_DATASET_PROPERTY_MATERIAL_DATASET:
         {
             *(lw_material_dataset*) out_result = dataset_ptr->materials;
+
+            break;
+        }
+
+        case LW_DATASET_PROPERTY_MESH_DATASET:
+        {
+            *(lw_mesh_dataset*) out_result = dataset_ptr->meshes;
 
             break;
         }
@@ -161,6 +185,18 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_load(__in __notnull system_hashed_ansi_
         dataset_ptr->materials = lw_material_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                   " material data-set"),
                                                           serializer);
+
+        /* Load the mesh data-set */
+        if (dataset_ptr->meshes != NULL)
+        {
+            lw_mesh_dataset_release(dataset_ptr->meshes);
+
+            dataset_ptr->meshes = NULL;
+        }
+
+        dataset_ptr->meshes = lw_mesh_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                           " material data-set"),
+                                                   serializer);
     }
 
     return dataset;
@@ -185,4 +221,11 @@ PUBLIC EMERALD_API void lw_dataset_save(__in __notnull lw_dataset             da
 
     lw_material_dataset_save(dataset_ptr->materials,
                              serializer);
+
+    /* Store the mesh data-set */
+    ASSERT_ALWAYS_SYNC(dataset_ptr->meshes != NULL,
+                       "Mesh data-set is NULL");
+
+    lw_mesh_dataset_save(dataset_ptr->meshes,
+                         serializer);
 }
