@@ -22,6 +22,8 @@ extern LWChannelInfo*   channel_info_ptr;
 extern LWEnvelopeFuncs* envelope_ptr;
 extern LWItemInfo*      item_info_ptr;
 extern LWMessageFuncs*  message_funcs_ptr;
+extern LWObjectFuncs*   object_funcs_ptr;
+extern LWObjectInfo*    object_info_ptr;
 extern LWSceneInfo*     scene_info_ptr;
 extern LWSurfaceFuncs*  surface_funcs_ptr;
 

@@ -6,6 +6,7 @@
 #include "plugin.h"
 #include "plugin_curves.h"
 #include "plugin_materials.h"
+#include "plugin_meshes.h"
 #include "curve/curve_container.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
@@ -20,6 +21,8 @@ LWChannelInfo*   channel_info_ptr  = NULL;
 LWEnvelopeFuncs* envelope_ptr      = NULL;
 LWItemInfo*      item_info_ptr     = NULL;
 LWMessageFuncs*  message_funcs_ptr = NULL;
+LWObjectFuncs*   object_funcs_ptr  = NULL;
+LWObjectInfo*    object_info_ptr   = NULL;
 LWSceneInfo*     scene_info_ptr    = NULL;
 LWSurfaceFuncs*  surface_funcs_ptr = NULL;
 
@@ -39,6 +42,8 @@ XCALL_(int) ExportData(int         version,
     envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
     message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    object_funcs_ptr  = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_TRANSIENT);
+    object_info_ptr   = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
     scene_info_ptr    = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
     surface_funcs_ptr = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
 
@@ -55,14 +60,19 @@ XCALL_(int) ExportData(int         version,
 
     FillMaterialDataset(dataset);
 
+    /* Extract mesh data */
+    message_funcs_ptr->info("Extracting mesh data..", NULL);
+
+    FillMeshDataset(dataset);
+
     /* Check where the user wants to store the data */
     message_funcs_ptr->info("Please select target file to store the blob.",
                             NULL);
 
     system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE,
                                                                                    system_hashed_ansi_string_create("*"),
-                                                                                   system_hashed_ansi_string_create("Emerald Curve Dataset"),
-                                                                                   system_hashed_ansi_string_create("Select target Emerald Curve Dataset file") );
+                                                                                   system_hashed_ansi_string_create("Emerald Dataset"),
+                                                                                   system_hashed_ansi_string_create("Select target Emerald Dataset file") );
 
     if (filename != NULL)
     {
