@@ -47,8 +47,8 @@ void FillMeshDataset(lw_dataset dataset)
         _mesh_instance* new_instance = new (std::nothrow) _mesh_instance;
 
         new_instance->filename           = system_hashed_ansi_string_create(object_info_ptr->filename(object_id) );
-        new_instance->is_shadow_caster   = object_info_ptr->shadowOpts(object_id) & LWOSHAD_CAST;
-        new_instance->is_shadow_receiver = object_info_ptr->shadowOpts(object_id) & LWOSHAD_RECEIVE;
+        new_instance->is_shadow_caster   = (object_info_ptr->shadowOpts(object_id) & LWOSHAD_CAST)    != 0;
+        new_instance->is_shadow_receiver = (object_info_ptr->shadowOpts(object_id) & LWOSHAD_RECEIVE) != 0;
         new_instance->name               = system_hashed_ansi_string_create(item_info_ptr->name(object_id) );
 
         system_resizable_vector_push(objects,
@@ -61,8 +61,6 @@ void FillMeshDataset(lw_dataset dataset)
     /* NOTE: The objects we've created above are an over-kill for the time being, but they
      *       will be necessary once we introduce mesh data exporting.
      */
-    const uint32_t n_objects = system_resizable_vector_get_amount_of_elements(objects);
-
     for (uint32_t n_object = 0;
                   n_object < n_objects;
                 ++n_object)
@@ -80,8 +78,21 @@ void FillMeshDataset(lw_dataset dataset)
         }
 
         /* Add the instance to the data-set */
-        lw_mesh_dataset_mesh_id mesh_instance_dataset_id = lw_mesh_dataset_add_mesh_instance(mesh_dataset,
-                                                                                             instance_ptr->name);
+        lw_mesh_dataset_mesh_id mesh_instance_dataset_id = lw_mesh_dataset_add_mesh(mesh_dataset,
+                                                                                    instance_ptr->name);
+
+        lw_mesh_dataset_set_mesh_property(mesh_dataset,
+                                          mesh_instance_dataset_id,
+                                          LW_MESH_DATASET_MESH_PROPERTY_FILENAME,
+                                         &instance_ptr->filename);
+        lw_mesh_dataset_set_mesh_property(mesh_dataset,
+                                          mesh_instance_dataset_id,
+                                          LW_MESH_DATASET_MESH_PROPERTY_IS_SHADOW_CASTER,
+                                         &instance_ptr->is_shadow_caster);
+        lw_mesh_dataset_set_mesh_property(mesh_dataset,
+                                          mesh_instance_dataset_id,
+                                          LW_MESH_DATASET_MESH_PROPERTY_IS_SHADOW_RECEIVER,
+                                         &instance_ptr->is_shadow_receiver);
     } /* for (all objects) */
 
     /* Release all object descriptors */
