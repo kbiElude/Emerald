@@ -1349,18 +1349,31 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
     {
         _ogl_uber_vao* vao_ptr = NULL;
 
+        /* If the mesh is instantiated, retrieve the mesh instance we should be using
+         * for the rendering */
+        mesh mesh_instantiation_parent_gpu = NULL;
+
+        mesh_get_property(mesh_gpu,
+                          MESH_PROPERTY_INSTANTIATION_PARENT,
+                         &mesh_instantiation_parent_gpu);
+
+        if (mesh_instantiation_parent_gpu == NULL)
+        {
+            mesh_instantiation_parent_gpu = mesh_gpu;
+        }
+
         /* Retrieve VAO for the user-requested mesh */
         if (!system_hash64map_get(uber_ptr->mesh_to_vao_descriptor_map,
-                                  (system_hash64) mesh_gpu,
+                                  (system_hash64) mesh_instantiation_parent_gpu,
                                   &vao_ptr) )
         {
             /* No VAO initialized? Pity, one should have been created a long time ago.. */
             _ogl_uber_bake_mesh_vao(uber_ptr,
-                                    mesh_gpu);
+                                    mesh_instantiation_parent_gpu);
 
             /* Retrieve the new VAO descriptor */
             system_hash64map_get(uber_ptr->mesh_to_vao_descriptor_map,
-                                 (system_hash64) mesh_gpu,
+                                 (system_hash64) mesh_instantiation_parent_gpu,
                                 &vao_ptr);
 
             ASSERT_DEBUG_SYNC(vao_ptr != NULL,
@@ -1371,7 +1384,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
             /* Make sure the VAO we're using needs not be re-initialized */
             system_timeline_time mesh_modification_timestamp = 0;
 
-            mesh_get_property(mesh_gpu,
+            mesh_get_property(mesh_instantiation_parent_gpu,
                               MESH_PROPERTY_TIMESTAMP_MODIFICATION,
                               &mesh_modification_timestamp);
 
@@ -1379,7 +1392,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
             {
                 system_hashed_ansi_string mesh_name = NULL;
 
-                mesh_get_property(mesh_gpu,
+                mesh_get_property(mesh_instantiation_parent_gpu,
                                   MESH_PROPERTY_NAME,
                                  &mesh_name);
 
@@ -1388,7 +1401,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                         );
 
                 _ogl_uber_bake_mesh_vao(uber_ptr,
-                                        mesh_gpu);
+                                        mesh_instantiation_parent_gpu);
             }
         }
 
@@ -1425,7 +1438,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
         GLenum           gl_index_type = GL_NONE;
         _mesh_index_type index_type    = MESH_INDEX_TYPE_UNKNOWN;
 
-        mesh_get_property(mesh_gpu,
+        mesh_get_property(mesh_instantiation_parent_gpu,
                           MESH_PROPERTY_GL_INDEX_TYPE,
                          &index_type);
 
@@ -1446,16 +1459,21 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
               uint32_t n_layers = 0;
         const GLuint   po_id    = ogl_program_get_id(uber_ptr->program);
 
-        mesh_get_property(mesh_gpu,
+        mesh_get_property(mesh_instantiation_parent_gpu,
                           MESH_PROPERTY_N_LAYERS,
                          &n_layers);
 
-        for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+        for (uint32_t n_layer = 0;
+                      n_layer < n_layers;
+                    ++n_layer)
         {
-            const uint32_t n_layer_passes = mesh_get_amount_of_layer_passes(mesh_gpu, n_layer);
+            const uint32_t n_layer_passes = mesh_get_amount_of_layer_passes(mesh_instantiation_parent_gpu,
+                                                                            n_layer);
 
             /* Iterate over all layer passes */
-            for (uint32_t n_layer_pass = 0; n_layer_pass < n_layer_passes; ++n_layer_pass)
+            for (uint32_t n_layer_pass = 0;
+                          n_layer_pass < n_layer_passes;
+                        ++n_layer_pass)
             {
                 uint32_t      layer_pass_elements_offset = 0;
                 uint32_t      layer_pass_index_max_value = 0;
@@ -1465,27 +1483,27 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                 uint32_t      n_texture_units_used       = 0;
 
                 /* Retrieve layer pass properties */
-                mesh_get_layer_pass_property(mesh_gpu,
+                mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
                                              n_layer,
                                              n_layer_pass,
                                              MESH_LAYER_PROPERTY_MATERIAL,
                                             &layer_pass_material);
-                mesh_get_layer_pass_property(mesh_gpu,
+                mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
                                              n_layer,
                                              n_layer_pass,
                                              MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,
                                             &layer_pass_elements_offset);
-                mesh_get_layer_pass_property(mesh_gpu,
+                mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
                                              n_layer,
                                              n_layer_pass,
                                              MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX,
                                             &layer_pass_index_max_value);
-                mesh_get_layer_pass_property(mesh_gpu,
+                mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
                                              n_layer,
                                              n_layer_pass,
                                              MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX,
                                             &layer_pass_index_min_value);
-                mesh_get_layer_pass_property(mesh_gpu,
+                mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
                                              n_layer,
                                              n_layer_pass,
                                              MESH_LAYER_PROPERTY_N_ELEMENTS,
@@ -1505,9 +1523,26 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                     int32_t                        shader_uv_attribute_location;
                 } attachments[] =
                 {
-                    {MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,   uber_ptr->ambient_sampler_uniform_location,  uber_ptr->ambient_vec4_uniform_location,  uber_ptr->object_ambient_uv_attribute_location},
-                    {MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,   uber_ptr->diffuse_sampler_uniform_location,  uber_ptr->diffuse_vec4_uniform_location,  uber_ptr->object_diffuse_uv_attribute_location},
-                    {MESH_MATERIAL_SHADING_PROPERTY_EMISSION,  uber_ptr->emission_sampler_uniform_location, uber_ptr->emission_vec4_uniform_location, uber_ptr->object_emission_uv_attribute_location},
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                        uber_ptr->ambient_sampler_uniform_location,
+                        uber_ptr->ambient_vec4_uniform_location,
+                        uber_ptr->object_ambient_uv_attribute_location
+                    },
+
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                        uber_ptr->diffuse_sampler_uniform_location,
+                        uber_ptr->diffuse_vec4_uniform_location,
+                        uber_ptr->object_diffuse_uv_attribute_location
+                    },
+
+                    {
+                        MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
+                        uber_ptr->emission_sampler_uniform_location,
+                        uber_ptr->emission_vec4_uniform_location,
+                        uber_ptr->object_emission_uv_attribute_location
+                    },
 #if 0
                     {MESH_MATERIAL_SHADING_PROPERTY_SHININESS, uber_ptr->shininess_uniform_location, uber_ptr->object_texcoord_attribute_location},
                     {MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,  uber_ptr->specular_uniform_location,  uber_ptr->object_texcoord_attribute_location}
@@ -1515,10 +1550,13 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                 };
                 const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
 
-                for (uint32_t n_attachment = 0; n_attachment < n_attachments; ++n_attachment)
+                for (uint32_t n_attachment = 0;
+                              n_attachment < n_attachments;
+                            ++n_attachment)
                 {
                     const _attachment&                      attachment      = attachments[n_attachment];
-                    const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material, attachment.property);
+                    const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
+                                                                                                                                 attachment.property);
 
                     switch (attachment_type)
                     {

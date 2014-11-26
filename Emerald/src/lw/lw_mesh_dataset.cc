@@ -8,6 +8,7 @@
 #include "lw/lw_mesh_dataset.h"
 #include "mesh/mesh.h"
 #include "scene/scene.h"
+#include "scene/scene_mesh.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
@@ -294,6 +295,7 @@ PUBLIC EMERALD_API void lw_mesh_dataset_apply_to_scene(__in __notnull lw_mesh_da
         /* Retrieve name of the base mesh, whose data all other meshes built of the same vertex data
          * should use. */
         scene_mesh                base_mesh           = NULL;
+        mesh                      base_mesh_gpu       = NULL;
         system_hashed_ansi_string base_mesh_name      = NULL;
         system_hashed_ansi_string base_mesh_name_copy = NULL;
 
@@ -331,6 +333,10 @@ PUBLIC EMERALD_API void lw_mesh_dataset_apply_to_scene(__in __notnull lw_mesh_da
             continue;
         }
 
+        scene_mesh_get_property(base_mesh,
+                                SCENE_MESH_PROPERTY_MESH,
+                               &base_mesh_gpu);
+
         /* Iterate over all meshes which use the same source file data */
         n_vector_of_meshes_entries = system_resizable_vector_get_amount_of_elements(vector_of_meshes);
 
@@ -353,15 +359,44 @@ PUBLIC EMERALD_API void lw_mesh_dataset_apply_to_scene(__in __notnull lw_mesh_da
                 break;
             }
 
+            /* Retrieve scene instance of the mesh */
+            scene_mesh                mesh_to_be_instantiated      = NULL;
+            mesh                      mesh_to_be_instantiated_gpu  = NULL;
+            system_hashed_ansi_string mesh_to_be_instantiated_name = NULL;
+
+            for (unsigned int n_iteration = 0;
+                              n_iteration < n_lw_mesh_getter_name_iterations && mesh_to_be_instantiated == NULL;
+                            ++n_iteration)
+            {
+                mesh_to_be_instantiated_name = mesh_ptr->name;
+
+                _lw_mesh_dataset_get_collada_mesh_name(mesh_to_be_instantiated_name,
+                                                       n_iteration,
+                                                       NULL, /* out_n_iterations */
+                                                      &mesh_to_be_instantiated_name);
+
+                /* Retrieve the scene mesh instance */
+                mesh_to_be_instantiated = scene_get_mesh_instance_by_name(scene,
+                                                                          mesh_to_be_instantiated_name);
+            }
+
+            ASSERT_DEBUG_SYNC(mesh_to_be_instantiated != NULL,
+                              "Could not identify a mesh in the scene container that needs to be instantiated");
+
+            scene_mesh_get_property(mesh_to_be_instantiated,
+                                    SCENE_MESH_PROPERTY_MESH,
+                                   &mesh_to_be_instantiated_gpu);
+
             /* Skip base meshes */
-            if (system_hashed_ansi_string_is_equal_to_hash_string(mesh_ptr->name,
+            if (system_hashed_ansi_string_is_equal_to_hash_string(mesh_to_be_instantiated_name,
                                                                   base_mesh_name) )
             {
                 continue;
             }
 
             /* Convert the mesh instance to an instantiated version. */
-            // TODO
+            mesh_set_as_instantiated(mesh_to_be_instantiated_gpu,
+                                     base_mesh_gpu);
         } /* for (all mesh entries) */
     } /* for (all file names) */
 

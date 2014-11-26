@@ -248,7 +248,7 @@ PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(syste
  *  Implementation based on http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
  */
 PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer renderer,
-                                              __in __notnull scene_mesh         scene_mesh_instance)
+                                              __in __notnull mesh               mesh_gpu)
 {
     bool result = true;
 
@@ -256,15 +256,11 @@ PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer 
     const float*               aabb_max_ptr   = NULL;
     const float*               aabb_min_ptr   = NULL;
     const _ogl_scene_renderer* renderer_ptr   = (const _ogl_scene_renderer*) renderer;
-    mesh                       scene_mesh_gpu = NULL;
 
-    scene_mesh_get_property(scene_mesh_instance,
-                            SCENE_MESH_PROPERTY_MESH,
-                           &scene_mesh_gpu);
-    mesh_get_property      (scene_mesh_gpu,
+    mesh_get_property      (mesh_gpu,
                             MESH_PROPERTY_AABB_MAX,
                            &aabb_max_ptr);
-    mesh_get_property      (scene_mesh_gpu,
+    mesh_get_property      (mesh_gpu,
                             MESH_PROPERTY_AABB_MIN,
                            &aabb_min_ptr);
 
@@ -484,35 +480,41 @@ PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool(system_
 PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_instance,
                                               __in      void*      renderer)
 {
-    _ogl_scene_renderer*    renderer_ptr         = (_ogl_scene_renderer*) renderer;
-    mesh_material           material             = NULL;
-    mesh                    mesh_gpu             = NULL;
-    uint32_t                mesh_id              = -1;
-    system_resizable_vector mesh_materials       = NULL;
-    bool                    mesh_needs_gl_update = false;
-    ogl_uber                mesh_uber            = NULL;
-    unsigned int            n_mesh_materials     = 0;
+    _ogl_scene_renderer*    renderer_ptr                  = (_ogl_scene_renderer*) renderer;
+    mesh_material           material                      = NULL;
+    mesh                    mesh_gpu                      = NULL;
+    mesh                    mesh_instantiation_parent_gpu = NULL;
+    uint32_t                mesh_id                       = -1;
+    system_resizable_vector mesh_materials                = NULL;
+    bool                    mesh_needs_gl_update          = false;
+    ogl_uber                mesh_uber                     = NULL;
+    unsigned int            n_mesh_materials              = 0;
 
     scene_mesh_get_property(scene_mesh_instance,
                             SCENE_MESH_PROPERTY_MESH,
                            &mesh_gpu);
 
-    if (!mesh_get_property(mesh_gpu,
-                           MESH_PROPERTY_MATERIALS,
-                          &mesh_materials)                      ||
-        !mesh_get_property(mesh_gpu,
-                           MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
-                          &mesh_needs_gl_update) )
+    mesh_get_property(mesh_gpu,
+                      MESH_PROPERTY_INSTANTIATION_PARENT,
+                     &mesh_instantiation_parent_gpu);
+
+    if (mesh_instantiation_parent_gpu == NULL)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "Mesh queries rejected");
+        mesh_instantiation_parent_gpu = mesh_gpu;
     }
+
+    mesh_get_property(mesh_instantiation_parent_gpu,
+                      MESH_PROPERTY_MATERIALS,
+                     &mesh_materials);
+    mesh_get_property(mesh_instantiation_parent_gpu,
+                      MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
+                     &mesh_needs_gl_update);
 
     if (mesh_needs_gl_update)
     {
         LOG_ERROR("Performance warning: executing deferred mesh_fill_gl_buffers() call.");
 
-        mesh_fill_gl_buffers(mesh_gpu,
+        mesh_fill_gl_buffers(mesh_instantiation_parent_gpu,
                              ogl_context_get_current_context() );
     }
 
@@ -526,7 +528,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
      * this mesh.
      */
     if (!_ogl_scene_renderer_frustum_cull( (ogl_scene_renderer) renderer,
-                                          scene_mesh_instance) )
+                                          mesh_instantiation_parent_gpu) )
     {
         goto end;
     }
@@ -548,7 +550,8 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
         /* Retrieve ogl_uber that can render the material for the currently processed
          * scene configuration.
          */
-        mesh_uber = mesh_material_get_ogl_uber(material, renderer_ptr->scene);
+        mesh_uber = mesh_material_get_ogl_uber(material,
+                                               renderer_ptr->scene);
 
         if (!system_hash64map_get(renderer_ptr->ubers_map,
                                   (system_hash64) mesh_uber,
@@ -637,7 +640,8 @@ PRIVATE void _ogl_scene_renderer_new_model_matrix(__in __notnull system_matrix4x
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 
-    system_matrix4x4_set_from_matrix4x4(renderer_ptr->current_model_matrix, transformation_matrix);
+    system_matrix4x4_set_from_matrix4x4(renderer_ptr->current_model_matrix,
+                                        transformation_matrix);
 }
 
 /** TODO */
