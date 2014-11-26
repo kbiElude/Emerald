@@ -42,9 +42,10 @@ typedef struct
      *                   separated with a mesh-specific stride.
      *                   SH MUST be aligned to 32 (as it's used by means of a RGBA32F texture buffer.
      */
-    GLuint   gl_bo_id;
+    GLuint gl_bo_id;
 
-    ogl_texture    gl_tbo; /* refers to TBO created for a BO containing gl_processed data. Uses GL_RGBA32F type for 4 SH bands, GL_RGB32F for 3 SH bands*/
+    /* refers to TBO created for a BO containing gl_processed data. Uses GL_RGBA32F type for 4 SH bands, GL_RGB32F for 3 SH bands*/
+    ogl_texture      gl_tbo;
 
     float*           gl_processed_data;
     uint32_t         gl_processed_data_size; /* tells size of gl_processed_data */
@@ -55,6 +56,7 @@ typedef struct
     _mesh_index_type gl_index_type;
     bool             gl_storage_initialized;
     bool             gl_thread_fill_gl_buffers_call_needed;
+    mesh             instantiation_parent; /* If not NULL, instantiation parent's GL data should be used instead */
 
     /* Properties */
     float                aabb_max   [4]; /* model-space */
@@ -444,7 +446,8 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
                 delete data_stream_ptr;
                 data_stream_ptr = NULL;
 
-                system_hash64map_remove(layer_ptr->data_streams, temp);
+                system_hash64map_remove(layer_ptr->data_streams,
+                                        temp);
             }
 
             system_hash64map_release(layer_ptr->data_streams);
@@ -453,7 +456,7 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
         }
     } /* if (layer_ptr->data_streams != NULL) */
 
-    /* Do not remove pass data if not full deinitialization is needed. 
+    /* Do not remove pass data if not full deinitialization is needed.
      *
      * Pieces of the data that are transferred to VRAM could be released but for now let's
      * just let them be */
@@ -465,19 +468,23 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
             {
                 _mesh_layer_pass* pass_ptr = NULL;
 
-                if (system_resizable_vector_pop(layer_ptr->passes, &pass_ptr) )
+                if (system_resizable_vector_pop(layer_ptr->passes,
+                                               &pass_ptr) )
                 {
-                    _mesh_deinit_mesh_layer_pass(mesh_ptr, pass_ptr, do_full_deinit);
+                    _mesh_deinit_mesh_layer_pass(mesh_ptr,
+                                                 pass_ptr,
+                                                 do_full_deinit);
 
                     delete pass_ptr;
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not pop mesh layer pass");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not pop mesh layer pass");
                 }
             }
         }
-    }    
+    }
 }
 
 /** TODO */
@@ -821,6 +828,7 @@ PRIVATE void _mesh_init_mesh(__in __notnull _mesh*                    new_mesh,
     new_mesh->gl_storage_initialized                = false;
     new_mesh->gl_tbo                                = 0;
     new_mesh->gl_thread_fill_gl_buffers_call_needed = false;
+    new_mesh->instantiation_parent                  = NULL;
     new_mesh->layers                                = system_resizable_vector_create(START_LAYERS, sizeof(void*) );
     new_mesh->materials                             = system_resizable_vector_create(4 /* capacity */, sizeof(mesh_material) );
     new_mesh->n_gl_unique_vertices                  = 0;
@@ -1080,7 +1088,8 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context, void* arg)
 
     if (mesh->gl_bo_id != -1)
     {
-        entry_points->pGLDeleteBuffers (1, &mesh->gl_bo_id);
+        entry_points->pGLDeleteBuffers(1,
+                                      &mesh->gl_bo_id);
     }
 
     if (mesh->gl_tbo != NULL)
@@ -1171,6 +1180,13 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
     }
 
     /* Release other helper structures */
+    if (mesh->instantiation_parent != NULL)
+    {
+        mesh_release(mesh->instantiation_parent);
+
+        mesh->instantiation_parent = NULL;
+    }
+
     if (mesh->materials != NULL)
     {
         system_resizable_vector_release(mesh->materials);
@@ -1421,6 +1437,8 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
             new_layer_pass_ptr->material   = material;
             new_layer_pass_ptr->n_elements = n_elements;
             result_id                      = system_resizable_vector_get_amount_of_elements(mesh_layer_ptr->passes);
+
+            mesh_material_retain(material);
 
             if (material != NULL)
             {
@@ -1771,9 +1789,23 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                          *       overflow risk since we're already using a key of maximum size.
                          *       If necessary, please fix - putting a debug-only assertion check to guard against
                          *       the glitch.
+                         *
+                         * NOTE: This does not seem to cause any visual glitches, however mind that the final GL
+                         *       blob will waste some space for attribute data that is present for one layer, but
+                         *       not for the other one. This can probably be improved to a great extent, but requires
+                         *       some refactoring.
                          */
-                        ASSERT_DEBUG_SYNC((_mesh_get_total_number_of_sets(layer_ptr) + 1) == n_datastreams_surfaceid_key_words,
-                                          "Key size mismatch");
+                        if ((_mesh_get_total_number_of_sets(layer_ptr) + 1) != n_datastreams_surfaceid_key_words)
+                        {
+                            static bool has_warned = false;
+
+                            if (!has_warned)
+                            {
+                                LOG_ERROR("Key size mismatch while generating merged GL blob - generated blob will not be size-effective.");
+
+                                has_warned = true;
+                            }
+                        }
 
                         memset(key_ptr,
                                0,
@@ -3100,6 +3132,13 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
             break;
         }
 
+        case MESH_PROPERTY_INSTANTIATION_PARENT:
+        {
+            *(mesh*) result = mesh_ptr->instantiation_parent;
+
+            break;
+        }
+
         case MESH_PROPERTY_MATERIALS:
         {
             *((system_resizable_vector*) result) = mesh_ptr->materials;
@@ -3270,7 +3309,8 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh       
 PUBLIC EMERALD_API mesh mesh_load(__in __notnull ogl_context               context,
                                   __in           mesh_creation_flags       flags,
                                   __in __notnull system_hashed_ansi_string full_file_path,
-                                  __in __notnull system_hash64map          material_id_to_mesh_material_map)
+                                  __in __notnull system_hash64map          material_id_to_mesh_material_map,
+                                  __in __notnull system_hash64map          mesh_name_to_mesh_map)
 {
     /* Create file serializer instance */
     mesh                   result     = NULL;
@@ -3282,7 +3322,8 @@ PUBLIC EMERALD_API mesh mesh_load(__in __notnull ogl_context               conte
         result = mesh_load_with_serializer(context,
                                            flags,
                                            serializer,
-                                           material_id_to_mesh_material_map);
+                                           material_id_to_mesh_material_map,
+                                           mesh_name_to_mesh_map);
 
         /* That's it. Release the serializer */
         system_file_serializer_release(serializer);
@@ -3295,7 +3336,8 @@ PUBLIC EMERALD_API mesh mesh_load(__in __notnull ogl_context               conte
 PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context            context,
                                                   __in           mesh_creation_flags    flags,
                                                   __in __notnull system_file_serializer serializer,
-                                                  __in __notnull system_hash64map       material_id_to_mesh_material_map)
+                                                  __in __notnull system_hash64map       material_id_to_mesh_material_map,
+                                                  __in __notnull system_hash64map       mesh_name_to_mesh_map)
 {
     /* Read header */
     char header[16] = {0};
@@ -3314,33 +3356,45 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
         goto end;
     }
 
-    /* Read mesh name */
-    float                     aabb_max[4];
-    float                     aabb_min[4];
-    system_hashed_ansi_string mesh_name   = NULL;
+    /* Is this an instantiated mesh? */
+    bool                      is_instantiated = false;
+    system_hashed_ansi_string mesh_name       = NULL;
 
-    system_file_serializer_read                   (serializer,
-                                                   sizeof(aabb_max),
-                                                   aabb_max);
-    system_file_serializer_read                   (serializer,
-                                                   sizeof(aabb_min),
-                                                   aabb_min);
     system_file_serializer_read_hashed_ansi_string(serializer,
                                                   &mesh_name);
+    system_file_serializer_read                   (serializer,
+                                                   sizeof(is_instantiated),
+                                                  &is_instantiated);
 
-    /* Create result instance before we continue */
     result = mesh_create(flags,
-                         mesh_name);
+                     mesh_name);
 
     ASSERT_DEBUG_SYNC(result != NULL, "Could not create mesh.");
-    if (result != NULL)
+    if (result == NULL)
     {
-        _mesh* mesh_ptr = (_mesh*) result;
+        goto end;
+    }
 
-        /* Set GL context */
-        mesh_ptr->gl_context = context;
+    /* Set GL context */
+    _mesh* mesh_ptr = (_mesh*) result;
 
-        ogl_context_retain(context);
+    mesh_ptr->gl_context = context;
+    ogl_context_retain(context);
+
+    /* Fork, depending on whether we're dealing with an instantiated mesh,
+     * or a parent instance */
+    if (!is_instantiated)
+    {
+        /* Read mesh name */
+        float aabb_max[4];
+        float aabb_min[4];
+
+        system_file_serializer_read(serializer,
+                                    sizeof(aabb_max),
+                                    aabb_max);
+        system_file_serializer_read(serializer,
+                                    sizeof(aabb_min),
+                                    aabb_min);
 
         /* Set AABB box props */
         mesh_set_property(result,
@@ -3525,6 +3579,33 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
         /* Generate GL buffers off the data we loaded */
         mesh_fill_gl_buffers(result,
                              mesh_ptr->gl_context);
+    } /* if (!is_mesh_instantiated) */
+    else
+    {
+        system_hashed_ansi_string instantiation_parent_name = NULL;
+
+        /* Read the name of the instantiation parent */
+        system_file_serializer_read_hashed_ansi_string(serializer,
+                                                      &instantiation_parent_name);
+
+        /* Retrieve the parent mesh */
+        mesh instantiation_parent_mesh_gpu = NULL;
+
+        if (!system_hash64map_get(mesh_name_to_mesh_map,
+                                  system_hashed_ansi_string_get_hash(instantiation_parent_name),
+                                 &instantiation_parent_mesh_gpu) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Instantiation parent [%s] was not recognized",
+                              system_hashed_ansi_string_get_buffer(instantiation_parent_name) );
+        }
+        else
+        {
+            /* Mark the result mesh as an instanced object */
+            mesh_set_as_instantiated(result,
+                                     instantiation_parent_mesh_gpu);
+        }
+
     }
 
 end:
@@ -3578,162 +3659,233 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                                  header_magic);
 
     /* Write general stuff */
-    system_file_serializer_write                   (serializer,
-                                                    sizeof(mesh_ptr->aabb_max),
-                                                    mesh_ptr->aabb_max);
-    system_file_serializer_write                   (serializer,
-                                                    sizeof(mesh_ptr->aabb_min),
-                                                    mesh_ptr->aabb_min);
+    bool is_instantiated = (mesh_ptr->instantiation_parent != NULL);
+
     system_file_serializer_write_hashed_ansi_string(serializer,
                                                     mesh_ptr->name);
+    system_file_serializer_write                   (serializer,
+                                                    sizeof(is_instantiated),
+                                                   &is_instantiated);
 
-    /* Serialize processed GL data buffer */
-    ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data      != NULL &&
-                      mesh_ptr->gl_processed_data_size != 0    &&
-                      mesh_ptr->gl_storage_initialized,
-                      "Processed GL data is unavailable");
-
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->gl_processed_data_size),
-                                &mesh_ptr->gl_processed_data_size);
-    system_file_serializer_write(serializer,
-                                 mesh_ptr->gl_processed_data_size,
-                                 mesh_ptr->gl_processed_data);
-
-    for (mesh_layer_data_stream_type stream_type = (mesh_layer_data_stream_type) 0;
-                                     stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
-                                   ++(int&)stream_type)
+    if (!is_instantiated)
     {
         system_file_serializer_write(serializer,
-                                     sizeof(mesh_ptr->gl_processed_data_stream_start_offset[0]),
-                                    &mesh_ptr->gl_processed_data_stream_start_offset[stream_type]);
-    }
+                                     sizeof(mesh_ptr->aabb_max),
+                                     mesh_ptr->aabb_max);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->aabb_min),
+                                     mesh_ptr->aabb_min);
 
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->gl_processed_data_stride),
-                                &mesh_ptr->gl_processed_data_stride);
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->gl_processed_data_total_elements),
-                                &mesh_ptr->gl_processed_data_total_elements);
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->n_gl_unique_vertices),
-                                &mesh_ptr->n_gl_unique_vertices);
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->gl_index_type),
-                                &mesh_ptr->gl_index_type);
+        /* Serialize processed GL data buffer */
+        ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data      != NULL &&
+                          mesh_ptr->gl_processed_data_size != 0    &&
+                          mesh_ptr->gl_storage_initialized,
+                          "Processed GL data is unavailable");
 
-    /* Store SH properties */
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->n_sh_bands),
-                                &mesh_ptr->n_sh_bands);
-    system_file_serializer_write(serializer,
-                                 sizeof(mesh_ptr->n_sh_components),
-                                &mesh_ptr->n_sh_components);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->gl_processed_data_size),
+                                    &mesh_ptr->gl_processed_data_size);
+        system_file_serializer_write(serializer,
+                                     mesh_ptr->gl_processed_data_size,
+                                     mesh_ptr->gl_processed_data);
 
-    /* Store layers */
-    const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
-
-    system_file_serializer_write(serializer,
-                                 sizeof(n_layers),
-                                &n_layers);
-
-    for (size_t n_layer = 0; n_layer < n_layers; ++n_layer)
-    {
-        _mesh_layer* layer = NULL;
-
-        system_resizable_vector_get_element_at(mesh_ptr->layers,
-                                               n_layer,
-                                              &layer);
-
-        ASSERT_DEBUG_SYNC(layer != NULL, "Could not retrieve layer info");
-        if (layer != NULL)
+        for (mesh_layer_data_stream_type stream_type = (mesh_layer_data_stream_type) 0;
+                                         stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
+                                       ++(int&)stream_type)
         {
-            const uint32_t n_layer_passes = system_resizable_vector_get_amount_of_elements(layer->passes);
+            system_file_serializer_write(serializer,
+                                         sizeof(mesh_ptr->gl_processed_data_stream_start_offset[0]),
+                                        &mesh_ptr->gl_processed_data_stream_start_offset[stream_type]);
+        }
 
-            /* Store all details of the layer. Skip any data that's needed to generate the final
-             * GL blob - we already have it!
-             */
-            system_file_serializer_write(serializer,
-                                         sizeof(layer->aabb_max),
-                                         layer->aabb_max);
-            system_file_serializer_write(serializer,
-                                         sizeof(layer->aabb_min),
-                                         layer->aabb_min);
-            system_file_serializer_write(serializer,
-                                         sizeof(layer->n_gl_unique_elements),
-                                         &layer->n_gl_unique_elements);
-            system_file_serializer_write(serializer,
-                                         sizeof(n_layer_passes),
-                                         &n_layer_passes);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->gl_processed_data_stride),
+                                    &mesh_ptr->gl_processed_data_stride);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->gl_processed_data_total_elements),
+                                    &mesh_ptr->gl_processed_data_total_elements);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->n_gl_unique_vertices),
+                                    &mesh_ptr->n_gl_unique_vertices);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->gl_index_type),
+                                    &mesh_ptr->gl_index_type);
 
-            /* Iterate over all layer passes */
-            for (uint32_t n_layer_pass = 0;
-                          n_layer_pass < n_layer_passes;
-                        ++n_layer_pass)
+        /* Store SH properties */
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->n_sh_bands),
+                                    &mesh_ptr->n_sh_bands);
+        system_file_serializer_write(serializer,
+                                     sizeof(mesh_ptr->n_sh_components),
+                                    &mesh_ptr->n_sh_components);
+
+        /* Store layers */
+        const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+
+        system_file_serializer_write(serializer,
+                                     sizeof(n_layers),
+                                    &n_layers);
+
+        for (size_t n_layer = 0; n_layer < n_layers; ++n_layer)
+        {
+            _mesh_layer* layer = NULL;
+
+            system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                   n_layer,
+                                                  &layer);
+
+            ASSERT_DEBUG_SYNC(layer != NULL, "Could not retrieve layer info");
+            if (layer != NULL)
             {
-                _mesh_layer_pass* pass_ptr = NULL;
+                const uint32_t n_layer_passes = system_resizable_vector_get_amount_of_elements(layer->passes);
 
-                if (system_resizable_vector_get_element_at(layer->passes,
-                                                           n_layer_pass,
-                                                          &pass_ptr) )
+                /* Store all details of the layer. Skip any data that's needed to generate the final
+                 * GL blob - we already have it!
+                 */
+                system_file_serializer_write(serializer,
+                                             sizeof(layer->aabb_max),
+                                             layer->aabb_max);
+                system_file_serializer_write(serializer,
+                                             sizeof(layer->aabb_min),
+                                             layer->aabb_min);
+                system_file_serializer_write(serializer,
+                                             sizeof(layer->n_gl_unique_elements),
+                                             &layer->n_gl_unique_elements);
+                system_file_serializer_write(serializer,
+                                             sizeof(n_layer_passes),
+                                             &n_layer_passes);
+
+                /* Iterate over all layer passes */
+                for (uint32_t n_layer_pass = 0;
+                              n_layer_pass < n_layer_passes;
+                            ++n_layer_pass)
                 {
-                    /* General properties */
-                    system_file_serializer_write(serializer,
-                                                 sizeof(pass_ptr->gl_bo_elements_offset),
-                                                &pass_ptr->gl_bo_elements_offset);
-                    system_file_serializer_write(serializer,
-                                                 sizeof(pass_ptr->gl_elements_max_index),
-                                                &pass_ptr->gl_elements_max_index);
-                    system_file_serializer_write(serializer,
-                                                 sizeof(pass_ptr->gl_elements_min_index),
-                                                &pass_ptr->gl_elements_min_index);
-                    system_file_serializer_write(serializer,
-                                                 sizeof(pass_ptr->n_elements),
-                                                &pass_ptr->n_elements);
-                    system_file_serializer_write(serializer,
-                                                 sizeof(pass_ptr->smoothing_angle),
-                                                &pass_ptr->smoothing_angle);
+                    _mesh_layer_pass* pass_ptr = NULL;
 
-                    /* Material name */
-                    system_hashed_ansi_string material_name = mesh_material_get_name(pass_ptr->material);
-
-                    ASSERT_DEBUG_SYNC(material_name != NULL,
-                                      "NULL material for layer pass [%d]",
-                                      n_layer_pass);
-
-                    /* Instead of the string, for improved loading performance, we'll just store an ID using
-                     * a map provided by the caller */
-                    void* material_id_ptr = NULL;
-
-                    if (!system_hash64map_get(material_name_to_id_map,
-                                              (system_hash64) material_name,
-                                              &material_id_ptr) )
+                    if (system_resizable_vector_get_element_at(layer->passes,
+                                                               n_layer_pass,
+                                                              &pass_ptr) )
                     {
-                        ASSERT_ALWAYS_SYNC(false,
-                                           "Could not map material name [%s] to an ID!",
-                                           system_hashed_ansi_string_get_buffer(material_name) );
+                        /* General properties */
+                        system_file_serializer_write(serializer,
+                                                     sizeof(pass_ptr->gl_bo_elements_offset),
+                                                    &pass_ptr->gl_bo_elements_offset);
+                        system_file_serializer_write(serializer,
+                                                     sizeof(pass_ptr->gl_elements_max_index),
+                                                    &pass_ptr->gl_elements_max_index);
+                        system_file_serializer_write(serializer,
+                                                     sizeof(pass_ptr->gl_elements_min_index),
+                                                    &pass_ptr->gl_elements_min_index);
+                        system_file_serializer_write(serializer,
+                                                     sizeof(pass_ptr->n_elements),
+                                                    &pass_ptr->n_elements);
+                        system_file_serializer_write(serializer,
+                                                     sizeof(pass_ptr->smoothing_angle),
+                                                    &pass_ptr->smoothing_angle);
+
+                        /* Material name */
+                        system_hashed_ansi_string material_name = mesh_material_get_name(pass_ptr->material);
+
+                        ASSERT_DEBUG_SYNC(material_name != NULL,
+                                          "NULL material for layer pass [%d]",
+                                          n_layer_pass);
+
+                        /* Instead of the string, for improved loading performance, we'll just store an ID using
+                         * a map provided by the caller */
+                        void* material_id_ptr = NULL;
+
+                        if (!system_hash64map_get(material_name_to_id_map,
+                                                  (system_hash64) material_name,
+                                                  &material_id_ptr) )
+                        {
+                            ASSERT_ALWAYS_SYNC(false,
+                                               "Could not map material name [%s] to an ID!",
+                                               system_hashed_ansi_string_get_buffer(material_name) );
+                        }
+                        else
+                        {
+                            uint32_t material_id = (uint32_t) material_id_ptr;
+
+                            system_file_serializer_write(serializer,
+                                                         sizeof(material_id),
+                                                        &material_id);
+                        }
                     }
                     else
                     {
-                        uint32_t material_id = (uint32_t) material_id_ptr;
-
-                        system_file_serializer_write(serializer,
-                                                     sizeof(material_id),
-                                                    &material_id);
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not retrieve mesh layer pass descriptor at index [%d]",
+                                          n_layer_pass);
                     }
-                }
-                else
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve mesh layer pass descriptor at index [%d]",
-                                      n_layer_pass);
-                }
-            } /* for (all layer passes) */
-        } /* if (layer != NULL) */
-    } /* for (size_t n_layer = 0; n_layer < n_layers; ++n_layer) */
+                } /* for (all layer passes) */
+            } /* if (layer != NULL) */
+        } /* for (size_t n_layer = 0; n_layer < n_layers; ++n_layer) */
+    } /* if (is_instantiated) */
+    else
+    {
+        /* Write the name of the instantiation parent */
+        system_file_serializer_write_hashed_ansi_string(serializer,
+                                                        ((_mesh*) mesh_ptr->instantiation_parent)->name);
+    }
 
     result = true;
     return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void mesh_set_as_instantiated(__in __notnull mesh mesh_to_modify,
+                                                 __in __notnull mesh source_mesh)
+{
+    _mesh* mesh_to_modify_ptr = (_mesh*) mesh_to_modify;
+    _mesh* source_mesh_ptr    = (_mesh*) source_mesh;
+
+    ASSERT_DEBUG_SYNC(mesh_to_modify != NULL,
+                      "Target mest is NULL");
+    ASSERT_DEBUG_SYNC(mesh_to_modify != source_mesh,
+                      "Cannot use the same mesh for instantiation");
+    ASSERT_DEBUG_SYNC(mesh_to_modify_ptr->instantiation_parent == NULL,
+                      "Mesh to be marked as instantiated is already instantiated!");
+    ASSERT_DEBUG_SYNC(source_mesh != NULL,
+                      "Source mesh is NULL");
+    ASSERT_DEBUG_SYNC(source_mesh_ptr->instantiation_parent == NULL,
+                      "Source mesh is instantiated!");
+
+    /* Release layer data */
+    _mesh_layer* layer_ptr = NULL;
+
+    while (system_resizable_vector_pop(mesh_to_modify_ptr->layers,
+                                      &layer_ptr) )
+    {
+        _mesh_deinit_mesh_layer(mesh_to_modify_ptr,
+                                layer_ptr,
+                                true); /* do_full_deinit */
+
+        delete layer_ptr;
+
+        layer_ptr = NULL;
+    } /* while (layers are defined) */
+
+    /* Release GPU data that may have already been generated */
+    if (mesh_to_modify_ptr->gl_processed_data != NULL)
+    {
+        delete [] mesh_to_modify_ptr->gl_processed_data;
+
+        mesh_to_modify_ptr->gl_processed_data      = NULL;
+        mesh_to_modify_ptr->gl_processed_data_size = 0;
+    }
+
+    if (mesh_to_modify_ptr->gl_bo_id != 0)
+    {
+        ogl_context_request_callback_from_context_thread(mesh_to_modify_ptr->gl_context,
+                                                         _mesh_release_renderer_callback,
+                                                         mesh_to_modify_ptr);
+    }
+
+    /* Mark the mesh as instantiated */
+    mesh_to_modify_ptr->instantiation_parent    = source_mesh;
+    mesh_to_modify_ptr->timestamp_last_modified = true;
+
+    mesh_retain(source_mesh);
 }
 
 #if 0

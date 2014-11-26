@@ -34,7 +34,17 @@ typedef enum
      * from the rendering thread. Raised, if CPU-side GL blob was updated and the rendering
      * thread was unavailable at the modification time.
      */
-     MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED
+     MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
+
+    /* not settable, mesh.
+     *
+     * This property stores a non-null mesh pointer, if the mesh was created as, or marked
+     * as instantiated. The pointer points to a mesh that holds the GL & layer data which
+     * are useful for the rendering process.
+     *
+     * If the value is NULL, the mesh is not instantiated.
+     */
+     MESH_PROPERTY_INSTANTIATION_PARENT
 } mesh_property;
 
 typedef enum

@@ -858,7 +858,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     }
 
     /* Load meshes */
-    uint32_t n_meshes = 0;
+    system_hash64map mesh_name_to_mesh_map = system_hash64map_create(sizeof(mesh) );
+    uint32_t         n_meshes              = 0;
 
     result &= system_file_serializer_read(serializer,
                                           sizeof(n_meshes),
@@ -868,8 +869,9 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                       n_mesh < n_meshes;
                     ++n_mesh)
     {
-        mesh         mesh_gpu    = NULL;
-        unsigned int mesh_gpu_id = 0;
+        mesh                      mesh_gpu     = NULL;
+        unsigned int              mesh_gpu_id  = 0;
+        system_hashed_ansi_string mesh_gpu_name = NULL;
 
         result &= system_file_serializer_read(serializer,
                                               sizeof(mesh_gpu_id),
@@ -878,7 +880,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
         mesh_gpu = mesh_load_with_serializer(context,
                                              0, /* flags */
                                              serializer,
-                                             material_id_to_mesh_material_map);
+                                             material_id_to_mesh_material_map,
+                                             mesh_name_to_mesh_map);
 
         ASSERT_DEBUG_SYNC(mesh_gpu != NULL,
                           "Could not load mesh data");
@@ -889,6 +892,10 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
             goto end_error;
         }
 
+        mesh_get_property(mesh_gpu,
+                          MESH_PROPERTY_NAME,
+                         &mesh_gpu_name);
+
         /* Store the mesh in internal map that we'll need to use to initialize
          * mesh instances.
          */
@@ -898,6 +905,12 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
 
         system_hash64map_insert(mesh_id_to_mesh_map,
                                 (system_hash64) mesh_gpu_id,
+                                mesh_gpu,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
+
+        system_hash64map_insert(mesh_name_to_mesh_map,
+                                system_hashed_ansi_string_get_hash(mesh_gpu_name),
                                 mesh_gpu,
                                 NULL,  /* on_remove_callback */
                                 NULL); /* on_remove_callback_user_arg */
@@ -1013,6 +1026,13 @@ end:
         system_hash64map_release(mesh_id_to_mesh_map);
 
         mesh_id_to_mesh_map = NULL;
+    }
+
+    if (mesh_name_to_mesh_map != NULL)
+    {
+        system_hash64map_release(mesh_name_to_mesh_map);
+
+        mesh_name_to_mesh_map = NULL;
     }
 
     if (serialized_scene_cameras != NULL)
@@ -1490,43 +1510,61 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
         result &= mesh_material_save(serializer, material);
     } /* for (unique materials) */
 
-    /* Serialize meshes */
+    /* Serialize meshes: first store the instantiation parent meshes,
+     *                   the follow with instanced meshes.
+     */
     const unsigned int n_meshes = system_hash64map_get_amount_of_elements(unique_meshes_to_id_map);
 
     system_file_serializer_write(serializer,
                                  sizeof(n_meshes),
                                 &n_meshes);
 
-    for (unsigned int n_mesh = 0;
-                      n_mesh < n_meshes;
-                    ++n_mesh)
+    for (unsigned int n_iteration = 0;
+                      n_iteration < 2; /* instantiation parents, then instanced meshes */
+                    ++n_iteration)
     {
-        system_hash64 mesh_gpu_hash   = 0;
-        void*         mesh_gpu_id_ptr = 0;
-
-        if (system_hash64map_get_element_at(unique_meshes_to_id_map,
-                                            n_mesh,
-                                            &mesh_gpu_id_ptr,
-                                            &mesh_gpu_hash) )
+        for (unsigned int n_mesh = 0;
+                          n_mesh < n_meshes;
+                        ++n_mesh)
         {
-            mesh         mesh_gpu    = (mesh) mesh_gpu_hash;
-            unsigned int mesh_gpu_id = (unsigned int) mesh_gpu_id_ptr;
+            system_hash64 mesh_gpu_hash   = 0;
+            void*         mesh_gpu_id_ptr = 0;
 
-            system_file_serializer_write(serializer,
-                                         sizeof(mesh_gpu_id),
-                                        &mesh_gpu_id);
+            if (system_hash64map_get_element_at(unique_meshes_to_id_map,
+                                                n_mesh,
+                                                &mesh_gpu_id_ptr,
+                                                &mesh_gpu_hash) )
+            {
+                mesh         mesh_gpu    = (mesh) mesh_gpu_hash;
+                unsigned int mesh_gpu_id = (unsigned int) mesh_gpu_id_ptr;
 
-            result &= mesh_save_with_serializer(mesh_gpu,
-                                                serializer,
-                                                mesh_material_name_to_id_map);
+                /* Is this an instanced mesh? */
+                mesh mesh_instantiation_parent_gpu = NULL;
 
-            system_hash64map_insert(gpu_mesh_to_id_map,
-                                    (system_hash64) mesh_gpu,
-                                    (void*) mesh_gpu_id,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-    } /* for (all meshes) */
+                mesh_get_property(mesh_gpu,
+                                  MESH_PROPERTY_INSTANTIATION_PARENT,
+                                 &mesh_instantiation_parent_gpu);
+
+                if (mesh_instantiation_parent_gpu == NULL && (n_iteration == 0) ||
+                    mesh_instantiation_parent_gpu != NULL && (n_iteration == 1) )
+                {
+                    system_file_serializer_write(serializer,
+                                                 sizeof(mesh_gpu_id),
+                                                &mesh_gpu_id);
+
+                    result &= mesh_save_with_serializer(mesh_gpu,
+                                                        serializer,
+                                                        mesh_material_name_to_id_map);
+
+                    system_hash64map_insert(gpu_mesh_to_id_map,
+                                            (system_hash64) mesh_gpu,
+                                            (void*) mesh_gpu_id,
+                                            NULL,  /* on_remove_callback */
+                                            NULL); /* on_remove_callback_user_arg */
+                }
+            }
+        } /* for (all meshes) */
+    } /* for (both iterations) */
 
     /* Serialize mesh instances */
     for (uint32_t n_mesh_instance = 0;

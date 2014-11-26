@@ -139,13 +139,15 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh,
 PUBLIC EMERALD_API mesh mesh_load(__in __notnull ogl_context               context,
                                   __in           mesh_creation_flags       flags,
                                   __in __notnull system_hashed_ansi_string full_file_path,
-                                  __in __notnull system_hash64map          material_id_to_mesh_material_map);
+                                  __in __notnull system_hash64map          material_id_to_mesh_material_map,
+                                  __in __notnull system_hash64map          mesh_name_to_mesh_map);
 
 /** TODO */
 PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context            context,
                                                   __in           mesh_creation_flags    flags,
                                                   __in __notnull system_file_serializer serializer,
-                                                  __in __notnull system_hash64map       material_id_to_mesh_material_map);
+                                                  __in __notnull system_hash64map       material_id_to_mesh_material_map,
+                                                  __in __notnull system_hash64map       mesh_name_to_mesh_map);
 
 /** TODO */
 PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh,
@@ -156,6 +158,22 @@ PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh,
 PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh,
                                                   __in __notnull system_file_serializer,
                                                   __in __notnull system_hash64map       material_name_to_id_map);
+
+/** TODO.
+ *
+ *  Releases any layer/layer pass data that was set for the mesh and marks the mesh
+ *  as an instance of @param source_mesh . Not only does this prevents from inefficient
+ *  GL blob construction, but also provides a mean for draw call batching.
+ *
+ *  A mesh that's been marked as instantiated cannot have its layer/layer pass data
+ *  changed.
+ *
+ *  @param mesh_to_modify TODO
+ *  @param source_mesh    TODO
+ *
+ **/
+PUBLIC EMERALD_API void mesh_set_as_instantiated(__in __notnull mesh mesh_to_modify,
+                                                 __in __notnull mesh source_mesh);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_set_layer_property(__in __notnull mesh,
