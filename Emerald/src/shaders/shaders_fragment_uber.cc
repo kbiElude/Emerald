@@ -106,8 +106,6 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull og
     /* Add material-specific input attributes & uniforms if not already defined. Note that all the names
      * are suffixed with light index.
      */
-    ASSERT_DEBUG_SYNC(n_item == 0, "TODO"); /* TODO: Assume material uses one light data item - COLLADA-specific assertion */
-
     struct _properties
     {
         shaders_fragment_uber_property       property;
@@ -125,16 +123,78 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull og
     }
     properties_data[] =
     {
-        {SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,  SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D, TYPE_VEC4,    "ambient",  TYPE_SAMPLER2D, "ambient_sampler",  "in_fs_ambient_uv",  "object_ambient_uv"},
-        {SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,  SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,      TYPE_VEC4,    "ambient",  TYPE_UNKNOWN},
-        {SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,  SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D, TYPE_UNKNOWN, NULL,       TYPE_SAMPLER2D, "diffuse_sampler",  "in_fs_diffuse_uv",  "object_diffuse_uv"},
-        {SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,  SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,      TYPE_VEC4,    "diffuse",  TYPE_UNKNOWN},
-        {SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE, SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D, TYPE_UNKNOWN, NULL,       TYPE_SAMPLER2D, "emission_sampler", "in_fs_emission_uv", "object_emission_uv"},
-        {SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE, SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,      TYPE_VEC4,    "emission", TYPE_UNKNOWN},
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
+
+            TYPE_VEC4,
+            "ambient",
+
+            TYPE_SAMPLER2D,
+            "ambient_sampler",
+            "in_fs_ambient_uv",
+            "object_ambient_uv"
+        },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
+
+            TYPE_VEC4,
+            "ambient",
+
+            TYPE_UNKNOWN
+        },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
+
+            TYPE_UNKNOWN,
+            NULL,
+
+            TYPE_SAMPLER2D,
+            "diffuse_sampler",
+            "in_fs_diffuse_uv",
+            "object_diffuse_uv"
+        },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
+
+            TYPE_VEC4,
+            "diffuse",
+            TYPE_UNKNOWN
+        },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
+
+            TYPE_UNKNOWN,
+            NULL,
+
+            TYPE_SAMPLER2D,
+            "emission_sampler",
+            "in_fs_emission_uv",
+            "object_emission_uv"
+        },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
+
+            TYPE_VEC4,
+            "emission",
+            TYPE_UNKNOWN
+        },
     };
     const unsigned int n_properties = sizeof(properties_data) / sizeof(properties_data[0]);
 
-    for (unsigned int n_property = 0; n_property < n_properties; ++n_property)
+    for (unsigned int n_property = 0;
+                      n_property < n_properties;
+                    ++n_property)
     {
         const _properties& iteration_data = properties_data[n_property];
 
@@ -165,7 +225,9 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull og
                         callback_data.fs_attribute_type = TYPE_VEC2;
                         callback_data.vs_attribute_name = system_hashed_ansi_string_create(iteration_data.uv_vs_input_attribute_name);
 
-                        pCallbackProc(SHADERS_FRAGMENT_UBER_PARENT_CALLBACK_NEW_FRAGMENT_INPUT, &callback_data, user_arg);
+                        pCallbackProc(SHADERS_FRAGMENT_UBER_PARENT_CALLBACK_NEW_FRAGMENT_INPUT,
+                                     &callback_data,
+                                      user_arg);
                     }
                     else
                     {
@@ -336,7 +398,9 @@ PRIVATE void _shaders_fragment_uber_add_sh3_diffuse_factor(__in __notnull ogl_sh
     /* Add SH-specific input attribute */
     std::stringstream attribute_name_sstream;
 
-    attribute_name_sstream << "light" << n_light << "_mesh_ambient_diffuse_sh3";
+    attribute_name_sstream << "light"
+                           << n_light
+                           << "_mesh_ambient_diffuse_sh3";
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
@@ -362,7 +426,9 @@ PRIVATE void _shaders_fragment_uber_add_sh4_diffuse_factor(__in __notnull ogl_sh
     /* Add SH-specific input attribute */
     std::stringstream attribute_name_sstream;
 
-    attribute_name_sstream << "light" << n_light << "_mesh_ambient_diffuse_sh4";
+    attribute_name_sstream << "light"
+                           << n_light
+                           << "_mesh_ambient_diffuse_sh4";
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
@@ -393,7 +459,8 @@ PRIVATE void _shaders_fragment_uber_release(__in __notnull __deallocate(mem) voi
     {
         _shaders_fragment_uber_item* item_ptr = NULL;
 
-        while (system_resizable_vector_pop(data_ptr->added_items, &item_ptr) )
+        while (system_resizable_vector_pop(data_ptr->added_items,
+                                          &item_ptr) )
         {
             switch (item_ptr->type)
             {
@@ -618,11 +685,19 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         if (light == UBER_LIGHT_LAMBERT_DIRECTIONAL)
         {
-            line << "vec3 light" << n_items << "_vector = -" << light_direction_name_sstream.str() << ";\n";
+            line << "vec3 light"
+                 << n_items
+                 << "_vector = -"
+                 << light_direction_name_sstream.str()
+                 << ";\n";
         }
         else
         {
-            line << "vec3 light" << n_items << "_vector = normalize(" << light_world_pos_name_sstream.str() << ".xyz - world_vertex);\n";
+            line << "vec3 light"
+                 << n_items
+                 << "_vector = normalize("
+                 << light_world_pos_name_sstream.str()
+                 << ".xyz - world_vertex);\n";
         }
 
         ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
@@ -833,7 +908,9 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __n
     const _shaders_fragment_uber* uber_ptr      = (const _shaders_fragment_uber*) uber;
     _shaders_fragment_uber_item*  uber_item_ptr = NULL;
 
-    if (system_resizable_vector_get_element_at(uber_ptr->added_items, item_id, &uber_item_ptr) )
+    if (system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                               item_id,
+                                              &uber_item_ptr) )
     {
         ASSERT_DEBUG_SYNC(uber_item_ptr->type == SHADERS_FRAGMENT_UBER_ITEM_LIGHT,
                           "Light item property getter operating on a non-light uber item");
@@ -890,7 +967,8 @@ PUBLIC EMERALD_API void shaders_fragment_uber_recompile(__in __notnull shaders_f
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
-    bool                      result      = ogl_shader_set_body                   (uber_ptr->shader, shader_body);
+    bool                      result      = ogl_shader_set_body                   (uber_ptr->shader,
+                                                                                   shader_body);
 
     ASSERT_DEBUG_SYNC(result, "ogl_shader_set_body() failed");
     if (!result)
