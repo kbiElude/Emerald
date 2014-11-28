@@ -196,36 +196,45 @@ typedef struct _scene_graph_node_translation_dynamic
     }
 } _scene_graph_node_translation_dynamic;
 
+typedef struct _scene_graph_node_transformation_matrix
+{
+    system_matrix4x4 data;
+    bool             has_fired_event;
+
+    _scene_graph_node_transformation_matrix()
+    {
+        data            = NULL;
+        has_fired_event = false;
+    }
+} _scene_graph_node_transformation_matrix;
+
 typedef struct _scene_graph_node
 {
     /* Make sure to update scene_graph_replace_node(), if you add or remove any of the existing fields */
-    system_resizable_vector attached_cameras;
-    system_resizable_vector attached_lights;
-    system_resizable_vector attached_meshes;
-    system_dag_node         dag_node;
-    void*                   data;
-    system_timeline_time    last_update_time;
-    _scene_graph_node*      parent_node;
-    PFNUPDATEMATRIXPROC     pUpdateMatrix;
-    scene_graph_node_tag    tag;
-    system_matrix4x4        transformation_matrix;
-    int                     transformation_matrix_index;
-    scene_graph_node        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
-    scene_graph_node_type   type;
+    system_resizable_vector                 attached_cameras;
+    system_resizable_vector                 attached_lights;
+    system_resizable_vector                 attached_meshes;
+    system_dag_node                         dag_node;
+    void*                                   data;
+    system_timeline_time                    last_update_time;
+    _scene_graph_node*                      parent_node;
+    PFNUPDATEMATRIXPROC                     pUpdateMatrix;
+    scene_graph_node_tag                    tag;
+    _scene_graph_node_transformation_matrix transformation_matrix;
+    scene_graph_node                        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
+    scene_graph_node_type                   type;
 
     _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
     {
-        attached_cameras            = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_lights             = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_meshes             = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        dag_node                    = NULL;
-        last_update_time            = -1;
-        parent_node                 = in_parent_node;
-        pUpdateMatrix               = NULL;
-        tag                         = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-        transformation_matrix       = NULL;
-        transformation_matrix_index = -1;
-        type                        = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
+        attached_cameras = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_lights  = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_meshes  = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        dag_node         = NULL;
+        last_update_time = -1;
+        parent_node      = in_parent_node;
+        pUpdateMatrix    = NULL;
+        tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+        type             = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
         memset(transformation_nodes_by_tag,
                0,
@@ -360,11 +369,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*    
 PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull _scene_graph_node*   node_ptr,
                                                              __in           system_timeline_time time)
 {
-    if (node_ptr->transformation_matrix != NULL)
+    if (node_ptr->transformation_matrix.data != NULL)
     {
-        system_matrix4x4_release(node_ptr->transformation_matrix);
+        system_matrix4x4_release(node_ptr->transformation_matrix.data);
 
-        node_ptr->transformation_matrix = NULL;
+        node_ptr->transformation_matrix.data = NULL;
     }
 
     if (node_ptr->type != SCENE_GRAPH_NODE_TYPE_ROOT)
@@ -372,15 +381,15 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull _sce
         ASSERT_DEBUG_SYNC(node_ptr->parent_node->last_update_time == time,
                           "Parent node's update time does not match the computation time!");
 
-        node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                  node_ptr->parent_node->transformation_matrix,
-                                                                  time);
+        node_ptr->transformation_matrix.data = node_ptr->pUpdateMatrix(node_ptr->data,
+                                                                       node_ptr->parent_node->transformation_matrix.data,
+                                                                       time);
     }
     else
     {
-        node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                  NULL,
-                                                                  time);
+        node_ptr->transformation_matrix.data = node_ptr->pUpdateMatrix(node_ptr->data,
+                                                                       NULL,
+                                                                       time);
     }
 
     node_ptr->last_update_time = time;
@@ -1692,7 +1701,7 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
                 _scene_graph_compute_node_transformation_matrix(node_ptr, time);
             }
 
-            ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix != NULL,
+            ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix.data != NULL,
                               "pUpdateMatrix() returned NULL");
         } /* for (all sorted nodes) */
     }
@@ -2169,7 +2178,7 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
 
         case SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX:
         {
-            *(system_matrix4x4*) out_result = node_ptr->transformation_matrix;
+            *(system_matrix4x4*) out_result = node_ptr->transformation_matrix.data;
 
             break;
         }
@@ -2525,14 +2534,12 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                 goto end;
             }
 
-            node_ptr->transformation_matrix_index = -1;
+            node_ptr->transformation_matrix.has_fired_event = false;
         } /* for (all sorted nodes) */
 
         /* Iterate through the sorted nodes. Fire the 'on new transformation matrix' only for the first object
          * associated with the node, and then continue with object-specific events.
          **/
-        int indices_used = 0;
-
         for (unsigned int n_sorted_node = 0;
                           n_sorted_node < n_sorted_nodes;
                         ++n_sorted_node)
@@ -2568,16 +2575,15 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                 n_attached_meshes  != 0)
             {
                 /* Ah-hah. Has this transformation matrix been already fired? */
-                if (node_ptr->transformation_matrix_index == -1)
+                if (!node_ptr->transformation_matrix.has_fired_event)
                 {
                     /* Nope, issue a notification */
                     if (on_new_transformation_matrix_proc != NULL)
                     {
-                        on_new_transformation_matrix_proc(node_ptr->transformation_matrix, user_arg);
+                        on_new_transformation_matrix_proc(node_ptr->transformation_matrix.data, user_arg);
                     }
 
-                    node_ptr->transformation_matrix_index = indices_used;
-                    indices_used++;
+                    node_ptr->transformation_matrix.has_fired_event = true;
                 }
 
                 if (insert_camera_proc != NULL ||
