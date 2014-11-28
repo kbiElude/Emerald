@@ -24,7 +24,9 @@
 /* Private declarations */
 typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*                data,
                                                 system_matrix4x4     current_matrix,
-                                                system_timeline_time time);
+                                                system_timeline_time prev_keyframe_time,
+                                                system_timeline_time next_keyframe_time,
+                                                float                lerp_factor);
 
 /* Forward declarations */
 PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*                 data,
@@ -196,36 +198,45 @@ typedef struct _scene_graph_node_translation_dynamic
     }
 } _scene_graph_node_translation_dynamic;
 
+typedef struct _scene_graph_node_transformation_matrix
+{
+    system_matrix4x4 data;
+    bool             has_fired_event;
+
+    _scene_graph_node_transformation_matrix()
+    {
+        data            = NULL;
+        has_fired_event = false;
+    }
+} _scene_graph_node_transformation_matrix;
+
 typedef struct _scene_graph_node
 {
     /* Make sure to update scene_graph_replace_node(), if you add or remove any of the existing fields */
-    system_resizable_vector attached_cameras;
-    system_resizable_vector attached_lights;
-    system_resizable_vector attached_meshes;
-    system_dag_node         dag_node;
-    void*                   data;
-    system_timeline_time    last_update_time;
-    _scene_graph_node*      parent_node;
-    PFNUPDATEMATRIXPROC     pUpdateMatrix;
-    scene_graph_node_tag    tag;
-    system_matrix4x4        transformation_matrix;
-    int                     transformation_matrix_index;
-    scene_graph_node        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
-    scene_graph_node_type   type;
+    system_resizable_vector                 attached_cameras;
+    system_resizable_vector                 attached_lights;
+    system_resizable_vector                 attached_meshes;
+    system_dag_node                         dag_node;
+    void*                                   data;
+    system_timeline_time                    last_update_time;
+    _scene_graph_node*                      parent_node;
+    PFNUPDATEMATRIXPROC                     pUpdateMatrix;
+    scene_graph_node_tag                    tag;
+    _scene_graph_node_transformation_matrix transformation_matrix;
+    scene_graph_node                        transformation_nodes_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
+    scene_graph_node_type                   type;
 
     _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
     {
-        attached_cameras            = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_lights             = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_meshes             = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        dag_node                    = NULL;
-        last_update_time            = -1;
-        parent_node                 = in_parent_node;
-        pUpdateMatrix               = NULL;
-        tag                         = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-        transformation_matrix       = NULL;
-        transformation_matrix_index = -1;
-        type                        = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
+        attached_cameras = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_lights  = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_meshes  = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        dag_node         = NULL;
+        last_update_time = -1;
+        parent_node      = in_parent_node;
+        pUpdateMatrix    = NULL;
+        tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+        type             = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
 
         memset(transformation_nodes_by_tag,
                0,
@@ -301,8 +312,10 @@ typedef struct _scene_graph
 
 
 /** TODO */
-PRIVATE system_timeline_time _scene_graph_align_time_to_fps(__in __notnull scene_graph          graph,
-                                                            __in           system_timeline_time time)
+PRIVATE void _scene_graph_align_time_to_fps(__in      __notnull scene_graph           graph,
+                                            __in                system_timeline_time  time,
+                                            __out_opt           system_timeline_time* out_prev_keyframe_time_ptr,
+                                            __out_opt           system_timeline_time* out_next_keyframe_time_ptr)
 {
     float         fps       = 0.0f;
     _scene_graph* graph_ptr = (_scene_graph*) graph;
@@ -311,8 +324,7 @@ PRIVATE system_timeline_time _scene_graph_align_time_to_fps(__in __notnull scene
                        SCENE_PROPERTY_FPS,
                       &fps);
 
-    /* Only adjust if FPS limiter is enabled */
-    if (fabs(fps) > 1e-5f)
+    if (fabs(fps) >= 1e-5f)
     {
         /* How many milliseconds per frame? */
         const unsigned int ms_per_frame = (unsigned int) (1000.0f /* ms */ / fps);
@@ -327,27 +339,41 @@ PRIVATE system_timeline_time _scene_graph_align_time_to_fps(__in __notnull scene
 
         time_ms_modulo_ms_per_frame = time_ms % ms_per_frame;
 
-        if (time_ms_modulo_ms_per_frame <= ms_per_frame_boundary)
+        if (out_prev_keyframe_time_ptr != NULL)
         {
-            /* Align to the previous closest frame */
-            time_ms -= time_ms_modulo_ms_per_frame;
+            unsigned int temp_aligned_time_ms = time_ms - time_ms_modulo_ms_per_frame;
+
+            *out_prev_keyframe_time_ptr = system_time_get_timeline_time_for_msec(temp_aligned_time_ms);
         }
-        else
+
+        if (out_next_keyframe_time_ptr != NULL)
         {
             /* Align to the next closest frame */
-            time_ms += ms_per_frame - time_ms_modulo_ms_per_frame;
+            unsigned int temp_aligned_time_ms = time_ms + ms_per_frame - time_ms_modulo_ms_per_frame;
+
+            *out_next_keyframe_time_ptr = system_time_get_timeline_time_for_msec(temp_aligned_time_ms);
+        }
+    } /* if (fabs(fps) >= 1e-5f) */
+    else
+    {
+        if (out_prev_keyframe_time_ptr != NULL)
+        {
+            *out_prev_keyframe_time_ptr = time;
         }
 
-        time = system_time_get_timeline_time_for_msec(time_ms);
+        if (out_next_keyframe_time_ptr != NULL)
+        {
+            *out_next_keyframe_time_ptr = time;
+        }
     }
-
-    return time;
 }
 
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*                data,
                                                         __in __notnull system_matrix4x4     current_matrix,
-                                                        __in           system_timeline_time time)
+                                                        __in           system_timeline_time prev_keyframe_time,
+                                                        __in           system_timeline_time next_keyframe_time,
+                                                        __in           float                lerp_factor)
 {
     /* Ignore current matrix, just return an identity matrix */
     system_matrix4x4 result = system_matrix4x4_create();
@@ -357,30 +383,56 @@ PRIVATE system_matrix4x4 _scene_graph_compute_root_node(__in __notnull void*    
 }
 
 /** TODO */
-PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull _scene_graph_node*   node_ptr,
+PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull scene_graph          graph,
+                                                             __in __notnull _scene_graph_node*   node_ptr,
                                                              __in           system_timeline_time time)
 {
-    if (node_ptr->transformation_matrix != NULL)
+    if (node_ptr->transformation_matrix.data != NULL)
     {
-        system_matrix4x4_release(node_ptr->transformation_matrix);
+        system_matrix4x4_release(node_ptr->transformation_matrix.data);
 
-        node_ptr->transformation_matrix = NULL;
+        node_ptr->transformation_matrix.data = NULL;
     }
 
+    /* Retrieve keyframe data */
+    float                lerp_factor        = 0.0f;
+    system_timeline_time prev_keyframe_time = 0;
+    system_timeline_time next_keyframe_time = 0;
+
+    _scene_graph_align_time_to_fps(graph,
+                                   time,
+                                  &prev_keyframe_time,
+                                  &next_keyframe_time);
+
+    if (next_keyframe_time != prev_keyframe_time)
+    {
+        lerp_factor = float(time - prev_keyframe_time) / float(next_keyframe_time - prev_keyframe_time);
+    }
+    else
+    {
+        /* This path will be entered if there is no FPS limiter currently enabled */
+        lerp_factor = 0.0f;
+    }
+
+    /* Calculate new transformation matrix */
     if (node_ptr->type != SCENE_GRAPH_NODE_TYPE_ROOT)
     {
         ASSERT_DEBUG_SYNC(node_ptr->parent_node->last_update_time == time,
                           "Parent node's update time does not match the computation time!");
 
-        node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                  node_ptr->parent_node->transformation_matrix,
-                                                                  time);
+        node_ptr->transformation_matrix.data = node_ptr->pUpdateMatrix(node_ptr->data,
+                                                                       node_ptr->parent_node->transformation_matrix.data,
+                                                                       prev_keyframe_time,
+                                                                       next_keyframe_time,
+                                                                       lerp_factor);
     }
     else
     {
-        node_ptr->transformation_matrix = node_ptr->pUpdateMatrix(node_ptr->data,
-                                                                  NULL,
-                                                                  time);
+        node_ptr->transformation_matrix.data = node_ptr->pUpdateMatrix(node_ptr->data,
+                                                                       NULL,
+                                                                       prev_keyframe_time,
+                                                                       next_keyframe_time,
+                                                                       lerp_factor);
     }
 
     node_ptr->last_update_time = time;
@@ -389,12 +441,15 @@ PRIVATE void _scene_graph_compute_node_transformation_matrix(__in __notnull _sce
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*                data,
                                                       __in __notnull system_matrix4x4     current_matrix,
-                                                      __in           system_timeline_time time)
+                                                      __in           system_timeline_time prev_keyframe_time,
+                                                      __in           system_timeline_time next_keyframe_time,
+                                                      __in           float                lerp_factor)
 {
     _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
 
-    system_matrix4x4_set_from_matrix4x4(new_matrix, current_matrix);
+    system_matrix4x4_set_from_matrix4x4(new_matrix,
+                                        current_matrix);
 
     return new_matrix;
 }
@@ -402,34 +457,61 @@ PRIVATE system_matrix4x4 _scene_graph_compute_general(__in __notnull void*      
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull void*                data,
                                                                __in __notnull system_matrix4x4     current_matrix,
-                                                               __in           system_timeline_time time)
+                                                               __in           system_timeline_time prev_keyframe_time,
+                                                               __in           system_timeline_time next_keyframe_time,
+                                                               __in           float                lerp_factor)
 {
     _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) data;
     system_matrix4x4                    new_matrix    = system_matrix4x4_create();
     system_matrix4x4                    result        = NULL;
-    float                               rotation[4];
+    float                               rotation_final        [4];
+    float                               rotation_prev_keyframe[4];
+    float                               rotation_next_keyframe[4];
+
+    for (uint32_t n_keyframe = 0;
+                  n_keyframe < 2; /* prev, next */
+                ++n_keyframe)
+    {
+        float*               result_rotation_ptr = (n_keyframe == 0) ? rotation_prev_keyframe
+                                                                     : rotation_next_keyframe;
+        system_timeline_time time                = (n_keyframe == 0) ? prev_keyframe_time
+                                                                     : next_keyframe_time;
+
+        for (uint32_t n_component = 0;
+                      n_component < 4;
+                    ++n_component)
+        {
+            if (!curve_container_get_value(node_data_ptr->curves[n_component],
+                                           time,
+                                           false, /* should_force */
+                                           node_data_ptr->variant_float) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "curve_container_get_value() failed.");
+            }
+
+            system_variant_get_float(node_data_ptr->variant_float,
+                                     result_rotation_ptr + n_component);
+        } /* for (all components) */
+    } /* for (both keyframes) */
+
+    /* Lerp to calculate the final rotation values */
+    ASSERT_DEBUG_SYNC(lerp_factor >= 0.0f && lerp_factor <= 1.0f,
+                      "LERP factor is invalid");
 
     for (uint32_t n_component = 0;
                   n_component < 4;
                 ++n_component)
     {
-        if (!curve_container_get_value(node_data_ptr->curves[n_component],
-                                       time,
-                                       false, /* should_force */
-                                       node_data_ptr->variant_float) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "curve_container_get_value() failed.");
-        }
-
-        system_variant_get_float(node_data_ptr->variant_float,
-                                 rotation + n_component);
-    } /* for (three components) */
+        rotation_final[n_component] = rotation_prev_keyframe[n_component] +
+                                      lerp_factor                         *
+                                      (rotation_next_keyframe[n_component] - rotation_prev_keyframe[n_component]);
+    } /* for (all components) */
 
     system_matrix4x4_set_to_identity(new_matrix);
     system_matrix4x4_rotate         (new_matrix,
-                                     node_data_ptr->uses_radians ? rotation[0] : DEG_TO_RAD(rotation[0]),
-                                     rotation + 1);
+                                     node_data_ptr->uses_radians ? rotation_final[0] : DEG_TO_RAD(rotation_final[0]),
+                                     rotation_final + 1);
 
     result = system_matrix4x4_create_by_mul(current_matrix,
                                             new_matrix);
@@ -442,34 +524,64 @@ PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic(__in __notnull vo
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*                data,
                                                             __in __notnull system_matrix4x4     current_matrix,
-                                                            __in           system_timeline_time time)
+                                                            __in           system_timeline_time prev_keyframe_time,
+                                                            __in           system_timeline_time next_keyframe_time,
+                                                            __in           float                lerp_factor)
 {
     _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) data;
     system_matrix4x4                 new_matrix    = system_matrix4x4_create();
     system_matrix4x4                 result        = NULL;
-    float                            scale[3];
+    float                            scale_final        [3];
+    float                            scale_prev_keyframe[3];
+    float                            scale_next_keyframe[3];
+
+    for (uint32_t n_keyframe = 0;
+                  n_keyframe < 2; /* prev, next */
+                ++n_keyframe)
+    {
+        float*               result_scale_ptr = (n_keyframe == 0) ? scale_prev_keyframe
+                                                                  : scale_next_keyframe;
+        system_timeline_time time             = (n_keyframe == 0) ? prev_keyframe_time
+                                                                  : next_keyframe_time;
+
+        for (uint32_t n_component = 0;
+                      n_component < 3;
+                    ++n_component)
+        {
+            if (!curve_container_get_value(node_data_ptr->curves[n_component],
+                                           time,
+                                           false, /* should_force */
+                                           node_data_ptr->variant_float) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "curve_container_get_value() failed.");
+            }
+
+            system_variant_get_float(node_data_ptr->variant_float,
+                                     result_scale_ptr + n_component);
+        } /* for (all components) */
+    } /* for (both keyframes) */
+
+    /* Lerp to calculate the final scale values */
+    ASSERT_DEBUG_SYNC(lerp_factor >= 0.0f && lerp_factor <= 1.0f,
+                      "LERP factor is invalid");
 
     for (uint32_t n_component = 0;
                   n_component < 3;
                 ++n_component)
     {
-        if (!curve_container_get_value(node_data_ptr->curves[n_component],
-                                       time,
-                                       false, /* should_force */
-                                       node_data_ptr->variant_float) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "curve_container_get_value() failed.");
-        }
-
-        system_variant_get_float(node_data_ptr->variant_float,
-                                 scale + n_component);
-    } /* for (three components) */
+        scale_final[n_component] = scale_prev_keyframe[n_component] +
+                                   lerp_factor                      *
+                                   (scale_next_keyframe[n_component] - scale_prev_keyframe[n_component]);
+    } /* for (all components) */
 
     system_matrix4x4_set_to_identity(new_matrix);
-    system_matrix4x4_scale          (new_matrix, scale);
+    system_matrix4x4_scale          (new_matrix,
+                                     scale_final);
 
-    result = system_matrix4x4_create_by_mul(current_matrix, new_matrix);
+    result = system_matrix4x4_create_by_mul(current_matrix,
+                                            new_matrix);
+
     system_matrix4x4_release(new_matrix);
 
     return result;
@@ -478,44 +590,77 @@ PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic(__in __notnull void*
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4(__in __notnull void*                data,
                                                                __in __notnull system_matrix4x4     current_matrix,
-                                                               __in           system_timeline_time time)
+                                                               __in           system_timeline_time prev_keyframe_time,
+                                                               __in           system_timeline_time next_keyframe_time,
+                                                               __in           float                lerp_factor)
 {
     _scene_graph_node_matrix4x4_static* node_data_ptr = (_scene_graph_node_matrix4x4_static*) data;
 
-    return system_matrix4x4_create_by_mul(current_matrix, node_data_ptr->matrix);
+    return system_matrix4x4_create_by_mul(current_matrix,
+                                          node_data_ptr->matrix);
 }
 
 /** TODO */
 PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull void*                data,
                                                                   __in __notnull system_matrix4x4     current_matrix,
-                                                                  __in           system_timeline_time time)
+                                                                  __in           system_timeline_time prev_keyframe_time,
+                                                                  __in           system_timeline_time next_keyframe_time,
+                                                                  __in           float                lerp_factor)
 {
     _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) data;
     system_matrix4x4                       new_matrix    = system_matrix4x4_create();
     system_matrix4x4                       result        = NULL;
-    float                                  translation[3];
+    float                                  translation_final        [3];
+    float                                  translation_prev_keyframe[3];
+    float                                  translation_next_keyframe[3];
+
+    for (uint32_t n_keyframe = 0;
+                  n_keyframe < 2; /* prev, next */
+                ++n_keyframe)
+    {
+        float*               result_translation_ptr = (n_keyframe == 0) ? translation_prev_keyframe
+                                                                        : translation_next_keyframe;
+        system_timeline_time time                   = (n_keyframe == 0) ? prev_keyframe_time
+                                                                        : next_keyframe_time;
+
+        for (uint32_t n_component = 0;
+                      n_component < 3;
+                    ++n_component)
+        {
+            if (!curve_container_get_value(node_data_ptr->curves[n_component],
+                                           time,
+                                           false, /* should_force */
+                                           node_data_ptr->variant_float) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "curve_container_get_value() failed.");
+            }
+
+            system_variant_get_float(node_data_ptr->variant_float,
+                                     result_translation_ptr + n_component);
+        } /* for (all components) */
+    } /* for (both keyframes) */
+
+    /* Lerp to calculate the final scale values */
+    ASSERT_DEBUG_SYNC(lerp_factor >= 0.0f && lerp_factor <= 1.0f,
+                      "LERP factor is invalid");
 
     for (uint32_t n_component = 0;
                   n_component < 3;
                 ++n_component)
     {
-        if (!curve_container_get_value(node_data_ptr->curves[n_component],
-                                       time,
-                                       false, /* should_force */
-                                       node_data_ptr->variant_float) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "curve_container_get_value() failed.");
-        }
-
-        system_variant_get_float(node_data_ptr->variant_float,
-                                 translation + n_component);
-    } /* for (three components) */
+        translation_final[n_component] = translation_prev_keyframe[n_component] +
+                                         lerp_factor                            *
+                                         (translation_next_keyframe[n_component] - translation_prev_keyframe[n_component]);
+    } /* for (all components) */
 
     system_matrix4x4_set_to_identity(new_matrix);
-    system_matrix4x4_translate(new_matrix, translation);
+    system_matrix4x4_translate      (new_matrix,
+                                     translation_final);
 
-    result = system_matrix4x4_create_by_mul(current_matrix, new_matrix);
+    result = system_matrix4x4_create_by_mul(current_matrix,
+                                            new_matrix);
+
     system_matrix4x4_release(new_matrix);
 
     return result;
@@ -1609,15 +1754,6 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
 {
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
-    /* Compute time needs to be aligned to the FPS setting of the owner scene. */
-    time = _scene_graph_align_time_to_fps(graph, time);
-
-    if (graph_ptr->last_compute_time == time)
-    {
-        /* No need to re-compute stuff. */
-        goto end;
-    }
-
     /* Sanity check */
     ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
                       "Graph not locked");
@@ -1689,10 +1825,12 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
             /* Update transformation matrix */
             if (node_ptr->last_update_time != time)
             {
-                _scene_graph_compute_node_transformation_matrix(node_ptr, time);
+                _scene_graph_compute_node_transformation_matrix(graph,
+                                                                node_ptr,
+                                                                time);
             }
 
-            ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix != NULL,
+            ASSERT_DEBUG_SYNC(node_ptr->transformation_matrix.data != NULL,
                               "pUpdateMatrix() returned NULL");
         } /* for (all sorted nodes) */
     }
@@ -1718,9 +1856,6 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
     /* Sanity check */
     ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
                       "Graph not locked");
-
-    /* Compute time needs to be aligned to the FPS setting of the owner scene. */
-    time = _scene_graph_align_time_to_fps(graph, time);
 
     /* We take a different approach in this function. We use an internally stored cache of
      * nodes to store a chain of nodes necessary to calculate transformation matrix for
@@ -1780,7 +1915,8 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
 
         if (current_node_ptr->last_update_time != time)
         {
-            _scene_graph_compute_node_transformation_matrix(current_node_ptr,
+            _scene_graph_compute_node_transformation_matrix(graph,
+                                                            current_node_ptr,
                                                             time);
         }
     } /* for (all cached nodes) */
@@ -2169,7 +2305,7 @@ PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_grap
 
         case SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX:
         {
-            *(system_matrix4x4*) out_result = node_ptr->transformation_matrix;
+            *(system_matrix4x4*) out_result = node_ptr->transformation_matrix.data;
 
             break;
         }
@@ -2493,9 +2629,6 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
 
     scene_graph_lock(graph);
 
-    /* Align the frame time if FPS limiter is on */
-    frame_time = _scene_graph_align_time_to_fps(graph, frame_time);
-
     if (graph_ptr->dirty                           ||
         graph_ptr->last_compute_time != frame_time)
     {
@@ -2525,14 +2658,12 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                 goto end;
             }
 
-            node_ptr->transformation_matrix_index = -1;
+            node_ptr->transformation_matrix.has_fired_event = false;
         } /* for (all sorted nodes) */
 
         /* Iterate through the sorted nodes. Fire the 'on new transformation matrix' only for the first object
          * associated with the node, and then continue with object-specific events.
          **/
-        int indices_used = 0;
-
         for (unsigned int n_sorted_node = 0;
                           n_sorted_node < n_sorted_nodes;
                         ++n_sorted_node)
@@ -2554,7 +2685,8 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
             /* Update the matrix */
             if (node_ptr->last_update_time != frame_time)
             {
-                _scene_graph_compute_node_transformation_matrix(node_ptr,
+                _scene_graph_compute_node_transformation_matrix(graph,
+                                                                node_ptr,
                                                                 frame_time);
             }
 
@@ -2568,16 +2700,15 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                 n_attached_meshes  != 0)
             {
                 /* Ah-hah. Has this transformation matrix been already fired? */
-                if (node_ptr->transformation_matrix_index == -1)
+                if (!node_ptr->transformation_matrix.has_fired_event)
                 {
                     /* Nope, issue a notification */
                     if (on_new_transformation_matrix_proc != NULL)
                     {
-                        on_new_transformation_matrix_proc(node_ptr->transformation_matrix, user_arg);
+                        on_new_transformation_matrix_proc(node_ptr->transformation_matrix.data, user_arg);
                     }
 
-                    node_ptr->transformation_matrix_index = indices_used;
-                    indices_used++;
+                    node_ptr->transformation_matrix.has_fired_event = true;
                 }
 
                 if (insert_camera_proc != NULL ||
