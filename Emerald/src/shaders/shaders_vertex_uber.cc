@@ -271,9 +271,24 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
 
     switch (light)
     {
-        case SHADERS_VERTEX_UBER_LIGHT_NONE:                                                                                                              break;
-        case SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS: _shaders_vertex_uber_add_sh3_light_support(uber_ptr->shader_constructor, n_items, uber_ptr->vs_ub_id); break;
-        case SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS: _shaders_vertex_uber_add_sh4_light_support(uber_ptr->shader_constructor, n_items, uber_ptr->vs_ub_id); break;
+        case SHADERS_VERTEX_UBER_LIGHT_NONE:
+        {
+            break;
+        }
+
+        case SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS:
+        {
+            _shaders_vertex_uber_add_sh3_light_support(uber_ptr->shader_constructor, n_items, uber_ptr->vs_ub_id);
+
+            break;
+        }
+
+        case SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS:
+        {
+            _shaders_vertex_uber_add_sh4_light_support(uber_ptr->shader_constructor, n_items, uber_ptr->vs_ub_id);
+
+            break;
+        }
 
         default:
         {
@@ -296,7 +311,8 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
     new_item_ptr->type  = SHADERS_VERTEX_UBER_ITEM_LIGHT;
 
     /* Store the descriptor */
-    system_resizable_vector_push(uber_ptr->added_items, new_item_ptr);
+    system_resizable_vector_push(uber_ptr->added_items,
+                                 new_item_ptr);
 
     uber_ptr->dirty = true;
     result          = n_items;
@@ -412,7 +428,8 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                  system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                          " vertex uber"));
 
-    ASSERT_DEBUG_SYNC(vertex_shader != NULL, "ogl_shader_create() failed");
+    ASSERT_DEBUG_SYNC(vertex_shader != NULL,
+                      "ogl_shader_create() failed");
     if (vertex_shader == NULL)
     {
         LOG_ERROR("Could not create uber vertex shader.");
@@ -423,7 +440,8 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_vertex_uber;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_vertex_uber object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_vertex_uber object.");
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating uber vertex shader object instance.");
@@ -434,7 +452,8 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     /* Fill other fields */
     memset(result_object, 0, sizeof(_shaders_vertex_uber) );
 
-    result_object->added_items        = system_resizable_vector_create(4 /* capacity */, sizeof(_shaders_vertex_uber_item*) );
+    result_object->added_items        = system_resizable_vector_create(4 /* capacity */,
+                                                                       sizeof(_shaders_vertex_uber_item*) );
     result_object->dirty              = true;
     result_object->shader_constructor = shader_constructor;
     result_object->vertex_shader      = vertex_shader;
@@ -505,16 +524,20 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(__in  __notnull shade
     _shaders_vertex_uber*      uber_ptr = (_shaders_vertex_uber*) uber;
     bool                       result   = false;
 
-    if (!system_resizable_vector_get_element_at(uber_ptr->added_items, item_id, &item_ptr) )
+    if (!system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                item_id,
+                                               &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]", item_id);
+        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]",
+                  item_id);
 
         goto end;
     }
 
     if (item_ptr->type != SHADERS_VERTEX_UBER_ITEM_LIGHT)
     {
-        LOG_ERROR("Uber vertex shader item at index [%d] is not a light.", item_id);
+        LOG_ERROR("Uber vertex shader item at index [%d] is not a light.",
+                  item_id);
 
         goto end;
     }
@@ -559,13 +582,16 @@ PUBLIC EMERALD_API void shaders_vertex_uber_recompile(__in __notnull shaders_ver
     _shaders_vertex_uber* uber_ptr = (_shaders_vertex_uber*) uber;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(uber_ptr->dirty, "shaders_vertex_uber_recompile() failed for non-dirty object");
+    ASSERT_DEBUG_SYNC(uber_ptr->dirty,
+                      "shaders_vertex_uber_recompile() failed for non-dirty object");
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
-    bool                      result      = ogl_shader_set_body                   (uber_ptr->vertex_shader, shader_body);
+    bool                      result      = ogl_shader_set_body                   (uber_ptr->vertex_shader,
+                                                                                   shader_body);
 
-    ASSERT_DEBUG_SYNC(result, "ogl_shader_set_body() failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "ogl_shader_set_body() failed");
     if (!result)
     {
         LOG_ERROR("Could not set uber vertex shader body.");
@@ -582,6 +608,7 @@ PUBLIC EMERALD_API void shaders_vertex_uber_recompile(__in __notnull shaders_ver
 
     /* All done */
     uber_ptr->dirty = false;
+
 end:
     ;
 }

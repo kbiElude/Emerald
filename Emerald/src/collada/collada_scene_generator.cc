@@ -936,12 +936,15 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
                                                                        __in __notnull scene_graph_node parent_node,
                                                                        __in __notnull void*            node_item_data)
 {
-    collada_data_light        collada_light = NULL;
-    const float*              light_color   = NULL;
-    system_hashed_ansi_string light_name    = NULL;
-    collada_data_light_type   light_type    = COLLADA_DATA_LIGHT_TYPE_UNKNOWN;
-    scene_light               new_light     = NULL;
-    system_hashed_ansi_string instance_name = NULL;
+    collada_data_light        collada_light               = NULL;
+    const float*              light_color                 = NULL;
+    float                     light_constant_attenuation  = 1.0f;
+    float                     light_linear_attenuation    = 0.0f;
+    float                     light_quadratic_attenuation = 0.0f;
+    system_hashed_ansi_string light_name                  = NULL;
+    collada_data_light_type   light_type                  = COLLADA_DATA_LIGHT_TYPE_UNKNOWN;
+    scene_light               new_light                   = NULL;
+    system_hashed_ansi_string instance_name               = NULL;
 
     collada_data_scene_graph_node_light_instance_get_property( (collada_data_scene_graph_node_light_instance) node_item_data,
                                                                COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_LIGHT,
@@ -958,6 +961,15 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
                                     COLLADA_DATA_LIGHT_PROPERTY_COLOR,
                                    &light_color);
     collada_data_light_get_property(collada_light,
+                                    COLLADA_DATA_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
+                                   &light_constant_attenuation);
+    collada_data_light_get_property(collada_light,
+                                    COLLADA_DATA_LIGHT_PROPERTY_LINEAR_ATTENUATION,
+                                   &light_linear_attenuation);
+    collada_data_light_get_property(collada_light,
+                                    COLLADA_DATA_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
+                                   &light_quadratic_attenuation);
+    collada_data_light_get_property(collada_light,
                                     COLLADA_DATA_LIGHT_PROPERTY_TYPE,
                                    &light_type);
 
@@ -971,8 +983,26 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
                                      SCENE_LIGHT_PROPERTY_DIFFUSE,
                                      light_color);
 
-            /* There are no other fields we need to worry about, as far as
-             * directional light goes. */
+            break;
+        }
+
+        case COLLADA_DATA_LIGHT_TYPE_POINT:
+        {
+            new_light = scene_light_create_point(instance_name);
+
+            scene_light_set_property(new_light,
+                                     SCENE_LIGHT_PROPERTY_DIFFUSE,
+                                     light_color);
+            scene_light_set_property(new_light,
+                                     SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
+                                    &light_constant_attenuation);
+            scene_light_set_property(new_light,
+                                     SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,
+                                    &light_linear_attenuation);
+            scene_light_set_property(new_light,
+                                     SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
+                                    &light_quadratic_attenuation);
+
             break;
         }
 

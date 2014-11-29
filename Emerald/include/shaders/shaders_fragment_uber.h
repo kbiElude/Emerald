@@ -22,15 +22,16 @@ typedef enum
 
 typedef enum
 {
-    UBER_LIGHT_NONE,
-    UBER_LIGHT_LAMBERT_DIRECTIONAL,
-    UBER_LIGHT_PROJECTION_SH3,
-    UBER_LIGHT_PROJECTION_SH4,
-    UBER_LIGHT_PHONG_DIRECTIONAL,
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE,
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL,
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT,
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH3,
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH4,
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL,
 
     /* Always last */
-    UBER_LIGHT_COUNT
-} shaders_fragment_uber_light;
+    SHADERS_FRAGMENT_UBER_LIGHT_TYPE_COUNT
+} shaders_fragment_uber_light_type;
 
 typedef enum
 {
@@ -120,7 +121,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
  *                                 shaders_fragment_uber_diffuse_property_value> pairs.
  **/
 PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in      __notnull                     shaders_fragment_uber,
-                                                                                 __in                                    shaders_fragment_uber_light,
+                                                                                 __in                                    shaders_fragment_uber_light_type,
                                                                                  __in      __notnull                     unsigned int                             n_diffuse_properties,
                                                                                  __in_ecount_opt(n_diffuse_properties*2) void*                                    diffuse_property_values,
                                                                                  __in_opt  __notnull                     PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -142,9 +143,9 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(__in __notnull shade
                                                             __out          shaders_fragment_uber_item_type* out_item_type);
 
 /** TODO */
-PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __notnull const shaders_fragment_uber   uber,
-                                                                        __in           shaders_fragment_uber_item_id item_id,
-                                                                        __out          shaders_fragment_uber_light*  out_light_type);
+PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __notnull const shaders_fragment_uber       uber,
+                                                                        __in           shaders_fragment_uber_item_id     item_id,
+                                                                        __out          shaders_fragment_uber_light_type* out_light_type);
 
 /** TODO */
 PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(__in __notnull shaders_fragment_uber);

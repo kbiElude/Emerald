@@ -47,9 +47,10 @@ typedef enum
 
 typedef enum
 {
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,   /* settable, float[3] */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION, /* settable, float[3] */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,  /* settable, float[3] */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS, /* settable, float[3] */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,      /* settable, float[3] */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,    /* settable, float[3] */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,     /* settable, float[3] */
 
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
 
@@ -75,9 +76,9 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
 
 /** TODO */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                          ogl_uber,
-                                                            __in                                    shaders_fragment_uber_light,
-                                                            __in __notnull                          unsigned int                n_diffuse_properties,
-                                                            __in_ecount_opt(n_diffuse_properties*2) void*                       diffuse_property_values);
+                                                            __in                                    shaders_fragment_uber_light_type,
+                                                            __in __notnull                          unsigned int                     n_diffuse_properties,
+                                                            __in_ecount_opt(n_diffuse_properties*2) void*                            diffuse_property_values);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context,

@@ -132,15 +132,15 @@ PUBLIC collada_data_light collada_data_light_create(__in __notnull tinyxml2::XML
 
             const tinyxml2::XMLElement* quadratic_attenuation_element_ptr = current_child_element_ptr->FirstChildElement("quadratic_attenuation");
 
-            ASSERT_DEBUG_SYNC(quadratic_attenuation_element_ptr != NULL,
-                              "Mandatory <quadratic_attenuation> sub-node was not found for <point> node.");
-            if (quadratic_attenuation_element_ptr == NULL)
+            if (quadratic_attenuation_element_ptr != NULL)
             {
-                goto end;
+                system_text_get_float_from_text(quadratic_attenuation_element_ptr->GetText(),
+                                               &new_light_ptr->quadratic_attenuation);
             }
-
-            system_text_get_float_from_text(quadratic_attenuation_element_ptr->GetText(),
-                                           &new_light_ptr->quadratic_attenuation);
+            else
+            {
+                new_light_ptr->quadratic_attenuation = 0.0f;
+            }
 
             /* Read optional items */
             const tinyxml2::XMLElement* constant_attenuation_element_ptr = current_child_element_ptr->FirstChildElement("constant_attenuation");

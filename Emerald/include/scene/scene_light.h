@@ -14,10 +14,23 @@ REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
 
 typedef enum scene_light_property
 {
-    SCENE_LIGHT_PROPERTY_DIFFUSE,   /* Settable,     float[3] */
-    SCENE_LIGHT_PROPERTY_DIRECTION, /* Settable,     float[3] */
-    SCENE_LIGHT_PROPERTY_NAME,      /* Not settable, system_hashed_ansi_string */
-    SCENE_LIGHT_PROPERTY_TYPE,      /* Not settable, scene_light_type */
+    SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,  /* Settable,     float                     */
+    SCENE_LIGHT_PROPERTY_DIFFUSE,               /* Settable,     float[3]                  */
+    SCENE_LIGHT_PROPERTY_DIRECTION,             /* Settable,     float[3]                  */
+    SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,    /* Settable,     float                     */
+    SCENE_LIGHT_PROPERTY_NAME,                  /* Not settable, system_hashed_ansi_string */
+    SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION, /* Settable,     float                     */
+    SCENE_LIGHT_PROPERTY_TYPE,                  /* Not settable, scene_light_type          */
+
+    /* NOTE: This property is set during run-time by ogl_scene_renderer and is NOT
+     *       serialized. It acts merely as a communication mean between the scene
+     *       graph traversation layer and actual renderer.
+     *
+     * This property is only accepted for point & spot lights. Any attempt to access it
+     * for a directional light will throw assertion failure. Getters will return
+     * undefined content, if executed for incorrect light types.
+     */
+    SCENE_LIGHT_PROPERTY_POSITION,              /* Settable,     float[3]                  */
 
     /* Always last */
     SCENE_LIGHT_PROPERTY_COUNT
@@ -25,6 +38,9 @@ typedef enum scene_light_property
 
 /** TODO */
 PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,

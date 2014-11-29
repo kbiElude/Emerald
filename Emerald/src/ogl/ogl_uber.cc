@@ -37,6 +37,10 @@
 /* Holds all properties that may be used for a fragment shader item */
 typedef struct _ogl_uber_fragment_shader_item
 {
+    float current_light_attenuations[3];
+    bool  current_light_attenuations_dirty;
+    GLint current_light_attenuations_ub_offset;
+
     float current_light_diffuse   [4];
     bool  current_light_diffuse_dirty;
     GLint current_light_diffuse_ub_offset;
@@ -51,9 +55,15 @@ typedef struct _ogl_uber_fragment_shader_item
 
     _ogl_uber_fragment_shader_item()
     {
-        current_light_diffuse_dirty   = true;
-        current_light_direction_dirty = true;
-        current_light_location_dirty  = true;
+        current_light_attenuations_ub_offset = -1;
+        current_light_diffuse_ub_offset      = -1;
+        current_light_direction_ub_offset    = -1;
+        current_light_location_ub_offset     = -1;
+
+        current_light_attenuations_dirty = true;
+        current_light_diffuse_dirty      = true;
+        current_light_direction_dirty    = true;
+        current_light_location_dirty     = true;
     }
 } _ogl_uber_fragment_shader_item;
 
@@ -340,9 +350,23 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
              *       attribute if notable performance hits are inflicted.
              *
              */
-            {uber_ptr->object_ambient_uv_attribute_location,  (const GLvoid*) mesh_texcoords_offset, 2},
-            {uber_ptr->object_diffuse_uv_attribute_location,  (const GLvoid*) mesh_texcoords_offset, 2},
-            {uber_ptr->object_emission_uv_attribute_location, (const GLvoid*) mesh_texcoords_offset, 2}
+            {
+                uber_ptr->object_ambient_uv_attribute_location,
+                (const GLvoid*) mesh_texcoords_offset,
+                2
+            },
+
+            {
+                uber_ptr->object_diffuse_uv_attribute_location,
+                (const GLvoid*) mesh_texcoords_offset,
+                2
+            },
+
+            {
+                uber_ptr->object_emission_uv_attribute_location,
+                (const GLvoid*) mesh_texcoords_offset,
+                2
+            }
         };
         const unsigned int n_attribute_items = sizeof(attribute_items) / sizeof(attribute_items[0]);
 
@@ -476,7 +500,8 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_uber_create_renderer_callback(ogl_context context, void* arg)
+PRIVATE void _ogl_uber_create_renderer_callback(ogl_context context,
+                                                void*       arg)
 {
     _ogl_uber*                                                uber_ptr         = (_ogl_uber*) arg;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
@@ -504,7 +529,8 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
         {
             _ogl_uber_item* item_ptr = NULL;
 
-            while (system_resizable_vector_pop(uber_ptr->added_items, &item_ptr) )
+            while (system_resizable_vector_pop(uber_ptr->added_items,
+                                              &item_ptr) )
             {
                 delete item_ptr;
 
@@ -563,12 +589,16 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
             system_hash64  vao_hash = 0;
             _ogl_uber_vao* vao_ptr  = NULL;
 
-            while (system_hash64map_get_element_at(uber_ptr->mesh_to_vao_descriptor_map, 0, &vao_ptr, &vao_hash) )
+            while (system_hash64map_get_element_at(uber_ptr->mesh_to_vao_descriptor_map,
+                                                   0,
+                                                  &vao_ptr,
+                                                  &vao_hash) )
             {
                 delete vao_ptr;
 
                 /* Move on */
-                system_hash64map_remove(uber_ptr->mesh_to_vao_descriptor_map, vao_hash);
+                system_hash64map_remove(uber_ptr->mesh_to_vao_descriptor_map,
+                                        vao_hash);
             }
         }
 
@@ -592,7 +622,9 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
-    for (unsigned int n_vao = 0; n_vao < n_vaos; ++n_vao)
+    for (unsigned int n_vao = 0;
+                      n_vao < n_vaos;
+                    ++n_vao)
     {
         _ogl_uber_vao* vao_ptr = NULL;
 
@@ -603,7 +635,8 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
         {
             if (vao_ptr->vao_id != 0)
             {
-                entrypoints->pGLDeleteVertexArrays(1, &vao_ptr->vao_id);
+                entrypoints->pGLDeleteVertexArrays(1,
+                                                  &vao_ptr->vao_id);
 
                 vao_ptr->vao_id = 0;
             }
@@ -634,19 +667,26 @@ PRIVATE void _ogl_uber_relink_renderer_callback(ogl_context context, void* arg)
 
     /* Set up UBO bindings */
     uint32_t program_id                             = ogl_program_get_id(uber_ptr->program);
-    uint32_t fragment_shader_properties_block_index = entry_points->pGLGetUniformBlockIndex(program_id, "FragmentShaderProperties");
-    uint32_t vertex_shader_properties_block_index   = entry_points->pGLGetUniformBlockIndex(program_id, "VertexShaderProperties");
+    uint32_t fragment_shader_properties_block_index = entry_points->pGLGetUniformBlockIndex(program_id,
+                                                                                            "FragmentShaderProperties");
+    uint32_t vertex_shader_properties_block_index   = entry_points->pGLGetUniformBlockIndex(program_id,
+                                                                                            "VertexShaderProperties");
 
     if (fragment_shader_properties_block_index != -1)
     {
-        entry_points->pGLUniformBlockBinding(program_id, fragment_shader_properties_block_index, FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID);
+        entry_points->pGLUniformBlockBinding(program_id,
+                                             fragment_shader_properties_block_index,
+                                             FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID);
     }
     if (vertex_shader_properties_block_index != -1)
     {
-        entry_points->pGLUniformBlockBinding(program_id, vertex_shader_properties_block_index,   VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID);
+        entry_points->pGLUniformBlockBinding(program_id,
+                                             vertex_shader_properties_block_index,
+                                             VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID);
     }
 
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not set up uniform block bindings");
+    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                      "Could not set up uniform block bindings");
 
     /* Set up storage for buffer object that will be used for feeding the data to the uber program */
     dsa_entry_points->pGLNamedBufferDataEXT(uber_ptr->bo_id,
@@ -654,7 +694,8 @@ PRIVATE void _ogl_uber_relink_renderer_callback(ogl_context context, void* arg)
                                             NULL,
                                             GL_DYNAMIC_DRAW);
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not generate BO");
+    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                       "Could not generate BO");
 }
 
 /** TODO */
@@ -685,9 +726,26 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
 
     switch (input_attribute)
     {
-        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:           fs_input_attribute = UBER_INPUT_ATTRIBUTE_NORMAL;           break;
-        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_AMBIENT: fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD_AMBIENT; break;
-        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_DIFFUSE: fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD_DIFFUSE; break;
+        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:
+        {
+            fs_input_attribute = UBER_INPUT_ATTRIBUTE_NORMAL;
+
+            break;
+        }
+
+        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_AMBIENT:
+        {
+            fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD_AMBIENT;
+
+            break;
+        }
+
+        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_DIFFUSE:
+        {
+            fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD_DIFFUSE;
+
+            break;
+        }
 
         default:
         {
@@ -714,7 +772,8 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
     result             = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
     /* Add the descriptor to the added items vector */
-    system_resizable_vector_push(uber_ptr->added_items, new_item_ptr);
+    system_resizable_vector_push(uber_ptr->added_items,
+                                 new_item_ptr);
 
     /* Mark uber instance as dirty */
     uber_ptr->dirty = true;
@@ -724,10 +783,10 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                          ogl_uber                       uber,
-                                                            __in                                    shaders_fragment_uber_light    light,
-                                                            __in __notnull                          unsigned int                   n_diffuse_properties,
-                                                            __in_ecount_opt(n_diffuse_properties*2) void*                          diffuse_property_values)
+PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                          ogl_uber                         uber,
+                                                            __in                                    shaders_fragment_uber_light_type light_type,
+                                                            __in __notnull                          unsigned int                     n_diffuse_properties,
+                                                            __in_ecount_opt(n_diffuse_properties*2) void*                            diffuse_property_values)
 {
     _ogl_uber*       uber_ptr     = (_ogl_uber*) uber;
     _ogl_uber_item*  new_item_ptr = NULL;
@@ -737,12 +796,13 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
     shaders_fragment_uber_item_id fs_item_id = -1;
     shaders_vertex_uber_item_id   vs_item_id = -1;
 
-    switch (light)
+    switch (light_type)
     {
-        case UBER_LIGHT_LAMBERT_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         {
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
-                                                         light,
+                                                         light_type,
                                                          n_diffuse_properties,
                                                          diffuse_property_values,
                                                          _ogl_uber_add_item_shaders_fragment_callback_handler,
@@ -753,19 +813,19 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
             break;
         }
 
-        case UBER_LIGHT_NONE:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE:
         {
             break;
         }
 
-        case UBER_LIGHT_PROJECTION_SH3:
-        case UBER_LIGHT_PROJECTION_SH4:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH3:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH4:
         {
-            shaders_vertex_uber_light vs_light = (light == UBER_LIGHT_PROJECTION_SH3) ? SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS :
-                                                                                        SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS;
+            shaders_vertex_uber_light vs_light = (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH3) ? SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS :
+                                                                                                                   SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS;
 
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
-                                                         light,
+                                                         light_type,
                                                          n_diffuse_properties,
                                                          diffuse_property_values,
                                                          NULL, /* callback proc - not used */
@@ -779,7 +839,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         {
             ASSERT_ALWAYS_SYNC(false, "Unrecognized uber diffuse light type");
         }
-    } /* switch (diffuse) */
+    } /* switch (light_type) */
 
     /* Spawn the descriptor */
     new_item_ptr = new (std::nothrow) _ogl_uber_item;
@@ -796,7 +856,8 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
     result                   = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
     /* Add the descriptor to the added items vector */
-    system_resizable_vector_push(uber_ptr->added_items, new_item_ptr);
+    system_resizable_vector_push(uber_ptr->added_items,
+                                 new_item_ptr);
 
     /* Mark uber instance as dirty */
     uber_ptr->dirty = true;
@@ -859,11 +920,21 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     const ogl_program_attribute_descriptor* object_normal_descriptor      = NULL;
     const ogl_program_attribute_descriptor* object_vertex_descriptor      = NULL;
 
-    ogl_program_get_attribute_by_name(uber_ptr->program, system_hashed_ansi_string_create("object_ambient_uv"),  &object_ambient_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program, system_hashed_ansi_string_create("object_diffuse_uv"),  &object_diffuse_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program, system_hashed_ansi_string_create("object_emission_uv"), &object_emission_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program, system_hashed_ansi_string_create("object_normal"),      &object_normal_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program, system_hashed_ansi_string_create("object_vertex"),      &object_vertex_descriptor);
+    ogl_program_get_attribute_by_name(uber_ptr->program,
+                                      system_hashed_ansi_string_create("object_ambient_uv"),
+                                     &object_ambient_uv_descriptor);
+    ogl_program_get_attribute_by_name(uber_ptr->program,
+                                      system_hashed_ansi_string_create("object_diffuse_uv"),
+                                     &object_diffuse_uv_descriptor);
+    ogl_program_get_attribute_by_name(uber_ptr->program,
+                                      system_hashed_ansi_string_create("object_emission_uv"),
+                                     &object_emission_uv_descriptor);
+    ogl_program_get_attribute_by_name(uber_ptr->program,
+                                      system_hashed_ansi_string_create("object_normal"),
+                                     &object_normal_descriptor);
+    ogl_program_get_attribute_by_name(uber_ptr->program,
+                                      system_hashed_ansi_string_create("object_vertex"),
+                                     &object_vertex_descriptor);
 
     if (object_ambient_uv_descriptor != NULL)
     {
@@ -907,21 +978,51 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     const ogl_program_uniform_descriptor* vp_uniform_descriptor                   = NULL;
     const ogl_program_uniform_descriptor* world_camera_uniform_descriptor         = NULL;
 
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("ambient_sampler"),       &ambient_sampler_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("ambient"),               &ambient_vec4_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("diffuse_sampler"),       &diffuse_sampler_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("diffuse"),               &diffuse_vec4_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("emission_sampler"),      &emission_sampler_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("emission"),              &emission_vec4_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("glosiness"),             &glosiness_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("mesh_sh3"),              &mesh_sh3_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("mesh_sh3_data_offset"),  &mesh_sh3_data_offset_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("mesh_sh4"),              &mesh_sh4_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("mesh_sh4_data_offset"),  &mesh_sh4_data_offset_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("model"),                 &model_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("normal_matrix"),         &normal_matrix_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("vp"),                    &vp_uniform_descriptor);
-    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create("world_camera"),          &world_camera_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("ambient_sampler"),
+                                   &ambient_sampler_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("ambient"),
+                                   &ambient_vec4_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("diffuse_sampler"),
+                                   &diffuse_sampler_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("diffuse"),
+                                   &diffuse_vec4_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("emission_sampler"),
+                                   &emission_sampler_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("emission"),
+                                   &emission_vec4_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("glosiness"),
+                                   &glosiness_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("mesh_sh3"),
+                                   &mesh_sh3_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("mesh_sh3_data_offset"),
+                                   &mesh_sh3_data_offset_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("mesh_sh4"),
+                                   &mesh_sh4_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("mesh_sh4_data_offset"),
+                                   &mesh_sh4_data_offset_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("model"),
+                                   &model_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("normal_matrix"),
+                                   &normal_matrix_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("vp"),
+                                   &vp_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("world_camera"),
+                                   &world_camera_uniform_descriptor);
 
     if (ambient_sampler_uniform_descriptor != NULL)
     {
@@ -988,14 +1089,16 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
 
     if (vp_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(vp_uniform_descriptor->ub_offset != -1, "VP UB offset is -1");
+        ASSERT_DEBUG_SYNC(vp_uniform_descriptor->ub_offset != -1,
+                          "VP UB offset is -1");
 
         uber_ptr->vp_ub_offset = vp_uniform_descriptor->ub_offset;
     }
 
     if (world_camera_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(world_camera_uniform_descriptor->ub_id != -1, "World camera UB offset is -1");
+        ASSERT_DEBUG_SYNC(world_camera_uniform_descriptor->ub_id != -1,
+                          "World camera UB offset is -1");
 
         uber_ptr->world_camera_ub_offset = world_camera_uniform_descriptor->ub_offset;
     }
@@ -1037,13 +1140,19 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     /* Create internal representation of uber shader items */
     const unsigned int n_items = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
-    for (unsigned int n_item = 0; n_item < n_items; ++n_item)
+    for (unsigned int n_item = 0;
+                      n_item < n_items;
+                    ++n_item)
     {
         _ogl_uber_item* item_ptr = NULL;
 
-        if (!system_resizable_vector_get_element_at(uber_ptr->added_items, n_item, &item_ptr) )
+        if (!system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                    n_item,
+                                                   &item_ptr) )
         {
-            ASSERT_ALWAYS_SYNC(false, "Could not retrieve uber item descriptor at index [%d]", n_item);
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not retrieve uber item descriptor at index [%d]",
+                               n_item);
         }
 
         /* Fill relevant fields */
@@ -1058,6 +1167,8 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
             case OGL_UBER_ITEM_LIGHT:
             {
                 /* Fragment shader stuff */
+                std::stringstream                     light_attenuations_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_attenuations_uniform_ptr = NULL;
                 std::stringstream                     light_diffuse_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_diffuse_uniform_ptr = NULL;
                 std::stringstream                     light_direction_uniform_name_sstream;
@@ -1065,28 +1176,52 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 std::stringstream                     light_location_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_location_uniform_ptr = NULL;
 
-                light_diffuse_uniform_name_sstream   << "light" << n_item << "_diffuse";
-                light_direction_uniform_name_sstream << "light" << n_item << "_direction";
-                light_location_uniform_name_sstream  << "light" << n_item << "_world_pos";
+                light_attenuations_uniform_name_sstream << "light" << n_item << "_attenuations";
+                light_diffuse_uniform_name_sstream      << "light" << n_item << "_diffuse";
+                light_direction_uniform_name_sstream    << "light" << n_item << "_direction";
+                light_location_uniform_name_sstream     << "light" << n_item << "_world_pos";
 
-                ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create(light_diffuse_uniform_name_sstream.str().c_str()   ), &light_diffuse_uniform_ptr);
-                ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create(light_direction_uniform_name_sstream.str().c_str() ), &light_direction_uniform_ptr);
-                ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ), &light_location_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_attenuations_uniform_name_sstream.str().c_str() ),
+                                               &light_attenuations_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_diffuse_uniform_name_sstream.str().c_str() ),
+                                               &light_diffuse_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_direction_uniform_name_sstream.str().c_str() ),
+                                               &light_direction_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
+                                               &light_location_uniform_ptr);
 
+                /* NOTE: light_attenuations_uniform_ptr will only be != NULL if we're dealing with point or spot lights.
+                 *       light_direction_uniform_ptr    will only be != NULL if we're dealing with a directional light.
+                 */
                 ASSERT_DEBUG_SYNC(light_diffuse_uniform_ptr   != NULL &&
-                                  light_direction_uniform_ptr != NULL &&
                                   light_location_uniform_ptr  != NULL, "Could not retrieve uniform descriptors");
 
-                item_ptr->fragment_shader_item.current_light_diffuse_ub_offset   = light_diffuse_uniform_ptr->ub_offset;
-                item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ptr->ub_offset;
-                item_ptr->fragment_shader_item.current_light_location_ub_offset  = light_location_uniform_ptr->ub_offset;
+                if (light_attenuations_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ptr->ub_offset;
+                }
+
+                if (light_direction_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ptr->ub_offset;
+                }
+
+                item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ptr->ub_offset;
+                item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
 
                 /* Vertex shader stuff */
                 shaders_vertex_uber_light light_type = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
-                shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex, n_item, &light_type);
+                shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex,
+                                                   n_item,
+                                                  &light_type);
 
-                if (light_type == SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS || light_type == SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS)
+                if (light_type == SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS ||
+                    light_type == SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS)
                 {
                     GLint                                 sh_data_uniform_location = -1;
                     std::stringstream                     sh_data_uniform_name_sstream;
@@ -1101,10 +1236,14 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                         sh_data_uniform_name_sstream << "light" << n_item << "_sh4[0]";
                     }
 
-                    ogl_program_get_uniform_by_name(uber_ptr->program, system_hashed_ansi_string_create(sh_data_uniform_name_sstream.str().c_str()), &sh_data_uniform_ptr);
+                    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                    system_hashed_ansi_string_create(sh_data_uniform_name_sstream.str().c_str()),
+                                                   &sh_data_uniform_ptr);
 
-                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr            != NULL, "Could not retrieve SH data uniform descriptor");
-                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr->ub_offset != -1,   "UB offset for SH data is -1");
+                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr != NULL,
+                                      "Could not retrieve SH data uniform descriptor");
+                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr->ub_offset != -1,
+                                      "UB offset for SH data is -1");
 
                     item_ptr->vertex_shader_item.current_light_sh_data_ub_offset = sh_data_uniform_ptr->ub_offset;
                 }
@@ -1146,10 +1285,13 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     }
 
     uber_ptr->bo_data = new (std::nothrow) char[n_bytes];
-    ASSERT_ALWAYS_SYNC(uber_ptr->bo_data != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(uber_ptr->bo_data != NULL,
+                       "Out of memory");
 
     /* Request renderer thread call-back to do the other part of the initialization */
-    ogl_context_request_callback_from_context_thread(uber_ptr->context, _ogl_uber_relink_renderer_callback, uber_ptr);
+    ogl_context_request_callback_from_context_thread(uber_ptr->context,
+                                                     _ogl_uber_relink_renderer_callback,
+                                                     uber_ptr);
 
     /* All done - object no longer dirty */
     uber_ptr->dirty = false;
@@ -1166,7 +1308,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
     ASSERT_DEBUG_SYNC(result != NULL, "Out of memory");
     if (result != NULL)
     {
-        result->added_items                   = system_resizable_vector_create(4 /* capacity */, sizeof(_ogl_uber_item*) );
+        result->added_items                   = system_resizable_vector_create(4 /* capacity */,
+                                                                               sizeof(_ogl_uber_item*) );
         result->bo_data                       = NULL;
         result->bo_data_size                  = -1;
         result->bo_data_vertex_offset         = -1;
@@ -1176,10 +1319,13 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->current_vp_dirty              = true;
         result->dirty                         = true;
         result->is_rendering                  = false;
-        result->mesh_to_vao_descriptor_map    = system_hash64map_create(sizeof(_ogl_uber_vao*), false);
+        result->mesh_to_vao_descriptor_map    = system_hash64map_create(sizeof(_ogl_uber_vao*),
+                                                                        false);
         result->name                          = name;
-        result->shader_fragment               = shaders_fragment_uber_create(context, name);
-        result->shader_vertex                 = shaders_vertex_uber_create  (context, name);
+        result->shader_fragment               = shaders_fragment_uber_create(context,
+                                                                             name);
+        result->shader_vertex                 = shaders_vertex_uber_create  (context,
+                                                                             name);
         result->variant_float                 = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
         result->ambient_sampler_uniform_location      = -1;
@@ -1208,7 +1354,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                        _ogl_uber_release,
                                                        OBJECT_TYPE_OGL_UBER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Ubers\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Ubers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
 
         /* Create a program with the shaders we were provided */
         result->program = ogl_program_create(context,
@@ -1217,14 +1364,19 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         ASSERT_ALWAYS_SYNC(result->program != NULL, "Cannot instantiate uber program");
         if (result->program != NULL)
         {
-            if (!ogl_program_attach_shader(result->program, shaders_fragment_uber_get_shader(result->shader_fragment)) ||
-                !ogl_program_attach_shader(result->program, shaders_vertex_uber_get_shader  (result->shader_vertex)) )
+            if (!ogl_program_attach_shader(result->program,
+                                           shaders_fragment_uber_get_shader(result->shader_fragment)) ||
+                !ogl_program_attach_shader(result->program,
+                                           shaders_vertex_uber_get_shader  (result->shader_vertex)) )
             {
-                ASSERT_ALWAYS_SYNC(false, "Cannot attach shader(s) to uber program");
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Cannot attach shader(s) to uber program");
             }
 
             /* Request renderer thread call-back to do the other part of the initialization */
-            ogl_context_request_callback_from_context_thread(context, _ogl_uber_create_renderer_callback, result);
+            ogl_context_request_callback_from_context_thread(context,
+                                                             _ogl_uber_create_renderer_callback,
+                                                             result);
         }
     }
 
@@ -1264,10 +1416,22 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
     const _ogl_uber*      uber_ptr = (const _ogl_uber*) uber;
           _ogl_uber_item* item_ptr = NULL;
 
-    if (system_resizable_vector_get_element_at(uber_ptr->added_items, item_id, &item_ptr) )
+    if (system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                               item_id,
+                                              &item_ptr) )
     {
         switch (property)
         {
+            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1,
+                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS requested but the underlying shader does not use the property");
+
+                *((float**) result) = item_ptr->fragment_shader_item.current_light_attenuations;
+
+                break;
+            }
+
             case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
             {
                 ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1,
@@ -1305,7 +1469,7 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
 
                 shaders_fragment_uber_get_light_item_properties(uber_ptr->shader_fragment,
                                                                 item_ptr->fs_item_id,
-                                                                (shaders_fragment_uber_light*) result);
+                                                                (shaders_fragment_uber_light_type*) result);
 
                 break;
             }
@@ -1649,25 +1813,31 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ASSERT_DEBUG_SYNC(!uber_ptr->is_rendering, "Already started");
+    ASSERT_DEBUG_SYNC(!uber_ptr->is_rendering,
+                      "Already started");
 
     /* Update shaders if the configuration has been changed since the last call */
     if (uber_ptr->dirty)
     {
         _ogl_uber_relink(uber);
 
-        ASSERT_DEBUG_SYNC(!uber_ptr->dirty, "Relinking did not reset the dirty flag");
+        ASSERT_DEBUG_SYNC(!uber_ptr->dirty,
+                          "Relinking did not reset the dirty flag");
     }
 
     /* Set up UB contents */
     bool               has_modified_bo_data = false;
     const unsigned int n_items              = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
-    for (unsigned int n_item = 0; n_item < n_items; ++n_item)
+    for (unsigned int n_item = 0;
+                      n_item < n_items;
+                    ++n_item)
     {
         _ogl_uber_item* item_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(uber_ptr->added_items, n_item, &item_ptr) )
+        if (system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                   n_item,
+                                                  &item_ptr) )
         {
             switch (item_ptr->type)
             {
@@ -1680,6 +1850,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                 case OGL_UBER_ITEM_LIGHT:
                 {
                     /* Fragment shader part */
+                    if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.current_light_attenuations_dirty)
+                    {
+                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
+                                       item_ptr->fragment_shader_item.current_light_attenuations,
+                                       sizeof(float) * 3);
+
+                        has_modified_bo_data                                            = true;
+                        item_ptr->fragment_shader_item.current_light_attenuations_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_diffuse_dirty)
                     {
@@ -1718,17 +1899,20 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
 
                 default:
                 {
-                    ASSERT_DEBUG_SYNC(false, "Unrecognized uber item type");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized uber item type");
                 }
             } /* switch (item_ptr->type) */
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve uber item descriptor at index [%d]", n_item);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve uber item descriptor at index [%d]", n_item);
         }
     } /* for (all fragment shader items) */
 
-    if (uber_ptr->vp_ub_offset != -1 && uber_ptr->current_vp_dirty)
+    if (uber_ptr->vp_ub_offset != -1 &&
+        uber_ptr->current_vp_dirty)
     {
         memcpy((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->vp_ub_offset,
                system_matrix4x4_get_row_major_data(uber_ptr->current_vp),
@@ -1738,9 +1922,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         uber_ptr->current_vp_dirty = false;
     }
 
-    if (uber_ptr->world_camera_ub_offset != -1 && uber_ptr->current_camera_location_dirty)
+    if (uber_ptr->world_camera_ub_offset != -1 &&
+        uber_ptr->current_camera_location_dirty)
     {
-        ASSERT_DEBUG_SYNC(uber_ptr->world_camera_ub_offset != -1, "World camera location uniform error");
+        ASSERT_DEBUG_SYNC(uber_ptr->world_camera_ub_offset != -1,
+                          "World camera location uniform error");
 
         memcpy((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->world_camera_ub_offset,
                uber_ptr->current_camera_location,
@@ -1762,11 +1948,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     }
 
     /* If any part of the SH data comes from a BO, copy it now */
-    for (unsigned int n_item = 0; n_item < n_items; ++n_item)
+    for (unsigned int n_item = 0;
+                      n_item < n_items;
+                    ++n_item)
     {
         _ogl_uber_item* item_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(uber_ptr->added_items, n_item, &item_ptr) )
+        if (system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                   n_item,
+                                                  &item_ptr) )
         {
             switch (item_ptr->type)
             {
@@ -1780,9 +1970,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                 {
                     shaders_vertex_uber_light light_type = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
-                    if (!shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex, n_item, &light_type))
+                    if (!shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex,
+                                                            n_item,
+                                                           &light_type))
                     {
-                        ASSERT_DEBUG_SYNC(false, "Cannot determine light type at index [%d]", n_item);
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Cannot determine light type at index [%d]",
+                                          n_item);
                     }
 
                     switch (light_type)
@@ -1831,8 +2025,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     uint32_t fs_ub_size = 0;
     uint32_t vs_ub_size = 0;
 
-    ogl_program_get_uniform_block_properties(uber_ptr->program, uber_ptr->ub_fs_id, &fs_ub_size, NULL, NULL);
-    ogl_program_get_uniform_block_properties(uber_ptr->program, uber_ptr->ub_vs_id, &vs_ub_size, NULL, NULL);
+    ogl_program_get_uniform_block_properties(uber_ptr->program,
+                                             uber_ptr->ub_fs_id,
+                                            &fs_ub_size,
+                                             NULL,
+                                             NULL);
+    ogl_program_get_uniform_block_properties(uber_ptr->program,
+                                             uber_ptr->ub_vs_id,
+                                            &vs_ub_size,
+                                             NULL,
+                                             NULL);
 
     if (fs_ub_size != 0)
     {
@@ -1871,9 +2073,13 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
     {
         case OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION:
         {
-            if (memcmp(uber_ptr->current_camera_location, data, sizeof(float) * 3) != 0)
+            if (memcmp(uber_ptr->current_camera_location,
+                       data,
+                       sizeof(float) * 3) != 0)
             {
-                memcpy(uber_ptr->current_camera_location, data, sizeof(float) * 3);
+                memcpy(uber_ptr->current_camera_location,
+                       data,
+                       sizeof(float) * 3);
 
                 uber_ptr->current_camera_location[3]    = 1.0f;
                 uber_ptr->current_camera_location_dirty = true;
@@ -1884,9 +2090,11 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
 
         case OGL_UBER_GENERAL_PROPERTY_VP:
         {
-            if (!system_matrix4x4_is_equal(uber_ptr->current_vp, (system_matrix4x4) data) )
+            if (!system_matrix4x4_is_equal(uber_ptr->current_vp,
+                                           (system_matrix4x4) data) )
             {
-                system_matrix4x4_set_from_matrix4x4(uber_ptr->current_vp, (system_matrix4x4) data);
+                system_matrix4x4_set_from_matrix4x4(uber_ptr->current_vp,
+                                                    (system_matrix4x4) data);
 
                 uber_ptr->current_vp_dirty = true;
             }
@@ -1896,7 +2104,9 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized general uber property [%d]", property);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized general uber property [%d]",
+                              property);
         }
     } /* switch (property) */
 }
@@ -1911,21 +2121,44 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
     switch (property)
     {
+        case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
         {
             _ogl_uber_item* item_ptr = NULL;
 
-            if (system_resizable_vector_get_element_at(uber_ptr->added_items, item_index, &item_ptr) )
+            if (system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                       item_index,
+                                                      &item_ptr) )
             {
                 switch (property)
                 {
+                    case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
+                    {
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_attenuations,
+                                   data,
+                                   sizeof(float) * 3) != 0)
+                        {
+                            memcpy(item_ptr->fragment_shader_item.current_light_attenuations,
+                                   data,
+                                   sizeof(float) * 3);
+
+                            item_ptr->fragment_shader_item.current_light_attenuations_dirty = true;
+                        }
+
+                        break;
+                    }
+
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_diffuse, data, sizeof(float) * 3) != 0)
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_diffuse,
+                                   data,
+                                   sizeof(float) * 3) != 0)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_diffuse, data, sizeof(float) * 3);
+                            memcpy(item_ptr->fragment_shader_item.current_light_diffuse,
+                                   data,
+                                   sizeof(float) * 3);
 
                             item_ptr->fragment_shader_item.current_light_diffuse[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_diffuse_dirty = true;
@@ -1936,9 +2169,13 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_direction, data, sizeof(float) * 3) != 0)
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_direction,
+                                   data,
+                                   sizeof(float) * 3) != 0)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_direction, data, sizeof(float) * 3);
+                            memcpy(item_ptr->fragment_shader_item.current_light_direction,
+                                   data,
+                                   sizeof(float) * 3);
 
                             item_ptr->fragment_shader_item.current_light_direction_dirty = true;
                         }
@@ -1948,11 +2185,15 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_location, data, sizeof(float) * 3) != 0)
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_location,
+                                   data,
+                                   sizeof(float) * 3) != 0)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_location, data, sizeof(float) * 3);
+                            memcpy(item_ptr->fragment_shader_item.current_light_location,
+                                   data,
+                                   sizeof(float) * 3);
 
-                            item_ptr->fragment_shader_item.current_light_location[3] = 1.0f;
+                            item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_location_dirty = true;
                         }
 
@@ -1962,7 +2203,9 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
             }
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Could not retrieve fragment shader item descriptor at index [%d]", item_index);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve fragment shader item descriptor at index [%d]",
+                                  item_index);
             }
 
             break;
@@ -1972,22 +2215,32 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         {
             shaders_vertex_uber_light light_type = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
-            if (shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex, item_index, &light_type) )
+            if (shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex,
+                                                   item_index,
+                                                  &light_type) )
             {
                 _ogl_uber_item* item_ptr = NULL;
 
-                if (system_resizable_vector_get_element_at(uber_ptr->added_items, item_index, &item_ptr) )
+                if (system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                           item_index,
+                                                          &item_ptr) )
                 {
-                    memcpy(&item_ptr->vertex_shader_item.current_light_sh_data, data, sizeof(_ogl_uber_light_sh_data) );
+                    memcpy(&item_ptr->vertex_shader_item.current_light_sh_data,
+                           data,
+                           sizeof(_ogl_uber_light_sh_data) );
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve vertex shader item at index [%d]", item_index);
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve vertex shader item at index [%d]",
+                                      item_index);
                 }
             } /* if (shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex, item_index, &light_type) ) */
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Item at index [%d] is not a light", item_index);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Item at index [%d] is not a light",
+                                  item_index);
             }
 
             break;
@@ -1995,7 +2248,9 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized item property requested [%d]", property);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized item property requested [%d]",
+                              property);
         }
     } /* switch (property) */
 }
@@ -2010,7 +2265,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_stop(__in __no
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ASSERT_DEBUG_SYNC(uber_ptr->is_rendering, "Not started");
+    ASSERT_DEBUG_SYNC(uber_ptr->is_rendering,
+                      "Not started");
 
     /* Mark as no longer rendered */
     uber_ptr->is_rendering = false;

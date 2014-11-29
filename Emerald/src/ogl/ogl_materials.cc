@@ -290,7 +290,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(material_name),
                                                                                                                              " uber") );
 
-    ASSERT_ALWAYS_SYNC(new_uber != NULL, "Could not spawn an uber instance");
+    ASSERT_ALWAYS_SYNC(new_uber != NULL,
+                       "Could not spawn an uber instance");
     if (new_uber != NULL)
     {
         mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
@@ -299,7 +300,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                    MESH_MATERIAL_PROPERTY_SHADING,
                                   &material_shading);
 
-        if (material_shading == MESH_MATERIAL_SHADING_LAMBERT || material_shading == MESH_MATERIAL_SHADING_PHONG)
+        if (material_shading == MESH_MATERIAL_SHADING_LAMBERT ||
+            material_shading == MESH_MATERIAL_SHADING_PHONG)
         {
             const unsigned int n_max_uber_fragment_property_value_pairs = 3; /* sizeof(mappings)  */
             unsigned int       n_uber_fragment_property_value_pairs     = 0;
@@ -312,19 +314,36 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                 shaders_fragment_uber_property fragment_uber_property;
             } mappings[] =
             {
-                {MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,  SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE},
-                {MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,  SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE},
-                {MESH_MATERIAL_SHADING_PROPERTY_EMISSION, SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE}
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE
+                }
             };
             const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
 
             /* Add ambient/diffuse/emission factors */
-            for (unsigned int n_mapping = 0; n_mapping < n_mappings; ++n_mapping)
+            for (unsigned int n_mapping = 0;
+                              n_mapping < n_mappings;
+                            ++n_mapping)
             {
                 _mapping                          mapping             = mappings[n_mapping];
-                mesh_material_property_attachment material_attachment = mesh_material_get_shading_property_attachment_type(material, mapping.material_property);
+                mesh_material_property_attachment material_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                           mapping.material_property);
 
-                _ogl_materials_get_forced_setting(materials, mapping.material_property, &material_attachment, NULL /* out_attachment_data */);
+                _ogl_materials_get_forced_setting(materials,
+                                                  mapping.material_property,
+                                                 &material_attachment,
+                                                 NULL /* out_attachment_data */);
 
                 if (material_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
                 {
@@ -332,12 +351,24 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
                     switch (material_attachment)
                     {
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D; break;
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4;      break;
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D;
+
+                            break;
+                        }
+
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4;
+
+                            break;
+                        }
 
                         default:
                         {
-                            ASSERT_DEBUG_SYNC(false, "Unrecognized material attachment type");
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized material attachment type");
                         }
                     } /* switch (material_attachment) */
 
@@ -346,9 +377,12 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
             } /* for (all mappings) */
 
             /* Add emission/shininess/specular factors (if defined for material) */
-            mesh_material_property_attachment emission_attachment  = mesh_material_get_shading_property_attachment_type(material, MESH_MATERIAL_SHADING_PROPERTY_EMISSION);
-            mesh_material_property_attachment shininess_attachment = mesh_material_get_shading_property_attachment_type(material, MESH_MATERIAL_SHADING_PROPERTY_SHININESS);
-            mesh_material_property_attachment specular_attachment  = mesh_material_get_shading_property_attachment_type(material, MESH_MATERIAL_SHADING_PROPERTY_SPECULAR);
+            mesh_material_property_attachment emission_attachment  = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_EMISSION);
+            mesh_material_property_attachment shininess_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS);
+            mesh_material_property_attachment specular_attachment  = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR);
 
             if (emission_attachment  != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE ||
                 shininess_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE ||
@@ -380,7 +414,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                             &current_light_type);
 
                     /* Determine uber light type, given scene light type and material's BRDF type */
-                    shaders_fragment_uber_light uber_light_type = UBER_LIGHT_NONE;
+                    shaders_fragment_uber_light_type uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
 
                     if (material_shading == MESH_MATERIAL_SHADING_LAMBERT)
                     {
@@ -388,7 +422,14 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                         {
                             case SCENE_LIGHT_TYPE_DIRECTIONAL:
                             {
-                                uber_light_type = UBER_LIGHT_LAMBERT_DIRECTIONAL;
+                                uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL;
+
+                                break;
+                            }
+
+                            case SCENE_LIGHT_TYPE_POINT:
+                            {
+                                uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT;
 
                                 break;
                             }
@@ -406,7 +447,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                           "TODO: Unsupported shading algorithm");
                     }
 
-                    if (uber_light_type != UBER_LIGHT_NONE)
+                    if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                     {
                         ogl_uber_add_light_item(new_uber,
                                                 uber_light_type,
@@ -453,7 +494,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
             if (uber_input_attribute != OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN)
             {
-                ogl_uber_add_input_fragment_attribute_item(new_uber, uber_input_attribute);
+                ogl_uber_add_input_fragment_attribute_item(new_uber,
+                                                           uber_input_attribute);
             }
         }
 
@@ -498,9 +540,9 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                       n_light < n_uber_lights;
                     ++n_light)
     {
-        scene_light_type            current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
-        _ogl_uber_item_type         current_uber_item_type  = OGL_UBER_ITEM_UNKNOWN;
-        shaders_fragment_uber_light current_uber_light_type = UBER_LIGHT_NONE;
+        scene_light_type                 current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
+        _ogl_uber_item_type              current_uber_item_type  = OGL_UBER_ITEM_UNKNOWN;
+        shaders_fragment_uber_light_type current_uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
 
         current_light = scene_get_light_by_index(scene, n_light);
 
@@ -526,11 +568,13 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                          &current_uber_light_type);
 
         /* TODO: Expand to support other light types */
-        ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL,
+        ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+                          current_light_type == SCENE_LIGHT_TYPE_POINT,
                           "TODO: Unsupported light type, expand.");
 
-        if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_light_type != UBER_LIGHT_LAMBERT_DIRECTIONAL &&
-                                                                   current_uber_light_type != UBER_LIGHT_PHONG_DIRECTIONAL) )
+        if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
+                                                                   current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
+            current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT) )
         {
             /* Nope */
             result = false;

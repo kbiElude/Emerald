@@ -472,7 +472,8 @@ PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool(system_
 {
     system_resizable_vector* vector_ptr = (system_resizable_vector*) block;
 
-    *vector_ptr = system_resizable_vector_create(64 /* capacity */, sizeof(mesh_material) );
+    *vector_ptr = system_resizable_vector_create(64 /* capacity */,
+                                                 sizeof(mesh_material) );
 }
 
 
@@ -544,7 +545,9 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
                                                     n_mesh_material,
                                                    &material) )
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve mesh material at index [%d]", n_mesh_material);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh material at index [%d]",
+                              n_mesh_material);
         }
 
         /* Retrieve ogl_uber that can render the material for the currently processed
@@ -650,23 +653,56 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 
-    /* The default light direction vector is <0, 0, -1>. Transform it against the current
-     * model matrix to obtain final direction vector for the light
-     */
-    const float default_direction_vector[3] = {0, 0, -1};
-          float final_direction_vector  [3];
+    /* Directional vector needs to be only updated for directional lights */
+    scene_light_type light_type = SCENE_LIGHT_TYPE_UNKNOWN;
 
-    system_matrix4x4_multiply_by_vector3(renderer_ptr->current_model_matrix,
-                                         default_direction_vector,
-                                         final_direction_vector);
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_TYPE,
+                            &light_type);
 
-    system_math_vector_normalize3(final_direction_vector,
-                                  final_direction_vector);
+    /* Update light position for point light */
+    if (light_type == SCENE_LIGHT_TYPE_POINT)
+    {
+        const float default_light_position[4] = {0, 0, 0, 1};
+              float final_light_position  [4];
 
-    /* Update the light */
-    scene_light_set_property(light,
-                             SCENE_LIGHT_PROPERTY_DIRECTION,
-                             final_direction_vector);
+        system_matrix4x4_multiply_by_vector4(renderer_ptr->current_model_matrix,
+                                             default_light_position,
+                                             final_light_position);
+
+        final_light_position[2] *= -1;
+
+        scene_light_set_property(light,
+                                 SCENE_LIGHT_PROPERTY_POSITION,
+                                 final_light_position);
+    }
+
+    /* Update directional vector for directional lights */
+    if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
+    {
+        /* The default light direction vector is <0, 0, -1>. Transform it against the current
+         * model matrix to obtain final direction vector for the light
+         */
+        const float default_direction_vector[3] = {0, 0, -1};
+              float final_direction_vector  [3];
+
+        system_matrix4x4_multiply_by_vector3(renderer_ptr->current_model_matrix,
+                                             default_direction_vector,
+                                             final_direction_vector);
+
+        system_math_vector_normalize3(final_direction_vector,
+                                      final_direction_vector);
+
+        /* Update the light */
+        scene_light_set_property(light,
+                                 SCENE_LIGHT_PROPERTY_DIRECTION,
+                                 final_direction_vector);
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_POINT,
+                          "Unrecognized light type, expand.");
+    }
 }
 
 
@@ -905,14 +941,20 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
             default:
             {
-                ASSERT_DEBUG_SYNC(false, "Unrecognized render mode");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized render mode");
             }
-        }
+        } /* switch (render_mode) */
 
-        ASSERT_DEBUG_SYNC(material_uber != NULL, "No ogl_uber instance available for mesh material!");
+        ASSERT_DEBUG_SYNC(material_uber != NULL,
+                          "No ogl_uber instance available for mesh material!");
 
-        ogl_uber_set_shader_general_property(material_uber, OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION, camera_location);
-        ogl_uber_set_shader_general_property(material_uber, OGL_UBER_GENERAL_PROPERTY_VP,              vp);
+        ogl_uber_set_shader_general_property(material_uber,
+                                             OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+                                             camera_location);
+        ogl_uber_set_shader_general_property(material_uber,
+                                             OGL_UBER_GENERAL_PROPERTY_VP,
+                                             vp);
 
         /* Don't forget to update light properties */
         unsigned int n_uber_items   = 0;
@@ -935,27 +977,63 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                               n_light < n_scene_lights;
                             ++n_light)
             {
-                scene_light current_light           = scene_get_light_by_index(renderer_ptr->scene, n_light);
-                float*      current_light_diffuse   = NULL;
-                float*      current_light_direction = NULL;
+                scene_light      current_light           = scene_get_light_by_index(renderer_ptr->scene,
+                                                                                   n_light);
+                scene_light_type current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
+                float            current_light_attenuations[3];
+                float*           current_light_diffuse   = NULL;
+                float*           current_light_direction = NULL;
+                float            current_light_position    [3];
 
                 scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_DIFFUSE,
-                                         &current_light_diffuse);
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_DIRECTION,
-                                         &current_light_direction);
+                                         SCENE_LIGHT_PROPERTY_TYPE,
+                                        &current_light_type);
 
+                scene_light_get_property         (current_light,
+                                                  SCENE_LIGHT_PROPERTY_DIFFUSE,
+                                                 &current_light_diffuse);
                 ogl_uber_set_shader_item_property(material_uber,
                                                   n_light,
                                                   OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
                                                   current_light_diffuse);
-                ogl_uber_set_shader_item_property(material_uber,
-                                                  n_light,
-                                                  OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
-                                                  current_light_direction);
-            }
-        }
+
+                if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+                {
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
+                                             current_light_attenuations + 0);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,
+                                             current_light_attenuations + 1);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
+                                             current_light_attenuations + 2);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_POSITION,
+                                             current_light_position);
+
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
+                                                      current_light_attenuations);
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,
+                                                      current_light_position);
+                }
+
+                if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
+                {
+                    scene_light_get_property         (current_light,
+                                                      SCENE_LIGHT_PROPERTY_DIRECTION,
+                                                     &current_light_direction);
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
+                                                      current_light_direction);
+                }
+            } /* for (all lights) */
+        } /* if (render_mode == RENDER_MODE_REGULAR) */
 
         /* Okay. Go on with the rendering */
         const uint32_t n_vector_items = system_resizable_vector_get_amount_of_elements(uber_details_ptr->meshes);

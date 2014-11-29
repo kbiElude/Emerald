@@ -29,12 +29,12 @@ typedef struct _shaders_fragment_uber_item_input_attribute
 
 typedef struct _shaders_fragment_uber_item_light
 {
-    shaders_fragment_uber_light          light;
+    shaders_fragment_uber_light_type     light_type;
     shaders_fragment_uber_property_value properties[SHADERS_FRAGMENT_UBER_PROPERTY_COUNT];
 
     _shaders_fragment_uber_item_light()
     {
-        light = UBER_LIGHT_NONE;
+        light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
 
         /* Set default diffuse property values */
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]  = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
@@ -71,7 +71,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_uber, shaders_fragment_uber, _sh
 /* Internal variables */
 
 /** TODO */
-PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull ogl_shader_constructor                   shader_constructor,
+PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           shaders_fragment_uber_light_type         light_type,
+                                                               __in __notnull ogl_shader_constructor                   shader_constructor,
                                                                __in           unsigned int                             n_item,
                                                                __in __notnull shaders_fragment_uber_property_value*    properties,
                                                                __in __notnull PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -258,11 +259,29 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull og
         } /* if (properties[iteration_data.property] == iteration_data.value) */
     } /* for (all properties items) */
 
-    /* Compute the light contribution: emission */
+    /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream line;
 
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    {
+        line << "float light"   << n_item << "_distance    = length(light" << n_item << "_vector);\n"
+                "float light"   << n_item << "_attenuation = "
+                "1.0f / (light" << n_item << "_attenuations.x + "
+                        "light" << n_item << "_attenuations.y * light" << n_item << "_distance + "
+                        "light" << n_item << "_attenuations.z * light" << n_item << "_distance * light" << n_item << "_distance);\n";
+    }
+
+    /* Start forming the shader. */
     line << "result_fragment += ";
 
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    {
+        line << "light" << n_item << "_attenuation * ";
+    }
+
+    line << "(";
+
+    /* Compute the light contribution: emission */
     switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE])
     {
         case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
@@ -286,33 +305,65 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull og
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized emission data source property value");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized emission data source property value");
         }
     } /* switch (properties[SHADERS_FRAGMENT_UBER_DIFFUSE_PROPERTY_EMISSION_DATA_SOURCE]) */
 
     /* Compute the light contribution: ambient */
     switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE])
     {
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:                                                                                        break;
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D: line << "+ texture(ambient_sampler, in_fs_ambient_uv) * ambient_total" << n_item; break;
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:      line << "+ ambient";                                                              break;
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
+        {
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
+        {
+            line << "+ texture(ambient_sampler, in_fs_ambient_uv) * ambient";
+
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:
+        {
+            line << "+ ambient";
+
+        }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized emission data source property value");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized emission data source property value");
         }
     } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]) */
 
     /* Compute the light contribution: diffuse */
     switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE])
     {
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:                                                                                              break;
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D: line << "+ light" << n_item << "_diffuse * texture(diffuse_sampler, in_fs_diffuse_uv)"; break;
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:      line << "+ light" << n_item << "_diffuse * diffuse";                                    break;
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
+        {
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
+        {
+            line << "+ light" << n_item << "_diffuse * texture(diffuse_sampler, in_fs_diffuse_uv)";
+
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:
+        {
+            line << "+ light" << n_item << "_diffuse * diffuse";
+
+            break;
+        }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized emission data source property value");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized emission data source property value");
         }
     } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]) */
 
@@ -332,12 +383,10 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in __notnull og
             line << "view_vector";
         }
 
-        line << ", normal) );\n";
+        line << ", normal) )";
     }
-    else
-    {
-        line << ";\n";
-    }
+
+    line << ");\n";
 
     /* Add the snippet to main function body */
     ogl_shader_constructor_append_to_function_body(shader_constructor,
@@ -618,7 +667,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
 
 /** Please see header for specification */
 PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in     __notnull                      shaders_fragment_uber                    uber,
-                                                                                 __in                                    shaders_fragment_uber_light              light,
+                                                                                 __in                                    shaders_fragment_uber_light_type         light_type,
                                                                                  __in     __notnull                      unsigned int                             n_diffuse_properties,
                                                                                  __in_ecount_opt(n_diffuse_properties*2) void*                                    diffuse_property_values,
                                                                                  __in_opt __notnull                      PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -631,10 +680,12 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     _shaders_fragment_uber_item*       new_item_ptr            = new (std::nothrow) _shaders_fragment_uber_item;
     _shaders_fragment_uber_item_light* new_light_item_data_ptr = new (std::nothrow) _shaders_fragment_uber_item_light;
 
-    ASSERT_ALWAYS_SYNC(new_item_ptr            != NULL, "Out of memory");
-    ASSERT_ALWAYS_SYNC(new_light_item_data_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+                       "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_light_item_data_ptr != NULL,
+                       "Out of memory");
 
-    new_light_item_data_ptr->light = light;
+    new_light_item_data_ptr->light_type = light_type;
 
     new_item_ptr->data = new_light_item_data_ptr;
     new_item_ptr->type = SHADERS_FRAGMENT_UBER_ITEM_LIGHT;
@@ -650,13 +701,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     /* Add properties to shader-wide named uniform buffer */
+    std::stringstream light_attenuations_name_sstream;
     std::stringstream light_diffuse_name_sstream;
     std::stringstream light_direction_name_sstream;
     std::stringstream light_world_pos_name_sstream;
 
+    /* Common properties */
     {
         light_diffuse_name_sstream   << "light" << n_items << "_diffuse";
-        light_direction_name_sstream << "light" << n_items << "_direction";
         light_world_pos_name_sstream << "light" << n_items << "_world_pos";
 
         ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
@@ -667,23 +719,41 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                           system_hashed_ansi_string_create(light_diffuse_name_sstream.str().c_str() ));
         ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                           VARIABLE_TYPE_UNIFORM,
-                                                          TYPE_VEC3,
-                                                          0, /* array_size */
-                                                          uber_ptr->fragment_shader_properties_ub,
-                                                          system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ));
-        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
                                                           TYPE_VEC4,
                                                           0, /* array_size */
                                                           uber_ptr->fragment_shader_properties_ub,
                                                           system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ));
     }
 
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL)
+    {
+        light_direction_name_sstream << "light" << n_items << "_direction";
+
+        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          uber_ptr->fragment_shader_properties_ub,
+                                                          system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ));
+    }
+
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    {
+        light_attenuations_name_sstream << "light" << n_items << "_attenuations";
+
+        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          uber_ptr->fragment_shader_properties_ub,
+                                                          system_hashed_ansi_string_create(light_attenuations_name_sstream.str().c_str() ));
+    }
+
     /* Add light vector calculation */
     {
         std::stringstream line;
 
-        if (light == UBER_LIGHT_LAMBERT_DIRECTIONAL)
+        if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL)
         {
             line << "vec3 light"
                  << n_items
@@ -693,9 +763,12 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         }
         else
         {
+            ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT,
+                              "Unrecognized light type");
+
             line << "vec3 light"
                  << n_items
-                 << "_vector = normalize("
+                 << "_vector = -("
                  << light_world_pos_name_sstream.str()
                  << ".xyz - world_vertex);\n";
         }
@@ -706,12 +779,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     /* Compute diffuse light factor */
-    switch (light)
+    switch (light_type)
     {
-        case UBER_LIGHT_LAMBERT_DIRECTIONAL:
-        case UBER_LIGHT_PHONG_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
         {
-            _shaders_fragment_uber_add_lambert_diffuse_factor(uber_ptr->shader_constructor,
+            _shaders_fragment_uber_add_lambert_diffuse_factor(light_type,
+                                                              uber_ptr->shader_constructor,
                                                               n_items,
                                                               new_light_item_data_ptr->properties,
                                                               pCallbackProc,
@@ -720,24 +795,49 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             break;
         }
 
-        case UBER_LIGHT_PROJECTION_SH3: _shaders_fragment_uber_add_sh3_diffuse_factor(uber_ptr->shader_constructor, n_items); break;
-        case UBER_LIGHT_PROJECTION_SH4: _shaders_fragment_uber_add_sh4_diffuse_factor(uber_ptr->shader_constructor, n_items); break;
-        case UBER_LIGHT_NONE:                                                                                                 break;
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH3:
+        {
+            _shaders_fragment_uber_add_sh3_diffuse_factor(uber_ptr->shader_constructor,
+                                                          n_items);
+
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PROJECTION_SH4:
+        {
+            _shaders_fragment_uber_add_sh4_diffuse_factor(uber_ptr->shader_constructor,
+                                                          n_items);
+
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE:
+        {
+            break;
+        }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized diffuse light type");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized diffuse light type");
         }
-    } /* switch (light) */
+    } /* switch (light_type) */
 
     /* Compute specular light factor */
-    switch (light)
+    switch (light_type)
     {
-        case UBER_LIGHT_PHONG_DIRECTIONAL: _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor, n_items); break;
-    } /* switch (light) */
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
+        {
+            _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor,
+                                                             n_items);
+
+            break;
+        }
+    } /* switch (light_type) */
 
     /* Add the descriptor to added items vector */
-    system_resizable_vector_push(uber_ptr->added_items, new_item_ptr);
+    system_resizable_vector_push(uber_ptr->added_items,
+                                 new_item_ptr);
 
     uber_ptr->dirty = true;
 
@@ -900,9 +1000,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __notnull const shaders_fragment_uber   uber,
-                                                                        __in           shaders_fragment_uber_item_id item_id,
-                                                                        __out          shaders_fragment_uber_light*  out_light_type)
+PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __notnull const shaders_fragment_uber       uber,
+                                                                        __in           shaders_fragment_uber_item_id     item_id,
+                                                                        __out          shaders_fragment_uber_light_type* out_light_type)
 {
     bool                          result        = false;
     const _shaders_fragment_uber* uber_ptr      = (const _shaders_fragment_uber*) uber;
@@ -917,7 +1017,7 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __n
 
         if (uber_item_ptr->type == SHADERS_FRAGMENT_UBER_ITEM_LIGHT)
         {
-            *out_light_type = ((_shaders_fragment_uber_item_light*) uber_item_ptr->data)->light;
+            *out_light_type = ((_shaders_fragment_uber_item_light*) uber_item_ptr->data)->light_type;
             result          = true;
         }
     }
