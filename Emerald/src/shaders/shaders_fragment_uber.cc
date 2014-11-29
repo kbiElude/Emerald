@@ -269,6 +269,10 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
                 "1.0f / (light" << n_item << "_attenuations.x + "
                         "light" << n_item << "_attenuations.y * light" << n_item << "_distance + "
                         "light" << n_item << "_attenuations.z * light" << n_item << "_distance * light" << n_item << "_distance);\n";
+
+        /* For point lights, light vector is NOT normalized. Make sure it is before we carry on with actual
+         * lighting calculations */
+        line << "light" << n_item << "_vector = normalize(light" << n_item << "_vector);\n";
     }
 
     /* Start forming the shader. */
