@@ -55,6 +55,7 @@ typedef struct _collada_data_effect
     _collada_data_shading_factor_item specular;
 
     /* Lightwave-specific data, extracted from <extra> sub-node */
+    float                     luminosity;
     system_hashed_ansi_string uv_map_name;
 
     _collada_data_effect();
@@ -72,6 +73,7 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
 _collada_data_effect::_collada_data_effect()
 {
     id          = system_hashed_ansi_string_get_default_empty_string();
+    luminosity  = 0.0f;
     shading     = COLLADA_DATA_SHADING_UNKNOWN;
     uv_map_name = system_hashed_ansi_string_get_default_empty_string();
 }
@@ -138,11 +140,40 @@ PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_fact
 
     switch (item)
     {
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT:   result = &effect_ptr->ambient;   break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE:   result = &effect_ptr->diffuse;   break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:  result = &effect_ptr->emission;  break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS: result = &effect_ptr->shininess; break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR:  result = &effect_ptr->specular;  break;
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT:
+        {
+            result = &effect_ptr->ambient;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE:
+        {
+            result = &effect_ptr->diffuse;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:
+        {
+            result = &effect_ptr->emission;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS:
+        {
+            result = &effect_ptr->shininess;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR:
+        {
+            result = &effect_ptr->specular;
+
+            break;
+        }
 
         default:
         {
@@ -166,11 +197,31 @@ PRIVATE void _collada_data_effect_init_lambert(__in __notnull _collada_data_effe
     while (child_element_ptr != NULL)
     {
         const char* child_name = child_element_ptr->Name();
-        ASSERT_DEBUG_SYNC(child_name != NULL, "<lambert> child node name is NULL");
+        ASSERT_DEBUG_SYNC(child_name != NULL,
+                          "<lambert> child node name is NULL");
 
-        if (strcmp(child_name, "emission") == 0) _collada_data_effect_init_shading_item(child_element_ptr, &effect_ptr->emission, samplers_by_id_map);  else
-        if (strcmp(child_name, "ambient")  == 0) _collada_data_effect_init_shading_item(child_element_ptr, &effect_ptr->ambient,  samplers_by_id_map);  else
-        if (strcmp(child_name, "diffuse")  == 0) _collada_data_effect_init_shading_item(child_element_ptr, &effect_ptr->diffuse,  samplers_by_id_map);  else
+        if (strcmp(child_name, "emission") == 0)
+        {
+            _collada_data_effect_init_shading_item(child_element_ptr,
+                                                   &effect_ptr->emission,
+                                                    samplers_by_id_map);
+
+        }
+        else
+        if (strcmp(child_name, "ambient")  == 0)
+        {
+            _collada_data_effect_init_shading_item(child_element_ptr,
+                                                  &effect_ptr->ambient,
+                                                   samplers_by_id_map);
+        }
+        else
+        if (strcmp(child_name, "diffuse")  == 0)
+        {
+            _collada_data_effect_init_shading_item(child_element_ptr,
+                                                  &effect_ptr->diffuse,
+                                                   samplers_by_id_map);
+        }
+        else
         {
             ASSERT_DEBUG_SYNC(false, "Unrecognized <lambert> node child.");
         }
@@ -189,14 +240,16 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
     tinyxml2::XMLElement* child_element_ptr  = element_ptr->FirstChildElement();
     const char*           child_element_name = child_element_ptr->Name();
 
-    ASSERT_DEBUG_SYNC(child_element_name != NULL, "Child node name is NULL");
+    ASSERT_DEBUG_SYNC(child_element_name != NULL,
+                      "Child node name is NULL");
 
     if (strcmp(child_element_name, "color") == 0)
     {
         result_ptr->data = new (std::nothrow) float[4];
         result_ptr->type = COLLADA_DATA_SHADING_FACTOR_VEC4;
 
-        ASSERT_ALWAYS_SYNC(result_ptr->data != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(result_ptr->data != NULL,
+                           "Out of memory");
 
         sscanf_s(child_element_ptr->GetText(),
                  "%f %f %f %f",
@@ -217,28 +270,39 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
         system_hashed_ansi_string sampler_name_has = NULL;
         collada_data_sampler2D    sampler          = NULL;
 
-        ASSERT_DEBUG_SYNC(sampler_name != NULL, "Sampler name is NULL");
+        ASSERT_DEBUG_SYNC(sampler_name != NULL,
+                          "Sampler name is NULL");
+
         sampler_name_has = system_hashed_ansi_string_create(sampler_name);
 
-        system_hash64map_get(samplers_by_id_map, system_hashed_ansi_string_get_hash(sampler_name_has), &sampler);
-        ASSERT_DEBUG_SYNC(sampler != NULL, "Could not find a sampler named [%s]", sampler_name);
+        system_hash64map_get(samplers_by_id_map,
+                             system_hashed_ansi_string_get_hash(sampler_name_has),
+                            &sampler);
+
+        ASSERT_DEBUG_SYNC(sampler != NULL,
+                          "Could not find a sampler named [%s]",
+                          sampler_name);
 
         /* Identify texcoord that will be used in material binding definition */
         const char*               texcoord_name     = child_element_ptr->Attribute("texcoord");
         system_hashed_ansi_string texcoord_name_has = NULL;
 
-        ASSERT_DEBUG_SYNC(texcoord_name != NULL, "Texcoord name is NULL");
+        ASSERT_DEBUG_SYNC(texcoord_name != NULL,
+                          "Texcoord name is NULL");
+
         texcoord_name_has = system_hashed_ansi_string_create(texcoord_name);
 
         /* Form the descriptor */
         collada_data_surface sampler_surface = NULL;
 
         collada_data_sampler2D_get_properties(sampler,
-                                              &sampler_surface,
-                                              &new_data->mag_filter,
-                                              &new_data->min_filter);
+                                             &sampler_surface,
+                                             &new_data->mag_filter,
+                                             &new_data->min_filter);
 
-        collada_data_surface_get_property(sampler_surface, COLLADA_DATA_SURFACE_PROPERTY_TEXTURE, &new_data->image);
+        collada_data_surface_get_property(sampler_surface,
+                                          COLLADA_DATA_SURFACE_PROPERTY_TEXTURE,
+                                         &new_data->image);
 
         new_data->texcoord_name = texcoord_name_has;
 
@@ -260,7 +324,8 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
 {
     _collada_data_effect* new_effect_ptr = new (std::nothrow) _collada_data_effect;
 
-    ASSERT_ALWAYS_SYNC(new_effect_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_effect_ptr != NULL,
+                       "Out of memory");
     if (new_effect_ptr != NULL)
     {
         new_effect_ptr->id = system_hashed_ansi_string_create(current_effect_element_ptr->Attribute("id") );
@@ -271,17 +336,23 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
         tinyxml2::XMLElement* profile_gles_element_ptr   = current_effect_element_ptr->FirstChildElement("profile_GLES");
         tinyxml2::XMLElement* profile_glsl_element_ptr   = current_effect_element_ptr->FirstChildElement("profile_GLSL");
 
-        ASSERT_DEBUG_SYNC(profile_cg_element_ptr == NULL && profile_gles_element_ptr == NULL && profile_glsl_element_ptr == NULL,
+        ASSERT_DEBUG_SYNC(profile_cg_element_ptr   == NULL &&
+                          profile_gles_element_ptr == NULL &&
+                          profile_glsl_element_ptr == NULL,
                           "COLLADA data file uses an incommon profile for one of the effects - only COMMON profiles are supported");
 
-        ASSERT_DEBUG_SYNC(profile_common_element_ptr != NULL, "COLLADA data file does not define a COMMON profile for at least one effect");
+        ASSERT_DEBUG_SYNC(profile_common_element_ptr != NULL,
+                          "COLLADA data file does not define a COMMON profile for at least one effect");
+
         if (profile_common_element_ptr != NULL)
         {
             /* <profile_COMMON> node should define exactly one technique */
             tinyxml2::XMLElement*   child_element_ptr        = profile_common_element_ptr->FirstChildElement();
-            system_resizable_vector samplers                 = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_sampler2D) );
+            system_resizable_vector samplers                 = system_resizable_vector_create(4 /* capacity */,
+                                                                                              sizeof(collada_data_sampler2D) );
             system_hash64map        samplers_by_id_map       = system_hash64map_create       (4 /* capacity */);
-            system_resizable_vector surfaces                 = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_surface) );
+            system_resizable_vector surfaces                 = system_resizable_vector_create(4 /* capacity */,
+                                                                                              sizeof(collada_data_surface) );
             system_hash64map        surfaces_by_id_map       = system_hash64map_create       (4 /* capacity */);
 
             while (child_element_ptr != NULL)
@@ -300,16 +371,22 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                     while (technique_item_element_ptr != NULL)
                     {
                         const char* item_name = technique_item_element_ptr->Name();
-                        ASSERT_DEBUG_SYNC(item_name != NULL, "Node name is NULL");
+
+                        ASSERT_DEBUG_SYNC(item_name != NULL,
+                                          "Node name is NULL");
 
                         if (strcmp(item_name, "lambert") == 0)
                         {
-                            _collada_data_effect_init_lambert(new_effect_ptr, technique_item_element_ptr, samplers_by_id_map);
+                            _collada_data_effect_init_lambert(new_effect_ptr,
+                                                              technique_item_element_ptr,
+                                                              samplers_by_id_map);
                         }
                         else
                         {
                             /* TODO */
-                            ASSERT_DEBUG_SYNC(false, "Technique item [%s] is not supported", item_name);
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Technique item [%s] is not supported",
+                                              item_name);
                         }
 
                         /* Iterate to next technique item */
@@ -320,23 +397,28 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                 if (strcmp(child_element_type, "newparam") == 0)
                 {
                     const char* child_element_sid = child_element_ptr->Attribute("sid");
-                    ASSERT_DEBUG_SYNC(child_element_sid != NULL, "No sid attribute associated with a <surface> node");
+
+                    ASSERT_DEBUG_SYNC(child_element_sid != NULL,
+                                      "No sid attribute associated with a <surface> node");
 
                     /* Take the first child subnode of the node */
                     tinyxml2::XMLElement* child_subelement_ptr = child_element_ptr->FirstChildElement();
-                    ASSERT_DEBUG_SYNC(child_subelement_ptr != NULL, "Child sub-element is NULL");
+
+                    ASSERT_DEBUG_SYNC(child_subelement_ptr != NULL,
+                                      "Child sub-element is NULL");
 
                     const char* child_subelement_type = child_subelement_ptr->Name();
 
                     if (strcmp(child_subelement_type, "surface") == 0)
                     {
                         system_hashed_ansi_string new_surface_id = system_hashed_ansi_string_create(child_element_sid);
-                        collada_data_surface      new_surface    = collada_data_surface_create(child_subelement_ptr,
-                                                                                               new_surface_id,
-                                                                                               images_by_id_map);
+                        collada_data_surface      new_surface    = collada_data_surface_create     (child_subelement_ptr,
+                                                                                                    new_surface_id,
+                                                                                                    images_by_id_map);
 
                         /* Store the descriptor */
-                        system_resizable_vector_push(surfaces, new_surface);
+                        system_resizable_vector_push(surfaces,
+                                                     new_surface);
 
                         system_hash64map_insert(surfaces_by_id_map,
                                                 system_hashed_ansi_string_get_hash(new_surface_id),
@@ -347,12 +429,12 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                     else
                     if (strcmp(child_subelement_type, "sampler2D") == 0)
                     {
-                        system_hashed_ansi_string new_sampler_id     = system_hashed_ansi_string_create(child_element_sid);
-                        collada_data_sampler2D    new_sampler        = collada_data_sampler2D_create   (new_sampler_id,
-                                                                                                        child_subelement_ptr,
-                                                                                                        surfaces_by_id_map);
+                        system_hashed_ansi_string new_sampler_id     = system_hashed_ansi_string_create       (child_element_sid);
+                        collada_data_sampler2D    new_sampler        = collada_data_sampler2D_create          (new_sampler_id,
+                                                                                                               child_subelement_ptr,
+                                                                                                               surfaces_by_id_map);
                         tinyxml2::XMLElement*     source_element_ptr = child_subelement_ptr->FirstChildElement("source");
-                        system_hashed_ansi_string surface_name       = system_hashed_ansi_string_create(source_element_ptr->GetText() );
+                        system_hashed_ansi_string surface_name       = system_hashed_ansi_string_create       (source_element_ptr->GetText() );
                         collada_data_surface      surface            = NULL;
 
                         system_hash64map_get(surfaces_by_id_map,
@@ -380,7 +462,8 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Unrecognized child node of <profile_COMMON> node");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized child node of <profile_COMMON> node");
                 }
 
                 /* Iterate over all children */
@@ -391,7 +474,8 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
             collada_data_sampler2D sampler = NULL;
             collada_data_surface   surface = NULL;
 
-            while (system_resizable_vector_pop(samplers, &sampler))
+            while (system_resizable_vector_pop(samplers,
+                                              &sampler))
             {
                 collada_data_sampler2D_release(sampler);
 
@@ -407,7 +491,8 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                 samplers_by_id_map = NULL;
             }
 
-            while (system_resizable_vector_pop(surfaces, &surface))
+            while (system_resizable_vector_pop(surfaces,
+                                              &surface))
             {
                 collada_data_surface_release(surface);
 
@@ -436,7 +521,7 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
 
         if (extra_element_ptr != NULL)
         {
-            /* Try to extract UV map name */
+            /* Move in under the LWCORE technique */
             tinyxml2::XMLElement* technique_element_ptr = extra_element_ptr->FirstChildElement("technique");
 
             if (technique_element_ptr != NULL)
@@ -479,7 +564,13 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
 
                                 if (component_element_ptr != NULL)
                                 {
-                                    /* Find the "Color" attribute */
+                                    /* This attribute stores various interesting stuff. Of our particular interest are:
+                                     *
+                                     * - UV map name.
+                                     * - Luminosity
+                                     */
+
+                                    /* UV map name: Find the "Color" attribute */
                                     tinyxml2::XMLElement* color_attribute_element_ptr = NULL;
 
                                     attribute_element_ptr = component_element_ptr->FirstChildElement("attribute");
@@ -576,6 +667,41 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                                             } /* if (component_element_ptr != NULL) */
                                         } /* if (connected_component_element_ptr != NULL) */
                                     } /* if (color_attribute_element_ptr != NULL) */
+
+                                    /* Is there luminosity information available? */
+                                    tinyxml2::XMLElement* luminosity_attribute_element_ptr = NULL;
+
+                                    attribute_element_ptr = component_element_ptr->FirstChildElement("attribute");
+
+                                    while (attribute_element_ptr != NULL)
+                                    {
+                                        const char* attribute_sid = attribute_element_ptr->Attribute("sid");
+
+                                        if (strcmp(attribute_sid, "Luminosity") == 0)
+                                        {
+                                            luminosity_attribute_element_ptr = attribute_element_ptr;
+
+                                            break;
+                                        }
+
+                                        /* "Color" attribute was not found, iterate */
+                                        attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
+                                    }; /* while (attribute_element_ptr != NULL) */
+
+                                    if (luminosity_attribute_element_ptr != NULL)
+                                    {
+                                        /* Indeed! Extract the float information */
+                                        tinyxml2::XMLElement* float_element_ptr = luminosity_attribute_element_ptr->FirstChildElement("float");
+
+                                        ASSERT_DEBUG_SYNC(float_element_ptr != NULL,
+                                                          "Animated luminosity information is not supported");
+                                        if (float_element_ptr != NULL)
+                                        {
+                                            sscanf(float_element_ptr->GetText(),
+                                                   "%f",
+                                                  &new_effect_ptr->luminosity);
+                                        } /* if (float_element_ptr != NULL) */
+                                    } /* if (luminosity_attribute_element_ptr != NULL) */
                                 } /* if (component_element_ptr != NULL) */
                             } /* if (connected_component_element_ptr != NULL) */
                         } /* if (projection_attribute_element_ptr != NULL) */
@@ -663,6 +789,13 @@ PUBLIC EMERALD_API void collada_data_effect_get_property(__in  __notnull const c
             break;
         }
 
+        case COLLADA_DATA_EFFECT_PROPERTY_LUMINOSITY:
+        {
+            *(float*) out_data_ptr = effect_ptr->luminosity;
+
+            break;
+        }
+
         case COLLADA_DATA_EFFECT_PROPERTY_UV_MAP_NAME:
         {
             *((system_hashed_ansi_string*) out_data_ptr) = effect_ptr->uv_map_name;
@@ -690,20 +823,42 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
         collada_data_shading_factor_item   result_value;
     } data[] =
     {
-        {&effect_ptr->ambient,   COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT},
-        {&effect_ptr->diffuse,   COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE},
-        {&effect_ptr->emission,  COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION},
-        {&effect_ptr->shininess, COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS},
-        {&effect_ptr->specular,  COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR}
+        {
+            &effect_ptr->ambient,
+            COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT
+        },
+
+        {
+            &effect_ptr->diffuse,
+            COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE
+        },
+
+        {
+            &effect_ptr->emission,
+            COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION
+        },
+
+        {
+            &effect_ptr->shininess,
+            COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS
+        },
+
+        {
+            &effect_ptr->specular,
+            COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR
+        }
     };
     const unsigned int n_data_items = sizeof(data) / sizeof(data[0]);
 
-    for (unsigned int n_data_item = 0; n_data_item < n_data_items; ++n_data_item)
+    for (unsigned int n_data_item = 0;
+                      n_data_item < n_data_items;
+                    ++n_data_item)
     {
         const _data_item& data_item = data[n_data_item];
 
         if (data_item.item_ptr->type == COLLADA_DATA_SHADING_FACTOR_TEXTURE &&
-            system_hashed_ansi_string_is_equal_to_hash_string( ((_collada_data_shading_factor_item_texture*) data_item.item_ptr->data)->texcoord_name, texcoord_name) )
+            system_hashed_ansi_string_is_equal_to_hash_string( ((_collada_data_shading_factor_item_texture*) data_item.item_ptr->data)->texcoord_name,
+                                                               texcoord_name) )
         {
             result = data_item.result_value;
 
@@ -725,7 +880,8 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(_
 {
     _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
     collada_data_shading_factor        result     = COLLADA_DATA_SHADING_FACTOR_UNKNOWN;
-    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr, item);
+    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
+                                                                                                 item);
 
     if (item_ptr != NULL)
     {
@@ -744,7 +900,8 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_prope
                                                                                       __out_ecount_opt(4) float*                           out_float4)
 {
     _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
-    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr, item);
+    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
+                                                                                                 item);
 
     if (item_ptr != NULL)
     {
@@ -755,7 +912,9 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_prope
 
         if (out_float4 != NULL)
         {
-            memcpy(out_float4, data_ptr, sizeof(float) * 4);
+            memcpy(out_float4,
+                   data_ptr,
+                   sizeof(float) * 4);
         }
     }
 }
