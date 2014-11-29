@@ -1740,11 +1740,11 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                                               "Texture uniform location is -1!");
 
                             /* Set up the sampler */
-                            mesh_material_get_shading_property_texture_properties(layer_pass_material,
-                                                                                  attachment.property,
-                                                                                  &layer_pass_texture,
-                                                                                  &layer_pass_texture_mipmap_level,
-                                                                                  &layer_pass_sampler);
+                            mesh_material_get_shading_property_value_texture(layer_pass_material,
+                                                                             attachment.property,
+                                                                            &layer_pass_texture,
+                                                                            &layer_pass_texture_mipmap_level,
+                                                                            &layer_pass_sampler);
 
                             entry_points->pGLBindSampler(n_texture_units_used,
                                                          ogl_sampler_get_id(layer_pass_sampler) );
@@ -1768,9 +1768,9 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                             ASSERT_DEBUG_SYNC(attachment.shader_vec4_uniform_location != -1,
                                               "Vec4 uniform location is -1!");
 
-                            mesh_material_get_shading_property_vec4_properties(layer_pass_material,
-                                                                               attachment.property,
-                                                                               data_vec4);
+                            mesh_material_get_shading_property_value_vec4(layer_pass_material,
+                                                                          attachment.property,
+                                                                          data_vec4);
 
                             entry_points->pGLProgramUniform4fv(po_id,
                                                                attachment.shader_vec4_uniform_location,

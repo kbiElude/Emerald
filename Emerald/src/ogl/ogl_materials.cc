@@ -219,6 +219,12 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+            {
+                /* Single-component floating-point attachments are handled by uniforms so the actual data is irrelevant */
+                break;
+            }
+
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
                 ogl_texture_dimensionality material_a_dimensionality;
@@ -226,17 +232,17 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                 ogl_texture_dimensionality material_b_dimensionality;
                 ogl_texture                material_b_texture = NULL;
 
-                mesh_material_get_shading_property_texture_properties(material_a,
-                                                                      property,
-                                                                      &material_a_texture,
-                                                                      NULL, /* out_mipmap_level - irrelevant */
-                                                                      NULL);/* out_sampler - irrelevant */
+                mesh_material_get_shading_property_value_texture(material_a,
+                                                                 property,
+                                                                &material_a_texture,
+                                                                 NULL, /* out_mipmap_level - irrelevant */
+                                                                 NULL);/* out_sampler - irrelevant */
 
-                mesh_material_get_shading_property_texture_properties(material_b,
-                                                                      property,
-                                                                      &material_b_texture,
-                                                                      NULL, /* out_mipmap_level - irrelevant */
-                                                                      NULL);/* out_sampler - irrelevant */
+                mesh_material_get_shading_property_value_texture(material_b,
+                                                                 property,
+                                                                &material_b_texture,
+                                                                 NULL, /* out_mipmap_level - irrelevant */
+                                                                 NULL);/* out_sampler - irrelevant */
 
                 ogl_texture_get_mipmap_property(material_a_texture,
                                                 0, /* mipmap_level */
@@ -473,9 +479,9 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                               "Invalid input attribute attachment");
 
             /* Retrieve the attribute we want to use as color data source */
-            mesh_material_get_shading_property_input_fragment_attribute_properties(material,
-                                                                                   MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
-                                                                                  &input_fragment_attribute);
+            mesh_material_get_shading_property_value_input_fragment_attribute(material,
+                                                                              MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
+                                                                             &input_fragment_attribute);
 
             /* Configure the ogl_uber instance */
             _ogl_uber_input_fragment_attribute uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;

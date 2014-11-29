@@ -65,6 +65,7 @@ typedef enum _collada_data_shading
 typedef enum collada_data_shading_factor
 {
     COLLADA_DATA_SHADING_FACTOR_NONE,
+    COLLADA_DATA_SHADING_FACTOR_FLOAT,
     COLLADA_DATA_SHADING_FACTOR_TEXTURE,
     COLLADA_DATA_SHADING_FACTOR_VEC4,
 
@@ -75,13 +76,14 @@ typedef enum collada_data_shading_factor
 /** Describes shading factor item type */
 typedef enum collada_data_shading_factor_item
 {
-    COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT   = 1 << 0,
-    COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE   = 1 << 1,
-    COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION  = 1 << 2,
-    COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS = 1 << 3,
-    COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR  = 1 << 4,
+    COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT    = 1 << 0,
+    COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE    = 1 << 1,
+    COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION   = 1 << 2,
+    COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY = 1 << 3,
+    COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS  = 1 << 4,
+    COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR   = 1 << 5,
 
-    COLLADA_DATA_SHADING_FACTOR_ITEM_COUNT   = 5, /* always equal to +1 off the highest power defined in this enum */
+    COLLADA_DATA_SHADING_FACTOR_ITEM_COUNT   = 6, /* always equal to +1 off the highest power defined in this enum */
     COLLADA_DATA_SHADING_FACTOR_ITEM_UNKNOWN = COLLADA_DATA_SHADING_FACTOR_ITEM_COUNT
 };
 

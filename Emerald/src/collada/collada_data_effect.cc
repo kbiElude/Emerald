@@ -51,11 +51,11 @@ typedef struct _collada_data_effect
     _collada_data_shading_factor_item ambient;
     _collada_data_shading_factor_item diffuse;
     _collada_data_shading_factor_item emission;
+    _collada_data_shading_factor_item luminosity;
     _collada_data_shading_factor_item shininess;
     _collada_data_shading_factor_item specular;
 
     /* Lightwave-specific data, extracted from <extra> sub-node */
-    float                     luminosity;
     system_hashed_ansi_string uv_map_name;
 
     _collada_data_effect();
@@ -73,7 +73,6 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
 _collada_data_effect::_collada_data_effect()
 {
     id          = system_hashed_ansi_string_get_default_empty_string();
-    luminosity  = 0.0f;
     shading     = COLLADA_DATA_SHADING_UNKNOWN;
     uv_map_name = system_hashed_ansi_string_get_default_empty_string();
 }
@@ -94,6 +93,15 @@ _collada_data_shading_factor_item::~_collada_data_shading_factor_item()
         {
             ASSERT_DEBUG_SYNC(data == NULL, "Shading factor item type is 'none' but data is not NULL");
 
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_FLOAT:
+        {
+            /* data is a single float */
+            delete (float*) data;
+
+            data = NULL;
             break;
         }
 
@@ -157,6 +165,13 @@ PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_fact
         case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:
         {
             result = &effect_ptr->emission;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY:
+        {
+            result = &effect_ptr->luminosity;
 
             break;
         }
@@ -229,6 +244,20 @@ PRIVATE void _collada_data_effect_init_lambert(__in __notnull _collada_data_effe
         /* Move to next child */
         child_element_ptr = child_element_ptr->NextSiblingElement();
     } /* while (child_element_ptr != NULL) */
+}
+
+
+/** TODO */
+PRIVATE void _collada_data_effect_init_luminosity_shading_item(__in __notnull _collada_data_shading_factor_item* result_ptr,
+                                                               __in           float                              value)
+{
+    result_ptr->data = new float;
+    result_ptr->type = COLLADA_DATA_SHADING_FACTOR_FLOAT;
+
+    ASSERT_ALWAYS_SYNC(result_ptr->data != NULL,
+                       "Out of memory");
+
+    *(float*)result_ptr->data = value;
 }
 
 /** TODO */
@@ -697,9 +726,14 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                                                           "Animated luminosity information is not supported");
                                         if (float_element_ptr != NULL)
                                         {
+                                            float luminosity_value = 0.0f;
+
                                             sscanf(float_element_ptr->GetText(),
                                                    "%f",
-                                                  &new_effect_ptr->luminosity);
+                                                  &luminosity_value);
+
+                                            _collada_data_effect_init_luminosity_shading_item(&new_effect_ptr->luminosity,
+                                                                                              luminosity_value);
                                         } /* if (float_element_ptr != NULL) */
                                     } /* if (luminosity_attribute_element_ptr != NULL) */
                                 } /* if (component_element_ptr != NULL) */
@@ -764,12 +798,13 @@ PUBLIC EMERALD_API void collada_data_effect_get_properties(__in      __notnull c
 
     if (out_shading_factor_item_bitmask != NULL)
     {
-        *out_shading_factor_item_bitmask = 
-                                           (int) ((effect_ptr->ambient.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT   : 0) |
-                                           (int) ((effect_ptr->diffuse.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE   : 0) |
-                                           (int) ((effect_ptr->emission.type  != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION  : 0) |
-                                           (int) ((effect_ptr->shininess.type != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS : 0) |
-                                           (int) ((effect_ptr->specular.type  != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR  : 0);
+        *out_shading_factor_item_bitmask =
+                                           (int) ((effect_ptr->ambient.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT    : 0) |
+                                           (int) ((effect_ptr->diffuse.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE    : 0) |
+                                           (int) ((effect_ptr->emission.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION   : 0) |
+                                           (int) ((effect_ptr->luminosity.type != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY : 0) |
+                                           (int) ((effect_ptr->shininess.type  != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS  : 0) |
+                                           (int) ((effect_ptr->specular.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR   : 0);
     }
 }
 
@@ -785,13 +820,6 @@ PUBLIC EMERALD_API void collada_data_effect_get_property(__in  __notnull const c
         case COLLADA_DATA_EFFECT_PROPERTY_ID:
         {
             *((system_hashed_ansi_string*) out_data_ptr) = effect_ptr->id;
-
-            break;
-        }
-
-        case COLLADA_DATA_EFFECT_PROPERTY_LUMINOSITY:
-        {
-            *(float*) out_data_ptr = effect_ptr->luminosity;
 
             break;
         }
@@ -836,6 +864,11 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
         {
             &effect_ptr->emission,
             COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION
+        },
+
+        {
+            &effect_ptr->luminosity,
+            COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY
         },
 
         {
@@ -891,6 +924,29 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(_
     if (out_type != NULL)
     {
         *out_type = result;
+    }
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_properties(__in __notnull collada_data_effect              effect,
+                                                                                     __in           collada_data_shading_factor_item item,
+                                                                                     __out          float*                           out_float)
+{
+    _collada_data_effect*              effect_ptr = (_collada_data_effect*) effect;
+    _collada_data_shading_factor_item* item_ptr   = _collada_data_get_effect_shading_factor_item(effect_ptr,
+                                                                                                 item);
+
+    if (item_ptr != NULL)
+    {
+        ASSERT_DEBUG_SYNC(item_ptr->type == COLLADA_DATA_SHADING_FACTOR_FLOAT,
+                          "Requested shading factor item is not a float");
+
+        const float* data_ptr = (const float*) item_ptr->data;
+
+        if (out_float != NULL)
+        {
+            *out_float = *data_ptr;
+        }
     }
 }
 
