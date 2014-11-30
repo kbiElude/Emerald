@@ -44,6 +44,11 @@ PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_properties(_
                                                                                __out_opt           collada_data_shading_factor*      out_type);
 
 /** TODO */
+PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float_properties(__in __notnull      collada_data_effect              effect,
+                                                                                     __in                collada_data_shading_factor_item item,
+                                                                                     __out_ecount_opt(4) float*                           out_float4);
+
+/** TODO */
 PUBLIC EMERALD_API void collada_data_effect_get_shading_factor_item_float4_properties(__in __notnull      collada_data_effect              effect,
                                                                                       __in                collada_data_shading_factor_item item,
                                                                                       __out_ecount_opt(4) float*                           out_float4);

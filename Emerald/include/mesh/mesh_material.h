@@ -41,18 +41,19 @@ typedef enum
 
 typedef enum
 {
-    MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager */
-    MESH_MATERIAL_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
-    MESH_MATERIAL_PROPERTY_SHADING,                /* settable,     mesh_material_shading */
-    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,            /* settable,     system_hashed_ansi_string */
-    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable,     float. Negative value indicates
-                                                    * vertex smoothing is disabled. */
+    MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager         */
+    MESH_MATERIAL_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string       */
+    MESH_MATERIAL_PROPERTY_SHADING,                /* settable,     mesh_material_shading           */
+    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,            /* settable,     system_hashed_ansi_string       */
+    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable,     float. Negative value indicates */
+                                                   /*               vertex smoothing is disabled.   */
 
 } mesh_material_property;
 
 typedef enum
 {
     MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE,
+    MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4,
@@ -77,13 +78,16 @@ typedef enum
     MESH_MATERIAL_SHADING_PROPERTY_FIRST,
 
     /* only used if MESH_MATERIAL_SHADING_LAMBERT or MESH_MATERIAL_SHADING_PHONG shading is used.
-     * Supports either texture or vec4 attachments.
+     * Supports texture & vec4 attachments.
      */
     MESH_MATERIAL_SHADING_PROPERTY_AMBIENT = MESH_MATERIAL_SHADING_PROPERTY_FIRST,
     MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
     MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
     MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
     MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+
+    /* Currently only supports float attachments */
+    MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
 
     /* only used if MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE shading is used.
      * Only supports "input fragment attribute" attachments
@@ -119,9 +123,6 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 /** TODO */
 PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnull mesh_material material);
 
-/** TODO */
-PUBLIC EMERALD_API GLenum mesh_material_get_glenum_for_mesh_material_texture_filtering(__in mesh_material_texture_filtering filtering);
-
 /** TODO.
  *
  *  Input scene can be NULL, in which case it is assumed the returned ogl_uber does not need
@@ -140,21 +141,26 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
                                                                                                         __in           mesh_material_shading_property property);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_input_fragment_attribute_properties(__in __notnull mesh_material                           material,
-                                                                                               __in           mesh_material_shading_property          property,
-                                                                                               __out_opt      mesh_material_input_fragment_attribute* out_attribute);
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(__in      __notnull mesh_material                  material,
+                                                                       __in                mesh_material_shading_property property,
+                                                                       __out_opt           float*                         out_float_value);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_texture_properties(__in      __notnull mesh_material                    material,
-                                                                              __in                mesh_material_shading_property   property,
-                                                                              __out_opt           ogl_texture*                     out_texture,
-                                                                              __out_opt           unsigned int*                    out_mipmap_level,
-                                                                              __out_opt           ogl_sampler*                     out_sampler);
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_attribute(__in __notnull mesh_material                           material,
+                                                                                          __in           mesh_material_shading_property          property,
+                                                                                          __out_opt      mesh_material_input_fragment_attribute* out_attribute);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_vec4_properties(__in           __notnull mesh_material                  material,
-                                                                           __in                     mesh_material_shading_property property,
-                                                                           __out_ecount(4)          float*                         out_vec4_data);
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(__in      __notnull mesh_material                    material,
+                                                                         __in                mesh_material_shading_property   property,
+                                                                         __out_opt           ogl_texture*                     out_texture,
+                                                                         __out_opt           unsigned int*                    out_mipmap_level,
+                                                                         __out_opt           ogl_sampler*                     out_sampler);
+
+/** TODO */
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in           __notnull mesh_material                  material,
+                                                                      __in                     mesh_material_shading_property property,
+                                                                      __out_ecount(4)          float*                         out_vec4_data);
 
 /** TODO */
 PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer serializer,
@@ -169,6 +175,11 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
                                                    __in           mesh_material_property property,
                                                    __in __notnull void*                  data);
+
+/** TODO */
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnull mesh_material                  material,
+                                                                    __in           mesh_material_shading_property property,
+                                                                    __in           float                          value);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_attribute(__in __notnull mesh_material                          material,

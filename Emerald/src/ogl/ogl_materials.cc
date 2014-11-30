@@ -36,6 +36,14 @@ typedef struct _ogl_materials_mesh_material_setting
         {
             switch (attachment)
             {
+                case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                {
+                    delete (float*) attachment_data;
+
+                    attachment_data = NULL;
+                    break;
+                }
+
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
                     ogl_texture_release( (ogl_texture&) attachment_data);
@@ -49,6 +57,7 @@ typedef struct _ogl_materials_mesh_material_setting
                     delete (float*) attachment_data;
 
                     attachment_data = NULL;
+                    break;
                 }
 
                 default:
@@ -219,6 +228,12 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+            {
+                /* Single-component floating-point attachments are handled by uniforms so the actual data is irrelevant */
+                break;
+            }
+
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
                 ogl_texture_dimensionality material_a_dimensionality;
@@ -226,17 +241,17 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                 ogl_texture_dimensionality material_b_dimensionality;
                 ogl_texture                material_b_texture = NULL;
 
-                mesh_material_get_shading_property_texture_properties(material_a,
-                                                                      property,
-                                                                      &material_a_texture,
-                                                                      NULL, /* out_mipmap_level - irrelevant */
-                                                                      NULL);/* out_sampler - irrelevant */
+                mesh_material_get_shading_property_value_texture(material_a,
+                                                                 property,
+                                                                &material_a_texture,
+                                                                 NULL, /* out_mipmap_level - irrelevant */
+                                                                 NULL);/* out_sampler - irrelevant */
 
-                mesh_material_get_shading_property_texture_properties(material_b,
-                                                                      property,
-                                                                      &material_b_texture,
-                                                                      NULL, /* out_mipmap_level - irrelevant */
-                                                                      NULL);/* out_sampler - irrelevant */
+                mesh_material_get_shading_property_value_texture(material_b,
+                                                                 property,
+                                                                &material_b_texture,
+                                                                 NULL, /* out_mipmap_level - irrelevant */
+                                                                 NULL);/* out_sampler - irrelevant */
 
                 ogl_texture_get_mipmap_property(material_a_texture,
                                                 0, /* mipmap_level */
@@ -303,10 +318,6 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
         if (material_shading == MESH_MATERIAL_SHADING_LAMBERT ||
             material_shading == MESH_MATERIAL_SHADING_PHONG)
         {
-            const unsigned int n_max_uber_fragment_property_value_pairs = 3; /* sizeof(mappings)  */
-            unsigned int       n_uber_fragment_property_value_pairs     = 0;
-            unsigned int       uber_fragment_property_value_pairs[n_max_uber_fragment_property_value_pairs*2];
-
             /* Map mesh_material property attachments to shaders_fragment_uber data source equivalents */
             struct _mapping
             {
@@ -327,9 +338,18 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
                     SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE
-                }
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE
+                },
+
             };
             const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
+
+            unsigned int n_uber_fragment_property_value_pairs     = 0;
+            unsigned int uber_fragment_property_value_pairs[n_mappings*2];
 
             /* Add ambient/diffuse/emission factors */
             for (unsigned int n_mapping = 0;
@@ -351,6 +371,13 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
                     switch (material_attachment)
                     {
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT;
+
+                            break;
+                        }
+
                         case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                         {
                             uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D;
@@ -375,22 +402,6 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     n_uber_fragment_property_value_pairs++;
                 }
             } /* for (all mappings) */
-
-            /* Add emission/shininess/specular factors (if defined for material) */
-            mesh_material_property_attachment emission_attachment  = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_EMISSION);
-            mesh_material_property_attachment shininess_attachment = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS);
-            mesh_material_property_attachment specular_attachment  = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR);
-
-            if (emission_attachment  != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE ||
-                shininess_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE ||
-                specular_attachment  != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
-            {
-                /* TODO */
-                ASSERT_ALWAYS_SYNC(false, "TODO");
-            }
 
             /* Add lights */
             if (scene != NULL)
@@ -473,9 +484,9 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                               "Invalid input attribute attachment");
 
             /* Retrieve the attribute we want to use as color data source */
-            mesh_material_get_shading_property_input_fragment_attribute_properties(material,
-                                                                                   MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
-                                                                                  &input_fragment_attribute);
+            mesh_material_get_shading_property_value_input_fragment_attribute(material,
+                                                                              MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
+                                                                             &input_fragment_attribute);
 
             /* Configure the ogl_uber instance */
             _ogl_uber_input_fragment_attribute uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;

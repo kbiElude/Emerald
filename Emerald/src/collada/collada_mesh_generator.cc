@@ -193,6 +193,21 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __
 
                 switch (effect_shading_factor)
                 {
+                    case COLLADA_DATA_SHADING_FACTOR_FLOAT:
+                    {
+                        float shading_factor_float;
+
+                        collada_data_effect_get_shading_factor_item_float_properties(effect,
+                                                                                     (collada_data_shading_factor_item) effect_shading_item_value,
+                                                                                    &shading_factor_float);
+
+                        mesh_material_set_shading_property_to_float(material,
+                                                                    item_property,
+                                                                    shading_factor_float);
+
+                        break;
+                    }
+
                     case COLLADA_DATA_SHADING_FACTOR_TEXTURE:
                     {
                         collada_data_image           shading_factor_image           = NULL;
@@ -804,11 +819,47 @@ PRIVATE mesh_material_shading_property _collada_mesh_generator_get_mesh_material
 
     switch (item)
     {
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT:   result = MESH_MATERIAL_SHADING_PROPERTY_AMBIENT;   break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE:   result = MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE;   break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:  result = MESH_MATERIAL_SHADING_PROPERTY_EMISSION;  break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS: result = MESH_MATERIAL_SHADING_PROPERTY_SHININESS; break;
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR:  result = MESH_MATERIAL_SHADING_PROPERTY_SPECULAR;  break;
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT:
+        {
+            result = MESH_MATERIAL_SHADING_PROPERTY_AMBIENT;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE:
+        {
+            result = MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:
+        {
+            result = MESH_MATERIAL_SHADING_PROPERTY_EMISSION;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY:
+        {
+            result = MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS:
+        {
+            result = MESH_MATERIAL_SHADING_PROPERTY_SHININESS;
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR:
+        {
+            result = MESH_MATERIAL_SHADING_PROPERTY_SPECULAR;
+
+            break;
+        }
 
         default:
         {
