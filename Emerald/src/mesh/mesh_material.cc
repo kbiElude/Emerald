@@ -589,6 +589,7 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
 
                 break;
             }
+
             default:
             {
                 ASSERT_DEBUG_SYNC(false,

@@ -589,9 +589,9 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
 
                             if (connected_component_element_ptr != NULL)
                             {
-                                component_element_ptr = connected_component_element_ptr->FirstChildElement("component");
+                                tinyxml2::XMLElement* shader_component_element_ptr = connected_component_element_ptr->FirstChildElement("component");
 
-                                if (component_element_ptr != NULL)
+                                if (shader_component_element_ptr != NULL)
                                 {
                                     /* This attribute stores various interesting stuff. Of our particular interest are:
                                      *
@@ -602,7 +602,7 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                                     /* UV map name: Find the "Color" attribute */
                                     tinyxml2::XMLElement* color_attribute_element_ptr = NULL;
 
-                                    attribute_element_ptr = component_element_ptr->FirstChildElement("attribute");
+                                    attribute_element_ptr = shader_component_element_ptr->FirstChildElement("attribute");
 
                                     while (attribute_element_ptr != NULL)
                                     {
@@ -700,7 +700,7 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                                     /* Is there luminosity information available? */
                                     tinyxml2::XMLElement* luminosity_attribute_element_ptr = NULL;
 
-                                    attribute_element_ptr = component_element_ptr->FirstChildElement("attribute");
+                                    attribute_element_ptr = shader_component_element_ptr->FirstChildElement("attribute");
 
                                     while (attribute_element_ptr != NULL)
                                     {
@@ -738,7 +738,7 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                                     } /* if (luminosity_attribute_element_ptr != NULL) */
                                 } /* if (component_element_ptr != NULL) */
                             } /* if (connected_component_element_ptr != NULL) */
-                        } /* if (projection_attribute_element_ptr != NULL) */
+                        } /* if (shader_attribute_element_ptr != NULL) */
 
                         /* If UV Map Name was not found, it can still be defined under <attribute> with sid="Name",
                          * under the <string> node.

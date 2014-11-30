@@ -36,6 +36,14 @@ typedef struct _ogl_materials_mesh_material_setting
         {
             switch (attachment)
             {
+                case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                {
+                    delete (float*) attachment_data;
+
+                    attachment_data = NULL;
+                    break;
+                }
+
                 case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                 {
                     ogl_texture_release( (ogl_texture&) attachment_data);
@@ -49,6 +57,7 @@ typedef struct _ogl_materials_mesh_material_setting
                     delete (float*) attachment_data;
 
                     attachment_data = NULL;
+                    break;
                 }
 
                 default:
@@ -309,10 +318,6 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
         if (material_shading == MESH_MATERIAL_SHADING_LAMBERT ||
             material_shading == MESH_MATERIAL_SHADING_PHONG)
         {
-            const unsigned int n_max_uber_fragment_property_value_pairs = 3; /* sizeof(mappings)  */
-            unsigned int       n_uber_fragment_property_value_pairs     = 0;
-            unsigned int       uber_fragment_property_value_pairs[n_max_uber_fragment_property_value_pairs*2];
-
             /* Map mesh_material property attachments to shaders_fragment_uber data source equivalents */
             struct _mapping
             {
@@ -333,9 +338,18 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
                     SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE
-                }
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE
+                },
+
             };
             const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
+
+            unsigned int n_uber_fragment_property_value_pairs     = 0;
+            unsigned int uber_fragment_property_value_pairs[n_mappings*2];
 
             /* Add ambient/diffuse/emission factors */
             for (unsigned int n_mapping = 0;
@@ -357,6 +371,13 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
                     switch (material_attachment)
                     {
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT;
+
+                            break;
+                        }
+
                         case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                         {
                             uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D;
@@ -381,22 +402,6 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     n_uber_fragment_property_value_pairs++;
                 }
             } /* for (all mappings) */
-
-            /* Add emission/shininess/specular factors (if defined for material) */
-            mesh_material_property_attachment emission_attachment  = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_EMISSION);
-            mesh_material_property_attachment shininess_attachment = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS);
-            mesh_material_property_attachment specular_attachment  = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR);
-
-            if (emission_attachment  != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE ||
-                shininess_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE ||
-                specular_attachment  != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
-            {
-                /* TODO */
-                ASSERT_ALWAYS_SYNC(false, "TODO");
-            }
 
             /* Add lights */
             if (scene != NULL)
