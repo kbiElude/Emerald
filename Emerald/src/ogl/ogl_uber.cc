@@ -121,8 +121,6 @@ typedef struct
     uint32_t                  ambient_material_vec4_uniform_location;
     uint32_t                  diffuse_material_sampler_uniform_location;
     uint32_t                  diffuse_material_vec4_uniform_location;
-    uint32_t                  emission_material_sampler_uniform_location;
-    uint32_t                  emission_material_vec4_uniform_location;
     uint32_t                  glosiness_uniform_location;
     uint32_t                  luminosity_material_sampler_uniform_location;
     uint32_t                  luminosity_material_float_uniform_location;
@@ -134,7 +132,6 @@ typedef struct
     uint32_t                  normal_matrix_uniform_location;
     uint32_t                  object_ambient_uv_attribute_location;
     uint32_t                  object_diffuse_uv_attribute_location;
-    uint32_t                  object_emission_uv_attribute_location;
     uint32_t                  object_luminosity_uv_attribute_location;
     uint32_t                  object_normal_attribute_location;
     uint32_t                  object_vertex_attribute_location;
@@ -366,12 +363,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
             },
 
             {
-                uber_ptr->object_emission_uv_attribute_location,
-                (const GLvoid*) mesh_texcoords_offset,
-                2
-            },
-
-            {
                 uber_ptr->object_luminosity_uv_attribute_location,
                 (const GLvoid*) mesh_texcoords_offset,
                 2
@@ -433,13 +424,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                     uber_ptr->diffuse_material_sampler_uniform_location,
                     uber_ptr->diffuse_material_vec4_uniform_location,
                     uber_ptr->object_diffuse_uv_attribute_location
-                },
-
-                {
-                    MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
-                    uber_ptr->emission_material_sampler_uniform_location,
-                    uber_ptr->emission_material_vec4_uniform_location,
-                    uber_ptr->object_emission_uv_attribute_location
                 },
 
                 {
@@ -913,8 +897,6 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     uber_ptr->ambient_material_vec4_uniform_location       = -1;
     uber_ptr->diffuse_material_sampler_uniform_location    = -1;
     uber_ptr->diffuse_material_vec4_uniform_location       = -1;
-    uber_ptr->emission_material_sampler_uniform_location   = -1;
-    uber_ptr->emission_material_vec4_uniform_location      = -1;
     uber_ptr->glosiness_uniform_location                   = -1;
     uber_ptr->luminosity_material_sampler_uniform_location = -1;
     uber_ptr->luminosity_material_float_uniform_location   = -1;
@@ -926,7 +908,6 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     uber_ptr->normal_matrix_uniform_location               = -1;
     uber_ptr->object_ambient_uv_attribute_location         = -1;
     uber_ptr->object_diffuse_uv_attribute_location         = -1;
-    uber_ptr->object_emission_uv_attribute_location        = -1;
     uber_ptr->object_luminosity_uv_attribute_location      = -1;
     uber_ptr->object_normal_attribute_location             = -1;
     uber_ptr->object_vertex_attribute_location             = -1;
@@ -968,11 +949,6 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     if (object_diffuse_uv_descriptor != NULL)
     {
         uber_ptr->object_diffuse_uv_attribute_location = object_diffuse_uv_descriptor->location;
-    }
-
-    if (object_emission_uv_descriptor != NULL)
-    {
-        uber_ptr->object_emission_uv_attribute_location = object_emission_uv_descriptor->location;
     }
 
     if (object_luminosity_uv_descriptor != NULL)
@@ -1079,16 +1055,6 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     if (diffuse_material_vec4_uniform_descriptor != NULL)
     {
         uber_ptr->diffuse_material_vec4_uniform_location = diffuse_material_vec4_uniform_descriptor->location;
-    }
-
-    if (emission_material_sampler_uniform_descriptor != NULL)
-    {
-        uber_ptr->emission_material_sampler_uniform_location = emission_material_sampler_uniform_descriptor->location;
-    }
-
-    if (emission_material_vec4_uniform_descriptor != NULL)
-    {
-        uber_ptr->emission_material_vec4_uniform_location = emission_material_vec4_uniform_descriptor->location;
     }
 
     if (glosiness_uniform_descriptor != NULL)
@@ -1379,8 +1345,6 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->ambient_material_vec4_uniform_location       = -1;
         result->diffuse_material_sampler_uniform_location    = -1;
         result->diffuse_material_vec4_uniform_location       = -1;
-        result->emission_material_sampler_uniform_location   = -1;
-        result->emission_material_vec4_uniform_location      = -1;
         result->glosiness_uniform_location                   = -1;
         result->luminosity_material_sampler_uniform_location = -1;
         result->luminosity_material_float_uniform_location   = -1;
@@ -1392,7 +1356,6 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->normal_matrix_uniform_location               = -1;
         result->object_ambient_uv_attribute_location         = -1;
         result->object_diffuse_uv_attribute_location         = -1;
-        result->object_emission_uv_attribute_location        = -1;
         result->object_normal_attribute_location             = -1;
         result->object_vertex_attribute_location             = -1;
         result->vp_ub_offset                                 = -1;
@@ -1748,13 +1711,6 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                         uber_ptr->diffuse_material_sampler_uniform_location,
                         uber_ptr->diffuse_material_vec4_uniform_location,
                         uber_ptr->object_diffuse_uv_attribute_location
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
-                        uber_ptr->emission_material_sampler_uniform_location,
-                        uber_ptr->emission_material_vec4_uniform_location,
-                        uber_ptr->object_emission_uv_attribute_location
                     },
 
                     {

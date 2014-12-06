@@ -336,11 +336,6 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                 },
 
                 {
-                    MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
-                    SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE
-                },
-
-                {
                     MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
                     SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE
                 },

@@ -39,7 +39,6 @@ typedef struct _shaders_fragment_uber_item_light
         /* Set default diffuse property values */
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
-        properties[SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE]   = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE]   = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_LIGHT_VECTOR_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_REGULAR;
@@ -171,28 +170,6 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
         },
 
         {
-            SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE,
-            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
-
-            TYPE_UNKNOWN,
-            NULL,
-
-            TYPE_SAMPLER2D,
-            "emission_material_sampler",
-            "in_fs_emission_uv",
-            "object_emission_uv"
-        },
-
-        {
-            SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE,
-            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
-
-            TYPE_VEC4,
-            "emission_material",
-            TYPE_UNKNOWN
-        },
-
-        {
             SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
 
@@ -301,105 +278,32 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
     /* Start forming the shader. */
     line << "result_fragment += ";
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
-    {
-        line << "light" << n_item << "_attenuation * ";
-    }
+    /* NOTE: We do not support material ambient (?) */
+    ASSERT_DEBUG_SYNC(properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE,
+                      "Ambient material setting is not supported");
+
+    /* TODO: Add support for ambient light factor */
+
+    /* Compute the light contribution: emission */
+    const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT);
+    const bool is_luminosity_texture_defined = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D);
 
     line << "(";
 
-    /* Compute the light contribution: emission */
-    switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE])
+    if (is_luminosity_float_defined)
     {
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
-        {
-            break;
-        }
-
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
-        {
-            line << "texture(emission_material_sampler, in_fs_emission_uv)";
-
-            break;
-        }
-
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:
-        {
-            line << "emission_material";
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized emission data source property value");
-        }
-    } /* switch (properties[SHADERS_FRAGMENT_UBER_DIFFUSE_PROPERTY_EMISSION_DATA_SOURCE]) */
-
-    /* Compute the light contribution: ambient */
-    switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE])
+        line << "vec4(vec3(luminosity_material), 0.0) ";
+    }
+    else
+    if (is_luminosity_texture_defined)
     {
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
-        {
-            break;
-        }
-
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
-        {
-            line << "+ texture(ambient_material_sampler, in_fs_ambient_uv) * ambient";
-
-            break;
-        }
-
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:
-        {
-            line << "+ ambient_material";
-
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized emission data source property value");
-        }
-    } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]) */
+        line << "vec4(vec3(texture(luminosity_material_sampler, in_fs_luminosity_uv).x), 0.0) ";
+    }
 
     /* Compute the light contribution: diffuse */
-    switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE])
-    {
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
-        {
-            break;
-        }
-
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
-        {
-            line << "+ light" << n_item << "_diffuse * texture(diffuse_material_sampler, in_fs_diffuse_uv)";
-
-            break;
-        }
-
-        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:
-        {
-            line << "+ light" << n_item << "_diffuse * diffuse_material";
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized emission data source property value");
-        }
-    } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]) */
-
     if (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE] != SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE)
     {
-        const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT);
-        const bool is_luminosity_texture_defined = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D);
-
-        line << " * (vec4(lambert_diffuse(";
+        line << "+ vec4(lambert_diffuse(";
 
         if (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LIGHT_VECTOR_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_REGULAR)
         {
@@ -414,22 +318,39 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
         }
 
         line << ", normal) )";
-
-        /* Top up with luminosity, if one's defined for the material */
-        if (is_luminosity_float_defined)
-        {
-            line << " + vec4(vec3(luminosity_material), 0.0)";
-        }
-        else
-        if (is_luminosity_texture_defined)
-        {
-            line << " + vec4(vec3(texture(luminosity_material_sampler, in_fs_luminosity_uv).x), 0.0)";
-        }
-
-        line << ")";
     }
 
-    line << ");\n";
+    line << ")";
+
+    switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE])
+    {
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE:
+        {
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
+        {
+            line << " * texture(diffuse_material_sampler, in_fs_diffuse_uv)";
+
+            break;
+        }
+
+        case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4:
+        {
+            line << " * diffuse_material";
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized emission data source property value");
+        }
+    } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]) */
+
+    line << ";\n";
 
     /* Add the snippet to main function body */
     ogl_shader_constructor_append_to_function_body(shader_constructor,
