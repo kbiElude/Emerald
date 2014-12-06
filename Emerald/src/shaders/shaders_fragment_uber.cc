@@ -39,7 +39,6 @@ typedef struct _shaders_fragment_uber_item_light
         /* Set default diffuse property values */
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
-        properties[SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE]   = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE]   = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_LIGHT_VECTOR_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_REGULAR;
@@ -167,28 +166,6 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
 
             TYPE_VEC4,
             "diffuse_material",
-            TYPE_UNKNOWN
-        },
-
-        {
-            SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE,
-            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D,
-
-            TYPE_UNKNOWN,
-            NULL,
-
-            TYPE_SAMPLER2D,
-            "emission_material_sampler",
-            "in_fs_emission_uv",
-            "object_emission_uv"
-        },
-
-        {
-            SHADERS_FRAGMENT_UBER_PROPERTY_EMISSION_DATA_SOURCE,
-            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
-
-            TYPE_VEC4,
-            "emission_material",
             TYPE_UNKNOWN
         },
 

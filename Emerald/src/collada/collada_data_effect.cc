@@ -50,7 +50,6 @@ typedef struct _collada_data_effect
 
     _collada_data_shading_factor_item ambient;
     _collada_data_shading_factor_item diffuse;
-    _collada_data_shading_factor_item emission;
     _collada_data_shading_factor_item luminosity;
     _collada_data_shading_factor_item shininess;
     _collada_data_shading_factor_item specular;
@@ -162,13 +161,6 @@ PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_fact
             break;
         }
 
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:
-        {
-            result = &effect_ptr->emission;
-
-            break;
-        }
-
         case COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY:
         {
             result = &effect_ptr->luminosity;
@@ -218,7 +210,7 @@ PRIVATE void _collada_data_effect_init_lambert(__in __notnull _collada_data_effe
         if (strcmp(child_name, "emission") == 0)
         {
             _collada_data_effect_init_shading_item(child_element_ptr,
-                                                   &effect_ptr->emission,
+                                                   &effect_ptr->luminosity,
                                                     samplers_by_id_map);
 
         }
@@ -801,7 +793,6 @@ PUBLIC EMERALD_API void collada_data_effect_get_properties(__in      __notnull c
         *out_shading_factor_item_bitmask =
                                            (int) ((effect_ptr->ambient.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT    : 0) |
                                            (int) ((effect_ptr->diffuse.type    != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE    : 0) |
-                                           (int) ((effect_ptr->emission.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION   : 0) |
                                            (int) ((effect_ptr->luminosity.type != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY : 0) |
                                            (int) ((effect_ptr->shininess.type  != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SHININESS  : 0) |
                                            (int) ((effect_ptr->specular.type   != COLLADA_DATA_SHADING_FACTOR_NONE) ? COLLADA_DATA_SHADING_FACTOR_ITEM_SPECULAR   : 0);
@@ -859,11 +850,6 @@ PUBLIC EMERALD_API collada_data_shading_factor_item collada_data_effect_get_shad
         {
             &effect_ptr->diffuse,
             COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE
-        },
-
-        {
-            &effect_ptr->emission,
-            COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION
         },
 
         {

@@ -833,13 +833,6 @@ PRIVATE mesh_material_shading_property _collada_mesh_generator_get_mesh_material
             break;
         }
 
-        case COLLADA_DATA_SHADING_FACTOR_ITEM_EMISSION:
-        {
-            result = MESH_MATERIAL_SHADING_PROPERTY_EMISSION;
-
-            break;
-        }
-
         case COLLADA_DATA_SHADING_FACTOR_ITEM_LUMINOSITY:
         {
             result = MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY;
