@@ -411,10 +411,14 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in __notnull ogl
          **/
         ogl_shader_constructor_set_function_body(shader_constructor,
                                                  phong_specular_func_id,
-                                                 system_hashed_ansi_string_create("    vec3  reflection_vector      = normalize(2.0 * normal * dot(normal, light_vector) - light_vector);\n"
-                                                                                  "    float reflection_view_vector = clamp(dot(reflection_vector, view_vector), 0, 1);\n"
+                                                 system_hashed_ansi_string_create("    if (dot(normal, light_vector) > 0.0)\n"
+                                                                                  "    {\n"
+                                                                                  "        float reflection_view_vector_dot = max(0.0, dot(reflect(-light_vector, normal), view_vector));\n"
                                                                                   "\n"
-                                                                                  "    return specular_material * pow(reflection_view_vector, 32.0 * shininess_material);\n") );
+                                                                                  "        return specular_material * pow(reflection_view_vector_dot, 32.0 * shininess_material);\n"
+                                                                                  "    }\n"
+                                                                                  "\n"
+                                                                                  "    return 0.0;\n") );
     }
 
     /* Compute the light contribution */
@@ -747,7 +751,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         {
             line << "vec3 light"
                  << n_items
-                 << "_vector = -"
+                 << "_vector = "
                  << light_direction_name_sstream.str()
                  << ";\n";
         }
@@ -759,7 +763,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             line << "vec3 light"
                  << n_items
-                 << "_vector = -("
+                 << "_vector = ("
                  << light_world_pos_name_sstream.str()
                  << ".xyz - world_vertex);\n";
         }
