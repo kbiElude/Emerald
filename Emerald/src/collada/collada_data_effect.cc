@@ -809,7 +809,18 @@ PUBLIC EMERALD_API void collada_data_effect_get_properties(__in      __notnull c
 
     if (out_shading != NULL)
     {
-        *out_shading = effect_ptr->shading;
+        /* NOTE: LW exporter seems to be always toggling the Lambert lighting. However,
+         *       if shininess & specular values are provided, we should actually be using
+         *       Phong shading! */
+        if (effect_ptr->shininess.type != COLLADA_DATA_SHADING_FACTOR_NONE &&
+            effect_ptr->specular.type  != COLLADA_DATA_SHADING_FACTOR_NONE)
+        {
+            *out_shading = COLLADA_DATA_SHADING_PHONG;
+        }
+        else
+        {
+            *out_shading = effect_ptr->shading;
+        }
     }
 
     if (out_shading_factor_item_bitmask != NULL)

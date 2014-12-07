@@ -82,7 +82,6 @@ typedef enum
      */
     MESH_MATERIAL_SHADING_PROPERTY_AMBIENT = MESH_MATERIAL_SHADING_PROPERTY_FIRST,
     MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-    MESH_MATERIAL_SHADING_PROPERTY_EMISSION,
 
     /* Currently only supports float attachments */
     MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
@@ -174,7 +173,7 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
                                                    __in           mesh_material_property property,
-                                                   __in __notnull void*                  data);
+                                                   __in __notnull const void*            data);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnull mesh_material                  material,

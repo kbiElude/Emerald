@@ -745,7 +745,7 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
                                                    __in           mesh_material_property property,
-                                                   __in __notnull void*                  data)
+                                                   __in __notnull const void*            data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
