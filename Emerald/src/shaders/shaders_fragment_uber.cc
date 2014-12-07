@@ -281,7 +281,8 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
     /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream line;
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
     {
         line << "float light"   << n_item << "_distance    = length(light" << n_item << "_vector);\n"
                 "float light"   << n_item << "_attenuation = "
@@ -724,7 +725,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                           system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ));
     }
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
     {
         light_attenuations_name_sstream << "light" << n_items << "_attenuations";
 
@@ -751,7 +753,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         }
         else
         {
-            ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT,
+            ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT,
                               "Unrecognized light type");
 
             line << "vec3 light"
@@ -772,6 +775,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
         {
             _shaders_fragment_uber_add_lambert_diffuse_factor(light_type,
                                                               uber_ptr->shader_constructor,
@@ -815,6 +819,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     switch (light_type)
     {
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
         {
             _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor,
                                                              n_items);
