@@ -14,6 +14,25 @@
 #include "system/system_resizable_vector.h"
 
 /** TODO */
+enum _xml_tree_traversal_node_type
+{
+    /* uses node_name */
+    XML_TREE_TRAVERSAL_NODE_TYPE_NODE,
+    /* uses attribute_name, attribute_value, node_name */
+    XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE
+};
+
+/** TODO */
+typedef struct
+{
+    _xml_tree_traversal_node_type type;
+    const char*                   node_name;
+
+    const char* attribute_name;
+    const char* attribute_value;
+} _xml_tree_traversal_node;
+
+/** TODO */
 typedef struct _collada_data_shading_factor_item_texture
 {
     collada_data_image           image;
@@ -340,6 +359,72 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
 }
 
 /** TODO */
+PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(__in                           __notnull tinyxml2::XMLElement*           root_element_ptr,
+                                                                     __in                                     unsigned int                    n_traversal_nodes,
+                                                                     __in_ecount(n_traversal_nodes) __notnull const _xml_tree_traversal_node* traversal_nodes)
+{
+    ASSERT_DEBUG_SYNC(root_element_ptr != NULL,
+                      "Root element is NULL");
+    ASSERT_DEBUG_SYNC(n_traversal_nodes != 0,
+                      "n_traversal_nodes is zero");
+    ASSERT_DEBUG_SYNC(traversal_nodes != NULL,
+                      "traversal_nodes is NULL");
+
+    /* Traverse the tree */
+    tinyxml2::XMLElement* result = root_element_ptr;
+
+    for (unsigned int n_traversal_node = 0;
+                      n_traversal_node < n_traversal_nodes && result != NULL;
+                    ++n_traversal_node)
+    {
+        const _xml_tree_traversal_node& current_node_descriptor = traversal_nodes[n_traversal_node];
+
+        switch (current_node_descriptor.type)
+        {
+            case XML_TREE_TRAVERSAL_NODE_TYPE_NODE:
+            {
+                result = result->FirstChildElement(current_node_descriptor.node_name);
+
+                break;
+            } /* case XML_TREE_TRAVERSAL_NODE_TYPE_NODE: */
+
+            case XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE:
+            {
+                result = result->FirstChildElement(current_node_descriptor.node_name);
+
+                if (result != NULL)
+                {
+                    while (result != NULL)
+                    {
+                        const char* attribute_sid = result->Attribute(current_node_descriptor.attribute_name);
+
+                        if (attribute_sid != NULL                           &&
+                            strcmp(attribute_sid,
+                                   current_node_descriptor.attribute_value) == 0)
+                        {
+                            break;
+                        }
+
+                        /* "Shader" attribute was not found, iterate */
+                        result = result->NextSiblingElement(current_node_descriptor.node_name);
+                    } /* while (result != NULL) */
+                } /* if (result != NULL) */
+
+                break;
+            } /* case XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE: */
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized traversal node descriptor type");
+            }
+        } /* switch (current_node_descriptor.type) */
+    } /* for (all traversal nodes) */
+
+    return result;
+}
+
+/** TODO */
 PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::XMLElement* current_effect_element_ptr,
                                                       __in __notnull system_hash64map      images_by_id_map)
 {
@@ -538,239 +623,121 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
         }
 
         /* Try to extract LW-specific data from <extra> */
-        tinyxml2::XMLElement* extra_element_ptr = current_effect_element_ptr->FirstChildElement("extra");
-
-        if (extra_element_ptr != NULL)
+        const _xml_tree_traversal_node traverse_to_shaders_component_node_path[] =
         {
-            /* Move in under the LWCORE technique */
-            tinyxml2::XMLElement* technique_element_ptr = extra_element_ptr->FirstChildElement("technique");
+            {XML_TREE_TRAVERSAL_NODE_TYPE_NODE, "extra"},
+            {XML_TREE_TRAVERSAL_NODE_TYPE_NODE, "technique"},
+            {XML_TREE_TRAVERSAL_NODE_TYPE_NODE, "shaders"},
+            {XML_TREE_TRAVERSAL_NODE_TYPE_NODE, "component"}
+        };
+        const unsigned int    n_traverse_to_shaders_component_node_path_nodes = sizeof(traverse_to_shaders_component_node_path) /
+                                                                                sizeof(traverse_to_shaders_component_node_path[0]);
 
-            if (technique_element_ptr != NULL)
+        tinyxml2::XMLElement* root_shaders_component_element_ptr = _collada_data_effect_traverse_xml_tree(current_effect_element_ptr,
+                                                                                                          n_traverse_to_shaders_component_node_path_nodes,
+                                                                                                          traverse_to_shaders_component_node_path);
+
+        if (root_shaders_component_element_ptr != NULL)
+        {
+            const _xml_tree_traversal_node traverse_to_shader_attribute_path[] =
             {
-                tinyxml2::XMLElement* shaders_element_ptr = technique_element_ptr->FirstChildElement("shaders");
+                {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute", "sid", "Shader"},
+                {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "connected_component"},
+                {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "component"},
+            };
+            const unsigned int             n_traverse_to_shader_attribute_path_nodes = sizeof(traverse_to_shader_attribute_path) /
+                                                                                       sizeof(traverse_to_shader_attribute_path[0]);
 
-                if (shaders_element_ptr != NULL)
+            tinyxml2::XMLElement* shader_element_ptr = _collada_data_effect_traverse_xml_tree(root_shaders_component_element_ptr,
+                                                                                              n_traverse_to_shader_attribute_path_nodes,
+                                                                                              traverse_to_shader_attribute_path);
+
+            if (shader_element_ptr != NULL)
+            {
+                /* This attribute stores various interesting stuff. Of our particular interest are:
+                 *
+                 * - UV map name.
+                 * - Luminosity
+                 */
+                const _xml_tree_traversal_node traverse_to_luminosity_node_path[] =
                 {
-                    tinyxml2::XMLElement* component_element_ptr = shaders_element_ptr->FirstChildElement("component");
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "Luminosity"},
+                };
+                const _xml_tree_traversal_node traverse_to_UvMapName_node_path[] =
+                {
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "Color"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "connected_component"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "component"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "Projection"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "connected_component"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "component"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "UvMapName"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "string"}
+                };
 
-                    if (component_element_ptr != NULL)
+                const unsigned int             n_traverse_to_luminosity_node_path_nodes = sizeof(traverse_to_luminosity_node_path) /
+                                                                                          sizeof(traverse_to_luminosity_node_path[0]);
+                const unsigned int             n_traverse_to_UvMapName_node_path_nodes  = sizeof(traverse_to_UvMapName_node_path)  /
+                                                                                          sizeof(traverse_to_UvMapName_node_path[0]);
+
+                tinyxml2::XMLElement* luminosity_element_ptr       = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
+                                                                                                            n_traverse_to_luminosity_node_path_nodes,
+                                                                                                            traverse_to_luminosity_node_path);
+                tinyxml2::XMLElement* UvMapName_string_element_ptr = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
+                                                                                                            n_traverse_to_UvMapName_node_path_nodes,
+                                                                                                            traverse_to_UvMapName_node_path);
+                if (UvMapName_string_element_ptr != NULL)
+                {
+                    /* UV map name information is present! */
+                    new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(UvMapName_string_element_ptr->GetText() );
+                } /* if (UvMapName_string_element_ptr != NULL) */
+
+                if (luminosity_element_ptr != NULL)
+                {
+                    /* Indeed! Extract the float information */
+                    tinyxml2::XMLElement* float_element_ptr = luminosity_element_ptr->FirstChildElement("float");
+
+                    ASSERT_DEBUG_SYNC(float_element_ptr != NULL,
+                                      "Animated luminosity information is not supported");
+
+                    if (float_element_ptr != NULL)
                     {
-                        tinyxml2::XMLElement* attribute_element_ptr        = component_element_ptr->FirstChildElement("attribute");
-                        tinyxml2::XMLElement* root_attribute_element_ptr   = attribute_element_ptr;
-                        tinyxml2::XMLElement* shader_attribute_element_ptr = NULL;
+                        float luminosity_value = 0.0f;
 
-                        /* Find the "Shader" attribute */
-                        while (attribute_element_ptr != NULL)
-                        {
-                            const char* attribute_sid = attribute_element_ptr->Attribute("sid");
+                        sscanf(float_element_ptr->GetText(),
+                               "%f",
+                              &luminosity_value);
 
-                            if (strcmp(attribute_sid, "Shader") == 0)
-                            {
-                                shader_attribute_element_ptr = attribute_element_ptr;
+                        _collada_data_effect_init_luminosity_shading_item(&new_effect_ptr->luminosity,
+                                                                          luminosity_value);
+                    } /* if (float_element_ptr != NULL) */
+                } /* if (luminosity_element_ptr != NULL) */
+            } /* if (shader_component_element_ptr != NULL) */
 
-                                break;
-                            }
+            /* If UV Map Name was not found, it can still be defined under <attribute> with sid="Name",
+             * under the <string> node.
+             */
+            if (new_effect_ptr->uv_map_name == system_hashed_ansi_string_get_default_empty_string() )
+            {
+                const _xml_tree_traversal_node traverse_to_name_string_node_path[] =
+                {
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute", "sid", "Name"},
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "string"}
+                };
+                const unsigned int             n_traverse_to_name_string_node_path_nodes = sizeof(traverse_to_name_string_node_path) /
+                                                                                           sizeof(traverse_to_name_string_node_path[0]);
 
-                            /* "Shader" attribute was not found, iterate */
-                            attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
-                        }; /* while (attribute_element_ptr != NULL) */
+                tinyxml2::XMLElement* string_element_ptr = _collada_data_effect_traverse_xml_tree(root_shaders_component_element_ptr,
+                                                                                                  n_traverse_to_name_string_node_path_nodes,
+                                                                                                  traverse_to_name_string_node_path);
 
-                        if (shader_attribute_element_ptr != NULL)
-                        {
-                            tinyxml2::XMLElement* connected_component_element_ptr = shader_attribute_element_ptr->FirstChildElement("connected_component");
-
-                            if (connected_component_element_ptr != NULL)
-                            {
-                                tinyxml2::XMLElement* shader_component_element_ptr = connected_component_element_ptr->FirstChildElement("component");
-
-                                if (shader_component_element_ptr != NULL)
-                                {
-                                    /* This attribute stores various interesting stuff. Of our particular interest are:
-                                     *
-                                     * - UV map name.
-                                     * - Luminosity
-                                     */
-
-                                    /* UV map name: Find the "Color" attribute */
-                                    tinyxml2::XMLElement* color_attribute_element_ptr = NULL;
-
-                                    attribute_element_ptr = shader_component_element_ptr->FirstChildElement("attribute");
-
-                                    while (attribute_element_ptr != NULL)
-                                    {
-                                        const char* attribute_sid = attribute_element_ptr->Attribute("sid");
-
-                                        if (strcmp(attribute_sid, "Color") == 0)
-                                        {
-                                            color_attribute_element_ptr = attribute_element_ptr;
-
-                                            break;
-                                        }
-
-                                        /* "Color" attribute was not found, iterate */
-                                        attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
-                                    }; /* while (attribute_element_ptr != NULL) */
-
-                                    if (color_attribute_element_ptr != NULL)
-                                    {
-                                        connected_component_element_ptr = color_attribute_element_ptr->FirstChildElement("connected_component");
-
-                                        if (connected_component_element_ptr != NULL)
-                                        {
-                                            component_element_ptr = connected_component_element_ptr->FirstChildElement("component");
-
-                                            if (component_element_ptr != NULL)
-                                            {
-                                                tinyxml2::XMLElement* projection_element_ptr = NULL;
-
-                                                attribute_element_ptr = component_element_ptr->FirstChildElement("attribute");
-
-                                                /* Find the "Projection" attribute */
-                                                while (attribute_element_ptr != NULL)
-                                                {
-                                                    const char* attribute_sid = attribute_element_ptr->Attribute("sid");
-
-                                                    if (strcmp(attribute_sid, "Projection") == 0)
-                                                    {
-                                                        projection_element_ptr = attribute_element_ptr;
-
-                                                        break;
-                                                    }
-
-                                                    /* "Projection" attribute was not found, iterate. */
-                                                    attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
-                                                } /* while (attribute_element_ptr != NULL) */
-
-                                                if (projection_element_ptr != NULL)
-                                                {
-                                                    connected_component_element_ptr = projection_element_ptr->FirstChildElement("connected_component");
-
-                                                    if (connected_component_element_ptr != NULL)
-                                                    {
-                                                        component_element_ptr = connected_component_element_ptr->FirstChildElement("component");
-
-                                                        if (component_element_ptr != NULL)
-                                                        {
-                                                            /* Find the "UvMapName" attribute */
-                                                            tinyxml2::XMLElement* uv_map_name_element_ptr = NULL;
-
-                                                            attribute_element_ptr = component_element_ptr->FirstChildElement("attribute");
-
-                                                            /* Find the "Projection" attribute */
-                                                            while (attribute_element_ptr != NULL)
-                                                            {
-                                                                const char* attribute_sid = attribute_element_ptr->Attribute("sid");
-
-                                                                if (strcmp(attribute_sid, "UvMapName") == 0)
-                                                                {
-                                                                    uv_map_name_element_ptr = attribute_element_ptr;
-
-                                                                    break;
-                                                                }
-
-                                                                /* "Projection" attribute was not found, iterate. */
-                                                                attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
-                                                            } /* while (attribute_element_ptr != NULL) */
-
-                                                            if (uv_map_name_element_ptr != NULL)
-                                                            {
-                                                                tinyxml2::XMLElement* string_element_ptr = uv_map_name_element_ptr->FirstChildElement("string");
-
-                                                                if (string_element_ptr != NULL)
-                                                                {
-                                                                    /* UV map name information is present! */
-                                                                    new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(string_element_ptr->GetText() );
-                                                                } /* if (string_element_ptr != NULL) */
-                                                            } /* if (uv_map_name_element_ptr != NULL) */
-                                                        } /* if (component_element_ptr != NULL) */
-                                                    } /* if (connected_component_element_ptr != NULL) */
-                                                } /* if (uv_map_name_element_ptr != NULL) */
-                                            } /* if (component_element_ptr != NULL) */
-                                        } /* if (connected_component_element_ptr != NULL) */
-                                    } /* if (color_attribute_element_ptr != NULL) */
-
-                                    /* Is there luminosity information available? */
-                                    tinyxml2::XMLElement* luminosity_attribute_element_ptr = NULL;
-
-                                    attribute_element_ptr = shader_component_element_ptr->FirstChildElement("attribute");
-
-                                    while (attribute_element_ptr != NULL)
-                                    {
-                                        const char* attribute_sid = attribute_element_ptr->Attribute("sid");
-
-                                        if (strcmp(attribute_sid, "Luminosity") == 0)
-                                        {
-                                            luminosity_attribute_element_ptr = attribute_element_ptr;
-
-                                            break;
-                                        }
-
-                                        /* "Color" attribute was not found, iterate */
-                                        attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
-                                    }; /* while (attribute_element_ptr != NULL) */
-
-                                    if (luminosity_attribute_element_ptr != NULL)
-                                    {
-                                        /* Indeed! Extract the float information */
-                                        tinyxml2::XMLElement* float_element_ptr = luminosity_attribute_element_ptr->FirstChildElement("float");
-
-                                        ASSERT_DEBUG_SYNC(float_element_ptr != NULL,
-                                                          "Animated luminosity information is not supported");
-                                        if (float_element_ptr != NULL)
-                                        {
-                                            float luminosity_value = 0.0f;
-
-                                            sscanf(float_element_ptr->GetText(),
-                                                   "%f",
-                                                  &luminosity_value);
-
-                                            _collada_data_effect_init_luminosity_shading_item(&new_effect_ptr->luminosity,
-                                                                                              luminosity_value);
-                                        } /* if (float_element_ptr != NULL) */
-                                    } /* if (luminosity_attribute_element_ptr != NULL) */
-                                } /* if (component_element_ptr != NULL) */
-                            } /* if (connected_component_element_ptr != NULL) */
-                        } /* if (shader_attribute_element_ptr != NULL) */
-
-                        /* If UV Map Name was not found, it can still be defined under <attribute> with sid="Name",
-                         * under the <string> node.
-                         */
-                        if (new_effect_ptr->uv_map_name == system_hashed_ansi_string_get_default_empty_string() )
-                        {
-                            tinyxml2::XMLElement* name_element_ptr = NULL;
-
-                            attribute_element_ptr = root_attribute_element_ptr;
-
-                            while (attribute_element_ptr != NULL)
-                            {
-                                const char* attribute_sid = attribute_element_ptr->Attribute("sid");
-
-                                if (strcmp(attribute_sid, "Name") == 0)
-                                {
-                                    name_element_ptr = attribute_element_ptr;
-
-                                    break;
-                                }
-
-                                /* "Shader" attribute was not found, iterate */
-                                attribute_element_ptr = attribute_element_ptr->NextSiblingElement("attribute");
-                            }; /* while (attribute_element_ptr != NULL) */
-
-                            if (name_element_ptr != NULL)
-                            {
-                                tinyxml2::XMLElement* string_element_ptr = name_element_ptr->FirstChildElement("string");
-
-                                if (string_element_ptr != NULL)
-                                {
-                                    /* UV map name information is present! */
-                                    new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(string_element_ptr->GetText() );
-                                }
-                            }
-                        } /* if (uv map name data was not found) */
-                    } /* if (component_element_ptr != NULL) */
-                } /* if (shaders_element_ptr != NULL) */
-            } /* if (technique_element_ptr != NULL) */
-        } /* if (extra_element_ptr != NULL) */
+                if (string_element_ptr != NULL)
+                {
+                    /* UV map name information is present! */
+                    new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(string_element_ptr->GetText() );
+                }
+            } /* if (uv map name data was not found) */
+        } /* if (root_shaders_component_element_ptr != NULL) */
     } /* if (new_effect_ptr != NULL) */
 
     return (collada_data_effect) new_effect_ptr;
