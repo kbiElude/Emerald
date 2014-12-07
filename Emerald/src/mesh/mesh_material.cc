@@ -793,7 +793,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnu
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
-    if (property == MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY)
+    if (property == MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY ||
+        property == MESH_MATERIAL_SHADING_PROPERTY_SHININESS  ||
+        property == MESH_MATERIAL_SHADING_PROPERTY_SPECULAR)
     {
         material_ptr->dirty                                   = true;
         material_ptr->shading_properties[property].attachment = MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT;

@@ -259,8 +259,8 @@ PRIVATE void _collada_data_effect_init_lambert(__in __notnull _collada_data_effe
 
 
 /** TODO */
-PRIVATE void _collada_data_effect_init_luminosity_shading_item(__in __notnull _collada_data_shading_factor_item* result_ptr,
-                                                               __in           float                              value)
+PRIVATE void _collada_data_effect_init_float_shading_item(__in __notnull _collada_data_shading_factor_item* result_ptr,
+                                                          __in           float                              value)
 {
     result_ptr->data = new float;
     result_ptr->type = COLLADA_DATA_SHADING_FACTOR_FLOAT;
@@ -358,6 +358,27 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
     }
 }
 
+/** TODO */
+PRIVATE bool _collada_data_effect_read_float_xml_node(__in  __notnull tinyxml2::XMLElement* element_ptr,
+                                                      __out __notnull float*                out_result_ptr)
+{
+    bool result = false;
+
+    /* Indeed! Extract the float information */
+    tinyxml2::XMLElement* float_element_ptr = element_ptr->FirstChildElement("float");
+
+    ASSERT_DEBUG_SYNC(float_element_ptr != NULL,
+                      "Animated information is not supported");
+
+    if (float_element_ptr != NULL)
+    {
+        result = (sscanf(float_element_ptr->GetText(),
+                         "%f",
+                         out_result_ptr)) == 1;
+    } /* if (float_element_ptr != NULL) */
+
+    return result;
+}
 /** TODO */
 PRIVATE tinyxml2::XMLElement* _collada_data_effect_traverse_xml_tree(__in                           __notnull tinyxml2::XMLElement*           root_element_ptr,
                                                                      __in                                     unsigned int                    n_traversal_nodes,
@@ -656,12 +677,22 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
             {
                 /* This attribute stores various interesting stuff. Of our particular interest are:
                  *
-                 * - UV map name.
+                 * - Glosiness
                  * - Luminosity
+                 * - Specularity
+                 * - UV map name.
                  */
+                const _xml_tree_traversal_node traverse_to_glosiness_node_path[] =
+                {
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "Glossiness"},
+                };
                 const _xml_tree_traversal_node traverse_to_luminosity_node_path[] =
                 {
                     {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "Luminosity"},
+                };
+                const _xml_tree_traversal_node traverse_to_specularity_node_path[] =
+                {
+                    {XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE, "attribute",          "sid", "Specularity"},
                 };
                 const _xml_tree_traversal_node traverse_to_UvMapName_node_path[] =
                 {
@@ -675,14 +706,24 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                     {XML_TREE_TRAVERSAL_NODE_TYPE_NODE,                               "string"}
                 };
 
-                const unsigned int             n_traverse_to_luminosity_node_path_nodes = sizeof(traverse_to_luminosity_node_path) /
-                                                                                          sizeof(traverse_to_luminosity_node_path[0]);
-                const unsigned int             n_traverse_to_UvMapName_node_path_nodes  = sizeof(traverse_to_UvMapName_node_path)  /
-                                                                                          sizeof(traverse_to_UvMapName_node_path[0]);
+                const unsigned int             n_traverse_to_glosiness_node_path_nodes   = sizeof(traverse_to_glosiness_node_path) /
+                                                                                           sizeof(traverse_to_glosiness_node_path[0]);
+                const unsigned int             n_traverse_to_luminosity_node_path_nodes  = sizeof(traverse_to_luminosity_node_path) /
+                                                                                           sizeof(traverse_to_luminosity_node_path[0]);
+                const unsigned int             n_traverse_to_specularity_node_path_nodes = sizeof(traverse_to_specularity_node_path) /
+                                                                                           sizeof(traverse_to_specularity_node_path[0]);
+                const unsigned int             n_traverse_to_UvMapName_node_path_nodes   = sizeof(traverse_to_UvMapName_node_path)  /
+                                                                                           sizeof(traverse_to_UvMapName_node_path[0]);
 
+                tinyxml2::XMLElement* glosiness_element_ptr        = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
+                                                                                                            n_traverse_to_glosiness_node_path_nodes,
+                                                                                                            traverse_to_glosiness_node_path);
                 tinyxml2::XMLElement* luminosity_element_ptr       = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
                                                                                                             n_traverse_to_luminosity_node_path_nodes,
                                                                                                             traverse_to_luminosity_node_path);
+                tinyxml2::XMLElement* specularity_element_ptr      = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
+                                                                                                            n_traverse_to_specularity_node_path_nodes,
+                                                                                                            traverse_to_specularity_node_path);
                 tinyxml2::XMLElement* UvMapName_string_element_ptr = _collada_data_effect_traverse_xml_tree(shader_element_ptr,
                                                                                                             n_traverse_to_UvMapName_node_path_nodes,
                                                                                                             traverse_to_UvMapName_node_path);
@@ -692,26 +733,42 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                     new_effect_ptr->uv_map_name = system_hashed_ansi_string_create(UvMapName_string_element_ptr->GetText() );
                 } /* if (UvMapName_string_element_ptr != NULL) */
 
+                /* Read float values */
+                if (glosiness_element_ptr != NULL)
+                {
+                    float glosiness_value = 0.0f;
+
+                    if (_collada_data_effect_read_float_xml_node(glosiness_element_ptr,
+                                                                &glosiness_value) )
+                    {
+                        _collada_data_effect_init_float_shading_item(&new_effect_ptr->shininess,
+                                                                     glosiness_value);
+                    }
+                } /* if (glosiness_element_ptr != NULL) */
+
                 if (luminosity_element_ptr != NULL)
                 {
-                    /* Indeed! Extract the float information */
-                    tinyxml2::XMLElement* float_element_ptr = luminosity_element_ptr->FirstChildElement("float");
+                    float luminosity_value = 0.0f;
 
-                    ASSERT_DEBUG_SYNC(float_element_ptr != NULL,
-                                      "Animated luminosity information is not supported");
-
-                    if (float_element_ptr != NULL)
+                    if (_collada_data_effect_read_float_xml_node(luminosity_element_ptr,
+                                                                &luminosity_value) )
                     {
-                        float luminosity_value = 0.0f;
-
-                        sscanf(float_element_ptr->GetText(),
-                               "%f",
-                              &luminosity_value);
-
-                        _collada_data_effect_init_luminosity_shading_item(&new_effect_ptr->luminosity,
-                                                                          luminosity_value);
-                    } /* if (float_element_ptr != NULL) */
+                        _collada_data_effect_init_float_shading_item(&new_effect_ptr->luminosity,
+                                                                     luminosity_value);
+                    }
                 } /* if (luminosity_element_ptr != NULL) */
+
+                if (specularity_element_ptr != NULL)
+                {
+                    float specularity_value = 0.0f;
+
+                    if (_collada_data_effect_read_float_xml_node(specularity_element_ptr,
+                                                                &specularity_value) )
+                    {
+                        _collada_data_effect_init_float_shading_item(&new_effect_ptr->specular,
+                                                                     specularity_value);
+                    }
+                } /* if (specularity_element_ptr != NULL) */
             } /* if (shader_component_element_ptr != NULL) */
 
             /* If UV Map Name was not found, it can still be defined under <attribute> with sid="Name",
