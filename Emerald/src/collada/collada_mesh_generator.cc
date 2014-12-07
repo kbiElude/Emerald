@@ -154,7 +154,18 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __
     {
         case COLLADA_DATA_SHADING_LAMBERT:
         {
-            mesh_material_shading shading_type = MESH_MATERIAL_SHADING_LAMBERT;
+            const mesh_material_shading shading_type = MESH_MATERIAL_SHADING_LAMBERT;
+
+            mesh_material_set_property(material,
+                                       MESH_MATERIAL_PROPERTY_SHADING,
+                                      &shading_type);
+
+            break;
+        }
+
+        case COLLADA_DATA_SHADING_PHONG:
+        {
+            const mesh_material_shading shading_type = MESH_MATERIAL_SHADING_PHONG;
 
             mesh_material_set_property(material,
                                        MESH_MATERIAL_PROPERTY_SHADING,

@@ -340,6 +340,15 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE
                 },
 
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE
+                },
+
+                {
+                    MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                    SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE
+                },
             };
             const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
 
@@ -422,36 +431,70 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     /* Determine uber light type, given scene light type and material's BRDF type */
                     shaders_fragment_uber_light_type uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
 
-                    if (material_shading == MESH_MATERIAL_SHADING_LAMBERT)
+                    switch (material_shading)
                     {
-                        switch (current_light_type)
+                        case MESH_MATERIAL_SHADING_LAMBERT:
                         {
-                            case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                            switch (current_light_type)
                             {
-                                uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL;
+                                case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                                {
+                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL;
 
-                                break;
-                            }
+                                    break;
+                                }
 
-                            case SCENE_LIGHT_TYPE_POINT:
+                                case SCENE_LIGHT_TYPE_POINT:
+                                {
+                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT;
+
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    ASSERT_DEBUG_SYNC(false,
+                                                      "TODO: Unrecognized scene light type for Lambert shading");
+                                }
+                            } /* switch (current_light_type) */
+
+                            break;
+                        } /* case MESH_MATERIAL_SHADING_LAMBERT: */
+
+                        case MESH_MATERIAL_SHADING_PHONG:
+                        {
+                            switch (current_light_type)
                             {
-                                uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT;
+                                case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                                {
+                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL;
 
-                                break;
-                            }
+                                    break;
+                                }
 
-                            default:
-                            {
-                                ASSERT_DEBUG_SYNC(false,
-                                                  "TODO: Unrecognized scene light type");
-                            }
-                        } /* switch (current_light_type) */
-                    } /* if (material_shading == MESH_MATERIAL_SHADING_LAMBERT) */
-                    else
-                    {
-                        ASSERT_DEBUG_SYNC(false,
-                                          "TODO: Unsupported shading algorithm");
-                    }
+                                case SCENE_LIGHT_TYPE_POINT:
+                                {
+                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT;
+
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    ASSERT_DEBUG_SYNC(false,
+                                                      "TODO: Unrecognized scene light type for phong shading");
+                                }
+                            } /* switch (current_light_type) */
+
+                            break;
+                        }
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "TODO: Unsupported shading algorithm");
+                        }
+                    } /* switch (material_shading) */
 
                     if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                     {
@@ -580,7 +623,8 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
 
         if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
                                                                    current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
-            current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT) )
+            current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
+                                                                   current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT) )
         {
             /* Nope */
             result = false;

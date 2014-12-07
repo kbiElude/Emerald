@@ -484,6 +484,7 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
                                 ++(int&)property)
     {
         mesh_material_property_attachment      attachment_type = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
+        float                                  attachment_float_data;
         mesh_material_input_fragment_attribute attachment_input_fragment_attribute_data;
         _mesh_material_property_texture        attachment_texture_data;
         float                                  attachment_vec4_data[4];
@@ -503,6 +504,26 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
             {
                 /* Nothing to serialize */
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+            {
+                result &= system_file_serializer_read(serializer,
+                                                      sizeof(attachment_float_data),
+                                                     &attachment_float_data);
+
+                if (!result)
+                {
+                    goto end_error;
+                }
+
+                mesh_material_set_shading_property_to_float(new_material,
+                                                            property,
+                                                            attachment_float_data);
+
+                break;
+
                 break;
             }
 
@@ -655,6 +676,15 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+            {
+                result &= system_file_serializer_write(serializer,
+                                                       sizeof(property_data.float_data),
+                                                      &property_data.float_data);
+
+                break;
+            }
+
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE:
             {
                 result &= system_file_serializer_write(serializer,
@@ -715,7 +745,7 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,
                                                    __in           mesh_material_property property,
-                                                   __in __notnull void*                  data)
+                                                   __in __notnull const void*            data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -763,7 +793,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnu
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
-    if (property == MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY)
+    if (property == MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY ||
+        property == MESH_MATERIAL_SHADING_PROPERTY_SHININESS  ||
+        property == MESH_MATERIAL_SHADING_PROPERTY_SPECULAR)
     {
         material_ptr->dirty                                   = true;
         material_ptr->shading_properties[property].attachment = MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT;

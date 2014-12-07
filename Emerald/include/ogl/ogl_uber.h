@@ -75,10 +75,10 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
                                                                                __in __notnull _ogl_uber_input_fragment_attribute input_attribute);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                          ogl_uber,
-                                                            __in                                    shaders_fragment_uber_light_type,
-                                                            __in __notnull                          unsigned int                     n_diffuse_properties,
-                                                            __in_ecount_opt(n_diffuse_properties*2) void*                            diffuse_property_values);
+PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber,
+                                                            __in                                  shaders_fragment_uber_light_type,
+                                                            __in __notnull                        unsigned int                     n_light_properties,
+                                                            __in_ecount_opt(n_light_properties*2) void*                            light_property_values);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context,

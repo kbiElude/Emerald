@@ -40,6 +40,7 @@ typedef struct _shaders_fragment_uber_item_light
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
+        properties[SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE]  = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE]   = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE;
         properties[SHADERS_FRAGMENT_UBER_PROPERTY_LIGHT_VECTOR_SOURCE]    = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_REGULAR;
     }
@@ -190,6 +191,24 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
             "luminosity_material",
             TYPE_UNKNOWN
         },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
+
+            TYPE_FLOAT,
+            "shininess_material",
+            TYPE_UNKNOWN
+        },
+
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
+
+            TYPE_FLOAT,
+            "specular_material",
+            TYPE_UNKNOWN
+        },
     };
     const unsigned int n_properties = sizeof(properties_data) / sizeof(properties_data[0]);
 
@@ -262,7 +281,8 @@ PRIVATE void _shaders_fragment_uber_add_lambert_diffuse_factor(__in           sh
     /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream line;
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
     {
         line << "float light"   << n_item << "_distance    = length(light" << n_item << "_vector);\n"
                 "float light"   << n_item << "_attenuation = "
@@ -375,29 +395,32 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in __notnull ogl
                                                      phong_specular_func_id,
                                                      SHADER_ARGUMENT_QUALIFIER_IN,
                                                      TYPE_VEC3,
+                                                     system_hashed_ansi_string_create("normal") );
+
+        ogl_shader_constructor_add_function_argument(shader_constructor,
+                                                     phong_specular_func_id,
+                                                     SHADER_ARGUMENT_QUALIFIER_IN,
+                                                     TYPE_VEC3,
                                                      system_hashed_ansi_string_create("light_vector") );
 
-        /* Configure the body */
+        /* Configure the body.
+         *
+         * NOTE: We assume here that glosiness & specular material properties are always represented by a float.
+         *
+         * TODO: Expand if needed!
+         **/
         ogl_shader_constructor_set_function_body(shader_constructor,
                                                  phong_specular_func_id,
                                                  system_hashed_ansi_string_create("    vec3  reflection_vector      = normalize(2.0 * normal * dot(normal, light_vector) - light_vector);\n"
                                                                                   "    float reflection_view_vector = clamp(dot(reflection_vector, view_vector), 0, 1);\n"
                                                                                   "\n"
-                                                                                  "    return pow(reflection_view_vector, glosiness);\n") );
+                                                                                  "    return specular_material * pow(reflection_view_vector, 32.0 * shininess_material);\n") );
     }
-
-    /* Add a glosiness uniform if not already added */
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_UNIFORM,
-                                                      TYPE_FLOAT,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("glosiness") );
 
     /* Compute the light contribution */
     std::stringstream line;
 
-    line << "result_fragment += vec4(vec3(phong_specular(light" << n_light << "_vector)), 0.0);\n";
+    line << "result_fragment += vec4(vec3(phong_specular(normal, light" << n_light << "_vector)), 0.0);\n";
 
     ogl_shader_constructor_append_to_function_body(shader_constructor,
                                                    0, /* main() */
@@ -630,12 +653,12 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in     __notnull                      shaders_fragment_uber                    uber,
-                                                                                 __in                                    shaders_fragment_uber_light_type         light_type,
-                                                                                 __in     __notnull                      unsigned int                             n_diffuse_properties,
-                                                                                 __in_ecount_opt(n_diffuse_properties*2) void*                                    diffuse_property_values,
-                                                                                 __in_opt __notnull                      PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
-                                                                                 __in_opt                                void*                                    user_arg)
+PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in     __notnull                    shaders_fragment_uber                    uber,
+                                                                                 __in                                  shaders_fragment_uber_light_type         light_type,
+                                                                                 __in      __notnull                   unsigned int                             n_light_properties,
+                                                                                 __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
+                                                                                 __in_opt __notnull                    PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
+                                                                                 __in_opt                              void*                                    user_arg)
 {
     _shaders_fragment_uber* uber_ptr = (_shaders_fragment_uber*) uber;
     const unsigned int      n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
@@ -655,11 +678,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     new_item_ptr->type = SHADERS_FRAGMENT_UBER_ITEM_LIGHT;
 
     for (unsigned int n_property = 0;
-                      n_property < n_diffuse_properties;
+                      n_property < n_light_properties;
                     ++n_property)
     {
-        shaders_fragment_uber_property       property = ((shaders_fragment_uber_property*)       diffuse_property_values)[n_property * 2 + 0];
-        shaders_fragment_uber_property_value value    = ((shaders_fragment_uber_property_value*) diffuse_property_values)[n_property * 2 + 1];
+        shaders_fragment_uber_property       property = ((shaders_fragment_uber_property*)       light_property_values)[n_property * 2 + 0];
+        shaders_fragment_uber_property_value value    = ((shaders_fragment_uber_property_value*) light_property_values)[n_property * 2 + 1];
 
         new_light_item_data_ptr->properties[property] = value;
     }
@@ -689,7 +712,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                           system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ));
     }
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL)
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
     {
         light_direction_name_sstream << "light" << n_items << "_direction";
 
@@ -701,7 +725,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                           system_hashed_ansi_string_create(light_direction_name_sstream.str().c_str() ));
     }
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT)
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
     {
         light_attenuations_name_sstream << "light" << n_items << "_attenuations";
 
@@ -717,7 +742,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         std::stringstream line;
 
-        if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL)
+        if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
+            light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
         {
             line << "vec3 light"
                  << n_items
@@ -727,7 +753,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         }
         else
         {
-            ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT,
+            ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT,
                               "Unrecognized light type");
 
             line << "vec3 light"
@@ -748,6 +775,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
         {
             _shaders_fragment_uber_add_lambert_diffuse_factor(light_type,
                                                               uber_ptr->shader_constructor,
@@ -791,6 +819,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     switch (light_type)
     {
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
         {
             _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor,
                                                              n_items);
