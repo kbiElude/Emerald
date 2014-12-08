@@ -5,6 +5,7 @@
 
 #include "plugin.h"
 #include "plugin_curves.h"
+#include "plugin_lights.h"
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
 #include "curve/curve_container.h"
@@ -20,6 +21,7 @@
 LWChannelInfo*   channel_info_ptr  = NULL;
 LWEnvelopeFuncs* envelope_ptr      = NULL;
 LWItemInfo*      item_info_ptr     = NULL;
+LWLightInfo*     light_info_ptr    = NULL;
 LWMessageFuncs*  message_funcs_ptr = NULL;
 LWObjectFuncs*   object_funcs_ptr  = NULL;
 LWObjectInfo*    object_info_ptr   = NULL;
@@ -41,6 +43,7 @@ XCALL_(int) ExportData(int         version,
     channel_info_ptr  = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
     envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
+    light_info_ptr    = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_TRANSIENT);
     message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
     object_funcs_ptr  = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_TRANSIENT);
     object_info_ptr   = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
@@ -54,6 +57,11 @@ XCALL_(int) ExportData(int         version,
     message_funcs_ptr->info("Extracting curve data..", NULL);
 
     FillCurveDataset(dataset);
+
+    /* Extract light data */
+    message_funcs_ptr->info("Extracting light data..", NULL);
+
+    FillLightDataset(dataset);
 
     /* Extract surface data */
     message_funcs_ptr->info("Extracting surface data..", NULL);

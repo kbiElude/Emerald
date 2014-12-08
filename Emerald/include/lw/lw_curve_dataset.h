@@ -45,6 +45,11 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 PUBLIC EMERALD_API lw_curve_dataset lw_curve_dataset_create(__in __notnull system_hashed_ansi_string name);
 
 /** TODO */
+PUBLIC EMERALD_API bool lw_curve_dataset_get_curve_by_curve_name(__in  __notnull lw_curve_dataset          dataset,
+                                                                 __in  __notnull system_hashed_ansi_string curve_name,
+                                                                 __out __notnull curve_container*          out_result);
+
+/** TODO */
 PUBLIC EMERALD_API void lw_curve_dataset_get_property(__in  __notnull lw_curve_dataset          dataset,
                                                       __in            lw_curve_dataset_property property,
                                                       __out __notnull void*                     out_result);

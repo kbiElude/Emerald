@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "lw/lw_dataset.h"
 #include "lw/lw_curve_dataset.h"
+#include "lw/lw_light_dataset.h"
 #include "lw/lw_material_dataset.h"
 #include "lw/lw_mesh_dataset.h"
 #include "system/system_log.h"
@@ -15,6 +16,7 @@
 typedef struct
 {
     lw_curve_dataset    curves;
+    lw_light_dataset    lights;
     lw_material_dataset materials;
     lw_mesh_dataset     meshes;
 
@@ -36,6 +38,13 @@ PRIVATE void _lw_dataset_release(void* arg)
         lw_curve_dataset_release(dataset_ptr->curves);
 
         dataset_ptr->curves = NULL;
+    }
+
+    if (dataset_ptr->lights != NULL)
+    {
+        lw_light_dataset_release(dataset_ptr->lights);
+
+        dataset_ptr->lights = NULL;
     }
 
     if (dataset_ptr->materials != NULL)
@@ -63,6 +72,12 @@ PUBLIC EMERALD_API void lw_dataset_apply_to_scene(__in __notnull lw_dataset data
     if (dataset_ptr->curves != NULL)
     {
         lw_curve_dataset_apply_to_scene(dataset_ptr->curves,
+                                        scene);
+    }
+
+    if (dataset_ptr->lights != NULL)
+    {
+        lw_light_dataset_apply_to_scene(dataset_ptr->lights,
                                         scene);
     }
 
@@ -94,6 +109,8 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_create(__in __notnull system_hashed_ans
         /* Instantiate sub-datasets */
         dataset_ptr->curves    = lw_curve_dataset_create   (system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                     " curves") );
+        dataset_ptr->lights    = lw_light_dataset_create   (system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                    " lights") );
         dataset_ptr->materials = lw_material_dataset_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                     " materials") );
         dataset_ptr->meshes    = lw_mesh_dataset_create    (system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
@@ -124,6 +141,13 @@ PUBLIC EMERALD_API void lw_dataset_get_property(__in  __notnull lw_dataset      
         case LW_DATASET_PROPERTY_CURVE_DATASET:
         {
             *(lw_curve_dataset*) out_result = dataset_ptr->curves;
+
+            break;
+        }
+
+        case LW_DATASET_PROPERTY_LIGHT_DATASET:
+        {
+            *(lw_light_dataset*) out_result = dataset_ptr->lights;
 
             break;
         }
@@ -174,6 +198,18 @@ PUBLIC EMERALD_API lw_dataset lw_dataset_load(__in __notnull system_hashed_ansi_
                                                                                                             " curve data-set"),
                                                     serializer);
 
+        /* Load the light data-set */
+        if (dataset_ptr->lights != NULL)
+        {
+            lw_light_dataset_release(dataset_ptr->lights);
+
+            dataset_ptr->lights = NULL;
+        }
+
+        dataset_ptr->lights = lw_light_dataset_load(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                            " light data-set"),
+                                                    serializer);
+
         /* Load the material data-set */
         if (dataset_ptr->materials != NULL)
         {
@@ -213,6 +249,13 @@ PUBLIC EMERALD_API void lw_dataset_save(__in __notnull lw_dataset             da
                        "Curve data-set is NULL");
 
     lw_curve_dataset_save(dataset_ptr->curves,
+                          serializer);
+
+    /* Store the light data-set */
+    ASSERT_ALWAYS_SYNC(dataset_ptr->lights != NULL,
+                       "Light data-set is NULL");
+
+    lw_light_dataset_save(dataset_ptr->lights,
                           serializer);
 
     /* Store the material data-set */

@@ -977,6 +977,64 @@ end:
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool lw_curve_dataset_get_curve_by_curve_name(__in  __notnull lw_curve_dataset          dataset,
+                                                                 __in  __notnull system_hashed_ansi_string curve_name,
+                                                                 __out __notnull curve_container*          out_result)
+{
+    _lw_curve_dataset* dataset_ptr       = (_lw_curve_dataset*) dataset;
+    const uint32_t     n_dataset_objects = system_hash64map_get_amount_of_elements(dataset_ptr->object_to_item_vector_map);
+    bool               result            = false;
+
+    for (uint32_t n_dataset_object = 0;
+                  n_dataset_object < n_dataset_objects && !result;
+                ++n_dataset_object)
+    {
+        system_resizable_vector item_vector = NULL;
+
+        if (!system_hash64map_get_element_at(dataset_ptr->object_to_item_vector_map,
+                                             n_dataset_object,
+                                            &item_vector,
+                                             NULL) ) /* out_hash */
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve hash-map item at index [%d]",
+                              n_dataset_object);
+
+            continue;
+        }
+
+        const uint32_t n_item_vector_items = system_resizable_vector_get_amount_of_elements(item_vector);
+
+        for (uint32_t n_item = 0;
+                      n_item < n_item_vector_items && !result;
+                    ++n_item)
+        {
+            _lw_curve_dataset_item* item_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(item_vector,
+                                                        n_item,
+                                                       &item_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve item at index [%d]",
+                                  n_item);
+
+                continue;
+            }
+
+            if (system_hashed_ansi_string_is_equal_to_hash_string(item_ptr->name,
+                                                                  curve_name) )
+            {
+                *out_result = item_ptr->curve;
+                result      = true;
+            }
+        } /* for (all item vector items) */
+    } /* for (all dataset objects) */
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API void lw_curve_dataset_get_property(__in  __notnull lw_curve_dataset          dataset,
                                                       __in            lw_curve_dataset_property property,
                                                       __out __notnull void*                     out_result)

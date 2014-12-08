@@ -15,6 +15,7 @@ REFCOUNT_INSERT_DECLARATIONS(lw_dataset, lw_dataset);
 typedef enum
 {
     LW_DATASET_PROPERTY_CURVE_DATASET,    /* not settable, lw_curve_dataset    */
+    LW_DATASET_PROPERTY_LIGHT_DATASET,    /* not settable, lw_light_dataset    */
     LW_DATASET_PROPERTY_MATERIAL_DATASET, /* not settable, lw_material_dataset */
     LW_DATASET_PROPERTY_MESH_DATASET,     /* not settable, lw_mesh_dataset     */
 } lw_dataset_property;
