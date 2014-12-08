@@ -14,7 +14,7 @@
 typedef struct
 {
     float                     constant_attenuation;
-    float                     diffuse  [3];
+    float                     color    [3];
     float                     direction[3];
     float                     linear_attenuation;
     system_hashed_ansi_string name;
@@ -98,19 +98,19 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
 
     switch (property)
     {
+        case SCENE_LIGHT_PROPERTY_COLOR:
+        {
+            *((const float**) out_result) = light_ptr->color;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION property only available for point lights");
 
             *(float*) out_result = light_ptr->constant_attenuation;
-
-            break;
-        }
-
-        case SCENE_LIGHT_PROPERTY_DIFFUSE:
-        {
-            *((const float**) out_result) = light_ptr->diffuse;
 
             break;
         }
@@ -218,8 +218,8 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
         _scene_light* result_light_ptr = (_scene_light*) result_light;
 
         result &= system_file_serializer_read(serializer,
-                                              sizeof(result_light_ptr->diffuse),
-                                              result_light_ptr->diffuse);
+                                              sizeof(result_light_ptr->color),
+                                              result_light_ptr->color);
 
         if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
         {
@@ -276,8 +276,8 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
                                                               sizeof(light_ptr->type),
                                                              &light_ptr->type);
     result &= system_file_serializer_write                   (serializer,
-                                                              sizeof(light_ptr->diffuse),
-                                                              light_ptr->diffuse);
+                                                              sizeof(light_ptr->color),
+                                                              light_ptr->color);
 
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
@@ -311,21 +311,21 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
     switch (property)
     {
+        case SCENE_LIGHT_PROPERTY_COLOR:
+        {
+            memcpy(light_ptr->color,
+                   data,
+                   sizeof(light_ptr->color) );
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION property only settable for point lights");
 
             light_ptr->constant_attenuation = *(float*) data;
-
-            break;
-        }
-
-        case SCENE_LIGHT_PROPERTY_DIFFUSE:
-        {
-            memcpy(light_ptr->diffuse,
-                   data,
-                   sizeof(light_ptr->diffuse) );
 
             break;
         }

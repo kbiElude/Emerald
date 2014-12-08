@@ -981,7 +981,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                                                    n_light);
                 scene_light_type current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
                 float            current_light_attenuations[3];
-                float*           current_light_diffuse   = NULL;
+                float*           current_light_color     = NULL;
                 float*           current_light_direction = NULL;
                 float            current_light_position    [3];
 
@@ -990,12 +990,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                         &current_light_type);
 
                 scene_light_get_property         (current_light,
-                                                  SCENE_LIGHT_PROPERTY_DIFFUSE,
-                                                 &current_light_diffuse);
+                                                  SCENE_LIGHT_PROPERTY_COLOR,
+                                                 &current_light_color);
                 ogl_uber_set_shader_item_property(material_uber,
                                                   n_light,
                                                   OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
-                                                  current_light_diffuse);
+                                                  current_light_color);
 
                 if (current_light_type == SCENE_LIGHT_TYPE_POINT)
                 {

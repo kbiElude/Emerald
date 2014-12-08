@@ -14,8 +14,8 @@ REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
 
 typedef enum scene_light_property
 {
+    SCENE_LIGHT_PROPERTY_COLOR,                 /* Settable,     float[3]                  */
     SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,  /* Settable,     float                     */
-    SCENE_LIGHT_PROPERTY_DIFFUSE,               /* Settable,     float[3]                  */
     SCENE_LIGHT_PROPERTY_DIRECTION,             /* Settable,     float[3]                  */
     SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,    /* Settable,     float                     */
     SCENE_LIGHT_PROPERTY_NAME,                  /* Not settable, system_hashed_ansi_string */

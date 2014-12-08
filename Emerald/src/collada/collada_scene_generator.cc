@@ -980,7 +980,7 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
             new_light = scene_light_create_directional(instance_name);
 
             scene_light_set_property(new_light,
-                                     SCENE_LIGHT_PROPERTY_DIFFUSE,
+                                     SCENE_LIGHT_PROPERTY_COLOR,
                                      light_color);
 
             break;
@@ -991,7 +991,7 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
             new_light = scene_light_create_point(instance_name);
 
             scene_light_set_property(new_light,
-                                     SCENE_LIGHT_PROPERTY_DIFFUSE,
+                                     SCENE_LIGHT_PROPERTY_COLOR,
                                      light_color);
             scene_light_set_property(new_light,
                                      SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
