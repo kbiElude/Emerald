@@ -37,6 +37,9 @@ typedef enum scene_light_property
 };
 
 /** TODO */
+PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_hashed_ansi_string name);
+
+/** TODO */
 PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull system_hashed_ansi_string name);
 
 /** TODO */

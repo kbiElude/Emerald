@@ -31,6 +31,7 @@ typedef enum
 
 typedef enum
 {
+    SCENE_LIGHT_TYPE_AMBIENT,
     SCENE_LIGHT_TYPE_DIRECTIONAL,
     SCENE_LIGHT_TYPE_POINT,
 

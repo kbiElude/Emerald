@@ -179,14 +179,65 @@ PUBLIC EMERALD_API bool scene_add_light(__in __notnull scene       scene_instanc
     bool    result    = false;
     _scene* scene_ptr = (_scene*) scene_instance;
 
-    if (system_resizable_vector_find(scene_ptr->lights, light_instance) == ITEM_NOT_FOUND)
+    if (system_resizable_vector_find(scene_ptr->lights,
+                                     light_instance) == ITEM_NOT_FOUND)
     {
-        system_resizable_vector_push(scene_ptr->lights, light_instance);
+        /* If this is an ambient light that is about to be added, make sure
+         * one has not already been added */
+        scene_light_type added_light_type = SCENE_LIGHT_TYPE_UNKNOWN;
+
+        scene_light_get_property(light_instance,
+                                 SCENE_LIGHT_PROPERTY_TYPE,
+                                &added_light_type);
+
+        if (added_light_type == SCENE_LIGHT_TYPE_AMBIENT)
+        {
+            scene_light_type current_light_type = SCENE_LIGHT_TYPE_UNKNOWN;
+            const uint32_t   n_lights           = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
+
+            for (uint32_t n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+            {
+                scene_light current_light = NULL;
+
+                if (!system_resizable_vector_get_element_at(scene_ptr->lights,
+                                                            n_light,
+                                                           &current_light) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve light descriptor at index [%d]",
+                                      n_light);
+
+                    result = false;
+                    goto end;
+                }
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_TYPE,
+                                        &current_light_type);
+
+                if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT)
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Cannot add an ambient light - ambient light already added to the scene!");
+
+                    result = false;
+                    goto end;
+                }
+            } /* for (all known lights) */
+        } /* if (added_light_type == SCENE_LIGHT_TYPE_AMBIENT) */
+
+        /* OK to store the light */
+        system_resizable_vector_push(scene_ptr->lights,
+                                     light_instance);
 
         scene_light_retain(light_instance);
+
         result = true;
     }
 
+end:
     return result;
 }
 
@@ -265,7 +316,8 @@ PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               c
         new_scene->name                   = name;
         new_scene->textures               = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY, sizeof(void*) );
 
-        if (new_scene->curves         == NULL || new_scene->lights   == NULL ||
+        if (new_scene->cameras        == NULL ||
+            new_scene->curves         == NULL || new_scene->lights   == NULL ||
             new_scene->mesh_instances == NULL || new_scene->textures == NULL)
         {
             ASSERT_ALWAYS_SYNC(false, "Out of memory");
@@ -1419,20 +1471,21 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
     {
         scene_light current_light = NULL;
 
-        if (system_resizable_vector_get_element_at(scene_ptr->lights,
+        if (!system_resizable_vector_get_element_at(scene_ptr->lights,
                                                    n_light,
                                                   &current_light) )
-        {
-            scene_light_save(serializer,
-                             current_light);
-        }
-        else
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve light at index [%d]",
                               n_light);
 
             result = false;
+        }
+
+        if (result)
+        {
+            scene_light_save(serializer,
+                             current_light);
         }
 
         /* Store the ID */

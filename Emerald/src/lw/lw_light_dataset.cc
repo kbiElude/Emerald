@@ -7,6 +7,7 @@
 #include "lw/lw_dataset.h"
 #include "lw/lw_light_dataset.h"
 #include "scene/scene.h"
+#include "scene/scene_light.h"
 #include "system/system_file_serializer.h"
 #include "system/system_log.h"
 
@@ -39,7 +40,24 @@ PUBLIC EMERALD_API void lw_light_dataset_apply_to_scene(__in __notnull lw_light_
 {
     _lw_light_dataset* dataset_ptr = (_lw_light_dataset*) dataset;
 
-    // ..
+    /* Add the ambient light to the scene.
+     *
+     * Ambient lights seem to be left out by LW COLLADA exporter plug-in. */
+    system_hashed_ansi_string scene_name = NULL;
+
+    scene_get_property(scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
+    scene_light new_ambient_light = scene_light_create_ambient(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(scene_name),
+                                                                                                                       " ambient light") );
+
+    scene_light_set_property(new_ambient_light,
+                             SCENE_LIGHT_PROPERTY_COLOR,
+                             dataset_ptr->ambient);
+
+    scene_add_light(scene,
+                    new_ambient_light);
 }
 
 /* Please see header for specification */

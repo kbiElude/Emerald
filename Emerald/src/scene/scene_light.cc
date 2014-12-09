@@ -36,6 +36,32 @@ PRIVATE void _scene_light_release(void* data_ptr)
 
 
 /* Please see header for specification */
+PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_hashed_ansi_string name)
+{
+    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+
+    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+                      "Out of memory");
+
+    if (new_scene_light != NULL)
+    {
+        memset(new_scene_light,
+               0,
+               sizeof(_scene_light) );
+
+        new_scene_light->name = name;
+        new_scene_light->type = SCENE_LIGHT_TYPE_AMBIENT;
+
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+                                                       _scene_light_release,
+                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\", system_hashed_ansi_string_get_buffer(name)) );
+    }
+
+    return (scene_light) new_scene_light;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull system_hashed_ansi_string name)
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
