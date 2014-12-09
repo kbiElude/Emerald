@@ -11,6 +11,7 @@
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
+#include "scene/scene.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64map.h"
@@ -107,6 +108,15 @@ typedef struct _mesh_material
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(mesh_material, mesh_material, _mesh_material);
+
+
+/** TODO */
+PRIVATE void _mesh_material_on_lights_added_to_scene(const void* not_used,
+                                                     void*       material)
+{
+    /* We will need a new ogl_uber instance for the re-configured scene. */
+    ((_mesh_material*) material)->dirty = true;
+}
 
 /** TODO */
 PRIVATE void _mesh_material_release(void* data_ptr)
@@ -274,6 +284,21 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
                                 &materials);
 
         LOG_INFO("Material is dirty - baking..");
+
+        if (material_ptr->uber == NULL)
+        {
+            system_callback_manager scene_callback_manager = NULL;
+
+            scene_get_property(scene,
+                               SCENE_PROPERTY_CALLBACK_MANAGER,
+                              &scene_callback_manager);
+
+            system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
+                                                            SCENE_CALLBACK_ID_LIGHT_ADDED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _mesh_material_on_lights_added_to_scene,
+                                                            material_ptr);
+        }
 
         material_ptr->dirty = false;
         material_ptr->uber  = ogl_materials_get_uber(materials,

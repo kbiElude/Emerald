@@ -14,6 +14,7 @@ REFCOUNT_INSERT_DECLARATIONS(scene, scene)
 
 enum scene_property
 {
+    SCENE_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager. */
     SCENE_PROPERTY_FPS,                    /*     settable, float. By default set to 0 which
                                             *               disables scene graph computation's FPS
                                             *               limiter which is needed for correct LW
@@ -25,6 +26,14 @@ enum scene_property
     SCENE_PROPERTY_N_MESH_INSTANCES,       /* not settable, uint32_t */
     SCENE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
 };
+
+typedef enum
+{
+    SCENE_CALLBACK_ID_LIGHT_ADDED, /* new_light_added; callback_proc_data: new scene_light */
+
+    /* Always last */
+    SCENE_CALLBACK_ID_COUNT
+} scene_callback_id;
 
 /** TODO */
 PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context,
