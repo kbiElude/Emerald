@@ -15,6 +15,7 @@
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
+#include "system/system_callback_manager.h"
 #include "system/system_log.h"
 #include "system/system_hash64map.h"
 #include "system/system_math_vector.h"
@@ -476,6 +477,15 @@ PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool(system_
                                                  sizeof(mesh_material) );
 }
 
+/** TODO */
+PRIVATE void _ogl_scene_renderer_on_light_added(const void* unused,
+                                                      void* scene_renderer)
+{
+    _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) scene_renderer;
+
+    /* Reset all cached ubers */
+    system_hash64map_clear(renderer_ptr->ubers_map);
+}
 
 /** TODO */
 PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_instance,
@@ -680,10 +690,10 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
     /* Update directional vector for directional lights */
     if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
-        /* The default light direction vector is <0, 0, -1>. Transform it against the current
+        /* The default light direction vector is <0, 0, 1>. Transform it against the current
          * model matrix to obtain final direction vector for the light
          */
-        const float default_direction_vector[3] = {0, 0, -1};
+        const float default_direction_vector[3] = {0, 0, 1};
               float final_direction_vector  [3];
 
         system_matrix4x4_multiply_by_vector3(renderer_ptr->current_model_matrix,
@@ -712,7 +722,9 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
 {
     _ogl_scene_renderer* scene_renderer_ptr = new (std::nothrow) _ogl_scene_renderer;
 
-    ASSERT_ALWAYS_SYNC(scene_renderer_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(scene_renderer_ptr != NULL,
+                       "Out of memory");
+
     if (scene_renderer_ptr != NULL)
     {
         scene_renderer_ptr->bbox_preview     = ogl_scene_renderer_bbox_preview_create(context,
@@ -730,6 +742,22 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_MATERIALS,
                                 &scene_renderer_ptr->material_manager);
+
+        /* Since ogl_scene_renderer caches ogl_uber instances, given current scene configuration,
+         * we need to register for various scene call-backs in order to ensure these instances
+         * are reset, if the scene configuration ever changes.
+         */
+        system_callback_manager scene_callback_manager = NULL;
+
+        scene_get_property(scene,
+                           SCENE_PROPERTY_CALLBACK_MANAGER,
+                          &scene_callback_manager);
+
+        system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
+                                                        SCENE_CALLBACK_ID_LIGHT_ADDED,
+                                                        CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                        _ogl_scene_renderer_on_light_added,
+                                                        scene_renderer_ptr);                /* callback_proc_user_arg */
     }
 
     return (ogl_scene_renderer) scene_renderer_ptr;
@@ -989,13 +1017,24 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                          SCENE_LIGHT_PROPERTY_TYPE,
                                         &current_light_type);
 
-                scene_light_get_property         (current_light,
-                                                  SCENE_LIGHT_PROPERTY_COLOR,
-                                                 &current_light_color);
-                ogl_uber_set_shader_item_property(material_uber,
-                                                  n_light,
-                                                  OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
-                                                  current_light_color);
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_COLOR,
+                                        &current_light_color);
+
+                if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT)
+                {
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,
+                                                      current_light_color);
+                }
+                else
+                {
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
+                                                      current_light_color);
+                }
 
                 if (current_light_type == SCENE_LIGHT_TYPE_POINT)
                 {

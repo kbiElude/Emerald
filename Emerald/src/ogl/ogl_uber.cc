@@ -23,6 +23,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
+#include "system/system_math_srgb.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_variant.h"
@@ -37,11 +38,17 @@
 /* Holds all properties that may be used for a fragment shader item */
 typedef struct _ogl_uber_fragment_shader_item
 {
+    float ambient_color_linear[3]; /* used by renderer  */
+    float ambient_color_sRGB  [3]; /* provided by users */
+    bool  ambient_color_dirty;
+    GLint ambient_color_ub_offset;
+
     float current_light_attenuations[3];
     bool  current_light_attenuations_dirty;
     GLint current_light_attenuations_ub_offset;
 
-    float current_light_diffuse   [4];
+    float current_light_diffuse_linear[4]; /* used by renderer */
+    float current_light_diffuse_sRGB  [4]; /* provided by users */
     bool  current_light_diffuse_dirty;
     GLint current_light_diffuse_ub_offset;
 
@@ -55,11 +62,13 @@ typedef struct _ogl_uber_fragment_shader_item
 
     _ogl_uber_fragment_shader_item()
     {
+        ambient_color_ub_offset              = -1;
         current_light_attenuations_ub_offset = -1;
         current_light_diffuse_ub_offset      = -1;
         current_light_direction_ub_offset    = -1;
         current_light_location_ub_offset     = -1;
 
+        ambient_color_dirty              = true;
         current_light_attenuations_dirty = true;
         current_light_diffuse_dirty      = true;
         current_light_direction_dirty    = true;
@@ -831,6 +840,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
 
     switch (light_type)
     {
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
@@ -1274,6 +1284,7 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
             case OGL_UBER_ITEM_LIGHT:
             {
                 /* Fragment shader stuff */
+                const ogl_program_uniform_descriptor* light_ambient_color_uniform_ptr = NULL;
                 std::stringstream                     light_attenuations_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_attenuations_uniform_ptr = NULL;
                 std::stringstream                     light_diffuse_uniform_name_sstream;
@@ -1289,6 +1300,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 light_location_uniform_name_sstream     << "light" << n_item << "_world_pos";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create("ambient_color"),
+                                               &light_ambient_color_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_attenuations_uniform_name_sstream.str().c_str() ),
                                                &light_attenuations_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
@@ -1301,11 +1315,10 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                                                 system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
                                                &light_location_uniform_ptr);
 
-                /* NOTE: light_attenuations_uniform_ptr will only be != NULL if we're dealing with point or spot lights.
-                 *       light_direction_uniform_ptr    will only be != NULL if we're dealing with a directional light.
-                 */
-                ASSERT_DEBUG_SYNC(light_diffuse_uniform_ptr   != NULL &&
-                                  light_location_uniform_ptr  != NULL, "Could not retrieve uniform descriptors");
+                if (light_ambient_color_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.ambient_color_ub_offset = light_ambient_color_uniform_ptr->ub_offset;
+                }
 
                 if (light_attenuations_uniform_ptr != NULL)
                 {
@@ -1317,8 +1330,15 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                     item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ptr->ub_offset;
                 }
 
-                item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ptr->ub_offset;
-                item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
+                if (light_diffuse_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ptr->ub_offset;
+                }
+
+                if (light_location_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
+                }
 
                 /* Vertex shader stuff */
                 shaders_vertex_uber_light light_type = SHADERS_VERTEX_UBER_LIGHT_NONE;
@@ -1532,6 +1552,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
     {
         switch (property)
         {
+            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.ambient_color_ub_offset != -1,
+                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR requested but the underlying shader does not use the property");
+
+                *((float**) result) = item_ptr->fragment_shader_item.ambient_color_sRGB;
+
+                break;
+            }
+
             case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
             {
                 ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1,
@@ -1547,7 +1577,7 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                 ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1,
                                   "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE requested but the underlying shader does not use the property");
 
-                *((float**) result) = item_ptr->fragment_shader_item.current_light_diffuse;
+                *((float**) result) = item_ptr->fragment_shader_item.current_light_diffuse_sRGB;
 
                 break;
             }
@@ -1795,41 +1825,47 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                     int32_t                        shader_sampler_uniform_location;
                     int32_t                        shader_scalar_uniform_location;
                     int32_t                        shader_uv_attribute_location;
+                    bool                           convert_to_linear;
                 } attachments[] =
                 {
                     {
                         MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
                         uber_ptr->ambient_material_sampler_uniform_location,
                         uber_ptr->ambient_material_vec4_uniform_location,
-                        uber_ptr->object_ambient_uv_attribute_location
+                        uber_ptr->object_ambient_uv_attribute_location,
+                        true,
                     },
 
                     {
                         MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
                         uber_ptr->diffuse_material_sampler_uniform_location,
                         uber_ptr->diffuse_material_vec4_uniform_location,
-                        uber_ptr->object_diffuse_uv_attribute_location
+                        uber_ptr->object_diffuse_uv_attribute_location,
+                        true,
                     },
 
                     {
                         MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
                         uber_ptr->luminosity_material_sampler_uniform_location,
                         uber_ptr->luminosity_material_float_uniform_location,
-                        uber_ptr->object_luminosity_uv_attribute_location
+                        uber_ptr->object_luminosity_uv_attribute_location,
+                        false
                     },
 
                     {
                         MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
                         uber_ptr->shininess_material_sampler_uniform_location,
                         uber_ptr->shininess_material_float_uniform_location,
-                        uber_ptr->object_shininess_uv_attribute_location
+                        uber_ptr->object_shininess_uv_attribute_location,
+                        false
                     },
 
                     {
                         MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
                         uber_ptr->specular_material_sampler_uniform_location,
                         uber_ptr->specular_material_float_uniform_location,
-                        uber_ptr->object_specular_uv_attribute_location
+                        uber_ptr->object_specular_uv_attribute_location,
+                        false
                     },
                 };
                 const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
@@ -1856,6 +1892,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
 
                             ASSERT_DEBUG_SYNC(attachment.shader_scalar_uniform_location != -1,
                                               "Float uniform location is -1!");
+                            ASSERT_DEBUG_SYNC(!attachment.convert_to_linear,
+                                              "Float values should never be interpreted as sRGB?");
 
                             mesh_material_get_shading_property_value_float(layer_pass_material,
                                                                            attachment.property,
@@ -1909,6 +1947,16 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                             mesh_material_get_shading_property_value_vec4(layer_pass_material,
                                                                           attachment.property,
                                                                           data_vec4);
+
+                            if (attachment.convert_to_linear)
+                            {
+                                for (unsigned int n_component = 0;
+                                                  n_component < 4;
+                                                ++n_component)
+                                {
+                                    data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
+                                }
+                            } /* if (attachment.convert_to_linear) */
 
                             entry_points->pGLProgramUniform4fv(po_id,
                                                                attachment.shader_scalar_uniform_location,
@@ -1988,6 +2036,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                 case OGL_UBER_ITEM_LIGHT:
                 {
                     /* Fragment shader part */
+                    if (item_ptr->fragment_shader_item.ambient_color_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.ambient_color_dirty)
+                    {
+                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.ambient_color_ub_offset,
+                                       item_ptr->fragment_shader_item.ambient_color_linear,
+                                       sizeof(float) * 3);
+
+                        has_modified_bo_data                               = true;
+                        item_ptr->fragment_shader_item.ambient_color_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_attenuations_dirty)
                     {
@@ -2003,7 +2062,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_diffuse_dirty)
                     {
                         memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
-                                       item_ptr->fragment_shader_item.current_light_diffuse,
+                                       item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
                                        sizeof(float) * 4);
 
                         has_modified_bo_data                                       = true;
@@ -2259,6 +2318,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
     switch (property)
     {
+        case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
@@ -2272,6 +2332,33 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
             {
                 switch (property)
                 {
+                    case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
+                    {
+                        if (memcmp(item_ptr->fragment_shader_item.ambient_color_sRGB,
+                                   data,
+                                   sizeof(float) * 3) != 0)
+                        {
+                            /* We're rendering in linear space, so make sure to convert
+                             * sRGB light color to linear space */
+                            float* data_ptr = (float*) data;
+
+                            for (unsigned int n_component = 0;
+                                              n_component < 3;
+                                            ++n_component)
+                            {
+                                item_ptr->fragment_shader_item.ambient_color_linear[n_component] = convert_sRGB_to_linear(data_ptr[n_component]);
+                            }
+
+                            memcpy(item_ptr->fragment_shader_item.ambient_color_sRGB,
+                                   data,
+                                   sizeof(float) * 3);
+
+                            item_ptr->fragment_shader_item.ambient_color_dirty = true;
+                        }
+
+                        break;
+                    }
+
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
                     {
                         if (memcmp(item_ptr->fragment_shader_item.current_light_attenuations,
@@ -2290,15 +2377,25 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_diffuse,
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
                                    data,
                                    sizeof(float) * 3) != 0)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_diffuse,
+                            /* We're rendering in linear space, so make sure to convert
+                             * sRGB light color to linear space */
+                            for (unsigned int n_component = 0;
+                                              n_component < 3;
+                                            ++n_component)
+                            {
+                                item_ptr->fragment_shader_item.current_light_diffuse_linear[n_component] = convert_sRGB_to_linear(((float*) data)[n_component]);
+                            }
+
+                            item_ptr->fragment_shader_item.current_light_diffuse_linear[3] = 1.0f;
+
+                            memcpy(item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
                                    data,
                                    sizeof(float) * 3);
 
-                            item_ptr->fragment_shader_item.current_light_diffuse[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_diffuse_dirty = true;
                         }
 

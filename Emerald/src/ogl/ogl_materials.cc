@@ -353,7 +353,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
             const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
 
             unsigned int n_uber_fragment_property_value_pairs     = 0;
-            unsigned int uber_fragment_property_value_pairs[n_mappings*2];
+            unsigned int uber_fragment_property_value_pairs[(n_mappings + 1 /* view vector setting */) * 2];
 
             /* Add ambient/diffuse/emission factors */
             for (unsigned int n_mapping = 0;
@@ -465,6 +465,13 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                         {
                             switch (current_light_type)
                             {
+                                case SCENE_LIGHT_TYPE_AMBIENT:
+                                {
+                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT;
+
+                                    break;
+                                }
+
                                 case SCENE_LIGHT_TYPE_DIRECTIONAL:
                                 {
                                     uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL;
@@ -617,11 +624,13 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                          &current_uber_light_type);
 
         /* TODO: Expand to support other light types */
-        ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+        ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_AMBIENT     ||
+                          current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
                           current_light_type == SCENE_LIGHT_TYPE_POINT,
                           "TODO: Unsupported light type, expand.");
 
-        if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
+        if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT     &&  current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             ||
+            current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
                                                                    current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
             current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
                                                                    current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT) )

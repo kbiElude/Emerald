@@ -47,6 +47,8 @@ typedef enum
 
 typedef enum
 {
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,      /* settable, float[3] */
+
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS, /* settable, float[3] */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,      /* settable, float[3] */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,    /* settable, float[3] */

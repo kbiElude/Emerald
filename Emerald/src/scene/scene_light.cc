@@ -219,24 +219,37 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                                                             sizeof(light_type),
                                                            &light_type);
 
-    ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
-                      light_type == SCENE_LIGHT_TYPE_POINT,
-                      "Unrecognized light type");
+    switch (light_type)
+    {
+        case SCENE_LIGHT_TYPE_AMBIENT:
+        {
+            result_light = scene_light_create_ambient(light_name);
 
-    if (light_type != SCENE_LIGHT_TYPE_DIRECTIONAL &&
-        light_type != SCENE_LIGHT_TYPE_POINT)
-    {
-        goto end_error;
-    }
+            break;
+        }
 
-    if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
-    {
-        result_light = scene_light_create_directional(light_name);
-    }
-    else
-    {
-        result_light = scene_light_create_point(light_name);
-    }
+        case SCENE_LIGHT_TYPE_DIRECTIONAL:
+        {
+            result_light = scene_light_create_directional(light_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_TYPE_POINT:
+        {
+            result_light = scene_light_create_point(light_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized light type");
+
+            goto end_error;
+        }
+    } /* switch (light_type) */
 
     ASSERT_ALWAYS_SYNC(result_light != NULL, "Out of memory");
     if (result_light != NULL)
@@ -312,6 +325,7 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
                                                light_ptr->direction);
     }
     else
+    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
         result &= system_file_serializer_write(serializer,
                                                sizeof(light_ptr->constant_attenuation),
