@@ -47,12 +47,12 @@ typedef enum
 
 typedef enum
 {
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,      /* settable, float[3] */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,      /* settable, float[3]. used by ambient light */
 
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS, /* settable, float[3] */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,      /* settable, float[3] */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,    /* settable, float[3] */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,     /* settable, float[3] */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS, /* settable, float[3]. used by point lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,      /* settable, float[3]. used by directional & point lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,    /* settable, float[3]. used by directional lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,     /* settable, float[3]. used by point lights  */
 
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
 

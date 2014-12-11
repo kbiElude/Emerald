@@ -540,11 +540,13 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     std::stringstream light_direction_name_sstream;
     std::stringstream light_world_pos_name_sstream;
 
-    /* Common properties for all lights except ambient */
-    if (light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
+    /* Add light properties */
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
     {
-        light_diffuse_name_sstream   << "light" << n_items << "_diffuse";
-        light_world_pos_name_sstream << "light" << n_items << "_world_pos";
+        light_diffuse_name_sstream << "light" << n_items << "_diffuse";
 
         ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                           VARIABLE_TYPE_UNIFORM,
@@ -552,6 +554,13 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                           0, /* array_size */
                                                           uber_ptr->fragment_shader_properties_ub,
                                                           system_hashed_ansi_string_create(light_diffuse_name_sstream.str().c_str() ));
+    }
+
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+    {
+        light_world_pos_name_sstream << "light" << n_items << "_world_pos";
+
         ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                           VARIABLE_TYPE_UNIFORM,
                                                           TYPE_VEC4,
