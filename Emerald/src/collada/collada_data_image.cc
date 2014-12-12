@@ -43,7 +43,13 @@ PUBLIC collada_data_image collada_data_image_create(__in __notnull tinyxml2::XML
         if (init_from_element_ptr != NULL)
         {
             /* The value inside the node is the file path */
+            const char* file_prefix    = "file:///";
             const char* full_file_path = init_from_element_ptr->GetText();
+
+            if (strstr(full_file_path, file_prefix) == full_file_path)
+            {
+                full_file_path += strlen(file_prefix);
+            }
 
             /* Chances are the node text includes a path to the file. If that's the case,
              * we need to extract actual file name. */
