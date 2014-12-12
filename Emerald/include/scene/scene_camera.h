@@ -17,6 +17,8 @@ enum scene_camera_property
     SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,  /*     settable, float */
     SCENE_CAMERA_PROPERTY_FAR_PLANE_HEIGHT,    /* not settable, float */
     SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH,     /* not settable, float */
+    SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,      /*     settable, curve_container */
+    SCENE_CAMERA_PROPERTY_F_STOP,              /*     settable, curve_container */
     SCENE_CAMERA_PROPERTY_NAME,                /* not settable, system_hashed_ansi_string */
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE, /*     settable, float */
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT,   /* not settable, float */
