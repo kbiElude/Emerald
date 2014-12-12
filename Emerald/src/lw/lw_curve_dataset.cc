@@ -7,6 +7,7 @@
 #include "curve/curve_container.h"
 #include "lw/lw_curve_dataset.h"
 #include "scene/scene.h"
+#include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
@@ -57,6 +58,8 @@ typedef struct _lw_curve_dataset_object
 
 typedef enum
 {
+    LW_CURVE_TYPE_F_STOP,
+    LW_CURVE_TYPE_FOCAL_DISTANCE,
     LW_CURVE_TYPE_POSITION_X,
     LW_CURVE_TYPE_POSITION_Y,
     LW_CURVE_TYPE_POSITION_Z,
@@ -759,19 +762,34 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
             }
 
             /* Match the curve name to one of the predefined curve types */
-            static const system_hashed_ansi_string position_x_curve_name = system_hashed_ansi_string_create("Position.X");
-            static const system_hashed_ansi_string position_y_curve_name = system_hashed_ansi_string_create("Position.Y");
-            static const system_hashed_ansi_string position_z_curve_name = system_hashed_ansi_string_create("Position.Z");
-            static const system_hashed_ansi_string rotation_b_curve_name = system_hashed_ansi_string_create("Rotation.B");
-            static const system_hashed_ansi_string rotation_h_curve_name = system_hashed_ansi_string_create("Rotation.H");
-            static const system_hashed_ansi_string rotation_p_curve_name = system_hashed_ansi_string_create("Rotation.P");
-            static const system_hashed_ansi_string scale_x_curve_name    = system_hashed_ansi_string_create("Scale.X");
-            static const system_hashed_ansi_string scale_y_curve_name    = system_hashed_ansi_string_create("Scale.Y");
-            static const system_hashed_ansi_string scale_z_curve_name    = system_hashed_ansi_string_create("Scale.Z");
+            static const system_hashed_ansi_string focal_distance_curve_name = system_hashed_ansi_string_create("FocalDistance");
+            static const system_hashed_ansi_string f_stop_curve_name         = system_hashed_ansi_string_create("FStop");
+            static const system_hashed_ansi_string position_x_curve_name     = system_hashed_ansi_string_create("Position.X");
+            static const system_hashed_ansi_string position_y_curve_name     = system_hashed_ansi_string_create("Position.Y");
+            static const system_hashed_ansi_string position_z_curve_name     = system_hashed_ansi_string_create("Position.Z");
+            static const system_hashed_ansi_string rotation_b_curve_name     = system_hashed_ansi_string_create("Rotation.B");
+            static const system_hashed_ansi_string rotation_h_curve_name     = system_hashed_ansi_string_create("Rotation.H");
+            static const system_hashed_ansi_string rotation_p_curve_name     = system_hashed_ansi_string_create("Rotation.P");
+            static const system_hashed_ansi_string scale_x_curve_name        = system_hashed_ansi_string_create("Scale.X");
+            static const system_hashed_ansi_string scale_y_curve_name        = system_hashed_ansi_string_create("Scale.Y");
+            static const system_hashed_ansi_string scale_z_curve_name        = system_hashed_ansi_string_create("Scale.Z");
 
-            system_hash64  curve_name_hash = system_hashed_ansi_string_get_hash(item_ptr->name);
-            _lw_curve_type curve_type      = LW_CURVE_TYPE_UNDEFINED;
+            system_hash64  curve_name_hash         = system_hashed_ansi_string_get_hash(item_ptr->name);
+            _lw_curve_type curve_type              = LW_CURVE_TYPE_UNDEFINED;
+            bool           is_transformation_curve = true;
 
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(focal_distance_curve_name) )
+            {
+                curve_type              = LW_CURVE_TYPE_FOCAL_DISTANCE;
+                is_transformation_curve = false;
+            }
+            else
+            if (curve_name_hash == system_hashed_ansi_string_get_hash(f_stop_curve_name) )
+            {
+                curve_type              = LW_CURVE_TYPE_F_STOP;
+                is_transformation_curve = false;
+            }
+            else
             if (curve_name_hash == system_hashed_ansi_string_get_hash(position_x_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_X;else
             if (curve_name_hash == system_hashed_ansi_string_get_hash(position_y_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_Y;else
             if (curve_name_hash == system_hashed_ansi_string_get_hash(position_z_curve_name) ) curve_type = LW_CURVE_TYPE_POSITION_Z;else
@@ -787,6 +805,9 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
             }
 
             /* Retrieve a graph node that owns the object */
+            scene_camera     found_camera         = NULL;
+            scene_light      found_light          = NULL;
+            scene_mesh       found_mesh           = NULL;
             unsigned int     n_lw_name_iterations = 0;
             scene_graph_node owner_node           = NULL;
 
@@ -798,7 +819,6 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
             {
                 case LW_CURVE_DATASET_OBJECT_TYPE_CAMERA:
                 {
-                    scene_camera found_camera = NULL;
 
                     for (unsigned int n_lw_name_iteration = 0;
                                       n_lw_name_iteration < n_lw_name_iterations && found_camera == NULL;
@@ -829,8 +849,6 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 case LW_CURVE_DATASET_OBJECT_TYPE_LIGHT:
                 {
-                    scene_light found_light = NULL;
-
                     for (unsigned int n_lw_name_iteration = 0;
                                       n_lw_name_iteration < n_lw_name_iterations && found_light == NULL;
                                     ++n_lw_name_iteration)
@@ -860,8 +878,6 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
 
                 case LW_CURVE_DATASET_OBJECT_TYPE_MESH:
                 {
-                    scene_mesh found_mesh = NULL;
-
                     for (unsigned int n_lw_name_iteration = 0;
                                       n_lw_name_iteration < n_lw_name_iterations && found_mesh == NULL;
                                     ++n_lw_name_iteration)
@@ -899,7 +915,7 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
             ASSERT_ALWAYS_SYNC(owner_node != NULL,
                                "Could not identify owner node for scene object");
 
-            if (owner_node != NULL)
+            if (owner_node != NULL && is_transformation_curve)
             {
                 /* Owner node is just a placeholder for the items. Make sure the node tag is valid */
                 scene_graph_node_tag node_tag = SCENE_GRAPH_NODE_TAG_UNDEFINED;
@@ -920,6 +936,28 @@ PUBLIC EMERALD_API void lw_curve_dataset_apply_to_scene(__in __notnull lw_curve_
                                                 graph,
                                                 owner_node);
             } /* if (owner_node != NULL) */
+
+            /* Apply non-transformation curves */
+            if (!is_transformation_curve)
+            {
+                if (curve_type == LW_CURVE_TYPE_F_STOP)
+                {
+                    curve_container found_camera_f_stop_curve = NULL;
+
+                    scene_camera_set_property(found_camera,
+                                              SCENE_CAMERA_PROPERTY_F_STOP,
+                                             &item_ptr->curve);
+                }
+                else
+                if (curve_type == LW_CURVE_TYPE_FOCAL_DISTANCE)
+                {
+                    curve_container found_camera_focal_distance_curve = NULL;
+
+                    scene_camera_set_property(found_camera,
+                                              SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,
+                                             &item_ptr->curve);
+                }
+            } /* if (!is_transformation_curve) */
         } /* for (all object curves) */
     } /* for (all objects) */
 
