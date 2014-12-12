@@ -535,11 +535,12 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
     /* Create textures off the images we've loaded */
     for (unsigned int n_image = 0; n_image < n_images; ++n_image)
     {
-        system_hashed_ansi_string image_file_name    = NULL;
-        _texture_loader_workload* image_workload_ptr = NULL;
-        system_hashed_ansi_string name               = NULL;
-        bool                      requires_mipmaps   = false;
-        collada_data_image        result_image       = NULL;
+        system_hashed_ansi_string image_file_name           = NULL;
+        system_hashed_ansi_string image_file_name_with_path = NULL;
+        _texture_loader_workload* image_workload_ptr        = NULL;
+        system_hashed_ansi_string name                      = NULL;
+        bool                      requires_mipmaps          = false;
+        collada_data_image        result_image              = NULL;
 
         /* Retrieve workload corresponding to the image we're processing */
         collada_data_get_image           (data,
@@ -548,7 +549,7 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
         collada_data_image_get_properties(result_image,
                                          &name,
                                          &image_file_name,
-                                          NULL, /* out_file_name_with_path */
+                                         &image_file_name_with_path,
                                          &requires_mipmaps);
 
         system_hash64map_get(workloads_map,
@@ -596,14 +597,14 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
 
             /* Spawn scene_texture instance */
             scene_texture result_texture = scene_texture_create(name,
-                                                                image_file_name);
+                                                                image_file_name_with_path);
 
             if (result_texture == NULL)
             {
                 ASSERT_ALWAYS_SYNC(false,
                                    "Could not create scene_texture [%s] from file [%s]",
                                    system_hashed_ansi_string_get_buffer(name),
-                                   system_hashed_ansi_string_get_buffer(image_file_name) );
+                                   system_hashed_ansi_string_get_buffer(image_file_name_with_path) );
             } /* if (result_texture == NULL) */
             else
             {
