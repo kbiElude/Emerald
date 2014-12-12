@@ -244,6 +244,17 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
 
     result_ptr = (_scene_camera*) result;
 
+    /* Release local curve containers before continuing */
+    if (result_ptr->f_stop != NULL)
+    {
+        curve_container_release(result_ptr->f_stop);
+    }
+
+    if (result_ptr->focal_distance != NULL)
+    {
+        curve_container_release(result_ptr->focal_distance);
+    }
+
     /* Retrieve other camera properties */
     float              camera_ar;
     curve_container    camera_f_stop;
@@ -294,16 +305,6 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
                              &camera_yfov);
 
     /* Set the curve_container properties */
-    if (result_ptr->f_stop != NULL)
-    {
-        curve_container_release(result_ptr->f_stop);
-    }
-
-    if (result_ptr->focal_distance != NULL)
-    {
-        curve_container_release(result_ptr->focal_distance);
-    }
-
     result_ptr->f_stop         = camera_f_stop;
     result_ptr->focal_distance = camera_focal_distance;
 
