@@ -203,7 +203,13 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 
     /* Nodes can be described by a number of different node types. Iterate over
      * all children and parse them recursively */
-    tinyxml2::XMLElement* current_node_child_ptr = element_ptr->FirstChildElement();
+    tinyxml2::XMLElement*              current_node_child_ptr    = element_ptr->FirstChildElement();
+    bool                               is_lw10_file              = false;
+    float                              last_rotate_pivot     [3] = {0};
+
+    collada_data_get_property(collada_data,
+                              COLLADA_DATA_PROPERTY_IS_LW10_COLLADA_FILE,
+                             &is_lw10_file);
 
     while (current_node_child_ptr != NULL)
     {
@@ -237,7 +243,37 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "translate"))
         {
-            new_node_item = collada_data_scene_graph_node_translate_create(current_node_child_ptr);
+            bool  should_cache_as_last_rotatePivot_transformation = false;
+            bool  should_enforce_inversed_rotatePivot_vector      = false;
+            float inversed_rotate_pivot[3] =
+            {
+                -last_rotate_pivot[0],
+                -last_rotate_pivot[1],
+                -last_rotate_pivot[2]
+            };
+
+            if (is_lw10_file)
+            {
+                /* NOTE: LW exporter has a bug where translation with sid "rotatePivotInverse" (expected to be
+                 *       an inverse transformation to a translation with sid "rotatePivot") is the same translation
+                 *       as rotatePivot. For this reason, we keep track of rotatePivot translations and enforce
+                 *       an inversed vector for rotatePivotInverse translations */
+                const char* current_node_sid = current_node_child_ptr->Attribute("sid");
+
+                if (strcmp(current_node_sid, "rotatePivot") == 0)
+                {
+                    should_cache_as_last_rotatePivot_transformation = true;
+                }
+                else
+                if (strcmp(current_node_sid, "rotatePivotInverse") == 0)
+                {
+                    should_enforce_inversed_rotatePivot_vector = true;
+                }
+            } /* if (is_lw10_file) */
+
+            new_node_item = collada_data_scene_graph_node_translate_create(current_node_child_ptr,
+                                                                           (should_enforce_inversed_rotatePivot_vector      ? inversed_rotate_pivot : NULL),
+                                                                           (should_cache_as_last_rotatePivot_transformation ? last_rotate_pivot     : NULL) );
         }
         else
         if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_camera"))

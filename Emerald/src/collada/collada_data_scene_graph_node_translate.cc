@@ -9,8 +9,10 @@
 #include "system/system_assertions.h"
 #include "system/system_resizable_vector.h"
 
-/** TODO */
-PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translate_create(__in __notnull tinyxml2::XMLElement* element_ptr)
+/** Please see header for spec */
+PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translate_create(__in      __notnull   tinyxml2::XMLElement* element_ptr,
+                                                                                         __in_opt  __ecount(3) const float*          overriding_vec3,
+                                                                                         __out_opt __ecount(3) float*                result_vec3)
 {
     collada_data_scene_graph_node_item item          = NULL;
     const char*                        text          = element_ptr->GetText();
@@ -25,9 +27,25 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_translat
     /* Retrieve matrix data */
     float data[3];
 
-    sscanf_s(element_ptr->GetText(),
-             "%f %f %f",
-             data + 0, data + 1, data + 2);
+    if (overriding_vec3 == NULL)
+    {
+        sscanf_s(element_ptr->GetText(),
+                 "%f %f %f",
+                 data + 0, data + 1, data + 2);
+    }
+    else
+    {
+        memcpy(data,
+               overriding_vec3,
+               sizeof(float) * 3);
+    }
+
+    if (result_vec3 != NULL)
+    {
+        memcpy(result_vec3,
+               data,
+               sizeof(float) * 3);
+    }
 
     /* Instantiate new descriptor */
     collada_data_transformation new_transformation = collada_data_transformation_create_translate(element_ptr, data);

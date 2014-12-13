@@ -64,6 +64,8 @@ typedef struct _collada_data
     system_hash64map nodes_by_id_map;
     system_hash64map scenes_by_id_map;
 
+    bool is_lw10_collada_file;
+
     /* Maps uint64_t (representing ptr to a collada_data_* object) to a system_resizable_vector,
      * holding collada_data_animation instances.
      */
@@ -86,6 +88,7 @@ typedef struct _collada_data
         geometries_by_id_map           = system_hash64map_create       (sizeof(collada_data_geometry), true);
         images                         = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_image) );
         images_by_id_map               = system_hash64map_create       (sizeof(collada_data_image) );
+        is_lw10_collada_file           = false;
         lights                         = system_resizable_vector_create(1 /* capacity */, sizeof(collada_data_light) );
         lights_by_id_map               = system_hash64map_create       (sizeof(collada_data_light) );
         materials                      = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_material) );
@@ -979,6 +982,22 @@ PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  x
         goto end;
     }
 
+    /* Locate contributor/authoring_tool subnode. */
+    tinyxml2::XMLElement* contributor_element_ptr = asset_element_ptr->FirstChildElement("contributor");
+
+    if (contributor_element_ptr != NULL)
+    {
+        tinyxml2::XMLElement* authoring_tool_element_ptr = contributor_element_ptr->FirstChildElement("authoring_tool");
+
+        if (authoring_tool_element_ptr != NULL)
+        {
+            if (strcmp(authoring_tool_element_ptr->GetText(), "Newtek LightWave CORE v1.0") == 0)
+            {
+                collada_data_ptr->is_lw10_collada_file = true;
+            }
+        }
+    } /* if (contributor_element_ptr != NULL) */
+
     /* Locate up_axis subnode. Note that it is optional, so assume Y_UP orientation as per spec if
      * the element is not available.
      */
@@ -1360,6 +1379,13 @@ PUBLIC EMERALD_API void collada_data_get_property(__in  __notnull collada_data  
         case COLLADA_DATA_PROPERTY_GEOMETRIES_BY_ID_MAP:
         {
             *((system_hash64map*) out_result_ptr) = collada_data_ptr->geometries_by_id_map;
+
+            break;
+        }
+
+        case COLLADA_DATA_PROPERTY_IS_LW10_COLLADA_FILE:
+        {
+            *(bool*) out_result_ptr = collada_data_ptr->is_lw10_collada_file;
 
             break;
         }

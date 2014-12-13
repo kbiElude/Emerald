@@ -340,12 +340,12 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     _test_scene = collada_data_get_emerald_scene(_test_collada_data, _context, 0);
 
     _current_matrix    = system_matrix4x4_create();
-    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f, 1280 / 720.0f, 1.0f, 10000.0f);
+    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f, 1280 / 720.0f, 1.0f, 100000.0f);
 
     _scene_renderer = ogl_scene_renderer_create(_context, _test_scene);
 
     ogl_flyby_activate(_context, camera_position);
-    ogl_flyby_set_movement_delta(_context, 1.25f);
+    ogl_flyby_set_movement_delta(_context, 10.25f);
 
     /* Show the curve editor */
 #if 0

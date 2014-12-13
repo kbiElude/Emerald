@@ -505,6 +505,9 @@ PRIVATE void _ogl_scene_renderer_process_mesh(__notnull scene_mesh scene_mesh_in
                             SCENE_MESH_PROPERTY_MESH,
                            &mesh_gpu);
 
+    system_hashed_ansi_string test = NULL;
+    scene_mesh_get_property(scene_mesh_instance, SCENE_MESH_PROPERTY_NAME, &test);
+
     mesh_get_property(mesh_gpu,
                       MESH_PROPERTY_INSTANTIATION_PARENT,
                      &mesh_instantiation_parent_gpu);

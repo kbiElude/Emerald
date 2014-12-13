@@ -19,6 +19,9 @@ enum collada_data_property
     COLLADA_DATA_PROPERTY_CAMERAS_BY_ID_MAP,        /* not settable, system_hash64map */
     COLLADA_DATA_PROPERTY_FILE_NAME,
     COLLADA_DATA_PROPERTY_GEOMETRIES_BY_ID_MAP,     /* not settable, system_hash64map */
+    COLLADA_DATA_PROPERTY_IS_LW10_COLLADA_FILE,     /* not settable, bool. Tells whether the source COLLADA file came from
+                                                     *                     LW 10. If so, a few work-arounds will be applied
+                                                     *                     to the imported data structures. */
     COLLADA_DATA_PROPERTY_LIGHTS_BY_ID_MAP,         /* not settable, system_hash64map */
     COLLADA_DATA_PROPERTY_MATERIALS_BY_ID_MAP,      /* not settable, system_hash64map */
     COLLADA_DATA_PROPERTY_MAX_ANIMATION_DURATION,   /* not settable, float */
