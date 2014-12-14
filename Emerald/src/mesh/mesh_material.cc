@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
@@ -16,6 +17,7 @@
 #include "system/system_file_serializer.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
+#include "system/system_variant.h"
 
 /** TODO */
 typedef struct _mesh_material_property_texture
@@ -58,6 +60,7 @@ typedef struct _mesh_material_property
 {
     mesh_material_property_attachment attachment;
 
+    curve_container                        curve_container_data;
     mesh_material_data_vector              data_vector_data;
     float                                  float_data;
     mesh_material_input_fragment_attribute input_fragment_attribute_data;
@@ -67,6 +70,7 @@ typedef struct _mesh_material_property
     _mesh_material_property()
     {
         attachment                    = MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE;
+        curve_container_data          = NULL;
         data_vector_data              = MESH_MATERIAL_DATA_VECTOR_UNKNOWN;
         float_data                    = -1.0f;
         input_fragment_attribute_data = MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
@@ -86,6 +90,7 @@ typedef struct _mesh_material
     system_hashed_ansi_string name;
     mesh_material_shading     shading;
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
+    system_variant            temp_variant_float;
     ogl_uber                  uber;
 
     system_hashed_ansi_string uv_map_name; /* NULL by default, needs to be manually set */
@@ -97,6 +102,7 @@ typedef struct _mesh_material
         context                = NULL;
         dirty                  = true;
         name                   = NULL;
+        temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
         uber                   = NULL;
         uv_map_name            = NULL;
         vertex_smoothing_angle = 0.0f;
@@ -131,14 +137,34 @@ PRIVATE void _mesh_material_release(void* data_ptr)
                                         current_property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
                                 ++(int&)current_property)
     {
-        if (material_ptr->shading_properties[current_property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
+        switch (material_ptr->shading_properties[current_property].attachment)
         {
-            ogl_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
-            ogl_texture_release(material_ptr->shading_properties[current_property].texture_data.texture);
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER:
+            {
+                curve_container_release(material_ptr->shading_properties[current_property].curve_container_data);
 
-            material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
-            material_ptr->shading_properties[current_property].texture_data.texture = NULL;
+                material_ptr->shading_properties[current_property].curve_container_data = NULL;
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+            {
+                ogl_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
+                ogl_texture_release(material_ptr->shading_properties[current_property].texture_data.texture);
+
+                material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
+                material_ptr->shading_properties[current_property].texture_data.texture = NULL;
+
+                break;
+            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
         }
+    }
+
+    if (material_ptr->temp_variant_float != NULL)
+    {
+        system_variant_release(material_ptr->temp_variant_float);
+
+        material_ptr->temp_variant_float = NULL;
     }
 
     /* Release callback manager */
@@ -369,6 +395,26 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container(__in      __notnull mesh_material                  material,
+                                                                                 __in                mesh_material_shading_property property,
+                                                                                 __in                system_timeline_time           time,
+                                                                                 __out_opt           float*                         out_float_value)
+{
+    _mesh_material*          material_ptr = ((_mesh_material*) material);
+    _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
+
+    ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER,
+                      "Requested shading property is not using a curve container attachment");
+
+    curve_container_get_value(property_ptr->curve_container_data,
+                              time,
+                              false, /* should_force */
+                              material_ptr->temp_variant_float);
+    system_variant_get_float (material_ptr->temp_variant_float,
+                              out_float_value);
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(__in      __notnull mesh_material                  material,
                                                                        __in                mesh_material_shading_property property,
                                                                        __out_opt           float*                         out_float_value)
@@ -508,10 +554,11 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
                                         property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
                                 ++(int&)property)
     {
-        mesh_material_property_attachment      attachment_type = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
+        curve_container                        attachment_curve_container_data = NULL;
         float                                  attachment_float_data;
         mesh_material_input_fragment_attribute attachment_input_fragment_attribute_data;
         _mesh_material_property_texture        attachment_texture_data;
+        mesh_material_property_attachment      attachment_type = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
         float                                  attachment_vec4_data[4];
 
         /* Read attachment type */
@@ -532,6 +579,23 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER:
+            {
+                result &= system_file_serializer_read_curve_container(serializer,
+                                                                     &attachment_curve_container_data);
+
+                if (!result)
+                {
+                    goto end_error;
+                }
+
+                mesh_material_set_shading_property_to_curve_container(new_material,
+                                                                      property,
+                                                                      attachment_curve_container_data);
+
+                break;
+            }
+
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
             {
                 result &= system_file_serializer_read(serializer,
@@ -546,8 +610,6 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
                 mesh_material_set_shading_property_to_float(new_material,
                                                             property,
                                                             attachment_float_data);
-
-                break;
 
                 break;
             }
@@ -701,6 +763,14 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER:
+            {
+                result &= system_file_serializer_write_curve_container(serializer,
+                                                                       property_data.curve_container_data);
+
+                break;
+            }
+
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
             {
                 result &= system_file_serializer_write(serializer,
@@ -809,6 +879,18 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
                               "Unrecognized mesh_material_property value");
         }
     } /* switch (property) */
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container(__in __notnull mesh_material                  material,
+                                                                              __in           mesh_material_shading_property property,
+                                                                              __in           curve_container                data)
+{
+    _mesh_material* material_ptr = (_mesh_material*) material;
+
+    material_ptr->dirty                                             = true;
+    material_ptr->shading_properties[property].attachment           = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER;
+    material_ptr->shading_properties[property].curve_container_data = data;
 }
 
 /* Please see header for specification */
