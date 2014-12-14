@@ -947,15 +947,20 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
                                                                        __in __notnull scene_graph_node parent_node,
                                                                        __in __notnull void*            node_item_data)
 {
-    collada_data_light        collada_light               = NULL;
-    const float*              light_color                 = NULL;
-    float                     light_constant_attenuation  = 1.0f;
-    float                     light_linear_attenuation    = 0.0f;
-    float                     light_quadratic_attenuation = 0.0f;
-    system_hashed_ansi_string light_name                  = NULL;
-    collada_data_light_type   light_type                  = COLLADA_DATA_LIGHT_TYPE_UNKNOWN;
-    scene_light               new_light                   = NULL;
-    system_hashed_ansi_string instance_name               = NULL;
+    collada_data_light        collada_light                     = NULL;
+    system_hashed_ansi_string instance_name                     = NULL;
+    curve_container           light_color_curves[3]             = {NULL};
+    const float*              light_color_values                = NULL;
+    float                     light_constant_attenuation        = 1.0f;
+    curve_container           light_constant_attenuation_curve  = NULL;
+    float                     light_linear_attenuation          = 0.0f;
+    curve_container           light_linear_attenuation_curve    = NULL;
+    float                     light_quadratic_attenuation       = 0.0f;
+    curve_container           light_quadratic_attenuation_curve = NULL;
+    system_hashed_ansi_string light_name                        = NULL;
+    collada_data_light_type   light_type                        = COLLADA_DATA_LIGHT_TYPE_UNKNOWN;
+    scene_light               new_light                         = NULL;
+    system_variant            temp_variant                      = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     collada_data_scene_graph_node_light_instance_get_property( (collada_data_scene_graph_node_light_instance) node_item_data,
                                                                COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_LIGHT,
@@ -964,13 +969,15 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
                                                                COLLADA_DATA_SCENE_GRAPH_NODE_LIGHT_INSTANCE_PROPERTY_NAME,
                                                               &instance_name);
 
-    ASSERT_DEBUG_SYNC(collada_light != NULL, "Light is NULL");
-    ASSERT_DEBUG_SYNC(instance_name != NULL, "Light instance name is NULL");
+    ASSERT_DEBUG_SYNC(collada_light != NULL,
+                      "Light is NULL");
+    ASSERT_DEBUG_SYNC(instance_name != NULL,
+                      "Light instance name is NULL");
 
     /* Convert collada_data_light to scene_light */
     collada_data_light_get_property(collada_light,
                                     COLLADA_DATA_LIGHT_PROPERTY_COLOR,
-                                   &light_color);
+                                   &light_color_values);
     collada_data_light_get_property(collada_light,
                                     COLLADA_DATA_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
                                    &light_constant_attenuation);
@@ -990,9 +997,20 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
         {
             new_light = scene_light_create_directional(instance_name);
 
-            scene_light_set_property(new_light,
+            scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_COLOR,
-                                     light_color);
+                                    &light_color_curves);
+
+            for (unsigned int n_component = 0;
+                              n_component < 3;
+                            ++n_component)
+            {
+                system_variant_set_float(temp_variant,
+                                         light_color_values[n_component]);
+
+                curve_container_set_default_value(light_color_curves[n_component],
+                                                  temp_variant);
+            }
 
             break;
         }
@@ -1001,18 +1019,44 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
         {
             new_light = scene_light_create_point(instance_name);
 
-            scene_light_set_property(new_light,
+            scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_COLOR,
-                                     light_color);
-            scene_light_set_property(new_light,
+                                    &light_color_curves);
+            scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
-                                    &light_constant_attenuation);
-            scene_light_set_property(new_light,
+                                    &light_constant_attenuation_curve);
+            scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,
-                                    &light_linear_attenuation);
-            scene_light_set_property(new_light,
+                                    &light_linear_attenuation_curve);
+            scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
-                                    &light_quadratic_attenuation);
+                                    &light_quadratic_attenuation_curve);
+
+            for (unsigned int n_component = 0;
+                              n_component < 3;
+                            ++n_component)
+            {
+                system_variant_set_float(temp_variant,
+                                         light_color_values[n_component]);
+
+                curve_container_set_default_value(light_color_curves[n_component],
+                                                  temp_variant);
+            }
+
+            system_variant_set_float         (temp_variant,
+                                              light_constant_attenuation);
+            curve_container_set_default_value(light_constant_attenuation_curve,
+                                              temp_variant);
+
+            system_variant_set_float         (temp_variant,
+                                              light_linear_attenuation);
+            curve_container_set_default_value(light_linear_attenuation_curve,
+                                              temp_variant);
+
+            system_variant_set_float         (temp_variant,
+                                              light_quadratic_attenuation);
+            curve_container_set_default_value(light_quadratic_attenuation_curve,
+                                              temp_variant);
 
             break;
         }
@@ -1025,8 +1069,11 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
 
     if (new_light != NULL)
     {
-        bool result = scene_add_light(scene, new_light);
-        ASSERT_ALWAYS_SYNC(result, "Could not add a light instance");
+        bool result = scene_add_light(scene,
+                                      new_light);
+
+        ASSERT_ALWAYS_SYNC(result,
+                           "Could not add a light instance");
 
         if (result)
         {
@@ -1036,6 +1083,8 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
                                               new_light);
         }
     }
+
+    system_variant_release(temp_variant);
 }
 
 /** TODO */

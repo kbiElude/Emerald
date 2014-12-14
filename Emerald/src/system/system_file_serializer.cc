@@ -258,7 +258,7 @@ PUBLIC const void* system_file_serializer_get_raw_storage(__in __notnull system_
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notnull system_file_serializer serializer, 
+PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notnull system_file_serializer serializer,
                                                                     __out __notnull curve_container*       result_container)
 {
     system_hashed_ansi_string curve_name    = NULL;
@@ -280,14 +280,17 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     system_variant temp_variant3 = system_variant_create(variant_type);
 
     /* Instantiate the curve */
-    *result_container = curve_container_create(curve_name,
-                                               variant_type);
-
     if (*result_container == NULL)
     {
-        ASSERT_DEBUG_SYNC(false, "Out of memory");
+        *result_container = curve_container_create(curve_name,
+                                                   variant_type);
 
-        goto end;
+        if (*result_container == NULL)
+        {
+            ASSERT_DEBUG_SYNC(false, "Out of memory");
+
+            goto end;
+        }
     }
 
     /* Iterate through all dimensions */
