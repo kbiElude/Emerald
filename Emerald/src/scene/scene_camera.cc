@@ -21,9 +21,10 @@ typedef struct
     curve_container           focal_distance;
     curve_container           f_stop;
     bool                      dirty;
+    system_timeline_time      dirty_last_recalc_time; /* time, for which the last recalc was done */
     system_hashed_ansi_string name;
     _scene_camera_type        type;
-    float                     yfov;
+    curve_container           yfov;
     float                     zfar;
     float                     znear;
 
@@ -33,6 +34,7 @@ typedef struct
     float near_plane_width;
 
     scene_graph_node owner_node;
+    system_variant   temp_variant;
 
     REFCOUNT_INSERT_VARIABLES
 } _scene_camera;
@@ -42,11 +44,22 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_camera, scene_camera, _scene_camera);
 
 
 /** TODO */
-PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_camera* camera_ptr)
+PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_camera*       camera_ptr,
+                                                         __in           system_timeline_time time)
 {
-    camera_ptr->far_plane_height  = 2.0f * tan(camera_ptr->yfov * 0.5f) * camera_ptr->zfar;
-    camera_ptr->far_plane_width   = camera_ptr->far_plane_height * camera_ptr->ar;
-    camera_ptr->near_plane_height = 2.0f * tan(camera_ptr->yfov * 0.5f) * camera_ptr->znear;
+    float yfov_value;
+
+    curve_container_get_value(camera_ptr->yfov,
+                              time,
+                              false,
+                              camera_ptr->temp_variant);
+    system_variant_get_float (camera_ptr->temp_variant,
+                             &yfov_value);
+
+    /* NOTE: Update get_property() if you start calcing more values here */
+    camera_ptr->far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
+    camera_ptr->far_plane_width   = camera_ptr->far_plane_height  * camera_ptr->ar;
+    camera_ptr->near_plane_height = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->znear;
     camera_ptr->near_plane_width  = camera_ptr->near_plane_height * camera_ptr->ar;
 }
 
@@ -54,24 +67,28 @@ PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_c
 PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_ptr,
                                 __in __notnull system_hashed_ansi_string name)
 {
-    camera_ptr->ar                = 0.0f;
-    camera_ptr->dirty             = true;
-    camera_ptr->far_plane_height  = 0.0f;
-    camera_ptr->far_plane_width   = 0.0f;
-    camera_ptr->focal_distance    = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                   " focal distance"),
-                                                           SYSTEM_VARIANT_FLOAT);
-    camera_ptr->f_stop            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                   " F-Stop"),
-                                                           SYSTEM_VARIANT_FLOAT);
-    camera_ptr->name              = name;
-    camera_ptr->near_plane_height = 0.0f;
-    camera_ptr->near_plane_width  = 0.0f;
-    camera_ptr->owner_node        = NULL;
-    camera_ptr->type              = SCENE_CAMERA_TYPE_UNDEFINED;
-    camera_ptr->yfov              = 0.0f;
-    camera_ptr->zfar              = 0.0f;
-    camera_ptr->znear             = 0.0f;
+    camera_ptr->ar                     = 0.0f;
+    camera_ptr->dirty                  = true;
+    camera_ptr->dirty_last_recalc_time = -1;
+    camera_ptr->far_plane_height       = 0.0f;
+    camera_ptr->far_plane_width        = 0.0f;
+    camera_ptr->focal_distance         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                        " focal distance"),
+                                                                SYSTEM_VARIANT_FLOAT);
+    camera_ptr->f_stop                 = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                        " F-Stop"),
+                                                                SYSTEM_VARIANT_FLOAT);
+    camera_ptr->name                   = name;
+    camera_ptr->near_plane_height      = 0.0f;
+    camera_ptr->near_plane_width       = 0.0f;
+    camera_ptr->owner_node             = NULL;
+    camera_ptr->temp_variant           = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    camera_ptr->type                   = SCENE_CAMERA_TYPE_UNDEFINED;
+    camera_ptr->yfov                   = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                        " YFov"),
+                                                                SYSTEM_VARIANT_FLOAT);
+    camera_ptr->zfar                   = 0.0f;
+    camera_ptr->znear                  = 0.0f;
 
     scene_camera_retain( (scene_camera) camera_ptr);
 }
@@ -93,6 +110,20 @@ PRIVATE void _scene_camera_release(void* data_ptr)
         curve_container_release(camera_ptr->focal_distance);
 
         camera_ptr->focal_distance = NULL;
+    }
+
+    if (camera_ptr->temp_variant != NULL)
+    {
+        system_variant_release(camera_ptr->temp_variant);
+
+        camera_ptr->temp_variant = NULL;
+    }
+
+    if (camera_ptr->yfov != NULL)
+    {
+        curve_container_release(camera_ptr->yfov);
+
+        camera_ptr->yfov = NULL;
     }
 }
 
@@ -120,15 +151,23 @@ PUBLIC EMERALD_API scene_camera scene_camera_create(__in __notnull system_hashed
 /* Please see header for spec */
 PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera          camera,
                                                   __in            scene_camera_property property,
+                                                  __in            system_timeline_time  time,
                                                   __out __notnull void*                 out_result)
 {
-    _scene_camera* camera_ptr = (_scene_camera*) camera;
+    _scene_camera* camera_ptr             = (_scene_camera*) camera;
+    const bool     recalc_value_requested = (property == SCENE_CAMERA_PROPERTY_FAR_PLANE_HEIGHT  ||
+                                             property == SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH   ||
+                                             property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT ||
+                                             property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH);
 
-    if (camera_ptr->dirty)
+    if (camera_ptr->dirty                                                    ||
+        camera_ptr->dirty_last_recalc_time != time && recalc_value_requested)
     {
-        _scene_camera_calculate_clipping_plane_data(camera_ptr);
+        _scene_camera_calculate_clipping_plane_data(camera_ptr,
+                                                    time);
 
-        camera_ptr->dirty = false;
+        camera_ptr->dirty                  = false;
+        camera_ptr->dirty_last_recalc_time = time;
     }
 
     switch (property)
@@ -205,7 +244,7 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 
         case SCENE_CAMERA_PROPERTY_VERTICAL_FOV:
         {
-            *(float*) out_result = camera_ptr->yfov;
+            *(curve_container*) out_result = camera_ptr->yfov;
 
             break;
         }
@@ -255,12 +294,17 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
         curve_container_release(result_ptr->focal_distance);
     }
 
+    if (result_ptr->yfov != NULL)
+    {
+        curve_container_release(result_ptr->yfov);
+    }
+
     /* Retrieve other camera properties */
     float              camera_ar;
     curve_container    camera_f_stop;
     curve_container    camera_focal_distance;
     _scene_camera_type camera_type;
-    float              camera_yfov;
+    curve_container    camera_yfov;
     float              camera_zfar;
     float              camera_znear;
 
@@ -274,8 +318,7 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
         !system_file_serializer_read                (serializer,
                                                      sizeof(camera_type),
                                                     &camera_type)           ||
-        !system_file_serializer_read                (serializer,
-                                                     sizeof(camera_yfov),
+        !system_file_serializer_read_curve_container(serializer,
                                                     &camera_yfov)           ||
         !system_file_serializer_read                (serializer,
                                                      sizeof(camera_zfar),
@@ -300,13 +343,11 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
     scene_camera_set_property(result,
                               SCENE_CAMERA_PROPERTY_TYPE,
                              &camera_type);
-    scene_camera_set_property(result,
-                              SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
-                             &camera_yfov);
 
     /* Set the curve_container properties */
     result_ptr->f_stop         = camera_f_stop;
     result_ptr->focal_distance = camera_focal_distance;
+    result_ptr->yfov           = camera_yfov;
 
     /* All done */
     goto end;
@@ -344,9 +385,8 @@ PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(camera_ptr->type),
                                                              &camera_ptr->type);
-    result &= system_file_serializer_write                   (serializer,
-                                                              sizeof(camera_ptr->yfov),
-                                                             &camera_ptr->yfov);
+    result &= system_file_serializer_write_curve_container  (serializer,
+                                                             camera_ptr->yfov);
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(camera_ptr->zfar),
                                                              &camera_ptr->zfar);
@@ -441,7 +481,17 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
 
         case SCENE_CAMERA_PROPERTY_VERTICAL_FOV:
         {
-            camera_ptr->yfov = *(float*) data;
+            /* TODO: This is bad and can/will backfire in gazillion ways in indeterministic
+             *       future. Please implement a property copy constructor-like function for
+             *       curve containers.
+             */
+            if (camera_ptr->yfov != NULL)
+            {
+                curve_container_release(camera_ptr->yfov);
+            }
+
+            camera_ptr->yfov = *(curve_container*) data;
+            curve_container_retain(camera_ptr->yfov);
 
             break;
         }

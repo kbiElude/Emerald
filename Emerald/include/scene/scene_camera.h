@@ -25,15 +25,19 @@ enum scene_camera_property
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH,    /* not settable, float */
     SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,    /*     settable, scene_graph_node */
     SCENE_CAMERA_PROPERTY_TYPE,                /*     settable, _scene_camera_type */
-    SCENE_CAMERA_PROPERTY_VERTICAL_FOV,        /*     settable, float */
+    SCENE_CAMERA_PROPERTY_VERTICAL_FOV,        /*     settable, curve_container */
 };
 
 /** TODO */
 PUBLIC EMERALD_API scene_camera scene_camera_create(__in __notnull system_hashed_ansi_string name);
 
-/** TODO */
+/** TODO.
+ *
+ *  NOTE: Some properties may need a recalc, which is why the function takes @param time.
+ **/
 PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera          camera,
                                                   __in            scene_camera_property property,
+                                                  __in            system_timeline_time  time,
                                                   __out __notnull void*                 out_result);
 
 /** TODO */

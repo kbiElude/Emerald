@@ -415,6 +415,7 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene   
         {
             scene_camera_get_property(camera,
                                       SCENE_CAMERA_PROPERTY_NAME,
+                                      0, /* time - irrelevant for camera name */
                                      &camera_name);
 
             if (system_hashed_ansi_string_is_equal_to_hash_string(camera_name,

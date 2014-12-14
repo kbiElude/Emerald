@@ -828,13 +828,15 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     scene_camera new_camera_instance = scene_camera_create(instance_name);
 
     /* Set camera instance properties */
-    float                     ar          = 0.0f;
-    _scene_camera_type        camera_type = SCENE_CAMERA_TYPE_PERSPECTIVE;
-    system_hashed_ansi_string name        = NULL;
-    float                     xfov        = 0.0f;
-    float                     yfov        = 0.0f;
-    float                     zfar        = 0.0f;
-    float                     znear       = 0.0f;
+    float                     ar           = 0.0f;
+    _scene_camera_type        camera_type  = SCENE_CAMERA_TYPE_PERSPECTIVE;
+    system_hashed_ansi_string name         = NULL;
+    float                     xfov         = 0.0f;
+    curve_container           yfov_curve   = NULL;
+    float                     yfov_value   = 0.0f;
+    system_variant            yfov_variant = NULL;
+    float                     zfar         = 0.0f;
+    float                     znear        = 0.0f;
 
     scene_graph_attach_object_to_node(graph,
                                       parent_node,
@@ -852,7 +854,7 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
                                     &xfov);
     collada_data_camera_get_property(collada_camera,
                                      COLLADA_DATA_CAMERA_PROPERTY_YFOV,
-                                    &yfov);
+                                    &yfov_value);
     collada_data_camera_get_property(collada_camera,
                                      COLLADA_DATA_CAMERA_PROPERTY_ZFAR,
                                     &zfar);
@@ -860,8 +862,19 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
                                      COLLADA_DATA_CAMERA_PROPERTY_ZNEAR,
                                     &znear);
 
-    yfov = DEG_TO_RAD(yfov);
+    /* Set up vertical FOV curve */
+    yfov_variant = system_variant_create_float(DEG_TO_RAD(yfov_value) );
 
+    scene_camera_get_property(new_camera_instance,
+                              SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                              0, /* time - irrelevant for our purposes */
+                             &yfov_curve);
+
+    curve_container_set_default_value(yfov_curve,
+                                      yfov_variant);
+    system_variant_release           (yfov_variant);
+
+    /* Carry on */
     scene_camera_set_property(new_camera_instance,
                               SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
                              &ar);
@@ -874,9 +887,6 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     scene_camera_set_property(new_camera_instance,
                               SCENE_CAMERA_PROPERTY_TYPE,
                               &camera_type);
-    scene_camera_set_property(new_camera_instance,
-                              SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
-                             &yfov);
 
     bool result = scene_add_camera(scene,
                                    new_camera_instance);
