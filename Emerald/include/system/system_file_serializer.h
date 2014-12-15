@@ -121,8 +121,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_
                                                      __in __notnull const void*);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull system_file_serializer,
-                                                                     __in __notnull curve_container);
+PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull       system_file_serializer,
+                                                                     __in __notnull const curve_container);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(__in __notnull system_file_serializer,

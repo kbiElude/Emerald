@@ -40,6 +40,7 @@ XCALL_(int) ExportData(int         version,
     }
 
     /* Retrieve func ptr structures */
+    camera_info_ptr   = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_TRANSIENT);
     channel_info_ptr  = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
     envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);

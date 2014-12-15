@@ -935,8 +935,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull system_file_serializer serializer,
-                                                                     __in __notnull curve_container        curve)
+PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull       system_file_serializer serializer,
+                                                                     __in __notnull const curve_container        curve)
 {
     system_hashed_ansi_string curve_name    = NULL;
     bool                      result        = false;

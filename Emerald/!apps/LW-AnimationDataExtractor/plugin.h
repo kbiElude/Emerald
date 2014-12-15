@@ -12,12 +12,15 @@
 #include <lwrender.h>  /* Scene & Item info             */
 #include <lwhost.h>    /* for the LWMessageFuncs global */
 #include <lwsurf.h>    /* for LWSurfaceFuncs global     */
+#include <lwcamera.h>  /* for LWCameraInfo global       */
+#include <lwlight.h>   /* for LWLightInfo global        */
 
 #include "shared.h"
 #include "lw/lw_dataset.h"
 #include "lw/lw_curve_dataset.h"
 #include "lw/lw_material_dataset.h"
 
+extern LWCameraInfo*    camera_info_ptr;
 extern LWChannelInfo*   channel_info_ptr;
 extern LWEnvelopeFuncs* envelope_ptr;
 extern LWItemInfo*      item_info_ptr;

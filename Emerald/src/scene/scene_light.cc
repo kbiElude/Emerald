@@ -18,12 +18,18 @@ typedef struct
 {
     curve_container           constant_attenuation;
     curve_container           color    [3];
+    curve_container           color_intensity;
     float                     direction[3];
     curve_container           linear_attenuation;
     system_hashed_ansi_string name;
     float                     position[3];
     curve_container           quadratic_attenuation;
     scene_light_type          type;
+    bool                      uses_shadow_map;
+
+    /* TODO: Remove */
+    curve_container rotation   [3]; /* HBP */
+    curve_container translation[3];
 
     REFCOUNT_INSERT_VARIABLES
 } _scene_light;
@@ -34,7 +40,12 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_light, scene_light, _scene_light);
 /** TODO */
 PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
 {
-    /* Color: common for all light types */
+    /* Color: common for all light types.
+     *
+     * Default color: (1, 0, 0)
+     */
+    system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
     for (unsigned int n_component = 0;
                       n_component < sizeof(light_ptr->color) / sizeof(light_ptr->color[0]);
                     ++n_component)
@@ -47,7 +58,22 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
 
         light_ptr->color[n_component] = curve_container_create(system_hashed_ansi_string_create(color_component_curve_name_sstream.str().c_str() ),
                                                                SYSTEM_VARIANT_FLOAT);
+
+        system_variant_set_float         (temp_variant,
+                                          (n_component == 0) ? 1.0f : 0.0f);
+        curve_container_set_default_value(light_ptr->color[n_component],
+                                          temp_variant);
     }
+
+    /* Color intensity: common for all light types */
+    light_ptr->color_intensity = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                                " color intensity"),
+                                                        SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (temp_variant,
+                                      1.0f);
+    curve_container_set_default_value(light_ptr->color_intensity,
+                                      temp_variant);
 
     /* Direction: used by directional light */
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
@@ -65,15 +91,14 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
      */
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        system_variant temp_variant = system_variant_create_float(1.0f);
-
         light_ptr->constant_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                          " constant attenuation"),
                                                                  SYSTEM_VARIANT_FLOAT);
 
+        system_variant_set_float         (temp_variant,
+                                          1.0f);
         curve_container_set_default_value(light_ptr->constant_attenuation,
                                           temp_variant);
-        system_variant_release           (temp_variant);
     }
 
     /* Linear attenuation: used by point light.
@@ -82,15 +107,14 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
      */
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        system_variant temp_variant = system_variant_create_float(0.0f);
-
         light_ptr->linear_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                        " linear attenuation"),
                                                                  SYSTEM_VARIANT_FLOAT);
 
+        system_variant_set_float         (temp_variant,
+                                          0.0f);
         curve_container_set_default_value(light_ptr->linear_attenuation,
                                           temp_variant);
-        system_variant_release           (temp_variant);
     }
 
     /* Quadratic attenuation: used by point light.
@@ -99,21 +123,55 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
      */
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        system_variant temp_variant = system_variant_create_float(0.0f);
-
         light_ptr->quadratic_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                           " quadratic attenuation"),
                                                                  SYSTEM_VARIANT_FLOAT);
 
+        system_variant_set_float         (temp_variant,
+                                          0.0f);
         curve_container_set_default_value(light_ptr->quadratic_attenuation,
                                           temp_variant);
-        system_variant_release           (temp_variant);
     }
 
     /* Position: float[3] */
     memset(light_ptr->position,
            0,
            sizeof(float) * 3);
+
+    /* [TEMPORARY] Rotation: used by all lights. */
+    for (unsigned int n_component = 0;
+                      n_component < sizeof(light_ptr->rotation) / sizeof(light_ptr->rotation[0]);
+                    ++n_component)
+    {
+        std::stringstream rotation_curve_name_sstream;
+
+        rotation_curve_name_sstream << system_hashed_ansi_string_get_buffer(light_ptr->name)
+                                    << " rotation component "
+                                    << n_component;
+
+        light_ptr->rotation[n_component] = curve_container_create(system_hashed_ansi_string_create(rotation_curve_name_sstream.str().c_str() ),
+                                                                  SYSTEM_VARIANT_FLOAT);
+    }
+
+    /* [TEMPORARY] Translation: used by all lights. */
+    for (unsigned int n_component = 0;
+                      n_component < sizeof(light_ptr->translation) / sizeof(light_ptr->translation[0]);
+                    ++n_component)
+    {
+        std::stringstream translation_curve_name_sstream;
+
+        translation_curve_name_sstream << system_hashed_ansi_string_get_buffer(light_ptr->name)
+                                       << " translation component "
+                                       << n_component;
+
+        light_ptr->translation[n_component] = curve_container_create(system_hashed_ansi_string_create(translation_curve_name_sstream.str().c_str() ),
+                                                                     SYSTEM_VARIANT_FLOAT);
+    }
+
+    /* Uses shadow map: common */
+    light_ptr->uses_shadow_map = true;
+
+    system_variant_release(temp_variant);
 }
 
 /** TODO */
@@ -125,9 +183,17 @@ PRIVATE void _scene_light_release(void* data_ptr)
         light_ptr->color + 0,
         light_ptr->color + 1,
         light_ptr->color + 2,
+       &light_ptr->color_intensity,
        &light_ptr->constant_attenuation,
        &light_ptr->linear_attenuation,
        &light_ptr->quadratic_attenuation,
+
+        light_ptr->rotation    + 0,
+        light_ptr->rotation    + 1,
+        light_ptr->rotation    + 2,
+        light_ptr->translation + 0,
+        light_ptr->translation + 1,
+        light_ptr->translation + 2,
     };
     const uint32_t n_containers = sizeof(containers) / sizeof(containers[0]);
 
@@ -243,6 +309,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_COLOR_INTENSITY:
+        {
+            *(curve_container*) out_result = light_ptr->color_intensity;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -300,6 +373,24 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
                               "SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION property only available for point lights");
 
             *(curve_container*) out_result = light_ptr->quadratic_attenuation;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_ROTATION:
+        {
+            memcpy(out_result,
+                   light_ptr->rotation,
+                   sizeof(light_ptr->rotation) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_TRANSLATION:
+        {
+            memcpy(out_result,
+                   light_ptr->translation,
+                   sizeof(light_ptr->translation) );
 
             break;
         }
@@ -378,6 +469,25 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                                                                   result_light_ptr->color + n_color_component);
         }
 
+        result &= system_file_serializer_read_curve_container(serializer,
+                                                             &result_light_ptr->color_intensity);
+
+        for (uint32_t n_rotation_component = 0;
+                      n_rotation_component < sizeof(result_light_ptr->rotation) / sizeof(result_light_ptr->rotation[0]);
+                    ++n_rotation_component)
+        {
+            result &= system_file_serializer_read_curve_container(serializer,
+                                                                  result_light_ptr->rotation + n_rotation_component);
+        }
+
+        for (uint32_t n_translation_component = 0;
+                      n_translation_component < sizeof(result_light_ptr->translation) / sizeof(result_light_ptr->translation[0]);
+                    ++n_translation_component)
+        {
+            result &= system_file_serializer_read_curve_container(serializer,
+                                                                  result_light_ptr->translation + n_translation_component);
+        }
+
         if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
         {
             result &= system_file_serializer_read(serializer,
@@ -438,6 +548,25 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
                                                                light_ptr->color[n_color_component]);
     }
 
+    result &= system_file_serializer_write_curve_container(serializer,
+                                                           light_ptr->color_intensity);
+
+    for (uint32_t n_rotation_component = 0;
+                  n_rotation_component < sizeof(light_ptr->rotation) / sizeof(light_ptr->rotation[0]);
+                ++n_rotation_component)
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               light_ptr->rotation[n_rotation_component]);
+    }
+
+    for (uint32_t n_translation_component = 0;
+                  n_translation_component < sizeof(light_ptr->translation) / sizeof(light_ptr->translation[0]);
+                ++n_translation_component)
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               light_ptr->translation[n_translation_component]);
+    }
+
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
         result &= system_file_serializer_write(serializer,
@@ -470,9 +599,35 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
     {
         case SCENE_LIGHT_PROPERTY_COLOR:
         {
+            for (unsigned int n_component = 0;
+                              n_component < 3;
+                            ++n_component)
+            {
+                if (light_ptr->color[n_component] != NULL)
+                {
+                    curve_container_release(light_ptr->color[n_component]);
+
+                    light_ptr->color[n_component] = NULL;
+                }
+            }
+
             memcpy(light_ptr->color,
                    data,
                    sizeof(light_ptr->color) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_COLOR_INTENSITY:
+        {
+            if (light_ptr->color_intensity != NULL)
+            {
+                curve_container_release(light_ptr->color_intensity);
+
+                light_ptr->color_intensity = NULL;
+            }
+
+            light_ptr->color_intensity = *(curve_container*) data;
 
             break;
         }
@@ -485,6 +640,8 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             if (light_ptr->constant_attenuation != NULL)
             {
                 curve_container_release(light_ptr->constant_attenuation);
+
+                light_ptr->constant_attenuation = NULL;
             }
 
             light_ptr->constant_attenuation = *(curve_container*) data;
@@ -512,6 +669,8 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             if (light_ptr->linear_attenuation != NULL)
             {
                 curve_container_release(light_ptr->linear_attenuation);
+
+                light_ptr->linear_attenuation = NULL;
             }
 
             light_ptr->linear_attenuation = *(curve_container*) data;
@@ -536,6 +695,27 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_ROTATION:
+        {
+            for (unsigned int n_component = 0;
+                              n_component < 3;
+                            ++n_component)
+            {
+                if (light_ptr->rotation[n_component] != NULL)
+                {
+                    curve_container_release(light_ptr->rotation[n_component]);
+
+                    light_ptr->rotation[n_component] = NULL;
+                }
+            }
+
+            memcpy(light_ptr->rotation,
+                   data,
+                   sizeof(light_ptr->rotation) );
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -544,9 +724,39 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             if (light_ptr->quadratic_attenuation != NULL)
             {
                 curve_container_release(light_ptr->quadratic_attenuation);
+
+                light_ptr->quadratic_attenuation = NULL;
             }
 
             light_ptr->quadratic_attenuation = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_TRANSLATION:
+        {
+            for (unsigned int n_component = 0;
+                              n_component < 3;
+                            ++n_component)
+            {
+                if (light_ptr->translation[n_component] != NULL)
+                {
+                    curve_container_release(light_ptr->translation[n_component]);
+
+                    light_ptr->translation[n_component] = NULL;
+                }
+            }
+
+            memcpy(light_ptr->translation,
+                   data,
+                   sizeof(light_ptr->translation) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP:
+        {
+            light_ptr->uses_shadow_map = *(bool*) data;
 
             break;
         }

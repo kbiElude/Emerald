@@ -24,8 +24,11 @@ enum scene_camera_property
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT,   /* not settable, float */
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH,    /* not settable, float */
     SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,    /*     settable, scene_graph_node */
+    SCENE_CAMERA_PROPERTY_POSITION,            /* not settable, curve_container[3]; Order: X, Y, Z */  /* TODO: Remove */
+    SCENE_CAMERA_PROPERTY_ROTATION,            /* not settable, curve_container[3]; Order: H, P, B */  /* TODO: Remove */
     SCENE_CAMERA_PROPERTY_TYPE,                /*     settable, _scene_camera_type */
     SCENE_CAMERA_PROPERTY_VERTICAL_FOV,        /*     settable, curve_container */
+    SCENE_CAMERA_PROPERTY_ZOOM_FACTOR          /* not settable, curve_container */
 };
 
 /** TODO */
