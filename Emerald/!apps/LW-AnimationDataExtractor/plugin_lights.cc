@@ -122,8 +122,8 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
 }
 
 /** Please see header for spec */
-void FillLightDataset(__in __notnull scene            in_scene,
-                      __in __notnull system_hash64map curve_id_to_curve_container_map)
+void FillSceneWithLightData(__in __notnull scene            in_scene,
+                            __in __notnull system_hash64map curve_id_to_curve_container_map)
 {
     /* Extract available lights.
      *

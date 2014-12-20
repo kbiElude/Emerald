@@ -11,8 +11,8 @@
 #include "system/system_hashed_ansi_string.h"
 
 /** TODO */
-void FillCameraDataset(__in __notnull scene            in_scene,
-                       __in __notnull system_hash64map envelope_id_to_curve_container_map)
+void FillSceneWithCameraData(__in __notnull scene            in_scene,
+                             __in __notnull system_hash64map envelope_id_to_curve_container_map)
 {
     /* Extract available cameras */
     LWItemID camera_item_id = item_info_ptr->first(LWI_CAMERA,

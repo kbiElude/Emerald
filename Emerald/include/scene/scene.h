@@ -23,6 +23,7 @@ enum scene_property
     SCENE_PROPERTY_MAX_ANIMATION_DURATION, /*     settable, float */
     SCENE_PROPERTY_N_CAMERAS,              /* not settable, uint32_t */
     SCENE_PROPERTY_N_LIGHTS,               /* not settable, uint32_t */
+    SCENE_PROPERTY_N_MATERIALS,            /* not settable, uint32_t */
     SCENE_PROPERTY_N_MESH_INSTANCES,       /* not settable, uint32_t */
     SCENE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
 };
@@ -51,6 +52,9 @@ PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene,
 PUBLIC EMERALD_API bool scene_add_light(__in __notnull scene,
                                         __in __notnull scene_light);
 
+/** TODO */
+PUBLIC EMERALD_API bool scene_add_material(__in __notnull scene          scene,
+                                           __in __notnull scene_material material);
 /** TODO */
 PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene                     scene,
                                                 __in __notnull mesh                      mesh_data,
@@ -86,6 +90,10 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_index(__in __notnull scene    
 /** TODO */
 PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene                     scene,
                                                        __in           system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API scene_material scene_get_material_by_name(__in __notnull scene                     scene,
+                                                             __in           system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull scene        scene,

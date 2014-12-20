@@ -60,6 +60,7 @@ static const system_hashed_ansi_string _object_type_scene_hashed_ansi_string    
 static const system_hashed_ansi_string _object_type_scene_camera_hashed_ansi_string                          = system_hashed_ansi_string_create("Scene Cameras");
 static const system_hashed_ansi_string _object_type_scene_curve_hashed_ansi_string                           = system_hashed_ansi_string_create("Scene Curves");
 static const system_hashed_ansi_string _object_type_scene_light_hashed_ansi_string                           = system_hashed_ansi_string_create("Scene Lights");
+static const system_hashed_ansi_string _object_type_scene_material_hashed_ansi_string                        = system_hashed_ansi_string_create("Scene Materials");
 static const system_hashed_ansi_string _object_type_scene_mesh_hashed_ansi_string                            = system_hashed_ansi_string_create("Scene Mesh Instances");
 static const system_hashed_ansi_string _object_type_scene_surface_hashed_ansi_string                         = system_hashed_ansi_string_create("Scene Surfaces");
 static const system_hashed_ansi_string _object_type_scene_texture_hashed_ansi_string                         = system_hashed_ansi_string_create("Scene Textures");
@@ -139,6 +140,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_SCENE_CAMERA:                                    return _object_type_scene_camera_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_CURVE:                                     return _object_type_scene_curve_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_LIGHT:                                     return _object_type_scene_light_hashed_ansi_string;
+        case OBJECT_TYPE_SCENE_MATERIAL:                                  return _object_type_scene_material_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_MESH:                                      return _object_type_scene_mesh_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_SURFACE:                                   return _object_type_scene_surface_hashed_ansi_string;
         case OBJECT_TYPE_SCENE_TEXTURE:                                   return _object_type_scene_texture_hashed_ansi_string;

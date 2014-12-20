@@ -8,7 +8,7 @@
 #include "plugin_lights.h"
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
-#include "curve/curve_container.h"
+#include "scene/scene.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -43,6 +43,7 @@ XCALL_(int) ExportData(int         version,
     camera_info_ptr   = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_TRANSIENT);
     channel_info_ptr  = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
     envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
+    image_list_ptr    = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_TRANSIENT);
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
     light_info_ptr    = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_TRANSIENT);
     message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
@@ -50,24 +51,27 @@ XCALL_(int) ExportData(int         version,
     object_info_ptr   = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
     scene_info_ptr    = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
     surface_funcs_ptr = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    texture_funcs_ptr = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_TRANSIENT);
 
-    /* Spawn a Lightwave data-set instance */
-    lw_dataset dataset = lw_dataset_create(system_hashed_ansi_string_create("Dataset") );
+    /* Spawn a new scene */
+    scene new_scene = scene_create(NULL, /* ogl_context */
+                                   system_hashed_ansi_string_create("Exported scene") );
 
     /* Extract curve data */
     message_funcs_ptr->info("Extracting curve data..", NULL);
 
-    FillCurveDataset(dataset);
+    InitCurveData();
 
     /* Extract light data */
     message_funcs_ptr->info("Extracting light data..", NULL);
 
-    FillLightDataset(dataset);
+    FillSceneWithLightData(new_scene,
+                           GetEnvelopeIDToCurveContainerHashMap() );
 
     /* Extract surface data */
     message_funcs_ptr->info("Extracting surface data..", NULL);
 
-    FillMaterialDataset(dataset);
+    InitMaterialData();
 
     /* Extract mesh data */
     message_funcs_ptr->info("Extracting mesh data..", NULL);
@@ -101,10 +105,8 @@ XCALL_(int) ExportData(int         version,
     }
 
     /* done! */
-    if (dataset != NULL)
-    {
-        lw_dataset_release(dataset);
-    }
+    DeinitCurveData   ();
+    DeinitMaterialData();
 
     return AFUNC_OK;
 }
@@ -120,6 +122,6 @@ different languages, if you like.
 ====================================================================== */
 ServerRecord ServerDesc[] =
 {
-   {LWLAYOUTGENERIC_CLASS, "Emerald: Export Data", ExportData},
+   {LWLAYOUTGENERIC_CLASS, "Emerald: Export Scene to Emerald blob", ExportData},
    {NULL}
 };

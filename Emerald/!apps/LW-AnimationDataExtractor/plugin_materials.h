@@ -6,6 +6,10 @@
 #ifndef PLUGIN_MATERIALS_H
 #define PLUGIN_MATERIALS_H
 
-void FillMaterialDataset(lw_dataset dataset);
+/** TODO */
+void DeinitMaterialData();
+
+/** TODO */
+void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curve_container_map);
 
 #endif /* PLUGIN_MATERIALS_H */

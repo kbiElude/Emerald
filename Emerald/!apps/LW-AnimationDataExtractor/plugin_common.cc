@@ -2,6 +2,7 @@
 
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
 #include "system/system_variant.h"
 
@@ -74,21 +75,28 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
 
     switch (property)
     {
-        case ITEM_PROPERTY_F_STOP:                  property_name = "FStop";            break;
-        case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R:   property_name = "AmbientColor.R";   break;
-        case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G:   property_name = "AmbientColor.G";   break;
-        case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_B:   property_name = "AmbientColor.B";   break;
-        case ITEM_PROPERTY_LIGHT_AMBIENT_INTENSITY: property_name = "AmbientIntensity"; break;
-        case ITEM_PROPERTY_LIGHT_COLOR_R:           property_name = "Color.R";          break;
-        case ITEM_PROPERTY_LIGHT_COLOR_G:           property_name = "Color.G";          break;
-        case ITEM_PROPERTY_LIGHT_COLOR_B:           property_name = "Color.B";          break;
-        case ITEM_PROPERTY_LIGHT_COLOR_INTENSITY:   property_name = "Intensity";        break;
-        case ITEM_PROPERTY_ROTATION_B:              property_name = "Rotation.B";       break;
-        case ITEM_PROPERTY_ROTATION_H:              property_name = "Rotation.H";       break;
-        case ITEM_PROPERTY_ROTATION_P:              property_name = "Rotation.P";       break;
-        case ITEM_PROPERTY_TRANSLATION_X:           property_name = "Position.X";       break;
-        case ITEM_PROPERTY_TRANSLATION_Y:           property_name = "Position.Y";       break;
-        case ITEM_PROPERTY_TRANSLATION_Z:           property_name = "Position.Z";       break;
+        case ITEM_PROPERTY_F_STOP:                   property_name = "FStop";            break;
+        case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R:    property_name = "AmbientColor.R";   break;
+        case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G:    property_name = "AmbientColor.G";   break;
+        case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_B:    property_name = "AmbientColor.B";   break;
+        case ITEM_PROPERTY_LIGHT_AMBIENT_INTENSITY:  property_name = "AmbientIntensity"; break;
+        case ITEM_PROPERTY_LIGHT_COLOR_R:            property_name = "Color.R";          break;
+        case ITEM_PROPERTY_LIGHT_COLOR_G:            property_name = "Color.G";          break;
+        case ITEM_PROPERTY_LIGHT_COLOR_B:            property_name = "Color.B";          break;
+        case ITEM_PROPERTY_LIGHT_COLOR_INTENSITY:    property_name = "Intensity";        break;
+        case ITEM_PROPERTY_ROTATION_B:               property_name = "Rotation.B";       break;
+        case ITEM_PROPERTY_ROTATION_H:               property_name = "Rotation.H";       break;
+        case ITEM_PROPERTY_ROTATION_P:               property_name = "Rotation.P";       break;
+        case ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R:  property_name = "Color.R";          break;
+        case ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G:  property_name = "Color.G";          break;
+        case ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_B:  property_name = "Color.B";          break;
+        case ITEM_PROPERTY_SURFACE_GLOSINESS:        property_name = SURF_GLOS;          break;
+        case ITEM_PROPERTY_SURFACE_LUMINOSITY:       property_name = SURF_LUMI;          break;
+        case ITEM_PROPERTY_SURFACE_REFLECTION_RATIO: property_name = SURF_REFL;          break;
+        case ITEM_PROPERTY_SURFACE_SPECULAR_RATIO:   property_name = SURF_SPEC;          break;
+        case ITEM_PROPERTY_TRANSLATION_X:            property_name = "Position.X";       break;
+        case ITEM_PROPERTY_TRANSLATION_Y:            property_name = "Position.Y";       break;
+        case ITEM_PROPERTY_TRANSLATION_Z:            property_name = "Position.Z";       break;
 
         default:
         {
@@ -212,6 +220,72 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                                                 SYSTEM_VARIANT_FLOAT);
 
                 break;
+            }
+
+            case ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_B:
+            case ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G:
+            case ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R:
+            {
+                double* color_data = surface_funcs_ptr->getFlt(item_id,
+                                                               SURF_COLR);
+
+                new_value = (float) color_data[ (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R) ? 0
+                                              : (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G) ? 1
+                                              :                                                       2];
+
+                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                       ((property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R) ? " Color R" :
+                                                                                                        (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G) ? " Color G" :
+                                                                                                                                                              " Color B")),
+                                                SYSTEM_VARIANT_FLOAT);
+
+                break;
+            }
+
+            case ITEM_PROPERTY_SURFACE_GLOSINESS:
+            {
+                new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
+                                                                SURF_SPEC) );
+
+                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                        " Glosiness"),
+                                                SYSTEM_VARIANT_FLOAT);
+
+                break;
+            }
+
+            case ITEM_PROPERTY_SURFACE_LUMINOSITY:
+            {
+                new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
+                                                                SURF_LUMI) );
+
+                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                        " Luminosity"),
+                                                SYSTEM_VARIANT_FLOAT);
+
+                break;
+            }
+
+            case ITEM_PROPERTY_SURFACE_REFLECTION_RATIO:
+            {
+                new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
+                                                                SURF_REFL) );
+
+                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                        " Reflection Ratio"),
+                                                SYSTEM_VARIANT_FLOAT);
+
+                break;
+            }
+
+            case ITEM_PROPERTY_SURFACE_SPECULAR_RATIO:
+            {
+                new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
+                                                                SURF_SPEC) );
+
+                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                        " Specular Ratio"),
+                                                SYSTEM_VARIANT_FLOAT);
             }
         } /* switch (property) */
 
