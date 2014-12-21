@@ -5,6 +5,7 @@
  *
  */
 #include "shared.h"
+#include "curve/curve_container.h"
 #include "scene/scene_material.h"
 #include "system/system_file_serializer.h"
 #include "system/system_assertions.h"
@@ -15,17 +16,28 @@
 /* Private declarations */
 typedef struct
 {
-    system_hashed_ansi_string color_texture_file_name;
-    curve_container           glosiness;
-    curve_container           luminance;
-    system_hashed_ansi_string luminance_texture_file_name;
-    system_hashed_ansi_string name;
-    system_hashed_ansi_string normal_texture_file_name;
-    curve_container           reflection_ratio;
-    system_hashed_ansi_string reflection_texture_file_name;
-    float                     smoothing_angle;
-    curve_container           specular_ratio;
-    system_hashed_ansi_string specular_texture_file_name;
+    curve_container                  color[3];
+    system_hashed_ansi_string        color_texture_file_name;
+    scene_material_texture_filtering color_texture_mag_filter;
+    scene_material_texture_filtering color_texture_min_filter;
+    curve_container                  glosiness;
+    curve_container                  luminance;
+    system_hashed_ansi_string        luminance_texture_file_name;
+    scene_material_texture_filtering luminance_texture_mag_filter;
+    scene_material_texture_filtering luminance_texture_min_filter;
+    system_hashed_ansi_string        name;
+    system_hashed_ansi_string        normal_texture_file_name;
+    scene_material_texture_filtering normal_texture_mag_filter;
+    scene_material_texture_filtering normal_texture_min_filter;
+    curve_container                  reflection_ratio;
+    system_hashed_ansi_string        reflection_texture_file_name;
+    scene_material_texture_filtering reflection_texture_mag_filter;
+    scene_material_texture_filtering reflection_texture_min_filter;
+    float                            smoothing_angle;
+    curve_container                  specular_ratio;
+    system_hashed_ansi_string        specular_texture_file_name;
+    scene_material_texture_filtering specular_texture_mag_filter;
+    scene_material_texture_filtering specular_texture_min_filter;
 
     REFCOUNT_INSERT_VARIABLES
 } _scene_material;
@@ -37,7 +49,40 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_material, scene_material, _scene_material);
 PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_ptr,
                                   __in __notnull system_hashed_ansi_string name)
 {
-    data_ptr->name = name;
+    memset(data_ptr,
+           0,
+           sizeof(_scene_material) );
+
+    data_ptr->color[0]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Color R"),
+                                                        SYSTEM_VARIANT_FLOAT);
+    data_ptr->color[1]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Color G"),
+                                                        SYSTEM_VARIANT_FLOAT);
+    data_ptr->color[2]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Color B"),
+                                                        SYSTEM_VARIANT_FLOAT);
+    data_ptr->glosiness        = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Glosiness"),
+                                                        SYSTEM_VARIANT_FLOAT);
+    data_ptr->name             = name;
+    data_ptr->reflection_ratio = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Reflection Ratio"),
+                                                        SYSTEM_VARIANT_FLOAT);
+    data_ptr->specular_ratio   = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Specular Ratio"),
+                                                        SYSTEM_VARIANT_FLOAT);
+
+    data_ptr->color_texture_mag_filter      = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
+    data_ptr->color_texture_min_filter      = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR;
+    data_ptr->luminance_texture_mag_filter  = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
+    data_ptr->luminance_texture_min_filter  = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR;
+    data_ptr->normal_texture_mag_filter     = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
+    data_ptr->normal_texture_min_filter     = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR;
+    data_ptr->reflection_texture_mag_filter = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
+    data_ptr->reflection_texture_min_filter = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR;
+    data_ptr->specular_texture_mag_filter   = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
+    data_ptr->specular_texture_min_filter   = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR;
 }
 
 /** TODO */
@@ -46,6 +91,48 @@ PRIVATE void _scene_material_release(void* data_ptr)
     _scene_material* material_ptr = (_scene_material*) data_ptr;
 
     material_ptr->smoothing_angle = 0.0f;
+
+    if (material_ptr->color[0] != NULL)
+    {
+        curve_container_release(material_ptr->color[0]);
+
+        material_ptr->color[0] = NULL;
+    }
+
+    if (material_ptr->color[1] != NULL)
+    {
+        curve_container_release(material_ptr->color[1]);
+
+        material_ptr->color[1] = NULL;
+    }
+
+    if (material_ptr->color[2] != NULL)
+    {
+        curve_container_release(material_ptr->color[2]);
+
+        material_ptr->color[2] = NULL;
+    }
+
+    if (material_ptr->glosiness != NULL)
+    {
+        curve_container_release(material_ptr->glosiness);
+
+        material_ptr->glosiness = NULL;
+    }
+
+    if (material_ptr->reflection_ratio != NULL)
+    {
+        curve_container_release(material_ptr->reflection_ratio);
+
+        material_ptr->reflection_ratio = NULL;
+    }
+
+    if (material_ptr->specular_ratio != NULL)
+    {
+        curve_container_release(material_ptr->specular_ratio);
+
+        material_ptr->specular_ratio = NULL;
+    }
 }
 
 
@@ -80,6 +167,13 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
 
     switch (property)
     {
+        case SCENE_MATERIAL_PROPERTY_COLOR:
+        {
+            *(curve_container**) out_result = material_ptr->color;
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME:
         {
             *((system_hashed_ansi_string*) out_result) = material_ptr->color_texture_file_name;

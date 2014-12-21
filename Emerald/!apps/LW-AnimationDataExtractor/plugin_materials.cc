@@ -228,6 +228,7 @@ PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curv
         }
 
 
+
         /* Move to the next surface */
         surface_id = surface_funcs_ptr->next(surface_id);
     } /* while (surface_id != 0) */

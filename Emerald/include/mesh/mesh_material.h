@@ -54,7 +54,8 @@ typedef enum
 typedef enum
 {
     MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE,
-    MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER,
+    MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+    MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE,
     MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE,
@@ -122,7 +123,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
                                                            __in __notnull mesh_material             src_material);
 
 /** TODO */
-PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in __notnull scene_material src_material);
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in __notnull scene_material src_material,
+                                                                          __in_opt       ogl_context    context);
 
 /** TODO */
 PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnull mesh_material material);
@@ -145,10 +147,10 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
                                                                                                         __in           mesh_material_shading_property property);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container(__in      __notnull mesh_material                  material,
-                                                                                 __in                mesh_material_shading_property property,
-                                                                                 __in                system_timeline_time           time,
-                                                                                 __out_opt           float*                         out_float_value);
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(__in      __notnull mesh_material                  material,
+                                                                                       __in                mesh_material_shading_property property,
+                                                                                       __in                system_timeline_time           time,
+                                                                                       __out_opt           float*                         out_float_value);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(__in      __notnull mesh_material                  material,
@@ -187,9 +189,14 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
                                                    __in __notnull const void*            data);
 
 /** TODO */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container(__in __notnull mesh_material                  material,
-                                                                              __in           mesh_material_shading_property property,
-                                                                              __in           curve_container                data);
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_float(__in __notnull mesh_material                  material,
+                                                                                    __in           mesh_material_shading_property property,
+                                                                                    __in           curve_container                data);
+
+/** TODO */
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_vec3(__in           __notnull mesh_material                  material,
+                                                                                   __in                     mesh_material_shading_property property,
+                                                                                   __in_ecount(3)           curve_container*               data);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnull mesh_material                  material,

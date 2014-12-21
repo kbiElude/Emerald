@@ -11,8 +11,10 @@
 #include "ogl/ogl_sampler.h"
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_texture.h"
+#include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
+#include "scene/scene_material.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64map.h"
@@ -60,7 +62,7 @@ typedef struct _mesh_material_property
 {
     mesh_material_property_attachment attachment;
 
-    curve_container                        curve_container_data;
+    curve_container                        curve_container_data[3];
     mesh_material_data_vector              data_vector_data;
     float                                  float_data;
     mesh_material_input_fragment_attribute input_fragment_attribute_data;
@@ -70,11 +72,13 @@ typedef struct _mesh_material_property
     _mesh_material_property()
     {
         attachment                    = MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE;
-        curve_container_data          = NULL;
         data_vector_data              = MESH_MATERIAL_DATA_VECTOR_UNKNOWN;
         float_data                    = -1.0f;
         input_fragment_attribute_data = MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
 
+        memset(curve_container_data,
+               0,
+               sizeof(curve_container_data) );
         memset(vec4_data,
                0,
                sizeof(vec4_data) );
@@ -139,11 +143,20 @@ PRIVATE void _mesh_material_release(void* data_ptr)
     {
         switch (material_ptr->shading_properties[current_property].attachment)
         {
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
             {
-                curve_container_release(material_ptr->shading_properties[current_property].curve_container_data);
+                const unsigned int n_components = (material_ptr->shading_properties[current_property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
 
-                material_ptr->shading_properties[current_property].curve_container_data = NULL;
+                for (unsigned int n_component = 0;
+                                  n_component < n_components;
+                                ++n_component)
+                {
+                    curve_container_release(material_ptr->shading_properties[current_property].curve_container_data[n_component]);
+
+                    material_ptr->shading_properties[current_property].curve_container_data[n_component] = NULL;
+                }
+
                 break;
             }
 
@@ -290,13 +303,254 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 }
 
 /* Please see header for specification */
-#if 0
-TODO
-
-PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in __notnull scene_material src_material)
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in     __notnull scene_material src_material,
+                                                                          __in_opt           ogl_context    context)
 {
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(context != NULL,
+                      "ogl_context argument must not be NULL for the function to work correctly.");
+
+    /* Create a new mesh_material instance */
+    ogl_textures              context_textures  = NULL;
+    mesh_material             result_material   = NULL;
+    system_hashed_ansi_string src_material_name = NULL;
+
+    ogl_context_get_property   (context,
+                                OGL_CONTEXT_PROPERTY_TEXTURES,
+                               &context_textures);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_NAME,
+                               &src_material_name);
+
+    result_material = mesh_material_create(src_material_name,
+                                           context);
+
+    ASSERT_DEBUG_SYNC(result_material != NULL,
+                      "mesh_material_create() failed.");
+    if (result_material == NULL)
+    {
+        goto end;
+    }
+
+    /* Force Phong reflection model */
+    const mesh_material_shading shading_type = MESH_MATERIAL_SHADING_PHONG;
+
+    mesh_material_set_property(result_material,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &shading_type);
+
+    /* Extract values required to set up the attachment_configs array */
+    curve_container*                color                        = NULL;
+    system_hashed_ansi_string       color_texture_file_name      = NULL;
+    mesh_material_texture_filtering color_texture_mag_filter     = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
+    mesh_material_texture_filtering color_texture_min_filter     = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
+    curve_container                 glosiness                    = NULL;
+    curve_container                 luminance                    = NULL;
+    system_hashed_ansi_string       luminance_texture_file_name  = NULL;
+    system_hashed_ansi_string       normal_texture_file_name     = NULL;
+    system_hashed_ansi_string       reflection_texture_file_name = NULL;
+    float                           smoothing_angle              = 0.0f;
+    curve_container                 specular_ratio               = NULL;
+    system_hashed_ansi_string       specular_texture_file_name   = NULL;
+
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,
+                               &color_texture_file_name);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MAG_FILTER,
+                               &color_texture_mag_filter);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MIN_FILTER,
+                               &color_texture_min_filter);
+
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME,
+                               &luminance_texture_file_name);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME,
+                               &normal_texture_file_name);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,
+                               &reflection_texture_file_name);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME,
+                               &specular_texture_file_name);
+
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_COLOR,
+                               &color);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_GLOSINESS,
+                               &glosiness);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_LUMINANCE,
+                               &luminance);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE,
+                               &smoothing_angle);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
+                               &specular_ratio);
+
+    /* Throw an assertion failures for textures that are not yet supported on mesh_material
+     * back-end.
+     */
+    ASSERT_DEBUG_SYNC(luminance_texture_file_name == NULL,
+                      "mesh_material does not support luminance textures");
+
+    ASSERT_DEBUG_SYNC(normal_texture_file_name == NULL,
+                      "mesh_material does not support normal textures");
+
+    ASSERT_DEBUG_SYNC(reflection_texture_file_name == NULL,
+                      "mesh_material does not support reflection textures");
+
+    ASSERT_DEBUG_SYNC(specular_texture_file_name == NULL,
+                      "mesh_material does not support specular textures");
+
+    /* Configure texture/float/vec3 attachments (as described by scene_material) */
+    typedef struct
+    {
+        mesh_material_shading_property    shading_property;
+        mesh_material_property_attachment property_attachment;
+
+        /* float data */
+        float float_data;
+
+        /* curve_container data */
+        curve_container* curve_data;
+
+        /* texture data */
+        system_hashed_ansi_string       texture_filename;
+        mesh_material_texture_filtering texture_mag_filter;
+        mesh_material_texture_filtering texture_min_filter;
+    } _attachment_configuration;
+
+    const _attachment_configuration attachment_configs[] =
+    {
+        /* Diffuse attachment */
+        {
+            MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+            (color_texture_file_name != NULL) ? MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE
+                                              : MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
+
+            0.0f,
+
+            (color_texture_file_name != NULL) ? NULL : color,
+
+            color_texture_file_name,
+            color_texture_mag_filter,
+            color_texture_min_filter
+        },
+
+        /* Glosiness attachment */
+        {
+            MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+            MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+
+            0.0f,
+
+           &glosiness
+        },
+
+        /* Luminance attachment */
+        {
+            MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+            MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+
+            0.0f,
+
+           &luminance,
+        },
+
+        /* Specular attachment */
+        {
+            MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+            MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+
+            0.0f,
+
+           &specular_ratio
+        },
+    };
+    const unsigned int n_attachment_configs = sizeof(attachment_configs) /
+                                              sizeof(attachment_configs[0]);
+
+    for (unsigned int n_attachment_config = 0;
+                      n_attachment_config < n_attachment_configs;
+                    ++n_attachment_config)
+    {
+        const _attachment_configuration& config = attachment_configs[n_attachment_config];
+
+        switch (config.property_attachment)
+        {
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+            {
+                mesh_material_set_shading_property_to_curve_container_float(result_material,
+                                                                            config.shading_property,
+                                                                            config.curve_data[0]);
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+            {
+                mesh_material_set_shading_property_to_curve_container_vec3(result_material,
+                                                                           config.shading_property,
+                                                                           config.curve_data);
+
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+            {
+                mesh_material_set_shading_property_to_float(result_material,
+                                                            config.shading_property,
+                                                            config.float_data);
+
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+            {
+                ogl_texture texture = NULL;
+
+                texture = ogl_textures_get_texture_by_filename(context_textures,
+                                                               config.texture_filename);
+
+                if (texture == NULL)
+                {
+                    ASSERT_ALWAYS_SYNC(false,
+                                       "Texture [%s] unavailable in the rendering context",
+                                       system_hashed_ansi_string_get_buffer(color_texture_file_name) );
+                }
+                else
+                {
+                    mesh_material_set_shading_property_to_texture(result_material,
+                                                                  config.shading_property,
+                                                                  texture,
+                                                                  0, /* mipmap_level */
+                                                                  config.texture_mag_filter,
+                                                                  config.texture_min_filter);
+                }
+
+                break;
+            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized property attachment type");
+            }
+        } /* switch (config.property_attachment) */
+    } /* for (all attachment configs) */
+
+    /* Configure vertex smoothing angle */
+    mesh_material_set_property(result_material,
+                               MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+                              &smoothing_angle);
+
+end:
+    return result_material;
 }
-#endif
 
 /* Please see header for specification */
 PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnull mesh_material material)
@@ -404,23 +658,48 @@ PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_p
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container(__in      __notnull mesh_material                  material,
-                                                                                 __in                mesh_material_shading_property property,
-                                                                                 __in                system_timeline_time           time,
-                                                                                 __out_opt           float*                         out_float_value)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_float(__in      __notnull mesh_material                  material,
+                                                                                       __in                mesh_material_shading_property property,
+                                                                                       __in                system_timeline_time           time,
+                                                                                       __out_opt           float*                         out_float_value)
 {
     _mesh_material*          material_ptr = ((_mesh_material*) material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
 
-    ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER,
-                      "Requested shading property is not using a curve container attachment");
+    ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+                      "Requested shading property is not using a curve container float attachment");
 
-    curve_container_get_value(property_ptr->curve_container_data,
+    curve_container_get_value(property_ptr->curve_container_data[0],
                               time,
                               false, /* should_force */
                               material_ptr->temp_variant_float);
     system_variant_get_float (material_ptr->temp_variant_float,
                               out_float_value);
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(__in                     __notnull mesh_material                  material,
+                                                                                      __in                               mesh_material_shading_property property,
+                                                                                      __in                               system_timeline_time           time,
+                                                                                      __out_ecount_full_opt(3)           float*                         out_vec3_value)
+{
+    _mesh_material*          material_ptr = ((_mesh_material*) material);
+    _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
+
+    ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+                      "Requested shading property is not using a curve container float attachment");
+
+    for (unsigned int n_component = 0;
+                      n_component < 3;
+                    ++n_component)
+    {
+        curve_container_get_value(property_ptr->curve_container_data[n_component],
+                                  time,
+                                  false, /* should_force */
+                                  material_ptr->temp_variant_float);
+        system_variant_get_float (material_ptr->temp_variant_float,
+                                  out_vec3_value + n_component);
+    }
 }
 
 /* Please see header for specification */
@@ -563,7 +842,7 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
                                         property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
                                 ++(int&)property)
     {
-        curve_container                        attachment_curve_container_data = NULL;
+        curve_container                        attachment_curve_container_data[3] = {NULL};
         float                                  attachment_float_data;
         mesh_material_input_fragment_attribute attachment_input_fragment_attribute_data;
         _mesh_material_property_texture        attachment_texture_data;
@@ -588,19 +867,36 @@ PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer se
                 break;
             }
 
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
             {
-                result &= system_file_serializer_read_curve_container(serializer,
-                                                                     &attachment_curve_container_data);
+                const unsigned int n_components = (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
+
+                for (unsigned int n_component = 0;
+                                  n_component < n_components;
+                                ++n_component)
+                {
+                    result &= system_file_serializer_read_curve_container(serializer,
+                                                                          attachment_curve_container_data + n_component);
+                }
 
                 if (!result)
                 {
                     goto end_error;
                 }
 
-                mesh_material_set_shading_property_to_curve_container(new_material,
-                                                                      property,
-                                                                      attachment_curve_container_data);
+                if (n_components == 1)
+                {
+                    mesh_material_set_shading_property_to_curve_container_float(new_material,
+                                                                                property,
+                                                                                attachment_curve_container_data[0]);
+                }
+                else
+                {
+                    mesh_material_set_shading_property_to_curve_container_vec3(new_material,
+                                                                                property,
+                                                                                attachment_curve_container_data);
+                }
 
                 break;
             }
@@ -772,10 +1068,18 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
                 break;
             }
 
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
             {
-                result &= system_file_serializer_write_curve_container(serializer,
-                                                                       property_data.curve_container_data);
+                const unsigned int n_components = (property_data.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
+
+                for (unsigned int n_component = 0;
+                                  n_component < n_components;
+                                ++n_component)
+                {
+                    result &= system_file_serializer_write_curve_container(serializer,
+                                                                           property_data.curve_container_data[n_component]);
+                }
 
                 break;
             }
@@ -891,15 +1195,29 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container(__in __notnull mesh_material                  material,
-                                                                              __in           mesh_material_shading_property property,
-                                                                              __in           curve_container                data)
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_float(__in __notnull mesh_material                  material,
+                                                                                    __in           mesh_material_shading_property property,
+                                                                                    __in           curve_container                data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
-    material_ptr->dirty                                             = true;
-    material_ptr->shading_properties[property].attachment           = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER;
-    material_ptr->shading_properties[property].curve_container_data = data;
+    material_ptr->dirty                                                = true;
+    material_ptr->shading_properties[property].attachment              = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT;
+    material_ptr->shading_properties[property].curve_container_data[0] = data;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_vec3(__in           __notnull mesh_material                  material,
+                                                                                   __in                     mesh_material_shading_property property,
+                                                                                   __in_ecount(3)           curve_container*               data)
+{
+    _mesh_material* material_ptr = (_mesh_material*) material;
+
+    material_ptr->dirty                                                = true;
+    material_ptr->shading_properties[property].attachment              = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3;
+    material_ptr->shading_properties[property].curve_container_data[0] = data[0];
+    material_ptr->shading_properties[property].curve_container_data[1] = data[1];
+    material_ptr->shading_properties[property].curve_container_data[2] = data[2];
 }
 
 /* Please see header for specification */
