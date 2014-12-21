@@ -32,15 +32,15 @@ void FillSceneWithCameraData(__in __notnull scene            in_scene,
 
         /* Retrieve position curves */
         curve_container new_camera_position_x = GetCurveContainerForProperty(camera_name_has,
-                                                                             ITEM_PROPERTY_POSITION_X,
+                                                                             ITEM_PROPERTY_TRANSLATION_X,
                                                                              camera_item_id,
                                                                              envelope_id_to_curve_container_map);
         curve_container new_camera_position_y = GetCurveContainerForProperty(camera_name_has,
-                                                                             ITEM_PROPERTY_POSITION_Y,
+                                                                             ITEM_PROPERTY_TRANSLATION_Y,
                                                                              camera_item_id,
                                                                              envelope_id_to_curve_container_map);
         curve_container new_camera_position_z = GetCurveContainerForProperty(camera_name_has,
-                                                                             ITEM_PROPERTY_POSITION_Z,
+                                                                             ITEM_PROPERTY_TRANSLATION_Z,
                                                                              camera_item_id,
                                                                              envelope_id_to_curve_container_map);
 

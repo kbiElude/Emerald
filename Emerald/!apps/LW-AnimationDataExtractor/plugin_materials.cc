@@ -21,6 +21,7 @@ system_resizable_vector materials_vector = NULL;
 /** Maps LWSurfaceID to scene_material instances */
 system_hash64map surface_id_to_scene_material_map = NULL;
 
+
 /** Please see header for spec */
 PUBLIC void DeinitMaterialData()
 {
@@ -46,6 +47,15 @@ PUBLIC void DeinitMaterialData()
 
         surface_id_to_scene_material_map = NULL;
     }
+}
+
+/** Please see header for spec */
+PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
+{
+    ASSERT_DEBUG_SYNC(surface_id_to_scene_material_map != NULL,
+                      "Material Data module not initialized");
+
+    return surface_id_to_scene_material_map;
 }
 
 /** Please see header for spec */

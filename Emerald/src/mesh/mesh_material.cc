@@ -290,6 +290,15 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 }
 
 /* Please see header for specification */
+#if 0
+TODO
+
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in __notnull scene_material src_material)
+{
+}
+#endif
+
+/* Please see header for specification */
 PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnull mesh_material material)
 {
     return ((_mesh_material*) material)->name;

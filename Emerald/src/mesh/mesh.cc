@@ -2918,7 +2918,6 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
     /* Update modification timestamp */
     mesh_ptr->timestamp_last_modified = system_time_now();
 
-end:
     if (allocated_polygon_vectors != NULL)
     {
         system_resizable_vector vector_item = NULL;
