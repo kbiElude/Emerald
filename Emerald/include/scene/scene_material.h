@@ -26,12 +26,12 @@ typedef enum
 
 enum scene_material_property
 {
-    SCENE_MATERIAL_PROPERTY_COLOR,                         /* not settable, curve_container[3]               */
+    SCENE_MATERIAL_PROPERTY_COLOR,                         /*     settable, curve_container[3]               */
     SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MAG_FILTER,      /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MIN_FILTER,      /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,       /*     settable, system_hashed_ansi_string        */
-    SCENE_MATERIAL_PROPERTY_GLOSINESS,                     /* not settable, curve_container                  */
-    SCENE_MATERIAL_PROPERTY_LUMINANCE,                     /* not settable, curve_container                  */
+    SCENE_MATERIAL_PROPERTY_GLOSINESS,                     /*     settable, curve_container                  */
+    SCENE_MATERIAL_PROPERTY_LUMINANCE,                     /*     settable, curve_container                  */
     SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME,   /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MAG_FILTER,  /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MIN_FILTER,  /*     settable, scene_material_texture_filtering */
@@ -39,12 +39,12 @@ enum scene_material_property
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME,      /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER,     /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER,     /*     settable, scene_material_texture_filtering */
-    SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,              /* not settable, curve_container                  */
+    SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,              /*     settable, curve_container                  */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,  /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER, /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MIN_FILTER, /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE,               /*     settable, float                            */
-    SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,                /* not settable, curve_container                  */
+    SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,                /*     settable, curve_container                  */
     SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME,    /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MAG_FILTER,   /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MIN_FILTER,   /*     settable, scene_material_texture_filtering */

@@ -356,7 +356,7 @@ PUBLIC EMERALD_API bool scene_add_texture(__in __notnull scene         scene_ins
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               context,
+PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               context,
                                       __in __notnull system_hashed_ansi_string name)
 {
     _scene* new_scene = new (std::nothrow) _scene;
@@ -364,10 +364,16 @@ PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               c
     ASSERT_DEBUG_SYNC(new_scene != NULL, "Out of memory");
     if (new_scene != NULL)
     {
-        memset(new_scene, 0, sizeof(_scene) );
+        memset(new_scene,
+               0,
+               sizeof(_scene) );
 
-        ogl_context_retain(context);
-        new_scene->context  = context;
+        if (context != NULL)
+        {
+            ogl_context_retain(context);
+        }
+
+        new_scene->context = context;
 
         new_scene->callback_manager = system_callback_manager_create( (_callback_id) SCENE_CALLBACK_ID_LIGHT_ADDED);
 

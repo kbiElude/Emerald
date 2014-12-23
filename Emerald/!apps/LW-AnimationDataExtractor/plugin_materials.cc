@@ -10,6 +10,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
 #include "system/system_resizable_vector.h"
+#include <sstream>
 
 /** Global data.
  *
@@ -66,8 +67,14 @@ PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curv
                                                                       sizeof(scene_material) );
     surface_id_to_scene_material_map = system_hash64map_create       (sizeof(scene_material) );
 
-    /* Iterate over all surfaces */
-    LWSurfaceID surface_id = surface_funcs_ptr->first();
+    /* Iterate over all surfaces.
+     *
+     * NOTE: LW permits surface names to repeat. This does not work exactly correct
+     *       with Emerald's Object Manager, so we stick in surface index number right
+     *       after LW name, in order to avoid naming collisions.
+     */
+    unsigned int n_surface  = 0;
+    LWSurfaceID  surface_id = surface_funcs_ptr->first();
 
     while (surface_id != 0)
     {
@@ -76,13 +83,22 @@ PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curv
         curve_container           surface_glosiness_curve              = NULL;
         curve_container           surface_luminance_curve              = NULL;
         system_hashed_ansi_string surface_luminance_texture_file_name  = NULL;
-        system_hashed_ansi_string surface_name                         = system_hashed_ansi_string_create(surface_funcs_ptr->name(surface_id) );
         system_hashed_ansi_string surface_normal_texture_file_name     = NULL;
         curve_container           surface_reflection_ratio             = NULL;
         system_hashed_ansi_string surface_reflection_texture_file_name = NULL;
         float                     surface_smoothing_angle              = (float) *surface_funcs_ptr->getFlt(surface_id, SURF_SMAN);
         curve_container           surface_specular_ratio               = NULL;
         system_hashed_ansi_string surface_specular_texture_file_name   = NULL;
+
+        /* Form the name */
+        system_hashed_ansi_string surface_name;
+        std::stringstream         surface_name_sstream;
+
+        surface_name_sstream << surface_funcs_ptr->name(surface_id)
+                             << " "
+                             << n_surface;
+
+        surface_name = system_hashed_ansi_string_create(surface_name_sstream.str().c_str() );
 
         /* Retrieve non-texture property values */
         surface_glosiness_curve = GetCurveContainerForProperty(surface_name,
@@ -227,9 +243,84 @@ PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curv
             continue;
         }
 
+        if (surface_color_texture_file_name != NULL)
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,
+                                       &surface_color_texture_file_name);
+        }
+        else
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_COLOR,
+                                        surface_color);
+        }
 
+        scene_material_set_property(new_material,
+                                    SCENE_MATERIAL_PROPERTY_GLOSINESS,
+                                   &surface_glosiness_curve);
+
+        if (surface_luminance_texture_file_name != NULL)
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME,
+                                       &surface_luminance_texture_file_name);
+        }
+        else
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_LUMINANCE,
+                                       &surface_luminance_curve);
+        }
+
+        if (surface_normal_texture_file_name != NULL)
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME,
+                                       &surface_normal_texture_file_name);
+        }
+
+        if (surface_reflection_texture_file_name != NULL)
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,
+                                       &surface_reflection_texture_file_name);
+        }
+        else
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,
+                                       &surface_reflection_ratio);
+        }
+
+        scene_material_set_property(new_material,
+                                    SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE,
+                                   &surface_smoothing_angle);
+
+        if (surface_specular_texture_file_name != NULL)
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME,
+                                       &surface_specular_texture_file_name);
+        }
+        else
+        {
+            scene_material_set_property(new_material,
+                                        SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
+                                       &surface_specular_ratio);
+        }
+
+        /* Store the surface */
+        system_hash64map_insert     (surface_id_to_scene_material_map,
+                                     (system_hash64) surface_id,
+                                     new_material,
+                                     NULL,  /* on_remove_callback */
+                                     NULL); /* on_remove_callback_user_arg */
+        system_resizable_vector_push(materials_vector,
+                                     new_material);
 
         /* Move to the next surface */
+        n_surface ++;
         surface_id = surface_funcs_ptr->next(surface_id);
     } /* while (surface_id != 0) */
 }

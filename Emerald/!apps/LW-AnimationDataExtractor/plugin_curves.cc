@@ -413,6 +413,11 @@ PUBLIC void InitCurveData()
           unsigned int n_item  = 0;
     const unsigned int n_items = sizeof(items) / sizeof(items[0]);
 
+    /* Initialize internal data structures */
+    curve_containers                   = system_resizable_vector_create(4, /* capacity */
+                                                                        sizeof(curve_container) );
+    envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container) );
+
     /* Iterate over all object types .. */
     for (  n_item = 0;
            n_item < n_items;

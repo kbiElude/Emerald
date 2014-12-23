@@ -54,23 +54,23 @@ PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_
            sizeof(_scene_material) );
 
     data_ptr->color[0]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Color R"),
+                                                                                                                " Color R [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
     data_ptr->color[1]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Color G"),
+                                                                                                                " Color G [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
     data_ptr->color[2]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Color B"),
+                                                                                                                " Color B [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
     data_ptr->glosiness        = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Glosiness"),
+                                                                                                                " Glosiness [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
     data_ptr->name             = name;
     data_ptr->reflection_ratio = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Reflection Ratio"),
+                                                                                                                " Reflection Ratio [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
     data_ptr->specular_ratio   = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Specular Ratio"),
+                                                                                                                " Specular Ratio [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
 
     data_ptr->color_texture_mag_filter      = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
@@ -355,9 +355,53 @@ PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_materia
 
     switch (property)
     {
+        case SCENE_MATERIAL_PROPERTY_COLOR:
+        {
+            for (unsigned int n_component = 0;
+                              n_component < 3;
+                            ++n_component)
+            {
+                if (material_ptr->color[n_component] != NULL)
+                {
+                    curve_container_release(material_ptr->color[n_component]);
+                }
+
+                material_ptr->color[n_component] = *(curve_container*) data;
+                curve_container_retain(material_ptr->color[n_component]);
+            }
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME:
         {
             material_ptr->color_texture_file_name = *((system_hashed_ansi_string*) data);
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_GLOSINESS:
+        {
+            if (material_ptr->glosiness != NULL)
+            {
+                curve_container_release(material_ptr->glosiness);
+            }
+
+            material_ptr->glosiness = *(curve_container*) data;
+            curve_container_retain(material_ptr->glosiness);
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_LUMINANCE:
+        {
+            if (material_ptr->luminance != NULL)
+            {
+                curve_container_release(material_ptr->luminance);
+            }
+
+            material_ptr->luminance = *(curve_container*) data;
+            curve_container_retain(material_ptr->luminance);
 
             break;
         }
@@ -376,6 +420,19 @@ PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_materia
             break;
         }
 
+        case SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO:
+        {
+            if (material_ptr->reflection_ratio != NULL)
+            {
+                curve_container_release(material_ptr->reflection_ratio);
+            }
+
+            material_ptr->reflection_ratio = *(curve_container*) data;
+            curve_container_retain(material_ptr->reflection_ratio);
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME:
         {
             material_ptr->reflection_texture_file_name = *(system_hashed_ansi_string*) data;
@@ -386,6 +443,19 @@ PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_materia
         case SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE:
         {
             material_ptr->smoothing_angle = *(float*) data;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO:
+        {
+            if (material_ptr->specular_ratio != NULL)
+            {
+                curve_container_release(material_ptr->specular_ratio);
+            }
+
+            material_ptr->specular_ratio = *(curve_container*) data;
+            curve_container_retain(material_ptr->specular_ratio);
 
             break;
         }

@@ -76,6 +76,7 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
     switch (property)
     {
         case ITEM_PROPERTY_F_STOP:                   property_name = "FStop";            break;
+        case ITEM_PROPERTY_FOCAL_DISTANCE:           property_name = "FocalDistance";    break;
         case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R:    property_name = "AmbientColor.R";   break;
         case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G:    property_name = "AmbientColor.G";   break;
         case ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_B:    property_name = "AmbientColor.B";   break;
@@ -299,6 +300,18 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
 
         system_variant_release(new_value_variant);
     }
+    else
+    {
+        /* Make sure the curve is recognized */
+        if (!system_hash64map_get(envelope_id_to_curve_container_map,
+                                  (system_hash64) envelope_id,
+                                 &result) )
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Envelope ID does not correspond to a recognized curve.");
+        }
+
+    }
 
     if (result      == NULL &&
         envelope_id == 0)
@@ -307,15 +320,6 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                           "This should have never happened");
 
         goto end;
-    }
-
-    /* Make sure the curve is recognized */
-    if (!system_hash64map_get(envelope_id_to_curve_container_map,
-                              (system_hash64) envelope_id,
-                             &result) )
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Envelope ID does not correspond to a recognized curve.");
     }
 
     /* result at this point is set to the requested curve container */

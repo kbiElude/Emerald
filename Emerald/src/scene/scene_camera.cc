@@ -23,8 +23,6 @@ typedef struct
     bool                      dirty;
     system_timeline_time      dirty_last_recalc_time; /* time, for which the last recalc was done */
     system_hashed_ansi_string name;
-    curve_container           position[3];
-    curve_container           rotation[3];
     _scene_camera_type        type;
     curve_container           yfov;
     float                     zfar;
@@ -85,24 +83,6 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
     camera_ptr->near_plane_height      = 0.0f;
     camera_ptr->near_plane_width       = 0.0f;
     camera_ptr->owner_node             = NULL;
-    camera_ptr->position[0]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                        " Position X"),
-                                                                SYSTEM_VARIANT_FLOAT);
-    camera_ptr->position[1]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                        " Position Y"),
-                                                                SYSTEM_VARIANT_FLOAT);
-    camera_ptr->position[2]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                        " Position Z"),
-                                                                SYSTEM_VARIANT_FLOAT);
-    camera_ptr->rotation[0]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                        " Rotation H"),
-                                                                SYSTEM_VARIANT_FLOAT);
-    camera_ptr->rotation[1]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                        " Rotation P"),
-                                                                SYSTEM_VARIANT_FLOAT);
-    camera_ptr->rotation[2]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                        " Rotation B"),
-                                                                SYSTEM_VARIANT_FLOAT);
     camera_ptr->temp_variant           = system_variant_create(SYSTEM_VARIANT_FLOAT);
     camera_ptr->type                   = SCENE_CAMERA_TYPE_UNDEFINED;
     camera_ptr->yfov                   = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
@@ -134,25 +114,6 @@ PRIVATE void _scene_camera_release(void* data_ptr)
         curve_container_release(camera_ptr->focal_distance);
 
         camera_ptr->focal_distance = NULL;
-    }
-
-    for (unsigned int n_component = 0;
-                      n_component < 3;
-                    ++n_component)
-    {
-        if (camera_ptr->position[n_component] != NULL)
-        {
-            curve_container_release(camera_ptr->position[n_component]);
-
-            camera_ptr->position[n_component] = NULL;
-        }
-
-        if (camera_ptr->rotation[n_component] != NULL)
-        {
-            curve_container_release(camera_ptr->rotation[n_component]);
-
-            camera_ptr->rotation[n_component] = NULL;
-        }
     }
 
     if (camera_ptr->temp_variant != NULL)
@@ -292,20 +253,6 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
             break;
         }
 
-        case SCENE_CAMERA_PROPERTY_POSITION:
-        {
-            *(curve_container **) out_result = camera_ptr->position;
-
-            break;
-        }
-
-        case SCENE_CAMERA_PROPERTY_ROTATION:
-        {
-            *(curve_container **) out_result = camera_ptr->rotation;
-
-            break;
-        }
-
         case SCENE_CAMERA_PROPERTY_VERTICAL_FOV:
         {
             *(curve_container*) out_result = camera_ptr->yfov;
@@ -365,21 +312,6 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
         curve_container_release(result_ptr->focal_distance);
     }
 
-    for (unsigned int n_component = 0;
-                      n_component < 3;
-                    ++n_component)
-    {
-        if (result_ptr->position[n_component] != NULL)
-        {
-            curve_container_release(result_ptr->position[n_component]);
-        }
-
-        if (result_ptr->rotation[n_component] != NULL)
-        {
-            curve_container_release(result_ptr->rotation[n_component]);
-        }
-    }
-
     if (result_ptr->yfov != NULL)
     {
         curve_container_release(result_ptr->yfov);
@@ -394,8 +326,6 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
     float              camera_ar;
     curve_container    camera_f_stop;
     curve_container    camera_focal_distance;
-    curve_container    camera_position[3];
-    curve_container    camera_rotation[3];
     _scene_camera_type camera_type;
     curve_container    camera_yfov;
     float              camera_zfar;
@@ -409,18 +339,6 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
                                                     &camera_f_stop)         ||
         !system_file_serializer_read_curve_container(serializer,
                                                     &camera_focal_distance) ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                     camera_position + 0)   ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                     camera_position + 1)   ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                     camera_position + 2)   ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                     camera_rotation + 0)   ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                     camera_rotation + 1)   ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                     camera_rotation + 2)   ||
         !system_file_serializer_read                (serializer,
                                                      sizeof(camera_type),
                                                     &camera_type)           ||
@@ -451,15 +369,6 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
     scene_camera_set_property(result,
                               SCENE_CAMERA_PROPERTY_TYPE,
                              &camera_type);
-
-    /* Set the curve_container properties */
-    for (unsigned int n_component = 0;
-                      n_component < 3;
-                    ++n_component)
-    {
-        result_ptr->position[n_component] = camera_position[n_component];
-        result_ptr->rotation[n_component] = camera_rotation[n_component];
-    }
 
     result_ptr->f_stop         = camera_f_stop;
     result_ptr->focal_distance = camera_focal_distance;
@@ -499,18 +408,6 @@ PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
                                                              camera_ptr->f_stop);
     result &= system_file_serializer_write_curve_container  (serializer,
                                                              camera_ptr->focal_distance);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->position[0]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->position[1]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->position[2]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->rotation[0]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->rotation[1]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->rotation[2]);
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(camera_ptr->type),
                                                              &camera_ptr->type);

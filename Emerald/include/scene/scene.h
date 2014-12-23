@@ -37,7 +37,7 @@ typedef enum
 } scene_callback_id;
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context,
+PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context,
                                       __in __notnull system_hashed_ansi_string);
 
 /** TODO */

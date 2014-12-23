@@ -15,8 +15,11 @@
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
+#include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
+#include <sstream>
+
 
 typedef struct _mesh_instance
 {
@@ -103,11 +106,13 @@ typedef struct _polygon_instance
 {
     scene_material material;
     float          uv_data    [2*3];
+    bool           uv_data_defined;
     float          vertex_data[3*3];
 
     _polygon_instance()
     {
-        material = NULL;
+        material        = NULL;
+        uv_data_defined = false;
 
         memset(uv_data,
                0,
@@ -126,7 +131,8 @@ PRIVATE void  ExtractPointData      (__in            LWPolID                    
                                      __in            LWMeshInfoID                layer_mesh_info_id,
                                      __in  __notnull LWMeshInfo*                 layer_mesh_info_ptr,
                                      __out __notnull float*                      out_point_vertex_data,
-                                     __out __notnull float*                      out_point_uv_data);
+                                     __out __notnull float*                      out_point_uv_data,
+                                     __out __notnull bool*                       out_uv_data_extracted);
 PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector     polygon_instance_vector,
                                      __in            mesh_layer_data_stream_type stream_type);
 
@@ -197,21 +203,31 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                 }
 
                 /* Iterate over all points defined for the polygon */
+                bool all_vertices_hold_uv_data = false;
+
                 for (uint32_t current_polygon_n_vertex = 0;
                               current_polygon_n_vertex < current_polygon_n_vertices;
                             ++current_polygon_n_vertex)
                 {
-                    LWPntID current_point_id = layer_mesh_info_ptr->polVertex(layer_mesh_info_id,
-                                                                              current_polygon_id,
-                                                                              current_polygon_n_vertex);
+                    bool    current_point_defines_uv = false;
+                    LWPntID current_point_id         = layer_mesh_info_ptr->polVertex(layer_mesh_info_id,
+                                                                                      current_polygon_id,
+                                                                                      current_polygon_n_vertex);
 
                     ExtractPointData(current_polygon_id,
                                      current_point_id,
                                      layer_mesh_info_id,
                                      layer_mesh_info_ptr,
                                      current_polygon_ptr->vertex_data + current_polygon_n_vertex * 3 /* xyz */,
-                                     current_polygon_ptr->uv_data     + current_polygon_n_vertex * 2 /* st */);
+                                     current_polygon_ptr->uv_data     + current_polygon_n_vertex * 2 /* st */,
+                                    &current_point_defines_uv);
+
+                    ASSERT_DEBUG_SYNC(!all_vertices_hold_uv_data ||
+                                       all_vertices_hold_uv_data && current_point_defines_uv,
+                                       "Not all vertices for a given polygon define UV coords?");
                 } /* for (all current polygon's vertices) */
+
+                current_polygon_ptr->uv_data_defined = all_vertices_hold_uv_data;
 
                 /* Assign the surface to the polygon */
                 if (current_polygon_surface_name == NULL)
@@ -250,9 +266,6 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                                         NULL,  /* on_remove_callback */
                                         NULL); /* on_remove_callback_user_arg */
 
-                ASSERT_DEBUG_SYNC(material_polygon_vector != NULL,
-                                  "No material set for encountered polygon.");
-
                 if (!system_hash64map_get(instance_ptr->material_to_polygon_instance_vector_map,
                                           (system_hash64) current_polygon_ptr->material,
                                          &material_polygon_vector) )
@@ -284,7 +297,8 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
                               __in            LWMeshInfoID     layer_mesh_info_id,
                               __in  __notnull LWMeshInfo*      layer_mesh_info_ptr,
                               __out __notnull float*           out_point_vertex_data,
-                              __out __notnull float*           out_point_uv_data)
+                              __out __notnull float*           out_point_uv_data,
+                              __out __notnull bool*            out_uv_data_extracted)
 {
     /* Extract vertex data */
     layer_mesh_info_ptr->pntBasePos(layer_mesh_info_id,
@@ -339,8 +353,7 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
         } /* if (active_vmap_id != 0) */
     } /* for (all UV vmaps) */
 
-    ASSERT_DEBUG_SYNC(uv_extracted,
-                      "Could not extract UV info");
+    *out_uv_data_extracted = uv_extracted;
 }
 
 /** TODO */
@@ -383,6 +396,7 @@ PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector    
     }
 
     /* Iterate over polygons and fill the buffer */
+    bool   polygon_defines_uv_coords = false;
     float* result_data_traveller_ptr = result_data;
 
     for (uint32_t n_polygon = 0;
@@ -405,6 +419,30 @@ PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector    
 
             goto end;
         }
+
+        if (stream_type == MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS)
+        {
+            if (n_polygon == 0)
+            {
+                if (!polygon_ptr->uv_data_defined)
+                {
+                    /* No UV data defined - bail out. */
+                    delete [] result_data;
+                    result_data = NULL;
+
+                    goto end;
+                }
+                else
+                {
+                    polygon_defines_uv_coords = true;
+                }
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(polygon_ptr->uv_data_defined,
+                                  "Not all polygons have their UV coords defined!");
+            }
+        } /* if (stream_type == MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS) */
 
         switch (stream_type)
         {
@@ -658,6 +696,21 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
             continue;
         }
 
+        /* Update the status before we kick off */
+        std::stringstream status_sstream;
+
+        status_sstream << "Extracting mesh ["
+                       << object_filename
+                       << "] ("
+                       << (n_object + 1)
+                       << " / "
+                       << n_objects
+                       << ")...";
+
+        LOG_INFO("%s",
+                 status_sstream.str().c_str() );
+
+        /* Go on.. */
         ExtractMeshData(object_mesh_instance_ptr,
                         n_object);
     }
@@ -780,7 +833,8 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
                      */
                     mesh_layer_pass_id current_layer_pass = mesh_add_layer_pass(new_mesh,
                                                                                 new_mesh_layer,
-                                                                                mesh_material_create_from_scene_material(current_material),
+                                                                                mesh_material_create_from_scene_material(current_material,
+                                                                                                                         NULL),
                                                                                 n_polygon_instances);
 
                     /* Vertex data. */
@@ -798,13 +852,19 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
 
                     /* UV data */
                     float* raw_uv_data = (float*) GenerateDataStreamData(polygon_instance_vector,
-                                                                         MESH_LAYER_DATA_STREAM_TYPE_NORMALS);
+                                                                         MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS);
 
-                    mesh_add_layer_data_stream(new_mesh,
-                                               new_mesh_layer,
-                                               MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                               n_polygon_instances * 2, /* components per UV */
-                                               raw_uv_data);
+                    if (raw_uv_data != NULL)
+                    {
+                        mesh_add_layer_data_stream(new_mesh,
+                                                   new_mesh_layer,
+                                                   MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
+                                                   n_polygon_instances * 2, /* components per UV */
+                                                   raw_uv_data);
+
+                        delete [] raw_uv_data;
+                        raw_uv_data = NULL;
+                    }
                 } /* for (all materials) */
 
                 /* Generate per-vertex normal data */

@@ -72,6 +72,7 @@ XCALL_(int) ExportData(int         version,
     message_funcs_ptr->info("Extracting camera data",
                             NULL);
 
+    InitCameraData         ();
     FillSceneWithCameraData(new_scene,
                             GetEnvelopeIDToCurveContainerHashMap() );
 
@@ -98,6 +99,7 @@ XCALL_(int) ExportData(int         version,
     message_funcs_ptr->info("Extracting mesh data..",
                             NULL);
 
+    InitMeshData         ();
     FillSceneWithMeshData(new_scene,
                           GetEnvelopeIDToCurveContainerHashMap() );
 
@@ -133,8 +135,10 @@ XCALL_(int) ExportData(int         version,
     }
 
     /* done! */
+    DeinitCameraData  ();
     DeinitCurveData   ();
     DeinitMaterialData();
+    DeinitMeshData    ();
     DeinitVMapData    ();
 
     return AFUNC_OK;

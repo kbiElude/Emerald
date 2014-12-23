@@ -5,10 +5,87 @@
 #include "plugin.h"
 #include "plugin_cameras.h"
 #include "plugin_common.h"
+#include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "system/system_assertions.h"
+#include "system/system_hash64.h"
+#include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
+
+typedef struct _camera_internal
+{
+    curve_container camera_rotation_hpb   [3];
+    curve_container camera_translation_xyz[3];
+
+    _camera_internal()
+    {
+        memset(camera_rotation_hpb,
+               0,
+               sizeof(camera_rotation_hpb) );
+        memset(camera_translation_xyz,
+               0,
+               sizeof(camera_translation_xyz) );
+    }
+
+    ~_camera_internal()
+    {
+        for (unsigned int n_component = 0;
+                          n_component < 3;
+                        ++n_component)
+        {
+            if (camera_rotation_hpb[n_component] != NULL)
+            {
+                curve_container_release(camera_rotation_hpb[n_component]);
+
+                camera_rotation_hpb[n_component] = NULL;
+            }
+
+            if (camera_translation_xyz[n_component] != NULL)
+            {
+                curve_container_release(camera_translation_xyz[n_component]);
+
+                camera_translation_xyz[n_component] = NULL;
+            }
+        }
+    }
+} _camera_internal;
+
+
+system_hash64map scene_camera_to_camera_internal_map = NULL;
+
+
+/** TODO */
+void DeinitCameraData()
+{
+    if (scene_camera_to_camera_internal_map != NULL)
+    {
+        _camera_internal* camera_internal_ptr = NULL;
+        const uint32_t    n_camera_internals  = system_hash64map_get_amount_of_elements(scene_camera_to_camera_internal_map);
+
+        for (uint32_t n_camera_internal = 0;
+                      n_camera_internal < n_camera_internals;
+                    ++n_camera_internal)
+        {
+            if (!system_hash64map_get_element_at(scene_camera_to_camera_internal_map,
+                                                 n_camera_internal,
+                                                &camera_internal_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not extract camera internal descriptor");
+
+                continue;
+            }
+
+            delete camera_internal_ptr;
+            camera_internal_ptr = NULL;
+        }
+
+        system_hash64map_release(scene_camera_to_camera_internal_map);
+        scene_camera_to_camera_internal_map = NULL;
+    }
+}
 
 /** TODO */
 void FillSceneWithCameraData(__in __notnull scene            in_scene,
@@ -71,25 +148,6 @@ void FillSceneWithCameraData(__in __notnull scene            in_scene,
                                                                                  envelope_id_to_curve_container_map);
 
         /* Configure the camera using the properties we've retrieved */
-        curve_container new_camera_positions[] =
-        {
-            new_camera_position_x,
-            new_camera_position_y,
-            new_camera_position_z,
-        };
-        curve_container new_camera_rotations[] =
-        {
-            new_camera_rotation_h,
-            new_camera_rotation_p,
-            new_camera_rotation_b
-        };
-
-        scene_camera_set_property(new_camera,
-                                  SCENE_CAMERA_PROPERTY_POSITION,
-                                  new_camera_positions);
-        scene_camera_set_property(new_camera,
-                                  SCENE_CAMERA_PROPERTY_ROTATION,
-                                  new_camera_rotations);
         scene_camera_set_property(new_camera,
                                   SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,
                                  &new_camera_focal_distance);
@@ -106,9 +164,51 @@ void FillSceneWithCameraData(__in __notnull scene            in_scene,
                                camera_name);
         }
 
+        /* Store the camera position/rotation data in internal data structures */
+        curve_container new_camera_positions[] =
+        {
+            new_camera_position_x,
+            new_camera_position_y,
+            new_camera_position_z,
+        };
+        curve_container new_camera_rotations[] =
+        {
+            new_camera_rotation_h,
+            new_camera_rotation_p,
+            new_camera_rotation_b
+        };
+        _camera_internal* new_camera_internal_ptr = new (std::nothrow) _camera_internal;
+
+        ASSERT_ALWAYS_SYNC(new_camera_internal_ptr != NULL,
+                           "Out of memory");
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(scene_camera_to_camera_internal_map,
+                                                     (system_hash64) new_camera),
+                          "Camera already recognized");
+
+        memcpy(new_camera_internal_ptr->camera_rotation_hpb,
+               new_camera_rotations,
+               sizeof(new_camera_internal_ptr->camera_rotation_hpb) );
+        memcpy(new_camera_internal_ptr->camera_translation_xyz,
+               new_camera_positions,
+               sizeof(new_camera_internal_ptr->camera_translation_xyz) );
+
+        system_hash64map_insert(scene_camera_to_camera_internal_map,
+                                (system_hash64) new_camera,
+                                new_camera_internal_ptr,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
+
         /* Move on */
         camera_item_id = item_info_ptr->next(camera_item_id);
     }
 }
 
+/* Please see header for spec */
+void InitCameraData()
+{
+    ASSERT_DEBUG_SYNC(scene_camera_to_camera_internal_map == NULL,
+                      "Camera data already initialized");
 
+    scene_camera_to_camera_internal_map = system_hash64map_create(sizeof(_camera_internal*) );
+}
