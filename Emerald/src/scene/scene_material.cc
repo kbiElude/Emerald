@@ -181,6 +181,20 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
             break;
         }
 
+        case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MAG_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->color_texture_mag_filter;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_MIN_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->color_texture_min_filter;
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_GLOSINESS:
         {
             *(curve_container*) out_result = material_ptr->glosiness;
@@ -202,6 +216,20 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
             break;
         }
 
+        case SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MAG_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->luminance_texture_mag_filter;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_MIN_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->luminance_texture_min_filter;
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_NAME:
         {
             *((system_hashed_ansi_string*) out_result) = material_ptr->name;
@@ -216,6 +244,20 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
             break;
         }
 
+        case SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->normal_texture_mag_filter;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->normal_texture_min_filter;
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO:
         {
             *(curve_container*) out_result = material_ptr->reflection_ratio;
@@ -226,6 +268,20 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
         case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME:
         {
             *(system_hashed_ansi_string*) out_result = material_ptr->reflection_texture_file_name;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->reflection_texture_mag_filter;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MIN_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->reflection_texture_min_filter;
 
             break;
         }
@@ -247,6 +303,20 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
         case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME:
         {
             *(system_hashed_ansi_string*) out_result = material_ptr->specular_texture_file_name;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MAG_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->specular_texture_mag_filter;
+
+            break;
+        }
+
+        case SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MIN_FILTER:
+        {
+            *(scene_material_texture_filtering*) out_result = material_ptr->specular_texture_min_filter;
 
             break;
         }

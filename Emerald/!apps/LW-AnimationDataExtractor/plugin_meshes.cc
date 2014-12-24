@@ -367,14 +367,14 @@ PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector    
     {
         case MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS:
         {
-            result_data = new (std::nothrow) float[2 * n_polygon_instances];
+            result_data = new (std::nothrow) float[3 /* vertices */ * 2 /* components */ * n_polygon_instances];
 
             break;
         }
 
         case MESH_LAYER_DATA_STREAM_TYPE_VERTICES:
         {
-            result_data = new (std::nothrow) float[3 * n_polygon_instances];
+            result_data = new (std::nothrow) float[3 /* vertices */ * 3 /* components */ * n_polygon_instances];
 
             break;
         }
@@ -835,7 +835,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
                                                                                 new_mesh_layer,
                                                                                 mesh_material_create_from_scene_material(current_material,
                                                                                                                          NULL),
-                                                                                n_polygon_instances);
+                                                                                n_polygon_instances * 3);
 
                     /* Vertex data. */
                     float* raw_vertex_data = (float*) GenerateDataStreamData(polygon_instance_vector,
@@ -868,9 +868,13 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
                 } /* for (all materials) */
 
                 /* Generate per-vertex normal data */
+                LOG_INFO("Generating per-vertex normal data..");
+
                 mesh_generate_normal_data(new_mesh);
 
                 /* Bake the blob data */
+                LOG_INFO("Baking final GL blob");
+
                 mesh_create_single_indexed_representation(new_mesh);
             }
             else

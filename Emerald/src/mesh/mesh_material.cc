@@ -306,18 +306,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in     __notnull scene_material src_material,
                                                                           __in_opt           ogl_context    context)
 {
-    /* Sanity checks */
-    ASSERT_DEBUG_SYNC(context != NULL,
-                      "ogl_context argument must not be NULL for the function to work correctly.");
-
     /* Create a new mesh_material instance */
     ogl_textures              context_textures  = NULL;
     mesh_material             result_material   = NULL;
     system_hashed_ansi_string src_material_name = NULL;
 
-    ogl_context_get_property   (context,
-                                OGL_CONTEXT_PROPERTY_TEXTURES,
-                               &context_textures);
     scene_material_get_property(src_material,
                                 SCENE_MATERIAL_PROPERTY_NAME,
                                &src_material_name);
@@ -330,6 +323,13 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
     if (result_material == NULL)
     {
         goto end;
+    }
+
+    if (context != NULL)
+    {
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_TEXTURES,
+                                &context_textures);
     }
 
     /* Force Phong reflection model */
@@ -511,26 +511,34 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
 
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
             {
-                ogl_texture texture = NULL;
-
-                texture = ogl_textures_get_texture_by_filename(context_textures,
-                                                               config.texture_filename);
-
-                if (texture == NULL)
+                /* Do not attach anything if context is NULL.
+                 *
+                 * This won't backfire if the mesh_material is an intermediate object used
+                 * for mesh baking. Otherwise context should never be NULL.
+                 */
+                if (context != NULL)
                 {
-                    ASSERT_ALWAYS_SYNC(false,
-                                       "Texture [%s] unavailable in the rendering context",
-                                       system_hashed_ansi_string_get_buffer(color_texture_file_name) );
-                }
-                else
-                {
-                    mesh_material_set_shading_property_to_texture(result_material,
-                                                                  config.shading_property,
-                                                                  texture,
-                                                                  0, /* mipmap_level */
-                                                                  config.texture_mag_filter,
-                                                                  config.texture_min_filter);
-                }
+                    ogl_texture texture = NULL;
+
+                    texture = ogl_textures_get_texture_by_filename(context_textures,
+                                                                   config.texture_filename);
+
+                    if (texture == NULL)
+                    {
+                        ASSERT_ALWAYS_SYNC(false,
+                                           "Texture [%s] unavailable in the rendering context",
+                                           system_hashed_ansi_string_get_buffer(color_texture_file_name) );
+                    }
+                    else
+                    {
+                        mesh_material_set_shading_property_to_texture(result_material,
+                                                                      config.shading_property,
+                                                                      texture,
+                                                                      0, /* mipmap_level */
+                                                                      config.texture_mag_filter,
+                                                                      config.texture_min_filter);
+                    }
+                } /* if (context != NULL) */
 
                 break;
             } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
@@ -778,6 +786,10 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
            property_ptr->vec4_data,
            sizeof(float) * 4);
 }
+
+#if 0
+
+TODO: REMOVE
 
 /* Please see header for specification */
 PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer serializer,
@@ -1029,6 +1041,11 @@ end_error:
 end:
     return new_material;
 }
+#endif
+
+#if 0
+
+TODO: REMOVE
 
 /* Please see header for specification */
 PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
@@ -1149,6 +1166,7 @@ PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
 
     return result;
 }
+#endif
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,

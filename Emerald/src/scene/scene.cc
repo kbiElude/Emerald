@@ -382,6 +382,7 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
         new_scene->curves                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
         new_scene->fps                    = 0;
+        new_scene->graph                  = scene_graph_create( (scene) new_scene);
         new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
         new_scene->materials              = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
@@ -598,6 +599,20 @@ PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull sc
     _scene*    scene_ptr = (_scene*) scene;
 
     system_resizable_vector_get_element_at(scene_ptr->mesh_instances,
+                                           index,
+                                          &result);
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API scene_material scene_get_material_by_index(__in __notnull scene        scene,
+                                                              __in           unsigned int index)
+{
+    scene_material result    = NULL;
+    _scene*        scene_ptr = (_scene*) scene;
+
+    system_resizable_vector_get_element_at(scene_ptr->materials,
                                            index,
                                           &result);
 
@@ -1050,6 +1065,45 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                           "Could not load scene materials");
     }
 
+    /* Create mesh materials out of the scene materials we've loaded. */
+    for (uint32_t n_scene_material = 0;
+                  n_scene_material < n_scene_materials;
+                ++n_scene_material)
+    {
+        scene_material current_scene_material = NULL;
+        mesh_material  new_mesh_material      = NULL;
+
+        current_scene_material = scene_get_material_by_index             (result_scene,
+                                                                          n_scene_material);
+        new_mesh_material      = mesh_material_create_from_scene_material(current_scene_material,
+                                                                          context);
+
+        ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
+                          "Could not create a mesh_material out of a scene_material");
+        if (new_mesh_material == NULL)
+        {
+            result = false;
+
+            goto end_error;
+        }
+        else
+        {
+            system_hash64map_insert(material_id_to_mesh_material_map,
+                                    (system_hash64) n_scene_material,
+                                    new_mesh_material,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+    } /* for (all scene materials defined for the scene) */
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not create mesh materials");
+
+        goto end_error;
+    }
+
     /* Load textures */
     for (unsigned int n_scene_texture = 0;
                       n_scene_texture < n_scene_textures;
@@ -1097,48 +1151,6 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not load scene textures");
-
-        goto end_error;
-    }
-
-    /* Load mesh materials */
-    for (uint32_t n_mesh_material = 0;
-                  n_mesh_material < n_scene_materials;
-                ++n_mesh_material)
-    {
-        uint32_t      material_id  = 0;
-        mesh_material new_material = NULL;
-
-        result &= system_file_serializer_read(serializer,
-                                              sizeof(material_id),
-                                             &material_id);
-
-        new_material = mesh_material_load(serializer,
-                                          context,
-                                          texture_id_to_ogl_texture_map);
-
-        ASSERT_DEBUG_SYNC(new_material != NULL,
-                          "Could not load scene material");
-        if (new_material == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-        else
-        {
-            system_hash64map_insert(material_id_to_mesh_material_map,
-                                    (system_hash64) material_id,
-                                    new_material,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-    } /* for (all materials defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene materials");
 
         goto end_error;
     }
@@ -1795,40 +1807,6 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
             result = false;
         }
     } /* for (all textures) */
-
-    /* Serialize mesh materials */
-    for (unsigned int n_material = 0;
-                      n_material < n_unique_materials;
-                    ++n_material)
-    {
-        mesh_material material        = NULL;
-        system_hash64 material_hash   = 0;
-        uint32_t      material_id     = 0;
-        void*         material_id_ptr = 0;
-
-        if (!system_hash64map_get_element_at(mesh_material_ptr_to_id_map,
-                                             (size_t) n_material,
-                                            &material_id_ptr,
-                                            &material_hash) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve unique mesh material at index [%d]",
-                              n_material);
-
-            continue;
-        }
-
-        material_id = (uint32_t)      material_id_ptr;
-        material    = (mesh_material) material_hash;
-
-        /* Serialize */
-        result &= system_file_serializer_write(serializer,
-                                               sizeof(material_id),
-                                              &material_id);
-
-        result &= mesh_material_save(serializer,
-                                     material);
-    } /* for (unique materials) */
 
     /* Serialize meshes: first store the instantiation parent meshes,
      *                   the follow with instanced meshes.
