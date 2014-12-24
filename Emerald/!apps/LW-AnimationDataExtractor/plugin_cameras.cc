@@ -56,7 +56,7 @@ system_hash64map scene_camera_to_camera_internal_map = NULL;
 
 
 /** TODO */
-void DeinitCameraData()
+PUBLIC void DeinitCameraData()
 {
     if (scene_camera_to_camera_internal_map != NULL)
     {
@@ -88,8 +88,8 @@ void DeinitCameraData()
 }
 
 /** TODO */
-void FillSceneWithCameraData(__in __notnull scene            in_scene,
-                             __in __notnull system_hash64map envelope_id_to_curve_container_map)
+PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
+                                    __in __notnull system_hash64map envelope_id_to_curve_container_map)
 {
     /* Extract available cameras */
     LWItemID camera_item_id = item_info_ptr->first(LWI_CAMERA,
@@ -97,6 +97,23 @@ void FillSceneWithCameraData(__in __notnull scene            in_scene,
 
     while (camera_item_id != LWITEM_NULL)
     {
+        /* Sanity check: no parent */
+        ASSERT_DEBUG_SYNC(item_info_ptr->parent(camera_item_id) == 0,
+                          "Camera parenting is not currently supported");
+
+        /* Sanity check: no pivot */
+        LWDVector pivot;
+
+        item_info_ptr->param(camera_item_id,
+                             LWIP_PIVOT,
+                             0, /* time */
+                             pivot);
+
+        ASSERT_DEBUG_SYNC(fabs(pivot[0]) < 1e-5f &&
+                          fabs(pivot[1]) < 1e-5f &&
+                          fabs(pivot[2]) < 1e-5f,
+                          "Camera pivoting is not currently supported");
+
         /* Extract camera name */
         const char*               camera_name     = item_info_ptr->name(camera_item_id);
         system_hashed_ansi_string camera_name_has = system_hashed_ansi_string_create(camera_name);
@@ -205,7 +222,51 @@ void FillSceneWithCameraData(__in __notnull scene            in_scene,
 }
 
 /* Please see header for spec */
-void InitCameraData()
+PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
+                                   __in            CameraProperty property,
+                                   __out __notnull void*          out_result)
+{
+    _camera_internal* camera_ptr = NULL;
+
+    if (!system_hash64map_get(scene_camera_to_camera_internal_map,
+                              (system_hash64) camera,
+                             &camera_ptr) )
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not find descriptor for input scene_camera");
+
+        goto end;
+    }
+
+    switch (property)
+    {
+        case CAMERA_PROPERTY_ROTATION_HPB_CURVES:
+        {
+            *(curve_container**) out_result = camera_ptr->camera_rotation_hpb;
+
+            break;
+        }
+
+        case CAMERA_PROPERTY_TRANSLATION_CURVES:
+        {
+            *(curve_container**) out_result = camera_ptr->camera_translation_xyz;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized CameraProperty value");
+        }
+    } /* switch (property) */
+
+end:
+    ;
+}
+
+/* Please see header for spec */
+PUBLIC void InitCameraData()
 {
     ASSERT_DEBUG_SYNC(scene_camera_to_camera_internal_map == NULL,
                       "Camera data already initialized");

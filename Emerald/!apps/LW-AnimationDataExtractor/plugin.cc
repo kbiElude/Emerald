@@ -6,6 +6,7 @@
 #include "plugin.h"
 #include "plugin_cameras.h"
 #include "plugin_curves.h"
+#include "plugin_graph.h"
 #include "plugin_lights.h"
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
@@ -80,6 +81,7 @@ XCALL_(int) ExportData(int         version,
     message_funcs_ptr->info("Extracting light data..",
                             NULL);
 
+    InitLightData         ();
     FillSceneWithLightData(new_scene,
                            GetEnvelopeIDToCurveContainerHashMap() );
 
@@ -103,7 +105,13 @@ XCALL_(int) ExportData(int         version,
     FillSceneWithMeshData(new_scene,
                           GetEnvelopeIDToCurveContainerHashMap() );
 
-    /* Check where the user wants to store the data */
+    /* Form a scene graph */
+    message_funcs_ptr->info("Forming scene graph ..",
+                            NULL);
+
+    FillSceneGraphData(new_scene);
+
+    /* Check where the user wanto store the data */
     message_funcs_ptr->info("Please select target file to store the blob.",
                             NULL);
 
@@ -137,6 +145,7 @@ XCALL_(int) ExportData(int         version,
     /* done! */
     DeinitCameraData  ();
     DeinitCurveData   ();
+    DeinitLightData   ();
     DeinitMaterialData();
     DeinitMeshData    ();
     DeinitVMapData    ();

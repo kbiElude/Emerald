@@ -9,8 +9,26 @@
 #include "scene/scene_types.h"
 #include "system/system_types.h"
 
+typedef enum
+{
+    LIGHT_PROPERTY_ROTATION_HPB_CURVES, /* curve_container[3] */
+    LIGHT_PROPERTY_TRANSLATION_CURVES,  /* curve_container[3] */
+} LightProperty;
+
+
 /** TODO */
-void FillSceneWithLightData(__in __notnull scene            in_scene,
-                            __in __notnull system_hash64map curve_id_to_curve_container_map);
+PUBLIC void DeinitLightData();
+
+/** TODO */
+PUBLIC void FillSceneWithLightData(__in __notnull scene            in_scene,
+                                   __in __notnull system_hash64map curve_id_to_curve_container_map);
+
+/** TODO */
+PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
+                                  __in            LightProperty property,
+                                  __out __notnull void*         out_result);
+
+/** TODO */
+PUBLIC void InitLightData();
 
 #endif /* PLUGIN_LIGHTS_H */

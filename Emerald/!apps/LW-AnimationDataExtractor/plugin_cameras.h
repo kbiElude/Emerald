@@ -8,14 +8,25 @@
 
 #include "scene/scene_types.h"
 
-/** TODO */
-void DeinitCameraData();
+typedef enum
+{
+    CAMERA_PROPERTY_ROTATION_HPB_CURVES, /* curve_container[3] */
+    CAMERA_PROPERTY_TRANSLATION_CURVES,  /* curve_container[3] */
+} CameraProperty;
 
 /** TODO */
-void FillSceneWithCameraData(__in __notnull scene            in_scene,
-                             __in __notnull system_hash64map curve_id_to_curve_container_map);
+PUBLIC void DeinitCameraData();
 
 /** TODO */
-void InitCameraData();
+PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
+                                    __in __notnull system_hash64map curve_id_to_curve_container_map);
+
+/** TODO */
+PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
+                                   __in            CameraProperty property,
+                                   __out __notnull void*          out_result);
+
+/** TODO */
+PUBLIC void InitCameraData();
 
 #endif /* PLUGIN_CAMERAS_H */

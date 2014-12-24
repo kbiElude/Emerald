@@ -35,8 +35,8 @@ PUBLIC void DeinitVMapData()
     {
         _vmap* current_vmap_ptr = NULL;
 
-        while (!system_resizable_vector_pop(uv_maps_vector,
-                                           &current_vmap_ptr) )
+        while (system_resizable_vector_pop(uv_maps_vector,
+                                          &current_vmap_ptr) )
         {
             delete current_vmap_ptr;
 

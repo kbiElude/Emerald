@@ -2540,14 +2540,22 @@ PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_
 
 /* Please see header for specification */
 PUBLIC bool scene_graph_save(__in __notnull system_file_serializer serializer,
-                             __in __notnull const scene_graph      graph,
+                             __in __notnull scene_graph            graph,
                              __in __notnull system_hash64map       camera_ptr_to_id_map,
                              __in __notnull system_hash64map       light_ptr_to_id_map,
                              __in __notnull system_hash64map       mesh_instance_ptr_to_id_map)
 {
-    const _scene_graph* graph_ptr    = (const _scene_graph*) graph;
-    system_hash64map    node_hashmap = NULL;
-    bool                result       = true;
+    _scene_graph*    graph_ptr    = (_scene_graph*) graph;
+    system_hash64map node_hashmap = NULL;
+    bool             result       = true;
+
+    if (graph_ptr->dirty)
+    {
+        result &=_scene_graph_update_sorted_nodes(graph_ptr);
+
+        ASSERT_DEBUG_SYNC(result,
+                          "Could not update sorted nodes");
+    }
 
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);

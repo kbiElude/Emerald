@@ -10,6 +10,27 @@
 #include "scene/scene_light.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_hash64map.h"
+
+
+typedef struct _light_data
+{
+    curve_container rotation_curves   [3]; /* hpb */
+    curve_container translation_curves[3]; /* xyz */
+
+    _light_data()
+    {
+        memset(rotation_curves,
+               0,
+               sizeof(rotation_curves) );
+        memset(translation_curves,
+               0,
+               sizeof(translation_curves) );
+    }
+} _light_data;
+
+PRIVATE system_hash64map scene_light_to_light_data_map = NULL;
+
 
 /** TODO */
 PRIVATE void _update_light_properties(__in __notnull scene_light               new_light,
@@ -80,6 +101,12 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
         new_light_uses_shadow_map = !(light_info_ptr->shadowType(new_light_item_id) == LWLSHAD_OFF);
     }
 
+    /* Instantiate new light descriptor */
+    _light_data* new_light_data = new (std::nothrow) _light_data;
+
+    ASSERT_ALWAYS_SYNC(new_light_data != NULL,
+                       "Out of memory");
+
     /* Configure the light using the properties we've retrieved */
     curve_container new_color_curves[] =
     {
@@ -107,23 +134,64 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                              SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,
                             &new_light_color_intensity);
 
+    memcpy(new_light_data->rotation_curves,
+           new_light_rotation_curves,
+           sizeof(new_light_rotation_curves) );
+    memcpy(new_light_data->translation_curves,
+           new_light_translation_curves,
+           sizeof(new_light_translation_curves) );
+
     if (new_light_type != SCENE_LIGHT_TYPE_AMBIENT)
     {
-        scene_light_set_property(new_light,
-                                 SCENE_LIGHT_PROPERTY_ROTATION,
-                                 new_light_rotation_curves);
-        scene_light_set_property(new_light,
-                                 SCENE_LIGHT_PROPERTY_TRANSLATION,
-                                 new_light_translation_curves);
         scene_light_set_property(new_light,
                                  SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
                                 &new_light_uses_shadow_map);
     }
+
+    system_hash64map_insert(scene_light_to_light_data_map,
+                            (system_hash64) new_light,
+                            new_light_data,
+                            NULL,  /* on_remove_callback */
+                            NULL); /* on_remove_callback_user_arg */
 }
 
 /** Please see header for spec */
-void FillSceneWithLightData(__in __notnull scene            in_scene,
-                            __in __notnull system_hash64map curve_id_to_curve_container_map)
+PUBLIC void DeinitLightData()
+{
+    if (scene_light_to_light_data_map != NULL)
+    {
+        const uint32_t n_map_entries = system_hash64map_get_amount_of_elements(scene_light_to_light_data_map);
+
+        for (uint32_t n_entry = 0;
+                      n_entry < n_map_entries;
+                    ++n_entry)
+        {
+            _light_data* light_ptr = NULL;
+
+            if (!system_hash64map_get_element_at(scene_light_to_light_data_map,
+                                                 n_entry,
+                                                &light_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve light descriptor at index [%d]",
+                                  n_entry);
+
+                continue;
+            }
+
+            delete light_ptr;
+            light_ptr = NULL;
+        } /* for (all map entries) */
+
+        system_hash64map_release(scene_light_to_light_data_map);
+        scene_light_to_light_data_map = NULL;
+    }
+}
+
+/** Please see header for spec */
+PUBLIC void FillSceneWithLightData(__in __notnull scene            in_scene,
+                                   __in __notnull system_hash64map curve_id_to_curve_container_map)
 {
     /* Extract available lights.
      *
@@ -134,6 +202,10 @@ void FillSceneWithLightData(__in __notnull scene            in_scene,
 
     while (light_item_id != LWITEM_NULL)
     {
+        /* Sanity check */
+        ASSERT_DEBUG_SYNC(item_info_ptr->parent(light_item_id) == 0,
+                          "Light parenting is not currently supported");
+
         /* Extract light name & type */
         const char*               light_name         = item_info_ptr->name             (light_item_id);
         system_hashed_ansi_string light_name_has     = system_hashed_ansi_string_create(light_name);
@@ -216,4 +288,52 @@ void FillSceneWithLightData(__in __notnull scene            in_scene,
     }
 }
 
+/* Please see header for spec */
+PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
+                                  __in            LightProperty property,
+                                  __out __notnull void*         out_result)
+{
+    _light_data* light_ptr = NULL;
 
+    if (!system_hash64map_get(scene_light_to_light_data_map,
+                              (system_hash64) light,
+                             &light_ptr) )
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not find descriptor for input scene_light");
+
+        goto end;
+    }
+
+    switch (property)
+    {
+        case LIGHT_PROPERTY_ROTATION_HPB_CURVES:
+        {
+            *(curve_container**) out_result = light_ptr->rotation_curves;
+
+            break;
+        }
+
+        case LIGHT_PROPERTY_TRANSLATION_CURVES:
+        {
+            *(curve_container**) out_result = light_ptr->translation_curves;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized LightProperty value");
+        }
+    } /* switch (property) */
+
+end:
+    ;
+}
+
+/* Please see header for spec */
+PUBLIC void InitLightData()
+{
+    scene_light_to_light_data_map = system_hash64map_create(sizeof(_light_data*) );
+}

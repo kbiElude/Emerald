@@ -19,9 +19,7 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_DIRECTION,             /* Settable,     float[3]. Set in run-time  */
     SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,    /* Settable,     curve_container            */
     SCENE_LIGHT_PROPERTY_NAME,                  /* Not settable, system_hashed_ansi_string  */
-    SCENE_LIGHT_PROPERTY_ROTATION,              /* Settable,     curve_container. Order:HPB */ /* TODO: Remove */
     SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION, /* Settable,     curve_container            */
-    SCENE_LIGHT_PROPERTY_TRANSLATION,           /* Settable,     curve_container            */ /* TODO: Remove */
     SCENE_LIGHT_PROPERTY_TYPE,                  /* Not settable, scene_light_type           */
     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,       /* Settable,     bool                       */
 

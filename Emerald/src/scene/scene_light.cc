@@ -27,10 +27,6 @@ typedef struct
     scene_light_type          type;
     bool                      uses_shadow_map;
 
-    /* TODO: Remove */
-    curve_container rotation   [3]; /* HBP */
-    curve_container translation[3];
-
     REFCOUNT_INSERT_VARIABLES
 } _scene_light;
 
@@ -138,36 +134,6 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
            0,
            sizeof(float) * 3);
 
-    /* [TEMPORARY] Rotation: used by all lights. */
-    for (unsigned int n_component = 0;
-                      n_component < sizeof(light_ptr->rotation) / sizeof(light_ptr->rotation[0]);
-                    ++n_component)
-    {
-        std::stringstream rotation_curve_name_sstream;
-
-        rotation_curve_name_sstream << system_hashed_ansi_string_get_buffer(light_ptr->name)
-                                    << " rotation component "
-                                    << n_component;
-
-        light_ptr->rotation[n_component] = curve_container_create(system_hashed_ansi_string_create(rotation_curve_name_sstream.str().c_str() ),
-                                                                  SYSTEM_VARIANT_FLOAT);
-    }
-
-    /* [TEMPORARY] Translation: used by all lights. */
-    for (unsigned int n_component = 0;
-                      n_component < sizeof(light_ptr->translation) / sizeof(light_ptr->translation[0]);
-                    ++n_component)
-    {
-        std::stringstream translation_curve_name_sstream;
-
-        translation_curve_name_sstream << system_hashed_ansi_string_get_buffer(light_ptr->name)
-                                       << " translation component "
-                                       << n_component;
-
-        light_ptr->translation[n_component] = curve_container_create(system_hashed_ansi_string_create(translation_curve_name_sstream.str().c_str() ),
-                                                                     SYSTEM_VARIANT_FLOAT);
-    }
-
     /* Uses shadow map: common */
     light_ptr->uses_shadow_map = true;
 
@@ -187,13 +153,6 @@ PRIVATE void _scene_light_release(void* data_ptr)
        &light_ptr->constant_attenuation,
        &light_ptr->linear_attenuation,
        &light_ptr->quadratic_attenuation,
-
-        light_ptr->rotation    + 0,
-        light_ptr->rotation    + 1,
-        light_ptr->rotation    + 2,
-        light_ptr->translation + 0,
-        light_ptr->translation + 1,
-        light_ptr->translation + 2,
     };
     const uint32_t n_containers = sizeof(containers) / sizeof(containers[0]);
 
@@ -377,24 +336,6 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_ROTATION:
-        {
-            memcpy(out_result,
-                   light_ptr->rotation,
-                   sizeof(light_ptr->rotation) );
-
-            break;
-        }
-
-        case SCENE_LIGHT_PROPERTY_TRANSLATION:
-        {
-            memcpy(out_result,
-                   light_ptr->translation,
-                   sizeof(light_ptr->translation) );
-
-            break;
-        }
-
         case SCENE_LIGHT_PROPERTY_TYPE:
         {
             *((scene_light_type*) out_result) = light_ptr->type;
@@ -472,22 +413,6 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
         result &= system_file_serializer_read_curve_container(serializer,
                                                              &result_light_ptr->color_intensity);
 
-        for (uint32_t n_rotation_component = 0;
-                      n_rotation_component < sizeof(result_light_ptr->rotation) / sizeof(result_light_ptr->rotation[0]);
-                    ++n_rotation_component)
-        {
-            result &= system_file_serializer_read_curve_container(serializer,
-                                                                  result_light_ptr->rotation + n_rotation_component);
-        }
-
-        for (uint32_t n_translation_component = 0;
-                      n_translation_component < sizeof(result_light_ptr->translation) / sizeof(result_light_ptr->translation[0]);
-                    ++n_translation_component)
-        {
-            result &= system_file_serializer_read_curve_container(serializer,
-                                                                  result_light_ptr->translation + n_translation_component);
-        }
-
         if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
         {
             result &= system_file_serializer_read(serializer,
@@ -550,22 +475,6 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
 
     result &= system_file_serializer_write_curve_container(serializer,
                                                            light_ptr->color_intensity);
-
-    for (uint32_t n_rotation_component = 0;
-                  n_rotation_component < sizeof(light_ptr->rotation) / sizeof(light_ptr->rotation[0]);
-                ++n_rotation_component)
-    {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               light_ptr->rotation[n_rotation_component]);
-    }
-
-    for (uint32_t n_translation_component = 0;
-                  n_translation_component < sizeof(light_ptr->translation) / sizeof(light_ptr->translation[0]);
-                ++n_translation_component)
-    {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               light_ptr->translation[n_translation_component]);
-    }
 
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
@@ -695,27 +604,6 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_ROTATION:
-        {
-            for (unsigned int n_component = 0;
-                              n_component < 3;
-                            ++n_component)
-            {
-                if (light_ptr->rotation[n_component] != NULL)
-                {
-                    curve_container_release(light_ptr->rotation[n_component]);
-
-                    light_ptr->rotation[n_component] = NULL;
-                }
-            }
-
-            memcpy(light_ptr->rotation,
-                   data,
-                   sizeof(light_ptr->rotation) );
-
-            break;
-        }
-
         case SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -729,27 +617,6 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             }
 
             light_ptr->quadratic_attenuation = *(curve_container*) data;
-
-            break;
-        }
-
-        case SCENE_LIGHT_PROPERTY_TRANSLATION:
-        {
-            for (unsigned int n_component = 0;
-                              n_component < 3;
-                            ++n_component)
-            {
-                if (light_ptr->translation[n_component] != NULL)
-                {
-                    curve_container_release(light_ptr->translation[n_component]);
-
-                    light_ptr->translation[n_component] = NULL;
-                }
-            }
-
-            memcpy(light_ptr->translation,
-                   data,
-                   sizeof(light_ptr->translation) );
 
             break;
         }

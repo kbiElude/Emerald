@@ -139,9 +139,11 @@ PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector    
 /* Local variables */
 PRIVATE system_hash64map        filename_to_mesh_instance_map      = NULL;
 PRIVATE system_hash64map        item_id_to_mesh_instance_map       = NULL;
+PRIVATE system_hash64map        mesh_instance_to_scene_mesh_map    = NULL;
 PRIVATE system_hash64map        polygon_id_to_polygon_instance_map = system_hash64map_create(sizeof(_polygon_instance*) );
 PRIVATE system_resource_pool    polygon_instance_resource_pool     = NULL;
 PRIVATE system_resizable_vector objects                            = NULL;
+PRIVATE system_hash64map        scene_mesh_to_mesh_instance_map    = NULL;
 
 /** TODO */
 PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
@@ -503,6 +505,13 @@ PUBLIC void DeinitMeshData()
         item_id_to_mesh_instance_map = NULL;
     }
 
+    if (mesh_instance_to_scene_mesh_map != NULL)
+    {
+        system_hash64map_release(mesh_instance_to_scene_mesh_map);
+
+        mesh_instance_to_scene_mesh_map = NULL;
+    }
+
     if (objects != NULL)
     {
         _mesh_instance* object_ptr = NULL;
@@ -530,6 +539,13 @@ PUBLIC void DeinitMeshData()
         system_resource_pool_release(polygon_instance_resource_pool);
 
         polygon_instance_resource_pool = NULL;
+    }
+
+    if (scene_mesh_to_mesh_instance_map != NULL)
+    {
+        system_hash64map_release(scene_mesh_to_mesh_instance_map);
+
+        scene_mesh_to_mesh_instance_map = NULL;
     }
 }
 
@@ -888,13 +904,98 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
             }
 
             /* Store the mesh */
+            scene_mesh new_scene_mesh = NULL;
+
             scene_add_mesh_instance(scene,
                                     new_mesh,
                                     instance_ptr->name);
+
+            new_scene_mesh = scene_get_mesh_instance_by_name(scene,
+                                                             instance_ptr->name);
+            ASSERT_DEBUG_SYNC(new_scene_mesh != NULL,
+                              "Could not retrieve a scene_mesh instance by name");
+
+            system_hash64map_insert(scene_mesh_to_mesh_instance_map,
+                                    (system_hash64) new_scene_mesh,
+                                    instance_ptr,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+            system_hash64map_insert(mesh_instance_to_scene_mesh_map,
+                                    (system_hash64) instance_ptr,
+                                    new_scene_mesh,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
         } /* for (all objects) */
     } /* for (both iterations) */
 
     /* All done! */
+}
+
+/** TODO */
+PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,
+                            __in            MeshProperty property,
+                            __out __notnull void*        out_result)
+{
+    _mesh_instance* mesh_instance_ptr = NULL;
+
+    if (!system_hash64map_get(scene_mesh_to_mesh_instance_map,
+                              (system_hash64) mesh_instance,
+                             &mesh_instance_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input scene_mesh was not recognized");
+
+        goto end;
+    }
+
+    switch (property)
+    {
+        case MESH_PROPERTY_PARENT_SCENE_MESH:
+        {
+            _mesh_instance* parent_mesh_instance_ptr = NULL;
+            scene_mesh      parent_scene_mesh        = NULL;
+
+            if (mesh_instance_ptr->parent_mesh_ptr != NULL)
+            {
+                if (!system_hash64map_get(mesh_instance_to_scene_mesh_map,
+                                          (system_hash64) mesh_instance_ptr->parent_mesh_ptr,
+                                         &parent_scene_mesh) )
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Privately held parent mesh instance representation could not've been converted to scene_mesh");
+
+                    goto end;
+                }
+            } /* if (mesh_instance_ptr->parent_mesh_ptr != NULL) */
+
+            *(scene_mesh*) out_result = parent_scene_mesh;
+
+            break;
+        }
+
+        case MESH_PROPERTY_ROTATION_HPB_CURVES:
+        {
+            *(curve_container**) out_result = mesh_instance_ptr->rotation;
+
+            break;
+        }
+
+        case MESH_PROPERTY_TRANSLATION_CURVES:
+        {
+            *(curve_container**) out_result = mesh_instance_ptr->translation;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "MeshProperty was not recognized");
+        }
+    } /* switch (property) */
+
+end:
+    ;
 }
 
 /** TODO */
@@ -904,12 +1005,14 @@ PUBLIC void InitMeshData()
                       objects                      == NULL,
                       "Mesh data objects already initialized?");
 
-    filename_to_mesh_instance_map  = system_hash64map_create       (sizeof(scene_mesh) );
-    item_id_to_mesh_instance_map   = system_hash64map_create       (sizeof(scene_mesh) );
-    objects                        = system_resizable_vector_create(4, /* capacity */
-                                                                    sizeof(_mesh_instance*) );
-    polygon_instance_resource_pool = system_resource_pool_create   (sizeof(_polygon_instance),
-                                                                    128,   /* n_elements_to_preallocate */
-                                                                    NULL,  /* init_fn */
-                                                                    NULL); /* deinit_fn */
+    filename_to_mesh_instance_map   = system_hash64map_create       (sizeof(scene_mesh) );
+    item_id_to_mesh_instance_map    = system_hash64map_create       (sizeof(scene_mesh) );
+    objects                         = system_resizable_vector_create(4, /* capacity */
+                                                                     sizeof(_mesh_instance*) );
+    mesh_instance_to_scene_mesh_map = system_hash64map_create       (sizeof(scene_mesh) );
+    polygon_instance_resource_pool  = system_resource_pool_create   (sizeof(_polygon_instance),
+                                                                     128,   /* n_elements_to_preallocate */
+                                                                     NULL,  /* init_fn */
+                                                                     NULL); /* deinit_fn */
+    scene_mesh_to_mesh_instance_map = system_hash64map_create       (sizeof(_mesh_instance*) );
 }
