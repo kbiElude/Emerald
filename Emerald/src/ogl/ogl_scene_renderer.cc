@@ -725,7 +725,8 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
     }
     else
     {
-        ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_POINT,
+        ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_AMBIENT ||
+                          light_type == SCENE_LIGHT_TYPE_POINT,
                           "Unrecognized light type, expand.");
     }
 }

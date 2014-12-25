@@ -3664,7 +3664,7 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh                   instance,
                                                   __in __notnull system_file_serializer serializer,
-                                                  __in __notnull system_hash64map       material_name_to_id_map)
+                                                  __in __notnull system_hash64map       mesh_material_to_id_map)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
@@ -3798,29 +3798,19 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                                                      sizeof(pass_ptr->smoothing_angle),
                                                     &pass_ptr->smoothing_angle);
 
-                        /* Material name */
-                        system_hashed_ansi_string material_name = mesh_material_get_name(pass_ptr->material);
-
-                        ASSERT_DEBUG_SYNC(material_name != NULL,
-                                          "NULL material for layer pass [%d]",
-                                          n_layer_pass);
-
                         /* Instead of the string, for improved loading performance, we'll just store an ID using
                          * a map provided by the caller */
-                        void* material_id_ptr = NULL;
+                        unsigned int material_id = -1;
 
-                        if (!system_hash64map_get(material_name_to_id_map,
-                                                  (system_hash64) material_name,
-                                                  &material_id_ptr) )
+                        if (!system_hash64map_get(mesh_material_to_id_map,
+                                                  (system_hash64) pass_ptr->material,
+                                                  &material_id) )
                         {
                             ASSERT_ALWAYS_SYNC(false,
-                                               "Could not map material name [%s] to an ID!",
-                                               system_hashed_ansi_string_get_buffer(material_name) );
+                                               "Could not map material to an ID!");
                         }
                         else
                         {
-                            uint32_t material_id = (uint32_t) material_id_ptr;
-
                             system_file_serializer_write(serializer,
                                                          sizeof(material_id),
                                                         &material_id);

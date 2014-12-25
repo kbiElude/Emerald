@@ -94,6 +94,7 @@ typedef struct _mesh_material
     system_hashed_ansi_string name;
     mesh_material_shading     shading;
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
+    scene_material            source_scene_material;
     system_variant            temp_variant_float;
     ogl_uber                  uber;
 
@@ -106,6 +107,7 @@ typedef struct _mesh_material
         context                = NULL;
         dirty                  = true;
         name                   = NULL;
+        source_scene_material  = NULL;
         temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
         uber                   = NULL;
         uv_map_name            = NULL;
@@ -332,6 +334,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                 &context_textures);
     }
 
+    /* Update source material */
+    ((_mesh_material*) result_material)->source_scene_material = src_material;
+
     /* Force Phong reflection model */
     const mesh_material_shading shading_type = MESH_MATERIAL_SHADING_PHONG;
 
@@ -395,16 +400,20 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
     /* Throw an assertion failures for textures that are not yet supported on mesh_material
      * back-end.
      */
-    ASSERT_DEBUG_SYNC(luminance_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(luminance_texture_file_name == NULL                                    ||
+                      system_hashed_ansi_string_get_length(luminance_texture_file_name) == 0,
                       "mesh_material does not support luminance textures");
 
-    ASSERT_DEBUG_SYNC(normal_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(normal_texture_file_name == NULL                                       ||
+                      system_hashed_ansi_string_get_length(normal_texture_file_name) == 0,
                       "mesh_material does not support normal textures");
 
-    ASSERT_DEBUG_SYNC(reflection_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(reflection_texture_file_name == NULL                                   ||
+                      system_hashed_ansi_string_get_length(reflection_texture_file_name) == 0,
                       "mesh_material does not support reflection textures");
 
-    ASSERT_DEBUG_SYNC(specular_texture_file_name == NULL,
+    ASSERT_DEBUG_SYNC(specular_texture_file_name == NULL                                     ||
+                      system_hashed_ansi_string_get_length(specular_texture_file_name) == 0,
                       "mesh_material does not support specular textures");
 
     /* Configure texture/float/vec3 attachments (as described by scene_material) */
@@ -632,6 +641,16 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
             *(mesh_material_shading*) out_result = material_ptr->shading;
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL:
+        {
+            ASSERT_DEBUG_SYNC(material_ptr->source_scene_material != NULL,
+                              "Source scene_material is being queried for but none is set for the queried mesh_material instance");
+
+            *(scene_material*) out_result = material_ptr->source_scene_material;
 
             break;
         }

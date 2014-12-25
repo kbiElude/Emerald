@@ -253,7 +253,8 @@ PUBLIC EMERALD_API void system_dag_release(__in __notnull system_dag dag)
     {
         _system_dag_connection* connection_ptr = NULL;
 
-        while (!system_resizable_vector_pop(dag_ptr->connections, &connection_ptr) )
+        while (system_resizable_vector_pop(dag_ptr->connections,
+                                          &connection_ptr) )
         {
             delete connection_ptr;
 
@@ -268,7 +269,8 @@ PUBLIC EMERALD_API void system_dag_release(__in __notnull system_dag dag)
     {
         _system_dag_node* node_ptr = NULL;
 
-        while (!system_resizable_vector_pop(dag_ptr->nodes, &node_ptr) )
+        while (!system_resizable_vector_pop(dag_ptr->nodes,
+                                           &node_ptr) )
         {
             delete node_ptr;
 

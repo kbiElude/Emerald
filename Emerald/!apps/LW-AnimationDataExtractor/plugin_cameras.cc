@@ -165,13 +165,24 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
                                                                                  camera_item_id,
                                                                                  envelope_id_to_curve_container_map);
 
+        /* Retrieve Zoom Factor data */
+        curve_container new_camera_zoom_factor = GetCurveContainerForProperty(camera_name_has,
+                                                                              ITEM_PROPERTY_ZOOM_FACTOR,
+                                                                              camera_item_id,
+                                                                              envelope_id_to_curve_container_map);
+
         /* Configure the camera using the properties we've retrieved */
+        const bool uses_physical_properties = true;
+
         scene_camera_set_property(new_camera,
                                   SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,
                                  &new_camera_focal_distance);
         scene_camera_set_property(new_camera,
                                   SCENE_CAMERA_PROPERTY_F_STOP,
                                  &new_camera_fstop);
+        scene_camera_set_property(new_camera,
+                                  SCENE_CAMERA_PROPERTY_ZOOM_FACTOR,
+                                 &new_camera_zoom_factor);
 
         /* Add the camera */
         if (!scene_add_camera(in_scene,
@@ -195,7 +206,7 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
             new_camera_rotation_p,
             new_camera_rotation_b
         };
-        _camera_internal* new_camera_internal_ptr = new (std::nothrow) _camera_internal;
+        _camera_internal* new_camera_internal_ptr  = new (std::nothrow) _camera_internal;
 
         ASSERT_ALWAYS_SYNC(new_camera_internal_ptr != NULL,
                            "Out of memory");

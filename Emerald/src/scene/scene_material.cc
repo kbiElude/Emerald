@@ -398,20 +398,24 @@ PUBLIC bool scene_material_save(__in __notnull system_file_serializer serializer
     result &= system_file_serializer_write_curve_container   (serializer,
                                                               material_ptr->luminance);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              material_ptr->luminance_texture_file_name);
+                                                              (material_ptr->luminance_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                                                                                  : material_ptr->luminance_texture_file_name);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              material_ptr->normal_texture_file_name);
+                                                              (material_ptr->normal_texture_file_name    == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                                                                                  : material_ptr->normal_texture_file_name);
     result &= system_file_serializer_write_curve_container   (serializer,
                                                               material_ptr->reflection_ratio);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              material_ptr->reflection_texture_file_name);
+                                                              (material_ptr->reflection_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                                                                                   : material_ptr->reflection_texture_file_name);
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(material_ptr->smoothing_angle),
                                                              &material_ptr->smoothing_angle);
     result &= system_file_serializer_write_curve_container   (serializer,
                                                               material_ptr->specular_ratio);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              material_ptr->specular_texture_file_name);
+                                                              (material_ptr->specular_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                                                                                 : material_ptr->specular_texture_file_name);
 
     return result;
 }

@@ -5,6 +5,7 @@
 #include "plugin_common.h"
 #include "plugin_materials.h"
 #include "curve/curve_container.h"
+#include "scene/scene.h"
 #include "scene/scene_material.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -60,7 +61,8 @@ PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
 }
 
 /** Please see header for spec */
-PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curve_container_map)
+PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curve_container_map,
+                             __in __notnull scene            in_scene)
 {
     /* Initialize containers */
     materials_vector                 = system_resizable_vector_create(4, /* capacity */
@@ -318,6 +320,9 @@ PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curv
                                      NULL); /* on_remove_callback_user_arg */
         system_resizable_vector_push(materials_vector,
                                      new_material);
+
+        scene_add_material(in_scene,
+                           new_material);
 
         /* Move to the next surface */
         n_surface ++;

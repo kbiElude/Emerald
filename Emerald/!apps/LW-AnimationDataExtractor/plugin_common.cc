@@ -98,6 +98,7 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
         case ITEM_PROPERTY_TRANSLATION_X:            property_name = "Position.X";       break;
         case ITEM_PROPERTY_TRANSLATION_Y:            property_name = "Position.Y";       break;
         case ITEM_PROPERTY_TRANSLATION_Z:            property_name = "Position.Z";       break;
+        case ITEM_PROPERTY_ZOOM_FACTOR:              property_name = "ZoomFactor";       break;
 
         default:
         {
@@ -288,6 +289,18 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                                                                                                         " Specular Ratio"),
                                                 SYSTEM_VARIANT_FLOAT);
             }
+
+            case ITEM_PROPERTY_ZOOM_FACTOR:
+            {
+                new_value = (float) camera_info_ptr->zoomFactor(item_id,
+                                                                0.0); /* time */
+
+                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                        " Zoom Factor"),
+                                                SYSTEM_VARIANT_FLOAT);
+
+                break;
+            } /* case ITEM_PROPERTY_ZOOM_FACTOR: */
         } /* switch (property) */
 
         if (result != NULL)

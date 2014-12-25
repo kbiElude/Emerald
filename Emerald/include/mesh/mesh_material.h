@@ -45,6 +45,7 @@ typedef enum
     MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager         */
     MESH_MATERIAL_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string       */
     MESH_MATERIAL_PROPERTY_SHADING,                /* settable,     mesh_material_shading           */
+    MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL,  /* not settable, scene_material                  */
     MESH_MATERIAL_PROPERTY_UV_MAP_NAME,            /* settable,     system_hashed_ansi_string       */
     MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable,     float. Negative value indicates */
                                                    /*               vertex smoothing is disabled.   */

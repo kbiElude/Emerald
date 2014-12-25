@@ -10,6 +10,7 @@
 #include "plugin_lights.h"
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
+#include "plugin_misc.h"
 #include "plugin_vmaps.h"
 #include "scene/scene.h"
 #include "system/system_assertions.h"
@@ -89,7 +90,8 @@ XCALL_(int) ExportData(int         version,
     message_funcs_ptr->info("Extracting surface data..",
                             NULL);
 
-    InitMaterialData(GetEnvelopeIDToCurveContainerHashMap() );
+    InitMaterialData(GetEnvelopeIDToCurveContainerHashMap(),
+                     new_scene);
 
     /* Extract vmap data */
     message_funcs_ptr->info("Extracting vmap data..",
@@ -104,6 +106,9 @@ XCALL_(int) ExportData(int         version,
     InitMeshData         ();
     FillSceneWithMeshData(new_scene,
                           GetEnvelopeIDToCurveContainerHashMap() );
+
+    /* Extract other props */
+    FillMiscellaneousData(new_scene);
 
     /* Form a scene graph */
     message_funcs_ptr->info("Forming scene graph ..",

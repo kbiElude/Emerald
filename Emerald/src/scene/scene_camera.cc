@@ -24,9 +24,11 @@ typedef struct
     system_timeline_time      dirty_last_recalc_time; /* time, for which the last recalc was done */
     system_hashed_ansi_string name;
     _scene_camera_type        type;
+    bool                      use_camera_physical_properties;
     curve_container           yfov;
     float                     zfar;
     float                     znear;
+    system_timeline_time      zfar_znear_last_recalc_time;
     curve_container           zoom_factor;
 
     float far_plane_height;
@@ -65,6 +67,49 @@ PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_c
 }
 
 /** TODO */
+PRIVATE void _scene_camera_calculate_zfar_znear(__in __notnull _scene_camera*       camera_ptr,
+                                                __in           system_timeline_time time)
+{
+    const float coc = 0.05f;
+    float       f_stop;
+    float       focal_distance;
+    float       zoom_factor;
+
+    curve_container_get_value(camera_ptr->f_stop,
+                              time,
+                              false,
+                              camera_ptr->temp_variant);
+    system_variant_get_float (camera_ptr->temp_variant,
+                             &f_stop);
+
+    curve_container_get_value(camera_ptr->focal_distance,
+                              time,
+                              false,
+                              camera_ptr->temp_variant);
+    system_variant_get_float (camera_ptr->temp_variant,
+                             &focal_distance);
+
+    curve_container_get_value(camera_ptr->zoom_factor,
+                              time,
+                              false,
+                              camera_ptr->temp_variant);
+    system_variant_get_float (camera_ptr->temp_variant,
+                             &zoom_factor);
+
+    float d1           = f_stop * coc;
+    float focal_length = zoom_factor / 1.33333f * 0.01f; /* assuming aperture height of 35 mm */
+    float h            = focal_length * focal_length / d1;
+    float d2           = h + focal_distance - focal_length;
+
+    camera_ptr->znear = h * focal_distance / d2;
+
+    float d = (2.0f * camera_ptr->znear - focal_distance);
+
+    camera_ptr->zfar                        = focal_distance * camera_ptr->znear / d;
+    camera_ptr->zfar_znear_last_recalc_time = time;
+}
+
+/** TODO */
 PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_ptr,
                                 __in __notnull system_hashed_ansi_string name)
 {
@@ -93,6 +138,9 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
     camera_ptr->zoom_factor            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                         " Zoom Factor"),
                                                                 SYSTEM_VARIANT_FLOAT);
+
+    camera_ptr->use_camera_physical_properties = false;
+    camera_ptr->zfar_znear_last_recalc_time    = -1;
 
     scene_camera_retain( (scene_camera) camera_ptr);
 }
@@ -185,6 +233,15 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
     {
         case SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE:
         {
+            if (camera_ptr->use_camera_physical_properties)
+            {
+                if (camera_ptr->zfar_znear_last_recalc_time != time)
+                {
+                    _scene_camera_calculate_zfar_znear(camera_ptr,
+                                                       time);
+                }
+            }
+
             *(float*) out_result = camera_ptr->zfar;
 
             break;
@@ -227,6 +284,15 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 
         case SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE:
         {
+            if (camera_ptr->use_camera_physical_properties)
+            {
+                if (camera_ptr->zfar_znear_last_recalc_time != time)
+                {
+                    _scene_camera_calculate_zfar_znear(camera_ptr,
+                                                       time);
+                }
+            }
+
             *(float*) out_result = camera_ptr->znear;
 
             break;
@@ -249,6 +315,13 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
         case SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE:
         {
             *(scene_graph_node*) out_result = camera_ptr->owner_node;
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES:
+        {
+            *(bool*) out_result = camera_ptr->use_camera_physical_properties;
 
             break;
         }
@@ -305,32 +378,41 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
     if (result_ptr->f_stop != NULL)
     {
         curve_container_release(result_ptr->f_stop);
+
+        result_ptr->f_stop = NULL;
     }
 
     if (result_ptr->focal_distance != NULL)
     {
         curve_container_release(result_ptr->focal_distance);
+
+        result_ptr->focal_distance = NULL;
     }
 
     if (result_ptr->yfov != NULL)
     {
         curve_container_release(result_ptr->yfov);
+
+        result_ptr->yfov = NULL;
     }
 
     if (result_ptr->zoom_factor != NULL)
     {
         curve_container_release(result_ptr->zoom_factor);
+
+        result_ptr->zoom_factor = NULL;
     }
 
     /* Retrieve other camera properties */
     float              camera_ar;
-    curve_container    camera_f_stop;
-    curve_container    camera_focal_distance;
+    curve_container    camera_f_stop         = NULL;
+    curve_container    camera_focal_distance = NULL;
     _scene_camera_type camera_type;
-    curve_container    camera_yfov;
+    bool               camera_use_physical_properties = false;
+    curve_container    camera_yfov                    = NULL;
     float              camera_zfar;
     float              camera_znear;
-    curve_container    camera_zoom_factor;
+    curve_container    camera_zoom_factor    = NULL;
 
     if (!system_file_serializer_read                (serializer,
                                                      sizeof(camera_ar),
@@ -351,7 +433,10 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
                                                      sizeof(camera_znear),
                                                     &camera_znear)          ||
         !system_file_serializer_read_curve_container(serializer,
-                                                    &camera_zoom_factor) )
+                                                    &camera_zoom_factor)    ||
+        !system_file_serializer_read                (serializer,
+                                                     sizeof(camera_use_physical_properties),
+                                                     &camera_use_physical_properties) )
     {
         goto end_error;
     }
@@ -369,6 +454,9 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
     scene_camera_set_property(result,
                               SCENE_CAMERA_PROPERTY_TYPE,
                              &camera_type);
+    scene_camera_set_property(result,
+                              SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES,
+                             &camera_use_physical_properties);
 
     result_ptr->f_stop         = camera_f_stop;
     result_ptr->focal_distance = camera_focal_distance;
@@ -421,6 +509,9 @@ PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
                                                              &camera_ptr->znear);
     result &= system_file_serializer_write_curve_container  (serializer,
                                                              camera_ptr->zoom_factor);
+    result &= system_file_serializer_write                  (serializer,
+                                                             sizeof(camera_ptr->use_camera_physical_properties),
+                                                            &camera_ptr->use_camera_physical_properties);
 
     return result;
 }
@@ -443,6 +534,9 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
 
         case SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE:
         {
+            ASSERT_DEBUG_SYNC(!camera_ptr->use_camera_physical_properties,
+                              "Replacing far plane setting while use-camera-physical-props mode is on makes no sense");
+
             camera_ptr->zfar = *(float*) data;
 
             break;
@@ -488,6 +582,9 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
 
         case SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE:
         {
+            ASSERT_DEBUG_SYNC(!camera_ptr->use_camera_physical_properties,
+                              "Replacing near plane distance value while use-camera-physical-props mode is on makes no sense");
+
             camera_ptr->znear = *(float*) data;
 
             break;
@@ -511,6 +608,13 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
             break;
         }
 
+        case SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES:
+        {
+            camera_ptr->use_camera_physical_properties = *(bool*) data;
+
+            break;
+        }
+
         case SCENE_CAMERA_PROPERTY_VERTICAL_FOV:
         {
             /* TODO: This is bad and can/will backfire in gazillion ways in indeterministic
@@ -526,6 +630,25 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
 
             camera_ptr->yfov = *(curve_container*) data;
             curve_container_retain(camera_ptr->yfov);
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_ZOOM_FACTOR:
+        {
+            /* TODO: This is bad and can/will backfire in gazillion ways in indeterministic
+             *       future. Please implement a property copy constructor-like function for
+             *       curve containers.
+             */
+            if (camera_ptr->zoom_factor != NULL)
+            {
+                curve_container_release(camera_ptr->zoom_factor);
+
+                camera_ptr->zoom_factor = NULL;
+            }
+
+            camera_ptr->zoom_factor = *(curve_container*) data;
+            curve_container_retain(camera_ptr->zoom_factor);
 
             break;
         }

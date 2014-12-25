@@ -8,6 +8,6 @@
 
 #include "scene/scene_types.h"
 
-void FillWithMiscellaneousData(__in __notnull scene in_scene);
+void FillMiscellaneousData(__in __notnull scene in_scene);
 
 #endif /* PLUGIN_MATERIALS_H */
