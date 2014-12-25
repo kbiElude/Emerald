@@ -15,11 +15,16 @@
 
 typedef struct _light_data
 {
+    void*           object_id;
+    void*           parent_object_id;
     curve_container rotation_curves   [3]; /* hpb */
     curve_container translation_curves[3]; /* xyz */
 
     _light_data()
     {
+        object_id        = NULL;
+        parent_object_id = NULL;
+
         memset(rotation_curves,
                0,
                sizeof(rotation_curves) );
@@ -133,6 +138,9 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
     scene_light_set_property(new_light,
                              SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,
                             &new_light_color_intensity);
+
+    new_light_data->object_id        = new_light_item_id;
+    new_light_data->parent_object_id = item_info_ptr->parent(new_light_item_id);
 
     memcpy(new_light_data->rotation_curves,
            new_light_rotation_curves,
@@ -307,6 +315,20 @@ PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
 
     switch (property)
     {
+        case LIGHT_PROPERTY_OBJECT_ID:
+        {
+            *(void**) out_result = light_ptr->object_id;
+
+            break;
+        }
+
+        case LIGHT_PROPERTY_PARENT_OBJECT_ID:
+        {
+            *(void**) out_result = light_ptr->parent_object_id;
+
+            break;
+        }
+
         case LIGHT_PROPERTY_ROTATION_HPB_CURVES:
         {
             *(curve_container**) out_result = light_ptr->rotation_curves;

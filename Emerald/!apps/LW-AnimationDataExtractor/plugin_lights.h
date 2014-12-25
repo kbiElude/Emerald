@@ -11,6 +11,8 @@
 
 typedef enum
 {
+    LIGHT_PROPERTY_OBJECT_ID,           /* void*              */
+    LIGHT_PROPERTY_PARENT_OBJECT_ID,    /* void               */
     LIGHT_PROPERTY_ROTATION_HPB_CURVES, /* curve_container[3] */
     LIGHT_PROPERTY_TRANSLATION_CURVES,  /* curve_container[3] */
 } LightProperty;

@@ -30,6 +30,7 @@ typedef struct _mesh_instance
     mesh                      mesh_gpu;
     _mesh_instance*           mesh_gpu_provider_ptr;
     system_hashed_ansi_string name;
+    void*                     object_id;
     LWItemID                  parent_item_id;
     _mesh_instance*           parent_mesh_ptr;
     float                     pivot      [3];
@@ -52,6 +53,8 @@ typedef struct _mesh_instance
         name                  = NULL;
         n_points              = 0;
         n_polygons            = 0;
+        object_id             = NULL;
+        parent_item_id        = NULL;
         parent_mesh_ptr       = NULL;
 
         material_to_polygon_instance_vector_map = system_hash64map_create(sizeof(system_resizable_vector) );
@@ -571,7 +574,6 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
         new_instance->name               = system_hashed_ansi_string_create(item_info_ptr->name(object_id) );
         new_instance->n_points           = object_info_ptr->numPoints      (object_id);
         new_instance->n_polygons         = object_info_ptr->numPolygons    (object_id);
-        new_instance->parent_item_id     = item_info_ptr->parent           (object_id);
 
         /* If this is the first mesh instance that mentions of the specific file name,
          * store it in our nifty internal map */
@@ -622,6 +624,10 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
         new_instance->pivot[0] = (float) lw_pivot_data[0];
         new_instance->pivot[1] = (float) lw_pivot_data[1];
         new_instance->pivot[2] = (float) lw_pivot_data[2];
+
+        /* Extract ID data */
+        new_instance->object_id      = object_id;
+        new_instance->parent_item_id = item_info_ptr->parent(object_id);
 
         /* Have we already created a mesh instance descriptor that is described by the
          * same file name? If so, we can re-use GPU mesh representation later on,
@@ -950,6 +956,20 @@ PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,
 
     switch (property)
     {
+        case MESH_PROPERTY_OBJECT_ID:
+        {
+            *(void**) out_result = mesh_instance_ptr->object_id;
+
+            break;
+        }
+
+        case MESH_PROPERTY_PARENT_OBJECT_ID:
+        {
+            *(void**) out_result = mesh_instance_ptr->parent_item_id;
+
+            break;
+        }
+
         case MESH_PROPERTY_PARENT_SCENE_MESH:
         {
             _mesh_instance* parent_mesh_instance_ptr = NULL;

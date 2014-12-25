@@ -10,6 +10,8 @@
 
 typedef enum
 {
+    CAMERA_PROPERTY_OBJECT_ID,           /* void*              */
+    CAMERA_PROPERTY_PARENT_OBJECT_ID,    /* void*              */
     CAMERA_PROPERTY_ROTATION_HPB_CURVES, /* curve_container[3] */
     CAMERA_PROPERTY_TRANSLATION_CURVES,  /* curve_container[3] */
 } CameraProperty;

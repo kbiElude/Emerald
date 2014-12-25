@@ -109,6 +109,7 @@ XCALL_(int) ExportData(int         version,
     message_funcs_ptr->info("Forming scene graph ..",
                             NULL);
 
+    InitGraphData     ();
     FillSceneGraphData(new_scene);
 
     /* Check where the user wanto store the data */
@@ -145,6 +146,7 @@ XCALL_(int) ExportData(int         version,
     /* done! */
     DeinitCameraData  ();
     DeinitCurveData   ();
+    DeinitGraphData   ();
     DeinitLightData   ();
     DeinitMaterialData();
     DeinitMeshData    ();

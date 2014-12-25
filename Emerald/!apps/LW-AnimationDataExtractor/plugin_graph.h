@@ -10,6 +10,12 @@
 #include "system/system_types.h"
 
 /** TODO */
+PUBLIC void DeinitGraphData();
+
+/** TODO */
 PUBLIC void FillSceneGraphData(__in __notnull scene in_scene);
+
+/** TODO */
+PUBLIC void InitGraphData();
 
 #endif /* PLUGIN_GRAPH_H */

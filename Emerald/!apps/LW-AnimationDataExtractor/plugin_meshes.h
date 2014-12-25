@@ -11,6 +11,8 @@
 
 typedef enum
 {
+    MESH_PROPERTY_OBJECT_ID,           /* void*              */
+    MESH_PROPERTY_PARENT_OBJECT_ID,    /* void*              */
     MESH_PROPERTY_PARENT_SCENE_MESH,   /* scene_mesh         */
     MESH_PROPERTY_ROTATION_HPB_CURVES, /* curve_container[3] */
     MESH_PROPERTY_TRANSLATION_CURVES,  /* curve_container[3] */

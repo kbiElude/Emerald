@@ -17,6 +17,8 @@ typedef struct _camera_internal
 {
     curve_container camera_rotation_hpb   [3];
     curve_container camera_translation_xyz[3];
+    void*           object_id;
+    void*           parent_object_id;
 
     _camera_internal()
     {
@@ -26,6 +28,9 @@ typedef struct _camera_internal
         memset(camera_translation_xyz,
                0,
                sizeof(camera_translation_xyz) );
+
+        object_id        = NULL;
+        parent_object_id = NULL;
     }
 
     ~_camera_internal()
@@ -97,10 +102,6 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
 
     while (camera_item_id != LWITEM_NULL)
     {
-        /* Sanity check: no parent */
-        ASSERT_DEBUG_SYNC(item_info_ptr->parent(camera_item_id) == 0,
-                          "Camera parenting is not currently supported");
-
         /* Sanity check: no pivot */
         LWDVector pivot;
 
@@ -115,7 +116,7 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
                           "Camera pivoting is not currently supported");
 
         /* Extract camera name */
-        const char*               camera_name     = item_info_ptr->name(camera_item_id);
+        const char*               camera_name     = item_info_ptr->name             (camera_item_id);
         system_hashed_ansi_string camera_name_has = system_hashed_ansi_string_create(camera_name);
 
         /* Instantiate a new camera */
@@ -210,6 +211,9 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
                new_camera_positions,
                sizeof(new_camera_internal_ptr->camera_translation_xyz) );
 
+        new_camera_internal_ptr->object_id        = camera_item_id;
+        new_camera_internal_ptr->parent_object_id = item_info_ptr->parent(camera_item_id);
+
         system_hash64map_insert(scene_camera_to_camera_internal_map,
                                 (system_hash64) new_camera,
                                 new_camera_internal_ptr,
@@ -240,6 +244,20 @@ PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
 
     switch (property)
     {
+        case CAMERA_PROPERTY_OBJECT_ID:
+        {
+            *(void**) out_result = camera_ptr->object_id;
+
+            break;
+        }
+
+        case CAMERA_PROPERTY_PARENT_OBJECT_ID:
+        {
+            *(void**) out_result = camera_ptr->parent_object_id;
+
+            break;
+        }
+
         case CAMERA_PROPERTY_ROTATION_HPB_CURVES:
         {
             *(curve_container**) out_result = camera_ptr->camera_rotation_hpb;
