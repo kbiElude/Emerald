@@ -1147,7 +1147,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                item_ptr->model_matrix,
                                                item_ptr->normal_matrix,
                                                material_uber,
-                                               item_ptr->material);
+                                               item_ptr->material,
+                                               frame_time);
             }
         }
         ogl_uber_rendering_stop(material_uber);

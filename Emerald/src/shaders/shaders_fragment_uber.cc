@@ -131,7 +131,8 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
     }
 
     /* Start forming the shader. */
-    const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT);
+    const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT ||
+                                                properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT);
     const bool is_luminosity_texture_defined = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D);
 
     line << "result_fragment += (";
@@ -140,12 +141,12 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
     {
         if (is_luminosity_float_defined)
         {
-            line << "vec4(vec3(luminosity_material), 0.0) ";
+            line << "vec4(vec3(luminosity_material), 1.0) ";
         }
         else
         if (is_luminosity_texture_defined)
         {
-            line << "vec4(vec3(texture(luminosity_material_sampler, in_fs_luminosity_uv).x), 0.0) ";
+            line << "vec4(vec3(texture(luminosity_material_sampler, in_fs_luminosity_uv).x), 1.0) ";
         }
 
         /* Compute the light contribution: diffuse */
@@ -172,7 +173,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
             }
         } /* switch (properties[SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE]) */
 
-        line << "vec4(ambient_color, 0.0)";
+        line << "vec4(ambient_color, 1.0)";
     }
 
     line << ")";
@@ -189,6 +190,13 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
             case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
             {
                 line << " * texture(diffuse_material_sampler, in_fs_diffuse_uv)";
+
+                break;
+            }
+
+            case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3:
+            {
+                line << " * vec4(diffuse_material, 1.0)";
 
                 break;
             }
@@ -673,6 +681,15 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3,
+
+            TYPE_VEC3,
+            "ambient_material",
+
+            TYPE_UNKNOWN
+        },
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
 
             TYPE_VEC4,
@@ -694,6 +711,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             "object_diffuse_uv"
         },
 
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3,
+
+            TYPE_VEC3,
+            "diffuse_material",
+            TYPE_UNKNOWN
+        },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4,
@@ -718,6 +743,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT,
+
+            TYPE_FLOAT,
+            "luminosity_material",
+            TYPE_UNKNOWN
+        },
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
 
             TYPE_FLOAT,
@@ -727,6 +760,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT,
+
+            TYPE_FLOAT,
+            "shininess_material",
+            TYPE_UNKNOWN
+        },
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,
 
             TYPE_FLOAT,
@@ -734,6 +775,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             TYPE_UNKNOWN
         },
 
+        {
+            SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE,
+            SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT,
+
+            TYPE_FLOAT,
+            "specular_material",
+            TYPE_UNKNOWN
+        },
         {
             SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE,
             SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT,

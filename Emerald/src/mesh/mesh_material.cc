@@ -705,16 +705,16 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(__in                     __notnull mesh_material                  material,
-                                                                                      __in                               mesh_material_shading_property property,
-                                                                                      __in                               system_timeline_time           time,
-                                                                                      __out_ecount_full_opt(3)           float*                         out_vec3_value)
+PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container_vec3(__in      __notnull mesh_material                  material,
+                                                                                      __in                mesh_material_shading_property property,
+                                                                                      __in                system_timeline_time           time,
+                                                                                      __out_ecount_opt(3) float*                         out_vec3_value)
 {
     _mesh_material*          material_ptr = ((_mesh_material*) material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
 
-    ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
-                      "Requested shading property is not using a curve container float attachment");
+    ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
+                      "Requested shading property is not using a curve container vec3 attachment");
 
     for (unsigned int n_component = 0;
                       n_component < 3;
