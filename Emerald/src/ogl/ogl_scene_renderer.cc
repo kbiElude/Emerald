@@ -1027,7 +1027,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 curve_container  current_light_attenuation_curves[3];
                 float            current_light_attenuation_floats[3];
                 curve_container  current_light_color_curves      [3];
+                curve_container  current_light_color_intensity_curve;
                 float            current_light_color_floats      [3];
+                float            current_light_color_intensity = 0.0f;
                 float            current_light_direction_floats  [3];
                 float            current_light_position_floats   [3];
 
@@ -1038,6 +1040,16 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 scene_light_get_property(current_light,
                                          SCENE_LIGHT_PROPERTY_COLOR,
                                          current_light_color_curves);
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,
+                                        &current_light_color_intensity_curve);
+
+                curve_container_get_value(current_light_color_intensity_curve,
+                                          frame_time,
+                                          false, /* should_force */
+                                          renderer_ptr->temp_variant_float);
+                system_variant_get_float (renderer_ptr->temp_variant_float,
+                                         &current_light_color_intensity);
 
                 for (unsigned int n_color_component = 0;
                                   n_color_component < 3;
@@ -1049,6 +1061,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                               renderer_ptr->temp_variant_float);
                     system_variant_get_float (renderer_ptr->temp_variant_float,
                                               current_light_color_floats + n_color_component);
+
+                    current_light_color_floats[n_color_component] *= current_light_color_intensity;
                 }
 
                 if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT)
