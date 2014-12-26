@@ -311,8 +311,6 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
                                     point_id,
                                     out_point_vertex_data);
 
-    out_point_vertex_data[2] *= -1.0f;
-
     /* Extract UV for the point */
     unsigned int n_uv_vmaps   = 0;
     bool         uv_extracted = false;

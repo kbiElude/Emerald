@@ -360,6 +360,12 @@ PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer 
     _scene_material* result_material_ptr = (_scene_material*) result_material;
 
     result &= system_file_serializer_read_curve_container   (serializer,
+                                                             result_material_ptr->color + 0);
+    result &= system_file_serializer_read_curve_container   (serializer,
+                                                             result_material_ptr->color + 1);
+    result &= system_file_serializer_read_curve_container   (serializer,
+                                                             result_material_ptr->color + 2);
+    result &= system_file_serializer_read_curve_container   (serializer,
                                                             &result_material_ptr->glosiness);
     result &= system_file_serializer_read_curve_container   (serializer,
                                                             &result_material_ptr->luminance);
@@ -393,6 +399,12 @@ PUBLIC bool scene_material_save(__in __notnull system_file_serializer serializer
 
     result  = system_file_serializer_write_hashed_ansi_string(serializer,
                                                               material_ptr->name);
+    result &= system_file_serializer_write_curve_container  (serializer,
+                                                             material_ptr->color[0]);
+    result &= system_file_serializer_write_curve_container  (serializer,
+                                                             material_ptr->color[1]);
+    result &= system_file_serializer_write_curve_container  (serializer,
+                                                             material_ptr->color[2]);
     result &= system_file_serializer_write_curve_container   (serializer,
                                                               material_ptr->glosiness);
     result &= system_file_serializer_write_curve_container   (serializer,
