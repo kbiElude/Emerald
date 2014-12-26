@@ -9,6 +9,8 @@
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
+#include "scene/scene_light.h"
+#include "scene/scene_mesh.h"
 #include "system/system_assertions.h"
 #include "system/system_dag.h"
 #include "system/system_file_serializer.h"
@@ -2279,6 +2281,227 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
 {
     system_critical_section_enter( ((_scene_graph*) graph)->compute_lock_cs);
 }
+
+#ifdef _DEBUG
+    /** TODO */
+    PRIVATE system_resizable_vector _scene_graph_get_children(__in __notnull _scene_graph*    graph_ptr,
+                                                              __in __notnull scene_graph_node node)
+    {
+        const uint32_t          n_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->nodes);
+        system_resizable_vector result  = system_resizable_vector_create                (4, /* capacity */
+                                                                                         sizeof(scene_graph_node) );
+
+        for (uint32_t n_node = 0;
+                      n_node < n_nodes;
+                    ++n_node)
+        {
+            _scene_graph_node* child_node_ptr = NULL;
+
+            system_resizable_vector_get_element_at(graph_ptr->nodes,
+                                                   n_node,
+                                                  &child_node_ptr);
+
+            if (child_node_ptr->parent_node == (_scene_graph_node*) node)
+            {
+                system_resizable_vector_push(result,
+                                             child_node_ptr);
+            }
+        } /* for (all graph nodes) */
+
+        return result;
+    }
+
+    /** TODO */
+    PRIVATE const char* _scene_graph_get_node_type_string(__in scene_graph_node_type type)
+    {
+        const char* result = "[?]";
+
+        switch (type)
+        {
+            case SCENE_GRAPH_NODE_TYPE_ROOT:
+            {
+                result = "Root";
+
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_GENERAL:
+            {
+                result = "General";
+
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
+            {
+                result = "Rotation [dynamic]";
+
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
+            {
+                result = "Scale [dynamic]";
+
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4:
+            {
+                result = "Matrix4x4 [static]";
+
+                break;
+            }
+
+            case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
+            {
+                result = "Translation [dynamic]";
+
+                break;
+            }
+        } /* switch (type) */
+
+        return result;
+    }
+
+    /* Please see header for specification */
+    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph          graph,
+                                                      __in __notnull scene_graph_node     node,
+                                                      __in           unsigned int         indent_level,
+                                                      __in           system_timeline_time time)
+    {
+        _scene_graph*           graph_ptr   = (_scene_graph*) graph;
+        _scene_graph_node*      node_ptr    = (_scene_graph_node*) node;
+
+        system_resizable_vector child_nodes   = _scene_graph_get_children                     (graph_ptr,
+                                                                                               node);
+        const uint32_t          n_child_nodes = system_resizable_vector_get_amount_of_elements(child_nodes);
+        char                    tmp[1024];
+
+        memset(tmp,
+               ' ',
+               sizeof(tmp) );
+
+        sprintf_s(tmp + indent_level,
+                  sizeof(tmp) - indent_level,
+                  "[%s]",
+                  _scene_graph_get_node_type_string(node_ptr->type)
+                 );
+
+        LOG_INFO("%s", tmp);
+
+        /* Any attached objects ? */
+        const uint32_t n_attached_cameras = system_resizable_vector_get_amount_of_elements(node_ptr->attached_cameras);
+        const uint32_t n_attached_lights  = system_resizable_vector_get_amount_of_elements(node_ptr->attached_lights);
+        const uint32_t n_attached_meshes  = system_resizable_vector_get_amount_of_elements(node_ptr->attached_meshes);
+
+        for (uint32_t n_attached_camera = 0;
+                      n_attached_camera < n_attached_cameras;
+                    ++n_attached_camera)
+        {
+            scene_camera              camera      = NULL;
+            system_hashed_ansi_string camera_name = NULL;
+
+            system_resizable_vector_get_element_at(node_ptr->attached_cameras,
+                                                   n_attached_camera,
+                                                  &camera);
+
+            scene_camera_get_property(camera,
+                                      SCENE_CAMERA_PROPERTY_NAME,
+                                      time,
+                                     &camera_name);
+
+            memset(tmp,
+                   ' ',
+                   sizeof(tmp) );
+
+            sprintf_s(tmp + indent_level,
+                      sizeof(tmp) - indent_level,
+                      "+ Camera:[%s]",
+                      system_hashed_ansi_string_get_buffer(camera_name) );
+
+            LOG_INFO("%s", tmp);
+        } /* for (all attached cameras) */
+
+        for (uint32_t n_attached_light = 0;
+                      n_attached_light < n_attached_lights;
+                    ++n_attached_light)
+        {
+            scene_light               light      = NULL;
+            system_hashed_ansi_string light_name = NULL;
+
+            system_resizable_vector_get_element_at(node_ptr->attached_lights,
+                                                   n_attached_light,
+                                                  &light);
+
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_NAME,
+                                    &light_name);
+
+            memset(tmp,
+                   ' ',
+                   sizeof(tmp) );
+
+            sprintf_s(tmp + indent_level,
+                      sizeof(tmp) - indent_level,
+                      "+ Light:[%s]",
+                      system_hashed_ansi_string_get_buffer(light_name) );
+
+            LOG_INFO("%s", tmp);
+        } /* for (all attached lights) */
+
+        for (uint32_t n_attached_mesh = 0;
+                      n_attached_mesh < n_attached_meshes;
+                    ++n_attached_mesh)
+        {
+            scene_mesh                mesh      = NULL;
+            system_hashed_ansi_string mesh_name = NULL;
+
+            system_resizable_vector_get_element_at(node_ptr->attached_meshes,
+                                                   n_attached_mesh,
+                                                  &mesh);
+
+            scene_mesh_get_property(mesh,
+                                    SCENE_MESH_PROPERTY_NAME,
+                                   &mesh_name);
+
+            memset(tmp,
+                   ' ',
+                   sizeof(tmp) );
+
+            sprintf_s(tmp + indent_level,
+                      sizeof(tmp) - indent_level,
+                      "+ Mesh:[%s]",
+                      system_hashed_ansi_string_get_buffer(mesh_name) );
+
+            LOG_INFO("%s", tmp);
+        } /* for (all attached meshes) */
+
+        /* Iterate over children */
+        for (uint32_t n_child_node = 0;
+                      n_child_node < n_child_nodes;
+                    ++n_child_node)
+        {
+            _scene_graph_node* child_node_ptr = NULL;
+
+            system_resizable_vector_get_element_at(child_nodes,
+                                                   n_child_node,
+                                                  &child_node_ptr);
+
+            /* Process children */
+            scene_graph_log_hierarchy(graph,
+                                      (scene_graph_node) child_node_ptr,
+                                      indent_level + 1,
+                                      time);
+        } /* for (all child nodes) */
+
+        /* Done */
+        system_resizable_vector_release(child_nodes);
+
+        child_nodes = NULL;
+    }
+
+#endif
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_graph_node          node,

@@ -23,6 +23,7 @@ extern LWCameraInfo*    camera_info_ptr;
 extern LWChannelInfo*   channel_info_ptr;
 extern LWEnvelopeFuncs* envelope_ptr;
 extern LWImageList*     image_list_ptr;
+extern LWInterfaceInfo* interface_info_ptr;
 extern LWItemInfo*      item_info_ptr;
 extern LWLightInfo*     light_info_ptr;
 extern LWMessageFuncs*  message_funcs_ptr;

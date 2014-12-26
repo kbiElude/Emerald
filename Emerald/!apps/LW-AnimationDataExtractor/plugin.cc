@@ -22,18 +22,19 @@
 #include "system/system_variant.h"
 
 /* Forward declarations */
-LWCameraInfo*    camera_info_ptr   = NULL;
-LWChannelInfo*   channel_info_ptr  = NULL;
-LWEnvelopeFuncs* envelope_ptr      = NULL;
-LWImageList*     image_list_ptr    = NULL;
-LWItemInfo*      item_info_ptr     = NULL;
-LWLightInfo*     light_info_ptr    = NULL;
-LWMessageFuncs*  message_funcs_ptr = NULL;
-LWObjectFuncs*   object_funcs_ptr  = NULL;
-LWObjectInfo*    object_info_ptr   = NULL;
-LWSceneInfo*     scene_info_ptr    = NULL;
-LWSurfaceFuncs*  surface_funcs_ptr = NULL;
-LWTextureFuncs*  texture_funcs_ptr = NULL;
+LWCameraInfo*    camera_info_ptr    = NULL;
+LWChannelInfo*   channel_info_ptr   = NULL;
+LWEnvelopeFuncs* envelope_ptr       = NULL;
+LWImageList*     image_list_ptr     = NULL;
+LWInterfaceInfo* interface_info_ptr = NULL;
+LWItemInfo*      item_info_ptr      = NULL;
+LWLightInfo*     light_info_ptr     = NULL;
+LWMessageFuncs*  message_funcs_ptr  = NULL;
+LWObjectFuncs*   object_funcs_ptr   = NULL;
+LWObjectInfo*    object_info_ptr    = NULL;
+LWSceneInfo*     scene_info_ptr     = NULL;
+LWSurfaceFuncs*  surface_funcs_ptr  = NULL;
+LWTextureFuncs*  texture_funcs_ptr  = NULL;
 
 /* Forward declarations. */
 XCALL_(int) ExportData(int         version,
@@ -47,18 +48,19 @@ XCALL_(int) ExportData(int         version,
     }
 
     /* Retrieve func ptr structures */
-    camera_info_ptr   = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_TRANSIENT);
-    channel_info_ptr  = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
-    envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
-    image_list_ptr    = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_TRANSIENT);
-    item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
-    light_info_ptr    = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_TRANSIENT);
-    message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
-    object_funcs_ptr  = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_TRANSIENT);
-    object_info_ptr   = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
-    scene_info_ptr    = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
-    surface_funcs_ptr = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
-    texture_funcs_ptr = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    camera_info_ptr    = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_TRANSIENT);
+    channel_info_ptr   = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
+    envelope_ptr       = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
+    image_list_ptr     = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_TRANSIENT);
+    interface_info_ptr = (LWInterfaceInfo*) global(LWINTERFACEINFO_GLOBAL, GFUSE_TRANSIENT);
+    item_info_ptr      = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
+    light_info_ptr     = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_TRANSIENT);
+    message_funcs_ptr  = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    object_funcs_ptr   = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_TRANSIENT);
+    object_info_ptr    = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
+    scene_info_ptr     = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
+    surface_funcs_ptr  = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    texture_funcs_ptr  = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_TRANSIENT);
 
     /* Spawn a new scene */
     scene new_scene = scene_create(NULL, /* ogl_context */

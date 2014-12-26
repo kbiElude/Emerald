@@ -18,6 +18,7 @@
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
+#include "system/system_variant.h"
 #include <sstream>
 
 
@@ -309,6 +310,8 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
     layer_mesh_info_ptr->pntBasePos(layer_mesh_info_id,
                                     point_id,
                                     out_point_vertex_data);
+
+    out_point_vertex_data[2] *= -1.0f;
 
     /* Extract UV for the point */
     unsigned int n_uv_vmaps   = 0;

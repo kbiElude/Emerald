@@ -114,9 +114,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
      * a vector of 4 curves, where the first three curves represent the rotation
      * axis, and the fourth curve tells the angle.
      */
-    curve_container rotation_y[4] = {zero_curve, one_curve,  zero_curve, NULL};
-    curve_container rotation_x[4] = {one_curve,  zero_curve, zero_curve, NULL};
-    curve_container rotation_z[4] = {zero_curve, zero_curve, one_curve,  NULL};
+    curve_container rotation_y[4] = {NULL, zero_curve, one_curve,  zero_curve};
+    curve_container rotation_x[4] = {NULL, one_curve,  zero_curve, zero_curve};
+    curve_container rotation_z[4] = {NULL, zero_curve, zero_curve, one_curve};
 
     /* Add transformations */
     curve_container* object_rotations    = NULL;
@@ -167,9 +167,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         }
     } /* switch (object_type) */
 
-    rotation_y[3] = object_rotations[0];
-    rotation_x[3] = object_rotations[1];
-    rotation_z[3] = object_rotations[2];
+    rotation_y[0] = object_rotations[0];
+    rotation_x[0] = object_rotations[1];
+    rotation_z[0] = object_rotations[2];
 
     /* Transformation: translation */
     if (object_translations[0] != NULL &&
@@ -194,9 +194,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         rotation_y[3] != NULL)
     {
         scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
-                                                                                  rotation_y,
+                                                                                  rotation_z,
                                                                                   true,              /* expressed_in_radians */
-                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_Y);
+                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_Z);
 
         scene_graph_add_node(graph,
                              object_node,
@@ -211,9 +211,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         rotation_x[3] != NULL)
     {
         scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
-                                                                                  rotation_x,
+                                                                                  rotation_y,
                                                                                   true,              /* expressed_in_radians */
-                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_X);
+                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_Y);
 
         scene_graph_add_node(graph,
                              object_node,
@@ -228,9 +228,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         rotation_z[3] != NULL)
     {
         scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
-                                                                                  rotation_z,
+                                                                                  rotation_x,
                                                                                   true,              /* expressed_in_radians */
-                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_Z);
+                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_X);
 
         scene_graph_add_node(graph,
                              object_node,
@@ -246,6 +246,10 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                                       object);
 
     /* Store the node in internal map */
+    ASSERT_DEBUG_SYNC(!system_hash64map_contains(object_id_to_scene_graph_node_map,
+                                                 (system_hash64) object_id),
+                      "Object already stored in the hash-map!");
+
     system_hash64map_insert(object_id_to_scene_graph_node_map,
                             (system_hash64) object_id,
                             object_node,

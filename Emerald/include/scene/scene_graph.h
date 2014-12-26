@@ -166,6 +166,14 @@ PUBLIC scene_graph scene_graph_load(__in __notnull scene                   owner
  */
 PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph);
 
+#ifdef _DEBUG
+    /** TODO */
+    PUBLIC EMERALD_API void scene_graph_log_hierarchy(__in __notnull scene_graph          graph,
+                                                      __in __notnull scene_graph_node     node,
+                                                      __in           unsigned int         indent_level,
+                                                      __in           system_timeline_time time);
+#endif
+
 /** TODO */
 PUBLIC EMERALD_API void scene_graph_node_get_property(__in  __notnull scene_graph_node          node,
                                                       __in            scene_graph_node_property property,

@@ -13,7 +13,7 @@
 /** TODO */
 void FillMiscellaneousData(__in __notnull scene in_scene)
 {
-    float duration = (float) (scene_info_ptr->frameEnd - scene_info_ptr->frameStart) /
+    float duration = (float) (interface_info_ptr->previewEnd - interface_info_ptr->previewStart) /
                      (float) (scene_info_ptr->framesPerSecond);
     float fps      = (float)  scene_info_ptr->framesPerSecond;
 
