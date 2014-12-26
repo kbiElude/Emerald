@@ -16,6 +16,7 @@ DECLARE_HANDLE(scene_curve);
 DECLARE_HANDLE(scene_graph);
 DECLARE_HANDLE(scene_graph_node);
 DECLARE_HANDLE(scene_light);
+DECLARE_HANDLE(scene_material);
 DECLARE_HANDLE(scene_mesh);
 DECLARE_HANDLE(scene_texture);
 

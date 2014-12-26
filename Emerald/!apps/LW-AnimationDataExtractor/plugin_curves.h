@@ -6,7 +6,16 @@
 #ifndef PLUGIN_CURVES_H
 #define PLUGIN_CURVES_H
 
+#include "system/system_hash64map.h"
 
-void FillCurveDataset(lw_dataset dataset);
+
+/** TODO */
+void DeinitCurveData();
+
+/** TODO */
+system_hash64map GetEnvelopeIDToCurveContainerHashMap();
+
+/** TODO */
+void InitCurveData();
 
 #endif /* PLUGIN_CURVES_H */

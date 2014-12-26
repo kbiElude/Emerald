@@ -157,7 +157,7 @@ PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh,
 /** TODO */
 PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh,
                                                   __in __notnull system_file_serializer,
-                                                  __in __notnull system_hash64map       material_name_to_id_map);
+                                                  __in __notnull system_hash64map       mesh_material_to_id_map);
 
 /** TODO.
  *

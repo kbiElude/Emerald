@@ -4,11 +4,15 @@
 #include <Windows.h>
 
 #include "plugin.h"
+#include "plugin_cameras.h"
 #include "plugin_curves.h"
+#include "plugin_graph.h"
 #include "plugin_lights.h"
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
-#include "curve/curve_container.h"
+#include "plugin_misc.h"
+#include "plugin_vmaps.h"
+#include "scene/scene.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -18,8 +22,10 @@
 #include "system/system_variant.h"
 
 /* Forward declarations */
+LWCameraInfo*    camera_info_ptr   = NULL;
 LWChannelInfo*   channel_info_ptr  = NULL;
 LWEnvelopeFuncs* envelope_ptr      = NULL;
+LWImageList*     image_list_ptr    = NULL;
 LWItemInfo*      item_info_ptr     = NULL;
 LWLightInfo*     light_info_ptr    = NULL;
 LWMessageFuncs*  message_funcs_ptr = NULL;
@@ -27,6 +33,7 @@ LWObjectFuncs*   object_funcs_ptr  = NULL;
 LWObjectInfo*    object_info_ptr   = NULL;
 LWSceneInfo*     scene_info_ptr    = NULL;
 LWSurfaceFuncs*  surface_funcs_ptr = NULL;
+LWTextureFuncs*  texture_funcs_ptr = NULL;
 
 /* Forward declarations. */
 XCALL_(int) ExportData(int         version,
@@ -40,8 +47,10 @@ XCALL_(int) ExportData(int         version,
     }
 
     /* Retrieve func ptr structures */
+    camera_info_ptr   = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_TRANSIENT);
     channel_info_ptr  = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
     envelope_ptr      = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
+    image_list_ptr    = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_TRANSIENT);
     item_info_ptr     = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
     light_info_ptr    = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_TRANSIENT);
     message_funcs_ptr = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
@@ -49,61 +58,104 @@ XCALL_(int) ExportData(int         version,
     object_info_ptr   = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
     scene_info_ptr    = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
     surface_funcs_ptr = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+    texture_funcs_ptr = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_TRANSIENT);
 
-    /* Spawn a Lightwave data-set instance */
-    lw_dataset dataset = lw_dataset_create(system_hashed_ansi_string_create("Dataset") );
+    /* Spawn a new scene */
+    scene new_scene = scene_create(NULL, /* ogl_context */
+                                   system_hashed_ansi_string_create("Exported scene") );
 
     /* Extract curve data */
-    message_funcs_ptr->info("Extracting curve data..", NULL);
+    message_funcs_ptr->info("Extracting curve data..",
+                            NULL);
 
-    FillCurveDataset(dataset);
+    InitCurveData();
+
+    /* Extract camera data */
+    message_funcs_ptr->info("Extracting camera data",
+                            NULL);
+
+    InitCameraData         ();
+    FillSceneWithCameraData(new_scene,
+                            GetEnvelopeIDToCurveContainerHashMap() );
 
     /* Extract light data */
-    message_funcs_ptr->info("Extracting light data..", NULL);
+    message_funcs_ptr->info("Extracting light data..",
+                            NULL);
 
-    FillLightDataset(dataset);
+    InitLightData         ();
+    FillSceneWithLightData(new_scene,
+                           GetEnvelopeIDToCurveContainerHashMap() );
 
     /* Extract surface data */
-    message_funcs_ptr->info("Extracting surface data..", NULL);
+    message_funcs_ptr->info("Extracting surface data..",
+                            NULL);
 
-    FillMaterialDataset(dataset);
+    InitMaterialData(GetEnvelopeIDToCurveContainerHashMap(),
+                     new_scene);
+
+    /* Extract vmap data */
+    message_funcs_ptr->info("Extracting vmap data..",
+                            NULL);
+
+    InitVMapData();
 
     /* Extract mesh data */
-    message_funcs_ptr->info("Extracting mesh data..", NULL);
+    message_funcs_ptr->info("Extracting mesh data..",
+                            NULL);
 
-    FillMeshDataset(dataset);
+    InitMeshData         ();
+    FillSceneWithMeshData(new_scene,
+                          GetEnvelopeIDToCurveContainerHashMap() );
 
-    /* Check where the user wants to store the data */
+    /* Extract other props */
+    FillMiscellaneousData(new_scene);
+
+    /* Form a scene graph */
+    message_funcs_ptr->info("Forming scene graph ..",
+                            NULL);
+
+    InitGraphData     ();
+    FillSceneGraphData(new_scene);
+
+    /* Check where the user wanto store the data */
     message_funcs_ptr->info("Please select target file to store the blob.",
                             NULL);
 
     system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE,
                                                                                    system_hashed_ansi_string_create("*"),
-                                                                                   system_hashed_ansi_string_create("Emerald Dataset"),
-                                                                                   system_hashed_ansi_string_create("Select target Emerald Dataset file") );
+                                                                                   system_hashed_ansi_string_create("Emerald Scene blob"),
+                                                                                   system_hashed_ansi_string_create("Select target Emerald Scene blob file") );
 
     if (filename != NULL)
     {
-        message_funcs_ptr->info("Saving data..", NULL);
+        message_funcs_ptr->info("Saving data..",
+                                NULL);
 
         /* Store the dataset */
         system_file_serializer serializer = system_file_serializer_create_for_writing(filename);
 
-        lw_dataset_save               (dataset, serializer);
+        scene_save_with_serializer(new_scene,
+                                   serializer);
+
         system_file_serializer_release(serializer);
 
-        message_funcs_ptr->info("Lightwave Dataset saved.", NULL);
+        message_funcs_ptr->info("Emerald Scene blob file saved.",
+                                NULL);
     }
     else
     {
-        message_funcs_ptr->warning("Lightwave Dataset NOT saved.", NULL);
+        message_funcs_ptr->warning("Emerald Scene blob file NOT saved.",
+                                   NULL);
     }
 
     /* done! */
-    if (dataset != NULL)
-    {
-        lw_dataset_release(dataset);
-    }
+    DeinitCameraData  ();
+    DeinitCurveData   ();
+    DeinitGraphData   ();
+    DeinitLightData   ();
+    DeinitMaterialData();
+    DeinitMeshData    ();
+    DeinitVMapData    ();
 
     return AFUNC_OK;
 }
@@ -119,6 +171,6 @@ different languages, if you like.
 ====================================================================== */
 ServerRecord ServerDesc[] =
 {
-   {LWLAYOUTGENERIC_CLASS, "Emerald: Export Data", ExportData},
+   {LWLAYOUTGENERIC_CLASS, "Emerald: Export Scene to Emerald blob", ExportData},
    {NULL}
 };

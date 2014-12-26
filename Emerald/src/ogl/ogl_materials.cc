@@ -228,9 +228,12 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                 break;
             }
 
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
             {
-                /* Single-component floating-point attachments are handled by uniforms so the actual data is irrelevant */
+                /* Single-component floating-point attachments are handled by uniforms so the actual data is irrelevant.
+                 * Same goes for curve container based attachments*/
                 break;
             }
 
@@ -375,6 +378,20 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
                     switch (material_attachment)
                     {
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT;
+
+                            break;
+                        }
+
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3;
+
+                            break;
+                        }
+
                         case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
                         {
                             uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT;

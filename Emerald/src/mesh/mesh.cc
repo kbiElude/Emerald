@@ -218,6 +218,9 @@ PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_resu
                     out_result[n_current_word] = unique_set_id;
                     n_current_word ++;
 
+                    ASSERT_DEBUG_SYNC(index_data_ptr->data[n_element] != 0xcdcdcdcd,
+                                      "Invalid index data");
+
                     out_result[n_current_word] = index_data_ptr->data[n_element];
                     n_current_word ++;
                 }
@@ -265,6 +268,9 @@ PRIVATE uint32_t _mesh_get_source_index_from_index_key(__in __notnull const uint
                 if (n_set == set_id && n_data_stream_type == data_stream_type)
                 {
                     result = key_ptr[2 * n_current_word + 1];
+
+                    ASSERT_DEBUG_SYNC(result != 0xcdcdcdcd,
+                                      "Whoops?");
 
                     goto end;
                 }
@@ -1419,6 +1425,9 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
     _mesh_layer*       mesh_layer_ptr = NULL;
     mesh_layer_pass_id result_id      = -1;
 
+    ASSERT_DEBUG_SYNC(n_elements % 3 == 0,
+                      "n_elements is not divisible by three which is invalid");
+
     /* Sanity checks */
     ASSERT_ALWAYS_SYNC(!mesh_ptr->gl_storage_initialized,
                        "Cannot add mesh layer passes after GL storage has been initialized");
@@ -1916,15 +1925,12 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                 if (n_sets == 0)
                 {
                     /* We will use vertex indices in this case */
-                    ASSERT_DEBUG_SYNC(n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                      "Stream data corrupt");
                     ASSERT_DEBUG_SYNC(stream_usage[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
-                                      "No index data set defined for vertex data.");
-
-                    n_sets = 1;
+                                      "No vertex data defined.");
                 }
 
-                ASSERT_DEBUG_SYNC(stream_data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT, "TODO: Unsupported stream data type");
+                ASSERT_DEBUG_SYNC(stream_data_type == MESH_LAYER_DATA_STREAM_DATA_TYPE_FLOAT,
+                                  "TODO: Unsupported stream data type");
 
                 /* Align if necessary */
                 uint32_t padding = 0;
@@ -2005,7 +2011,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                 {
                     uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
 
-                    for (uint32_t n_pass = 0; n_pass < n_passes; ++n_pass)
+                    for (uint32_t n_pass = 0;
+                                  n_pass < n_passes;
+                                ++n_pass)
                     {
                         uint32_t          max_index = -1;
                         uint32_t          min_index = -1;
@@ -2121,10 +2129,6 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                                             if (stream_n_sets == 0)
                                             {
-                                                /* Re-use vertex data set, but only if it's the normals data we're missing. */
-                                                ASSERT_DEBUG_SYNC(n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_NORMALS,
-                                                                  "No data-set defined for an enabled data stream!");
-
                                                 actual_stream_type = MESH_LAYER_DATA_STREAM_TYPE_VERTICES;
                                                 stream_n_sets      = 1;
                                             }
@@ -2145,7 +2149,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                                               n_set,
                                                                              &set_index_data) )
                                                     {
-                                                        ASSERT_DEBUG_SYNC(false, "Could not retrieve set's index data");
+                                                        pass_index_data = final_index;
                                                     }
                                                     else
                                                     {
@@ -2169,9 +2173,9 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                                pass_index_data,
                                                        sizeof(float) * data_stream_ptr->n_components);
                                             } /* for (all sets) */
-                                        }
-                                    }
-                                }
+                                        } /* if (data_stream_ptr != NULL) */
+                                    } /* for (all data streams) */
+                                } /* if (final index is recognized) */
                                 else
                                 {
                                     ASSERT_ALWAYS_SYNC(false, "Could not retrieve final GL buffer index key");
@@ -2458,22 +2462,40 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                 {
                     case 0:
                     {
-                        /* Vertex-to-polygon BST construction */
-                        _mesh_layer_pass_index_data* index_data_ptr     = NULL;
-                        uint32_t                     n_vertex_data_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]);
+                        /* Vertex-to-polygon BST construction.
+                         *
+                         * NOTE: If there is no index data available, assume the vertices are defined in order.
+                         **/
+                        bool                         index_data_available = (layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES] != NULL);
+                        _mesh_layer_pass_index_data* index_data_ptr       = NULL;
 
-                        if (n_vertex_data_sets != 1)
+                        if (index_data_available)
                         {
-                            ASSERT_DEBUG_SYNC(n_vertex_data_sets == 1,
-                                              "Unsupported number of vertex data sets");
+                            /* n_vertex_data_sets == 0: no index data available.
+                             *                    == 1:    index data available.
+                             */
+                            const uint32_t n_vertex_data_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]);
 
-                            continue;
+                            if (n_vertex_data_sets > 1)
+                            {
+                                ASSERT_DEBUG_SYNC(n_vertex_data_sets <= 1,
+                                                  "Unsupported number of vertex data sets");
+
+                                continue;
+                            }
+
+                            if (n_vertex_data_sets == 1)
+                            {
+                                system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                                                0,     /* set id */
+                                                                &index_data_ptr,
+                                                                NULL); /* pOutHash */
+                            }
+                            else
+                            {
+                                index_data_available = false;
+                            }
                         }
-
-                        system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
-                                                        0,     /* set id */
-                                                        &index_data_ptr,
-                                                        NULL); /* pOutHash */
 
                         for (unsigned int n_index = 0;
                                           n_index < n_indices;
@@ -2482,9 +2504,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                             /* For each triangle polygon, create a _mesh_polygon instance */
                             const uint32_t vertex_indices[] =
                             {
-                                index_data_ptr->data[n_index + 0],
-                                index_data_ptr->data[n_index + 1],
-                                index_data_ptr->data[n_index + 2]
+                                index_data_ptr != NULL ? (index_data_ptr->data[n_index + 0]) : (n_index),
+                                index_data_ptr != NULL ? (index_data_ptr->data[n_index + 1]) : (n_index + 1),
+                                index_data_ptr != NULL ? (index_data_ptr->data[n_index + 2]) : (n_index + 2)
                             };
                             const float* vertex_data[] =
                             {
@@ -2711,18 +2733,13 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                    0,
                    sizeof(float) * layer_pass_ptr->n_elements * 3 /* components */);
 
-            if (system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) == 0)
+            if (system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) > 0)
             {
-                ASSERT_DEBUG_SYNC(false,
-                                  "No vertices defined for a mesh layer pass");
-
-                continue;
+                system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                                0,     /* set id */
+                                               &layer_pass_vertex_index_data_ptr,
+                                                NULL); /* pOutHash */
             }
-
-            system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
-                                            0,     /* set id */
-                                           &layer_pass_vertex_index_data_ptr,
-                                            NULL); /* pOutHash */
 
             for (unsigned int n_current_triangle = 0;
                               n_current_triangle < layer_pass_ptr->n_elements / 3;
@@ -2730,9 +2747,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
             {
                 const uint32_t vertices_indices[] =
                 {
-                    layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 0],
-                    layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 1],
-                    layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 2]
+                    (layer_pass_vertex_index_data_ptr != NULL) ? (layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 0]) : (n_current_triangle * 3 + 0),
+                    (layer_pass_vertex_index_data_ptr != NULL) ? (layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 1]) : (n_current_triangle * 3 + 1),
+                    (layer_pass_vertex_index_data_ptr != NULL) ? (layer_pass_vertex_index_data_ptr->data[n_current_triangle * 3 + 2]) : (n_current_triangle * 3 + 2)
                 };
                 const float* vertices_data[] =
                 {
@@ -2880,8 +2897,8 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
              * TODO: The mesh_add_layer_pass_index_data() call assumes only one set is ever defined.
              *       FIX IF NEEDED.
              */
-            ASSERT_DEBUG_SYNC(system_hash64map_get_amount_of_elements(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) == 1,
-                              "Layer pass uses != 1 sets which is not supported.");
+            ASSERT_DEBUG_SYNC(system_hash64map_get_amount_of_elements(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) <= 1,
+                              "Layer pass uses >= 1 sets which is not supported.");
 
             mesh_add_layer_data_stream(mesh,
                                        n_layer,
@@ -2918,7 +2935,6 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
     /* Update modification timestamp */
     mesh_ptr->timestamp_last_modified = system_time_now();
 
-end:
     if (allocated_polygon_vectors != NULL)
     {
         system_resizable_vector vector_item = NULL;
@@ -3648,7 +3664,7 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh                   instance,
                                                   __in __notnull system_file_serializer serializer,
-                                                  __in __notnull system_hash64map       material_name_to_id_map)
+                                                  __in __notnull system_hash64map       mesh_material_to_id_map)
 {
     _mesh* mesh_ptr = (_mesh*) instance;
     bool   result   = false;
@@ -3678,8 +3694,7 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
 
         /* Serialize processed GL data buffer */
         ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data      != NULL &&
-                          mesh_ptr->gl_processed_data_size != 0    &&
-                          mesh_ptr->gl_storage_initialized,
+                          mesh_ptr->gl_processed_data_size != 0,
                           "Processed GL data is unavailable");
 
         system_file_serializer_write(serializer,
@@ -3783,29 +3798,19 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                                                      sizeof(pass_ptr->smoothing_angle),
                                                     &pass_ptr->smoothing_angle);
 
-                        /* Material name */
-                        system_hashed_ansi_string material_name = mesh_material_get_name(pass_ptr->material);
-
-                        ASSERT_DEBUG_SYNC(material_name != NULL,
-                                          "NULL material for layer pass [%d]",
-                                          n_layer_pass);
-
                         /* Instead of the string, for improved loading performance, we'll just store an ID using
                          * a map provided by the caller */
-                        void* material_id_ptr = NULL;
+                        unsigned int material_id = -1;
 
-                        if (!system_hash64map_get(material_name_to_id_map,
-                                                  (system_hash64) material_name,
-                                                  &material_id_ptr) )
+                        if (!system_hash64map_get(mesh_material_to_id_map,
+                                                  (system_hash64) pass_ptr->material,
+                                                  &material_id) )
                         {
                             ASSERT_ALWAYS_SYNC(false,
-                                               "Could not map material name [%s] to an ID!",
-                                               system_hashed_ansi_string_get_buffer(material_name) );
+                                               "Could not map material to an ID!");
                         }
                         else
                         {
-                            uint32_t material_id = (uint32_t) material_id_ptr;
-
                             system_file_serializer_write(serializer,
                                                          sizeof(material_id),
                                                         &material_id);

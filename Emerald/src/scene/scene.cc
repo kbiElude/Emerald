@@ -14,6 +14,7 @@
 #include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
+#include "scene/scene_material.h"
 #include "scene/scene_mesh.h"
 #include "scene/scene_texture.h"
 #include "system/system_callback_manager.h"
@@ -30,9 +31,10 @@ typedef struct
 {
     ogl_context               context;
 
-    system_resizable_vector   cameras;  /* TODO: make this a hasy64 map hashed by camera name */
-    system_resizable_vector   curves;   /* TODO: make this a hash64 map hashed by curve_id */
-    system_resizable_vector   lights;   /* TODO: make this a hash64 map hashed by light name */
+    system_resizable_vector   cameras;   /* TODO: make this a hasy64 map hashed by camera name */
+    system_resizable_vector   curves;    /* TODO: make this a hash64 map hashed by curve_id */
+    system_resizable_vector   lights;    /* TODO: make this a hash64 map hashed by light name */
+    system_resizable_vector   materials; /* TODO: make this a hash64 map hashed by material name */
     system_resizable_vector   mesh_instances;
     system_resizable_vector   textures; /* TODO: make this a hash64 map hashed by texture_id */
 
@@ -110,6 +112,22 @@ PRIVATE void _scene_release(__in __notnull __post_invalid void* arg)
         system_resizable_vector_release(scene_ptr->lights);
 
         scene_ptr->lights = NULL;
+    }
+
+    if (scene_ptr->materials != NULL)
+    {
+        scene_material material = NULL;
+
+        while (system_resizable_vector_pop(scene_ptr->materials,
+                                          &material) )
+        {
+            scene_material_release(material);
+
+            material = NULL;
+        }
+        system_resizable_vector(scene_ptr->materials);
+
+        scene_ptr->materials = NULL;
     }
 
     if (scene_ptr->mesh_instances != NULL)
@@ -263,6 +281,26 @@ end:
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API bool scene_add_material(__in __notnull scene          scene_instance,
+                                           __in __notnull scene_material material)
+{
+    bool    result    = false;
+    _scene* scene_ptr = (_scene*) scene_instance;
+
+    if (system_resizable_vector_find(scene_ptr->materials,
+                                     material) == ITEM_NOT_FOUND)
+    {
+        system_resizable_vector_push(scene_ptr->materials,
+                                     material);
+
+        scene_material_retain(material);
+        result = true;
+    }
+
+    return result;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(__in __notnull scene      scene,
                                                         __in __notnull scene_mesh mesh)
 {
@@ -318,7 +356,7 @@ PUBLIC EMERALD_API bool scene_add_texture(__in __notnull scene         scene_ins
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               context,
+PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               context,
                                       __in __notnull system_hashed_ansi_string name)
 {
     _scene* new_scene = new (std::nothrow) _scene;
@@ -326,10 +364,16 @@ PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               c
     ASSERT_DEBUG_SYNC(new_scene != NULL, "Out of memory");
     if (new_scene != NULL)
     {
-        memset(new_scene, 0, sizeof(_scene) );
+        memset(new_scene,
+               0,
+               sizeof(_scene) );
 
-        ogl_context_retain(context);
-        new_scene->context  = context;
+        if (context != NULL)
+        {
+            ogl_context_retain(context);
+        }
+
+        new_scene->context = context;
 
         new_scene->callback_manager = system_callback_manager_create( (_callback_id) SCENE_CALLBACK_ID_LIGHT_ADDED);
 
@@ -338,18 +382,21 @@ PUBLIC EMERALD_API scene scene_create(__in __notnull ogl_context               c
         new_scene->curves                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
         new_scene->fps                    = 0;
+        new_scene->graph                  = scene_graph_create( (scene) new_scene);
         new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
-        new_scene->mesh_instances         = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
+        new_scene->materials              = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
         new_scene->max_animation_duration = 0.0f;
+        new_scene->mesh_instances         = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
+                                                                           sizeof(void*) );
         new_scene->name                   = name;
         new_scene->textures               = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
 
-        if (new_scene->cameras        == NULL ||
-            new_scene->curves         == NULL || new_scene->lights   == NULL ||
-            new_scene->mesh_instances == NULL || new_scene->textures == NULL)
+        if (new_scene->cameras        == NULL || new_scene->curves    == NULL ||
+            new_scene->lights         == NULL || new_scene->materials == NULL ||
+            new_scene->mesh_instances == NULL || new_scene->textures  == NULL)
         {
             ASSERT_ALWAYS_SYNC(false, "Out of memory");
 
@@ -415,6 +462,7 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene   
         {
             scene_camera_get_property(camera,
                                       SCENE_CAMERA_PROPERTY_NAME,
+                                      0, /* time - irrelevant for camera name */
                                      &camera_name);
 
             if (system_hashed_ansi_string_is_equal_to_hash_string(camera_name,
@@ -558,6 +606,64 @@ PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_index(__in __notnull sc
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API scene_material scene_get_material_by_index(__in __notnull scene        scene,
+                                                              __in           unsigned int index)
+{
+    scene_material result    = NULL;
+    _scene*        scene_ptr = (_scene*) scene;
+
+    system_resizable_vector_get_element_at(scene_ptr->materials,
+                                           index,
+                                          &result);
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API scene_material scene_get_material_by_name(__in __notnull scene                     scene,
+                                                             __in __notnull system_hashed_ansi_string name)
+{
+    _scene*            scene_ptr   = (_scene*) scene;
+    const unsigned int n_materials = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
+    scene_material     result      = NULL;
+
+    LOG_INFO("scene_get_material_by_name(): slow code-path call");
+
+    for (unsigned int n_material = 0;
+                      n_material < n_materials;
+                    ++n_material)
+    {
+        scene_material            material      = NULL;
+        system_hashed_ansi_string material_name = NULL;
+
+        if (system_resizable_vector_get_element_at(scene_ptr->materials,
+                                                   n_material,
+                                                  &material) )
+        {
+            scene_material_get_property(material,
+                                        SCENE_MATERIAL_PROPERTY_NAME,
+                                       &material_name);
+
+            if (system_hashed_ansi_string_is_equal_to_hash_string(material_name,
+                                                                  name) )
+            {
+                result = material;
+
+                break;
+            }
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve material at index [%d]",
+                              n_material);
+        }
+    }
+
+    return result;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_name(__in __notnull scene                     scene,
                                                               __in __notnull system_hashed_ansi_string name)
 {
@@ -646,6 +752,13 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
         case SCENE_PROPERTY_N_LIGHTS:
         {
             *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
+
+            break;
+        }
+
+        case SCENE_PROPERTY_N_MATERIALS:
+        {
+            *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
 
             break;
         }
@@ -751,17 +864,19 @@ end:
 PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context            context,
                                                     __in __notnull system_file_serializer serializer)
 {
-    system_hash64map        material_id_to_mesh_material_map = system_hash64map_create(sizeof(void*) );
-    system_hash64map        mesh_id_to_mesh_map              = system_hash64map_create(sizeof(void*) );
-    bool                    result                           = true;
-    scene                   result_scene                     = NULL;
-    system_resizable_vector serialized_scene_cameras         = system_resizable_vector_create(4 /* capacity */,
-                                                                                              sizeof(void*) );
-    system_resizable_vector serialized_scene_lights          = system_resizable_vector_create(4 /* capacity */,
-                                                                                              sizeof(void*) );
-    system_resizable_vector serialized_scene_mesh_instances  = system_resizable_vector_create(4 /* capacity */,
-                                                                                              sizeof(void*) );
-    system_hash64map        texture_id_to_ogl_texture_map    = system_hash64map_create       (sizeof(void*) );
+    system_hash64map        material_id_to_scene_material_map = system_hash64map_create       (sizeof(scene_material) );
+    system_hash64map        material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*) );
+    system_hash64map        mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*) );
+    bool                    result                            = true;
+    scene                   result_scene                      = NULL;
+    system_resizable_vector serialized_scene_cameras          = system_resizable_vector_create(4 /* capacity */,
+                                                                                               sizeof(void*) );
+    system_resizable_vector serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */,
+                                                                                               sizeof(void*) );
+    system_resizable_vector serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */,
+                                                                                               sizeof(void*) );
+    system_hash64map        scene_material_to_material_id_map = system_hash64map_create       (sizeof(unsigned int) );
+    system_hash64map        texture_id_to_ogl_texture_map     = system_hash64map_create       (sizeof(void*) );
 
     /* Read basic stuff */
     float                     scene_animation_duration = 0.0f;
@@ -792,14 +907,15 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                                                              sizeof(n_scene_lights),
                                                             &n_scene_lights);
     result &= system_file_serializer_read                   (serializer,
+                                                             sizeof(n_scene_materials),
+                                                            &n_scene_materials);
+    result &= system_file_serializer_read                   (serializer,
                                                              sizeof(n_scene_mesh_instances),
                                                             &n_scene_mesh_instances);
     result &= system_file_serializer_read                   (serializer,
                                                              sizeof(n_scene_textures),
                                                             &n_scene_textures);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_materials),
-                                                            &n_scene_materials);
+
     if (!result)
     {
         goto end_error;
@@ -916,6 +1032,110 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
         goto end_error;
     }
 
+    /* Load scene materials */
+    for (uint32_t n_scene_material = 0;
+                  n_scene_material < n_scene_materials;
+                ++n_scene_material)
+    {
+        scene_material new_material    = scene_material_load(serializer);
+        unsigned int   new_material_id = -1;
+
+        ASSERT_DEBUG_SYNC(new_material != NULL,
+                          "Could not load material data");
+
+        if (new_material == NULL)
+        {
+            result = false;
+
+            goto end_error;
+        }
+
+        /* Load the serialization ID for the material */
+        system_file_serializer_read(serializer,
+                                    sizeof(new_material_id),
+                                   &new_material_id);
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(material_id_to_scene_material_map,
+                                                     (system_hash64) new_material_id),
+                          "Material ID is already recognized");
+
+        system_hash64map_insert(material_id_to_scene_material_map,
+                                (system_hash64) new_material_id,
+                                new_material,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
+        system_hash64map_insert(scene_material_to_material_id_map,
+                                (system_hash64) new_material,
+                                (void*)         new_material_id,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
+
+        /* Attach the material to the scene */
+        result &= scene_add_material(result_scene,
+                                     new_material);
+
+        if (result)
+        {
+            /* scene_add_material() retained the material - release it now */
+            scene_material_release(new_material);
+        }
+    } /* for (all scene materials) */
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not load scene materials");
+    }
+
+    /* Create mesh materials out of the scene materials we've loaded. */
+    for (uint32_t n_scene_material = 0;
+                  n_scene_material < n_scene_materials;
+                ++n_scene_material)
+    {
+        scene_material current_scene_material = NULL;
+        mesh_material  new_mesh_material      = NULL;
+
+        current_scene_material = scene_get_material_by_index             (result_scene,
+                                                                          n_scene_material);
+        new_mesh_material      = mesh_material_create_from_scene_material(current_scene_material,
+                                                                          context);
+
+        ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
+                          "Could not create a mesh_material out of a scene_material");
+        if (new_mesh_material == NULL)
+        {
+            result = false;
+
+            goto end_error;
+        }
+        else
+        {
+            unsigned int new_mesh_material_id = 0;
+
+            if (!system_hash64map_get(scene_material_to_material_id_map,
+                                      (system_hash64) current_scene_material,
+                                     &new_mesh_material_id))
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not map a scene_material instance onto a ID");
+            }
+
+            system_hash64map_insert(material_id_to_mesh_material_map,
+                                    (system_hash64) new_mesh_material_id,
+                                    new_mesh_material,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+    } /* for (all scene materials defined for the scene) */
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not create mesh materials");
+
+        goto end_error;
+    }
+
     /* Load textures */
     for (unsigned int n_scene_texture = 0;
                       n_scene_texture < n_scene_textures;
@@ -963,48 +1183,6 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not load scene textures");
-
-        goto end_error;
-    }
-
-    /* Load mesh materials */
-    for (uint32_t n_mesh_material = 0;
-                  n_mesh_material < n_scene_materials;
-                ++n_mesh_material)
-    {
-        uint32_t      material_id  = 0;
-        mesh_material new_material = NULL;
-
-        result &= system_file_serializer_read(serializer,
-                                              sizeof(material_id),
-                                             &material_id);
-
-        new_material = mesh_material_load(serializer,
-                                          context,
-                                          texture_id_to_ogl_texture_map);
-
-        ASSERT_DEBUG_SYNC(new_material != NULL,
-                          "Could not load scene material");
-        if (new_material == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-        else
-        {
-            system_hash64map_insert(material_id_to_mesh_material_map,
-                                    (system_hash64) material_id,
-                                    new_material,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-    } /* for (all materials defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene materials");
 
         goto end_error;
     }
@@ -1148,6 +1326,13 @@ end:
         material_id_to_mesh_material_map = NULL;
     }
 
+    if (material_id_to_scene_material_map != NULL)
+    {
+        system_hash64map_release(material_id_to_scene_material_map);
+
+        material_id_to_scene_material_map = NULL;
+    }
+
     if (mesh_id_to_mesh_map != NULL)
     {
         /* All mesh instances can be released, since they should've been
@@ -1186,6 +1371,13 @@ end:
         system_hash64map_release(mesh_name_to_mesh_map);
 
         mesh_name_to_mesh_map = NULL;
+    }
+
+    if (scene_material_to_material_id_map != NULL)
+    {
+        system_hash64map_release(scene_material_to_material_id_map);
+
+        scene_material_to_material_id_map = NULL;
     }
 
     if (serialized_scene_cameras != NULL)
@@ -1331,8 +1523,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
     system_hash64map gpu_mesh_to_id_map           = system_hash64map_create(sizeof(void*) );
     system_hash64map light_ptr_to_id_map          = system_hash64map_create(sizeof(void*) );
     system_hash64map mesh_instance_ptr_to_id_map  = system_hash64map_create(sizeof(void*) );
-    system_hash64map mesh_material_name_to_id_map = system_hash64map_create(sizeof(void*) );
     system_hash64map mesh_material_ptr_to_id_map  = system_hash64map_create(sizeof(void*) );
+    system_hash64map scene_material_ptr_to_id_map = system_hash64map_create(sizeof(unsigned int) );
     system_hash64map unique_meshes_to_id_map      = system_hash64map_create(sizeof(void*) );
 
     /* Retrieve unique meshes that we will need to serialize */
@@ -1416,7 +1608,9 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                       n_mesh_material < n_mesh_materials;
                     ++n_mesh_material)
         {
-            mesh_material current_mesh_material = NULL;
+            mesh_material  current_mesh_material    = NULL;
+            unsigned int   current_mesh_material_id = -1;
+            scene_material current_scene_material   = NULL;
 
             if (!system_resizable_vector_get_element_at(mesh_materials,
                                                         n_mesh_material,
@@ -1429,32 +1623,39 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                 continue;
             }
 
+            mesh_material_get_property(current_mesh_material,
+                                       MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL,
+                                      &current_scene_material);
+
             if (!system_hash64map_contains(mesh_material_ptr_to_id_map,
                                            (system_hash64) current_mesh_material) )
             {
+                if (!system_hash64map_get(scene_material_ptr_to_id_map,
+                                          (system_hash64) current_scene_material,
+                                         &current_mesh_material_id) )
+                {
+                    /* This mesh_material instance is linked to a scene_material instance we have
+                     * not come across yet. Assign a new ID */
+                    current_mesh_material_id = n_unique_materials++;
+
+                    system_hash64map_insert(scene_material_ptr_to_id_map,
+                                            (system_hash64) current_scene_material,
+                                            (void*)         current_mesh_material_id,
+                                            NULL,  /* on_remove_callback          */
+                                            NULL); /* on_remove_callback_user_arg */
+                }
+                else
+                {
+                    /* This mesh_material instance is linked to an already recognized scene_material
+                     * instance. Map it to the ID we're already using */
+                }
+
                 system_hash64map_insert(mesh_material_ptr_to_id_map,
                                         (system_hash64) current_mesh_material,
-                                        (void*) n_unique_materials,
+                                        (void*)         current_mesh_material_id,
                                         NULL,  /* on_remove_callback */
                                         NULL); /* on_remove_callback_user_arg */
-
-                /* Also map the name of the material to the instance */
-                system_hashed_ansi_string material_name = mesh_material_get_name(current_mesh_material);
-
-                ASSERT_DEBUG_SYNC(!system_hash64map_contains(mesh_material_name_to_id_map,
-                                                             (system_hash64) material_name),
-                                  "Material name [%s] is already recognized",
-                                  system_hashed_ansi_string_get_buffer(material_name) );
-
-                system_hash64map_insert(mesh_material_name_to_id_map,
-                                        (system_hash64) material_name,
-                                        (void*) n_unique_materials,
-                                        NULL,  /* on_remove_callback */
-                                        NULL); /* on_remove_callback_user_arg */
-
-                /* Increment the counter */
-                n_unique_materials++;
-            }
+            } /* if (we have not already processed current mesh_material instance) */
         } /* for (all mesh materials) */
     } /* for (all unique meshes) */
 
@@ -1469,10 +1670,11 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                                                    &scene_ptr->max_animation_duration);
 
     /* Store the number of owned objects */
-    const uint32_t n_cameras  = system_resizable_vector_get_amount_of_elements(scene_ptr->cameras);
-    const uint32_t n_curves   = system_resizable_vector_get_amount_of_elements(scene_ptr->curves);
-    const uint32_t n_lights   = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
-    const uint32_t n_textures = system_resizable_vector_get_amount_of_elements(scene_ptr->textures);
+    const uint32_t n_cameras   = system_resizable_vector_get_amount_of_elements(scene_ptr->cameras);
+    const uint32_t n_curves    = system_resizable_vector_get_amount_of_elements(scene_ptr->curves);
+    const uint32_t n_lights    = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
+    const uint32_t n_materials = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
+    const uint32_t n_textures  = system_resizable_vector_get_amount_of_elements(scene_ptr->textures);
 
     system_file_serializer_write(serializer,
                                  sizeof(n_cameras),
@@ -1484,14 +1686,14 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                                  sizeof(n_lights),
                                 &n_lights);
     system_file_serializer_write(serializer,
+                                 sizeof(n_materials),
+                                &n_materials);
+    system_file_serializer_write(serializer,
                                  sizeof(n_mesh_instances),
                                 &n_mesh_instances);
     system_file_serializer_write(serializer,
                                  sizeof(n_textures),
                                 &n_textures);
-    system_file_serializer_write(serializer,
-                                 sizeof(n_unique_materials),
-                                &n_unique_materials);
 
     /* Serialize cameras.
      *
@@ -1603,6 +1805,52 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
         }
     } /* for (all lights) */
 
+    /* Serialize materials */
+    for (uint32_t n_material = 0;
+                  n_material < n_materials;
+                ++n_material)
+    {
+        scene_material current_material = NULL;
+
+        if (!system_resizable_vector_get_element_at(scene_ptr->materials,
+                                                    n_material,
+                                                   &current_material) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve material at index [%d]",
+                              n_material);
+
+            result = false;
+        }
+
+        if (result)
+        {
+            scene_material_save(serializer,
+                                current_material);
+        }
+
+        /* Assign an ID to the material */
+        unsigned int current_material_id = 0;
+
+        if (!system_hash64map_get(scene_material_ptr_to_id_map,
+                                  (system_hash64) current_material,
+                                 &current_material_id) )
+        {
+            /* TODO: This could occur if a scene_material is added to the scene instance
+             *       but is not referred to by any of the layer passes of any of the
+             *       meshes assigned to the scene owning the scene_material instance.
+             */
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not retrieve an ID for scene_material instance");
+        }
+        else
+        {
+            system_file_serializer_write(serializer,
+                                         sizeof(current_material_id),
+                                        &current_material_id);
+        }
+    } /* for (all materials) */
+
     /* Serialize textures */
     for (uint32_t n_texture = 0;
                   n_texture < n_textures;
@@ -1632,40 +1880,6 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
             result = false;
         }
     } /* for (all textures) */
-
-    /* Serialize mesh materials */
-    for (unsigned int n_material = 0;
-                      n_material < n_unique_materials;
-                    ++n_material)
-    {
-        mesh_material material        = NULL;
-        system_hash64 material_hash   = 0;
-        uint32_t      material_id     = 0;
-        void*         material_id_ptr = 0;
-
-        if (!system_hash64map_get_element_at(mesh_material_ptr_to_id_map,
-                                             (size_t) n_material,
-                                            &material_id_ptr,
-                                            &material_hash) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve unique mesh material at index [%d]",
-                              n_material);
-
-            continue;
-        }
-
-        material_id = (uint32_t)      material_id_ptr;
-        material    = (mesh_material) material_hash;
-
-        /* Serialize */
-        result &= system_file_serializer_write(serializer,
-                                               sizeof(material_id),
-                                              &material_id);
-
-        result &= mesh_material_save(serializer,
-                                     material);
-    } /* for (unique materials) */
 
     /* Serialize meshes: first store the instantiation parent meshes,
      *                   the follow with instanced meshes.
@@ -1711,7 +1925,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
 
                     result &= mesh_save_with_serializer(mesh_gpu,
                                                         serializer,
-                                                        mesh_material_name_to_id_map);
+                                                        mesh_material_ptr_to_id_map);
 
                     system_hash64map_insert(gpu_mesh_to_id_map,
                                             (system_hash64) mesh_gpu,
@@ -1823,18 +2037,18 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
         mesh_instance_ptr_to_id_map = NULL;
     }
 
-    if (mesh_material_name_to_id_map != NULL)
-    {
-        system_hash64map_release(mesh_material_name_to_id_map);
-
-        mesh_material_name_to_id_map = NULL;
-    }
-
     if (mesh_material_ptr_to_id_map != NULL)
     {
         system_hash64map_release(mesh_material_ptr_to_id_map);
 
         mesh_material_ptr_to_id_map = NULL;
+    }
+
+    if (scene_material_ptr_to_id_map != NULL)
+    {
+        system_hash64map_release(scene_material_ptr_to_id_map);
+
+        scene_material_ptr_to_id_map = NULL;
     }
 
     if (unique_meshes_to_id_map != NULL)

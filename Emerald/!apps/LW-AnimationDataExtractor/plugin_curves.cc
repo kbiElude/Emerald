@@ -1,14 +1,13 @@
 #define _MSWIN
 
 #include "shared.h"
-#include "lw/lw_curve_dataset.h"
 
 #include "plugin.h"
 #include "plugin_curves.h"
 #include <Windows.h>
 
 #include "curve/curve_container.h"
-#include "lw/lw_curve_dataset.h"
+#include "scene/scene.h"
 #include "system/system_assertions.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
@@ -47,18 +46,24 @@ typedef struct _curve_key
 
 
 /* Forward declarations. */
-curve_container                            CreateCurveFromEnvelope                             (const char*   object_name,
-                                                                                                const char*   curve_name,
-                                                                                                LWEnvelopeID  envelope,
-                                                                                                LWChanGroupID groupID);
-curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int           behavior);
+PRIVATE curve_container                            CreateCurveFromEnvelope                             (const char*   object_name,
+                                                                                                        const char*   curve_name,
+                                                                                                        LWEnvelopeID  envelope,
+                                                                                                        LWChanGroupID groupID);
+PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int           behavior);
 
+/* Global variables.
+ *
+ * Hey, this plug-in is implemented with simplicity in mind! I'm sorry if this
+ * offends anyone! :D */
+system_resizable_vector curve_containers                   = NULL;
+system_hash64map        envelope_id_to_curve_container_map = NULL;
 
 /** TODO */
-curve_container CreateCurveFromEnvelope(const char*   object_name,
-                                        const char*   curve_name,
-                                        LWEnvelopeID  envelope,
-                                        LWChanGroupID groupID)
+PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
+                                                const char*   curve_name,
+                                                LWEnvelopeID  envelope,
+                                                LWChanGroupID groupID)
 {
     /* Extract envelope properties */
     int             envelopePostBehavior = -1;
@@ -309,7 +314,38 @@ curve_container CreateCurveFromEnvelope(const char*   object_name,
 }
 
 /** TODO */
-curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int behavior)
+PUBLIC void DeinitCurveData()
+{
+    ASSERT_DEBUG_SYNC(curve_containers                   != NULL &&
+                      envelope_id_to_curve_container_map != NULL,
+                      "Curve data-set already deinitialized?");
+
+    if (curve_containers != NULL)
+    {
+        curve_container current_curve_container = NULL;
+
+        while (!system_resizable_vector_pop(curve_containers,
+                                           &current_curve_container) )
+        {
+            curve_container_release(current_curve_container);
+
+            current_curve_container = NULL;
+        }
+
+        system_resizable_vector_release(curve_containers);
+        curve_containers = NULL;
+    }
+
+    if (envelope_id_to_curve_container_map != NULL)
+    {
+        system_hash64map_release(envelope_id_to_curve_container_map);
+
+        envelope_id_to_curve_container_map = NULL;
+    }
+}
+
+/** TODO */
+PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int behavior)
 {
     curve_container_envelope_boundary_behavior result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED;
 
@@ -352,44 +388,46 @@ curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBeha
 }
 
 /** TODO */
-void FillCurveDataset(lw_dataset dataset)
+PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap()
 {
-    struct _item
+    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
+                      "Envelope ID to curve container map is NULL");
+
+    return envelope_id_to_curve_container_map;
+}
+
+/** TODO */
+PUBLIC void InitCurveData()
+{
+    ASSERT_DEBUG_SYNC(curve_containers                   == NULL &&
+                      envelope_id_to_curve_container_map == NULL,
+                      "Curve data-set already initialized?");
+
+    LWItemType items[] =
     {
-        LWItemType                   lw_type;
-        lw_curve_dataset_object_type object_type;
-    } items[] =
-    {
-        {LWI_OBJECT, LW_CURVE_DATASET_OBJECT_TYPE_MESH},
-        {LWI_LIGHT,  LW_CURVE_DATASET_OBJECT_TYPE_LIGHT},
-        {LWI_CAMERA, LW_CURVE_DATASET_OBJECT_TYPE_CAMERA}
+        LWI_OBJECT,
+        LWI_LIGHT,
+        LWI_CAMERA
     };
 
-          lw_curve_dataset curve_dataset = NULL;
-          unsigned int     n_item        = 0;
-    const unsigned int     n_items       = sizeof(items) / sizeof(items[0]);
+          unsigned int n_item  = 0;
+    const unsigned int n_items = sizeof(items) / sizeof(items[0]);
 
-    lw_dataset_get_property(dataset,
-                            LW_DATASET_PROPERTY_CURVE_DATASET,
-                           &curve_dataset);
-
-    /* Extract miscellaneous properties */
-    float fps = (float) scene_info_ptr->framesPerSecond;
-
-    lw_curve_dataset_set_property(curve_dataset,
-                                  LW_CURVE_DATASET_PROPERTY_FPS,
-                                 &fps);
+    /* Initialize internal data structures */
+    curve_containers                   = system_resizable_vector_create(4, /* capacity */
+                                                                        sizeof(curve_container) );
+    envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container) );
 
     /* Iterate over all object types .. */
     for (  n_item = 0;
            n_item < n_items;
          ++n_item)
     {
-        lw_curve_dataset_object_type current_emerald_type = items[n_item].object_type;
-        LWItemID                     current_lw_item_id   = 0;
-        LWItemType                   current_lw_type      = items[n_item].lw_type;
+        LWItemID   current_lw_item_id = 0;
+        LWItemType current_lw_type    = items[n_item];
 
-        current_lw_item_id = item_info_ptr->first(current_lw_type, LWITEM_NULL);
+        current_lw_item_id = item_info_ptr->first(current_lw_type,
+                                                  LWITEM_NULL);
 
         while (current_lw_item_id != LWITEM_NULL)
         {
@@ -415,14 +453,19 @@ void FillCurveDataset(lw_dataset dataset)
                                                                                         current_lw_channel_envelope,
                                                                                         current_lw_channel_group);
 
-                lw_curve_dataset_add_curve(curve_dataset,
-                                           object_name,
-                                           current_emerald_type,
-                                           curve_name,
-                                           curve);
+                /* Store the curve */
+                system_resizable_vector_push(curve_containers,
+                                             curve);
 
-                /* Curve has been taken over by the dataset, so we're OK to release the curve */
-                curve_container_release(curve);
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(envelope_id_to_curve_container_map,
+                                                             (system_hash64) current_lw_channel_envelope),
+                                  "Animation envelope already stored in internal hash-map!");
+
+                system_hash64map_insert(envelope_id_to_curve_container_map,
+                                        (system_hash64) current_lw_channel_envelope,
+                                        curve,
+                                        NULL,  /* on_remove_callback */
+                                        NULL); /* on_remove_callback_user_arg */
             } /* while (channels exist) */
 
             /* Iterate to the next item of the current type.*/

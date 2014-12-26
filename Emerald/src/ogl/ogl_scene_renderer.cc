@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
@@ -22,6 +23,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
+#include "system/system_variant.h"
 
 /* Forward declarations */
 PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents         (__in __notnull system_hash64map           cached_materials_map);
@@ -92,9 +94,10 @@ typedef struct _ogl_scene_renderer
     ogl_scene_renderer_bbox_preview    bbox_preview;
     ogl_scene_renderer_normals_preview normals_preview;
 
-    ogl_context   context;
-    ogl_materials material_manager;
-    scene         scene;
+    ogl_context    context;
+    ogl_materials  material_manager;
+    scene          scene;
+    system_variant temp_variant_float;
 
     _ogl_scene_renderer_helper_visualization current_helper_visualization;
     system_matrix4x4                         current_model_matrix;
@@ -131,6 +134,8 @@ typedef struct _ogl_scene_renderer
                                                                64, /* capacity */
                                                                _ogl_scene_renderer_init_resizable_vector_for_resource_pool,
                                                                _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool);
+
+        temp_variant_float = system_variant_create(SYSTEM_VARIANT_FLOAT);
     }
 
     ~_ogl_scene_renderer()
@@ -177,6 +182,13 @@ typedef struct _ogl_scene_renderer
             system_resource_pool_release(scene_renderer_mesh_pool);
 
             scene_renderer_mesh_pool = NULL;
+        }
+
+        if (temp_variant_float != NULL)
+        {
+           system_variant_release(temp_variant_float);
+
+           temp_variant_float = NULL;
         }
 
         if (ubers_map != NULL)
@@ -713,7 +725,8 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
     }
     else
     {
-        ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_POINT,
+        ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_AMBIENT ||
+                          light_type == SCENE_LIGHT_TYPE_POINT,
                           "Unrecognized light type, expand.");
     }
 }
@@ -1002,19 +1015,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
         if (render_mode == RENDER_MODE_REGULAR)
         {
             ASSERT_DEBUG_SYNC(n_uber_items == n_scene_lights,
-                              "TODO: Current ogl_scene_renderer impl assumes ogl_uber has exactly as many items as there are lights in the scene");
+                              "ogl_scene_renderer needs to be re-initialized, as the light dconfiguration has changed");
 
             for (unsigned int n_light = 0;
                               n_light < n_scene_lights;
                             ++n_light)
             {
-                scene_light      current_light           = scene_get_light_by_index(renderer_ptr->scene,
-                                                                                   n_light);
-                scene_light_type current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
-                float            current_light_attenuations[3];
-                float*           current_light_color     = NULL;
-                float*           current_light_direction = NULL;
-                float            current_light_position    [3];
+                scene_light      current_light                       = scene_get_light_by_index(renderer_ptr->scene,
+                                                                                               n_light);
+                scene_light_type current_light_type                  = SCENE_LIGHT_TYPE_UNKNOWN;
+                curve_container  current_light_attenuation_curves[3];
+                float            current_light_attenuation_floats[3];
+                curve_container  current_light_color_curves      [3];
+                float            current_light_color_floats      [3];
+                float            current_light_direction_floats  [3];
+                float            current_light_position_floats   [3];
 
                 scene_light_get_property(current_light,
                                          SCENE_LIGHT_PROPERTY_TYPE,
@@ -1022,57 +1037,93 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
                 scene_light_get_property(current_light,
                                          SCENE_LIGHT_PROPERTY_COLOR,
-                                        &current_light_color);
+                                         current_light_color_curves);
+
+                for (unsigned int n_color_component = 0;
+                                  n_color_component < 3;
+                                ++n_color_component)
+                {
+                    curve_container_get_value(current_light_color_curves[n_color_component],
+                                              frame_time,
+                                              false, /* should_force */
+                                              renderer_ptr->temp_variant_float);
+                    system_variant_get_float (renderer_ptr->temp_variant_float,
+                                              current_light_color_floats + n_color_component);
+                }
 
                 if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT)
                 {
                     ogl_uber_set_shader_item_property(material_uber,
                                                       n_light,
                                                       OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,
-                                                      current_light_color);
+                                                      current_light_color_floats);
                 }
                 else
                 {
                     ogl_uber_set_shader_item_property(material_uber,
                                                       n_light,
                                                       OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
-                                                      current_light_color);
+                                                      current_light_color_floats);
                 }
 
                 if (current_light_type == SCENE_LIGHT_TYPE_POINT)
                 {
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
-                                             current_light_attenuations + 0);
+                                             current_light_attenuation_curves + 0);
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,
-                                             current_light_attenuations + 1);
+                                             current_light_attenuation_curves + 1);
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
-                                             current_light_attenuations + 2);
+                                             current_light_attenuation_curves + 2);
+
+                    for (unsigned int n_curve = 0;
+                                      n_curve < 3;
+                                    ++n_curve)
+                    {
+                        curve_container src_curve     = NULL;
+                        float*          dst_float_ptr = NULL;
+
+                        if (n_curve < 3)
+                        {
+                            /* attenuation curves */
+                            src_curve     = current_light_attenuation_curves[n_curve];
+                            dst_float_ptr = current_light_attenuation_floats + n_curve;
+                        }
+
+                        curve_container_get_value(src_curve,
+                                                  frame_time,
+                                                  false, /* should_force */
+                                                  renderer_ptr->temp_variant_float);
+                        system_variant_get_float (renderer_ptr->temp_variant_float,
+                                                  dst_float_ptr);
+                    }
+
+                    /* position curves */
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_POSITION,
-                                             current_light_position);
+                                             current_light_position_floats);
 
                     ogl_uber_set_shader_item_property(material_uber,
                                                       n_light,
                                                       OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
-                                                      current_light_attenuations);
+                                                      current_light_attenuation_floats);
                     ogl_uber_set_shader_item_property(material_uber,
                                                       n_light,
                                                       OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,
-                                                      current_light_position);
+                                                      current_light_position_floats);
                 }
-
+                else
                 if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
                 {
                     scene_light_get_property         (current_light,
                                                       SCENE_LIGHT_PROPERTY_DIRECTION,
-                                                     &current_light_direction);
+                                                      current_light_direction_floats);
                     ogl_uber_set_shader_item_property(material_uber,
                                                       n_light,
                                                       OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
-                                                      current_light_direction);
+                                                      current_light_direction_floats);
                 }
             } /* for (all lights) */
         } /* if (render_mode == RENDER_MODE_REGULAR) */
@@ -1096,7 +1147,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                item_ptr->model_matrix,
                                                item_ptr->normal_matrix,
                                                material_uber,
-                                               item_ptr->material);
+                                               item_ptr->material,
+                                               frame_time);
             }
         }
         ogl_uber_rendering_stop(material_uber);

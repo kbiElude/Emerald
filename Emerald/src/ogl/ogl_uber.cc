@@ -485,6 +485,8 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                 switch (attachment_type)
                 {
                     case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
+                    case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                    case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                     case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
                     case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
                     {
@@ -1641,11 +1643,12 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
  *  Used by ogl_scene_renderer.
  *
  **/
-PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_gpu,
-                                           __in __notnull system_matrix4x4 model,
-                                           __in __notnull system_matrix4x4 normal_matrix,
-                                           __in __notnull ogl_uber         uber,
-                                           __in __notnull mesh_material    material)
+PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 mesh_gpu,
+                                           __in __notnull system_matrix4x4     model,
+                                           __in __notnull system_matrix4x4     normal_matrix,
+                                           __in __notnull ogl_uber             uber,
+                                           __in __notnull mesh_material        material,
+                                           __in           system_timeline_time time)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
@@ -1887,21 +1890,63 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh             mesh_
                         }
 
                         case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                         {
-                            float data_float;
+                            float        data_vec3[3];
+                            unsigned int n_components = 1;
 
                             ASSERT_DEBUG_SYNC(attachment.shader_scalar_uniform_location != -1,
                                               "Float uniform location is -1!");
-                            ASSERT_DEBUG_SYNC(!attachment.convert_to_linear,
-                                              "Float values should never be interpreted as sRGB?");
 
-                            mesh_material_get_shading_property_value_float(layer_pass_material,
-                                                                           attachment.property,
-                                                                          &data_float);
+                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
+                            {
+                                mesh_material_get_shading_property_value_float(layer_pass_material,
+                                                                               attachment.property,
+                                                                               data_vec3 + 0);
+                            }
+                            else
+                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                            {
+                                mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
+                                                                                               attachment.property,
+                                                                                               time,
+                                                                                               data_vec3 + 0);
+                            }
+                            else
+                            {
+                                mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
+                                                                                              attachment.property,
+                                                                                              time,
+                                                                                              data_vec3);
 
-                            entry_points->pGLProgramUniform1f(po_id,
-                                                              attachment.shader_scalar_uniform_location,
-                                                              data_float);
+                                n_components = 3;
+                            }
+
+                            if (attachment.convert_to_linear)
+                            {
+                                for (unsigned int n_component = 0;
+                                                  n_component < n_components;
+                                                ++n_component)
+                                {
+                                    data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                }
+                            } /* if (attachment.convert_to_linear) */
+
+                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
+                                attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                            {
+                                entry_points->pGLProgramUniform1f(po_id,
+                                                                  attachment.shader_scalar_uniform_location,
+                                                                  data_vec3[0]);
+                            }
+                            else
+                            {
+                                entry_points->pGLProgramUniform3fv(po_id,
+                                                                   attachment.shader_scalar_uniform_location,
+                                                                   1, /* count */
+                                                                   data_vec3);
+                            }
 
                             break;
                         } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT: */

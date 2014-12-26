@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include <stdlib.h>
+#include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
@@ -59,6 +60,7 @@ system_timeline_time       _scene_duration               = 0;
 ogl_scene_renderer         _scene_renderer               = NULL;
 system_hashed_ansi_string  _selected_scene_data_filename = NULL;
 scene                      _test_scene                   = NULL;
+system_variant             _temp_variant                 = system_variant_create(SYSTEM_VARIANT_FLOAT);
 ogl_text                   _text_renderer                = NULL;
 ogl_ui                     _ui                           = NULL;
 ogl_ui_control             _ui_active_camera_control     = NULL;
@@ -66,7 +68,6 @@ ogl_ui_control             _ui_active_path_control       = NULL;
 system_window              _window                       = NULL;
 system_event               _window_closed_event          = system_event_create(true, false);
 
-system_matrix4x4 _projection_matrix = NULL;
 GLuint           _vao_id            = 0;
 
 typedef struct _camera
@@ -140,6 +141,7 @@ void _init_cameras()
 
             scene_camera_get_property(current_camera,
                                       SCENE_CAMERA_PROPERTY_NAME,
+                                      0, /* time - irrelevant for camera name */
                                      &current_camera_name);
 
             /* Create a new descriptor */
@@ -223,72 +225,6 @@ void _on_active_camera_changed(void* fire_proc_user_arg,
     system_critical_section_enter(_camera_cs);
     {
         _active_camera_index = (unsigned int) event_user_arg;
-
-        /* Release camera-specific projection matrix */
-        if (_projection_matrix != NULL)
-        {
-            system_matrix4x4_release(_projection_matrix);
-
-            _projection_matrix = NULL;
-        }
-
-        /* Retrieve the camera descriptro */
-        _camera* camera_ptr = NULL;
-
-        system_resizable_vector_get_element_at(_cameras,
-                                               _active_camera_index,
-                                              &camera_ptr);
-
-        ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve camera descriptor");
-        if (camera_ptr != NULL)
-        {
-            if (!camera_ptr->is_flyby)
-            {
-                /* Create projection matrix */
-                bool  new_visibility = false;
-                float yfov;
-                float zfar;
-                float znear;
-
-                scene_camera_get_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
-                                          &yfov);
-                scene_camera_get_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
-                                          &zfar);
-                scene_camera_get_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
-                                          &znear);
-
-                _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(yfov,
-                                                                                           1280 / 720.0f,
-                                                                                           znear * 100.0f,
-                                                                                           zfar * 100.0f);
-
-                if (_ui_active_path_control != NULL)
-                {
-                    ogl_ui_set_property(_ui_active_path_control,
-                                        OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
-                                       &new_visibility);
-                }
-            }
-            else
-            {
-                bool new_visibility = true;
-
-                _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,
-                                                                                           1280 / 720.0f,
-                                                                                           1.0f,
-                                                                                           10000.0f);
-
-                if (_ui_active_path_control != NULL)
-                {
-                    ogl_ui_set_property(_ui_active_path_control,
-                                        OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
-                                       &new_visibility);
-                    }
-            }
-        } /* if (camera_ptr != NULL) */
     }
     system_critical_section_leave(_camera_cs);
 }
@@ -378,12 +314,14 @@ void _render_scene(ogl_context          context,
     /* Update view matrix */
     float            camera_location[4] = {0, 0, 0, 0};
     bool             is_flyby_active    = false;
+    system_matrix4x4 projection         = system_matrix4x4_create();
     system_matrix4x4 view               = system_matrix4x4_create();
 
     system_critical_section_enter(_camera_cs);
     {
         _camera* camera_ptr = NULL;
 
+        /* Retrieve camera descriptor */
         system_resizable_vector_get_element_at(_cameras,
                                                _active_camera_index,
                                               &camera_ptr);
@@ -391,6 +329,67 @@ void _render_scene(ogl_context          context,
         ASSERT_DEBUG_SYNC(camera_ptr != NULL, "Could not retrieve active camera descriptor");
         if (camera_ptr != NULL)
         {
+            /* If there is no projection matrix available, initialize one now */
+            /* Retrieve the camera descriptro */
+            if (!camera_ptr->is_flyby)
+            {
+                bool new_visibility = false;
+
+                /* Create projection matrix */
+                curve_container yfov_curve = NULL;
+                float           yfov_value;
+                float           zfar;
+                float           znear;
+
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                                          time,
+                                          &yfov_curve);
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+                                          time,
+                                          &zfar);
+                scene_camera_get_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
+                                          time,
+                                          &znear);
+
+                curve_container_get_value(yfov_curve,
+                                          time,
+                                          false, /* should_force */
+                                          _temp_variant);
+                system_variant_get_float (_temp_variant,
+                                         &yfov_value);
+
+                projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
+                                                                                   1280 / 720.0f,
+                                                                                   znear * 100.0f,
+                                                                                   zfar * 100.0f);
+
+                if (_ui_active_path_control != NULL)
+                {
+                    ogl_ui_set_property(_ui_active_path_control,
+                                        OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
+                                       &new_visibility);
+                }
+            }
+            else
+            {
+                bool new_visibility = true;
+
+                projection = system_matrix4x4_create_perspective_projection_matrix(45.0f,
+                                                                                   1280 / 720.0f,
+                                                                                   1.0f,
+                                                                                   10000.0f);
+
+                if (_ui_active_path_control != NULL)
+                {
+                    ogl_ui_set_property(_ui_active_path_control,
+                                        OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
+                                       &new_visibility);
+                }
+            }
+
             if (camera_ptr->is_flyby)
             {
                 is_flyby_active = true;
@@ -430,6 +429,7 @@ void _render_scene(ogl_context          context,
 
                     scene_camera_get_property(camera_ptr->camera,
                                               SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+                                              0, /* time - irrelevant for the owner graph node */
                                              &scene_camera_node);
 
                     scene_graph_node_get_property(scene_camera_node,
@@ -463,7 +463,7 @@ void _render_scene(ogl_context          context,
     {
         ogl_scene_renderer_render_scene_graph(_scene_renderer,
                                               view,
-                                              _projection_matrix,
+                                              projection,
                                               camera_location,
                                               RENDER_MODE_REGULAR,
                                               HELPER_VISUALIZATION_NONE,
@@ -487,7 +487,7 @@ void _render_scene(ogl_context          context,
     if (_curve_renderer_item_id != -1 && is_flyby_active)
     {
         const ogl_context_gl_entrypoints* entry_points = NULL;
-        system_matrix4x4                  vp           = system_matrix4x4_create_by_mul(_projection_matrix, view);
+        system_matrix4x4                  vp           = system_matrix4x4_create_by_mul(projection, view);
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -507,6 +507,7 @@ void _render_scene(ogl_context          context,
 
     /* All done */
     system_matrix4x4_release(view);
+    system_matrix4x4_release(projection);
 }
 
 void _rendering_rbm_callback_handler(system_window           window,
@@ -777,5 +778,9 @@ end:
         _camera_names = NULL;
     }
 
+    if (_temp_variant != NULL)
+    {
+        system_variant_release(_temp_variant);
+    }
     return 0;
 }
