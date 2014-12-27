@@ -306,7 +306,10 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
                               __out __notnull float*           out_point_uv_data,
                               __out __notnull bool*            out_uv_data_extracted)
 {
-    /* Extract vertex data */
+    /* Extract vertex data.
+     *
+     * LW uses left-handed system, so convert Z coords to a right-handed system.
+     */
     layer_mesh_info_ptr->pntBasePos(layer_mesh_info_id,
                                     point_id,
                                     out_point_vertex_data);

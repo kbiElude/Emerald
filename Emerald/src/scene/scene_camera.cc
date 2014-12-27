@@ -333,6 +333,23 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
             break;
         }
 
+        case SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR:
+        {
+            float zoom_factor = 0.0f;
+
+            curve_container_get_value(camera_ptr->zoom_factor,
+                                      time,
+                                      false, /* should_force */
+                                      camera_ptr->temp_variant);
+            system_variant_get_float (camera_ptr->temp_variant,
+                                     &zoom_factor);
+
+            *(float*) out_result = 2.0f * atan2(1.0f,
+                                                zoom_factor);
+
+            break;
+        }
+
         case SCENE_CAMERA_PROPERTY_ZOOM_FACTOR:
         {
             *(curve_container*) out_result = camera_ptr->zoom_factor;

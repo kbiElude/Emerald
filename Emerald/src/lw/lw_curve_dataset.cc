@@ -187,8 +187,11 @@ PRIVATE void _lw_curve_dataset_apply_to_node(__in __notnull _lw_curve_dataset* d
             };
 
             /* Create a dynamic translation node */
+            static const bool negate_xyz_curves[3] = {false, false, false};
+
             scene_graph_node new_translation_node = scene_graph_create_translation_dynamic_node(graph,
                                                                                                 neutral_curves,
+                                                                                                negate_xyz_curves,
                                                                                                 SCENE_GRAPH_NODE_TAG_TRANSLATE);
 
             ASSERT_DEBUG_SYNC(new_translation_node != NULL,

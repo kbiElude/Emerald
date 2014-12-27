@@ -1353,7 +1353,8 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                 if (is_dynamic)
                 {
-                    curve_container translation_vector_curves[3] = {NULL};
+                    static const bool negate_vector_curves     [3] = {false, false, false};
+                    curve_container   translation_vector_curves[3] = {NULL};
 
                     for (uint32_t n_component = 0;
                                   n_component < 3;
@@ -1364,6 +1365,7 @@ PRIVATE scene_graph_node _collada_scene_generator_process_transformation_node_it
 
                     result = scene_graph_create_translation_dynamic_node(graph,
                                                                          translation_vector_curves,
+                                                                         negate_vector_curves,
                                                                          result_node_tag);
 
                     ASSERT_DEBUG_SYNC(result != NULL,

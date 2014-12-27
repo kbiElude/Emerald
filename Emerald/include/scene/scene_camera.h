@@ -34,6 +34,7 @@ enum scene_camera_property
                                                            * F-Stop, Focal Distance and Zoom Factor curves.
                                                            */
     SCENE_CAMERA_PROPERTY_VERTICAL_FOV,                   /*     settable, curve_container */
+    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,  /* not settable, float */
     SCENE_CAMERA_PROPERTY_ZOOM_FACTOR                     /* not settable, curve_container */
 };
 

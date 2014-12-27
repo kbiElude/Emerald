@@ -138,6 +138,7 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
 /** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(__in           __notnull scene_graph          graph,
                                                                                 __in_ecount(3) __notnull curve_container*     translation_vector_curves,
+                                                                                __in_ecount(3) __notnull const bool*          negate_xyz_vectors,
                                                                                 __in                     scene_graph_node_tag tag);
 
 /** TODO.

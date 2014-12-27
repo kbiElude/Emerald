@@ -156,12 +156,14 @@ typedef struct _scene_graph_node_scale_dynamic
 
 typedef struct _scene_graph_node_translation_dynamic
 {
-    curve_container      curves[3];
+    curve_container      curves            [3];
+    bool                 negate_xyz_vectors[3];
     scene_graph_node_tag tag;
     system_variant       variant_float;
 
     explicit _scene_graph_node_translation_dynamic(__in_ecount(3) __notnull curve_container*     in_curves,
-                                                   __in                     scene_graph_node_tag in_tag)
+                                                   __in                     scene_graph_node_tag in_tag,
+                                                   __in_ecount(3) __notnull const bool*          in_negate_xyz_vectors)
     {
         tag = in_tag;
 
@@ -169,7 +171,8 @@ typedef struct _scene_graph_node_translation_dynamic
                       n_curve < 3;
                     ++n_curve)
         {
-            curves[n_curve] = in_curves[n_curve];
+            curves            [n_curve] = in_curves            [n_curve];
+            negate_xyz_vectors[n_curve] = in_negate_xyz_vectors[n_curve];
 
             curve_container_retain(curves[n_curve]);
         }
@@ -640,6 +643,11 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull
 
             system_variant_get_float(node_data_ptr->variant_float,
                                      result_translation_ptr + n_component);
+
+            if (node_data_ptr->negate_xyz_vectors[n_component])
+            {
+                result_translation_ptr[n_component] = -result_translation_ptr[n_component];
+            }
         } /* for (all components) */
     } /* for (both keyframes) */
 
@@ -907,17 +915,21 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                                                                                 __in __notnull scene_graph            result_graph,
                                                                                 __in __notnull scene_graph_node       parent_node)
 {
-    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
-    scene_graph_node     result_node          = NULL;
-    curve_container      serialized_curves[3] = {NULL, NULL, NULL};
-    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    _scene_graph*        graph_ptr                   = (_scene_graph*) result_graph;
+    scene_graph_node     result_node                 = NULL;
+    curve_container      serialized_curves       [3] = {NULL, NULL, NULL};
+    bool                 serialized_negate_curves[3] = {false, false, false};
+    scene_graph_node_tag serialized_tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
     for (unsigned int n = 0;
                       n < 3;
                     ++n)
     {
         if (!system_file_serializer_read_curve_container(serializer,
-                                                         serialized_curves + n) )
+                                                         serialized_curves + n) ||
+            !system_file_serializer_read                (serializer,
+                                                         sizeof(bool),
+                                                         serialized_negate_curves + n) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Dynamic translation transformation node serialization failed.");
@@ -938,6 +950,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
 
     result_node = scene_graph_create_translation_dynamic_node(result_graph,
                                                               serialized_curves,
+                                                              serialized_negate_curves,
                                                               serialized_tag);
 
     ASSERT_DEBUG_SYNC(result_node != NULL,
@@ -1045,7 +1058,11 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnu
                       n < 3;
                     ++n)
     {
-        result &= system_file_serializer_write_curve_container(serializer, data_ptr->curves[n]);
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               data_ptr->curves[n]);
+        result &= system_file_serializer_write                (serializer,
+                                                               sizeof(data_ptr->negate_xyz_vectors[n]),
+                                                               data_ptr->negate_xyz_vectors + n);
     }
 
     result &= system_file_serializer_write(serializer,
@@ -2040,6 +2057,7 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(__in           __notnull scene_graph          graph,
                                                                                 __in_ecount(3) __notnull curve_container*     translation_vector_curves,
+                                                                                __in_ecount(3) __notnull const bool*          negate_xyz_vectors,
                                                                                 __in                     scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
@@ -2052,7 +2070,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves, tag);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves,
+                                                                                           tag,
+                                                                                           negate_xyz_vectors);
     new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC;

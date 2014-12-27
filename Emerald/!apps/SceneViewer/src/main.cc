@@ -293,7 +293,7 @@ void _rendering_handler(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+    entry_points->pGLClearColor(0.0f, 0.0f, 0.5f, 0.0f);
     entry_points->pGLClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entry_points->pGLEnable(GL_DEPTH_TEST);
     entry_points->pGLEnable(GL_CULL_FACE);
@@ -328,7 +328,7 @@ void _render_scene(ogl_context          context,
                    void*                not_used)
 {
     static system_timeline_time start_time = system_time_now();
-           system_timeline_time frame_time = (system_time_now() - start_time) % _animation_duration_time;
+           system_timeline_time frame_time = /* 0; */(system_time_now() - start_time) % _animation_duration_time;
 
     /* Update view matrix */
     float            camera_location[4] = {0, 0, 0, 0};
@@ -355,15 +355,14 @@ void _render_scene(ogl_context          context,
                 bool new_visibility = false;
 
                 /* Create projection matrix */
-                curve_container yfov_curve = NULL;
                 float           yfov_value;
                 float           zfar;
                 float           znear;
 
                 scene_camera_get_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                                          SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
                                           time,
-                                          &yfov_curve);
+                                          &yfov_value);
                 scene_camera_get_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                           time,
@@ -373,16 +372,9 @@ void _render_scene(ogl_context          context,
                                           time,
                                           &znear);
 
-                curve_container_get_value(yfov_curve,
-                                          time,
-                                          false, /* should_force */
-                                          _temp_variant);
-                system_variant_get_float (_temp_variant,
-                                         &yfov_value);
-
                 projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
                                                                                    1280 / 720.0f,
-                                                                                   0.001f, //znear,
+                                                                                   znear,
                                                                                    zfar);
 
                 if (_ui_active_path_control != NULL)

@@ -15,6 +15,7 @@
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
+#include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_variant.h"
 
@@ -28,13 +29,15 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                                    __in __notnull curve_container    one_curve,
                                    __in __notnull void*              object)
 {
-    scene_camera     camera        = (scene_camera) object;
-    scene_light      light         = (scene_light)  object;
-    scene_mesh       mesh_instance = (scene_mesh)   object;
-    void*            object_id     = NULL;
-    scene_graph_node object_node   = NULL;
-    scene_graph_node parent_node   = NULL;
-    bool             result        = true;
+    scene_camera     camera                                  = (scene_camera) object;
+    scene_light      light                                   = (scene_light)  object;
+    scene_mesh       mesh_instance                           = (scene_mesh)   object;
+    void*            object_id                               = NULL;
+    scene_graph_node object_node                             = NULL;
+    scene_graph_node parent_node                             = NULL;
+    bool             result                                  = true;
+    system_matrix4x4 z_negation_diagonal_matrix_camera_light = NULL;
+    system_matrix4x4 z_negation_diagonal_matrix_mesh         = NULL;
 
     /* Is the parent node available? */
     switch (object_type)
@@ -171,13 +174,69 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
     rotation_x[0] = object_rotations[1];
     rotation_z[0] = object_rotations[2];
 
+    /* LW uses a left-handed coordinate system, so insert a matrix that will convert input coordinate
+     * back to right-handed CS.
+     *
+     * As per http://answers.unity3d.com/storage/attachments/12048-lefthandedtorighthanded.pdf , different
+     * matrices need to be used for objects & camera/lights.
+     **/
+    scene_graph_node   z_negation_node                        = NULL;
+    static const float z_negation_diagonal_matrix_mesh_data[] =
+    {
+        1.0f, 0.0f,  0.0f, 0.0f,
+        0.0f, 1.0f,  0.0f, 0.0f,
+        0.0f, 0.0f, -1.0f, 0.0f,
+        0.0f, 0.0f,  0.0f, 1.0f
+    };
+    static const float* z_negation_diagonal_matrix_camera_light_data_post    = z_negation_diagonal_matrix_mesh_data;
+    static const float  z_negation_diagonal_matrix_camera_light_data_pre[] =
+    {
+        -1.0f, 0.0f, 0.0f, 0.0f,
+         0.0f, 1.0f, 0.0f, 0.0f,
+         0.0f, 0.0f, 1.0f, 0.0f,
+         0.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    if (object_type == SCENE_OBJECT_TYPE_MESH)
+    {
+        z_negation_diagonal_matrix_mesh = system_matrix4x4_create();
+
+        system_matrix4x4_set_from_row_major_raw(z_negation_diagonal_matrix_mesh,
+                                                z_negation_diagonal_matrix_mesh_data);
+
+        z_negation_node = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                  z_negation_diagonal_matrix_mesh,
+                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
+    }
+    else
+    {
+        z_negation_diagonal_matrix_camera_light = system_matrix4x4_create();
+
+        system_matrix4x4_set_from_row_major_raw(z_negation_diagonal_matrix_camera_light,
+                                                z_negation_diagonal_matrix_camera_light_data_pre);
+
+        z_negation_node = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                  z_negation_diagonal_matrix_camera_light,
+                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
+    }
+
+    scene_graph_add_node(graph,
+                         object_node,
+                         z_negation_node);
+
+    object_node     = z_negation_node;
+    z_negation_node = NULL;
+
     /* Transformation: translation */
+    const bool negate_xyz_vectors[] = {false, false, false};
+
     if (object_translations[0] != NULL &&
         object_translations[1] != NULL &&
         object_translations[2] != NULL)
     {
         scene_graph_node translation_node = scene_graph_create_translation_dynamic_node(graph,
                                                                                         object_translations,
+                                                                                        negate_xyz_vectors,
                                                                                         SCENE_GRAPH_NODE_TAG_TRANSLATE);
 
         scene_graph_add_node(graph,
@@ -188,23 +247,6 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
     }
 
     /* Transformation: rotations */
-    if (rotation_y[0] != NULL &&
-        rotation_y[1] != NULL &&
-        rotation_y[2] != NULL &&
-        rotation_y[3] != NULL)
-    {
-        scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
-                                                                                  rotation_z,
-                                                                                  true,              /* expressed_in_radians */
-                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_Z);
-
-        scene_graph_add_node(graph,
-                             object_node,
-                             rotation_node);
-
-        object_node = rotation_node;
-    }
-
     if (rotation_x[0] != NULL &&
         rotation_x[1] != NULL &&
         rotation_x[2] != NULL &&
@@ -239,6 +281,50 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         object_node = rotation_node;
     }
 
+    if (rotation_y[0] != NULL &&
+        rotation_y[1] != NULL &&
+        rotation_y[2] != NULL &&
+        rotation_y[3] != NULL)
+    {
+        scene_graph_node rotation_node = scene_graph_create_rotation_dynamic_node(graph,
+                                                                                  rotation_z,
+                                                                                  true,              /* expressed_in_radians */
+                                                                                  SCENE_GRAPH_NODE_TAG_ROTATE_Z);
+
+        scene_graph_add_node(graph,
+                             object_node,
+                             rotation_node);
+
+        object_node = rotation_node;
+    }
+
+    /* TODO: Scaling */
+
+    /* Move back to right-hand coordinate system. */
+    if (object_type == SCENE_OBJECT_TYPE_MESH)
+    {
+        /* Use the same diagonal matrix data as before */
+        z_negation_node = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                  z_negation_diagonal_matrix_mesh,
+                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
+    }
+    else
+    {
+        system_matrix4x4_set_from_row_major_raw(z_negation_diagonal_matrix_camera_light,
+                                                z_negation_diagonal_matrix_camera_light_data_post);
+
+        z_negation_node = scene_graph_create_static_matrix4x4_transformation_node(graph,
+                                                                                  z_negation_diagonal_matrix_camera_light,
+                                                                                  SCENE_GRAPH_NODE_TAG_UNDEFINED);
+    }
+
+    scene_graph_add_node(graph,
+                         object_node,
+                         z_negation_node);
+
+    object_node     = z_negation_node;
+    z_negation_node = NULL;
+
     /* Push the object */
     scene_graph_attach_object_to_node(graph,
                                       object_node,
@@ -257,6 +343,14 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                             NULL); /* on_remove_callback_user_arg */
 
 end:
+    /* Release stuff */
+    if (z_negation_diagonal_matrix_mesh != NULL)
+    {
+        system_matrix4x4_release(z_negation_diagonal_matrix_mesh);
+
+        z_negation_diagonal_matrix_mesh = NULL;
+    }
+
     return result;
 }
 
@@ -284,11 +378,11 @@ PUBLIC void FillSceneGraphData(__in __notnull scene in_scene)
     root_node = scene_graph_get_root_node(graph);
 
     /* Initialize helper objects */
-    system_variant  float_variant = system_variant_create (SYSTEM_VARIANT_FLOAT);
-    curve_container one_curve     = curve_container_create(system_hashed_ansi_string_create("One curve"),
-                                                           SYSTEM_VARIANT_FLOAT);
-    curve_container zero_curve    = curve_container_create(system_hashed_ansi_string_create("Zero curve"),
-                                                           SYSTEM_VARIANT_FLOAT);
+    system_variant  float_variant   = system_variant_create (SYSTEM_VARIANT_FLOAT);
+    curve_container one_curve       = curve_container_create(system_hashed_ansi_string_create("One curve"),
+                                                             SYSTEM_VARIANT_FLOAT);
+    curve_container zero_curve      = curve_container_create(system_hashed_ansi_string_create("Zero curve"),
+                                                             SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (float_variant, 1.0f);
     curve_container_set_default_value(one_curve,     float_variant);
