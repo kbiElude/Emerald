@@ -3,6 +3,7 @@
 #include "shared.h"
 #include "plugin.h"
 #include "plugin_common.h"
+#include "plugin_curves.h"
 #include "plugin_materials.h"
 #include "curve/curve_container.h"
 #include "scene/scene.h"
@@ -61,9 +62,10 @@ PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
 }
 
 /** Please see header for spec */
-PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curve_container_map,
-                             __in __notnull scene            in_scene)
+PUBLIC void InitMaterialData(__in __notnull scene in_scene)
 {
+    system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+
     /* Initialize containers */
     materials_vector                 = system_resizable_vector_create(4, /* capacity */
                                                                       sizeof(scene_material) );

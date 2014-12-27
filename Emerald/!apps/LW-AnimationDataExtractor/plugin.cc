@@ -11,20 +11,25 @@
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
 #include "plugin_misc.h"
+#include "plugin_ui.h"
 #include "plugin_vmaps.h"
 #include "scene/scene.h"
 #include "system/system_assertions.h"
+#include "system/system_capabilities.h"
+#include "system/system_event.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_time.h"
+#include "system/system_threads.h"
 #include "system/system_variant.h"
 
-/* Forward declarations */
+/* Global variable declarations */
 LWCameraInfo*    camera_info_ptr    = NULL;
 LWChannelInfo*   channel_info_ptr   = NULL;
 LWEnvelopeFuncs* envelope_ptr       = NULL;
+GlobalFunc*      global_func_ptr    = NULL;
 LWImageList*     image_list_ptr     = NULL;
 LWInterfaceInfo* interface_info_ptr = NULL;
 LWItemInfo*      item_info_ptr      = NULL;
@@ -32,35 +37,21 @@ LWLightInfo*     light_info_ptr     = NULL;
 LWMessageFuncs*  message_funcs_ptr  = NULL;
 LWObjectFuncs*   object_funcs_ptr   = NULL;
 LWObjectInfo*    object_info_ptr    = NULL;
+LWPanelFuncs*    panel_funcs_ptr    = NULL;
 LWSceneInfo*     scene_info_ptr     = NULL;
 LWSurfaceFuncs*  surface_funcs_ptr  = NULL;
 LWTextureFuncs*  texture_funcs_ptr  = NULL;
 
-/* Forward declarations. */
-XCALL_(int) ExportData(int         version,
-                       GlobalFunc* global,
-                       void*       local,
-                       void*       serverData)
-{
-    if (version != LWLAYOUTGENERIC_VERSION)
-    {
-       return AFUNC_BADVERSION;
-    }
+PRIVATE void LaunchPanel           ();
+PRIVATE void UIThreadEntryPoint    (void* not_used);
+PRIVATE void WorkerThreadEntryPoint(void* not_used);
 
-    /* Retrieve func ptr structures */
-    camera_info_ptr    = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_TRANSIENT);
-    channel_info_ptr   = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_TRANSIENT);
-    envelope_ptr       = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_TRANSIENT);
-    image_list_ptr     = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_TRANSIENT);
-    interface_info_ptr = (LWInterfaceInfo*) global(LWINTERFACEINFO_GLOBAL, GFUSE_TRANSIENT);
-    item_info_ptr      = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_TRANSIENT);
-    light_info_ptr     = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_TRANSIENT);
-    message_funcs_ptr  = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
-    object_funcs_ptr   = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_TRANSIENT);
-    object_info_ptr    = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_TRANSIENT);
-    scene_info_ptr     = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_TRANSIENT);
-    surface_funcs_ptr  = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_TRANSIENT);
-    texture_funcs_ptr  = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_TRANSIENT);
+
+/** TODO */
+PRIVATE void WorkerThreadEntryPoint(void* not_used)
+{
+    /* Wait for the UI to nestle */
+    system_event_wait_single_infinite(ui_initialized_event);
 
     /* Spawn a new scene */
     scene new_scene = scene_create(NULL, /* ogl_context */
@@ -77,23 +68,20 @@ XCALL_(int) ExportData(int         version,
                             NULL);
 
     InitCameraData         ();
-    FillSceneWithCameraData(new_scene,
-                            GetEnvelopeIDToCurveContainerHashMap() );
+    FillSceneWithCameraData(new_scene);
 
     /* Extract light data */
     message_funcs_ptr->info("Extracting light data..",
                             NULL);
 
     InitLightData         ();
-    FillSceneWithLightData(new_scene,
-                           GetEnvelopeIDToCurveContainerHashMap() );
+    FillSceneWithLightData(new_scene);
 
     /* Extract surface data */
     message_funcs_ptr->info("Extracting surface data..",
                             NULL);
 
-    InitMaterialData(GetEnvelopeIDToCurveContainerHashMap(),
-                     new_scene);
+    InitMaterialData(new_scene);
 
     /* Extract vmap data */
     message_funcs_ptr->info("Extracting vmap data..",
@@ -106,8 +94,7 @@ XCALL_(int) ExportData(int         version,
                             NULL);
 
     InitMeshData         ();
-    FillSceneWithMeshData(new_scene,
-                          GetEnvelopeIDToCurveContainerHashMap() );
+    FillSceneWithMeshData(new_scene);
 
     /* Extract other props */
     FillMiscellaneousData(new_scene);
@@ -150,7 +137,10 @@ XCALL_(int) ExportData(int         version,
                                    NULL);
     }
 
-    /* done! */
+    /* done! Kill the panel first.. */
+    DeinitUI();
+
+    /* Release all plugin modules */
     DeinitCameraData  ();
     DeinitCurveData   ();
     DeinitGraphData   ();
@@ -158,6 +148,63 @@ XCALL_(int) ExportData(int         version,
     DeinitMaterialData();
     DeinitMeshData    ();
     DeinitVMapData    ();
+
+    /* Finally release all LW pointers */
+    global_func_ptr(LWCAMERAINFO_GLOBAL,    GFUSE_RELEASE);
+    global_func_ptr(LWCHANNELINFO_GLOBAL,   GFUSE_RELEASE);
+    global_func_ptr(LWENVELOPEFUNCS_GLOBAL, GFUSE_RELEASE);
+    global_func_ptr(LWIMAGELIST_GLOBAL,     GFUSE_RELEASE);
+    global_func_ptr(LWINTERFACEINFO_GLOBAL, GFUSE_RELEASE);
+    global_func_ptr(LWITEMINFO_GLOBAL,      GFUSE_RELEASE);
+    global_func_ptr(LWLIGHTINFO_GLOBAL,     GFUSE_RELEASE);
+    global_func_ptr(LWMESSAGEFUNCS_GLOBAL,  GFUSE_RELEASE);
+    global_func_ptr(LWOBJECTFUNCS_GLOBAL,   GFUSE_RELEASE);
+    global_func_ptr(LWOBJECTINFO_GLOBAL,    GFUSE_RELEASE);
+    global_func_ptr(LWPANELFUNCS_GLOBAL,    GFUSE_RELEASE);
+    global_func_ptr(LWSCENEINFO_GLOBAL,     GFUSE_RELEASE);
+    global_func_ptr(LWSURFACEFUNCS_GLOBAL,  GFUSE_RELEASE);
+    global_func_ptr(LWTEXTUREFUNCS_GLOBAL,  GFUSE_RELEASE);
+}
+
+/* TODO */
+XCALL_(int) ExportData(int         version,
+                       GlobalFunc* global,
+                       void*       local,
+                       void*       serverData)
+{
+    if (version != LWLAYOUTGENERIC_VERSION)
+    {
+       return AFUNC_BADVERSION;
+    }
+
+    /* Retrieve func ptr structures */
+    global_func_ptr = global;
+
+    camera_info_ptr    = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_ACQUIRE);
+    channel_info_ptr   = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_ACQUIRE);
+    envelope_ptr       = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_ACQUIRE);
+    image_list_ptr     = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_ACQUIRE);
+    interface_info_ptr = (LWInterfaceInfo*) global(LWINTERFACEINFO_GLOBAL, GFUSE_ACQUIRE);
+    item_info_ptr      = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_ACQUIRE);
+    light_info_ptr     = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_ACQUIRE);
+    message_funcs_ptr  = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_ACQUIRE);
+    object_funcs_ptr   = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_ACQUIRE);
+    object_info_ptr    = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_ACQUIRE);
+    panel_funcs_ptr    = (LWPanelFuncs*)    global(LWPANELFUNCS_GLOBAL,    GFUSE_ACQUIRE);
+    scene_info_ptr     = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_ACQUIRE);
+    surface_funcs_ptr  = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_ACQUIRE);
+    texture_funcs_ptr  = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_ACQUIRE);
+
+    /* Set up UI */
+    InitUI();
+
+    /* Spawn the worker thread which is going to do all the dirty work.
+     * We need to give back the execution to LW ASAP, so that the user can
+     * continue using LW.
+     */
+    system_threads_spawn(WorkerThreadEntryPoint,
+                         NULL, /* argument */
+                         NULL  /* thread_wait_event */);
 
     return AFUNC_OK;
 }

@@ -4,6 +4,7 @@
 
 #include "plugin.h"
 #include "plugin_common.h"
+#include "plugin_curves.h"
 #include "plugin_lights.h"
 
 #include "scene/scene.h"
@@ -198,9 +199,10 @@ PUBLIC void DeinitLightData()
 }
 
 /** Please see header for spec */
-PUBLIC void FillSceneWithLightData(__in __notnull scene            in_scene,
-                                   __in __notnull system_hash64map curve_id_to_curve_container_map)
+PUBLIC void FillSceneWithLightData(__in __notnull scene in_scene)
 {
+    system_hash64map curve_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+
     /* Extract available lights.
      *
      * Also remember to extract ambient light data.

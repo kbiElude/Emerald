@@ -22,8 +22,7 @@ typedef enum
 PUBLIC void DeinitLightData();
 
 /** TODO */
-PUBLIC void FillSceneWithLightData(__in __notnull scene            in_scene,
-                                   __in __notnull system_hash64map curve_id_to_curve_container_map);
+PUBLIC void FillSceneWithLightData(__in __notnull scene            in_scene);
 
 /** TODO */
 PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,

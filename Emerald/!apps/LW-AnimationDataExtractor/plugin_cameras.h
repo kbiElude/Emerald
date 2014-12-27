@@ -20,8 +20,7 @@ typedef enum
 PUBLIC void DeinitCameraData();
 
 /** TODO */
-PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
-                                    __in __notnull system_hash64map curve_id_to_curve_container_map);
+PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene);
 
 /** TODO */
 PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,

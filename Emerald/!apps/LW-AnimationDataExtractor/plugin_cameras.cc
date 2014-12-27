@@ -5,6 +5,7 @@
 #include "plugin.h"
 #include "plugin_cameras.h"
 #include "plugin_common.h"
+#include "plugin_curves.h"
 #include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -93,9 +94,10 @@ PUBLIC void DeinitCameraData()
 }
 
 /** TODO */
-PUBLIC void FillSceneWithCameraData(__in __notnull scene            in_scene,
-                                    __in __notnull system_hash64map envelope_id_to_curve_container_map)
+PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene)
 {
+    system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+
     /* Extract available cameras */
     LWItemID camera_item_id = item_info_ptr->first(LWI_CAMERA,
                                                    LWITEM_NULL);

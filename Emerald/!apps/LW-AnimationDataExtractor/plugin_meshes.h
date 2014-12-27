@@ -22,8 +22,7 @@ typedef enum
 PUBLIC void DeinitMeshData();
 
 /** TODO */
-PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
-                                  __in __notnull system_hash64map envelope_id_to_curve_container_map);
+PUBLIC void FillSceneWithMeshData(__in __notnull scene scene);
 
 /** TODO */
 PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,

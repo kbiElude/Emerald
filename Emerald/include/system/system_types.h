@@ -28,6 +28,12 @@ typedef enum
     PUBLIC EMERALD_API void prefix##_retain(__in __notnull public_handle_type);                 \
     PUBLIC EMERALD_API void prefix##_release(__inout __notnull public_handle_type&);
 
+/************************* CAPABILITIES *****************/
+typedef enum
+{
+    SYSTEM_CAPABILITIES_PROPERTY_NUMBER_OF_CPU_CORES /* unsigned int */
+} system_capabilities_property;
+
 /******************* OBJECT MANAGER ***************************************/
 #ifdef INCLUDE_OBJECT_MANAGER
 

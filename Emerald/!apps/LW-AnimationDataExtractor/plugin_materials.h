@@ -16,7 +16,6 @@ PUBLIC void DeinitMaterialData();
 PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap();
 
 /** TODO */
-PUBLIC void InitMaterialData(__in __notnull system_hash64map envelope_id_to_curve_container_map,
-                             __in __notnull scene            in_scene);
+PUBLIC void InitMaterialData(__in __notnull scene in_scene);
 
 #endif /* PLUGIN_MATERIALS_H */

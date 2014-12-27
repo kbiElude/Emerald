@@ -4,6 +4,7 @@
 
 #include "plugin.h"
 #include "plugin_common.h"
+#include "plugin_curves.h"
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
 #include "plugin_vmaps.h"
@@ -557,10 +558,11 @@ PUBLIC void DeinitMeshData()
 }
 
 /** TODO */
-PUBLIC void FillSceneWithMeshData(__in __notnull scene            scene,
-                                  __in __notnull system_hash64map envelope_id_to_curve_container_map)
+PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
 
 {
+    system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+
     /* Iterate over all objects */
     LWItemID object_id = item_info_ptr->first(LWI_OBJECT,
                                               LWITEM_NULL);
