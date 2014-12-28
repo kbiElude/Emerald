@@ -5,24 +5,32 @@
 #include "plugin_ui.h"
 #include "system/system_assertions.h"
 #include "system/system_capabilities.h"
+#include "system/system_critical_section.h"
 #include "system/system_event.h"
+#include "system/system_hash64map.h"
 #include "system/system_threads.h"
 
-PRIVATE LWControl**  edit_controls        = NULL;
-PRIVATE LWPanelID    panel_id             = 0;
+PRIVATE LWControl**             edit_controls                      = NULL;
+PRIVATE unsigned int            n_cpu_cores                        = 0;
+PRIVATE LWPanelID               panel_id                           = 0;
+PRIVATE system_hash64map        thread_id_to_cpu_core_index_map    = NULL;
+PRIVATE system_critical_section thread_id_to_cpu_core_index_map_cs = NULL;
 
-system_event ui_initialized_event = NULL;
+PUBLIC system_event ui_initialized_event = NULL;
 
 /** TODO */
 PRIVATE void LaunchPanel()
 {
     LWPanControlDesc desc;                      /* for LWPanel macros */
-    unsigned int     n_cpu_cores       = 0;
     LWValue          sval              = {LWT_STRING};
     char             text_buffer[1024] = {0};
     char*            text_inactive     = "Inactive";
 
     panel_funcs_ptr->globalFun = global_func_ptr;
+
+    /* Allocate thread ID->CPU core index map */
+    thread_id_to_cpu_core_index_map    = system_hash64map_create       (sizeof(unsigned int) );
+    thread_id_to_cpu_core_index_map_cs = system_critical_section_create();
 
     /* Allocate storage for edit control IDs */
     system_capabilities_get(SYSTEM_CAPABILITIES_PROPERTY_NUMBER_OF_CPU_CORES,
@@ -83,6 +91,24 @@ PRIVATE void UIThreadEntryPoint(void* not_used)
 PUBLIC void DeinitUI()
 {
     panel_funcs_ptr->close(panel_id);
+
+    system_critical_section_enter(thread_id_to_cpu_core_index_map_cs);
+    {
+        if (thread_id_to_cpu_core_index_map != NULL)
+        {
+            system_hash64map_release(thread_id_to_cpu_core_index_map);
+
+            thread_id_to_cpu_core_index_map = NULL;
+        }
+    }
+    system_critical_section_leave(thread_id_to_cpu_core_index_map_cs);
+
+    if (thread_id_to_cpu_core_index_map_cs != NULL)
+    {
+        system_critical_section_release(thread_id_to_cpu_core_index_map_cs);
+
+        thread_id_to_cpu_core_index_map_cs = NULL;
+    }
 }
 
 /** Please see header for spec */
@@ -98,3 +124,34 @@ PUBLIC void InitUI()
                          NULL  /* thread_wait_event */);
 }
 
+/** Please see header for spec */
+PUBLIC void SetActivityDescription(__in __notnull char* text)
+{
+    /* The plug-in uses system thread pool to execute tasks. This
+     * allows us to map thread IDs to specific CPU cores.
+     */
+    unsigned int core_index = -1;
+
+    system_critical_section_enter(thread_id_to_cpu_core_index_map_cs);
+    {
+        system_thread_id caller_thread_id = system_threads_get_thread_id();
+
+        if (!system_hash64map_get(thread_id_to_cpu_core_index_map,
+                                  (system_hash64) caller_thread_id,
+                                 &core_index) )
+        {
+            core_index = system_hash64map_get_amount_of_elements(thread_id_to_cpu_core_index_map);
+
+            ASSERT_DEBUG_SYNC(core_index < n_cpu_cores,
+                              "Invalid CPU core index about to be used");
+        }
+    }
+    system_critical_section_leave(thread_id_to_cpu_core_index_map_cs);
+
+    /* Update the edit control contents. */
+    LWValue sval = {LWT_STRING};
+
+    SET_STR(edit_controls[core_index],
+            text,
+            strlen(text) );
+}

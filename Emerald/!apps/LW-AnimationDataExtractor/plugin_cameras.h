@@ -7,6 +7,7 @@
 #define PLUGIN_CAMERAS_H
 
 #include "scene/scene_types.h"
+#include "system/system_types.h"
 
 typedef enum
 {
@@ -20,14 +21,14 @@ typedef enum
 PUBLIC void DeinitCameraData();
 
 /** TODO */
-PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene);
-
-/** TODO */
 PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
                                    __in            CameraProperty property,
                                    __out __notnull void*          out_result);
 
 /** TODO */
 PUBLIC void InitCameraData();
+
+/** TODO */
+PUBLIC system_event StartCameraDataExtraction(__in __notnull scene in_scene);
 
 #endif /* PLUGIN_CAMERAS_H */

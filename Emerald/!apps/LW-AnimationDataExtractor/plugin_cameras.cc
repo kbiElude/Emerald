@@ -6,13 +6,16 @@
 #include "plugin_cameras.h"
 #include "plugin_common.h"
 #include "plugin_curves.h"
+#include "plugin_ui.h"
 #include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "system/system_assertions.h"
+#include "system/system_event.h"
 #include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_thread_pool.h"
 
 typedef struct _camera_internal
 {
@@ -58,45 +61,16 @@ typedef struct _camera_internal
 } _camera_internal;
 
 
-system_hash64map scene_camera_to_camera_internal_map = NULL;
+PRIVATE system_event     job_done_event                      = NULL;
+PRIVATE system_hash64map scene_camera_to_camera_internal_map = NULL;
 
 
 /** TODO */
-PUBLIC void DeinitCameraData()
-{
-    if (scene_camera_to_camera_internal_map != NULL)
-    {
-        _camera_internal* camera_internal_ptr = NULL;
-        const uint32_t    n_camera_internals  = system_hash64map_get_amount_of_elements(scene_camera_to_camera_internal_map);
-
-        for (uint32_t n_camera_internal = 0;
-                      n_camera_internal < n_camera_internals;
-                    ++n_camera_internal)
-        {
-            if (!system_hash64map_get_element_at(scene_camera_to_camera_internal_map,
-                                                 n_camera_internal,
-                                                &camera_internal_ptr,
-                                                 NULL) ) /* outHash */
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not extract camera internal descriptor");
-
-                continue;
-            }
-
-            delete camera_internal_ptr;
-            camera_internal_ptr = NULL;
-        }
-
-        system_hash64map_release(scene_camera_to_camera_internal_map);
-        scene_camera_to_camera_internal_map = NULL;
-    }
-}
-
-/** TODO */
-PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene)
+volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
 {
     system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+    scene            in_scene                           = (scene) in_scene_arg;
+    char             text_buffer[1024];
 
     /* Extract available cameras */
     LWItemID camera_item_id = item_info_ptr->first(LWI_CAMERA,
@@ -104,6 +78,17 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene)
 
     while (camera_item_id != LWITEM_NULL)
     {
+        /* Extract camera name */
+        const char*               camera_name     = item_info_ptr->name             (camera_item_id);
+        system_hashed_ansi_string camera_name_has = system_hashed_ansi_string_create(camera_name);
+
+        sprintf_s(text_buffer,
+                  sizeof(text_buffer),
+                  "Extracting camera [%s] data..",
+                  camera_name);
+
+        SetActivityDescription(text_buffer);
+
         /* Sanity check: no pivot */
         LWDVector pivot;
 
@@ -116,10 +101,6 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene)
                           fabs(pivot[1]) < 1e-5f &&
                           fabs(pivot[2]) < 1e-5f,
                           "Camera pivoting is not currently supported");
-
-        /* Extract camera name */
-        const char*               camera_name     = item_info_ptr->name             (camera_item_id);
-        system_hashed_ansi_string camera_name_has = system_hashed_ansi_string_create(camera_name);
 
         /* Instantiate a new camera */
         scene_camera new_camera = scene_camera_create(camera_name_has);
@@ -236,6 +217,59 @@ PUBLIC void FillSceneWithCameraData(__in __notnull scene in_scene)
         /* Move on */
         camera_item_id = item_info_ptr->next(camera_item_id);
     }
+
+    SetActivityDescription("Inactive");
+
+    system_event_set(job_done_event);
+}
+
+
+/** TODO */
+PUBLIC void DeinitCameraData()
+{
+    if (scene_camera_to_camera_internal_map != NULL)
+    {
+        _camera_internal* camera_internal_ptr = NULL;
+        const uint32_t    n_camera_internals  = system_hash64map_get_amount_of_elements(scene_camera_to_camera_internal_map);
+
+        for (uint32_t n_camera_internal = 0;
+                      n_camera_internal < n_camera_internals;
+                    ++n_camera_internal)
+        {
+            if (!system_hash64map_get_element_at(scene_camera_to_camera_internal_map,
+                                                 n_camera_internal,
+                                                &camera_internal_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not extract camera internal descriptor");
+
+                continue;
+            }
+
+            delete camera_internal_ptr;
+            camera_internal_ptr = NULL;
+        }
+
+        system_hash64map_release(scene_camera_to_camera_internal_map);
+        scene_camera_to_camera_internal_map = NULL;
+    }
+}
+
+/** TODO */
+PUBLIC system_event StartCameraDataExtraction(__in __notnull scene in_scene)
+{
+    job_done_event = system_event_create(false,  /* manual_reset */
+                                         false); /* start_state */
+
+    /* Spawn a worker thread so that we can report the progress. */
+    system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                     ExtractCameraDataWorkerThreadEntryPoint,
+                                                                                                     in_scene);
+
+    system_thread_pool_submit_single_task(task);
+
+    return job_done_event;
 }
 
 /* Please see header for spec */

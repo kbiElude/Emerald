@@ -10,7 +10,6 @@ typedef enum
 {
     VMAP_TYPE_UVMAP,
 
-
 } _vmap_type;
 
 typedef enum
@@ -34,6 +33,6 @@ PUBLIC void GetVMapProperty(__in            _vmap_property property,
                             __out __notnull void*          out_result);
 
 /** TODO */
-PUBLIC void InitVMapData();
+PUBLIC system_event StartVMapDataExtraction();
 
 #endif /* PLUGIN_VMAPS_H */

@@ -6,12 +6,14 @@
 #include "plugin_common.h"
 #include "plugin_curves.h"
 #include "plugin_lights.h"
-
+#include "plugin_ui.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
 #include "system/system_assertions.h"
+#include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
+#include "system/system_thread_pool.h"
 
 
 typedef struct _light_data
@@ -35,6 +37,8 @@ typedef struct _light_data
     }
 } _light_data;
 
+
+PRIVATE system_event     job_done_event                = NULL;
 PRIVATE system_hash64map scene_light_to_light_data_map = NULL;
 
 
@@ -164,44 +168,12 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                             NULL); /* on_remove_callback_user_arg */
 }
 
-/** Please see header for spec */
-PUBLIC void DeinitLightData()
-{
-    if (scene_light_to_light_data_map != NULL)
-    {
-        const uint32_t n_map_entries = system_hash64map_get_amount_of_elements(scene_light_to_light_data_map);
-
-        for (uint32_t n_entry = 0;
-                      n_entry < n_map_entries;
-                    ++n_entry)
-        {
-            _light_data* light_ptr = NULL;
-
-            if (!system_hash64map_get_element_at(scene_light_to_light_data_map,
-                                                 n_entry,
-                                                &light_ptr,
-                                                 NULL) ) /* outHash */
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve light descriptor at index [%d]",
-                                  n_entry);
-
-                continue;
-            }
-
-            delete light_ptr;
-            light_ptr = NULL;
-        } /* for (all map entries) */
-
-        system_hash64map_release(scene_light_to_light_data_map);
-        scene_light_to_light_data_map = NULL;
-    }
-}
-
-/** Please see header for spec */
-PUBLIC void FillSceneWithLightData(__in __notnull scene in_scene)
+/** TODO */
+volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
 {
     system_hash64map curve_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+    scene            in_scene                        = (scene) in_scene_arg;
+    char             text_buffer[1024]               = {0};
 
     /* Extract available lights.
      *
@@ -221,6 +193,13 @@ PUBLIC void FillSceneWithLightData(__in __notnull scene in_scene)
         system_hashed_ansi_string light_name_has     = system_hashed_ansi_string_create(light_name);
         int                       light_type         = light_info_ptr->type            (light_item_id);
         scene_light_type          light_type_emerald = SCENE_LIGHT_TYPE_UNKNOWN;
+
+        sprintf_s(text_buffer,
+                  sizeof(text_buffer),
+                  "Extracting light [%s] data..",
+                  light_name);
+
+        SetActivityDescription(text_buffer);
 
         /* Instantiate a new light */
         scene_light new_light = NULL;
@@ -276,6 +255,8 @@ PUBLIC void FillSceneWithLightData(__in __notnull scene in_scene)
     /* Extract ambient light props & add the light to the scene */
     system_hashed_ansi_string scene_name = NULL;
 
+    SetActivityDescription("Extracting ambient light data..");
+
     scene_get_property(in_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
@@ -295,6 +276,46 @@ PUBLIC void FillSceneWithLightData(__in __notnull scene in_scene)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not add ambient light.");
+    }
+
+    /* All done */
+    system_event_set(job_done_event);
+
+    SetActivityDescription("Inactive");
+}
+
+
+/** Please see header for spec */
+PUBLIC void DeinitLightData()
+{
+    if (scene_light_to_light_data_map != NULL)
+    {
+        const uint32_t n_map_entries = system_hash64map_get_amount_of_elements(scene_light_to_light_data_map);
+
+        for (uint32_t n_entry = 0;
+                      n_entry < n_map_entries;
+                    ++n_entry)
+        {
+            _light_data* light_ptr = NULL;
+
+            if (!system_hash64map_get_element_at(scene_light_to_light_data_map,
+                                                 n_entry,
+                                                &light_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve light descriptor at index [%d]",
+                                  n_entry);
+
+                continue;
+            }
+
+            delete light_ptr;
+            light_ptr = NULL;
+        } /* for (all map entries) */
+
+        system_hash64map_release(scene_light_to_light_data_map);
+        scene_light_to_light_data_map = NULL;
     }
 }
 
@@ -360,4 +381,20 @@ end:
 PUBLIC void InitLightData()
 {
     scene_light_to_light_data_map = system_hash64map_create(sizeof(_light_data*) );
+}
+
+/** Please see header for spec */
+PUBLIC system_event StartLightDataExtraction(__in __notnull scene in_scene)
+{
+    job_done_event = system_event_create(false,  /* manual_reset */
+                                         false); /* start_state */
+
+    /* Spawn a worker thread so that we can report the progress. */
+    system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                     ExtractLightDataWorkerThreadEntryPoint,
+                                                                                                     in_scene);
+
+    system_thread_pool_submit_single_task(task);
+
+    return job_done_event;
 }

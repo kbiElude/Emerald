@@ -57,39 +57,46 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
     scene new_scene = scene_create(NULL, /* ogl_context */
                                    system_hashed_ansi_string_create("Exported scene") );
 
-    /* Extract curve data */
-    message_funcs_ptr->info("Extracting curve data..",
-                            NULL);
-
+    /* Extract curve data.
+     *
+     * NOTE: InitCurveData() is a blocking call, so we need not synchronize. */
     InitCurveData();
 
-    /* Extract camera data */
-    message_funcs_ptr->info("Extracting camera data",
-                            NULL);
+    /* Extract camera / light / material / vmap data.
+     *
+     * These calls are not blocking, so we need to make sure they finish
+     * before continuing.
+     */
+    system_event job_done_events[4] = {NULL};
 
-    InitCameraData         ();
-    FillSceneWithCameraData(new_scene);
+    InitCameraData();
+    job_done_events[0] = StartCameraDataExtraction(new_scene);
 
     /* Extract light data */
-    message_funcs_ptr->info("Extracting light data..",
-                            NULL);
-
-    InitLightData         ();
-    FillSceneWithLightData(new_scene);
+    InitLightData();
+    job_done_events[1] = StartLightDataExtraction(new_scene);
 
     /* Extract surface data */
-    message_funcs_ptr->info("Extracting surface data..",
-                            NULL);
-
-    InitMaterialData(new_scene);
+    job_done_events[2] = StartMaterialDataExtraction(new_scene);
 
     /* Extract vmap data */
-    message_funcs_ptr->info("Extracting vmap data..",
-                            NULL);
+    job_done_events[3] = StartVMapDataExtraction();
 
-    InitVMapData();
+    /* Wait for the jobs to finish */
+    system_event_wait_multiple_infinite(job_done_events,
+                                        sizeof(job_done_events) / sizeof(job_done_events[0]),
+                                        true); /* wait_on_all_objects */
 
-    /* Extract mesh data */
+    for (unsigned int n_job_event = 0;
+                      n_job_event < sizeof(job_done_events) / sizeof(job_done_events[0]);
+                    ++n_job_event)
+    {
+        system_event_release(job_done_events[n_job_event]);
+
+        job_done_events[n_job_event] = NULL;
+    }
+
+    /* Extract mesh data. FillSceneWithMeshData() is a blocking call, so no need to sync here. */
     message_funcs_ptr->info("Extracting mesh data..",
                             NULL);
 

@@ -5,66 +5,33 @@
 #include "plugin_common.h"
 #include "plugin_curves.h"
 #include "plugin_materials.h"
+#include "plugin_ui.h"
 #include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "scene/scene_material.h"
 #include "system/system_assertions.h"
+#include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_thread_pool.h"
 #include <sstream>
 
 /** Global data.
  *
  *  Yes, I know. I'm sorry. :-)
  */
-/** Stores scene_material instances */
-system_resizable_vector materials_vector = NULL;
-
-/** Maps LWSurfaceID to scene_material instances */
-system_hash64map surface_id_to_scene_material_map = NULL;
+PRIVATE system_event            job_done_event                   = NULL;
+PRIVATE system_resizable_vector materials_vector                 = NULL;
+PRIVATE system_hash64map        surface_id_to_scene_material_map = NULL;
 
 
-/** Please see header for spec */
-PUBLIC void DeinitMaterialData()
-{
-    if (materials_vector != NULL)
-    {
-        scene_material current_material = NULL;
-
-        while (!system_resizable_vector_pop(materials_vector,
-                                           &current_material) )
-        {
-            scene_material_release(current_material);
-
-            current_material = NULL;
-        }
-
-        system_resizable_vector_release(materials_vector);
-        materials_vector = NULL;
-    }
-
-    if (surface_id_to_scene_material_map != NULL)
-    {
-        system_hash64map_release(surface_id_to_scene_material_map);
-
-        surface_id_to_scene_material_map = NULL;
-    }
-}
-
-/** Please see header for spec */
-PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
-{
-    ASSERT_DEBUG_SYNC(surface_id_to_scene_material_map != NULL,
-                      "Material Data module not initialized");
-
-    return surface_id_to_scene_material_map;
-}
-
-/** Please see header for spec */
-PUBLIC void InitMaterialData(__in __notnull scene in_scene)
+/** TODO */
+volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
 {
     system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+    scene            in_scene                           = (scene) in_scene_arg;
+    char             text_buffer[1024];
 
     /* Initialize containers */
     materials_vector                 = system_resizable_vector_create(4, /* capacity */
@@ -96,13 +63,22 @@ PUBLIC void InitMaterialData(__in __notnull scene in_scene)
 
         /* Form the name */
         system_hashed_ansi_string surface_name;
+        const char*               surface_name_raw     = surface_funcs_ptr->name(surface_id);
         std::stringstream         surface_name_sstream;
 
-        surface_name_sstream << surface_funcs_ptr->name(surface_id)
+        surface_name_sstream << surface_name_raw
                              << " "
                              << n_surface;
 
         surface_name = system_hashed_ansi_string_create(surface_name_sstream.str().c_str() );
+
+        /* Update activity description */
+        sprintf_s(text_buffer,
+                  sizeof(text_buffer),
+                  "Extracting surface [%s] data..",
+                  surface_name_raw);
+
+        SetActivityDescription(text_buffer);
 
         /* Retrieve non-texture property values */
         surface_glosiness_curve = GetCurveContainerForProperty(surface_name,
@@ -330,6 +306,62 @@ PUBLIC void InitMaterialData(__in __notnull scene in_scene)
         n_surface ++;
         surface_id = surface_funcs_ptr->next(surface_id);
     } /* while (surface_id != 0) */
+
+    SetActivityDescription("Inactive");
+
+    system_event_set(job_done_event);
+}
+
+/** Please see header for spec */
+PUBLIC void DeinitMaterialData()
+{
+    if (materials_vector != NULL)
+    {
+        scene_material current_material = NULL;
+
+        while (!system_resizable_vector_pop(materials_vector,
+                                           &current_material) )
+        {
+            scene_material_release(current_material);
+
+            current_material = NULL;
+        }
+
+        system_resizable_vector_release(materials_vector);
+        materials_vector = NULL;
+    }
+
+    if (surface_id_to_scene_material_map != NULL)
+    {
+        system_hash64map_release(surface_id_to_scene_material_map);
+
+        surface_id_to_scene_material_map = NULL;
+    }
+}
+
+/** Please see header for spec */
+PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
+{
+    ASSERT_DEBUG_SYNC(surface_id_to_scene_material_map != NULL,
+                      "Material Data module not initialized");
+
+    return surface_id_to_scene_material_map;
+}
+
+/** Please see header for spec */
+PUBLIC system_event StartMaterialDataExtraction(__in __notnull scene in_scene)
+{
+    job_done_event = system_event_create(false,  /* manual_reset */
+                                         false); /* start_state */
+
+    /* Spawn a worker thread so that we can report the progress. */
+    system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                     ExtractMaterialDataWorkerThreadEntryPoint,
+                                                                                                     in_scene);
+
+    system_thread_pool_submit_single_task(task);
+
+    return job_done_event;
 }
 
 

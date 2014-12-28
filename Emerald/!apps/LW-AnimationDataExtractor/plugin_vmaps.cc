@@ -3,11 +3,14 @@
 #include "shared.h"
 #include "plugin.h"
 #include "plugin_common.h"
+#include "plugin_ui.h"
 #include "plugin_vmaps.h"
 #include "system/system_assertions.h"
+#include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_thread_pool.h"
 
 typedef struct _vmap
 {
@@ -25,8 +28,61 @@ typedef struct _vmap
  *  Yes, I know. I'm sorry. :-)
  */
 /** Stores _vmap instances of LWVMAP_TXUV type */
+PUBLIC  system_event            job_done_event = NULL;
 PRIVATE system_resizable_vector uv_maps_vector = NULL;
 
+
+/** TODO */
+volatile void ExtractVMapDataWorkerThreadEntryPoint(__in __notnull void* not_used)
+{
+    char text_buffer[1024];
+
+    /* Initialize containers */
+    uv_maps_vector = system_resizable_vector_create(4, /* capacity */
+                                                    sizeof(_vmap*) );
+
+    /* Iterate over all vertex maps */
+    const int n_uv_vmaps = object_funcs_ptr->numVMaps(LWVMAP_TXUV);
+
+    for (int n_uv_vmap = 0;
+             n_uv_vmap < n_uv_vmaps;
+           ++n_uv_vmap)
+    {
+        const char* vmap_name = object_funcs_ptr->vmapName(LWVMAP_TXUV,
+                                                           n_uv_vmap);
+
+        /* Update the core status */
+        sprintf_s(text_buffer,
+                  sizeof(text_buffer),
+                  "Extracting VMap [%s] data",
+                  vmap_name);
+
+        SetActivityDescription(text_buffer);
+
+        /* Sanity check */
+        ASSERT_DEBUG_SYNC(object_funcs_ptr->vmapDim(LWVMAP_TXUV,
+                                                    n_uv_vmap) == 2,
+                          "UV vmap uses != 2 coordinates");
+
+        /* Spawn the descriptor */
+        _vmap* new_vmap = new (std::nothrow) _vmap;
+
+        ASSERT_ALWAYS_SYNC(new_vmap != NULL,
+                           "Out of memory");
+        if (new_vmap != NULL)
+        {
+            new_vmap->name = system_hashed_ansi_string_create(vmap_name);
+
+            /* Store it */
+            system_resizable_vector_push(uv_maps_vector,
+                                         new_vmap);
+        }
+    } /* for (all UV vmaps) */
+
+    SetActivityDescription("Inactive");
+
+    system_event_set(job_done_event);
+}
 
 /** Please see header for spec */
 PUBLIC void DeinitVMapData()
@@ -131,40 +187,19 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC void InitVMapData()
+PUBLIC system_event StartVMapDataExtraction()
 {
-    /* Initialize containers */
-    uv_maps_vector = system_resizable_vector_create(4, /* capacity */
-                                                    sizeof(_vmap*) );
+    job_done_event = system_event_create(false,  /* manual_reset */
+                                         false); /* start_state */
 
-    /* Iterate over all vertex maps */
-    const int n_uv_vmaps = object_funcs_ptr->numVMaps(LWVMAP_TXUV);
+    /* Spawn a worker thread so that we can report the progress. */
+    system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                     ExtractVMapDataWorkerThreadEntryPoint,
+                                                                                                     NULL); /* user_arg */
 
-    for (int n_uv_vmap = 0;
-             n_uv_vmap < n_uv_vmaps;
-           ++n_uv_vmap)
-    {
-        const char* vmap_name = object_funcs_ptr->vmapName(LWVMAP_TXUV,
-                                                           n_uv_vmap);
+    system_thread_pool_submit_single_task(task);
 
-        ASSERT_DEBUG_SYNC(object_funcs_ptr->vmapDim(LWVMAP_TXUV,
-                                                    n_uv_vmap) == 2,
-                          "UV vmap uses != 2 coordinates");
-
-        /* Spawn the descriptor */
-        _vmap* new_vmap = new (std::nothrow) _vmap;
-
-        ASSERT_ALWAYS_SYNC(new_vmap != NULL,
-                           "Out of memory");
-        if (new_vmap != NULL)
-        {
-            new_vmap->name = system_hashed_ansi_string_create(vmap_name);
-
-            /* Store it */
-            system_resizable_vector_push(uv_maps_vector,
-                                         new_vmap);
-        }
-    } /* for (all UV vmaps) */
+    return job_done_event;
 }
 
 

@@ -4,16 +4,19 @@
 
 #include "plugin.h"
 #include "plugin_curves.h"
+#include "plugin_ui.h"
 #include <Windows.h>
 
 #include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "system/system_assertions.h"
+#include "system/system_event.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_time.h"
+#include "system/system_thread_pool.h"
 #include "system/system_variant.h"
 
 /* Forward declarations */
@@ -56,8 +59,9 @@ PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoun
  *
  * Hey, this plug-in is implemented with simplicity in mind! I'm sorry if this
  * offends anyone! :D */
-system_resizable_vector curve_containers                   = NULL;
-system_hash64map        envelope_id_to_curve_container_map = NULL;
+PRIVATE system_resizable_vector curve_containers                   = NULL;
+PRIVATE system_hash64map        envelope_id_to_curve_container_map = NULL;
+PRIVATE system_event            job_done_event                     = NULL;
 
 /** TODO */
 PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
@@ -388,16 +392,7 @@ PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoun
 }
 
 /** TODO */
-PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap()
-{
-    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
-                      "Envelope ID to curve container map is NULL");
-
-    return envelope_id_to_curve_container_map;
-}
-
-/** TODO */
-PUBLIC void InitCurveData()
+volatile void InitCurveDataWorkerThreadEntryPoint(__in __notnull void* not_used)
 {
     ASSERT_DEBUG_SYNC(curve_containers                   == NULL &&
                       envelope_id_to_curve_container_map == NULL,
@@ -418,13 +413,30 @@ PUBLIC void InitCurveData()
                                                                         sizeof(curve_container) );
     envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container) );
 
-    /* Iterate over all object types .. */
+    /* Iterate over all object types ..
+     *
+     * Since curve extraction does not take a lot of time, we're not running a worker separately
+     * for each object type. But we could, if this ever gets lengthy.
+     */
     for (  n_item = 0;
            n_item < n_items;
          ++n_item)
     {
+        /* Report which object we are about to start extracting curve data */
+        LWItemType  current_lw_type    = items[n_item];
+        static char text_buffer[1024];
+
+        sprintf_s(text_buffer,
+                  1024,
+                  "Extracting curves for %s..",
+                  (current_lw_type == LWI_OBJECT) ? "meshes" :
+                  (current_lw_type == LWI_LIGHT)  ? "lights" :
+                                                    "cameras");
+
+        SetActivityDescription(text_buffer);
+
+        /* Carry on with actual task */
         LWItemID   current_lw_item_id = 0;
-        LWItemType current_lw_type    = items[n_item];
 
         current_lw_item_id = item_info_ptr->first(current_lw_type,
                                                   LWITEM_NULL);
@@ -472,4 +484,40 @@ PUBLIC void InitCurveData()
             current_lw_item_id = item_info_ptr->next(current_lw_item_id);
         }
     } /* for (all items) */
+
+    SetActivityDescription("Inactive");
+
+    system_event_set(job_done_event);
+}
+
+
+/** TODO */
+PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap()
+{
+    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
+                      "Envelope ID to curve container map is NULL");
+
+    return envelope_id_to_curve_container_map;
+}
+
+/** TODO */
+PUBLIC void InitCurveData()
+{
+    job_done_event = system_event_create(false,  /* manual_reset */
+                                         false); /* start_state */
+
+    /* Spawn a worker thread so that we can report the progress. */
+    system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                     InitCurveDataWorkerThreadEntryPoint,
+                                                                                                     NULL); /* argument */
+
+    system_thread_pool_submit_single_task(task);
+
+    /* Wait for the job to finish */
+    system_event_wait_single_infinite(job_done_event);
+
+    /* Clean up */
+    system_event_release(job_done_event);
+
+    job_done_event = NULL;
 }
