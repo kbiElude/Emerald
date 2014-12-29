@@ -282,7 +282,8 @@ PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in _
 /** Please see header for specification */
 PUBLIC void system_hashed_ansi_string_init()
 {
-    _dictionary   = system_hash64map_create         (sizeof(_system_hashed_ansi_string_descriptor*) );
+    _dictionary   = system_hash64map_create         (sizeof(_system_hashed_ansi_string_descriptor*),
+                                                     true); /* should_be_thread_safe */
     _empty_string = system_hashed_ansi_string_create("");
 }
 

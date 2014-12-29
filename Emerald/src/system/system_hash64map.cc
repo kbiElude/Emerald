@@ -421,6 +421,7 @@ PUBLIC EMERALD_API bool system_hash64map_insert(__in             system_hash64ma
 
     /* In debug mode, before storing the entry, verify such element has not already
      * been stored. */
+#if 0
     #ifdef _DEBUG
     {
         const uint32_t n_items = system_resizable_vector_get_amount_of_elements(bin);
@@ -442,6 +443,7 @@ PUBLIC EMERALD_API bool system_hash64map_insert(__in             system_hash64ma
         } /* for (all items) */
     }
     #endif
+#endif
 
     /* Store the entry */
     if (callback != NULL)

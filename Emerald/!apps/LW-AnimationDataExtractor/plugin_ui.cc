@@ -56,7 +56,7 @@ PRIVATE void LaunchPanel()
         edit_controls[n_cpu_core] = STRRO_CTL(panel_funcs_ptr,
                                               panel_id,
                                               text_buffer,
-                                              30);
+                                              100);
 
         SET_STR(edit_controls[n_cpu_core],
                 text_inactive,
@@ -144,14 +144,31 @@ PUBLIC void SetActivityDescription(__in __notnull char* text)
 
             ASSERT_DEBUG_SYNC(core_index < n_cpu_cores,
                               "Invalid CPU core index about to be used");
+
+            system_hash64map_insert(thread_id_to_cpu_core_index_map,
+                                    (system_hash64) caller_thread_id,
+                                    (void*)         core_index,
+                                    NULL,           /* on_remove_callback */
+                                    NULL);          /* on_remove_callback_user_arg */
         }
     }
     system_critical_section_leave(thread_id_to_cpu_core_index_map_cs);
 
-    /* Update the edit control contents. */
+    /* Update the edit control contents.
+     *
+     * NOTE: LW is pretty stubborn and will start ignoring redraw requests
+     *       at some point. To work around this, I'm nudging it by posting
+     *       mouse move events to its main window. Seems to do the trick,
+     *       despite how awful that solution really is.
+     */
     LWValue sval = {LWT_STRING};
 
     SET_STR(edit_controls[core_index],
             text,
             strlen(text) );
+
+    ::PostMessage (host_display_info_ptr->window,
+                   WM_MOUSEMOVE,
+                   0,
+                   0);
 }

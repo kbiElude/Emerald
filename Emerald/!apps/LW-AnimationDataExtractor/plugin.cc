@@ -26,21 +26,22 @@
 #include "system/system_variant.h"
 
 /* Global variable declarations */
-LWCameraInfo*    camera_info_ptr    = NULL;
-LWChannelInfo*   channel_info_ptr   = NULL;
-LWEnvelopeFuncs* envelope_ptr       = NULL;
-GlobalFunc*      global_func_ptr    = NULL;
-LWImageList*     image_list_ptr     = NULL;
-LWInterfaceInfo* interface_info_ptr = NULL;
-LWItemInfo*      item_info_ptr      = NULL;
-LWLightInfo*     light_info_ptr     = NULL;
-LWMessageFuncs*  message_funcs_ptr  = NULL;
-LWObjectFuncs*   object_funcs_ptr   = NULL;
-LWObjectInfo*    object_info_ptr    = NULL;
-LWPanelFuncs*    panel_funcs_ptr    = NULL;
-LWSceneInfo*     scene_info_ptr     = NULL;
-LWSurfaceFuncs*  surface_funcs_ptr  = NULL;
-LWTextureFuncs*  texture_funcs_ptr  = NULL;
+LWCameraInfo*    camera_info_ptr       = NULL;
+LWChannelInfo*   channel_info_ptr      = NULL;
+LWEnvelopeFuncs* envelope_ptr          = NULL;
+GlobalFunc*      global_func_ptr       = NULL;
+HostDisplayInfo* host_display_info_ptr = NULL;
+LWImageList*     image_list_ptr        = NULL;
+LWInterfaceInfo* interface_info_ptr    = NULL;
+LWItemInfo*      item_info_ptr         = NULL;
+LWLightInfo*     light_info_ptr        = NULL;
+LWMessageFuncs*  message_funcs_ptr     = NULL;
+LWObjectFuncs*   object_funcs_ptr      = NULL;
+LWObjectInfo*    object_info_ptr       = NULL;
+LWPanelFuncs*    panel_funcs_ptr       = NULL;
+LWSceneInfo*     scene_info_ptr        = NULL;
+LWSurfaceFuncs*  surface_funcs_ptr     = NULL;
+LWTextureFuncs*  texture_funcs_ptr     = NULL;
 
 PRIVATE void LaunchPanel           ();
 PRIVATE void UIThreadEntryPoint    (void* not_used);
@@ -157,20 +158,21 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
     DeinitVMapData    ();
 
     /* Finally release all LW pointers */
-    global_func_ptr(LWCAMERAINFO_GLOBAL,    GFUSE_RELEASE);
-    global_func_ptr(LWCHANNELINFO_GLOBAL,   GFUSE_RELEASE);
-    global_func_ptr(LWENVELOPEFUNCS_GLOBAL, GFUSE_RELEASE);
-    global_func_ptr(LWIMAGELIST_GLOBAL,     GFUSE_RELEASE);
-    global_func_ptr(LWINTERFACEINFO_GLOBAL, GFUSE_RELEASE);
-    global_func_ptr(LWITEMINFO_GLOBAL,      GFUSE_RELEASE);
-    global_func_ptr(LWLIGHTINFO_GLOBAL,     GFUSE_RELEASE);
-    global_func_ptr(LWMESSAGEFUNCS_GLOBAL,  GFUSE_RELEASE);
-    global_func_ptr(LWOBJECTFUNCS_GLOBAL,   GFUSE_RELEASE);
-    global_func_ptr(LWOBJECTINFO_GLOBAL,    GFUSE_RELEASE);
-    global_func_ptr(LWPANELFUNCS_GLOBAL,    GFUSE_RELEASE);
-    global_func_ptr(LWSCENEINFO_GLOBAL,     GFUSE_RELEASE);
-    global_func_ptr(LWSURFACEFUNCS_GLOBAL,  GFUSE_RELEASE);
-    global_func_ptr(LWTEXTUREFUNCS_GLOBAL,  GFUSE_RELEASE);
+    global_func_ptr(LWCAMERAINFO_GLOBAL,      GFUSE_RELEASE);
+    global_func_ptr(LWCHANNELINFO_GLOBAL,     GFUSE_RELEASE);
+    global_func_ptr(LWENVELOPEFUNCS_GLOBAL,   GFUSE_RELEASE);
+    global_func_ptr(LWHOSTDISPLAYINFO_GLOBAL, GFUSE_RELEASE);
+    global_func_ptr(LWIMAGELIST_GLOBAL,       GFUSE_RELEASE);
+    global_func_ptr(LWINTERFACEINFO_GLOBAL,   GFUSE_RELEASE);
+    global_func_ptr(LWITEMINFO_GLOBAL,        GFUSE_RELEASE);
+    global_func_ptr(LWLIGHTINFO_GLOBAL,       GFUSE_RELEASE);
+    global_func_ptr(LWMESSAGEFUNCS_GLOBAL,    GFUSE_RELEASE);
+    global_func_ptr(LWOBJECTFUNCS_GLOBAL,     GFUSE_RELEASE);
+    global_func_ptr(LWOBJECTINFO_GLOBAL,      GFUSE_RELEASE);
+    global_func_ptr(LWPANELFUNCS_GLOBAL,      GFUSE_RELEASE);
+    global_func_ptr(LWSCENEINFO_GLOBAL,       GFUSE_RELEASE);
+    global_func_ptr(LWSURFACEFUNCS_GLOBAL,    GFUSE_RELEASE);
+    global_func_ptr(LWTEXTUREFUNCS_GLOBAL,    GFUSE_RELEASE);
 }
 
 /* TODO */
@@ -187,20 +189,21 @@ XCALL_(int) ExportData(int         version,
     /* Retrieve func ptr structures */
     global_func_ptr = global;
 
-    camera_info_ptr    = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,    GFUSE_ACQUIRE);
-    channel_info_ptr   = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,   GFUSE_ACQUIRE);
-    envelope_ptr       = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL, GFUSE_ACQUIRE);
-    image_list_ptr     = (LWImageList*)     global(LWIMAGELIST_GLOBAL,     GFUSE_ACQUIRE);
-    interface_info_ptr = (LWInterfaceInfo*) global(LWINTERFACEINFO_GLOBAL, GFUSE_ACQUIRE);
-    item_info_ptr      = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,      GFUSE_ACQUIRE);
-    light_info_ptr     = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,     GFUSE_ACQUIRE);
-    message_funcs_ptr  = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,  GFUSE_ACQUIRE);
-    object_funcs_ptr   = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,   GFUSE_ACQUIRE);
-    object_info_ptr    = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,    GFUSE_ACQUIRE);
-    panel_funcs_ptr    = (LWPanelFuncs*)    global(LWPANELFUNCS_GLOBAL,    GFUSE_ACQUIRE);
-    scene_info_ptr     = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,     GFUSE_ACQUIRE);
-    surface_funcs_ptr  = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,  GFUSE_ACQUIRE);
-    texture_funcs_ptr  = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,  GFUSE_ACQUIRE);
+    camera_info_ptr       = (LWCameraInfo*)    global(LWCAMERAINFO_GLOBAL,      GFUSE_ACQUIRE);
+    channel_info_ptr      = (LWChannelInfo*)   global(LWCHANNELINFO_GLOBAL,     GFUSE_ACQUIRE);
+    envelope_ptr          = (LWEnvelopeFuncs*) global(LWENVELOPEFUNCS_GLOBAL,   GFUSE_ACQUIRE);
+    host_display_info_ptr = (HostDisplayInfo*) global(LWHOSTDISPLAYINFO_GLOBAL, GFUSE_ACQUIRE);
+    image_list_ptr        = (LWImageList*)     global(LWIMAGELIST_GLOBAL,       GFUSE_ACQUIRE);
+    interface_info_ptr    = (LWInterfaceInfo*) global(LWINTERFACEINFO_GLOBAL,   GFUSE_ACQUIRE);
+    item_info_ptr         = (LWItemInfo*)      global(LWITEMINFO_GLOBAL,        GFUSE_ACQUIRE);
+    light_info_ptr        = (LWLightInfo*)     global(LWLIGHTINFO_GLOBAL,       GFUSE_ACQUIRE);
+    message_funcs_ptr     = (LWMessageFuncs*)  global(LWMESSAGEFUNCS_GLOBAL,    GFUSE_ACQUIRE);
+    object_funcs_ptr      = (LWObjectFuncs*)   global(LWOBJECTFUNCS_GLOBAL,     GFUSE_ACQUIRE);
+    object_info_ptr       = (LWObjectInfo*)    global(LWOBJECTINFO_GLOBAL,      GFUSE_ACQUIRE);
+    panel_funcs_ptr       = (LWPanelFuncs*)    global(LWPANELFUNCS_GLOBAL,      GFUSE_ACQUIRE);
+    scene_info_ptr        = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,       GFUSE_ACQUIRE);
+    surface_funcs_ptr     = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,    GFUSE_ACQUIRE);
+    texture_funcs_ptr     = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,    GFUSE_ACQUIRE);
 
     /* Set up UI */
     InitUI();

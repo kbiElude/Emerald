@@ -53,7 +53,12 @@ PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_even
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_event_wait_single_infinite(__in __notnull system_event event)
 {
-    ::WaitForSingleObject( (HANDLE) event, INFINITE);
+    DWORD result = ::WaitForSingleObject( (HANDLE) event,
+                                          INFINITE);
+    
+    ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
+                      "WaitForSingleObject() failed.");
+
 }
 
 /** Please see header for specification */
@@ -61,10 +66,15 @@ PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_e
                                                                         system_timeline_time timeout)
 {
     uint32_t n_secs = 0;
+    DWORD    result = 0;
 
     system_time_get_s_for_timeline_time(timeout, &n_secs);
 
-    return (::WaitForSingleObject(event, n_secs * 1000) == WAIT_TIMEOUT);
+    result = ::WaitForSingleObject(event, n_secs * 1000);
+
+    ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
+                      "WaitForSingleObject() failed.");
+    return (result == WAIT_TIMEOUT);
 }
 
 /** Please see header for specification */
@@ -75,10 +85,15 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __e
     /* We'll use a dirty trick here in order to optimise - system_event only contains a HANDLE so we're perfectly
      * fine to cast every element of events array to a HANDLE.
      */
-    return (::WaitForMultipleObjects( (DWORD) n_elements,
-                                      (const HANDLE*) events,
-                                      wait_on_all_objects ? TRUE : FALSE,
-                                      INFINITE) - WAIT_OBJECT_0);
+    DWORD result = ::WaitForMultipleObjects( (DWORD) n_elements,
+                                             (const HANDLE*) events,
+                                             wait_on_all_objects ? TRUE : FALSE,
+                                             INFINITE);
+
+    ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
+                      "WaitForMultipleObjects() failed.");
+
+    return result - WAIT_OBJECT_0;
 }
 
 /** Please see header for specification */
@@ -109,6 +124,9 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in __notnull __ec
     {
         *out_result = false;
     }
+
+    ASSERT_DEBUG_SYNC(wait_leave_result != WAIT_FAILED,
+                      "WaitForMultipleObjects() failed.");
 
     return wait_leave_result - WAIT_OBJECT_0;
 }

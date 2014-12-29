@@ -17,12 +17,14 @@
 #include <lwlight.h>   /* for LWLightInfo global        */
 #include <lwpanel.h>   /* for LWPanelFuncs global       */
 #include <lwtexture.h> /* for LWTextureFuncs global     */
+#include <lwdisplay.h> /* for HostDisplayInfo global    */
 #include "shared.h"
 
 extern LWCameraInfo*    camera_info_ptr;
 extern LWChannelInfo*   channel_info_ptr;
 extern LWEnvelopeFuncs* envelope_ptr;
 extern GlobalFunc*      global_func_ptr;
+extern HostDisplayInfo* host_display_info_ptr;
 extern LWImageList*     image_list_ptr;
 extern LWInterfaceInfo* interface_info_ptr;
 extern LWItemInfo*      item_info_ptr;

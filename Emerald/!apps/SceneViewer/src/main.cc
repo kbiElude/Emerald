@@ -298,25 +298,6 @@ void _rendering_handler(ogl_context          context,
     entry_points->pGLEnable(GL_DEPTH_TEST);
     entry_points->pGLEnable(GL_CULL_FACE);
 
-    /* TEMP */
-    static bool test = false;
-
-    if (!test)
-    {
-        scene_graph scene_renderer_graph = NULL;
-
-        ogl_scene_renderer_get_property(_scene_renderer,
-                                        OGL_SCENE_RENDERER_PROPERTY_GRAPH,
-                                       &scene_renderer_graph);
-
-        scene_graph_log_hierarchy(scene_renderer_graph,
-                                  scene_graph_get_root_node(scene_renderer_graph),
-                                  0,
-                                  frame_time);
-
-        test = true;
-    }
-
     /* Render the scene */
     ogl_pipeline_draw_stage(_pipeline,
                             _pipeline_stage_id,
