@@ -363,10 +363,9 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
     {
         void* active_vmap = NULL;
 
-        LWMeshInfoID layer_mesh_info_id  = object_funcs_ptr->layerMesh(lw_object_id,
-                                                                       n_lw_mesh_layer);
         LWMeshInfo*  layer_mesh_info_ptr = object_funcs_ptr->layerMesh(lw_object_id,
                                                                        n_lw_mesh_layer);
+        LWMeshInfoID layer_mesh_info_id  = (LWMeshInfoID) layer_mesh_info_ptr;
 
         if (object_funcs_ptr->layerExists(lw_object_id,
                                           n_lw_mesh_layer) == 1)
@@ -589,13 +588,18 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
 /** TODO */
 volatile void ExtractMeshDataWorkerThreadEntryPoint(__in __notnull void* n_object_raw)
 {
-    unsigned int n_object = (unsigned int) n_object_raw;
+    unsigned int n_object        = (unsigned int) n_object_raw;
+    const char*  object_filename = object_funcs_ptr->filename(n_object);
 
+    if (object_filename == NULL)
+    {
+        goto end;
+    }
+    
     /* LW objects are identified by an index. Match current index
      * with a descriptor of a mesh instance that acts as a GPU data
      * source. (that is: will host a "mesh" instance)
      */
-    const char*               object_filename          = object_funcs_ptr->filename      (n_object);
     system_hashed_ansi_string object_filename_has      = system_hashed_ansi_string_create(object_filename);
     _mesh_instance*           object_mesh_instance_ptr = NULL;
 
@@ -899,7 +903,12 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         _mesh_instance* new_instance = new (std::nothrow) _mesh_instance;
 
         /* Extract general properties */
-        new_instance->filename           = system_hashed_ansi_string_create(object_info_ptr->filename  (object_id) );
+        const char* filename_raw = object_info_ptr->filename  (object_id);
+
+        ASSERT_DEBUG_SYNC(filename_raw != NULL,
+                          "LW reported a NULL file name?");
+
+        new_instance->filename           = system_hashed_ansi_string_create(filename_raw);
         new_instance->is_shadow_caster   =                                 (object_info_ptr->shadowOpts(object_id) & LWOSHAD_CAST)    != 0;
         new_instance->is_shadow_receiver =                                 (object_info_ptr->shadowOpts(object_id) & LWOSHAD_RECEIVE) != 0;
         new_instance->lw_item_id         = object_id;
@@ -1025,10 +1034,10 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
      * NOTE: This process MUST NOT be parallelized owing to Lightwave going nuts.
      *       Please see ExtractMeshDataWorkerThreadEntryPoint() doxygen for more info.
      */
-    const uint32_t n_objects = system_resizable_vector_get_amount_of_elements(objects);
+    const uint32_t n_unique_objects = object_funcs_ptr->numObjects();
 
     for (uint32_t n_object = 0;
-                  n_object < n_objects;
+                  n_object < n_unique_objects;
                 ++n_object)
     {
         system_event job_done_event = system_event_create(true,   /* manual_reset */
@@ -1050,6 +1059,8 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
      *
      * NOTE: Not much benefit in running this in parallel.
      */
+    const uint32_t n_objects = system_resizable_vector_get_amount_of_elements(objects);
+
     for (uint32_t n_object = 0;
                   n_object < n_objects;
                 ++n_object)

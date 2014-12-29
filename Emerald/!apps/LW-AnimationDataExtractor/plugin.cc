@@ -26,6 +26,8 @@
 #include "system/system_variant.h"
 
 /* Global variable declarations */
+extern "C"
+{
 LWCameraInfo*    camera_info_ptr       = NULL;
 LWChannelInfo*   channel_info_ptr      = NULL;
 LWEnvelopeFuncs* envelope_ptr          = NULL;
@@ -42,6 +44,7 @@ LWPanelFuncs*    panel_funcs_ptr       = NULL;
 LWSceneInfo*     scene_info_ptr        = NULL;
 LWSurfaceFuncs*  surface_funcs_ptr     = NULL;
 LWTextureFuncs*  texture_funcs_ptr     = NULL;
+};
 
 PRIVATE void LaunchPanel           ();
 PRIVATE void UIThreadEntryPoint    (void* not_used);
