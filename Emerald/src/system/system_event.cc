@@ -79,7 +79,7 @@ PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_e
 
 /** Please see header for specification */
 PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __ecount(n_elements) const system_event* events,
-                                                              __in                                size_t              n_elements,
+                                                              __in                                int                 n_elements,
                                                                                                   bool                wait_on_all_objects)
 {
     DWORD result = WAIT_FAILED;
@@ -147,7 +147,7 @@ end:
 
 /** Please see header for specification */
 PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in __notnull __ecount(n_elements) const system_event*  events,
-                                                             __in                                size_t               n_elements,
+                                                             __in                                int                  n_elements,
                                                                                                  bool                 wait_on_all_objects,
                                                                                                  system_timeline_time timeout,
                                                              __out __notnull                     bool*                out_result)

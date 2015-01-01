@@ -1896,8 +1896,10 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                             float        data_vec3[3];
                             unsigned int n_components = 1;
 
-                            ASSERT_DEBUG_SYNC(attachment.shader_scalar_uniform_location != -1,
-                                              "Float uniform location is -1!");
+                            if (attachment.shader_scalar_uniform_location == -1)
+                            {
+                                continue;
+                            }
 
                             if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
                             {
@@ -1957,8 +1959,10 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                             ogl_texture  layer_pass_texture              = NULL;
                             unsigned int layer_pass_texture_mipmap_level = 0;
 
-                            ASSERT_DEBUG_SYNC(attachment.shader_sampler_uniform_location != -1,
-                                              "Texture uniform location is -1!");
+                            if (attachment.shader_sampler_uniform_location == -1)
+                            {
+                                continue;
+                            }
 
                             /* Set up the sampler */
                             mesh_material_get_shading_property_value_texture(layer_pass_material,
@@ -1986,8 +1990,10 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         {
                             float data_vec4[4];
 
-                            ASSERT_DEBUG_SYNC(attachment.shader_scalar_uniform_location != -1,
-                                              "Vec4 uniform location is -1!");
+                            if (attachment.shader_scalar_uniform_location == -1)
+                            {
+                                continue;
+                            }
 
                             mesh_material_get_shading_property_value_vec4(layer_pass_material,
                                                                           attachment.property,
@@ -2267,32 +2273,40 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     uint32_t fs_ub_size = 0;
     uint32_t vs_ub_size = 0;
 
-    ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                             uber_ptr->ub_fs_id,
-                                            &fs_ub_size,
-                                             NULL,
-                                             NULL);
-    ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                             uber_ptr->ub_vs_id,
-                                            &vs_ub_size,
-                                             NULL,
-                                             NULL);
+    if (uber_ptr->ub_fs_id != -1)
+    {
+        ogl_program_get_uniform_block_properties(uber_ptr->program,
+                                                 uber_ptr->ub_fs_id,
+                                                &fs_ub_size,
+                                                 NULL,
+                                                 NULL);
 
-    if (fs_ub_size != 0)
+        if (fs_ub_size != 0)
+        {
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
+                                             uber_ptr->bo_id,
+                                             0, /* offset */
+                                             fs_ub_size);
+        }
+    } /* if (uber_ptr->ub_fs_id != -1) */
+
+    if (uber_ptr->ub_vs_id != -1)
     {
-        entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                         uber_ptr->bo_id,
-                                         0, /* offset */
-                                         fs_ub_size);
-    }
-    if (vs_ub_size != 0)
-    {
-        entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                         VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                         uber_ptr->bo_id,
-                                         uber_ptr->bo_data_vertex_offset,
-                                         vs_ub_size);
+        ogl_program_get_uniform_block_properties(uber_ptr->program,
+                                                 uber_ptr->ub_vs_id,
+                                                &vs_ub_size,
+                                                 NULL,
+                                                 NULL);
+
+        if (vs_ub_size != 0)
+        {
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
+                                             uber_ptr->bo_id,
+                                             uber_ptr->bo_data_vertex_offset,
+                                             vs_ub_size);
+        }
     }
 
     /* Activate the uber program */

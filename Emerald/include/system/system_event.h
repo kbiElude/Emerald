@@ -67,20 +67,20 @@ PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_e
  *  till all of them are free.
  *
  *  @param system_event* Array to wait on.
- *  @param size_t        Amount of elements in the array. Can't be negative
+ *  @param int           Amount of elements in the array. Can't be negative
  *  @param bool          True to wait on all objects, false to wait on only one object.
  *
  *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
  */
 PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __ecount(n_elements) const system_event*,
-                                                              __in                                size_t              n_elements,
+                                                              __in                                int                 n_elements,
                                                                                                   bool);
 
 /** Waits on multiple objects until user-defined amount of time passes. Function can either block till one of the events become available or
  *  till all of them are free.
  *
  *  @param system_event*        Array to wait on
- *  @param size_t               Amount of elements in the array. Can't be negative
+ *  @param int                  Amount of elements in the array. Can't be negative
  *  @param bool                 True to wait on all objects, false to wait on only one object.
  *  @param system_timeline_time Time-out.
  *  @param timeout_occured      Deref set to true if time-out occured. Otherwise set to false.
@@ -88,7 +88,7 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __e
  *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
  */
 PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in  __notnull __ecount(n_elements) const system_event*,
-                                                             __in                                 size_t               n_elements,
+                                                             __in                                 int                n_elements,
                                                                                                   bool,
                                                                                                   system_timeline_time,
                                                              __out __notnull                      bool*);

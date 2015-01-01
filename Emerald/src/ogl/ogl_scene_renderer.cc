@@ -960,7 +960,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
             {
                 material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
                                                                                               SPECIAL_MATERIAL_TEXCOORD_AMBIENT),
-                                                           NULL);
+                                                           renderer_ptr->scene);
 
                 break;
             }
@@ -969,7 +969,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
             {
                 material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
                                                                                               SPECIAL_MATERIAL_TEXCOORD_DIFFUSE),
-                                                           NULL);
+                                                           renderer_ptr->scene);
 
                 break;
             }
@@ -978,7 +978,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
             {
                 material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
                                                                                               SPECIAL_MATERIAL_NORMALS),
-                                                           NULL);
+                                                           renderer_ptr->scene);
 
                 break;
             }

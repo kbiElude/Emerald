@@ -355,7 +355,7 @@ void _render_scene(ogl_context          context,
 
                 projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
                                                                                    1280 / 720.0f,
-                                                                                   znear,
+                                                                                   0.0001f, //znear,
                                                                                    zfar);
 
                 if (_ui_active_path_control != NULL)
@@ -457,7 +457,7 @@ void _render_scene(ogl_context          context,
                                               view,
                                               projection,
                                               camera_location,
-                                              RENDER_MODE_REGULAR,
+                                              RENDER_MODE_NORMALS_ONLY,
                                               HELPER_VISUALIZATION_NONE,
                                               frame_time
                                              );

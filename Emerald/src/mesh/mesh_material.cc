@@ -397,27 +397,32 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                 SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
                                &specular_ratio);
 
-    if (system_hashed_ansi_string_get_length(color_texture_file_name) == 0)
+    if (color_texture_file_name                                       != NULL &&
+        system_hashed_ansi_string_get_length(color_texture_file_name) == 0)
     {
         color_texture_file_name = NULL;
     }
 
-    if (system_hashed_ansi_string_get_length(luminance_texture_file_name) == 0)
+    if (luminance_texture_file_name                                       != NULL &&
+        system_hashed_ansi_string_get_length(luminance_texture_file_name) == 0)
     {
         luminance_texture_file_name = NULL;
     }
 
-    if (system_hashed_ansi_string_get_length(normal_texture_file_name) == 0)
+    if (normal_texture_file_name                                       != NULL &&
+        system_hashed_ansi_string_get_length(normal_texture_file_name) == 0)
     {
         normal_texture_file_name = NULL;
     }
 
-    if (system_hashed_ansi_string_get_length(reflection_texture_file_name) == 0)
+    if (reflection_texture_file_name                                       != NULL &&
+        system_hashed_ansi_string_get_length(reflection_texture_file_name) == 0)
     {
         reflection_texture_file_name = NULL;
     }
 
-    if (system_hashed_ansi_string_get_length(specular_texture_file_name) == 0)
+    if (specular_texture_file_name                                       != NULL &&
+        system_hashed_ansi_string_get_length(specular_texture_file_name) == 0)
     {
         specular_texture_file_name = NULL;
     }
