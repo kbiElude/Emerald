@@ -196,21 +196,18 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                 } /* if (texture_funcs_ptr->layerType(layer_id) == TLT_IMAGE) */
             } /* if (current_texture_id != 0) */
 
-            if (current_texture_id == 0)
+            for (unsigned int n_property = 0;
+                              n_property < sizeof(current_texture.out_property_curves) / sizeof(current_texture.out_property_curves[0]);
+                            ++n_property)
             {
-                for (unsigned int n_property = 0;
-                                  n_property < sizeof(current_texture.out_property_curves) / sizeof(current_texture.out_property_curves[0]);
-                                ++n_property)
+                if (current_texture.out_property_curves[n_property] != NULL)
                 {
-                    if (current_texture.out_property_curves[n_property] != NULL)
-                    {
-                        *current_texture.out_property_curves[n_property] = GetCurveContainerForProperty(surface_name,
-                                                                                                        current_texture.emerald_item_properties[n_property],
-                                                                                                        surface_id,
-                                                                                                        envelope_id_to_curve_container_map);
-                    }
+                    *current_texture.out_property_curves[n_property] = GetCurveContainerForProperty(surface_name,
+                                                                                                    current_texture.emerald_item_properties[n_property],
+                                                                                                    surface_id,
+                                                                                                    envelope_id_to_curve_container_map);
                 }
-            } /* if (current_texture_id == 0) */
+            }
         } /* for (all texture descriptors) */
 
         /* Configure new material instance */
@@ -229,12 +226,10 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                                         SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,
                                        &surface_color_texture_file_name);
         }
-        else
-        {
-            scene_material_set_property(new_material,
-                                        SCENE_MATERIAL_PROPERTY_COLOR,
-                                        surface_color);
-        }
+
+        scene_material_set_property(new_material,
+                                    SCENE_MATERIAL_PROPERTY_COLOR,
+                                    surface_color);
 
         scene_material_set_property(new_material,
                                     SCENE_MATERIAL_PROPERTY_GLOSINESS,
@@ -246,12 +241,10 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                                         SCENE_MATERIAL_PROPERTY_LUMINANCE_TEXTURE_FILE_NAME,
                                        &surface_luminance_texture_file_name);
         }
-        else
-        {
-            scene_material_set_property(new_material,
-                                        SCENE_MATERIAL_PROPERTY_LUMINANCE,
-                                       &surface_luminance_curve);
-        }
+
+        scene_material_set_property(new_material,
+                                    SCENE_MATERIAL_PROPERTY_LUMINANCE,
+                                   &surface_luminance_curve);
 
         if (surface_normal_texture_file_name != NULL)
         {
@@ -266,12 +259,10 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                                         SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,
                                        &surface_reflection_texture_file_name);
         }
-        else
-        {
-            scene_material_set_property(new_material,
-                                        SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,
-                                       &surface_reflection_ratio);
-        }
+
+        scene_material_set_property(new_material,
+                                    SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,
+                                   &surface_reflection_ratio);
 
         scene_material_set_property(new_material,
                                     SCENE_MATERIAL_PROPERTY_SMOOTHING_ANGLE,
@@ -283,12 +274,10 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                                         SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_FILE_NAME,
                                        &surface_specular_texture_file_name);
         }
-        else
-        {
-            scene_material_set_property(new_material,
-                                        SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
-                                       &surface_specular_ratio);
-        }
+
+        scene_material_set_property(new_material,
+                                    SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
+                                   &surface_specular_ratio);
 
         /* Store the surface */
         system_hash64map_insert     (surface_id_to_scene_material_map,

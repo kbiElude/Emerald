@@ -457,7 +457,7 @@ PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_materia
                     curve_container_release(material_ptr->color[n_component]);
                 }
 
-                material_ptr->color[n_component] = *(curve_container*) data;
+                material_ptr->color[n_component] = *((curve_container*) data + n_component);
                 curve_container_retain(material_ptr->color[n_component]);
             }
 
