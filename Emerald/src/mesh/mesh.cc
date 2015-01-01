@@ -91,8 +91,8 @@ typedef struct _mesh_layer_data_stream
 {
     void*                            data;
     mesh_layer_data_stream_data_type data_type;
-    unsigned int                     n_components;
-    unsigned int                     n_items;
+    unsigned int                     n_components;          /* number of components stored in data per each entry */
+    unsigned int                     n_items;               /* number of (potentially multi-component!) entries in data */
     unsigned int                     required_bit_alignment;
 
     ~_mesh_layer_data_stream()

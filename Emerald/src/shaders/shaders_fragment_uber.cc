@@ -146,7 +146,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
         else
         if (is_luminosity_texture_defined)
         {
-            line << "vec4(vec3(texture(luminosity_material_sampler, in_fs_luminosity_uv).x), 1.0) ";
+            line << "vec4(vec3(texture(luminosity_material_sampler, in_fs_uv).x), 1.0) ";
         }
 
         /* Compute the light contribution: diffuse */
@@ -189,7 +189,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
 
             case SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D:
             {
-                line << " * texture(diffuse_material_sampler, in_fs_diffuse_uv)";
+                line << " * texture(diffuse_material_sampler, in_fs_uv)";
 
                 break;
             }

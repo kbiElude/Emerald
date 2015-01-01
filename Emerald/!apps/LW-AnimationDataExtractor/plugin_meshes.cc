@@ -277,7 +277,7 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
         mesh_add_layer_data_stream(arg_ptr->new_mesh,
                                    new_mesh_layer,
                                    MESH_LAYER_DATA_STREAM_TYPE_VERTICES,
-                                   n_polygon_instances * 3, /* vertices per triangle */
+                                   3 * n_polygon_instances, /* vertices per triangle */
                                    raw_vertex_data);
 
         delete [] raw_vertex_data;
@@ -292,7 +292,7 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
             mesh_add_layer_data_stream(arg_ptr->new_mesh,
                                        new_mesh_layer,
                                        MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
-                                       n_polygon_instances * 2, /* components per UV */
+                                       3 * n_polygon_instances, /* vertices per triangle */
                                        raw_uv_data);
 
             delete [] raw_uv_data;
@@ -489,9 +489,21 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                                      current_polygon_ptr->uv_data     + current_polygon_n_vertex * 2 /* st */,
                                     &current_point_defines_uv);
 
-                    ASSERT_DEBUG_SYNC(!all_vertices_hold_uv_data ||
-                                       all_vertices_hold_uv_data && current_point_defines_uv,
-                                       "Not all vertices for a given polygon define UV coords?");
+                    if (current_polygon_n_vertex == 0)
+                    {
+                        all_vertices_hold_uv_data = current_point_defines_uv;
+                    }
+                    else
+                    {
+                        ASSERT_DEBUG_SYNC(!all_vertices_hold_uv_data ||
+                                           all_vertices_hold_uv_data && current_point_defines_uv,
+                                           "Not all vertices for a given polygon define UV coords?");
+
+                        if (!current_point_defines_uv)
+                        {
+                            all_vertices_hold_uv_data = false;
+                        }
+                    }
                 } /* for (all current polygon's vertices) */
 
                 current_polygon_ptr->uv_data_defined = all_vertices_hold_uv_data;
