@@ -956,28 +956,19 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 break;
             }
 
-            case RENDER_MODE_AMBIENT_UV_ONLY:
-            {
-                material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
-                                                                                              SPECIAL_MATERIAL_TEXCOORD_AMBIENT),
-                                                           renderer_ptr->scene);
-
-                break;
-            }
-
-            case RENDER_MODE_DIFFUSE_UV_ONLY:
-            {
-                material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
-                                                                                              SPECIAL_MATERIAL_TEXCOORD_DIFFUSE),
-                                                           renderer_ptr->scene);
-
-                break;
-            }
-
             case RENDER_MODE_NORMALS_ONLY:
             {
                 material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
                                                                                               SPECIAL_MATERIAL_NORMALS),
+                                                           renderer_ptr->scene);
+
+                break;
+            }
+
+            case RENDER_MODE_TEXCOORDS_ONLY:
+            {
+                material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
+                                                                                              SPECIAL_MATERIAL_TEXCOORD),
                                                            renderer_ptr->scene);
 
                 break;

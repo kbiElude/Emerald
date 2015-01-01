@@ -428,20 +428,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
             break;
         }
 
-        case UBER_INPUT_ATTRIBUTE_TEXCOORD_AMBIENT:
+        case UBER_INPUT_ATTRIBUTE_TEXCOORD:
         {
-            fs_attribute_name_sstream << "in_fs_ambient_uv";
+            fs_attribute_name_sstream << "in_fs_uv";
             fs_attribute_type         = TYPE_VEC2;
-            vs_attribute_name_has     = system_hashed_ansi_string_create("object_ambient_uv");
-
-            break;
-        }
-
-        case UBER_INPUT_ATTRIBUTE_TEXCOORD_DIFFUSE:
-        {
-            fs_attribute_name_sstream << "in_fs_diffuse_uv";
-            fs_attribute_type         = TYPE_VEC2;
-            vs_attribute_name_has     = system_hashed_ansi_string_create("object_diffuse_uv");
+            vs_attribute_name_has     = system_hashed_ansi_string_create("object_uv");
 
             break;
         }
@@ -675,8 +666,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             TYPE_SAMPLER2D,
             "ambient_material_sampler",
-            "in_fs_ambient_uv",
-            "object_ambient_uv"
+            "in_fs_uv",
+            "object_uv"
         },
 
         {
@@ -707,8 +698,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             TYPE_SAMPLER2D,
             "diffuse_material_sampler",
-            "in_fs_diffuse_uv",
-            "object_diffuse_uv"
+            "in_fs_uv",
+            "object_uv"
         },
 
         {
@@ -737,8 +728,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             TYPE_SAMPLER2D,
             "luminosity_material_sampler",
-            "in_fs_luminosity_uv",
-            "object_luminosity_uv"
+            "in_fs_uv",
+            "object_uv"
         },
 
         {

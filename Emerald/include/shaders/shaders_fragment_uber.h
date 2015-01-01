@@ -14,8 +14,7 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_uber, shaders_fragment_uber)
 typedef enum
 {
     UBER_INPUT_ATTRIBUTE_NORMAL,
-    UBER_INPUT_ATTRIBUTE_TEXCOORD_AMBIENT,
-    UBER_INPUT_ATTRIBUTE_TEXCOORD_DIFFUSE,
+    UBER_INPUT_ATTRIBUTE_TEXCOORD,
 
     UBER_INPUT_ATTRIBUTE_UNKNOWN
 } shaders_fragment_uber_input_attribute_type;

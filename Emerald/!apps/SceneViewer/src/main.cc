@@ -457,7 +457,7 @@ void _render_scene(ogl_context          context,
                                               view,
                                               projection,
                                               camera_location,
-                                              RENDER_MODE_NORMALS_ONLY,
+                                              RENDER_MODE_TEXCOORDS_ONLY,
                                               HELPER_VISUALIZATION_NONE,
                                               frame_time
                                              );

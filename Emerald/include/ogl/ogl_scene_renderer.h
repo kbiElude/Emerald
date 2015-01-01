@@ -19,10 +19,8 @@ typedef enum
 typedef enum
 {
     RENDER_MODE_REGULAR,
-    RENDER_MODE_AMBIENT_UV_ONLY,
-    RENDER_MODE_DIFFUSE_UV_ONLY,
-    RENDER_MODE_SPECULAR_UV_ONLY,
     RENDER_MODE_NORMALS_ONLY,
+    RENDER_MODE_TEXCOORDS_ONLY,
 } _ogl_scene_renderer_render_mode;
 
 typedef enum

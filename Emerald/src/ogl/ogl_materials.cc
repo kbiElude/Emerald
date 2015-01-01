@@ -555,9 +555,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
             switch (input_fragment_attribute)
             {
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:           uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;           break;
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_AMBIENT: uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_AMBIENT; break;
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_DIFFUSE: uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_DIFFUSE; break;
+                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:   uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;   break;
+                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD: uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD; break;
 
                 default:
                 {
@@ -705,34 +704,26 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
 /** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
-    mesh_material_shading shading_type                      = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
-    mesh_material         special_material_normal           = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),            materials_ptr->context);
-    mesh_material         special_material_texcoord_ambient = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord (ambient)"), materials_ptr->context);
-    mesh_material         special_material_texcoord_diffuse = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord (diffuse)"), materials_ptr->context);
+    mesh_material_shading shading_type              = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
+    mesh_material         special_material_normal   = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),  materials_ptr->context);
+    mesh_material         special_material_texcoord = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"), materials_ptr->context);
 
     mesh_material_set_property(special_material_normal,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type);
-    mesh_material_set_property(special_material_texcoord_ambient,
-                               MESH_MATERIAL_PROPERTY_SHADING,
-                              &shading_type);
-    mesh_material_set_property(special_material_texcoord_diffuse,
+    mesh_material_set_property(special_material_texcoord,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type);
 
     mesh_material_set_shading_property_to_input_fragment_attribute(special_material_normal,
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
                                                                    MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL);
-    mesh_material_set_shading_property_to_input_fragment_attribute(special_material_texcoord_ambient,
+    mesh_material_set_shading_property_to_input_fragment_attribute(special_material_texcoord,
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
-                                                                   MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_AMBIENT);
-    mesh_material_set_shading_property_to_input_fragment_attribute(special_material_texcoord_diffuse,
-                                                                   MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
-                                                                   MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_DIFFUSE);
+                                                                   MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD);
 
-    materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]          = special_material_normal;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD_AMBIENT] = special_material_texcoord_ambient;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD_DIFFUSE] = special_material_texcoord_diffuse;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]  = special_material_normal;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD] = special_material_texcoord;
 }
 
 

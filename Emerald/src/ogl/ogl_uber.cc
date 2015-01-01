@@ -139,12 +139,8 @@ typedef struct
     uint32_t                  mesh_sh4_data_offset_uniform_location;
     uint32_t                  model_uniform_location;
     uint32_t                  normal_matrix_uniform_location;
-    uint32_t                  object_ambient_uv_attribute_location;
-    uint32_t                  object_diffuse_uv_attribute_location;
-    uint32_t                  object_luminosity_uv_attribute_location;
     uint32_t                  object_normal_attribute_location;
-    uint32_t                  object_shininess_uv_attribute_location;
-    uint32_t                  object_specular_uv_attribute_location;
+    uint32_t                  object_uv_attribute_location;
     uint32_t                  object_vertex_attribute_location;
     uint32_t                  shininess_material_sampler_uniform_location;
     uint32_t                  shininess_material_float_uniform_location;
@@ -357,43 +353,11 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
             int           size;
         } attribute_items[] =
         {
-            /* NOTE: In COLLADA, there are no sets of texcoords per polylist. In English, this means
-             *       that we need not differentiate between different UV sets for a single mesh instance.
-             *       However, we do tell the difference in uber shaders.
-             *
-             *       This is sub-optimal, so consider merging all separate UVs in the shaders into a single
-             *       attribute if notable performance hits are inflicted.
-             *
-             */
             {
-                uber_ptr->object_ambient_uv_attribute_location,
+                uber_ptr->object_uv_attribute_location,
                 (const GLvoid*) mesh_texcoords_offset,
                 2
             },
-
-            {
-                uber_ptr->object_diffuse_uv_attribute_location,
-                (const GLvoid*) mesh_texcoords_offset,
-                2
-            },
-
-            {
-                uber_ptr->object_luminosity_uv_attribute_location,
-                (const GLvoid*) mesh_texcoords_offset,
-                2
-            },
-
-            {
-                uber_ptr->object_shininess_uv_attribute_location,
-                (const GLvoid*) mesh_texcoords_offset,
-                2
-            },
-
-            {
-                uber_ptr->object_specular_uv_attribute_location,
-                (const GLvoid*) mesh_texcoords_offset,
-                2
-            }
         };
         const unsigned int n_attribute_items = sizeof(attribute_items) / sizeof(attribute_items[0]);
 
@@ -443,35 +407,35 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                     MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
                     uber_ptr->ambient_material_sampler_uniform_location,
                     uber_ptr->ambient_material_vec4_uniform_location,
-                    uber_ptr->object_ambient_uv_attribute_location
+                    uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
                     uber_ptr->diffuse_material_sampler_uniform_location,
                     uber_ptr->diffuse_material_vec4_uniform_location,
-                    uber_ptr->object_diffuse_uv_attribute_location
+                    uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
                     uber_ptr->luminosity_material_sampler_uniform_location,
                     uber_ptr->luminosity_material_float_uniform_location,
-                    uber_ptr->object_luminosity_uv_attribute_location
+                    uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
                     uber_ptr->shininess_material_sampler_uniform_location,
                     uber_ptr->shininess_material_float_uniform_location,
-                    uber_ptr->object_shininess_uv_attribute_location
+                    uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
                     uber_ptr->specular_material_sampler_uniform_location,
                     uber_ptr->specular_material_float_uniform_location,
-                    uber_ptr->object_specular_uv_attribute_location
+                    uber_ptr->object_uv_attribute_location
                 },
             };
             const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
@@ -777,16 +741,9 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
             break;
         }
 
-        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_AMBIENT:
+        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD:
         {
-            fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD_AMBIENT;
-
-            break;
-        }
-
-        case OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD_DIFFUSE:
-        {
-            fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD_DIFFUSE;
+            fs_input_attribute = UBER_INPUT_ATTRIBUTE_TEXCOORD;
 
             break;
         }
@@ -952,12 +909,8 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     uber_ptr->mesh_sh4_data_offset_uniform_location        = -1;
     uber_ptr->model_uniform_location                       = -1;
     uber_ptr->normal_matrix_uniform_location               = -1;
-    uber_ptr->object_ambient_uv_attribute_location         = -1;
-    uber_ptr->object_diffuse_uv_attribute_location         = -1;
-    uber_ptr->object_luminosity_uv_attribute_location      = -1;
     uber_ptr->object_normal_attribute_location             = -1;
-    uber_ptr->object_shininess_uv_attribute_location       = -1;
-    uber_ptr->object_specular_uv_attribute_location        = -1;
+    uber_ptr->object_uv_attribute_location                 = -1;
     uber_ptr->object_vertex_attribute_location             = -1;
     uber_ptr->shininess_material_sampler_uniform_location  = -1;
     uber_ptr->shininess_material_float_uniform_location    = -1;
@@ -967,68 +920,28 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     uber_ptr->world_camera_ub_offset                       = -1;
 
     /* Retrieve attribute locations */
-    const ogl_program_attribute_descriptor* object_ambient_uv_descriptor    = NULL;
-    const ogl_program_attribute_descriptor* object_diffuse_uv_descriptor    = NULL;
-    const ogl_program_attribute_descriptor* object_emission_uv_descriptor   = NULL;
-    const ogl_program_attribute_descriptor* object_luminosity_uv_descriptor = NULL;
-    const ogl_program_attribute_descriptor* object_normal_descriptor        = NULL;
-    const ogl_program_attribute_descriptor* object_shininess_uv_descriptor  = NULL;
-    const ogl_program_attribute_descriptor* object_specular_uv_descriptor   = NULL;
-    const ogl_program_attribute_descriptor* object_vertex_descriptor        = NULL;
+    const ogl_program_attribute_descriptor* object_normal_descriptor = NULL;
+    const ogl_program_attribute_descriptor* object_uv_descriptor     = NULL;
+    const ogl_program_attribute_descriptor* object_vertex_descriptor = NULL;
 
-    ogl_program_get_attribute_by_name(uber_ptr->program,
-                                      system_hashed_ansi_string_create("object_ambient_uv"),
-                                     &object_ambient_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program,
-                                      system_hashed_ansi_string_create("object_diffuse_uv"),
-                                     &object_diffuse_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program,
-                                      system_hashed_ansi_string_create("object_emission_uv"),
-                                     &object_emission_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program,
-                                      system_hashed_ansi_string_create("object_luminosity_uv"),
-                                     &object_luminosity_uv_descriptor);
     ogl_program_get_attribute_by_name(uber_ptr->program,
                                       system_hashed_ansi_string_create("object_normal"),
                                      &object_normal_descriptor);
     ogl_program_get_attribute_by_name(uber_ptr->program,
-                                      system_hashed_ansi_string_create("object_shininess_uv"),
-                                     &object_shininess_uv_descriptor);
-    ogl_program_get_attribute_by_name(uber_ptr->program,
-                                      system_hashed_ansi_string_create("object_specular_uv"),
-                                     &object_specular_uv_descriptor);
+                                      system_hashed_ansi_string_create("object_uv"),
+                                     &object_uv_descriptor);
     ogl_program_get_attribute_by_name(uber_ptr->program,
                                       system_hashed_ansi_string_create("object_vertex"),
                                      &object_vertex_descriptor);
-
-    if (object_ambient_uv_descriptor != NULL)
-    {
-        uber_ptr->object_ambient_uv_attribute_location = object_ambient_uv_descriptor->location;
-    }
-
-    if (object_diffuse_uv_descriptor != NULL)
-    {
-        uber_ptr->object_diffuse_uv_attribute_location = object_diffuse_uv_descriptor->location;
-    }
-
-    if (object_luminosity_uv_descriptor != NULL)
-    {
-        uber_ptr->object_luminosity_uv_attribute_location = object_luminosity_uv_descriptor->location;
-    }
 
     if (object_normal_descriptor != NULL)
     {
         uber_ptr->object_normal_attribute_location = object_normal_descriptor->location;
     }
 
-    if (object_shininess_uv_descriptor != NULL)
+    if (object_uv_descriptor != NULL)
     {
-        uber_ptr->object_shininess_uv_attribute_location = object_shininess_uv_descriptor->location;
-    }
-
-    if (object_specular_uv_descriptor != NULL)
-    {
-        uber_ptr->object_specular_uv_attribute_location = object_specular_uv_descriptor->location;
+        uber_ptr->object_uv_attribute_location = object_uv_descriptor->location;
     }
 
     if (object_vertex_descriptor != NULL)
@@ -1470,9 +1383,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->mesh_sh4_data_offset_uniform_location        = -1;
         result->model_uniform_location                       = -1;
         result->normal_matrix_uniform_location               = -1;
-        result->object_ambient_uv_attribute_location         = -1;
-        result->object_diffuse_uv_attribute_location         = -1;
         result->object_normal_attribute_location             = -1;
+        result->object_uv_attribute_location                 = -1;
         result->object_vertex_attribute_location             = -1;
         result->shininess_material_sampler_uniform_location  = -1;
         result->shininess_material_float_uniform_location    = -1;
@@ -1835,7 +1747,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
                         uber_ptr->ambient_material_sampler_uniform_location,
                         uber_ptr->ambient_material_vec4_uniform_location,
-                        uber_ptr->object_ambient_uv_attribute_location,
+                        uber_ptr->object_uv_attribute_location,
                         true,
                     },
 
@@ -1843,7 +1755,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
                         uber_ptr->diffuse_material_sampler_uniform_location,
                         uber_ptr->diffuse_material_vec4_uniform_location,
-                        uber_ptr->object_diffuse_uv_attribute_location,
+                        uber_ptr->object_uv_attribute_location,
                         true,
                     },
 
@@ -1851,7 +1763,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
                         uber_ptr->luminosity_material_sampler_uniform_location,
                         uber_ptr->luminosity_material_float_uniform_location,
-                        uber_ptr->object_luminosity_uv_attribute_location,
+                        uber_ptr->object_uv_attribute_location,
                         false
                     },
 
@@ -1859,7 +1771,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
                         uber_ptr->shininess_material_sampler_uniform_location,
                         uber_ptr->shininess_material_float_uniform_location,
-                        uber_ptr->object_shininess_uv_attribute_location,
+                        uber_ptr->object_uv_attribute_location,
                         false
                     },
 
@@ -1867,7 +1779,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
                         uber_ptr->specular_material_sampler_uniform_location,
                         uber_ptr->specular_material_float_uniform_location,
-                        uber_ptr->object_specular_uv_attribute_location,
+                        uber_ptr->object_uv_attribute_location,
                         false
                     },
                 };
