@@ -216,10 +216,6 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
     ASSERT_DEBUG_SYNC(n_materials != 0,
                       "No materials defined for a mesh instance");
 
-    /* Each layer pass corresponds to the set of polygons that uses
-     * a specific material */
-    mesh_layer_id new_mesh_layer = mesh_add_layer(arg_ptr->new_mesh);
-
     for (uint32_t n_material = 0;
                   n_material < n_materials;
                 ++n_material)
@@ -229,6 +225,10 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
         system_hashed_ansi_string current_material_name   = NULL;
         uint32_t                  n_polygon_instances     = 0;
         system_resizable_vector   polygon_instance_vector = NULL;
+
+        /* Each layer pass corresponds to the set of polygons that uses
+         * a specific material */
+        mesh_layer_id new_mesh_layer = mesh_add_layer(arg_ptr->new_mesh);
 
         /* Carry on */
         if (!system_hash64map_get_element_at(arg_ptr->instance_ptr->material_to_polygon_instance_vector_map,
@@ -927,6 +927,12 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                                     NULL,  /* on_remove_callback */
                                     NULL); /* on_remove_callback_user_arg */
         }
+        else
+        {
+            system_hash64map_get(filename_to_mesh_instance_map,
+                                 (system_hash64) new_instance->filename,
+                                &new_instance->mesh_gpu_provider_ptr);
+        }
 
         /* Extract transformation data */
         new_instance->rotation   [0] = GetCurveContainerForProperty    (new_instance->name,
@@ -969,38 +975,6 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         /* Extract ID data */
         new_instance->object_id      = object_id;
         new_instance->parent_item_id = item_info_ptr->parent(object_id);
-
-        /* Have we already created a mesh instance descriptor that is described by the
-         * same file name? If so, we can re-use GPU mesh representation later on,
-         * so that it is calculated only once.
-         */
-        const uint32_t n_objects_initialized = system_resizable_vector_get_amount_of_elements(objects);
-
-        for (uint32_t n_object = 0;
-                      n_object < n_objects_initialized;
-                    ++n_object)
-        {
-            _mesh_instance* created_mesh_ptr = NULL;
-
-            if (!system_resizable_vector_get_element_at(objects,
-                                                        n_object,
-                                                       &created_mesh_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Cannot retrieve mesh instance descriptor at index [%d]",
-                                  n_object);
-
-                continue;
-            }
-
-            if (system_hashed_ansi_string_is_equal_to_hash_string(created_mesh_ptr->filename,
-                                                                  new_instance->filename) )
-            {
-                new_instance->mesh_gpu_provider_ptr = created_mesh_ptr;
-
-                break;
-            }
-        } /* for (all added objects) */
 
         /* Store the instance */
         ASSERT_DEBUG_SYNC(!system_hash64map_contains(item_id_to_mesh_instance_map,
@@ -1153,15 +1127,14 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
             }
 
             /* Instantiate the "GPU mesh" first */
-            mesh          new_mesh       = NULL;
             mesh_layer_id new_mesh_layer = NULL;
 
-            new_mesh = mesh_create(MESH_SAVE_SUPPORT,
-                                   instance_ptr->name);
+            instance_ptr->mesh_gpu = mesh_create(MESH_SAVE_SUPPORT,
+                                                 instance_ptr->name);
 
-            ASSERT_ALWAYS_SYNC(new_mesh != NULL,
+            ASSERT_ALWAYS_SYNC(instance_ptr->mesh_gpu != NULL,
                                "mesh_create() failed.");
-            if (new_mesh == NULL)
+            if (instance_ptr->mesh_gpu == NULL)
             {
                 continue;
             }
@@ -1173,7 +1146,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
 
                 /* Spawn task argument descriptor */
                 _bake_mesh_gl_blob_worker_arg* job_arg_ptr = new (std::nothrow) _bake_mesh_gl_blob_worker_arg(instance_ptr,
-                                                                                                              new_mesh,
+                                                                                                              instance_ptr->mesh_gpu,
                                                                                                               scene);
 
                 /* Distribute the task to a worker thread. */
@@ -1193,11 +1166,11 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                 ASSERT_DEBUG_SYNC(instance_ptr->mesh_gpu_provider_ptr->mesh_gpu != NULL,
                                   "Provider mesh is not a provider");
 
-                mesh_set_as_instantiated(new_mesh,
+                mesh_set_as_instantiated(instance_ptr->mesh_gpu,
                                          instance_ptr->mesh_gpu_provider_ptr->mesh_gpu);
 
                 AddMeshToScene(scene,
-                               new_mesh,
+                               instance_ptr->mesh_gpu,
                                instance_ptr);
             }
         } /* for (all objects) */

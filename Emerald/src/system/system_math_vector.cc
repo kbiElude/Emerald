@@ -8,7 +8,7 @@
 #include "system/system_math_vector.h"
 
 /** TODO: SIMD, eh? */
-const float epsilon = 1e-5f;
+const float epsilon = 1e-8f;
 
 /** Please see header for description */
 PUBLIC EMERALD_API void system_math_vector_add3(__in_ecount(3)  const float* a,

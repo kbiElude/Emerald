@@ -365,6 +365,8 @@ PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer 
                                                              result_material_ptr->color + 1);
     result &= system_file_serializer_read_curve_container   (serializer,
                                                              result_material_ptr->color + 2);
+    result &= system_file_serializer_read_hashed_ansi_string(serializer,
+                                                            &result_material_ptr->color_texture_file_name);
     result &= system_file_serializer_read_curve_container   (serializer,
                                                             &result_material_ptr->glosiness);
     result &= system_file_serializer_read_curve_container   (serializer,
@@ -399,12 +401,15 @@ PUBLIC bool scene_material_save(__in __notnull system_file_serializer serializer
 
     result  = system_file_serializer_write_hashed_ansi_string(serializer,
                                                               material_ptr->name);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             material_ptr->color[0]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             material_ptr->color[1]);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             material_ptr->color[2]);
+    result &= system_file_serializer_write_curve_container   (serializer,
+                                                              material_ptr->color[0]);
+    result &= system_file_serializer_write_curve_container   (serializer,
+                                                              material_ptr->color[1]);
+    result &= system_file_serializer_write_curve_container   (serializer,
+                                                              material_ptr->color[2]);
+    result &= system_file_serializer_write_hashed_ansi_string(serializer,
+                                                              (material_ptr->color_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
+                                                                                                              : material_ptr->color_texture_file_name);
     result &= system_file_serializer_write_curve_container   (serializer,
                                                               material_ptr->glosiness);
     result &= system_file_serializer_write_curve_container   (serializer,

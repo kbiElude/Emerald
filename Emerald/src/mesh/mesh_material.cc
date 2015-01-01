@@ -397,23 +397,44 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                 SCENE_MATERIAL_PROPERTY_SPECULAR_RATIO,
                                &specular_ratio);
 
+    if (system_hashed_ansi_string_get_length(color_texture_file_name) == 0)
+    {
+        color_texture_file_name = NULL;
+    }
+
+    if (system_hashed_ansi_string_get_length(luminance_texture_file_name) == 0)
+    {
+        luminance_texture_file_name = NULL;
+    }
+
+    if (system_hashed_ansi_string_get_length(normal_texture_file_name) == 0)
+    {
+        normal_texture_file_name = NULL;
+    }
+
+    if (system_hashed_ansi_string_get_length(reflection_texture_file_name) == 0)
+    {
+        reflection_texture_file_name = NULL;
+    }
+
+    if (system_hashed_ansi_string_get_length(specular_texture_file_name) == 0)
+    {
+        specular_texture_file_name = NULL;
+    }
+
     /* Throw an assertion failures for textures that are not yet supported on mesh_material
      * back-end.
      */
-    ASSERT_DEBUG_SYNC(luminance_texture_file_name == NULL                                    ||
-                      system_hashed_ansi_string_get_length(luminance_texture_file_name) == 0,
+    ASSERT_DEBUG_SYNC(luminance_texture_file_name == NULL,
                       "mesh_material does not support luminance textures");
 
-    ASSERT_DEBUG_SYNC(normal_texture_file_name == NULL                                       ||
-                      system_hashed_ansi_string_get_length(normal_texture_file_name) == 0,
+    ASSERT_DEBUG_SYNC(normal_texture_file_name == NULL,
                       "mesh_material does not support normal textures");
 
-    ASSERT_DEBUG_SYNC(reflection_texture_file_name == NULL                                   ||
-                      system_hashed_ansi_string_get_length(reflection_texture_file_name) == 0,
+    ASSERT_DEBUG_SYNC(reflection_texture_file_name == NULL,
                       "mesh_material does not support reflection textures");
 
-    ASSERT_DEBUG_SYNC(specular_texture_file_name == NULL                                     ||
-                      system_hashed_ansi_string_get_length(specular_texture_file_name) == 0,
+    ASSERT_DEBUG_SYNC(specular_texture_file_name == NULL,
                       "mesh_material does not support specular textures");
 
     /* Configure texture/float/vec3 attachments (as described by scene_material) */
@@ -534,11 +555,16 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
 
                     if (texture == NULL)
                     {
-                        ASSERT_ALWAYS_SYNC(false,
-                                           "Texture [%s] unavailable in the rendering context",
-                                           system_hashed_ansi_string_get_buffer(color_texture_file_name) );
+                        texture = ogl_texture_create(context,
+                                                     config.texture_filename,
+                                                     config.texture_filename);
                     }
-                    else
+
+                    ASSERT_ALWAYS_SYNC(texture != NULL,
+                                       "Texture [%s] unavailable in the rendering context",
+                                       system_hashed_ansi_string_get_buffer(config.texture_filename) );
+
+                    if (texture != NULL)
                     {
                         mesh_material_set_shading_property_to_texture(result_material,
                                                                       config.shading_property,
@@ -546,6 +572,13 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                                                       0, /* mipmap_level */
                                                                       config.texture_mag_filter,
                                                                       config.texture_min_filter);
+
+                        /* Generate mip-maps if needed */
+                        if (config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_LINEAR &&
+                            config.texture_min_filter != MESH_MATERIAL_TEXTURE_FILTERING_NEAREST)
+                        {
+                            ogl_texture_generate_mipmaps(texture);
+                        }
                     }
                 } /* if (context != NULL) */
 
@@ -805,387 +838,6 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
            property_ptr->vec4_data,
            sizeof(float) * 4);
 }
-
-#if 0
-
-TODO: REMOVE
-
-/* Please see header for specification */
-PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer serializer,
-                                        __in __notnull ogl_context            context,
-                                        __in __notnull system_hash64map       texture_id_to_ogl_texture_map)
-{
-    system_hashed_ansi_string material_name = NULL;
-    mesh_material             new_material  = NULL;
-    bool                      result        = true;
-
-    result &= system_file_serializer_read_hashed_ansi_string(serializer,
-                                                            &material_name);
-
-    if (!result)
-    {
-        result = false;
-
-        goto end_error;
-    }
-
-    /* Create the material instance */
-    new_material = mesh_material_create(material_name,
-                                        context);
-
-    ASSERT_ALWAYS_SYNC(new_material != NULL,
-                       "Out of memory");
-
-    if (new_material == NULL)
-    {
-        goto end_error;
-    }
-
-    /* Set the VSA */
-    float vertex_smoothing_angle = 0.0f;
-
-    result &= system_file_serializer_read(serializer,
-                                          sizeof(vertex_smoothing_angle),
-                                         &vertex_smoothing_angle);
-
-    mesh_material_set_property(new_material,
-                               MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-                              &vertex_smoothing_angle);
-
-    /* Set the material shading type */
-    mesh_material_shading shading_type = MESH_MATERIAL_SHADING_UNKNOWN;
-
-    result &= system_file_serializer_read(serializer,
-                                          sizeof(shading_type),
-                                         &shading_type);
-
-    if (!result)
-    {
-        goto end_error;
-    }
-
-    mesh_material_set_property(new_material,
-                               MESH_MATERIAL_PROPERTY_SHADING,
-                              &shading_type);
-
-    /* Iterate over all properties */
-    for (mesh_material_shading_property property = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
-                                        property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
-                                ++(int&)property)
-    {
-        curve_container                        attachment_curve_container_data[3] = {NULL};
-        float                                  attachment_float_data;
-        mesh_material_input_fragment_attribute attachment_input_fragment_attribute_data;
-        _mesh_material_property_texture        attachment_texture_data;
-        mesh_material_property_attachment      attachment_type = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
-        float                                  attachment_vec4_data[4];
-
-        /* Read attachment type */
-        result &= system_file_serializer_read(serializer,
-                                              sizeof(attachment_type),
-                                             &attachment_type);
-        if (!result)
-        {
-            goto end_error;
-        }
-
-        /* Read attachment properties */
-        switch (attachment_type)
-        {
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
-            {
-                /* Nothing to serialize */
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
-            {
-                const unsigned int n_components = (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
-
-                for (unsigned int n_component = 0;
-                                  n_component < n_components;
-                                ++n_component)
-                {
-                    result &= system_file_serializer_read_curve_container(serializer,
-                                                                          attachment_curve_container_data + n_component);
-                }
-
-                if (!result)
-                {
-                    goto end_error;
-                }
-
-                if (n_components == 1)
-                {
-                    mesh_material_set_shading_property_to_curve_container_float(new_material,
-                                                                                property,
-                                                                                attachment_curve_container_data[0]);
-                }
-                else
-                {
-                    mesh_material_set_shading_property_to_curve_container_vec3(new_material,
-                                                                                property,
-                                                                                attachment_curve_container_data);
-                }
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-            {
-                result &= system_file_serializer_read(serializer,
-                                                      sizeof(attachment_float_data),
-                                                     &attachment_float_data);
-
-                if (!result)
-                {
-                    goto end_error;
-                }
-
-                mesh_material_set_shading_property_to_float(new_material,
-                                                            property,
-                                                            attachment_float_data);
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE:
-            {
-                result &= system_file_serializer_read(serializer,
-                                                      sizeof(attachment_input_fragment_attribute_data),
-                                                     &attachment_input_fragment_attribute_data);
-
-                if (!result)
-                {
-                    goto end_error;
-                }
-
-                mesh_material_set_shading_property_to_input_fragment_attribute(new_material,
-                                                                               property,
-                                                                               attachment_input_fragment_attribute_data);
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-            {
-                GLuint      texture_gl_id    = 0;
-                ogl_texture texture_instance = NULL;
-
-                /* Retrieve ID of the texture and find the ogl_texture instance corresponding
-                 * to that identifier.
-                 */
-                result &= system_file_serializer_read(serializer,
-                                                       sizeof(texture_gl_id),
-                                                      &texture_gl_id);
-
-                if (!system_hash64map_get(texture_id_to_ogl_texture_map,
-                                          (system_hash64) texture_gl_id,
-                                         &texture_instance) )
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not find a ogl_texture instance corresponding to texture GL ID");
-
-                    goto end_error;
-                }
-
-                /* Retrieve texture properties */
-                result &= system_file_serializer_read(serializer,
-                                                      sizeof(attachment_texture_data.mag_filter),
-                                                     &attachment_texture_data.mag_filter);
-                result &= system_file_serializer_read(serializer,
-                                                      sizeof(attachment_texture_data.min_filter),
-                                                     &attachment_texture_data.min_filter);
-                result &= system_file_serializer_read(serializer,
-                                                      sizeof(attachment_texture_data.mipmap_level),
-                                                     &attachment_texture_data.mipmap_level);
-
-                if (!result)
-                {
-                    goto end_error;
-                }
-
-                mesh_material_set_shading_property_to_texture(new_material,
-                                                              property,
-                                                              texture_instance,
-                                                              attachment_texture_data.mipmap_level,
-                                                              attachment_texture_data.mag_filter,
-                                                              attachment_texture_data.min_filter);
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-            {
-                result &= system_file_serializer_read(serializer,
-                                                      sizeof(attachment_vec4_data),
-                                                      attachment_vec4_data);
-
-                if (!result)
-                {
-                    goto end_error;
-                }
-
-                mesh_material_set_shading_property_to_vec4(new_material,
-                                                           property,
-                                                           attachment_vec4_data);
-
-                break;
-            }
-
-            default:
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized mesh material shading property attachment");
-
-                goto end_error;
-            }
-        } /* switch (attachment_type) */
-    }
-
-    /* All done */
-    goto end;
-
-end_error:
-    ASSERT_DEBUG_SYNC(false, "Material serialization failed");
-
-    if (new_material != NULL)
-    {
-        mesh_material_release(new_material);
-
-        new_material = NULL;
-    }
-
-end:
-    return new_material;
-}
-#endif
-
-#if 0
-
-TODO: REMOVE
-
-/* Please see header for specification */
-PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
-                               __in __notnull mesh_material          material)
-{
-    _mesh_material* material_ptr = (_mesh_material*) material;
-    bool            result       = true;
-
-    /* Store general properties */
-    result &= system_file_serializer_write_hashed_ansi_string(serializer,
-                                                              material_ptr->name);
-    result &= system_file_serializer_write                   (serializer,
-                                                              sizeof(material_ptr->vertex_smoothing_angle),
-                                                             &material_ptr->vertex_smoothing_angle);
-    result &= system_file_serializer_write                   (serializer,
-                                                              sizeof(material_ptr->shading),
-                                                             &material_ptr->shading);
-
-    /* Iterate over all properties */
-    for (mesh_material_shading_property property = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
-                                        property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
-                                ++(int&)property)
-    {
-        const _mesh_material_property& property_data = material_ptr->shading_properties[property];
-
-        /* Store attachment type */
-        result &= system_file_serializer_write(serializer,
-                                               sizeof(property_data.attachment),
-                                              &property_data.attachment);
-
-        /* Each attachment type needs to be serialized differently */
-        switch (property_data.attachment)
-        {
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
-            {
-                /* Nothing to serialize */
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
-            {
-                const unsigned int n_components = (property_data.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
-
-                for (unsigned int n_component = 0;
-                                  n_component < n_components;
-                                ++n_component)
-                {
-                    result &= system_file_serializer_write_curve_container(serializer,
-                                                                           property_data.curve_container_data[n_component]);
-                }
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-            {
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(property_data.float_data),
-                                                      &property_data.float_data);
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE:
-            {
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(property_data.input_fragment_attribute_data),
-                                                      &property_data.input_fragment_attribute_data);
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-            {
-                GLuint texture_id = NULL;
-
-                ogl_texture_get_property(property_data.texture_data.texture,
-                                         OGL_TEXTURE_PROPERTY_ID,
-                                        &texture_id);
-
-                ASSERT_DEBUG_SYNC(texture_id != 0,
-                                  "Texture ID is 0");
-
-                /* Serialize the properties */
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(texture_id),
-                                                      &texture_id);
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(property_data.texture_data.mag_filter),
-                                                      &property_data.texture_data.mag_filter);
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(property_data.texture_data.min_filter),
-                                                      &property_data.texture_data.min_filter);
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(property_data.texture_data.mipmap_level),
-                                                      &property_data.texture_data.mipmap_level);
-
-                break;
-            }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-            {
-                result &= system_file_serializer_write(serializer,
-                                                       sizeof(property_data.vec4_data),
-                                                      &property_data.vec4_data);
-
-                break;
-            }
-
-            default:
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Unrecognized material property attachment type");
-            }
-        } /* switch (property_data.attachment) */
-    } /* for (all shading properties) */
-
-    return result;
-}
-#endif
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,

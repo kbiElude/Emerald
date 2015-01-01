@@ -82,14 +82,63 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __e
                                                               __in                                size_t              n_elements,
                                                                                                   bool                wait_on_all_objects)
 {
-    /* We'll use a dirty trick here in order to optimise - system_event only contains a HANDLE so we're perfectly
-     * fine to cast every element of events array to a HANDLE.
-     */
-    DWORD result = ::WaitForMultipleObjects( (DWORD) n_elements,
-                                             (const HANDLE*) events,
-                                             wait_on_all_objects ? TRUE : FALSE,
-                                             INFINITE);
+    DWORD result = WAIT_FAILED;
 
+    if (n_elements == 0)
+    {
+        result = WAIT_OBJECT_0;
+
+        goto end;
+    }
+
+    if (wait_on_all_objects)
+    {
+        if (n_elements < MAXIMUM_WAIT_OBJECTS)
+        {
+            /* We'll use a dirty trick here in order to optimise - system_event only contains a HANDLE so we're perfectly
+             * fine to cast every element of events array to a HANDLE.
+             */
+            result = ::WaitForMultipleObjects( (DWORD) n_elements,
+                                               (const HANDLE*) events,
+                                               wait_on_all_objects ? TRUE : FALSE,
+                                               INFINITE);
+        } /* if (n_elements < MAXIMUM_WAIT_OBJECTS) */
+        else
+        {
+            const system_event* current_events = events;
+
+            while (n_elements > 0)
+            {
+                uint32_t n_objects_to_wait_on = (n_elements < MAXIMUM_WAIT_OBJECTS) ? n_elements
+                                                                                    : MAXIMUM_WAIT_OBJECTS;
+
+                result = ::WaitForMultipleObjects( (DWORD) n_objects_to_wait_on,
+                                                   (const HANDLE*) events,
+                                                   TRUE,
+                                                   INFINITE);
+
+                if (result == WAIT_FAILED)
+                {
+                    goto end;
+                }
+
+                n_elements -= MAXIMUM_WAIT_OBJECTS;
+                events     += MAXIMUM_WAIT_OBJECTS;
+            } /* while (n_elements > 0) */
+        }
+    }
+    else
+    {
+        ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
+                          "Too many events to wait on at once.");
+
+        result = ::WaitForMultipleObjects( (DWORD) n_elements,
+                                               (const HANDLE*) events,
+                                               wait_on_all_objects ? TRUE : FALSE,
+                                               INFINITE);
+    }
+
+end:
     ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
                       "WaitForMultipleObjects() failed.");
 

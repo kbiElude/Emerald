@@ -484,7 +484,11 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context    
     ASSERT_ALWAYS_SYNC(new_texture != NULL, "Out of memory");
     if (new_texture != NULL)
     {
-        memset(new_texture, 0, sizeof(_ogl_texture) );
+        bool should_init_mipmap_chain = true;
+
+        memset(new_texture,
+               0,
+               sizeof(_ogl_texture) );
 
         new_texture->context         = context;
         new_texture->dimensionality  = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
@@ -493,7 +497,27 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context    
         new_texture->name            = name;
         new_texture->src_filename    = src_filename;
 
-        for (unsigned int n = 0; n < 1; ++n)
+        if (src_filename != NULL)
+        {
+            new_texture->src_image = gfx_image_create_from_file(name,
+                                                                src_filename,
+                                                                true); /* use_alternative_filename_getter */
+
+            if (new_texture->src_image != NULL)
+            {
+                ogl_context_request_callback_from_context_thread(context,
+                                                                 _ogl_texture_init_renderer_callback,
+                                                                 new_texture);
+
+                ogl_context_request_callback_from_context_thread(context,
+                                                                 _ogl_texture_create_from_gfx_image_renderer_callback,
+                                                                 new_texture);
+
+                should_init_mipmap_chain = false;
+            }
+        } /* if (src_filename != NULL) */
+
+        if (should_init_mipmap_chain)
         {
             _ogl_texture_mipmap* new_mipmap = new (std::nothrow) _ogl_texture_mipmap;
 
@@ -505,12 +529,11 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context    
                 system_resizable_vector_push(new_texture->mipmaps, new_mipmap);
             }
 
-        } /* for (unsigned int n = 0; n < DEFAULT_MIPMAPS_AMOUNT; ++n) */
-
-        /* Request a renderer thread call-back */
-        ogl_context_request_callback_from_context_thread(context,
-                                                         _ogl_texture_init_renderer_callback,
-                                                         new_texture);
+            /* Request a renderer thread call-back */
+            ogl_context_request_callback_from_context_thread(context,
+                                                             _ogl_texture_init_renderer_callback,
+                                                             new_texture);
+        }
 
         /* Add the texture object to texture manager */
         ogl_textures textures = NULL;

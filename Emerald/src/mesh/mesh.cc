@@ -1383,6 +1383,10 @@ PUBLIC EMERALD_API void mesh_add_layer_data_stream(__in __notnull mesh          
                     /* Store the stream */
                     system_hash64 temp = type;
 
+                    ASSERT_DEBUG_SYNC(!system_hash64map_contains(layer_ptr->data_streams,
+                                                                 (system_hash64) temp),
+                                      "Streeam already defined");
+
                     system_hash64map_insert(layer_ptr->data_streams,
                                             temp,
                                             data_stream_ptr,
@@ -1905,13 +1909,6 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                 unsigned int                     stream_n_components           = 0;
                 unsigned int                     stream_required_bit_alignment = 0;
 
-                if (n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_3BANDS ||
-                    n_data_stream_type == MESH_LAYER_DATA_STREAM_TYPE_SPHERICAL_HARMONIC_4BANDS)
-                {
-                    ASSERT_ALWAYS_SYNC(mesh_ptr->n_sh_bands      != 0, "Number of SH bands is 0");
-                    ASSERT_ALWAYS_SYNC(mesh_ptr->n_sh_components != 0, "Number of SH components is 0");
-                }
-
                 _mesh_get_stream_data_properties(mesh_ptr,
                                                  (mesh_layer_data_stream_type) n_data_stream_type,
                                                  &stream_data_type,
@@ -2149,7 +2146,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                                               n_set,
                                                                              &set_index_data) )
                                                     {
-                                                        pass_index_data = final_index;
+                                                        pass_index_data = n_element;
                                                     }
                                                     else
                                                     {
@@ -2161,16 +2158,19 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                 }
 
                                                 /* We can finally do a memcpy()! */
-                                                const uint32_t n_bytes_for_element_data = sizeof(float) * n_different_layer_elements * stream_n_components;
+                                                const uint32_t n_bytes_for_element_data = n_different_layer_elements *
+                                                                                          stream_n_components;
+                                                const uint32_t dst_offset               = mesh_ptr->gl_processed_data_stream_start_offset[n_data_stream_type] + /* move to location where the unique data starts for given stream type */
+                                                                                          mesh_ptr->gl_processed_data_stride * n_set * pass_ptr->n_elements   + /* move to current set */
+                                                                                          mesh_ptr->gl_processed_data_stride * final_index;                     /* identify processed index */
+                                                const uint32_t src_offset_div_4         = data_stream_ptr->n_components                                       *
+                                                                                          pass_index_data;
 
-                                                memcpy((char*) mesh_ptr->gl_processed_data                                         + /* update processed data buffer */
-                                                               mesh_ptr->gl_processed_data_stream_start_offset[n_data_stream_type] + /* move to location where the unique data starts for given stream type */
-                                                               mesh_ptr->gl_processed_data_stride * n_set * pass_ptr->n_elements   + /* move to current set */
-                                                               mesh_ptr->gl_processed_data_stride * final_index,                     /* identify processed index */
-                                                       (float*)data_stream_ptr->data                                               +
-                                                               n_set * n_bytes_for_element_data / sizeof(float)                    + /* move to current set */
-                                                               data_stream_ptr->n_components                                       *
-                                                               pass_index_data,
+                                                ASSERT_DEBUG_SYNC(pass_index_data < data_stream_ptr->n_items,
+                                                                  "Invalid index about to be used");
+
+                                                memcpy((char*) mesh_ptr->gl_processed_data + dst_offset,
+                                                       (float*)data_stream_ptr->data       + src_offset_div_4,
                                                        sizeof(float) * data_stream_ptr->n_components);
                                             } /* for (all sets) */
                                         } /* if (data_stream_ptr != NULL) */
