@@ -3633,6 +3633,123 @@ end:
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
+{
+    _mesh*         mesh_ptr = (_mesh*) in_mesh;
+    const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
+    {
+        _mesh_layer* layer_ptr = NULL;
+
+        if (!system_resizable_vector_get_element_at(mesh_ptr->layers,
+                                                    n_layer,
+                                                   &layer_ptr) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve mesh layer descriptor");
+
+            continue;
+        }
+
+        /* Release data of all defined data streams */
+        const uint32_t n_data_streams = system_hash64map_get_amount_of_elements(layer_ptr->data_streams);
+
+        for (uint32_t n_data_stream = 0;
+                      n_data_stream < n_data_streams;
+                    ++n_data_stream)
+        {
+            _mesh_layer_data_stream* stream_ptr = NULL;
+
+            if (!system_hash64map_get_element_at(layer_ptr->data_streams,
+                                                 n_data_stream,
+                                                &stream_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve data stream at index [%d]",
+                                  n_data_stream);
+
+                continue;
+            }
+
+            if (stream_ptr->data != NULL)
+            {
+                delete [] stream_ptr->data;
+
+                stream_ptr->data = NULL;
+            }
+        } /* for (all data streams) */
+
+        /* Release index data defined for all passes */
+        const uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+
+        for (uint32_t n_pass = 0;
+                      n_pass < n_passes;
+                    ++n_pass)
+        {
+            _mesh_layer_pass* pass_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(layer_ptr->passes,
+                                                        n_pass,
+                                                       &pass_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve mesh layer pass descriptor at index [%d]",
+                                  n_pass);
+
+                continue;
+            }
+
+            if (pass_ptr->gl_elements != NULL)
+            {
+                delete [] pass_ptr->gl_elements;
+
+                pass_ptr->gl_elements = NULL;
+            }
+
+            /* Iterate over all index data maps */
+            for (mesh_layer_data_stream_type stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
+                                             stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
+                                     ++(int&)stream_type)
+            {
+                if (pass_ptr->index_data_maps[stream_type] != NULL)
+                {
+                    const uint32_t n_index_data_maps = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+
+                    for (uint32_t n_index_data_map = 0;
+                                  n_index_data_map < n_index_data_maps;
+                                ++n_index_data_map)
+                    {
+                        _mesh_layer_pass_index_data* index_data_map_entry_ptr = NULL;
+
+                        if (!system_hash64map_get_element_at(pass_ptr->index_data_maps[stream_type],
+                                                             n_index_data_map,
+                                                            &index_data_map_entry_ptr,
+                                                             NULL) ) /* outHash */
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Cannot retrieve index data map entry");
+
+                            continue;
+                        }
+
+                        if (index_data_map_entry_ptr->data != NULL)
+                        {
+                            delete [] index_data_map_entry_ptr->data;
+
+                            index_data_map_entry_ptr->data = NULL;
+                        }
+                    } /* for (all index data map entries) */
+                } /* if (index data map is defined for current stream type) */
+            } /* for (all stream types) */
+        } /* for (all layer passes) */
+    } /* for (all mesh layers) */
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh                      instance,
                                   __in __notnull system_hashed_ansi_string full_file_path,
                                   __in __notnull system_hash64map          material_name_to_id_map)

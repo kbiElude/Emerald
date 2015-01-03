@@ -150,6 +150,9 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                                                   __in __notnull system_hash64map       mesh_name_to_mesh_map);
 
 /** TODO */
+PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh);
+
+/** TODO */
 PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh,
                                   __in __notnull system_hashed_ansi_string full_file_path,
                                   __in __notnull system_hash64map          material_name_to_id_map);
@@ -162,8 +165,8 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh,
 /** TODO.
  *
  *  Releases any layer/layer pass data that was set for the mesh and marks the mesh
- *  as an instance of @param source_mesh . Not only does this prevents from inefficient
- *  GL blob construction, but also provides a mean for draw call batching.
+ *  as an instance of @param source_mesh . Not only does this prevent from inefficient
+ *  GL blob storage, but also provides a mean for draw call batching.
  *
  *  A mesh that's been marked as instantiated cannot have its layer/layer pass data
  *  changed.

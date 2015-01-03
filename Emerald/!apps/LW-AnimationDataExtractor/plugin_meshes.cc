@@ -320,6 +320,10 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
 
     mesh_create_single_indexed_representation(arg_ptr->new_mesh);
 
+    /* Release data defined for data streams. It will no longer be needed for anything,
+     * now that we've baked the blob */
+    mesh_release_layer_datum(arg_ptr->new_mesh);
+
     /* Add the mesh to the scene */
     AddMeshToScene(arg_ptr->mesh_scene,
                    arg_ptr->new_mesh,
