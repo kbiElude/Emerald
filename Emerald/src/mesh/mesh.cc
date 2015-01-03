@@ -2160,6 +2160,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                                 /* We can finally do a memcpy()! */
                                                 const uint32_t n_bytes_for_element_data = n_different_layer_elements *
                                                                                           stream_n_components;
+                                                const uint32_t n_bytes_to_copy          = sizeof(float) * data_stream_ptr->n_components;
                                                 const uint32_t dst_offset               = mesh_ptr->gl_processed_data_stream_start_offset[n_data_stream_type] + /* move to location where the unique data starts for given stream type */
                                                                                           mesh_ptr->gl_processed_data_stride * n_set * pass_ptr->n_elements   + /* move to current set */
                                                                                           mesh_ptr->gl_processed_data_stride * final_index;                     /* identify processed index */
@@ -2171,7 +2172,10 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                                                 memcpy((char*) mesh_ptr->gl_processed_data + dst_offset,
                                                        (float*)data_stream_ptr->data       + src_offset_div_4,
-                                                       sizeof(float) * data_stream_ptr->n_components);
+                                                       n_bytes_to_copy);
+
+                                                ASSERT_DEBUG_SYNC(dst_offset + n_bytes_to_copy < mesh_ptr->gl_processed_data_size,
+                                                                  "Data buffer overflow!");
                                             } /* for (all sets) */
                                         } /* if (data_stream_ptr != NULL) */
                                     } /* for (all data streams) */
@@ -2194,7 +2198,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
                                 pass_ptr->gl_elements = NULL;
                             }
 
-                            pass_ptr->gl_elements = new (std::nothrow) uint32_t[pass_ptr->n_elements * sizeof(unsigned int) / index_size];
+                            pass_ptr->gl_elements = new (std::nothrow) uint32_t[pass_ptr->n_elements * index_size / sizeof(unsigned int)];
 
                             ASSERT_ALWAYS_SYNC(pass_ptr->gl_elements != NULL, "Out of memory");
                             if (pass_ptr->gl_elements != NULL)
