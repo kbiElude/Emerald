@@ -414,11 +414,11 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     /* Set general body */
     ogl_shader_constructor_set_function_body(shader_constructor,
                                              0, /* main() */
-                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = vec4(object_vertex, 1) * model;\n"
+                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = vec4(object_vertex, 1.0) * model;\n"
                                                                               "\n"
                                                                               "gl_Position   = world_vertex_temp * vp;\n"
                                                                               "world_vertex  = world_vertex_temp.xyz;\n"
-                                                                              "out_vs_normal = (vec4(object_normal, 0) * normal_matrix).xyz;\n"
+                                                                              "out_vs_normal = normalize((vec4(object_normal, 0.0) * normal_matrix).xyz);\n"
                                                                               "view_vector   = normalize(world_camera.xyz - world_vertex.xyz);\n"
                                                                               "\n"));
 

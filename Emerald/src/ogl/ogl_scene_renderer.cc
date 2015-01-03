@@ -705,10 +705,10 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
     /* Update directional vector for directional lights */
     if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
-        /* The default light direction vector is <0, 0, 1>. Transform it against the current
+        /* The default light direction vector is <0, 0, -1>. Transform it against the current
          * model matrix to obtain final direction vector for the light
          */
-        const float default_direction_vector[3] = {0, 0, 1};
+        const float default_direction_vector[3] = {0, 0, -1};
               float final_direction_vector  [3];
 
         system_matrix4x4_multiply_by_vector3(renderer_ptr->current_model_matrix,

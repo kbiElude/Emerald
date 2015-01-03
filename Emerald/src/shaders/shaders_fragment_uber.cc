@@ -604,9 +604,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         {
             line << "vec3 light"
                  << n_items
-                 << "_vector = "
+                 << "_vector = normalize("
                  << light_direction_name_sstream.str()
-                 << ";\n";
+                 << ");\n";
         }
         else
         {
@@ -616,7 +616,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             line << "vec3 light"
                  << n_items
-                 << "_vector = ("
+                 << "_vector = normalize("
                  << light_world_pos_name_sstream.str()
                  << ".xyz - world_vertex);\n";
         }

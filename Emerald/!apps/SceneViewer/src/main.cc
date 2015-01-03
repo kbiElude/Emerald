@@ -296,7 +296,11 @@ void _rendering_handler(ogl_context          context,
     entry_points->pGLClearColor(0.0f, 0.0f, 0.5f, 0.0f);
     entry_points->pGLClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entry_points->pGLEnable(GL_DEPTH_TEST);
-    entry_points->pGLEnable(GL_CULL_FACE);
+    //entry_points->pGLEnable(GL_CULL_FACE);
+    entry_points->pGLDisable(GL_CULL_FACE);
+
+    uint32_t temp = 0;
+    system_time_get_msec_for_timeline_time(frame_time, &temp);
 
     /* Render the scene */
     ogl_pipeline_draw_stage(_pipeline,
@@ -355,9 +359,8 @@ void _render_scene(ogl_context          context,
 
                 projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
                                                                                    1280 / 720.0f,
-                                                                                   0.0001f, //znear,
-                                                                                   100.0f);
-                                                                                   //zfar);
+                                                                                   0.01f,   //znear,
+                                                                                   100.0f); //zfar);
 
                 if (_ui_active_path_control != NULL)
                 {
