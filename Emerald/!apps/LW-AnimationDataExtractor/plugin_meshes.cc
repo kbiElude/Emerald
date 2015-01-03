@@ -469,24 +469,32 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                     continue;
                 }
 
-                /* Iterate over all points defined for the polygon */
+                /* Iterate over all points defined for the polygon.
+                 *
+                 * NOTE: LW reports points in CW order, whereas Emerald assumes CCW
+                 *       vertex ordering. The re-ordering is hence also handled
+                 *       in the loop below.
+                 */
                 bool all_vertices_hold_uv_data = false;
 
                 for (uint32_t current_polygon_n_vertex = 0;
                               current_polygon_n_vertex < current_polygon_n_vertices;
                             ++current_polygon_n_vertex)
                 {
-                    bool    current_point_defines_uv = false;
-                    LWPntID current_point_id         = layer_mesh_info_ptr->polVertex(layer_mesh_info_id,
-                                                                                      current_polygon_id,
-                                                                                      current_polygon_n_vertex);
+                    bool     current_point_defines_uv = false;
+                    LWPntID  current_point_id         = layer_mesh_info_ptr->polVertex(layer_mesh_info_id,
+                                                                                       current_polygon_id,
+                                                                                       current_polygon_n_vertex);
+                    uint32_t n_reordered_vertex_index = (current_polygon_n_vertex == 1) ? 2 :
+                                                        (current_polygon_n_vertex == 2) ? 1 :
+                                                                                          0;
 
                     ExtractPointData(current_polygon_id,
                                      current_point_id,
                                      layer_mesh_info_id,
                                      layer_mesh_info_ptr,
-                                     current_polygon_ptr->vertex_data + current_polygon_n_vertex * 3 /* xyz */,
-                                     current_polygon_ptr->uv_data     + current_polygon_n_vertex * 2 /* st */,
+                                     current_polygon_ptr->vertex_data + n_reordered_vertex_index * 3 /* xyz */,
+                                     current_polygon_ptr->uv_data     + n_reordered_vertex_index * 2 /* st */,
                                     &current_point_defines_uv);
 
                     if (current_polygon_n_vertex == 0)

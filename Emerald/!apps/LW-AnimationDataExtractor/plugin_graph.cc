@@ -173,11 +173,7 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
     rotation_x[0] = object_rotations[1];
     rotation_z[0] = object_rotations[2];
 
-    /* Transformation: translation.
-     *
-     * NOTE: Camera's located in the origin, and negation of the Z component has already been
-     *       taken care of for this case in the root node.
-     */
+    /* Transformation: translation. */
     if (object_translations[0] != NULL &&
         object_translations[1] != NULL &&
         object_translations[2] != NULL &&

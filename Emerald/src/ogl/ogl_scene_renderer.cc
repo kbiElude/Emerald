@@ -695,8 +695,6 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
                                              default_light_position,
                                              final_light_position);
 
-        final_light_position[2] *= -1;
-
         scene_light_set_property(light,
                                  SCENE_LIGHT_PROPERTY_POSITION,
                                  final_light_position);

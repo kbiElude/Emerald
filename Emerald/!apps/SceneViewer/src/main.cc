@@ -296,8 +296,8 @@ void _rendering_handler(ogl_context          context,
     entry_points->pGLClearColor(0.0f, 0.0f, 0.5f, 0.0f);
     entry_points->pGLClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entry_points->pGLEnable(GL_DEPTH_TEST);
-    //entry_points->pGLEnable(GL_CULL_FACE);
-    entry_points->pGLDisable(GL_CULL_FACE);
+    entry_points->pGLEnable(GL_CULL_FACE);
+    //entry_points->pGLDisable(GL_CULL_FACE);
 
     uint32_t temp = 0;
     system_time_get_msec_for_timeline_time(frame_time, &temp);
