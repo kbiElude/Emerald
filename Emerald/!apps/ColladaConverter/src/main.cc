@@ -6,7 +6,6 @@
 #include "shared.h"
 #include <stdlib.h>
 #include "curve_editor/curve_editor_general.h"
-#include "lw/lw_dataset.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
@@ -39,23 +38,22 @@
 #include <string>
 #include <sstream>
 
-float                     _animation_duration_float     = 0.0f;
-system_timeline_time      _animation_duration_time      = 0;
-ogl_context               _context                      = NULL;
-system_matrix4x4          _current_matrix               = NULL;
-ogl_pipeline              _pipeline                     = NULL;
-uint32_t                  _pipeline_stage_id            = -1;
-ogl_scene_renderer        _scene_renderer               = NULL;
-system_hashed_ansi_string _selected_collada_data_file   = NULL;
-collada_data              _test_collada_data            = NULL;
-scene                     _test_scene                   = NULL;
-ogl_text                  _text_renderer                = NULL;
-ogl_ui                    _ui                           = NULL;
-ogl_ui_control            _ui_convert_button            = NULL;
-ogl_ui_control            _ui_load_curve_dataset_button = NULL;
-system_window             _window                       = NULL;
-system_event              _window_closed_event          = system_event_create(true, false);
-ogl_rendering_handler     _window_rendering_handler     = NULL;
+float                     _animation_duration_float   = 0.0f;
+system_timeline_time      _animation_duration_time    = 0;
+ogl_context               _context                    = NULL;
+system_matrix4x4          _current_matrix             = NULL;
+ogl_pipeline              _pipeline                   = NULL;
+uint32_t                  _pipeline_stage_id          = -1;
+ogl_scene_renderer        _scene_renderer             = NULL;
+system_hashed_ansi_string _selected_collada_data_file = NULL;
+collada_data              _test_collada_data          = NULL;
+scene                     _test_scene                 = NULL;
+ogl_text                  _text_renderer              = NULL;
+ogl_ui                    _ui                         = NULL;
+ogl_ui_control            _ui_convert_button          = NULL;
+system_window             _window                     = NULL;
+system_event              _window_closed_event        = system_event_create(true, false);
+ogl_rendering_handler     _window_rendering_handler   = NULL;
 
 system_matrix4x4 _projection_matrix = NULL;
 GLuint           _vao_id            = 0;
@@ -110,52 +108,6 @@ void _on_callback_convert_clicked(void* not_used,
     /* All done */
 end:
     ;
-}
-
-void _on_load_curve_dataset_clicked(void* not_used,
-                                    void* not_used2)
-{
-    /* Ask the user to provide us with the dataset file location */
-    system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
-                                                                                   system_hashed_ansi_string_create("*"),
-                                                                                   system_hashed_ansi_string_create("LW data-set"),
-                                                                                   system_hashed_ansi_string_create("Select LW curve data-set file.") );
-
-    if (filename != NULL)
-    {
-        system_file_serializer dataset_serializer = system_file_serializer_create_for_reading(filename);
-
-        if (dataset_serializer != NULL)
-        {
-            lw_dataset dataset = lw_dataset_load(system_hashed_ansi_string_create("LW data-set"),
-                                                 dataset_serializer);
-
-            if (dataset != NULL)
-            {
-                /* Lock the graph before we start fiddling with it. After all, we're operating
-                 * from within a separate thread and the rendering is happening in a separate one!
-                 */
-                scene_graph graph = NULL;
-
-                scene_get_property(_test_scene,
-                                   SCENE_PROPERTY_GRAPH,
-                                  &graph);
-
-                ogl_rendering_handler_stop(_window_rendering_handler);
-                {
-                    lw_dataset_apply_to_scene(dataset,
-                                              _test_scene);
-                }
-                ogl_rendering_handler_play(_window_rendering_handler, 0);
-            }
-
-            system_file_serializer_release(dataset_serializer);
-            dataset_serializer = NULL;
-
-            lw_dataset_release(dataset);
-            dataset = NULL;
-        } /* if (dataset_serializer != NULL) */
-    } /* if (filename != NULL) */
 }
 
 /** Rendering handler */
@@ -271,11 +223,6 @@ void _setup_ui()
                                            _on_callback_convert_clicked,
                                            NULL);
 
-    _ui_load_curve_dataset_button = ogl_ui_add_button(_ui,
-                                                      system_hashed_ansi_string_create("Load dataset"),
-                                                      load_curve_dataset_button_x1y1,
-                                                      _on_load_curve_dataset_clicked,
-                                                      NULL);
 }
 
 /** Entry point */
