@@ -115,10 +115,6 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                 "1.0f / (light" << n_item << "_attenuations.x + "
                         "light" << n_item << "_attenuations.y * light" << n_item << "_distance + "
                         "light" << n_item << "_attenuations.z * light" << n_item << "_distance * light" << n_item << "_distance);\n";
-
-        /* For point lights, light vector is NOT normalized. Make sure it is before we carry on with actual
-         * lighting calculations */
-        line << "light" << n_item << "_vector = normalize(light" << n_item << "_vector);\n";
     }
 
     /* Compute diffuse factor for non-ambient lights */
@@ -262,7 +258,7 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in __notnull ogl
          **/
         ogl_shader_constructor_set_function_body(shader_constructor,
                                                  phong_specular_func_id,
-                                                 system_hashed_ansi_string_create("    if (light_LdotN > 0.0)\n"
+                                                 system_hashed_ansi_string_create("    if (light_LdotN > 0.0 && shininess_material > 0.0)\n"
                                                                                   "    {\n"
                                                                                   "        float reflection_view_vector_dot = max(0.0, dot(reflect(-light_vector, normal), view_vector));\n"
                                                                                   "\n"
@@ -604,7 +600,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         {
             line << "vec3 light"
                  << n_items
-                 << "_vector = normalize("
+                 << "_vector = -normalize("
                  << light_direction_name_sstream.str()
                  << ");\n";
         }
