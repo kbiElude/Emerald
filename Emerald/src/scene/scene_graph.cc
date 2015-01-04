@@ -203,6 +203,27 @@ typedef struct _scene_graph_node_translation_dynamic
     }
 } _scene_graph_node_translation_dynamic;
 
+typedef struct _scene_graph_node_translation_static
+{
+    float                translation[3];
+    scene_graph_node_tag tag;
+
+    explicit _scene_graph_node_translation_static(__in_ecount(3) __notnull float*               in_translation,
+                                                  __in                     scene_graph_node_tag in_tag)
+    {
+        tag = in_tag;
+
+        memcpy(translation,
+               in_translation,
+               sizeof(translation) );
+    }
+
+    ~_scene_graph_node_translation_static()
+    {
+        /* Nothing to do here */
+    }
+} _scene_graph_node_translation_static;
+
 typedef struct _scene_graph_node_transformation_matrix
 {
     system_matrix4x4 data;
@@ -677,6 +698,25 @@ PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic(__in __notnull
 }
 
 /** TODO */
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_static(__in __notnull void*                data,
+                                                                 __in __notnull system_matrix4x4     current_matrix,
+                                                                 __in           system_timeline_time prev_keyframe_time,
+                                                                 __in           system_timeline_time next_keyframe_time,
+                                                                 __in           float                lerp_factor)
+{
+    _scene_graph_node_translation_static* node_data_ptr = (_scene_graph_node_translation_static*) data;
+    system_matrix4x4                      result        = system_matrix4x4_create();
+
+    /* No need to do any LERPing - static translation is static by definition */
+    system_matrix4x4_set_from_matrix4x4(result,
+                                        current_matrix);
+    system_matrix4x4_translate         (result,
+                                        node_data_ptr->translation);
+
+    return result;
+}
+
+/** TODO */
 PRIVATE float _scene_graph_get_float_time_from_timeline_time(system_timeline_time time)
 {
     float    time_float = 0.0f;
@@ -983,6 +1023,50 @@ end:
 }
 
 /** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(__in __notnull system_file_serializer serializer,
+                                                                               __in __notnull scene_graph            result_graph,
+                                                                               __in __notnull scene_graph_node       parent_node)
+{
+    _scene_graph*        graph_ptr                 = (_scene_graph*) result_graph;
+    scene_graph_node     result_node               = NULL;
+    scene_graph_node_tag serialized_tag            = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    float                serialized_translation[3] = {0.0f};
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_translation),
+                                     serialized_translation) ||
+        !system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Static translation transformation node serialization failed.");
+
+        goto end;
+    }
+
+    result_node = scene_graph_create_translation_static_node(result_graph,
+                                                             serialized_translation,
+                                                             serialized_tag);
+
+    ASSERT_DEBUG_SYNC(result_node != NULL,
+                      "Could not add translation static node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
+end:
+    return result_node;
+}
+
+/** TODO */
 PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer              serializer,
                                                                  __in __notnull _scene_graph_node_matrix4x4_static* data_ptr)
 {
@@ -1065,6 +1149,22 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnu
                                                                data_ptr->negate_xyz_vectors + n);
     }
 
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(__in __notnull system_file_serializer                serializer,
+                                                                   __in __notnull _scene_graph_node_translation_static* data_ptr)
+{
+    bool result = true;
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->translation),
+                                           data_ptr->translation);
     result &= system_file_serializer_write(serializer,
                                            sizeof(data_ptr->tag),
                                           &data_ptr->tag);
@@ -1177,6 +1277,15 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
             new_node = _scene_graph_load_scene_graph_node_translation_dynamic(serializer,
                                                                               result_graph,
                                                                               parent_node);
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_STATIC:
+        {
+            new_node = _scene_graph_load_scene_graph_node_translation_static(serializer,
+                                                                             result_graph,
+                                                                             parent_node);
 
             break;
         }
@@ -1497,6 +1606,15 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_translation_dynamic(serializer,
                                                                              (_scene_graph_node_translation_dynamic*) node_ptr->data);
+
+            break;
+        }
+
+        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_STATIC:
+        {
+            /* Save curve container data */
+            result &= _scene_graph_save_scene_graph_node_translation_static(serializer,
+                                                                            (_scene_graph_node_translation_static*) node_ptr->data);
 
             break;
         }
@@ -2077,6 +2195,32 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_dynamic;
+
+end:
+    return (scene_graph_node) new_node_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_static_node(__in           __notnull scene_graph          graph,
+                                                                               __in_ecount(3) __notnull float*               translation_vector,
+                                                                               __in                     scene_graph_node_tag tag)
+{
+    _scene_graph*      graph_ptr    = (_scene_graph*) graph;
+    _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
+
+    if (new_node_ptr == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+
+        goto end;
+    }
+
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_static(translation_vector,
+                                                                                          tag);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->tag           = tag;
+    new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_TRANSLATION_STATIC;
+    new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_static;
 
 end:
     return (scene_graph_node) new_node_ptr;

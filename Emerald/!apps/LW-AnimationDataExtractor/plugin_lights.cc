@@ -20,6 +20,7 @@ typedef struct _light_data
 {
     void*           object_id;
     void*           parent_object_id;
+    float           pivot             [3];
     curve_container rotation_curves   [3]; /* hpb */
     curve_container translation_curves[3]; /* xyz */
 
@@ -28,6 +29,9 @@ typedef struct _light_data
         object_id        = NULL;
         parent_object_id = NULL;
 
+        memset(pivot,
+               0,
+               sizeof(pivot) );
         memset(rotation_curves,
                0,
                sizeof(rotation_curves) );
@@ -47,6 +51,7 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                                       __in           scene_light_type          new_light_type,
                                       __in __notnull system_hashed_ansi_string new_light_name_has,
                                       __in           LWItemID                  new_light_item_id,
+                                      __in           LWDVector                 new_light_pivot,
                                       __in __notnull system_hash64map          curve_id_to_curve_container_map)
 {
     curve_container new_light_color_r         = NULL;
@@ -76,6 +81,8 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                                                                                                           : ITEM_PROPERTY_LIGHT_COLOR_B,
                                                              new_light_item_id,
                                                              curve_id_to_curve_container_map);
+
+    /* Extract other relevant curves */
     new_light_color_intensity = GetCurveContainerForProperty(new_light_name_has,
                                                              (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_INTENSITY
                                                                                                           : ITEM_PROPERTY_LIGHT_COLOR_INTENSITY,
@@ -109,6 +116,20 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                                                                  new_light_item_id,
                                                                  curve_id_to_curve_container_map);
         new_light_uses_shadow_map = !(light_info_ptr->shadowType(new_light_item_id) == LWLSHAD_OFF);
+
+        /* Adjust translation curves relative to the pivot */
+        for (uint32_t n_translation_curve = 0;
+                      n_translation_curve < 3;
+                    ++n_translation_curve)
+        {
+            curve_container curve                       = (n_translation_curve == 0) ? new_light_translation_x :
+                                                          (n_translation_curve == 1) ? new_light_translation_y :
+                                                                                       new_light_translation_z;
+            const float     pivot_translation_component = (float) new_light_pivot[n_translation_curve];
+
+            AdjustCurveByDelta(curve,
+                               -pivot_translation_component);
+        } /* for (all three translation curves) */
     }
 
     /* Instantiate new light descriptor */
@@ -146,6 +167,9 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
 
     new_light_data->object_id        = new_light_item_id;
     new_light_data->parent_object_id = item_info_ptr->parent(new_light_item_id);
+    new_light_data->pivot[0]         = (float)  new_light_pivot[0];
+    new_light_data->pivot[1]         = (float)  new_light_pivot[1];
+    new_light_data->pivot[2]         = (float) -new_light_pivot[2];
 
     memcpy(new_light_data->rotation_curves,
            new_light_rotation_curves,
@@ -187,6 +211,14 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
         /* Sanity check */
         ASSERT_DEBUG_SYNC(item_info_ptr->parent(light_item_id) == 0,
                           "Light parenting is not currently supported");
+
+        /* Sanity check: no pivot */
+        LWDVector pivot;
+
+        item_info_ptr->param(light_item_id,
+                             LWIP_PIVOT,
+                             0, /* time */
+                             pivot);
 
         /* Extract light name & type */
         const char*               light_name         = item_info_ptr->name             (light_item_id);
@@ -237,6 +269,7 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
                                  light_type_emerald,
                                  light_name_has,
                                  light_item_id,
+                                 pivot,
                                  curve_id_to_curve_container_map);
 
         /* Add the light */
@@ -253,7 +286,8 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
     } /* while (light_item_id != LWITEM_NULL) */
 
     /* Extract ambient light props & add the light to the scene */
-    system_hashed_ansi_string scene_name = NULL;
+    double                    ambient_light_pivot[3] = {0, 0, 0};
+    system_hashed_ansi_string scene_name             = NULL;
 
     SetActivityDescription("Extracting ambient light data..");
 
@@ -269,6 +303,7 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
                              SCENE_LIGHT_TYPE_AMBIENT,
                              ambient_light_name_has,
                              0, /* new_light_item_id */
+                             ambient_light_pivot,
                              curve_id_to_curve_container_map);
 
     if (!scene_add_light(in_scene,
@@ -348,6 +383,13 @@ PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
         case LIGHT_PROPERTY_PARENT_OBJECT_ID:
         {
             *(void**) out_result = light_ptr->parent_object_id;
+
+            break;
+        }
+
+        case LIGHT_PROPERTY_PIVOT:
+        {
+            *(float**) out_result = light_ptr->pivot;
 
             break;
         }

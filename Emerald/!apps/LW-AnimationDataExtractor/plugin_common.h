@@ -45,6 +45,10 @@ typedef enum
 } _item_property;
 
 /** TODO */
+PUBLIC void AdjustCurveByDelta(__in __notnull curve_container curve,
+                               __in           float           delta);
+
+/** TODO */
 PUBLIC LWEnvelopeID FindEnvelope(__in           LWChanGroupID  group_id,
                                  __in __notnull const char*    envelope_name);
 

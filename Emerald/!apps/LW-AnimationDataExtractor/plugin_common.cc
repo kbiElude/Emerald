@@ -9,6 +9,133 @@
 #include "plugin.h"
 #include "plugin_common.h"
 
+/** TODO */
+PRIVATE void AdjustCurveNodeValueByDelta(__in __notnull curve_container       curve,
+                                         __in           curve_segment_id      segment_id,
+                                         __in           curve_segment_node_id node_id,
+                                         __in           float                 delta,
+                                         __in           system_variant        temp_float_variant,
+                                         __in           bool                  update_default_value)
+{
+    /** TODO: If needed, add integer variant support */
+    system_timeline_time node_time = 0;
+    float                temp_float;
+
+    if (update_default_value)
+    {
+        if (!curve_container_get_default_value(curve,
+                                               false,
+                                               temp_float_variant) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "curve_container_get_default_value() failed.");
+        }
+    }
+    else
+    {
+        if (!curve_container_get_general_node_data(curve,
+                                                   segment_id,
+                                                   node_id,
+                                                  &node_time,
+                                                   temp_float_variant) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "curve_container_get_general_node_data() failed.");
+        }
+    }
+
+    system_variant_get_float(temp_float_variant,
+                            &temp_float);
+
+    temp_float += delta;
+
+    system_variant_set_float(temp_float_variant,
+                             temp_float);
+
+    if (update_default_value)
+    {
+        if (!curve_container_set_default_value(curve,
+                                               temp_float_variant) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "curve_container_set_default_value() failed.");
+        }
+    }
+    else
+    {
+        if (!curve_container_modify_node(curve,
+                                         segment_id,
+                                         node_id,
+                                         node_time,
+                                         temp_float_variant) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "curve_container_modify_node() failed.");
+        }
+    }
+}
+
+
+/** Please see header for spec */
+PUBLIC void AdjustCurveByDelta(__in __notnull curve_container curve,
+                               __in           float           delta)
+{
+    uint32_t       n_segments         = 0;
+    system_variant temp_float_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    curve_container_get_property(curve,
+                                 CURVE_CONTAINER_PROPERTY_N_SEGMENTS,
+                                &n_segments);
+
+    for (uint32_t n_segment = 0;
+                  n_segment < n_segments + 1;
+                ++n_segment)
+    {
+        curve_segment_id segment = -1;
+        uint32_t         n_nodes = 0;
+
+        curve_container_get_segment_id_for_nth_segment(curve,
+                                                       n_segment,
+                                                      &segment);
+
+        curve_container_get_segment_property(curve,
+                                             segment,
+                                             CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES,
+                                            &n_nodes);
+
+        for (uint32_t n_node = 0;
+                      n_node < n_nodes;
+                    ++n_node)
+        {
+            curve_segment_node_id node_id = -1;
+
+            curve_container_get_node_id_for_node_at(curve,
+                                                    segment,
+                                                    n_node,
+                                                   &node_id);
+
+            AdjustCurveNodeValueByDelta(curve,
+                                        segment,
+                                        node_id,
+                                        delta,
+                                        temp_float_variant,
+                                        false);
+        } /* for (all nodes) */
+    } /* for (all curve segments) */
+
+    /* Also adjust the default value */
+    AdjustCurveNodeValueByDelta(curve,
+                                0, /* segment_id */
+                                0, /* node_id */
+                                delta,
+                                temp_float_variant,
+                                true);
+
+    /* Clean up */
+    system_variant_release(temp_float_variant);
+    temp_float_variant = NULL;
+}
+
 /** Please see header for spec */
 PUBLIC LWEnvelopeID FindEnvelope(__in           LWChanGroupID  group_id,
                                  __in __notnull const char*    envelope_name)

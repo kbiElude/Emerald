@@ -47,6 +47,7 @@ typedef enum
     SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC,
     SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4,
     SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC,
+    SCENE_GRAPH_NODE_TYPE_TRANSLATION_STATIC,
 
     /* Always last */
     SCENE_GRAPH_NODE_TYPE_UNKNOWN
@@ -141,8 +142,12 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
                                                                                 __in_ecount(3) __notnull const bool*          negate_xyz_vectors,
                                                                                 __in                     scene_graph_node_tag tag);
 
-/** TODO.
- **/
+/** TODO */
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_static_node(__in           __notnull scene_graph          graph,
+                                                                               __in_ecount(3) __notnull float*               translation_vector,
+                                                                               __in                     scene_graph_node_tag tag);
+
+/** TODO. */
 PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnull scene_graph        graph,
                                                                     __in           _scene_object_type object_type,
                                                                     __in __notnull void*              object);

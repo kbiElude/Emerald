@@ -121,6 +121,7 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
     curve_container rotation_z[4] = {NULL, zero_curve,      zero_curve,      one_curve};
 
     /* Add transformations */
+    float*           object_pivot        = NULL;
     curve_container* object_rotations    = NULL;
     curve_container* object_translations = NULL;
 
@@ -128,6 +129,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
     {
         case SCENE_OBJECT_TYPE_CAMERA:
         {
+            GetCameraPropertyValue(camera,
+                                   CAMERA_PROPERTY_PIVOT,
+                                  &object_pivot);
             GetCameraPropertyValue(camera,
                                    CAMERA_PROPERTY_ROTATION_HPB_CURVES,
                                   &object_rotations);
@@ -141,6 +145,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         case SCENE_OBJECT_TYPE_LIGHT:
         {
             GetLightPropertyValue(light,
+                                  LIGHT_PROPERTY_PIVOT,
+                                 &object_pivot);
+            GetLightPropertyValue(light,
                                   LIGHT_PROPERTY_ROTATION_HPB_CURVES,
                                  &object_rotations);
             GetLightPropertyValue(light,
@@ -152,6 +159,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
 
         case SCENE_OBJECT_TYPE_MESH:
         {
+            GetMeshProperty(mesh_instance,
+                            MESH_PROPERTY_PIVOT,
+                           &object_pivot);
             GetMeshProperty(mesh_instance,
                             MESH_PROPERTY_ROTATION_HPB_CURVES,
                            &object_rotations);
@@ -196,6 +206,22 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                              translation_node);
 
         object_node = translation_node;
+    }
+
+    /* Transformation: pivot translation <if necessary> */
+    if (fabs(object_pivot[0]) > 1e-5f ||
+        fabs(object_pivot[1]) > 1e-5f ||
+        fabs(object_pivot[2]) > 1e-5f)
+    {
+        scene_graph_node pivot_translation_node = scene_graph_create_translation_static_node(graph,
+                                                                                             object_pivot,
+                                                                                             SCENE_GRAPH_NODE_TAG_UNDEFINED);
+
+        scene_graph_add_node(graph,
+                             object_node,
+                             pivot_translation_node);
+
+        object_node = pivot_translation_node;
     }
 
     /* Transformation: rotations */
@@ -248,6 +274,26 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                              rotation_node);
 
         object_node = rotation_node;
+    }
+
+    /* Transformation: cancel pivot translation <if necessary> */
+    if (fabs(object_pivot[0]) > 1e-5f ||
+        fabs(object_pivot[1]) > 1e-5f ||
+        fabs(object_pivot[2]) > 1e-5f)
+    {
+        object_pivot[0] = -object_pivot[0];
+        object_pivot[1] = -object_pivot[1];
+        object_pivot[2] = -object_pivot[2];
+
+        scene_graph_node pivot_translation_node = scene_graph_create_translation_static_node(graph,
+                                                                                             object_pivot,
+                                                                                             SCENE_GRAPH_NODE_TAG_UNDEFINED);
+
+        scene_graph_add_node(graph,
+                             object_node,
+                             pivot_translation_node);
+
+        object_node = pivot_translation_node;
     }
 
     /* TODO: Scaling */

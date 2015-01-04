@@ -748,6 +748,7 @@ PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector    
     /* Iterate over polygons and fill the buffer */
     bool   polygon_defines_uv_coords = false;
     float* result_data_traveller_ptr = result_data;
+    bool   uv_warning_shown          = false;
 
     for (uint32_t n_polygon = 0;
                   n_polygon < n_polygon_instances;
@@ -788,9 +789,12 @@ PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector    
                 }
             }
             else
+            if (!uv_warning_shown)
             {
-                ASSERT_DEBUG_SYNC(polygon_ptr->uv_data_defined,
-                                  "Not all polygons have their UV coords defined!");
+                LOG_ERROR("WARNING: Some of the mesh polygons define UV coords, while others not. "
+                          "Please investigate if you encounter visual glitches");
+
+                uv_warning_shown = true;
             }
         } /* if (stream_type == MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS) */
 
@@ -980,6 +984,18 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         new_instance->n_points           = object_info_ptr->numPoints      (object_id);
         new_instance->n_polygons         = object_info_ptr->numPolygons    (object_id);
 
+        /* Extract pivot data */
+        LWDVector pivot;
+
+        item_info_ptr->param(object_id,
+                             LWIP_PIVOT,
+                             0, /* time */
+                             pivot);
+
+        new_instance->pivot[0] = (float)  pivot[0];
+        new_instance->pivot[1] = (float)  pivot[1];
+        new_instance->pivot[2] = (float) -pivot[2];
+
         /* If this is the first mesh instance that mentions of the specific file name,
          * store it in our nifty internal map */
         if (!system_hash64map_contains(filename_to_mesh_instance_map,
@@ -1024,17 +1040,17 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                                                                         object_id,
                                                                         envelope_id_to_curve_container_map);
 
-        /* Extract pivot data */
-        double lw_pivot_data[3];
+        /* Adjust translation curves relative to the pivot */
+        for (uint32_t n_translation_curve = 0;
+                      n_translation_curve < 3;
+                    ++n_translation_curve)
+        {
+            curve_container curve                       = new_instance->translation[n_translation_curve];
+            const float     pivot_translation_component = pivot                    [n_translation_curve];
 
-        item_info_ptr->param(object_id,
-                             LWIP_PIVOT,
-                             0, /* time */
-                             lw_pivot_data);
-
-        new_instance->pivot[0] = (float) lw_pivot_data[0];
-        new_instance->pivot[1] = (float) lw_pivot_data[1];
-        new_instance->pivot[2] = (float) lw_pivot_data[2];
+            AdjustCurveByDelta(curve,
+                               -pivot_translation_component);
+        } /* for (all three translation curves) */
 
         /* Extract ID data */
         new_instance->object_id      = object_id;
@@ -1312,6 +1328,13 @@ PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,
             } /* if (mesh_instance_ptr->parent_mesh_ptr != NULL) */
 
             *(scene_mesh*) out_result = parent_scene_mesh;
+
+            break;
+        }
+
+        case MESH_PROPERTY_PIVOT:
+        {
+            *(float**) out_result = mesh_instance_ptr->pivot;
 
             break;
         }

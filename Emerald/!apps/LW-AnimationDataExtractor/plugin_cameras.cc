@@ -23,6 +23,7 @@ typedef struct _camera_internal
     curve_container camera_translation_xyz[3];
     void*           object_id;
     void*           parent_object_id;
+    float           pivot[3];
 
     _camera_internal()
     {
@@ -32,6 +33,9 @@ typedef struct _camera_internal
         memset(camera_translation_xyz,
                0,
                sizeof(camera_translation_xyz) );
+        memset(pivot,
+               0,
+               sizeof(pivot) );
 
         object_id        = NULL;
         parent_object_id = NULL;
@@ -89,18 +93,13 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
 
         SetActivityDescription(text_buffer);
 
-        /* Sanity check: no pivot */
+        /* Extract pivot data */
         LWDVector pivot;
 
         item_info_ptr->param(camera_item_id,
                              LWIP_PIVOT,
                              0, /* time */
                              pivot);
-
-        ASSERT_DEBUG_SYNC(fabs(pivot[0]) < 1e-5f &&
-                          fabs(pivot[1]) < 1e-5f &&
-                          fabs(pivot[2]) < 1e-5f,
-                          "Camera pivoting is not currently supported");
 
         /* Instantiate a new camera */
         scene_camera new_camera = scene_camera_create(camera_name_has);
@@ -121,6 +120,20 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
                                                                              ITEM_PROPERTY_TRANSLATION_Z,
                                                                              camera_item_id,
                                                                              envelope_id_to_curve_container_map);
+
+        /* Adjust translation curves relative to the pivot */
+        for (uint32_t n_translation_curve = 0;
+                      n_translation_curve < 3;
+                    ++n_translation_curve)
+        {
+            curve_container curve                       = (n_translation_curve == 0) ? new_camera_position_x :
+                                                          (n_translation_curve == 1) ? new_camera_position_y :
+                                                                                       new_camera_position_z;
+            const float     pivot_translation_component = (float) pivot[n_translation_curve];
+
+            AdjustCurveByDelta(curve,
+                               -pivot_translation_component);
+        } /* for (all three translation curves) */
 
         /* Retrieve rotation curves */
         curve_container new_camera_rotation_b = GetCurveContainerForProperty(camera_name_has,
@@ -207,6 +220,9 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
 
         new_camera_internal_ptr->object_id        = camera_item_id;
         new_camera_internal_ptr->parent_object_id = item_info_ptr->parent(camera_item_id);
+        new_camera_internal_ptr->pivot[0]         = (float)  pivot[0];
+        new_camera_internal_ptr->pivot[1]         = (float)  pivot[1];
+        new_camera_internal_ptr->pivot[2]         = (float) -pivot[2];
 
         system_hash64map_insert(scene_camera_to_camera_internal_map,
                                 (system_hash64) new_camera,
@@ -301,6 +317,13 @@ PUBLIC void GetCameraPropertyValue(__in  __notnull scene_camera   camera,
         case CAMERA_PROPERTY_PARENT_OBJECT_ID:
         {
             *(void**) out_result = camera_ptr->parent_object_id;
+
+            break;
+        }
+
+        case CAMERA_PROPERTY_PIVOT:
+        {
+            *(float**) out_result = camera_ptr->pivot;
 
             break;
         }
