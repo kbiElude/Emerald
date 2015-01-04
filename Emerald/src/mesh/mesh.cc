@@ -1981,7 +1981,7 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
             mesh_ptr->gl_processed_data = NULL;
         }
 
-        mesh_ptr->gl_processed_data = new (std::nothrow) float[mesh_ptr->gl_processed_data_size];
+        mesh_ptr->gl_processed_data = new (std::nothrow) float[mesh_ptr->gl_processed_data_size / sizeof(float)];
 
         ASSERT_ALWAYS_SYNC(mesh_ptr->gl_processed_data != NULL,
                            "Out of memory");

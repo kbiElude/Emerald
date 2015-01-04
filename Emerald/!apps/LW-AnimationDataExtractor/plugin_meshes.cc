@@ -26,6 +26,9 @@
 #include "system/system_variant.h"
 #include <sstream>
 
+PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_hash64map material_to_polygon_instance_vector_map);
+
+
 typedef struct _mesh_instance
 {
     system_hashed_ansi_string filename;
@@ -79,31 +82,7 @@ typedef struct _mesh_instance
     {
         if (material_to_polygon_instance_vector_map != NULL)
         {
-            const uint32_t n_vectors = system_hash64map_get_amount_of_elements(material_to_polygon_instance_vector_map);
-
-            for (uint32_t n_vector = 0;
-                          n_vector < n_vectors;
-                        ++n_vector)
-            {
-                system_resizable_vector current_vector = NULL;
-
-                if (!system_hash64map_get_element_at(material_to_polygon_instance_vector_map,
-                                                     n_vector,
-                                                    &current_vector,
-                                                     NULL) ) /* outHash */
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve [%d]-th polygon instance vector.",
-                                      n_vector);
-
-                    continue;
-                }
-
-                system_resizable_vector_release(current_vector);
-                current_vector = NULL;
-            } /* for (all stored vectors) */
-
-            system_hash64map_release(material_to_polygon_instance_vector_map);
+            ReleaseMaterialToPolygonInstanceVectorMap(material_to_polygon_instance_vector_map);
 
             material_to_polygon_instance_vector_map = NULL;
         } /* if (material_to_polygon_instance_vector_map != NULL) */
@@ -299,6 +278,14 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
             raw_uv_data = NULL;
         }
     } /* for (all materials) */
+
+    /* Release all assets we've initialized for the instance */
+    if (arg_ptr->instance_ptr->material_to_polygon_instance_vector_map != NULL)
+    {
+        ReleaseMaterialToPolygonInstanceVectorMap(arg_ptr->instance_ptr->material_to_polygon_instance_vector_map);
+
+        arg_ptr->instance_ptr->material_to_polygon_instance_vector_map = NULL;
+    } /* if (arg_ptr->instance_ptr->material_to_polygon_instance_vector_map != NULL) */
 
     /* Generate per-vertex normal data */
     sprintf_s(text_buffer,
@@ -848,6 +835,57 @@ end:
     return result_data;
 }
 
+/** TODO */
+PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_hash64map material_to_polygon_instance_vector_map)
+{
+    const uint32_t n_keys = system_hash64map_get_amount_of_elements(material_to_polygon_instance_vector_map);
+
+    for (uint32_t n_key = 0;
+                  n_key < n_keys;
+                ++n_key)
+    {
+        uint32_t                n_vector_entries        = 0;
+        system_resizable_vector polygon_instance_vector = NULL;
+
+        if (!system_hash64map_get_element_at(material_to_polygon_instance_vector_map,
+                                             n_key,
+                                            &polygon_instance_vector,
+                                             NULL) ) /* outHash */
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve polygon instance vector");
+
+            continue;
+        }
+
+        n_vector_entries = system_resizable_vector_get_amount_of_elements(polygon_instance_vector);
+
+        for (uint32_t n_vector_entry = 0;
+                      n_vector_entry < n_vector_entries;
+                    ++n_vector_entry)
+        {
+            _polygon_instance* instance_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(polygon_instance_vector,
+                                                        n_vector_entry,
+                                                       &instance_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve polygon instance entry");
+
+                continue;
+            }
+
+            system_resource_pool_return_to_pool(polygon_instance_resource_pool,
+                                                (system_resource_pool_block) instance_ptr);
+        } /* for (all vector entries) */
+
+        system_resizable_vector_release(polygon_instance_vector);
+        polygon_instance_vector = NULL;
+    } /* for (all map keys) */
+
+    system_hash64map_release(material_to_polygon_instance_vector_map);
+}
 
 /** TODO */
 PUBLIC void DeinitMeshData()
@@ -1201,6 +1239,21 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
             }
         } /* for (all objects) */
     } /* for (both iterations) */
+
+    /* Free what we can at this point */
+    if (polygon_instance_resource_pool != NULL)
+    {
+        system_resource_pool_release(polygon_instance_resource_pool);
+
+        polygon_instance_resource_pool = NULL;
+    }
+
+    if (polygon_id_to_polygon_instance_map != NULL)
+    {
+        system_hash64map_release(polygon_id_to_polygon_instance_map);
+
+        polygon_id_to_polygon_instance_map = NULL;
+    }
 
     /* All done! */
     ASSERT_DEBUG_SYNC(job_done_events == NULL,

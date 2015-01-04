@@ -82,8 +82,7 @@ PRIVATE void _deinit_resizable_vector_descriptor(_resizable_vector_descriptor* d
 /** Resizes a resizable vector object.
  *
  *  NOTE: This function overrides capacity and elements fields of the descriptor. Make
- *        sure to cache them if needed. Also, the caller is expected to free the former
- *        elements field.
+ *        sure to cache them if needed. 
  *
  *  @param system_resizable_vector Resizable vector to resize.
  *  @param size_t                  New capacity to use for the object.
