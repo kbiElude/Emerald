@@ -6,6 +6,8 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "scene/scene.h"
+#include "scene/scene_curve.h"
 #include "scene/scene_material.h"
 #include "system/system_file_serializer.h"
 #include "system/system_assertions.h"
@@ -86,6 +88,40 @@ PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_
 }
 
 /** TODO */
+PRIVATE bool _scene_material_load_curve(__in_opt           scene                  owner_scene,
+                                        __in     __notnull curve_container*       curve_ptr,
+                                        __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve_id curve_id = 0;
+
+        result &= system_file_serializer_read(serializer,
+                                              sizeof(curve_id),
+                                             &curve_id);
+
+        if (result)
+        {
+            scene_curve scene_curve = scene_get_curve_by_id(owner_scene,
+                                                            curve_id);
+
+            scene_curve_get(scene_curve,
+                            SCENE_CURVE_PROPERTY_INSTANCE,
+                            curve_ptr);
+        }
+    }
+    else
+    {
+        result &= system_file_serializer_read_curve_container(serializer,
+                                                              curve_ptr);
+    }
+
+    return result;
+}
+
+/** TODO */
 PRIVATE void _scene_material_release(void* data_ptr)
 {
     _scene_material* material_ptr = (_scene_material*) data_ptr;
@@ -133,6 +169,36 @@ PRIVATE void _scene_material_release(void* data_ptr)
 
         material_ptr->specular_ratio = NULL;
     }
+}
+
+/** TODO */
+PRIVATE bool _scene_material_save_curve(__in_opt           scene                  owner_scene,
+                                        __in     __notnull curve_container        in_curve,
+                                        __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve    curve    = scene_get_curve_by_container(owner_scene,
+                                                               in_curve);
+        scene_curve_id curve_id = 0;
+
+        scene_curve_get(curve,
+                        SCENE_CURVE_PROPERTY_ID,
+                       &curve_id);
+
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(curve_id),
+                                              &curve_id);
+    }
+    else
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               in_curve);
+    }
+
+    return result;
 }
 
 
@@ -330,7 +396,8 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
 }
 
 /* Please see header for spec */
-PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer serializer)
+PUBLIC scene_material scene_material_load(__in     __notnull system_file_serializer serializer,
+                                          __in_opt           scene                  owner_scene)
 {
     system_hashed_ansi_string name           = NULL;
     bool                      result         = true;
@@ -359,31 +426,38 @@ PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer 
     /* Read all the properties */
     _scene_material* result_material_ptr = (_scene_material*) result_material;
 
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                             result_material_ptr->color + 0);
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                             result_material_ptr->color + 1);
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                             result_material_ptr->color + 2);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->color + 0,
+                                                             serializer);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->color + 1,
+                                                             serializer);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->color + 2,
+                                                             serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->color_texture_file_name);
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                            &result_material_ptr->glosiness);
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                            &result_material_ptr->luminance);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                            &result_material_ptr->glosiness,
+                                                             serializer);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                            &result_material_ptr->luminance,
+                                                             serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->luminance_texture_file_name);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->normal_texture_file_name);
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                            &result_material_ptr->reflection_ratio);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                            &result_material_ptr->reflection_ratio,
+                                                             serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->reflection_texture_file_name);
     result &= system_file_serializer_read                   (serializer,
                                                              sizeof(result_material_ptr->smoothing_angle),
                                                             &result_material_ptr->smoothing_angle);
-    result &= system_file_serializer_read_curve_container   (serializer,
-                                                            &result_material_ptr->specular_ratio);
+    result &= _scene_material_load_curve                    (owner_scene,
+                                                            &result_material_ptr->specular_ratio,
+                                                             serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->specular_texture_file_name);
 
@@ -393,43 +467,51 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC bool scene_material_save(__in __notnull system_file_serializer serializer,
-                                __in __notnull const scene_material   material)
+PUBLIC bool scene_material_save(__in     __notnull system_file_serializer serializer,
+                                __in     __notnull const scene_material   material,
+                                __in_opt           scene                  owner_scene)
 {
     const _scene_material* material_ptr = (const _scene_material*) material;
     bool                   result;
 
     result  = system_file_serializer_write_hashed_ansi_string(serializer,
                                                               material_ptr->name);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->color[0]);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->color[1]);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->color[2]);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->color[0],
+                                                              serializer);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->color[1],
+                                                              serializer);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->color[2],
+                                                              serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
                                                               (material_ptr->color_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                               : material_ptr->color_texture_file_name);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->glosiness);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->luminance);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->glosiness,
+                                                              serializer);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->luminance,
+                                                              serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
                                                               (material_ptr->luminance_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                   : material_ptr->luminance_texture_file_name);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
                                                               (material_ptr->normal_texture_file_name    == NULL) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                   : material_ptr->normal_texture_file_name);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->reflection_ratio);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->reflection_ratio,
+                                                              serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
                                                               (material_ptr->reflection_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                    : material_ptr->reflection_texture_file_name);
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(material_ptr->smoothing_angle),
                                                              &material_ptr->smoothing_angle);
-    result &= system_file_serializer_write_curve_container   (serializer,
-                                                              material_ptr->specular_ratio);
+    result &= _scene_material_save_curve                     (owner_scene,
+                                                              material_ptr->specular_ratio,
+                                                              serializer);
     result &= system_file_serializer_write_hashed_ansi_string(serializer,
                                                               (material_ptr->specular_texture_file_name == NULL) ? system_hashed_ansi_string_get_default_empty_string()
                                                                                                                  : material_ptr->specular_texture_file_name);

@@ -7,6 +7,7 @@
 #define PLUGIN_CURVES_H
 
 #include "curve/curve_types.h"
+#include "scene/scene_types.h"
 #include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 
@@ -18,6 +19,9 @@ PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notn
 
 /** TODO */
 PUBLIC void DeinitCurveData();
+
+/** TODO */
+PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene);
 
 /** TODO */
 PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap();

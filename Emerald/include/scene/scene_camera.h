@@ -51,14 +51,16 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
                                                   __out __notnull void*                 out_result);
 
 /** TODO */
-PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer serializer);
+PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer serializer,
+                                      __in_opt           scene                  owner_scene);
 
 /** TODO
  *
  *  NOTE: This function is for internal use only.
  **/
 PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
-                              __in __notnull const scene_camera     camera);
+                              __in __notnull const scene_camera     camera,
+                              __in __notnull scene                  owner_scene);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera          camera,

@@ -217,7 +217,8 @@ PUBLIC bool scene_graph_save(__in __notnull system_file_serializer serializer,
                              __in __notnull scene_graph            graph,
                              __in __notnull system_hash64map       camera_ptr_to_id_map,
                              __in __notnull system_hash64map       light_ptr_to_id_map,
-                             __in __notnull system_hash64map       mesh_instance_ptr_to_id_map);
+                             __in __notnull system_hash64map       mesh_instance_ptr_to_id_map,
+                             __in __notnull scene                  owner_scene);
 
 /** TODO.
  *

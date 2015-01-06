@@ -195,6 +195,19 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
                                   SCENE_CAMERA_PROPERTY_ZOOM_FACTOR,
                                  &new_camera_zoom_factor_curve);
 
+        /* NOTE: We do not export properties like vertical FOV from LW (since it's calculated
+         *       from Zoom Factor), but we still need to add them to the Curves Module, or
+         *       scene_save() will crash.
+         */
+        curve_container yfov_curve = NULL;
+
+        scene_camera_get_property(new_camera,
+                                  SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                                  0, /* time - irrelevant */
+                                 &yfov_curve);
+
+        AddCurveContainerToEnvelopeIDToCurveContainerHashMap(yfov_curve);
+
         /* Add the camera */
         if (!scene_add_camera(in_scene,
                               new_camera) )

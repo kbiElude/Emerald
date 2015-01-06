@@ -211,6 +211,31 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                             new_light_data,
                             NULL,  /* on_remove_callback */
                             NULL); /* on_remove_callback_user_arg */
+
+    /* NOTE: We do not export attenuation information at this point, but we still need
+     *       to add the default curves to the plugin_curves module, or otherwise scene_save()
+     *       will crash. */
+    if (new_light_type == SCENE_LIGHT_TYPE_POINT)
+    {
+        curve_container attenuation_curves[3] = {NULL};
+
+        scene_light_get_property(new_light,
+                                 SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
+                                 attenuation_curves + 0);
+        scene_light_get_property(new_light,
+                                 SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,
+                                 attenuation_curves + 1);
+        scene_light_get_property(new_light,
+                                 SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
+                                 attenuation_curves + 2);
+
+        for (unsigned int n_curve = 0;
+                          n_curve < 3;
+                        ++n_curve)
+        {
+            AddCurveContainerToEnvelopeIDToCurveContainerHashMap(attenuation_curves[n_curve]);
+        }
+    } /* if (new_light_type == SCENE_LIGHT_TYPE_POINT) */
 }
 
 /** TODO */

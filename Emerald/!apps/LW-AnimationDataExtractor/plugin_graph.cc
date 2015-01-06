@@ -379,6 +379,10 @@ PUBLIC void FillSceneGraphData(__in __notnull scene in_scene)
     system_variant_set_float         (float_variant, 0.0f);
     curve_container_set_default_value(zero_curve,    float_variant);
 
+    AddCurveContainerToEnvelopeIDToCurveContainerHashMap(minus_one_curve);
+    AddCurveContainerToEnvelopeIDToCurveContainerHashMap(one_curve);
+    AddCurveContainerToEnvelopeIDToCurveContainerHashMap(zero_curve);
+
     /* Add objects */
     uint32_t                 n_cameras            = 0;
     uint32_t                 n_lights             = 0;

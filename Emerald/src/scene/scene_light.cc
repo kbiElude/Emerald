@@ -6,6 +6,8 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "scene/scene.h"
+#include "scene/scene_curve.h"
 #include "scene/scene_light.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
@@ -141,6 +143,40 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
 }
 
 /** TODO */
+PRIVATE bool _scene_light_load_curve(__in_opt           scene                  owner_scene,
+                                     __in     __notnull curve_container*       curve_ptr,
+                                     __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve_id curve_id = 0;
+
+        result &= system_file_serializer_read(serializer,
+                                              sizeof(curve_id),
+                                             &curve_id);
+
+        if (result)
+        {
+            scene_curve scene_curve = scene_get_curve_by_id(owner_scene,
+                                                            curve_id);
+
+            scene_curve_get(scene_curve,
+                            SCENE_CURVE_PROPERTY_INSTANCE,
+                            curve_ptr);
+        }
+    }
+    else
+    {
+        result &= system_file_serializer_read_curve_container(serializer,
+                                                              curve_ptr);
+    }
+
+    return result;
+}
+
+/** TODO */
 PRIVATE void _scene_light_release(void* data_ptr)
 {
     _scene_light*    light_ptr    = (_scene_light*) data_ptr;
@@ -167,6 +203,36 @@ PRIVATE void _scene_light_release(void* data_ptr)
             *containers[n_container] = NULL;
         }
     } /* for (all curve containers) */
+}
+
+/** TODO */
+PRIVATE bool _scene_light_save_curve(__in_opt           scene                  owner_scene,
+                                     __in     __notnull curve_container        in_curve,
+                                     __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve    curve    = scene_get_curve_by_container(owner_scene,
+                                                               in_curve);
+        scene_curve_id curve_id = 0;
+
+        scene_curve_get(curve,
+                        SCENE_CURVE_PROPERTY_ID,
+                       &curve_id);
+
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(curve_id),
+                                              &curve_id);
+    }
+    else
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               in_curve);
+    }
+
+    return result;
 }
 
 
@@ -352,7 +418,8 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
 }
 
 /* Please see header for spec */
-PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serializer)
+PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serializer,
+                                    __in_opt       scene                  owner_scene)
 {
     system_hashed_ansi_string light_name   = NULL;
     scene_light_type          light_type   = SCENE_LIGHT_TYPE_UNKNOWN;
@@ -406,12 +473,14 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                       n_color_component < sizeof(result_light_ptr->color) / sizeof(result_light_ptr->color[0]);
                     ++n_color_component)
         {
-            result &= system_file_serializer_read_curve_container(serializer,
-                                                                  result_light_ptr->color + n_color_component);
+            result &= _scene_light_load_curve(owner_scene,
+                                              result_light_ptr->color + n_color_component,
+                                              serializer);
         }
 
-        result &= system_file_serializer_read_curve_container(serializer,
-                                                             &result_light_ptr->color_intensity);
+        result &= _scene_light_load_curve(owner_scene,
+                                         &result_light_ptr->color_intensity,
+                                          serializer);
 
         if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
         {
@@ -422,12 +491,15 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
         else
         if (light_type == SCENE_LIGHT_TYPE_POINT)
         {
-            result &= system_file_serializer_read_curve_container(serializer,
-                                                                 &result_light_ptr->constant_attenuation);
-            result &= system_file_serializer_read_curve_container(serializer,
-                                                                 &result_light_ptr->linear_attenuation);
-            result &= system_file_serializer_read_curve_container(serializer,
-                                                                 &result_light_ptr->quadratic_attenuation);
+            result &= _scene_light_load_curve(owner_scene,
+                                             &result_light_ptr->constant_attenuation,
+                                              serializer);
+            result &= _scene_light_load_curve(owner_scene,
+                                             &result_light_ptr->linear_attenuation,
+                                              serializer);
+            result &= _scene_light_load_curve(owner_scene,
+                                             &result_light_ptr->quadratic_attenuation,
+                                              serializer);
         }
 
         if (!result)
@@ -454,7 +526,8 @@ end:
 
 /* Please see header for spec */
 PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
-                             __in __notnull const scene_light      light)
+                             __in __notnull const scene_light      light,
+                             __in_opt       scene                  owner_scene)
 {
     const _scene_light* light_ptr = (const _scene_light*) light;
     bool                result    = true;
@@ -469,12 +542,14 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
                   n_color_component < sizeof(light_ptr->color) / sizeof(light_ptr->color[0]);
                 ++n_color_component)
     {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               light_ptr->color[n_color_component]);
+        result &= _scene_light_save_curve(owner_scene,
+                                          light_ptr->color[n_color_component],
+                                          serializer);
     }
 
-    result &= system_file_serializer_write_curve_container(serializer,
-                                                           light_ptr->color_intensity);
+    result &= _scene_light_save_curve(owner_scene,
+                                      light_ptr->color_intensity,
+                                      serializer);
 
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
@@ -485,14 +560,16 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
     else
     if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
     {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               light_ptr->constant_attenuation);
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               light_ptr->linear_attenuation);
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               light_ptr->quadratic_attenuation);
+        result &= _scene_light_save_curve(owner_scene,
+                                          light_ptr->constant_attenuation,
+                                          serializer);
+        result &= _scene_light_save_curve(owner_scene,
+                                          light_ptr->linear_attenuation,
+                                          serializer);
+        result &= _scene_light_save_curve(owner_scene,
+                                          light_ptr->quadratic_attenuation,
+                                          serializer);
     }
-
 
     return result;
 }

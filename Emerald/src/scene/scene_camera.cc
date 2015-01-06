@@ -6,7 +6,9 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "scene/scene.h"
 #include "scene/scene_camera.h"
+#include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
@@ -146,6 +148,40 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
 }
 
 /** TODO */
+PRIVATE bool _scene_camera_load_curve(__in_opt           scene                  owner_scene,
+                                      __in     __notnull curve_container*       curve_ptr,
+                                      __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve_id curve_id = 0;
+
+        result &= system_file_serializer_read(serializer,
+                                              sizeof(curve_id),
+                                             &curve_id);
+
+        if (result)
+        {
+            scene_curve scene_curve = scene_get_curve_by_id(owner_scene,
+                                                            curve_id);
+
+            scene_curve_get(scene_curve,
+                            SCENE_CURVE_PROPERTY_INSTANCE,
+                            curve_ptr);
+        }
+    }
+    else
+    {
+        result &= system_file_serializer_read_curve_container(serializer,
+                                                              curve_ptr);
+    }
+
+    return result;
+}
+
+/** TODO */
 PRIVATE void _scene_camera_release(void* data_ptr)
 {
     _scene_camera* camera_ptr = (_scene_camera*) data_ptr;
@@ -186,6 +222,35 @@ PRIVATE void _scene_camera_release(void* data_ptr)
     }
 }
 
+/** TODO */
+PRIVATE bool _scene_camera_save_curve(__in_opt           scene                  owner_scene,
+                                      __in     __notnull curve_container        in_curve,
+                                      __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve    curve    = scene_get_curve_by_container(owner_scene,
+                                                               in_curve);
+        scene_curve_id curve_id = 0;
+
+        scene_curve_get(curve,
+                        SCENE_CURVE_PROPERTY_ID,
+                       &curve_id);
+
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(curve_id),
+                                              &curve_id);
+    }
+    else
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               in_curve);
+    }
+
+    return result;
+}
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_camera scene_camera_create(__in __notnull system_hashed_ansi_string name)
@@ -366,7 +431,8 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 }
 
 /* Please see header for specification */
-PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer serializer)
+PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer serializer,
+                                      __in_opt           scene                  owner_scene)
 {
     scene_camera   result     = NULL;
     _scene_camera* result_ptr = NULL;
@@ -431,29 +497,33 @@ PUBLIC scene_camera scene_camera_load(__in __notnull system_file_serializer seri
     float              camera_znear;
     curve_container    camera_zoom_factor    = NULL;
 
-    if (!system_file_serializer_read                (serializer,
-                                                     sizeof(camera_ar),
-                                                    &camera_ar)             ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                    &camera_f_stop)         ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                    &camera_focal_distance) ||
-        !system_file_serializer_read                (serializer,
-                                                     sizeof(camera_type),
-                                                    &camera_type)           ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                    &camera_yfov)           ||
-        !system_file_serializer_read                (serializer,
-                                                     sizeof(camera_zfar),
-                                                    &camera_zfar)           ||
-        !system_file_serializer_read                (serializer,
-                                                     sizeof(camera_znear),
-                                                    &camera_znear)          ||
-        !system_file_serializer_read_curve_container(serializer,
-                                                    &camera_zoom_factor)    ||
-        !system_file_serializer_read                (serializer,
-                                                     sizeof(camera_use_physical_properties),
-                                                     &camera_use_physical_properties) )
+    if (!system_file_serializer_read (serializer,
+                                      sizeof(camera_ar),
+                                     &camera_ar)                            ||
+        !_scene_camera_load_curve    (owner_scene,
+                                    &camera_f_stop,
+                                      serializer)                           ||
+        !_scene_camera_load_curve    (owner_scene,
+                                     &camera_focal_distance,
+                                      serializer)                           ||
+        !system_file_serializer_read (serializer,
+                                      sizeof(camera_type),
+                                     &camera_type)                          ||
+        !_scene_camera_load_curve    (owner_scene,
+                                     &camera_yfov,
+                                      serializer)                           ||
+        !system_file_serializer_read (serializer,
+                                      sizeof(camera_zfar),
+                                     &camera_zfar)                          ||
+        !system_file_serializer_read (serializer,
+                                      sizeof(camera_znear),
+                                     &camera_znear)                         ||
+        !_scene_camera_load_curve    (owner_scene,
+                                     &camera_zoom_factor,
+                                      serializer)                           ||
+        !system_file_serializer_read (serializer,
+                                      sizeof(camera_use_physical_properties),
+                                      &camera_use_physical_properties) )
     {
         goto end_error;
     }
@@ -499,7 +569,8 @@ end:
 
 /* Please see header for specification */
 PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
-                              __in __notnull const scene_camera     camera)
+                              __in __notnull const scene_camera     camera,
+                              __in __notnull scene                  owner_scene)
 {
     const _scene_camera* camera_ptr = (const _scene_camera*) camera;
     bool                 result     = false;
@@ -509,23 +580,27 @@ PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(camera_ptr->ar),
                                                              &camera_ptr->ar);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->f_stop);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->focal_distance);
+    result &= _scene_camera_save_curve                      (owner_scene,
+                                                             camera_ptr->f_stop,
+                                                             serializer);
+    result &= _scene_camera_save_curve                      (owner_scene,
+                                                             camera_ptr->focal_distance,
+                                                             serializer);
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(camera_ptr->type),
                                                              &camera_ptr->type);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->yfov);
-    result &= system_file_serializer_write                   (serializer,
+    result &= _scene_camera_save_curve                      (owner_scene,
+                                                             camera_ptr->yfov,
+                                                             serializer);
+    result &= system_file_serializer_write                  (serializer,
                                                               sizeof(camera_ptr->zfar),
                                                              &camera_ptr->zfar);
-    result &= system_file_serializer_write                   (serializer,
+    result &= system_file_serializer_write                  (serializer,
                                                               sizeof(camera_ptr->znear),
                                                              &camera_ptr->znear);
-    result &= system_file_serializer_write_curve_container  (serializer,
-                                                             camera_ptr->zoom_factor);
+    result &= _scene_camera_save_curve                      (owner_scene,
+                                                             camera_ptr->zoom_factor,
+                                                             serializer);
     result &= system_file_serializer_write                  (serializer,
                                                              sizeof(camera_ptr->use_camera_physical_properties),
                                                             &camera_ptr->use_camera_physical_properties);

@@ -9,6 +9,7 @@
 
 #include "curve/curve_container.h"
 #include "scene/scene.h"
+#include "scene/scene_curve.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
@@ -318,6 +319,49 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
     return result_curve;
 }
 
+/** TODO */
+PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int behavior)
+{
+    curve_container_envelope_boundary_behavior result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED;
+
+    /* TODO: This is currently missing support for "Oscillate", "Offset Repeat" and "Linear". Add
+     *       if necessary.
+     */
+    switch (behavior)
+    {
+        case 0:
+        {
+            result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_RESET;
+
+            break;
+        }
+
+        case 1:
+        {
+            result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_CONSTANT;
+
+            break;
+        }
+
+        case 2:
+        {
+            result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_REPEAT;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unsupported pre- / post- behavior.");
+
+            break;
+        }
+    } /* switch (behavior) */
+
+    return result;
+}
+
 
 /** TODO */
 PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notnull curve_container curve)
@@ -386,46 +430,57 @@ PUBLIC void DeinitCurveData()
 }
 
 /** TODO */
-PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int behavior)
+PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene)
 {
-    curve_container_envelope_boundary_behavior result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED;
+    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
+                      "Envelope ID->curve container map is NULL");
 
-    /* TODO: This is currently missing support for "Oscillate", "Offset Repeat" and "Linear". Add
-     *       if necessary.
-     */
-    switch (behavior)
+    /* Iterate over all hash-map items */
+    const uint32_t n_entries = system_hash64map_get_amount_of_elements(envelope_id_to_curve_container_map);
+
+    for (uint32_t n_entry = 0;
+                  n_entry < n_entries;
+                ++n_entry)
     {
-        case 0:
-        {
-            result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_RESET;
+        curve_container envelope_curve = NULL;
+        system_hash64   envelope_id    = 0;
 
-            break;
+        if (!system_hash64map_get_element_at(envelope_id_to_curve_container_map,
+                                             n_entry,
+                                            &envelope_curve,
+                                            &envelope_id) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve envelope id->curve container map entry");
+
+            continue;
         }
 
-        case 1:
-        {
-            result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_CONSTANT;
+        /* Spawn a corresponding scene_curve instance */
+        system_hashed_ansi_string envelope_curve_name = NULL;
+        scene_curve               new_scene_curve     = NULL;
 
-            break;
+        curve_container_get_property(envelope_curve,
+                                     CURVE_CONTAINER_PROPERTY_NAME,
+                                    &envelope_curve_name);
+
+        new_scene_curve = scene_curve_create(envelope_curve_name,
+                                             (scene_curve_id) envelope_id,
+                                             envelope_curve);
+
+        /* Add the instance to the scene instance */
+        if (!scene_add_curve(in_scene,
+                             new_scene_curve) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not add curve container to the scene instance.");
+
+            continue;
         }
 
-        case 2:
-        {
-            result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_REPEAT;
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_ALWAYS_SYNC(false,
-                               "Unsupported pre- / post- behavior.");
-
-            break;
-        }
-    } /* switch (behavior) */
-
-    return result;
+        scene_curve_release(new_scene_curve);
+        new_scene_curve = NULL;
+    } /* for (all hash-map entries) */
 }
 
 /** TODO */
