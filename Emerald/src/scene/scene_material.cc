@@ -110,6 +110,8 @@ PRIVATE bool _scene_material_load_curve(__in_opt           scene                
             scene_curve_get(scene_curve,
                             SCENE_CURVE_PROPERTY_INSTANCE,
                             curve_ptr);
+
+            curve_container_retain(*curve_ptr);
         }
     }
     else

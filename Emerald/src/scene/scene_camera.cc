@@ -180,8 +180,6 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
 
     camera_ptr->use_camera_physical_properties = false;
     camera_ptr->zfar_znear_last_recalc_time    = -1;
-
-    scene_camera_retain( (scene_camera) camera_ptr);
 }
 
 /** TODO */
@@ -251,6 +249,8 @@ PRIVATE bool _scene_camera_load_curve(__in_opt           scene                  
             scene_curve_get(scene_curve,
                             SCENE_CURVE_PROPERTY_INSTANCE,
                             curve_ptr);
+
+            curve_container_retain(*curve_ptr);
         }
     }
     else

@@ -985,6 +985,9 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
 
         result &= scene_add_curve(result_scene,
                                   new_curve);
+
+        scene_curve_release(new_curve);
+        new_curve = NULL;
     } /* for (all curves defined for the scene) */
 
     if (!result)

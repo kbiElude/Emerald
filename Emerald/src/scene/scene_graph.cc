@@ -894,6 +894,8 @@ PRIVATE bool _scene_graph_load_curve(__in_opt           scene                  o
             scene_curve_get(scene_curve,
                             SCENE_CURVE_PROPERTY_INSTANCE,
                             curve_ptr);
+
+            curve_container_retain(*curve_ptr);
         }
     }
     else
@@ -2951,87 +2953,6 @@ PUBLIC EMERALD_API void scene_graph_node_replace(__in __notnull scene_graph     
     /* Release the source node */
     delete src_node_ptr;
     src_node_ptr = NULL;
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_node_set_property(__in __notnull scene_graph_node          node,
-                                                      __in           scene_graph_node_property property,
-                                                      __in __notnull void*                     data)
-{
-    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
-
-    /* If this is a curve property that the caller intends to replace, retrieve its index */
-    int curve_index = -1;
-
-    switch (property)
-    {
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_X: curve_index = 0; break;
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_Y: curve_index = 1; break;
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_Z: curve_index = 2; break;
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_W: curve_index = 3; break;
-    }
-
-    switch (node_ptr->type)
-    {
-        case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
-        case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
-        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
-        {
-            /* Only curve properties apply here */
-            curve_container* curves = NULL;
-
-            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC)
-            {
-                _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) node_ptr->data;
-
-                ASSERT_DEBUG_SYNC(curve_index != -1,
-                                  "Unrecognized curve property");
-
-                curves = node_data_ptr->curves;
-            }
-            else
-            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC)
-            {
-                _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) node_ptr->data;
-
-                ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
-                                  "Unrecognized curve property");
-
-                curves = node_data_ptr->curves;
-            }
-            else
-            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC)
-            {
-                _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) node_ptr->data;
-
-                ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
-                                  "Unrecognized curve property");
-
-                curves = node_data_ptr->curves;
-            }
-
-            if (curve_index != -1)
-            {
-                curve_container new_curve = *((curve_container*) data);
-
-                if (curves[curve_index] != NULL)
-                {
-                    curve_container_release(curves[curve_index]);
-                }
-
-                curves[curve_index] = new_curve;
-                curve_container_retain(new_curve);
-            } /* if (curve_index != -1) */
-
-            break;
-        } /* case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC: */
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unsupported node type");
-        }
-    } /* switch (node_ptr->type) */
 }
 
 /** Please see header for specification */

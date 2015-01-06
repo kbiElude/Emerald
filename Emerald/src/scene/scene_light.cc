@@ -32,16 +32,100 @@ typedef struct
     REFCOUNT_INSERT_VARIABLES
 } _scene_light;
 
+/* Forward declarations */
+PRIVATE void _scene_light_init_default_attenuation_curves   (__in     __notnull _scene_light*          light_ptr);
+PRIVATE void _scene_light_init_default_color_curves         (__in     __notnull _scene_light*          light_ptr);
+PRIVATE void _scene_light_init_default_color_intensity_curve(__in     __notnull _scene_light*          light_ptr);
+PRIVATE void _scene_light_init                              (__in     __notnull _scene_light*          light_ptr);
+PRIVATE bool _scene_light_load_curve                        (__in_opt           scene                  owner_scene,
+                                                             __in     __notnull curve_container*       curve_ptr,
+                                                             __in     __notnull system_file_serializer serializer);
+PRIVATE void _scene_light_release                           (                   void*                  data_ptr);
+PRIVATE bool _scene_light_save_curve                        (__in_opt           scene                  owner_scene,
+                                                             __in     __notnull curve_container        in_curve,
+                                                             __in     __notnull system_file_serializer serializer);
+
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(scene_light, scene_light, _scene_light);
 
+
 /** TODO */
-PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
+PRIVATE void _scene_light_init_default_attenuation_curves(__in __notnull _scene_light* light_ptr)
+{
+    system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    /* Constant attenuation: used by point light.
+     *
+     *  Default value: 1.0
+     */
+    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
+    {
+        ASSERT_DEBUG_SYNC(light_ptr->constant_attenuation == NULL,
+                          "Light constant attenuation curve already instantiated");
+
+        light_ptr->constant_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                                         " constant attenuation"),
+                                                                 SYSTEM_VARIANT_FLOAT);
+
+        system_variant_set_float         (temp_variant,
+                                          1.0f);
+        curve_container_set_default_value(light_ptr->constant_attenuation,
+                                          temp_variant);
+    }
+
+    /* Linear attenuation: used by point light.
+     *
+     * Default value: 0.0
+     */
+    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
+    {
+        ASSERT_DEBUG_SYNC(light_ptr->linear_attenuation == NULL,
+                          "Light linear attenuation curve already instantiated");
+
+        light_ptr->linear_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                                       " linear attenuation"),
+                                                                 SYSTEM_VARIANT_FLOAT);
+
+        system_variant_set_float         (temp_variant,
+                                          0.0f);
+        curve_container_set_default_value(light_ptr->linear_attenuation,
+                                          temp_variant);
+    }
+
+    /* Quadratic attenuation: used by point light.
+     *
+     * Default value: 0.0
+     */
+    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
+    {
+        ASSERT_DEBUG_SYNC(light_ptr->quadratic_attenuation == NULL,
+                          "Light quadratic attenuation curve already instantiated");
+
+        light_ptr->quadratic_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                                          " quadratic attenuation"),
+                                                                 SYSTEM_VARIANT_FLOAT);
+
+        system_variant_set_float         (temp_variant,
+                                          0.0f);
+        curve_container_set_default_value(light_ptr->quadratic_attenuation,
+                                          temp_variant);
+    }
+
+    system_variant_release(temp_variant);
+}
+
+/** TODO */
+PRIVATE void _scene_light_init_default_color_curves(__in __notnull _scene_light* light_ptr)
 {
     /* Color: common for all light types.
      *
      * Default color: (1, 0, 0)
      */
+    ASSERT_DEBUG_SYNC(light_ptr->color[0] == NULL &&
+                      light_ptr->color[1] == NULL &&
+                      light_ptr->color[2] == NULL,
+                      "Light color curve(s) already instantiated");
+
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     for (unsigned int n_component = 0;
@@ -63,7 +147,18 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
                                           temp_variant);
     }
 
+    system_variant_release(temp_variant);
+}
+
+/** TODO */
+PRIVATE void _scene_light_init_default_color_intensity_curve(__in __notnull _scene_light* light_ptr)
+{
+    system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
     /* Color intensity: common for all light types */
+    ASSERT_DEBUG_SYNC(light_ptr->color_intensity == NULL,
+                      "Light color intensity curve already instantiated");
+
     light_ptr->color_intensity = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                 " color intensity"),
                                                         SYSTEM_VARIANT_FLOAT);
@@ -72,6 +167,22 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
                                       1.0f);
     curve_container_set_default_value(light_ptr->color_intensity,
                                       temp_variant);
+
+    system_variant_release(temp_variant);
+}
+
+/** TODO */
+PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
+{
+    /* Curves - set all to NULL */
+    memset(light_ptr->color,
+           0,
+           sizeof(light_ptr->color) );
+
+    light_ptr->color_intensity       = NULL;
+    light_ptr->constant_attenuation  = NULL;
+    light_ptr->linear_attenuation    = NULL;
+    light_ptr->quadratic_attenuation = NULL;
 
     /* Direction: used by directional light */
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
@@ -83,54 +194,6 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
         light_ptr->direction[2] = -1.0f;
     }
 
-    /* Constant attenuation: used by point light.
-     *
-     *  Default value: 1.0
-     */
-    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
-    {
-        light_ptr->constant_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
-                                                                                                                         " constant attenuation"),
-                                                                 SYSTEM_VARIANT_FLOAT);
-
-        system_variant_set_float         (temp_variant,
-                                          1.0f);
-        curve_container_set_default_value(light_ptr->constant_attenuation,
-                                          temp_variant);
-    }
-
-    /* Linear attenuation: used by point light.
-     *
-     * Default value: 0.0
-     */
-    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
-    {
-        light_ptr->linear_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
-                                                                                                                       " linear attenuation"),
-                                                                 SYSTEM_VARIANT_FLOAT);
-
-        system_variant_set_float         (temp_variant,
-                                          0.0f);
-        curve_container_set_default_value(light_ptr->linear_attenuation,
-                                          temp_variant);
-    }
-
-    /* Quadratic attenuation: used by point light.
-     *
-     * Default value: 0.0
-     */
-    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
-    {
-        light_ptr->quadratic_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
-                                                                                                                          " quadratic attenuation"),
-                                                                 SYSTEM_VARIANT_FLOAT);
-
-        system_variant_set_float         (temp_variant,
-                                          0.0f);
-        curve_container_set_default_value(light_ptr->quadratic_attenuation,
-                                          temp_variant);
-    }
-
     /* Position: float[3] */
     memset(light_ptr->position,
            0,
@@ -138,8 +201,6 @@ PRIVATE void _scene_light_init_curves(__in __notnull _scene_light* light_ptr)
 
     /* Uses shadow map: common */
     light_ptr->uses_shadow_map = true;
-
-    system_variant_release(temp_variant);
 }
 
 /** TODO */
@@ -165,6 +226,8 @@ PRIVATE bool _scene_light_load_curve(__in_opt           scene                  o
             scene_curve_get(scene_curve,
                             SCENE_CURVE_PROPERTY_INSTANCE,
                             curve_ptr);
+
+            curve_container_retain(*curve_ptr);
         }
     }
     else
@@ -196,7 +259,7 @@ PRIVATE void _scene_light_release(void* data_ptr)
                   n_container < n_containers;
                 ++n_container)
     {
-        if (containers[n_container] != NULL)
+        if (*containers[n_container] != NULL)
         {
             curve_container_release(*containers[n_container]);
 
@@ -253,7 +316,7 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_
         new_scene_light->name = name;
         new_scene_light->type = SCENE_LIGHT_TYPE_AMBIENT;
 
-        _scene_light_init_curves(new_scene_light);
+        _scene_light_init(new_scene_light);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
@@ -279,7 +342,7 @@ PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull sys
         new_scene_light->name = name;
         new_scene_light->type = SCENE_LIGHT_TYPE_DIRECTIONAL;
 
-        _scene_light_init_curves(new_scene_light);
+        _scene_light_init(new_scene_light);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
@@ -305,7 +368,7 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_ha
         new_scene_light->name = name;
         new_scene_light->type = SCENE_LIGHT_TYPE_POINT;
 
-        _scene_light_init_curves(new_scene_light);
+        _scene_light_init(new_scene_light);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
@@ -317,16 +380,23 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_ha
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_light    light,
+PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light          light,
                                                  __in            scene_light_property property,
                                                  __out __notnull void*                out_result)
 {
-    const _scene_light* light_ptr = (const _scene_light*) light;
+    _scene_light* light_ptr = (_scene_light*) light;
 
     switch (property)
     {
         case SCENE_LIGHT_PROPERTY_COLOR:
         {
+            if (light_ptr->color[0] == NULL ||
+                light_ptr->color[1] == NULL ||
+                light_ptr->color[2] == NULL)
+            {
+                _scene_light_init_default_color_curves(light_ptr);
+            }
+
             memcpy(out_result,
                    light_ptr->color,
                    sizeof(light_ptr->color) );
@@ -336,6 +406,11 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
 
         case SCENE_LIGHT_PROPERTY_COLOR_INTENSITY:
         {
+            if (light_ptr->color_intensity == NULL)
+            {
+                _scene_light_init_default_color_intensity_curve(light_ptr);
+            }
+
             *(curve_container*) out_result = light_ptr->color_intensity;
 
             break;
@@ -345,6 +420,11 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION property only available for point lights");
+
+            if (light_ptr->constant_attenuation == NULL)
+            {
+                _scene_light_init_default_attenuation_curves(light_ptr);
+            }
 
             *(curve_container*) out_result = light_ptr->constant_attenuation;
 
@@ -367,6 +447,11 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION property only available for point lights");
+
+            if (light_ptr->linear_attenuation == NULL)
+            {
+                _scene_light_init_default_attenuation_curves(light_ptr);
+            }
 
             *(curve_container*) out_result = light_ptr->linear_attenuation;
 
@@ -396,6 +481,11 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull const scene_lig
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
                               "SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION property only available for point lights");
+
+            if (light_ptr->quadratic_attenuation == NULL)
+            {
+                _scene_light_init_default_attenuation_curves(light_ptr);
+            }
 
             *(curve_container*) out_result = light_ptr->quadratic_attenuation;
 
