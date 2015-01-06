@@ -121,9 +121,9 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
     curve_container rotation_z[4] = {NULL, zero_curve,      zero_curve,      one_curve};
 
     /* Add transformations */
-    float*           object_pivot        = NULL;
-    curve_container* object_rotations    = NULL;
-    curve_container* object_translations = NULL;
+    float*    object_pivot                 = NULL;
+    curve_id* object_rotation_curve_ids    = NULL;
+    curve_id* object_translation_curve_ids = NULL;
 
     switch(object_type)
     {
@@ -133,11 +133,11 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                                    CAMERA_PROPERTY_PIVOT,
                                   &object_pivot);
             GetCameraPropertyValue(camera,
-                                   CAMERA_PROPERTY_ROTATION_HPB_CURVES,
-                                  &object_rotations);
+                                   CAMERA_PROPERTY_ROTATION_HPB_CURVE_IDS,
+                                  &object_rotation_curve_ids);
             GetCameraPropertyValue(camera,
-                                   CAMERA_PROPERTY_TRANSLATION_CURVES,
-                                  &object_translations);
+                                   CAMERA_PROPERTY_TRANSLATION_CURVE_IDS,
+                                  &object_translation_curve_ids);
 
             break;
         }
@@ -148,11 +148,11 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                                   LIGHT_PROPERTY_PIVOT,
                                  &object_pivot);
             GetLightPropertyValue(light,
-                                  LIGHT_PROPERTY_ROTATION_HPB_CURVES,
-                                 &object_rotations);
+                                  LIGHT_PROPERTY_ROTATION_HPB_CURVE_IDS,
+                                 &object_rotation_curve_ids);
             GetLightPropertyValue(light,
-                                  LIGHT_PROPERTY_TRANSLATION_CURVES,
-                                 &object_translations);
+                                  LIGHT_PROPERTY_TRANSLATION_CURVE_IDS,
+                                 &object_translation_curve_ids);
 
             break;
         }
@@ -163,11 +163,11 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
                             MESH_PROPERTY_PIVOT,
                            &object_pivot);
             GetMeshProperty(mesh_instance,
-                            MESH_PROPERTY_ROTATION_HPB_CURVES,
-                           &object_rotations);
+                            MESH_PROPERTY_ROTATION_HPB_CURVE_IDS,
+                           &object_rotation_curve_ids);
             GetMeshProperty(mesh_instance,
-                            MESH_PROPERTY_TRANSLATION_CURVES,
-                           &object_translations);
+                            MESH_PROPERTY_TRANSLATION_CURVE_IDS,
+                           &object_translation_curve_ids);
 
             break;
         }
@@ -179,27 +179,46 @@ PRIVATE bool AddObjectToSceneGraph(__in           _scene_object_type object_type
         }
     } /* switch (object_type) */
 
-    rotation_y[0] = object_rotations[0];
-    rotation_x[0] = object_rotations[1];
-    rotation_z[0] = object_rotations[2];
+    /* Prepare rotation vectors */
+    system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+
+    system_hash64map_get(envelope_id_to_curve_container_map,
+                         (system_hash64) object_rotation_curve_ids[0],
+                         rotation_y + 0);
+    system_hash64map_get(envelope_id_to_curve_container_map,
+                         (system_hash64) object_rotation_curve_ids[1],
+                         rotation_x + 0);
+    system_hash64map_get(envelope_id_to_curve_container_map,
+                         (system_hash64) object_rotation_curve_ids[2],
+                         rotation_z + 0);
 
     /* Transformation: translation. */
-    if (object_translations[0] != NULL &&
-        object_translations[1] != NULL &&
-        object_translations[2] != NULL &&
-        object_translations[3] != NULL)
+    if (object_translation_curve_ids[0] != NULL &&
+        object_translation_curve_ids[1] != NULL &&
+        object_translation_curve_ids[2] != NULL)
     {
-        const bool negate_xyz_vectors[] =
+        curve_container object_translation_curves[3] = {NULL};
+        const bool      negate_xyz_vectors       []  =
         {
             false,
             false,
             true
         };
+        scene_graph_node translation_node = NULL;
 
-        scene_graph_node translation_node = scene_graph_create_translation_dynamic_node(graph,
-                                                                                        object_translations,
-                                                                                        negate_xyz_vectors,
-                                                                                        SCENE_GRAPH_NODE_TAG_TRANSLATE);
+        for (unsigned int n_component = 0;
+                          n_component < 3;
+                        ++n_component)
+        {
+            system_hash64map_get(envelope_id_to_curve_container_map,
+                                 (system_hash64) object_translation_curve_ids[n_component],
+                                 object_translation_curves + n_component);
+        } /* for (all components) */
+
+        translation_node = scene_graph_create_translation_dynamic_node(graph,
+                                                                       object_translation_curves,
+                                                                       negate_xyz_vectors,
+                                                                       SCENE_GRAPH_NODE_TAG_TRANSLATE);
 
         scene_graph_add_node(graph,
                              object_node,
@@ -359,6 +378,10 @@ PUBLIC void FillSceneGraphData(__in __notnull scene in_scene)
 
     system_variant_set_float         (float_variant, 0.0f);
     curve_container_set_default_value(zero_curve,    float_variant);
+
+    AddCurveContainerToEnvelopeIDToCurveContainerHashMap(minus_one_curve);
+    AddCurveContainerToEnvelopeIDToCurveContainerHashMap(one_curve);
+    AddCurveContainerToEnvelopeIDToCurveContainerHashMap(zero_curve);
 
     /* Add objects */
     uint32_t                 n_cameras            = 0;

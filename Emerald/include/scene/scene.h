@@ -1,11 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SCENE_H
 #define SCENE_H
 
+#include "curve/curve_types.h"
 #include "ogl/ogl_types.h"
 #include "mesh/mesh_types.h"
 #include "scene/scene_types.h"
@@ -80,6 +81,10 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene   
                                                          __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
+PUBLIC EMERALD_API scene_curve scene_get_curve_by_container(__in __notnull scene           instance,
+                                                            __in           curve_container curve);
+
+/** TODO */
 PUBLIC EMERALD_API scene_curve scene_get_curve_by_id(__in __notnull scene          instance,
                                                      __in           scene_curve_id id);
 
@@ -124,9 +129,13 @@ PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context,
 PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context,
                                                     __in __notnull system_file_serializer serializer);
 
-/** TODO */
-PUBLIC EMERALD_API bool scene_save(__in __notnull scene                     instance,
-                                   __in __notnull system_hashed_ansi_string full_file_name_with_path);
+/** TODO.
+ *
+ *  @param curve_container_to_curve_id_map If not NULL, curve IDs taken from the map will be saved instead
+ *                                         of the containers.
+ **/
+PUBLIC EMERALD_API bool scene_save(__in     __notnull scene                     instance,
+                                   __in     __notnull system_hashed_ansi_string full_file_name_with_path);
 
 /** TODO */
 PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene                  instance,

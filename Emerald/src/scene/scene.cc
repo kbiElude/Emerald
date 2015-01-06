@@ -32,7 +32,7 @@ typedef struct
     ogl_context               context;
 
     system_resizable_vector   cameras;   /* TODO: make this a hasy64 map hashed by camera name */
-    system_resizable_vector   curves;    /* TODO: make this a hash64 map hashed by curve_id */
+    system_hash64map          curves_map;
     system_resizable_vector   lights;    /* TODO: make this a hash64 map hashed by light name */
     system_resizable_vector   materials; /* TODO: make this a hash64 map hashed by material name */
     system_resizable_vector   mesh_instances;
@@ -77,18 +77,33 @@ PRIVATE void _scene_release(__in __notnull __post_invalid void* arg)
         scene_ptr->cameras = NULL;
     }
 
-    if (scene_ptr->curves != NULL)
+    if (scene_ptr->curves_map != NULL)
     {
-        scene_curve curve_ptr = NULL;
+        scene_curve    curve_ptr = NULL;
+        const uint32_t n_curves  = system_hash64map_get_amount_of_elements(scene_ptr->curves_map);
 
-        while (system_resizable_vector_pop(scene_ptr->curves,
-                                          &curve_ptr) )
+        for (uint32_t n_curve = 0;
+                      n_curve < n_curves;
+                    ++n_curve)
         {
-            scene_curve_release(curve_ptr);
-        }
-        system_resizable_vector_release(scene_ptr->curves);
+            if (!system_hash64map_get_element_at(scene_ptr->curves_map,
+                                                 n_curve,
+                                                &curve_ptr,
+                                                 NULL) ) /* outHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve curve descriptor at index [%d]",
+                                  n_curve);
 
-        scene_ptr->curves = NULL;
+                continue;
+            }
+
+            scene_curve_release(curve_ptr);
+            curve_ptr = NULL;
+        } /* for (all curves) */
+
+        system_hash64map_release(scene_ptr->curves_map);
+        scene_ptr->curves_map = NULL;
     }
 
     if (scene_ptr->graph != NULL)
@@ -189,14 +204,22 @@ PUBLIC EMERALD_API bool scene_add_camera(__in __notnull scene        scene_insta
 PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene       scene_instance,
                                         __in __notnull scene_curve curve_instance)
 {
-    bool    result    = false;
-    _scene* scene_ptr = (_scene*) scene_instance;
+    scene_curve_id curve_id  = -1;
+    bool           result    = false;
+    _scene*        scene_ptr = (_scene*) scene_instance;
 
-    if (system_resizable_vector_find(scene_ptr->curves,
-                                     curve_instance) == ITEM_NOT_FOUND)
+    scene_curve_get(curve_instance,
+                    SCENE_CURVE_PROPERTY_ID,
+                   &curve_id);
+
+    if (!system_hash64map_contains(scene_ptr->curves_map,
+                                   (system_hash64) curve_id) )
     {
-        system_resizable_vector_push(scene_ptr->curves,
-                                     curve_instance);
+        system_hash64map_insert(scene_ptr->curves_map,
+                                (system_hash64) curve_id,
+                                curve_instance,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
 
         scene_curve_retain(curve_instance);
         result = true;
@@ -379,8 +402,7 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
 
         new_scene->cameras                = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
-        new_scene->curves                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(void*) );
+        new_scene->curves_map             = system_hash64map_create       (sizeof(scene_curve) );
         new_scene->fps                    = 0;
         new_scene->graph                  = scene_graph_create( (scene) new_scene);
         new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
@@ -394,9 +416,9 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
         new_scene->textures               = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
 
-        if (new_scene->cameras        == NULL || new_scene->curves    == NULL ||
-            new_scene->lights         == NULL || new_scene->materials == NULL ||
-            new_scene->mesh_instances == NULL || new_scene->textures  == NULL)
+        if (new_scene->cameras        == NULL || new_scene->curves_map == NULL ||
+            new_scene->lights         == NULL || new_scene->materials  == NULL ||
+            new_scene->mesh_instances == NULL || new_scene->textures   == NULL)
         {
             ASSERT_ALWAYS_SYNC(false, "Out of memory");
 
@@ -485,51 +507,61 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene   
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API scene_curve scene_get_curve_by_container(__in __notnull scene           instance,
+                                                            __in           curve_container curve)
+{
+    /* TODO: A curve_container->scene_curve map would fit in here just perfectly. */
+    _scene*        scene_ptr = (_scene*) instance;
+    const uint32_t n_curves  = system_hash64map_get_amount_of_elements(scene_ptr->curves_map);
+    scene_curve    result    = NULL;
+
+    for (uint32_t n_curve = 0;
+                  n_curve < n_curves;
+                ++n_curve)
+    {
+        curve_container current_curve_container = NULL;
+        scene_curve     current_curve           = NULL;
+
+        if (!system_hash64map_get_element_at(scene_ptr->curves_map,
+                                             n_curve,
+                                            &current_curve,
+                                             NULL) ) /* pOutHash */
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve scene_curve instance");
+
+            continue;
+        }
+
+        /* Is this a wrapper for curve_container we're looking for? */
+        scene_curve_get(current_curve,
+                        SCENE_CURVE_PROPERTY_INSTANCE,
+                       &current_curve_container);
+
+        if (current_curve_container == curve)
+        {
+            result = current_curve;
+
+            break;
+        }
+    } /* for (all curves) */
+
+    return result;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API scene_curve scene_get_curve_by_id(__in __notnull scene          instance,
                                                      __in           scene_curve_id id)
 {
-    /* Todo: OPTIMISE THIS! Use hashed ids! */
     scene_curve result    = NULL;
     _scene*     scene_ptr = (_scene*) instance;
-    size_t      n_curves  = (size_t)  system_resizable_vector_get_amount_of_elements(scene_ptr->curves);
 
-    for (size_t n_curve = 0;
-                n_curve < n_curves;
-              ++n_curve)
-    {
-        scene_curve    curve    = NULL;
-        scene_curve_id curve_id = -1;
-
-        if (system_resizable_vector_get_element_at(scene_ptr->curves,
-                                                   n_curve,
-                                                  &curve) )
-        {
-            scene_curve_get(curve,
-                            SCENE_CURVE_PROPERTY_ID,
-                           &curve_id);
-
-            ASSERT_DEBUG_SYNC(curve_id != -1,
-                              "Invalid curve id encountered");
-
-            if (curve_id == id)
-            {
-                result = curve;
-
-                break;
-            }
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve %dth curve",
-                              n_curve);
-        }
-    }
+    system_hash64map_get(scene_ptr->curves_map,
+                         (system_hash64) id,
+                        &result);
 
     ASSERT_DEBUG_SYNC(result != NULL,
-                      "Could not retrieve curve with id [%d]",
-                      id);
-
+                      "Could not retrieve requested curve");
     return result;
 }
 
@@ -934,12 +966,45 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
         goto end_error;
     }
 
+    /* Load curves */
+    for (uint32_t n_scene_curve = 0;
+                  n_scene_curve < n_scene_curves;
+                ++n_scene_curve)
+    {
+        scene_curve new_curve = scene_curve_load(serializer);
+
+        ASSERT_DEBUG_SYNC(new_curve != NULL,
+                          "Could not load curve data");
+
+        if (new_curve == NULL)
+        {
+            result = false;
+
+            goto end_error;
+        }
+
+        result &= scene_add_curve(result_scene,
+                                  new_curve);
+
+        scene_curve_release(new_curve);
+        new_curve = NULL;
+    } /* for (all curves defined for the scene) */
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not load scene curves");
+
+        goto end_error;
+    }
+
     /* Load cameras */
     for (uint32_t n_scene_camera = 0;
                   n_scene_camera < n_scene_cameras;
                 ++n_scene_camera)
     {
-        scene_camera new_camera = scene_camera_load(serializer);
+        scene_camera new_camera = scene_camera_load(serializer,
+                                                    result_scene);
 
         ASSERT_DEBUG_SYNC(new_camera != NULL,
                           "Cannot spawn new camera instance");
@@ -968,41 +1033,13 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
         goto end_error;
     }
 
-    /* Load curves */
-    for (uint32_t n_scene_curve = 0;
-                  n_scene_curve < n_scene_curves;
-                ++n_scene_curve)
-    {
-        scene_curve new_curve = scene_curve_load(serializer);
-
-        ASSERT_DEBUG_SYNC(new_curve != NULL,
-                          "Could not load curve data");
-
-        if (new_curve == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        result &= scene_add_curve(result_scene,
-                                  new_curve);
-    } /* for (all curves defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene curves");
-
-        goto end_error;
-    }
-
     /* Load scene lights */
     for (uint32_t n_scene_light = 0;
                   n_scene_light < n_scene_lights;
                 ++n_scene_light)
     {
-        scene_light new_light = scene_light_load(serializer);
+        scene_light new_light = scene_light_load(serializer,
+                                                 result_scene);
 
         ASSERT_DEBUG_SYNC(new_light != NULL,
                           "Could not load light data");
@@ -1037,7 +1074,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                   n_scene_material < n_scene_materials;
                 ++n_scene_material)
     {
-        scene_material new_material    = scene_material_load(serializer);
+        scene_material new_material    = scene_material_load(serializer,
+                                                             result_scene);
         unsigned int   new_material_id = -1;
 
         ASSERT_DEBUG_SYNC(new_material != NULL,
@@ -1513,8 +1551,8 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene                  instance,
-                                                   __in __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene                  instance,
+                                                   __in     __notnull system_file_serializer serializer)
 {
     bool    result    = true;
     _scene* scene_ptr = (_scene*) instance;
@@ -1671,7 +1709,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
 
     /* Store the number of owned objects */
     const uint32_t n_cameras   = system_resizable_vector_get_amount_of_elements(scene_ptr->cameras);
-    const uint32_t n_curves    = system_resizable_vector_get_amount_of_elements(scene_ptr->curves);
+    const uint32_t n_curves    = system_hash64map_get_amount_of_elements       (scene_ptr->curves_map);
     const uint32_t n_lights    = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
     const uint32_t n_materials = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
     const uint32_t n_textures  = system_resizable_vector_get_amount_of_elements(scene_ptr->textures);
@@ -1695,6 +1733,37 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                                  sizeof(n_textures),
                                 &n_textures);
 
+    /* Serialize curves */
+    for (uint32_t n_curve = 0;
+                  n_curve < n_curves;
+                ++n_curve)
+    {
+        scene_curve current_curve = NULL;
+
+        if (system_hash64map_get_element_at(scene_ptr->curves_map,
+                                            n_curve,
+                                            &current_curve,
+                                            NULL) ) /* outHash */
+        {
+            if (!scene_curve_save(serializer,
+                                  current_curve) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Curve serialization failed");
+
+                result = false;
+            }
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve curve at index [%d]",
+                              n_curve);
+
+            result = false;
+        }
+    } /* for (all curves) */
+
     /* Serialize cameras.
      *
      * Note that each object is assigned an ID. This ID is later used during scene graph serialization.
@@ -1710,7 +1779,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                                                   &current_camera) )
         {
             if (!scene_camera_save(serializer,
-                                   current_camera) )
+                                   current_camera,
+                                   instance) )
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Camera serialization failed");
@@ -1739,36 +1809,6 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
         }
     } /* for (all cameras) */
 
-    /* Serialize curves */
-    for (uint32_t n_curve = 0;
-                  n_curve < n_curves;
-                ++n_curve)
-    {
-        scene_curve current_curve = NULL;
-
-        if (system_resizable_vector_get_element_at(scene_ptr->curves,
-                                                   n_curve,
-                                                  &current_curve) )
-        {
-            if (!scene_curve_save(serializer,
-                                  current_curve) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Curve serialization failed");
-
-                result = false;
-            }
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve curve at index [%d]",
-                              n_curve);
-
-            result = false;
-        }
-    } /* for (all curves) */
-
     /* Serialize lights */
     for (uint32_t n_light = 0;
                   n_light < n_lights;
@@ -1790,7 +1830,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
         if (result)
         {
             scene_light_save(serializer,
-                             current_light);
+                             current_light,
+                             instance);
         }
 
         /* Store the ID */
@@ -1826,7 +1867,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
         if (result)
         {
             scene_material_save(serializer,
-                                current_material);
+                                current_material,
+                                instance);
         }
 
         /* Assign an ID to the material */
@@ -2000,7 +2042,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in __notnull scene         
                           scene_ptr->graph,
                           camera_ptr_to_id_map,
                           light_ptr_to_id_map,
-                          mesh_instance_ptr_to_id_map) )
+                          mesh_instance_ptr_to_id_map,
+                          instance) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Scene graph serialization failed");

@@ -123,6 +123,27 @@ REFCOUNT_INSERT_IMPLEMENTATION(mesh_material, mesh_material, _mesh_material);
 
 
 /** TODO */
+PRIVATE void _mesh_material_deinit_shading_property_attachment(__in_opt _mesh_material_property& material_property)
+{
+    if (material_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT ||
+        material_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3)
+    {
+        for (unsigned int n_component = 0;
+                          n_component < sizeof(material_property.curve_container_data) / sizeof(material_property.curve_container_data[0]);
+                        ++n_component)
+        {
+            if (material_property.curve_container_data[n_component] != NULL)
+            {
+                curve_container_release(material_property.curve_container_data[n_component]);
+
+                material_property.curve_container_data[n_component] = NULL;
+            }
+        } /* for (all components) */
+    } /* for (curve container based attachments) */
+}
+
+
+/** TODO */
 PRIVATE void _mesh_material_on_lights_added_to_scene(const void* not_used,
                                                      void*       material)
 {
@@ -895,9 +916,13 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_fl
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
+    _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
+
     material_ptr->dirty                                                = true;
     material_ptr->shading_properties[property].attachment              = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT;
     material_ptr->shading_properties[property].curve_container_data[0] = data;
+
+    curve_container_retain(data);
 }
 
 /* Please see header for specification */
@@ -907,11 +932,17 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_ve
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
+    _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
+
     material_ptr->dirty                                                = true;
     material_ptr->shading_properties[property].attachment              = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3;
     material_ptr->shading_properties[property].curve_container_data[0] = data[0];
     material_ptr->shading_properties[property].curve_container_data[1] = data[1];
     material_ptr->shading_properties[property].curve_container_data[2] = data[2];
+
+    curve_container_retain(data[0]);
+    curve_container_retain(data[1]);
+    curve_container_retain(data[2]);
 }
 
 /* Please see header for specification */
@@ -920,6 +951,8 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnu
                                                                     __in           float                          data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
+
+    _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
 
     if (property == MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY ||
         property == MESH_MATERIAL_SHADING_PROPERTY_SHININESS  ||
@@ -948,6 +981,8 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
                       "Invalid mesh material shading");
     ASSERT_DEBUG_SYNC(property == MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
                       "Invalid property requested");
+
+    _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
 
     /* Update property value */
     material_ptr->shading_properties[property].attachment                    = MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE;

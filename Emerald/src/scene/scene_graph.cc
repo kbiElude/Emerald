@@ -8,6 +8,7 @@
 #include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
+#include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
@@ -31,8 +32,97 @@ typedef system_matrix4x4 (*PFNUPDATEMATRIXPROC)(void*                data,
                                                 float                lerp_factor);
 
 /* Forward declarations */
-PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*                 data,
-                                            __in                          scene_graph_node_type type);
+PRIVATE void             _scene_graph_align_time_to_fps                        (__in      __notnull                scene_graph                                   graph,
+                                                                                __in                               system_timeline_time                          time,
+                                                                                __out_opt                          system_timeline_time*                         out_prev_keyframe_time_ptr,
+                                                                                __out_opt                          system_timeline_time*                         out_next_keyframe_time_ptr);
+PRIVATE system_matrix4x4 _scene_graph_compute_root_node                        (__in      __notnull                void*                                         data,
+                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
+                                                                                __in                               system_timeline_time                          prev_keyframe_time,
+                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               float                                         lerp_factor);
+PRIVATE void             _scene_graph_compute_node_transformation_matrix       (__in      __notnull                scene_graph                                   graph,
+                                                                                __in      __notnull                struct _scene_graph_node*                     node_ptr,
+                                                                                __in                               system_timeline_time                          time);
+PRIVATE system_matrix4x4 _scene_graph_compute_general                          (__in      __notnull                void*                                         data,
+                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
+                                                                                __in                               system_timeline_time                          prev_keyframe_time,
+                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_rotation_dynamic                 (__in      __notnull                void*                                         data,
+                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
+                                                                                __in                               system_timeline_time                          prev_keyframe_time,
+                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_scale_dynamic                    (__in      __notnull                void*                                         data,
+                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
+                                                                                __in                               system_timeline_time                          prev_keyframe_time,
+                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_static_matrix4x4                 (__in      __notnull                void*                                         data,
+                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
+                                                                                __in                               system_timeline_time                          prev_keyframe_time,
+                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               float                                         lerp_factor);
+PRIVATE system_matrix4x4 _scene_graph_compute_translation_dynamic              (__in      __notnull                void*                                         data,
+                                                                                __in      __notnull                system_matrix4x4                              current_matrix,
+                                                                                __in                               system_timeline_time                          prev_keyframe_time,
+                                                                                __in                               system_timeline_time                          next_keyframe_time,
+                                                                                __in                               float                                         lerp_factor);
+PRIVATE float            _scene_graph_get_float_time_from_timeline_time        (                                   system_timeline_time                          time);
+PRIVATE system_hash64map _scene_graph_get_node_hashmap                         (__in      __notnull                struct _scene_graph*                          graph_ptr);
+PRIVATE bool             _scene_graph_load_node                                (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                scene_graph                                   result_graph,
+                                                                                __in      __notnull                system_resizable_vector                       serialized_nodes,
+                                                                                __in      __notnull                system_resizable_vector                       scene_cameras_vector,
+                                                                                __in      __notnull                system_resizable_vector                       scene_lights_vector,
+                                                                                __in      __notnull                system_resizable_vector                       scene_mesh_instances_vector,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static   (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                scene_graph                                   result_graph,
+                                                                                __in      __notnull                scene_graph_node                              parent_node);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic   (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                scene_graph                                   result_graph,
+                                                                                __in      __notnull                scene_graph_node                              parent_node,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic      (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                scene_graph                                   result_graph,
+                                                                                __in      __notnull                scene_graph_node                              parent_node,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                scene_graph                                   result_graph,
+                                                                                __in      __notnull                scene_graph_node                              parent_node,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                scene_graph                                   result_graph,
+                                                                                __in      __notnull                scene_graph_node                              parent_node);
+PRIVATE bool             _scene_graph_save_scene_graph_node_matrix4x4_static   (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                struct _scene_graph_node_matrix4x4_static*    data_ptr);
+PRIVATE bool             _scene_graph_save_scene_graph_node_rotation_dynamic   (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                struct _scene_graph_node_rotation_dynamic*    data_ptr,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_save_scene_graph_node_scale_dynamic      (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                struct _scene_graph_node_scale_dynamic*       data_ptr,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_save_scene_graph_node_translation_dynamic(__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                struct _scene_graph_node_translation_dynamic* data_ptr,
+                                                                                __in      __notnull                scene                                         owner_scene);
+PRIVATE bool             _scene_graph_save_scene_graph_node_translation_static (__in      __notnull                system_file_serializer                        serializer,
+                                                                                __in      __notnull                struct _scene_graph_node_translation_static*  data_ptr);
+PRIVATE void             _scene_graph_node_release_data                        (__in      __notnull __post_invalid void*                                         data,
+                                                                                __in                               scene_graph_node_type                         type);
+PRIVATE bool             _scene_graph_save_curve                               (__in_opt                           scene                                         owner_scene,
+                                                                                __in     __notnull                 curve_container                               in_curve,
+                                                                                __in     __notnull                 system_file_serializer                        serializer);
+PRIVATE bool             _scene_graph_save_node                                (__in     __notnull                 system_file_serializer                        serializer,
+                                                                                __in     __notnull                 const _scene_graph_node*                      node_ptr,
+                                                                                __in     __notnull                 system_hash64map                              node_ptr_to_id_map,
+                                                                                __in     __notnull                 system_hash64map                              camera_ptr_to_id_map,
+                                                                                __in     __notnull                 system_hash64map                              light_ptr_to_id_map,
+                                                                                __in     __notnull                 system_hash64map                              mesh_instance_ptr_to_id_map,
+                                                                                __in     __notnull                 scene                                         owner_scene);
+PRIVATE bool             _scene_graph_update_sorted_nodes                      (__in     __notnull                 _scene_graph*                                 graph_ptr);
+
 
 typedef struct _scene_graph_node_matrix4x4_static
 {
@@ -782,392 +872,37 @@ end:
 }
 
 /** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer serializer,
-                                                                             __in __notnull scene_graph            result_graph,
-                                                                             __in __notnull scene_graph_node       parent_node)
-{
-    scene_graph_node     result_node       = NULL;
-    system_matrix4x4     serialized_matrix = NULL;
-    scene_graph_node_tag serialized_tag    = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-
-    if (system_file_serializer_read_matrix4x4(serializer,                         &serialized_matrix) &&
-        system_file_serializer_read          (serializer, sizeof(serialized_tag), &serialized_tag) )
-    {
-        result_node = scene_graph_create_static_matrix4x4_transformation_node(result_graph,
-                                                                              serialized_matrix,
-                                                                              serialized_tag);
-
-        ASSERT_DEBUG_SYNC(result_node != NULL,
-                          "Static matrix4x4 transformation node serialization failed.");
-
-        scene_graph_add_node(result_graph,
-                             parent_node,
-                             result_node);
-
-        system_matrix4x4_release(serialized_matrix);
-        serialized_matrix = NULL;
-    }
-
-    return result_node;
-}
-
-/** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__in __notnull system_file_serializer serializer,
-                                                                             __in __notnull scene_graph            result_graph,
-                                                                             __in __notnull scene_graph_node       parent_node)
-{
-    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
-    scene_graph_node     result_node          = NULL;
-    curve_container      serialized_curves[4] = {NULL, NULL, NULL, NULL};
-    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-    bool                 uses_radians         = false;
-
-    for (unsigned int n = 0;
-                      n < 4;
-                    ++n)
-    {
-        if (!system_file_serializer_read_curve_container(serializer,
-                                                         serialized_curves + n) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Dynamic rotation transformation node serialization failed.");
-
-            goto end;
-        }
-    }
-
-    if (!system_file_serializer_read(serializer,
-                                     sizeof(serialized_tag),
-                                    &serialized_tag)        ||
-        !system_file_serializer_read(serializer,
-                                     sizeof(uses_radians),
-                                    &uses_radians) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not read node data");
-
-        goto end;
-    }
-
-    result_node = scene_graph_create_rotation_dynamic_node(result_graph,
-                                                           serialized_curves,
-                                                           uses_radians,
-                                                           serialized_tag);
-
-    ASSERT_DEBUG_SYNC(result_node != NULL,
-                      "Could not add rotation dynamic node");
-
-    scene_graph_add_node(result_graph,
-                         parent_node,
-                         result_node);
-
-    /* Cache the node by its tag */
-    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
-    {
-        graph_ptr->node_by_tag[serialized_tag] = result_node;
-    }
-
-end:
-    for (unsigned int n = 0;
-                      n < 4;
-                    ++n)
-    {
-        if (serialized_curves[n] != NULL)
-        {
-            curve_container_release(serialized_curves[n]);
-
-            serialized_curves[n] = NULL;
-        }
-    }
-
-    return result_node;
-}
-
-/** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer serializer,
-                                                                          __in __notnull scene_graph            result_graph,
-                                                                          __in __notnull scene_graph_node       parent_node)
-{
-    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
-    scene_graph_node     result_node          = NULL;
-    curve_container      serialized_curves[3] = {NULL, NULL, NULL};
-    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-
-    for (unsigned int n = 0;
-                      n < 3;
-                    ++n)
-    {
-        if (!system_file_serializer_read_curve_container(serializer,
-                                                         serialized_curves + n) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Dynamic scale transformation node serialization failed.");
-
-            goto end;
-        }
-    }
-
-    if (!system_file_serializer_read(serializer,
-                                     sizeof(serialized_tag),
-                                    &serialized_tag) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not read tag info");
-
-        goto end;
-    }
-
-    result_node = scene_graph_create_scale_dynamic_node(result_graph,
-                                                        serialized_curves,
-                                                        serialized_tag);
-
-    ASSERT_DEBUG_SYNC(result_node != NULL,
-                      "Could not add scale dynamic node");
-
-    scene_graph_add_node(result_graph,
-                         parent_node,
-                         result_node);
-
-    /* Cache the node by its tag */
-    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
-    {
-        graph_ptr->node_by_tag[serialized_tag] = result_node;
-    }
-
-end:
-    for (unsigned int n = 0;
-                      n < 3;
-                    ++n)
-    {
-        if (serialized_curves[n] != NULL)
-        {
-            curve_container_release(serialized_curves[n]);
-
-            serialized_curves[n] = NULL;
-        }
-    }
-
-    return result_node;
-}
-
-/** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer serializer,
-                                                                                __in __notnull scene_graph            result_graph,
-                                                                                __in __notnull scene_graph_node       parent_node)
-{
-    _scene_graph*        graph_ptr                   = (_scene_graph*) result_graph;
-    scene_graph_node     result_node                 = NULL;
-    curve_container      serialized_curves       [3] = {NULL, NULL, NULL};
-    bool                 serialized_negate_curves[3] = {false, false, false};
-    scene_graph_node_tag serialized_tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-
-    for (unsigned int n = 0;
-                      n < 3;
-                    ++n)
-    {
-        if (!system_file_serializer_read_curve_container(serializer,
-                                                         serialized_curves + n) ||
-            !system_file_serializer_read                (serializer,
-                                                         sizeof(bool),
-                                                         serialized_negate_curves + n) )
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Dynamic translation transformation node serialization failed.");
-
-            goto end;
-        }
-    }
-
-    if (!system_file_serializer_read(serializer,
-                                     sizeof(serialized_tag),
-                                    &serialized_tag) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Node tag serialization failed");
-
-        goto end;
-    }
-
-    result_node = scene_graph_create_translation_dynamic_node(result_graph,
-                                                              serialized_curves,
-                                                              serialized_negate_curves,
-                                                              serialized_tag);
-
-    ASSERT_DEBUG_SYNC(result_node != NULL,
-                      "Could not add translation dynamic node");
-
-    scene_graph_add_node(result_graph,
-                         parent_node,
-                         result_node);
-
-    /* Cache the node by its tag */
-    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
-    {
-        graph_ptr->node_by_tag[serialized_tag] = result_node;
-    }
-
-end:
-    for (unsigned int n = 0;
-                      n < 3;
-                    ++n)
-    {
-        if (serialized_curves[n] != NULL)
-        {
-            curve_container_release(serialized_curves[n]);
-
-            serialized_curves[n] = NULL;
-        }
-    }
-
-    return result_node;
-}
-
-/** TODO */
-PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(__in __notnull system_file_serializer serializer,
-                                                                               __in __notnull scene_graph            result_graph,
-                                                                               __in __notnull scene_graph_node       parent_node)
-{
-    _scene_graph*        graph_ptr                 = (_scene_graph*) result_graph;
-    scene_graph_node     result_node               = NULL;
-    scene_graph_node_tag serialized_tag            = SCENE_GRAPH_NODE_TAG_UNDEFINED;
-    float                serialized_translation[3] = {0.0f};
-
-    if (!system_file_serializer_read(serializer,
-                                     sizeof(serialized_translation),
-                                     serialized_translation) ||
-        !system_file_serializer_read(serializer,
-                                     sizeof(serialized_tag),
-                                    &serialized_tag) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Static translation transformation node serialization failed.");
-
-        goto end;
-    }
-
-    result_node = scene_graph_create_translation_static_node(result_graph,
-                                                             serialized_translation,
-                                                             serialized_tag);
-
-    ASSERT_DEBUG_SYNC(result_node != NULL,
-                      "Could not add translation static node");
-
-    scene_graph_add_node(result_graph,
-                         parent_node,
-                         result_node);
-
-    /* Cache the node by its tag */
-    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
-    {
-        graph_ptr->node_by_tag[serialized_tag] = result_node;
-    }
-
-end:
-    return result_node;
-}
-
-/** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer              serializer,
-                                                                 __in __notnull _scene_graph_node_matrix4x4_static* data_ptr)
+PRIVATE bool _scene_graph_load_curve(__in_opt           scene                  owner_scene,
+                                     __in     __notnull curve_container*       curve_ptr,
+                                     __in     __notnull system_file_serializer serializer)
 {
     bool result = true;
 
-    result &= system_file_serializer_write_matrix4x4(serializer,
-                                                     data_ptr->matrix);
-    result &= system_file_serializer_write          (serializer,
-                                                     sizeof(data_ptr->tag),
-                                                    &data_ptr->tag);
-
-    return result;
-}
-
-/** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull system_file_serializer              serializer,
-                                                                 __in __notnull _scene_graph_node_rotation_dynamic* data_ptr)
-{
-    bool result = true;
-
-    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 4, "");
-
-    for (unsigned int n = 0;
-                      n < 4;
-                    ++n)
+    if (owner_scene != NULL)
     {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               data_ptr->curves[n]);
+        scene_curve_id curve_id = 0;
+
+        result &= system_file_serializer_read(serializer,
+                                              sizeof(curve_id),
+                                             &curve_id);
+
+        if (result)
+        {
+            scene_curve scene_curve = scene_get_curve_by_id(owner_scene,
+                                                            curve_id);
+
+            scene_curve_get(scene_curve,
+                            SCENE_CURVE_PROPERTY_INSTANCE,
+                            curve_ptr);
+
+            curve_container_retain(*curve_ptr);
+        }
     }
-
-    result &= system_file_serializer_write(serializer,
-                                           sizeof(data_ptr->tag),
-                                          &data_ptr->tag);
-    result &= system_file_serializer_write(serializer,
-                                           sizeof(data_ptr->uses_radians),
-                                          &data_ptr->uses_radians);
-
-    return result;
-}
-
-/** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer           serializer,
-                                                              __in __notnull _scene_graph_node_scale_dynamic* data_ptr)
-{
-    bool result = true;
-
-    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
-
-    for (unsigned int n = 0;
-                      n < 3;
-                    ++n)
+    else
     {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               data_ptr->curves[n]);
+        result &= system_file_serializer_read_curve_container(serializer,
+                                                              curve_ptr);
     }
-
-    result &= system_file_serializer_write(serializer,
-                                           sizeof(data_ptr->tag),
-                                          &data_ptr->tag);
-
-    return result;
-}
-
-/** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer                 serializer,
-                                                                    __in __notnull _scene_graph_node_translation_dynamic* data_ptr)
-{
-    bool result = true;
-
-    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
-
-    for (unsigned int n = 0;
-                      n < 3;
-                    ++n)
-    {
-        result &= system_file_serializer_write_curve_container(serializer,
-                                                               data_ptr->curves[n]);
-        result &= system_file_serializer_write                (serializer,
-                                                               sizeof(data_ptr->negate_xyz_vectors[n]),
-                                                               data_ptr->negate_xyz_vectors + n);
-    }
-
-    result &= system_file_serializer_write(serializer,
-                                           sizeof(data_ptr->tag),
-                                          &data_ptr->tag);
-
-    return result;
-}
-
-/** TODO */
-PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(__in __notnull system_file_serializer                serializer,
-                                                                   __in __notnull _scene_graph_node_translation_static* data_ptr)
-{
-    bool result = true;
-
-    result &= system_file_serializer_write(serializer,
-                                           sizeof(data_ptr->translation),
-                                           data_ptr->translation);
-    result &= system_file_serializer_write(serializer,
-                                           sizeof(data_ptr->tag),
-                                          &data_ptr->tag);
 
     return result;
 }
@@ -1178,7 +913,8 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
                                     __in __notnull system_resizable_vector serialized_nodes,
                                     __in __notnull system_resizable_vector scene_cameras_vector,
                                     __in __notnull system_resizable_vector scene_lights_vector,
-                                    __in __notnull system_resizable_vector scene_mesh_instances_vector)
+                                    __in __notnull system_resizable_vector scene_mesh_instances_vector,
+                                    __in __notnull scene                   owner_scene)
 {
     const unsigned int n_serialized_nodes = system_resizable_vector_get_amount_of_elements(serialized_nodes);
     bool               result             = true;
@@ -1249,7 +985,8 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
         {
             new_node = _scene_graph_load_scene_graph_node_rotation_dynamic(serializer,
                                                                            result_graph,
-                                                                           parent_node);
+                                                                           parent_node,
+                                                                           owner_scene);
 
             break;
         }
@@ -1258,7 +995,8 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
         {
             new_node = _scene_graph_load_scene_graph_node_scale_dynamic(serializer,
                                                                         result_graph,
-                                                                        parent_node);
+                                                                        parent_node,
+                                                                           owner_scene);
 
             break;
         }
@@ -1276,7 +1014,8 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
         {
             new_node = _scene_graph_load_scene_graph_node_translation_dynamic(serializer,
                                                                               result_graph,
-                                                                              parent_node);
+                                                                              parent_node,
+                                                                           owner_scene);
 
             break;
         }
@@ -1468,6 +1207,409 @@ end:
 }
 
 /** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer serializer,
+                                                                             __in __notnull scene_graph            result_graph,
+                                                                             __in __notnull scene_graph_node       parent_node)
+{
+    scene_graph_node     result_node       = NULL;
+    system_matrix4x4     serialized_matrix = NULL;
+    scene_graph_node_tag serialized_tag    = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+
+    if (system_file_serializer_read_matrix4x4(serializer,                         &serialized_matrix) &&
+        system_file_serializer_read          (serializer, sizeof(serialized_tag), &serialized_tag) )
+    {
+        result_node = scene_graph_create_static_matrix4x4_transformation_node(result_graph,
+                                                                              serialized_matrix,
+                                                                              serialized_tag);
+
+        ASSERT_DEBUG_SYNC(result_node != NULL,
+                          "Static matrix4x4 transformation node serialization failed.");
+
+        scene_graph_add_node(result_graph,
+                             parent_node,
+                             result_node);
+
+        system_matrix4x4_release(serialized_matrix);
+        serialized_matrix = NULL;
+    }
+
+    return result_node;
+}
+
+/** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__in __notnull system_file_serializer serializer,
+                                                                             __in __notnull scene_graph            result_graph,
+                                                                             __in __notnull scene_graph_node       parent_node,
+                                                                             __in __notnull scene                  owner_scene)
+{
+    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
+    scene_graph_node     result_node          = NULL;
+    curve_container      serialized_curves[4] = {NULL, NULL, NULL, NULL};
+    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    bool                 uses_radians         = false;
+
+    for (unsigned int n = 0;
+                      n < 4;
+                    ++n)
+    {
+        if (!_scene_graph_load_curve(owner_scene,
+                                     serialized_curves + n,
+                                     serializer) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Dynamic rotation transformation node serialization failed.");
+
+            goto end;
+        }
+    }
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag)        ||
+        !system_file_serializer_read(serializer,
+                                     sizeof(uses_radians),
+                                    &uses_radians) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not read node data");
+
+        goto end;
+    }
+
+    result_node = scene_graph_create_rotation_dynamic_node(result_graph,
+                                                           serialized_curves,
+                                                           uses_radians,
+                                                           serialized_tag);
+
+    ASSERT_DEBUG_SYNC(result_node != NULL,
+                      "Could not add rotation dynamic node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
+end:
+    for (unsigned int n = 0;
+                      n < 4;
+                    ++n)
+    {
+        if (serialized_curves[n] != NULL)
+        {
+            curve_container_release(serialized_curves[n]);
+
+            serialized_curves[n] = NULL;
+        }
+    }
+
+    return result_node;
+}
+
+/** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer serializer,
+                                                                          __in __notnull scene_graph            result_graph,
+                                                                          __in __notnull scene_graph_node       parent_node,
+                                                                          __in __notnull scene                  owner_scene)
+{
+    _scene_graph*        graph_ptr            = (_scene_graph*) result_graph;
+    scene_graph_node     result_node          = NULL;
+    curve_container      serialized_curves[3] = {NULL, NULL, NULL};
+    scene_graph_node_tag serialized_tag       = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        if (!_scene_graph_load_curve(owner_scene,
+                                     serialized_curves + n,
+                                     serializer) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Dynamic scale transformation node serialization failed.");
+
+            goto end;
+        }
+    }
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not read tag info");
+
+        goto end;
+    }
+
+    result_node = scene_graph_create_scale_dynamic_node(result_graph,
+                                                        serialized_curves,
+                                                        serialized_tag);
+
+    ASSERT_DEBUG_SYNC(result_node != NULL,
+                      "Could not add scale dynamic node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
+end:
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        if (serialized_curves[n] != NULL)
+        {
+            curve_container_release(serialized_curves[n]);
+
+            serialized_curves[n] = NULL;
+        }
+    }
+
+    return result_node;
+}
+
+/** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer serializer,
+                                                                                __in __notnull scene_graph            result_graph,
+                                                                                __in __notnull scene_graph_node       parent_node,
+                                                                                __in __notnull scene                  owner_scene)
+{
+    _scene_graph*        graph_ptr                   = (_scene_graph*) result_graph;
+    scene_graph_node     result_node                 = NULL;
+    curve_container      serialized_curves       [3] = {NULL, NULL, NULL};
+    bool                 serialized_negate_curves[3] = {false, false, false};
+    scene_graph_node_tag serialized_tag              = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        if (!_scene_graph_load_curve    (owner_scene,
+                                         serialized_curves + n,
+                                         serializer)                     ||
+            !system_file_serializer_read(serializer,
+                                         sizeof(bool),
+                                         serialized_negate_curves + n) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Dynamic translation transformation node serialization failed.");
+
+            goto end;
+        }
+    }
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Node tag serialization failed");
+
+        goto end;
+    }
+
+    result_node = scene_graph_create_translation_dynamic_node(result_graph,
+                                                              serialized_curves,
+                                                              serialized_negate_curves,
+                                                              serialized_tag);
+
+    ASSERT_DEBUG_SYNC(result_node != NULL,
+                      "Could not add translation dynamic node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
+end:
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        if (serialized_curves[n] != NULL)
+        {
+            curve_container_release(serialized_curves[n]);
+
+            serialized_curves[n] = NULL;
+        }
+    }
+
+    return result_node;
+}
+
+/** TODO */
+PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(__in __notnull system_file_serializer serializer,
+                                                                               __in __notnull scene_graph            result_graph,
+                                                                               __in __notnull scene_graph_node       parent_node)
+{
+    _scene_graph*        graph_ptr                 = (_scene_graph*) result_graph;
+    scene_graph_node     result_node               = NULL;
+    scene_graph_node_tag serialized_tag            = SCENE_GRAPH_NODE_TAG_UNDEFINED;
+    float                serialized_translation[3] = {0.0f};
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(serialized_translation),
+                                     serialized_translation) ||
+        !system_file_serializer_read(serializer,
+                                     sizeof(serialized_tag),
+                                    &serialized_tag) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Static translation transformation node serialization failed.");
+
+        goto end;
+    }
+
+    result_node = scene_graph_create_translation_static_node(result_graph,
+                                                             serialized_translation,
+                                                             serialized_tag);
+
+    ASSERT_DEBUG_SYNC(result_node != NULL,
+                      "Could not add translation static node");
+
+    scene_graph_add_node(result_graph,
+                         parent_node,
+                         result_node);
+
+    /* Cache the node by its tag */
+    if (serialized_tag < SCENE_GRAPH_NODE_TAG_COUNT)
+    {
+        graph_ptr->node_by_tag[serialized_tag] = result_node;
+    }
+
+end:
+    return result_node;
+}
+
+/** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_matrix4x4_static(__in __notnull system_file_serializer              serializer,
+                                                                 __in __notnull _scene_graph_node_matrix4x4_static* data_ptr)
+{
+    bool result = true;
+
+    result &= system_file_serializer_write_matrix4x4(serializer,
+                                                     data_ptr->matrix);
+    result &= system_file_serializer_write          (serializer,
+                                                     sizeof(data_ptr->tag),
+                                                    &data_ptr->tag);
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull system_file_serializer              serializer,
+                                                                 __in __notnull _scene_graph_node_rotation_dynamic* data_ptr,
+                                                                 __in __notnull scene                               owner_scene)
+{
+    bool result = true;
+
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 4, "");
+
+    for (unsigned int n = 0;
+                      n < 4;
+                    ++n)
+    {
+        result &= _scene_graph_save_curve(owner_scene,
+                                          data_ptr->curves[n],
+                                          serializer);
+    }
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->uses_radians),
+                                          &data_ptr->uses_radians);
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(__in __notnull system_file_serializer           serializer,
+                                                              __in __notnull _scene_graph_node_scale_dynamic* data_ptr,
+                                                              __in __notnull scene                            owner_scene)
+{
+    bool result = true;
+
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
+
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        result &= _scene_graph_save_curve(owner_scene,
+                                          data_ptr->curves[n],
+                                          serializer);
+    }
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnull system_file_serializer                 serializer,
+                                                                    __in __notnull _scene_graph_node_translation_dynamic* data_ptr,
+                                                                    __in __notnull scene                                  owner_scene)
+{
+    bool result = true;
+
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
+
+    for (unsigned int n = 0;
+                      n < 3;
+                    ++n)
+    {
+        result &= _scene_graph_save_curve     (owner_scene,
+                                               data_ptr->curves[n],
+                                               serializer);
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(data_ptr->negate_xyz_vectors[n]),
+                                               data_ptr->negate_xyz_vectors + n);
+    }
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+
+    return result;
+}
+
+/** TODO */
+PRIVATE bool _scene_graph_save_scene_graph_node_translation_static(__in __notnull system_file_serializer                serializer,
+                                                                   __in __notnull _scene_graph_node_translation_static* data_ptr)
+{
+    bool result = true;
+
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->translation),
+                                           data_ptr->translation);
+    result &= system_file_serializer_write(serializer,
+                                           sizeof(data_ptr->tag),
+                                          &data_ptr->tag);
+
+    return result;
+}
+
+/** TODO */
 PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void*                 data,
                                             __in                          scene_graph_node_type type)
 {
@@ -1523,12 +1665,43 @@ PRIVATE void _scene_graph_node_release_data(__in __notnull __post_invalid void* 
 }
 
 /** TODO */
+PRIVATE bool _scene_graph_save_curve(__in_opt           scene                  owner_scene,
+                                     __in     __notnull curve_container        in_curve,
+                                     __in     __notnull system_file_serializer serializer)
+{
+    bool result = true;
+
+    if (owner_scene != NULL)
+    {
+        scene_curve    curve    = scene_get_curve_by_container(owner_scene,
+                                                               in_curve);
+        scene_curve_id curve_id = 0;
+
+        scene_curve_get(curve,
+                        SCENE_CURVE_PROPERTY_ID,
+                       &curve_id);
+
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(curve_id),
+                                              &curve_id);
+    }
+    else
+    {
+        result &= system_file_serializer_write_curve_container(serializer,
+                                                               in_curve);
+    }
+
+    return result;
+}
+
+/** TODO */
 PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   serializer,
                                     __in __notnull const _scene_graph_node* node_ptr,
                                     __in __notnull system_hash64map         node_ptr_to_id_map,
                                     __in __notnull system_hash64map         camera_ptr_to_id_map,
                                     __in __notnull system_hash64map         light_ptr_to_id_map,
-                                    __in __notnull system_hash64map         mesh_instance_ptr_to_id_map)
+                                    __in __notnull system_hash64map         mesh_instance_ptr_to_id_map,
+                                    __in __notnull scene                    owner_scene)
 {
     bool result = true;
 
@@ -1578,7 +1751,8 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_rotation_dynamic(serializer,
-                                                                          (_scene_graph_node_rotation_dynamic*) node_ptr->data);
+                                                                          (_scene_graph_node_rotation_dynamic*) node_ptr->data,
+                                                                          owner_scene);
 
             break;
         }
@@ -1587,7 +1761,8 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_scale_dynamic(serializer,
-                                                                       (_scene_graph_node_scale_dynamic*) node_ptr->data);
+                                                                       (_scene_graph_node_scale_dynamic*) node_ptr->data,
+                                                                          owner_scene);
 
             break;
         }
@@ -1605,7 +1780,8 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
         {
             /* Save curve container data */
             result &= _scene_graph_save_scene_graph_node_translation_dynamic(serializer,
-                                                                             (_scene_graph_node_translation_dynamic*) node_ptr->data);
+                                                                             (_scene_graph_node_translation_dynamic*) node_ptr->data,
+                                                                             owner_scene);
 
             break;
         }
@@ -2410,7 +2586,8 @@ PUBLIC scene_graph scene_graph_load(__in __notnull scene                   owner
                                     serialized_nodes,
                                     serialized_scene_cameras,
                                     serialized_scene_lights,
-                                    serialized_scene_mesh_instances) )
+                                    serialized_scene_mesh_instances,
+                                    owner_scene) )
         {
             goto end_error;
         }
@@ -2778,87 +2955,6 @@ PUBLIC EMERALD_API void scene_graph_node_replace(__in __notnull scene_graph     
     src_node_ptr = NULL;
 }
 
-/* Please see header for specification */
-PUBLIC EMERALD_API void scene_graph_node_set_property(__in __notnull scene_graph_node          node,
-                                                      __in           scene_graph_node_property property,
-                                                      __in __notnull void*                     data)
-{
-    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
-
-    /* If this is a curve property that the caller intends to replace, retrieve its index */
-    int curve_index = -1;
-
-    switch (property)
-    {
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_X: curve_index = 0; break;
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_Y: curve_index = 1; break;
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_Z: curve_index = 2; break;
-        case SCENE_GRAPH_NODE_PROPERTY_CURVE_W: curve_index = 3; break;
-    }
-
-    switch (node_ptr->type)
-    {
-        case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC:
-        case SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC:
-        case SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC:
-        {
-            /* Only curve properties apply here */
-            curve_container* curves = NULL;
-
-            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC)
-            {
-                _scene_graph_node_rotation_dynamic* node_data_ptr = (_scene_graph_node_rotation_dynamic*) node_ptr->data;
-
-                ASSERT_DEBUG_SYNC(curve_index != -1,
-                                  "Unrecognized curve property");
-
-                curves = node_data_ptr->curves;
-            }
-            else
-            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC)
-            {
-                _scene_graph_node_scale_dynamic* node_data_ptr = (_scene_graph_node_scale_dynamic*) node_ptr->data;
-
-                ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
-                                  "Unrecognized curve property");
-
-                curves = node_data_ptr->curves;
-            }
-            else
-            if (node_ptr->type == SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC)
-            {
-                _scene_graph_node_translation_dynamic* node_data_ptr = (_scene_graph_node_translation_dynamic*) node_ptr->data;
-
-                ASSERT_DEBUG_SYNC(curve_index != -1 && curve_index < 3,
-                                  "Unrecognized curve property");
-
-                curves = node_data_ptr->curves;
-            }
-
-            if (curve_index != -1)
-            {
-                curve_container new_curve = *((curve_container*) data);
-
-                if (curves[curve_index] != NULL)
-                {
-                    curve_container_release(curves[curve_index]);
-                }
-
-                curves[curve_index] = new_curve;
-                curve_container_retain(new_curve);
-            } /* if (curve_index != -1) */
-
-            break;
-        } /* case SCENE_GRAPH_NODE_TYPE_ROTATION_DYNAMIC: */
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unsupported node type");
-        }
-    } /* switch (node_ptr->type) */
-}
-
 /** Please see header for specification */
 PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph)
 {
@@ -2930,7 +3026,8 @@ PUBLIC bool scene_graph_save(__in __notnull system_file_serializer serializer,
                              __in __notnull scene_graph            graph,
                              __in __notnull system_hash64map       camera_ptr_to_id_map,
                              __in __notnull system_hash64map       light_ptr_to_id_map,
-                             __in __notnull system_hash64map       mesh_instance_ptr_to_id_map)
+                             __in __notnull system_hash64map       mesh_instance_ptr_to_id_map,
+                             __in __notnull scene                  owner_scene)
 {
     _scene_graph*    graph_ptr    = (_scene_graph*) graph;
     system_hash64map node_hashmap = NULL;
@@ -2992,7 +3089,8 @@ PUBLIC bool scene_graph_save(__in __notnull system_file_serializer serializer,
                                              node_hashmap,
                                              camera_ptr_to_id_map,
                                              light_ptr_to_id_map,
-                                             mesh_instance_ptr_to_id_map);
+                                             mesh_instance_ptr_to_id_map,
+                                             owner_scene);
         } /* for (all nodes) */
     }
 

@@ -29,8 +29,7 @@ PRIVATE system_hash64map        surface_id_to_scene_material_map = NULL;
 /** TODO */
 volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
 {
-    system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
-    scene            in_scene                           = (scene) in_scene_arg;
+    scene            in_scene          = (scene) in_scene_arg;
     char             text_buffer[1024];
 
     /* Initialize containers */
@@ -81,14 +80,16 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
         SetActivityDescription(text_buffer);
 
         /* Retrieve non-texture property values */
-        surface_glosiness_curve = GetCurveContainerForProperty(surface_name,
-                                                               ITEM_PROPERTY_SURFACE_GLOSINESS,
-                                                               surface_id,
-                                                               envelope_id_to_curve_container_map);
-        surface_luminance_curve = GetCurveContainerForProperty(surface_name,
-                                                               ITEM_PROPERTY_SURFACE_LUMINOSITY,
-                                                               surface_id,
-                                                               envelope_id_to_curve_container_map);
+        GetCurveContainerForProperty(surface_name,
+                                     ITEM_PROPERTY_SURFACE_GLOSINESS,
+                                     surface_id,
+                                    &surface_glosiness_curve,
+                                     NULL); /* out_curve_id_ptr */
+        GetCurveContainerForProperty(surface_name,
+                                     ITEM_PROPERTY_SURFACE_LUMINOSITY,
+                                     surface_id,
+                                    &surface_luminance_curve,
+                                     NULL); /* out_curve_id_ptr */
 
         /* Iterate over various texture types */
         struct _texture
@@ -202,10 +203,11 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
             {
                 if (current_texture.out_property_curves[n_property] != NULL)
                 {
-                    *current_texture.out_property_curves[n_property] = GetCurveContainerForProperty(surface_name,
-                                                                                                    current_texture.emerald_item_properties[n_property],
-                                                                                                    surface_id,
-                                                                                                    envelope_id_to_curve_container_map);
+                    GetCurveContainerForProperty(surface_name,
+                                                 current_texture.emerald_item_properties[n_property],
+                                                 surface_id,
+                                                 current_texture.out_property_curves[n_property],
+                                                 NULL); /* out_curve_id_ptr */
                 }
             }
         } /* for (all texture descriptors) */

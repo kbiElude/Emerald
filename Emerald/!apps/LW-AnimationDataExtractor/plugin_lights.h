@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef PLUGIN_LIGHTS_H
@@ -11,11 +11,11 @@
 
 typedef enum
 {
-    LIGHT_PROPERTY_OBJECT_ID,           /* void*              */
-    LIGHT_PROPERTY_PARENT_OBJECT_ID,    /* void               */
-    LIGHT_PROPERTY_PIVOT,               /* float          [3] */
-    LIGHT_PROPERTY_ROTATION_HPB_CURVES, /* curve_container[3] */
-    LIGHT_PROPERTY_TRANSLATION_CURVES,  /* curve_container[3] */
+    LIGHT_PROPERTY_OBJECT_ID,              /* void*       */
+    LIGHT_PROPERTY_PARENT_OBJECT_ID,       /* void        */
+    LIGHT_PROPERTY_PIVOT,                  /* float   [3] */
+    LIGHT_PROPERTY_ROTATION_HPB_CURVE_IDS, /* curve_id[3] */
+    LIGHT_PROPERTY_TRANSLATION_CURVE_IDS,  /* curve_id[3] */
 } LightProperty;
 
 

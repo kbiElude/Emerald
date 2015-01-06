@@ -9,6 +9,7 @@
 
 #include "curve/curve_container.h"
 #include "scene/scene.h"
+#include "scene/scene_curve.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
@@ -62,6 +63,7 @@ PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoun
 PRIVATE system_resizable_vector curve_containers                   = NULL;
 PRIVATE system_hash64map        envelope_id_to_curve_container_map = NULL;
 PRIVATE system_event            job_done_event                     = NULL;
+PRIVATE uint32_t                n_curve_containers_added           = 0;
 
 /** TODO */
 PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
@@ -318,37 +320,6 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
 }
 
 /** TODO */
-PUBLIC void DeinitCurveData()
-{
-    ASSERT_DEBUG_SYNC(curve_containers                   != NULL &&
-                      envelope_id_to_curve_container_map != NULL,
-                      "Curve data-set already deinitialized?");
-
-    if (curve_containers != NULL)
-    {
-        curve_container current_curve_container = NULL;
-
-        while (!system_resizable_vector_pop(curve_containers,
-                                           &current_curve_container) )
-        {
-            curve_container_release(current_curve_container);
-
-            current_curve_container = NULL;
-        }
-
-        system_resizable_vector_release(curve_containers);
-        curve_containers = NULL;
-    }
-
-    if (envelope_id_to_curve_container_map != NULL)
-    {
-        system_hash64map_release(envelope_id_to_curve_container_map);
-
-        envelope_id_to_curve_container_map = NULL;
-    }
-}
-
-/** TODO */
 PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoundaryBehaviorForLWEnvTag(int behavior)
 {
     curve_container_envelope_boundary_behavior result = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED;
@@ -391,6 +362,127 @@ PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoun
     return result;
 }
 
+
+/** TODO */
+PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notnull curve_container curve)
+{
+    unsigned int n_curve_container_id = 0;
+    curve_id     result               = 0;
+
+    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
+                      "Curve data-set not initialized.");
+
+    /* Obtain an unique curve ID */
+    do
+    {
+        n_curve_container_id = ::InterlockedIncrement(&n_curve_containers_added);
+    }
+    while (system_hash64map_contains(envelope_id_to_curve_container_map,
+                                     (system_hash64) n_curve_container_id) );
+
+    /* Store the container */
+    if (!system_hash64map_insert(envelope_id_to_curve_container_map,
+                                 (system_hash64) n_curve_container_id,
+                                 curve,
+                                 NULL,   /* on_remove_callback */
+                                 NULL) ) /* on_remove_callback_user_arg */
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "system_hash64map_insert() failed.");
+    }
+
+    system_resizable_vector_push(curve_containers,
+                                 curve);
+
+    result = n_curve_container_id;
+    return result;
+}
+
+/** TODO */
+PUBLIC void DeinitCurveData()
+{
+    ASSERT_DEBUG_SYNC(curve_containers                   != NULL &&
+                      envelope_id_to_curve_container_map != NULL,
+                      "Curve data-set already deinitialized?");
+
+    if (curve_containers != NULL)
+    {
+        curve_container current_curve_container = NULL;
+
+        while (!system_resizable_vector_pop(curve_containers,
+                                           &current_curve_container) )
+        {
+            curve_container_release(current_curve_container);
+
+            current_curve_container = NULL;
+        }
+
+        system_resizable_vector_release(curve_containers);
+        curve_containers = NULL;
+    }
+
+    if (envelope_id_to_curve_container_map != NULL)
+    {
+        system_hash64map_release(envelope_id_to_curve_container_map);
+
+        envelope_id_to_curve_container_map = NULL;
+    }
+}
+
+/** TODO */
+PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene)
+{
+    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
+                      "Envelope ID->curve container map is NULL");
+
+    /* Iterate over all hash-map items */
+    const uint32_t n_entries = system_hash64map_get_amount_of_elements(envelope_id_to_curve_container_map);
+
+    for (uint32_t n_entry = 0;
+                  n_entry < n_entries;
+                ++n_entry)
+    {
+        curve_container envelope_curve = NULL;
+        system_hash64   envelope_id    = 0;
+
+        if (!system_hash64map_get_element_at(envelope_id_to_curve_container_map,
+                                             n_entry,
+                                            &envelope_curve,
+                                            &envelope_id) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve envelope id->curve container map entry");
+
+            continue;
+        }
+
+        /* Spawn a corresponding scene_curve instance */
+        system_hashed_ansi_string envelope_curve_name = NULL;
+        scene_curve               new_scene_curve     = NULL;
+
+        curve_container_get_property(envelope_curve,
+                                     CURVE_CONTAINER_PROPERTY_NAME,
+                                    &envelope_curve_name);
+
+        new_scene_curve = scene_curve_create(envelope_curve_name,
+                                             (scene_curve_id) envelope_id,
+                                             envelope_curve);
+
+        /* Add the instance to the scene instance */
+        if (!scene_add_curve(in_scene,
+                             new_scene_curve) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not add curve container to the scene instance.");
+
+            continue;
+        }
+
+        scene_curve_release(new_scene_curve);
+        new_scene_curve = NULL;
+    } /* for (all hash-map entries) */
+}
+
 /** TODO */
 volatile void InitCurveDataWorkerThreadEntryPoint(__in __notnull void* not_used)
 {
@@ -411,7 +503,8 @@ volatile void InitCurveDataWorkerThreadEntryPoint(__in __notnull void* not_used)
     /* Initialize internal data structures */
     curve_containers                   = system_resizable_vector_create(4, /* capacity */
                                                                         sizeof(curve_container) );
-    envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container) );
+    envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container),
+                                                                        true); /* must be thread-safe because of AddCurveContainerToEnvelopeIDToCurveContainerHashMap() */
 
     /* Iterate over all object types ..
      *

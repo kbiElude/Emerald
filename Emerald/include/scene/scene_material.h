@@ -63,13 +63,15 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer serializer);
+PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer serializer,
+                                          __in_opt       scene                  owner_scene);
 
 /** TODO.
  *
  **/
-PUBLIC bool scene_material_save(__in __notnull system_file_serializer serializer,
-                                __in __notnull const scene_material   material);
+PUBLIC bool scene_material_save(__in     __notnull system_file_serializer serializer,
+                                __in     __notnull const scene_material   material,
+                                __in_opt           scene                  owner_scene);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_material,

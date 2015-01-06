@@ -56,15 +56,17 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serializer);
+PUBLIC scene_light scene_light_load(__in     __notnull system_file_serializer serializer,
+                                    __in_opt           scene                  owner_scene);
 
 /** TODO.
  *
  *  NOTE: This function is for internal use only.
  *
  **/
-PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
-                             __in __notnull const scene_light      light);
+PUBLIC bool scene_light_save(__in     __notnull system_file_serializer serializer,
+                             __in     __notnull const scene_light      light,
+                             __in_opt           scene                  owner_scene);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light,

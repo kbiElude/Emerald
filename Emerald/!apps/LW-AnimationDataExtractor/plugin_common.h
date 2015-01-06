@@ -9,6 +9,7 @@
 #include "plugin.h"
 #include "curve/curve_types.h"
 #include "system/system_types.h"
+#include "plugin_curves.h"
 
 typedef enum
 {
@@ -56,9 +57,10 @@ PUBLIC LWEnvelopeID FindEnvelope(__in           LWChanGroupID  group_id,
 PUBLIC LWChanGroupID FindGroup(__in __notnull const char* group_name);
 
 /** TODO */
-PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed_ansi_string object_name,
-                                                    __in           _item_property            property,
-                                                    __in __notnull LWItemID                  item_id,
-                                                    __in __notnull system_hash64map          envelope_id_to_curve_container_map);
+PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_string object_name,
+                                         __in                _item_property            property,
+                                         __in      __notnull LWItemID                  item_id,
+                                         __out_opt           curve_container*          out_curve_ptr,
+                                         __out_opt           curve_id*                 out_curve_id_ptr);
 
 #endif /* PLUGIN_LIGHTS_H */

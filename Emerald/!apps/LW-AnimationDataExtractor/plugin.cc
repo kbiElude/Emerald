@@ -117,7 +117,11 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
     InitGraphData     ();
     FillSceneGraphData(new_scene);
 
-    /* Check where the user wanto store the data */
+    /* Sounds good! We can now safely copy curves that we have stored internally back to the scene
+     * container. */
+    FillSceneWithCurveData(new_scene);
+
+    /* Check where the user wants to store the data */
     message_funcs_ptr->info("Please select target file to store the blob.",
                             NULL);
 
