@@ -135,6 +135,7 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
         curve_id        new_camera_rotation_h_curve_id = -1;
         curve_container new_camera_rotation_p_curve    = NULL;
         curve_id        new_camera_rotation_p_curve_id = -1;
+        curve_container null_curve_container           = NULL;
 
         GetCurveContainerForProperty(camera_name_has,
                                      ITEM_PROPERTY_ROTATION_B,
@@ -156,6 +157,10 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
         curve_container new_camera_fstop_curve    = NULL;
         curve_id        new_camera_fstop_curve_id = -1;
 
+        scene_camera_set_property(new_camera,
+                                  SCENE_CAMERA_PROPERTY_F_STOP,
+                                 &null_curve_container);
+
         GetCurveContainerForProperty(camera_name_has,
                                      ITEM_PROPERTY_F_STOP,
                                      camera_item_id,
@@ -166,6 +171,10 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
         curve_container new_camera_focal_distance_curve    = NULL;
         curve_id        new_camera_focal_distance_curve_id = -1;
 
+        scene_camera_set_property(new_camera,
+                                  SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,
+                                 &null_curve_container);
+
         GetCurveContainerForProperty(camera_name_has,
                                      ITEM_PROPERTY_FOCAL_DISTANCE,
                                      camera_item_id,
@@ -175,6 +184,10 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
         /* Retrieve Zoom Factor data */
         curve_container new_camera_zoom_factor_curve    = NULL;
         curve_id        new_camera_zoom_factor_curve_id = -1;
+
+        scene_camera_set_property(new_camera,
+                                  SCENE_CAMERA_PROPERTY_ZOOM_FACTOR,
+                                 &null_curve_container);
 
         GetCurveContainerForProperty(camera_name_has,
                                      ITEM_PROPERTY_ZOOM_FACTOR,
@@ -218,17 +231,17 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
         }
 
         /* Store the camera position/rotation data in internal data structures */
-        curve_container new_camera_positions[] =
+        curve_id new_camera_positions[] =
         {
-            new_camera_position_x_curve,
-            new_camera_position_y_curve,
-            new_camera_position_z_curve,
+            new_camera_position_x_curve_id,
+            new_camera_position_y_curve_id,
+            new_camera_position_z_curve_id,
         };
-        curve_container new_camera_rotations[] =
+        curve_id new_camera_rotations[] =
         {
-            new_camera_rotation_h_curve,
-            new_camera_rotation_p_curve,
-            new_camera_rotation_b_curve
+            new_camera_rotation_h_curve_id,
+            new_camera_rotation_p_curve_id,
+            new_camera_rotation_b_curve_id
         };
         _camera_internal* new_camera_internal_ptr  = new (std::nothrow) _camera_internal;
 
@@ -243,8 +256,8 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
                           n_component < 3;
                         ++n_component)
         {
-            new_camera_internal_ptr->camera_rotation_hpb_ids   [n_component] = AddCurveContainerToEnvelopeIDToCurveContainerHashMap(new_camera_rotations[n_component]);
-            new_camera_internal_ptr->camera_translation_xyz_ids[n_component] = AddCurveContainerToEnvelopeIDToCurveContainerHashMap(new_camera_positions[n_component]);
+            new_camera_internal_ptr->camera_rotation_hpb_ids   [n_component] = new_camera_rotations[n_component];
+            new_camera_internal_ptr->camera_translation_xyz_ids[n_component] = new_camera_positions[n_component];
         } /* for (three components) */
 
         new_camera_internal_ptr->object_id        = camera_item_id;
