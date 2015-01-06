@@ -1,21 +1,28 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef PLUGIN_CURVES_H
 #define PLUGIN_CURVES_H
 
+#include "curve/curve_types.h"
+#include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 
+typedef uint32_t curve_id;
+
 
 /** TODO */
-void DeinitCurveData();
+PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notnull curve_container curve);
 
 /** TODO */
-system_hash64map GetEnvelopeIDToCurveContainerHashMap();
+PUBLIC void DeinitCurveData();
 
 /** TODO */
-void InitCurveData();
+PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap();
+
+/** TODO */
+PUBLIC void InitCurveData();
 
 #endif /* PLUGIN_CURVES_H */

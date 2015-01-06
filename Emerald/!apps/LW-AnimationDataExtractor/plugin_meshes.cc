@@ -41,9 +41,9 @@ typedef struct _mesh_instance
     void*                     object_id;
     LWItemID                  parent_item_id;
     _mesh_instance*           parent_mesh_ptr;
-    float                     pivot      [3];
-    curve_container           rotation   [3]; /* H, P, B */
-    curve_container           translation[3];
+    float                     pivot                [3];
+    curve_id                  rotation_curve_ids   [3]; /* H, P, B */
+    curve_id                  translation_curve_ids[3];
 
     unsigned int n_points;
     unsigned int n_polygons;
@@ -70,12 +70,12 @@ typedef struct _mesh_instance
         memset(pivot,
                0,
                sizeof(pivot) );
-        memset(rotation,
+        memset(rotation_curve_ids,
                0,
-               sizeof(rotation) );
-        memset(translation,
+               sizeof(rotation_curve_ids) );
+        memset(translation_curve_ids,
                0,
-               sizeof(translation) );
+               sizeof(translation_curve_ids) );
     }
 
     ~_mesh_instance()
@@ -1015,38 +1015,47 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         }
 
         /* Extract transformation data */
-        new_instance->rotation   [0] = GetCurveContainerForProperty    (new_instance->name,
-                                                                        ITEM_PROPERTY_ROTATION_H,
-                                                                        object_id,
-                                                                        envelope_id_to_curve_container_map);
-        new_instance->rotation   [1] = GetCurveContainerForProperty    (new_instance->name,
-                                                                        ITEM_PROPERTY_ROTATION_P,
-                                                                        object_id,
-                                                                        envelope_id_to_curve_container_map);
-        new_instance->rotation   [2] = GetCurveContainerForProperty    (new_instance->name,
-                                                                        ITEM_PROPERTY_ROTATION_B,
-                                                                        object_id,
-                                                                        envelope_id_to_curve_container_map);
-        new_instance->translation[0] = GetCurveContainerForProperty    (new_instance->name,
-                                                                        ITEM_PROPERTY_TRANSLATION_X,
-                                                                        object_id,
-                                                                        envelope_id_to_curve_container_map);
-        new_instance->translation[1] = GetCurveContainerForProperty    (new_instance->name,
-                                                                        ITEM_PROPERTY_TRANSLATION_Y,
-                                                                        object_id,
-                                                                        envelope_id_to_curve_container_map);
-        new_instance->translation[2] = GetCurveContainerForProperty    (new_instance->name,
-                                                                        ITEM_PROPERTY_TRANSLATION_Z,
-                                                                        object_id,
-                                                                        envelope_id_to_curve_container_map);
+        curve_container rotation_curves   [3] = {NULL};
+        curve_container translation_curves[3] = {NULL};
+
+        GetCurveContainerForProperty    (new_instance->name,
+                                         ITEM_PROPERTY_ROTATION_H,
+                                         object_id,
+                                         rotation_curves + 0,
+                                         new_instance->rotation_curve_ids + 0);
+        GetCurveContainerForProperty    (new_instance->name,
+                                         ITEM_PROPERTY_ROTATION_P,
+                                         object_id,
+                                         rotation_curves + 1,
+                                         new_instance->rotation_curve_ids + 1);
+        GetCurveContainerForProperty    (new_instance->name,
+                                         ITEM_PROPERTY_ROTATION_B,
+                                         object_id,
+                                         rotation_curves + 2,
+                                         new_instance->rotation_curve_ids + 2);
+        GetCurveContainerForProperty    (new_instance->name,
+                                         ITEM_PROPERTY_TRANSLATION_X,
+                                         object_id,
+                                         translation_curves + 0,
+                                         new_instance->translation_curve_ids + 0);
+        GetCurveContainerForProperty    (new_instance->name,
+                                         ITEM_PROPERTY_TRANSLATION_Y,
+                                         object_id,
+                                         translation_curves + 1,
+                                         new_instance->translation_curve_ids + 1);
+        GetCurveContainerForProperty    (new_instance->name,
+                                         ITEM_PROPERTY_TRANSLATION_Z,
+                                         object_id,
+                                         translation_curves + 2,
+                                         new_instance->translation_curve_ids + 2);
 
         /* Adjust translation curves relative to the pivot */
         for (uint32_t n_translation_curve = 0;
                       n_translation_curve < 3;
                     ++n_translation_curve)
         {
-            curve_container curve                       = new_instance->translation[n_translation_curve];
-            const float     pivot_translation_component = pivot                    [n_translation_curve];
+            curve_container curve                       = translation_curves[n_translation_curve];
+            const float     pivot_translation_component = pivot             [n_translation_curve];
 
             AdjustCurveByDelta(curve,
                                -pivot_translation_component);
@@ -1339,16 +1348,16 @@ PUBLIC void GetMeshProperty(__in  __notnull scene_mesh   mesh_instance,
             break;
         }
 
-        case MESH_PROPERTY_ROTATION_HPB_CURVES:
+        case MESH_PROPERTY_ROTATION_HPB_CURVE_IDS:
         {
-            *(curve_container**) out_result = mesh_instance_ptr->rotation;
+            *(curve_id**) out_result = mesh_instance_ptr->rotation_curve_ids;
 
             break;
         }
 
-        case MESH_PROPERTY_TRANSLATION_CURVES:
+        case MESH_PROPERTY_TRANSLATION_CURVE_IDS:
         {
-            *(curve_container**) out_result = mesh_instance_ptr->translation;
+            *(curve_id**) out_result = mesh_instance_ptr->translation_curve_ids;
 
             break;
         }

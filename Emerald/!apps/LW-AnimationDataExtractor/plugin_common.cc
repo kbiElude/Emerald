@@ -192,13 +192,15 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed_ansi_string object_name,
-                                                    __in           _item_property            property,
-                                                    __in __notnull LWItemID                  item_id,
-                                                    __in __notnull system_hash64map          envelope_id_to_curve_container_map)
+PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_string object_name,
+                                         __in                _item_property            property,
+                                         __in      __notnull LWItemID                  item_id,
+                                         __out_opt           curve_container*          out_curve_ptr,
+                                         __out_opt           curve_id*                 out_curve_id_ptr)
 {
     const char*     property_name = NULL;
-    curve_container result        = NULL;
+    curve_container result_curve  = NULL;
+    curve_id        result_id     = -1;
 
     switch (property)
     {
@@ -264,9 +266,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) camera_info_ptr->fStop(item_id,
                                                            0.0); /* time */
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " F Stop"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " F Stop"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             } /* case ITEM_PROPERTY_F_STOP: */
@@ -276,9 +278,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) camera_info_ptr->focalDistance(item_id,
                                                                    0.0); /* time */
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Focal Distance"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Focal Distance"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             } /* case ITEM_PROPERTY_FOCAL_DISTANCE: */
@@ -296,11 +298,11 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                                      (property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G) ? ambient_color_data[1] :
                                                                                         ambient_color_data[2]);
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        ((property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R) ? " Ambient Color R" :
-                                                                                                         (property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G) ? " Ambient Color G" :
-                                                                                                                                                             " Ambient Color B")),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              ((property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R) ? " Ambient Color R" :
+                                                                                                               (property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G) ? " Ambient Color G" :
+                                                                                                                                                                   " Ambient Color B")),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -309,9 +311,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
             {
                 new_value = (float) light_info_ptr->ambientIntensity(0.0);
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Ambient Intensity"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Ambient Intensity"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -330,11 +332,11 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                                      (property == ITEM_PROPERTY_LIGHT_COLOR_G) ? color_data[1] :
                                                                                  color_data[2]);
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        ((property == ITEM_PROPERTY_LIGHT_COLOR_R) ? " Color R" :
-                                                                                                         (property == ITEM_PROPERTY_LIGHT_COLOR_G) ? " Color G" :
-                                                                                                                                                     " Color B")),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              ((property == ITEM_PROPERTY_LIGHT_COLOR_R) ? " Color R" :
+                                                                                                               (property == ITEM_PROPERTY_LIGHT_COLOR_G) ? " Color G" :
+                                                                                                                                                           " Color B")),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -344,9 +346,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) light_info_ptr->intensity(item_id,
                                                               0.0);
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Color Intensity"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Color Intensity"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -362,11 +364,11 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                                               : (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G) ? 1
                                               :                                                       2];
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                       ((property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R) ? " Color R" :
-                                                                                                        (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G) ? " Color G" :
-                                                                                                                                                              " Color B")),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              ((property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R) ? " Color R" :
+                                                                                                               (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G) ? " Color G" :
+                                                                                                                                                                     " Color B")),
+                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -376,9 +378,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
                                                                 SURF_SPEC) );
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Glosiness"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Glosiness"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -388,9 +390,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
                                                                 SURF_LUMI) );
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Luminosity"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Luminosity"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -400,9 +402,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
                                                                 SURF_REFL) );
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Reflection Ratio"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Reflection Ratio"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -412,9 +414,9 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) *(surface_funcs_ptr->getFlt(item_id,
                                                                 SURF_SPEC) );
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Specular Ratio"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Specular Ratio"),
+                                                      SYSTEM_VARIANT_FLOAT);
             }
 
             case ITEM_PROPERTY_ZOOM_FACTOR:
@@ -422,19 +424,24 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
                 new_value = (float) camera_info_ptr->zoomFactor(item_id,
                                                                 0.0); /* time */
 
-                result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
-                                                                                                        " Zoom Factor"),
-                                                SYSTEM_VARIANT_FLOAT);
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Zoom Factor"),
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             } /* case ITEM_PROPERTY_ZOOM_FACTOR: */
         } /* switch (property) */
 
-        if (result != NULL)
+        ASSERT_DEBUG_SYNC(result_curve != NULL,
+                          "No curve container created?");
+
+        if (result_curve != NULL)
         {
+            result_id = AddCurveContainerToEnvelopeIDToCurveContainerHashMap(result_curve);
+
             system_variant_set_float         (new_value_variant,
                                               new_value);
-            curve_container_set_default_value(result,
+            curve_container_set_default_value(result_curve,
                                               new_value_variant);
         }
 
@@ -443,18 +450,22 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
     else
     {
         /* Make sure the curve is recognized */
+        system_hash64map envelope_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
+
         if (!system_hash64map_get(envelope_id_to_curve_container_map,
                                   (system_hash64) envelope_id,
-                                 &result) )
+                                 &result_curve) )
+
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Envelope ID does not correspond to a recognized curve.");
         }
 
+        result_id = (curve_id) envelope_id;
     }
 
-    if (result      == NULL &&
-        envelope_id == 0)
+    if (result_curve == NULL &&
+        envelope_id  == 0)
     {
         ASSERT_ALWAYS_SYNC(false,
                           "This should have never happened");
@@ -463,7 +474,16 @@ PUBLIC curve_container GetCurveContainerForProperty(__in           system_hashed
     }
 
     /* result at this point is set to the requested curve container */
+    if (out_curve_id_ptr != NULL)
+    {
+        *out_curve_id_ptr = result_id;
+    }
+
+    if (out_curve_ptr != NULL)
+    {
+        *out_curve_ptr = result_curve;
+    }
 
 end:
-    return result;
+    ;
 }

@@ -18,11 +18,11 @@
 
 typedef struct _light_data
 {
-    void*           object_id;
-    void*           parent_object_id;
-    float           pivot             [3];
-    curve_container rotation_curves   [3]; /* hpb */
-    curve_container translation_curves[3]; /* xyz */
+    void*    object_id;
+    void*    parent_object_id;
+    float    pivot                [3];
+    curve_id rotation_curve_ids   [3]; /* hpb */
+    curve_id translation_curve_ids[3]; /* xyz */
 
     _light_data()
     {
@@ -32,12 +32,12 @@ typedef struct _light_data
         memset(pivot,
                0,
                sizeof(pivot) );
-        memset(rotation_curves,
+        memset(rotation_curve_ids,
                0,
-               sizeof(rotation_curves) );
-        memset(translation_curves,
+               sizeof(rotation_curve_ids) );
+        memset(translation_curve_ids,
                0,
-               sizeof(translation_curves) );
+               sizeof(translation_curve_ids) );
     }
 } _light_data;
 
@@ -51,70 +51,90 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                                       __in           scene_light_type          new_light_type,
                                       __in __notnull system_hashed_ansi_string new_light_name_has,
                                       __in           LWItemID                  new_light_item_id,
-                                      __in           LWDVector                 new_light_pivot,
-                                      __in __notnull system_hash64map          curve_id_to_curve_container_map)
+                                      __in           LWDVector                 new_light_pivot)
 {
-    curve_container new_light_color_r         = NULL;
-    curve_container new_light_color_g         = NULL;
-    curve_container new_light_color_b         = NULL;
-    curve_container new_light_color_intensity = NULL;
-    curve_container new_light_rotation_b      = NULL;
-    curve_container new_light_rotation_h      = NULL;
-    curve_container new_light_rotation_p      = NULL;
-    curve_container new_light_translation_x   = NULL;
-    curve_container new_light_translation_y   = NULL;
-    curve_container new_light_translation_z   = NULL;
-    bool            new_light_uses_shadow_map = false;
+    curve_container new_light_color_r_curve            = NULL;
+    curve_id        new_light_color_r_curve_id         = 0;
+    curve_container new_light_color_g_curve            = NULL;
+    curve_id        new_light_color_g_curve_id         = 0;
+    curve_container new_light_color_b_curve            = NULL;
+    curve_id        new_light_color_b_curve_id         = 0;
+    curve_container new_light_color_intensity_curve    = NULL;
+    curve_id        new_light_color_intensity_curve_id = 0;
+    curve_container new_light_rotation_b_curve         = NULL;
+    curve_id        new_light_rotation_b_curve_id      = 0;
+    curve_container new_light_rotation_h_curve         = NULL;
+    curve_id        new_light_rotation_h_curve_id      = 0;
+    curve_container new_light_rotation_p_curve         = NULL;
+    curve_id        new_light_rotation_p_curve_id      = 0;
+    curve_container new_light_translation_x_curve      = NULL;
+    curve_id        new_light_translation_x_curve_id   = 0;
+    curve_container new_light_translation_y_curve      = NULL;
+    curve_id        new_light_translation_y_curve_id   = 0;
+    curve_container new_light_translation_z_curve      = NULL;
+    curve_id        new_light_translation_z_curve_id   = 0;
+    bool            new_light_uses_shadow_map          = false;
 
-    new_light_color_r         = GetCurveContainerForProperty(new_light_name_has,
-                                                             (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R
-                                                                                                          : ITEM_PROPERTY_LIGHT_COLOR_R,
-                                                             new_light_item_id,
-                                                             curve_id_to_curve_container_map);
-    new_light_color_g         = GetCurveContainerForProperty(new_light_name_has,
-                                                             (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G
-                                                                                                          : ITEM_PROPERTY_LIGHT_COLOR_G,
-                                                             new_light_item_id,
-                                                             curve_id_to_curve_container_map);
-    new_light_color_b         = GetCurveContainerForProperty(new_light_name_has,
-                                                             (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_B
-                                                                                                          : ITEM_PROPERTY_LIGHT_COLOR_B,
-                                                             new_light_item_id,
-                                                             curve_id_to_curve_container_map);
+    GetCurveContainerForProperty(new_light_name_has,
+                                 (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R
+                                                                              : ITEM_PROPERTY_LIGHT_COLOR_R,
+                                 new_light_item_id,
+                                &new_light_color_r_curve,
+                                &new_light_color_r_curve_id);
+    GetCurveContainerForProperty(new_light_name_has,
+                                 (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G
+                                                                              : ITEM_PROPERTY_LIGHT_COLOR_G,
+                                 new_light_item_id,
+                                &new_light_color_g_curve,
+                                &new_light_color_g_curve_id);
+    GetCurveContainerForProperty(new_light_name_has,
+                                 (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_B
+                                                                              : ITEM_PROPERTY_LIGHT_COLOR_B,
+                                 new_light_item_id,
+                                &new_light_color_b_curve,
+                                &new_light_color_b_curve_id);
 
     /* Extract other relevant curves */
-    new_light_color_intensity = GetCurveContainerForProperty(new_light_name_has,
-                                                             (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_INTENSITY
-                                                                                                          : ITEM_PROPERTY_LIGHT_COLOR_INTENSITY,
-                                                             new_light_item_id,
-                                                             curve_id_to_curve_container_map);
+    GetCurveContainerForProperty(new_light_name_has,
+                                 (new_light_type == SCENE_LIGHT_TYPE_AMBIENT) ? ITEM_PROPERTY_LIGHT_AMBIENT_INTENSITY
+                                                                              : ITEM_PROPERTY_LIGHT_COLOR_INTENSITY,
+                                 new_light_item_id,
+                                &new_light_color_intensity_curve,
+                                &new_light_color_intensity_curve_id);
 
     if (new_light_type != SCENE_LIGHT_TYPE_AMBIENT)
     {
-        new_light_rotation_b      = GetCurveContainerForProperty(new_light_name_has,
-                                                                 ITEM_PROPERTY_ROTATION_B,
-                                                                 new_light_item_id,
-                                                                 curve_id_to_curve_container_map);
-        new_light_rotation_h      = GetCurveContainerForProperty(new_light_name_has,
-                                                                 ITEM_PROPERTY_ROTATION_H,
-                                                                 new_light_item_id,
-                                                                 curve_id_to_curve_container_map);
-        new_light_rotation_p      = GetCurveContainerForProperty(new_light_name_has,
-                                                                 ITEM_PROPERTY_ROTATION_P,
-                                                                 new_light_item_id,
-                                                                 curve_id_to_curve_container_map);
-        new_light_translation_x   = GetCurveContainerForProperty(new_light_name_has,
-                                                                 ITEM_PROPERTY_TRANSLATION_X,
-                                                                 new_light_item_id,
-                                                                 curve_id_to_curve_container_map);
-        new_light_translation_y   = GetCurveContainerForProperty(new_light_name_has,
-                                                                 ITEM_PROPERTY_TRANSLATION_Y,
-                                                                 new_light_item_id,
-                                                                 curve_id_to_curve_container_map);
-        new_light_translation_z   = GetCurveContainerForProperty(new_light_name_has,
-                                                                 ITEM_PROPERTY_TRANSLATION_Z,
-                                                                 new_light_item_id,
-                                                                 curve_id_to_curve_container_map);
+        GetCurveContainerForProperty(new_light_name_has,
+                                     ITEM_PROPERTY_ROTATION_B,
+                                     new_light_item_id,
+                                    &new_light_rotation_b_curve,
+                                    &new_light_rotation_b_curve_id);
+        GetCurveContainerForProperty(new_light_name_has,
+                                     ITEM_PROPERTY_ROTATION_H,
+                                     new_light_item_id,
+                                    &new_light_rotation_h_curve,
+                                    &new_light_rotation_h_curve_id);
+        GetCurveContainerForProperty(new_light_name_has,
+                                     ITEM_PROPERTY_ROTATION_P,
+                                     new_light_item_id,
+                                    &new_light_rotation_p_curve,
+                                    &new_light_rotation_p_curve_id);
+        GetCurveContainerForProperty(new_light_name_has,
+                                     ITEM_PROPERTY_TRANSLATION_X,
+                                     new_light_item_id,
+                                    &new_light_translation_x_curve,
+                                    &new_light_translation_x_curve_id);
+        GetCurveContainerForProperty(new_light_name_has,
+                                     ITEM_PROPERTY_TRANSLATION_Y,
+                                     new_light_item_id,
+                                    &new_light_translation_y_curve,
+                                    &new_light_translation_y_curve_id);
+        GetCurveContainerForProperty(new_light_name_has,
+                                     ITEM_PROPERTY_TRANSLATION_Z,
+                                     new_light_item_id,
+                                    &new_light_translation_z_curve,
+                                    &new_light_translation_z_curve_id);
+
         new_light_uses_shadow_map = !(light_info_ptr->shadowType(new_light_item_id) == LWLSHAD_OFF);
 
         /* Adjust translation curves relative to the pivot */
@@ -122,9 +142,9 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                       n_translation_curve < 3;
                     ++n_translation_curve)
         {
-            curve_container curve                       = (n_translation_curve == 0) ? new_light_translation_x :
-                                                          (n_translation_curve == 1) ? new_light_translation_y :
-                                                                                       new_light_translation_z;
+            curve_container curve                       = (n_translation_curve == 0) ? new_light_translation_x_curve :
+                                                          (n_translation_curve == 1) ? new_light_translation_y_curve :
+                                                                                       new_light_translation_z_curve;
             const float     pivot_translation_component = (float) new_light_pivot[n_translation_curve];
 
             AdjustCurveByDelta(curve,
@@ -141,21 +161,21 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
     /* Configure the light using the properties we've retrieved */
     curve_container new_color_curves[] =
     {
-        new_light_color_r,
-        new_light_color_g,
-        new_light_color_b
+        new_light_color_r_curve,
+        new_light_color_g_curve,
+        new_light_color_b_curve
     };
-    curve_container new_light_rotation_curves[] =
+    curve_id new_light_rotation_curve_ids[] =
     {
-        new_light_rotation_h,
-        new_light_rotation_p,
-        new_light_rotation_b
+        new_light_rotation_h_curve_id,
+        new_light_rotation_p_curve_id,
+        new_light_rotation_b_curve_id
     };
-    curve_container new_light_translation_curves[] =
+    curve_id new_light_translation_curve_ids[] =
     {
-        new_light_translation_x,
-        new_light_translation_y,
-        new_light_translation_z
+        new_light_translation_x_curve_id,
+        new_light_translation_y_curve_id,
+        new_light_translation_z_curve_id
     };
 
     scene_light_set_property(new_light,
@@ -163,7 +183,7 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                              new_color_curves);
     scene_light_set_property(new_light,
                              SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,
-                            &new_light_color_intensity);
+                            &new_light_color_intensity_curve);
 
     new_light_data->object_id        = new_light_item_id;
     new_light_data->parent_object_id = item_info_ptr->parent(new_light_item_id);
@@ -171,12 +191,13 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
     new_light_data->pivot[1]         = (float)  new_light_pivot[1];
     new_light_data->pivot[2]         = (float) -new_light_pivot[2];
 
-    memcpy(new_light_data->rotation_curves,
-           new_light_rotation_curves,
-           sizeof(new_light_rotation_curves) );
-    memcpy(new_light_data->translation_curves,
-           new_light_translation_curves,
-           sizeof(new_light_translation_curves) );
+    memcpy(new_light_data->rotation_curve_ids,
+           new_light_rotation_curve_ids,
+           sizeof(new_light_rotation_curve_ids) );
+
+    memcpy(new_light_data->translation_curve_ids,
+           new_light_translation_curve_ids,
+           sizeof(new_light_translation_curve_ids) );
 
     if (new_light_type != SCENE_LIGHT_TYPE_AMBIENT)
     {
@@ -195,9 +216,8 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
 /** TODO */
 volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_scene_arg)
 {
-    system_hash64map curve_id_to_curve_container_map = GetEnvelopeIDToCurveContainerHashMap();
-    scene            in_scene                        = (scene) in_scene_arg;
-    char             text_buffer[1024]               = {0};
+    scene            in_scene          = (scene) in_scene_arg;
+    char             text_buffer[1024] = {0};
 
     /* Extract available lights.
      *
@@ -269,8 +289,7 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
                                  light_type_emerald,
                                  light_name_has,
                                  light_item_id,
-                                 pivot,
-                                 curve_id_to_curve_container_map);
+                                 pivot);
 
         /* Add the light */
         if (!scene_add_light(in_scene,
@@ -303,8 +322,7 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
                              SCENE_LIGHT_TYPE_AMBIENT,
                              ambient_light_name_has,
                              0, /* new_light_item_id */
-                             ambient_light_pivot,
-                             curve_id_to_curve_container_map);
+                             ambient_light_pivot);
 
     if (!scene_add_light(in_scene,
                          ambient_light) )
@@ -394,16 +412,16 @@ PUBLIC void GetLightPropertyValue(__in  __notnull scene_light   light,
             break;
         }
 
-        case LIGHT_PROPERTY_ROTATION_HPB_CURVES:
+        case LIGHT_PROPERTY_ROTATION_HPB_CURVE_IDS:
         {
-            *(curve_container**) out_result = light_ptr->rotation_curves;
+            *(curve_id**) out_result = light_ptr->rotation_curve_ids;
 
             break;
         }
 
-        case LIGHT_PROPERTY_TRANSLATION_CURVES:
+        case LIGHT_PROPERTY_TRANSLATION_CURVE_IDS:
         {
-            *(curve_container**) out_result = light_ptr->translation_curves;
+            *(curve_id**) out_result = light_ptr->translation_curve_ids;
 
             break;
         }

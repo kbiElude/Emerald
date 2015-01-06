@@ -62,6 +62,7 @@ PRIVATE curve_container_envelope_boundary_behavior GetCurveContainerEnvelopeBoun
 PRIVATE system_resizable_vector curve_containers                   = NULL;
 PRIVATE system_hash64map        envelope_id_to_curve_container_map = NULL;
 PRIVATE system_event            job_done_event                     = NULL;
+PRIVATE uint32_t                n_curve_containers_added           = 0;
 
 /** TODO */
 PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
@@ -317,6 +318,42 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
     return result_curve;
 }
 
+
+/** TODO */
+PUBLIC curve_id AddCurveContainerToEnvelopeIDToCurveContainerHashMap(__in __notnull curve_container curve)
+{
+    unsigned int n_curve_container_id = 0;
+    curve_id     result               = 0;
+
+    ASSERT_DEBUG_SYNC(envelope_id_to_curve_container_map != NULL,
+                      "Curve data-set not initialized.");
+
+    /* Obtain an unique curve ID */
+    do
+    {
+        n_curve_container_id = ::InterlockedIncrement(&n_curve_containers_added);
+    }
+    while (system_hash64map_contains(envelope_id_to_curve_container_map,
+                                     (system_hash64) n_curve_container_id) );
+
+    /* Store the container */
+    if (!system_hash64map_insert(envelope_id_to_curve_container_map,
+                                 (system_hash64) n_curve_container_id,
+                                 curve,
+                                 NULL,   /* on_remove_callback */
+                                 NULL) ) /* on_remove_callback_user_arg */
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "system_hash64map_insert() failed.");
+    }
+
+    system_resizable_vector_push(curve_containers,
+                                 curve);
+
+    result = n_curve_container_id;
+    return result;
+}
+
 /** TODO */
 PUBLIC void DeinitCurveData()
 {
@@ -411,7 +448,8 @@ volatile void InitCurveDataWorkerThreadEntryPoint(__in __notnull void* not_used)
     /* Initialize internal data structures */
     curve_containers                   = system_resizable_vector_create(4, /* capacity */
                                                                         sizeof(curve_container) );
-    envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container) );
+    envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container),
+                                                                        true); /* must be thread-safe because of AddCurveContainerToEnvelopeIDToCurveContainerHashMap() */
 
     /* Iterate over all object types ..
      *
