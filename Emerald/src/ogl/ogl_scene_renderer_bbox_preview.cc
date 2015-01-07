@@ -332,7 +332,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
             if (n_iteration == 0)
             {
                 mesh_get_property(mesh,
-                                  MESH_PROPERTY_AABB_MAX,
+                                  MESH_PROPERTY_MODEL_AABB_MAX,
                                   &aabb_max_ptr);
 
                 traveller_ptr = ub_data + 4 /* vec4 */ * mesh_id;
@@ -344,7 +344,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
             else
             {
                 mesh_get_property(mesh,
-                              MESH_PROPERTY_AABB_MIN,
+                              MESH_PROPERTY_MODEL_AABB_MIN,
                               &aabb_min_ptr);
 
                 traveller_ptr = ub_data + 4 /* vec4 */ * (preview_ptr->data_n_meshes + mesh_id);

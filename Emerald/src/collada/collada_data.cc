@@ -1679,12 +1679,12 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                             mesh_set_layer_property(result,
                                                     n_layer,
                                                     0, /* n_pass - OK to use zero, this state does not work on pass level */
-                                                    MESH_LAYER_PROPERTY_AABB_MAX,
+                                                    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,
                                                     aabb_max_data);
                             mesh_set_layer_property(result,
                                                     n_layer,
                                                     0, /* n_pass - OK to use zero, this state does not work on pass level */
-                                                    MESH_LAYER_PROPERTY_AABB_MIN,
+                                                    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,
                                                     aabb_min_data);
 
                             ASSERT_DEBUG_SYNC(n_result_layer_passes == n_read_layer_passes,
@@ -1819,12 +1819,12 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                         mesh_get_layer_pass_property(result,
                                                      n_layer,
                                                      0, /* n_pass - zero is fine, this state does not depend on layer passes */
-                                                     MESH_LAYER_PROPERTY_AABB_MAX,
+                                                     MESH_LAYER_PROPERTY_MODEL_AABB_MAX,
                                                     &aabb_max_data);
                         mesh_get_layer_pass_property(result,
                                                      n_layer,
                                                      0, /* n_pass - zero is fine, this state does not depend on layer passes */
-                                                     MESH_LAYER_PROPERTY_AABB_MIN,
+                                                     MESH_LAYER_PROPERTY_MODEL_AABB_MIN,
                                                     &aabb_min_data);
 
                         system_file_serializer_write(serializer,

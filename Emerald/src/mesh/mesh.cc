@@ -3066,14 +3066,14 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
     switch(property)
     {
-        case MESH_PROPERTY_AABB_MAX:
+        case MESH_PROPERTY_MODEL_AABB_MAX:
         {
             *((float**) result) = mesh_ptr->aabb_max;
 
             break;
         }
 
-        case MESH_PROPERTY_AABB_MIN:
+        case MESH_PROPERTY_MODEL_AABB_MIN:
         {
             *((float**) result) = mesh_ptr->aabb_min;
 
@@ -3236,14 +3236,14 @@ PUBLIC EMERALD_API bool mesh_get_layer_pass_property(__in  __notnull mesh       
         {
             switch(property)
             {
-                case MESH_LAYER_PROPERTY_AABB_MAX:
+                case MESH_LAYER_PROPERTY_MODEL_AABB_MAX:
                 {
                     *((float**) out_result) = mesh_layer_ptr->aabb_max;
 
                     break;
                 }
 
-                case MESH_LAYER_PROPERTY_AABB_MIN:
+                case MESH_LAYER_PROPERTY_MODEL_AABB_MIN:
                 {
                     *((float**) out_result) = mesh_layer_ptr->aabb_min;
 
@@ -3418,10 +3418,10 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
 
         /* Set AABB box props */
         mesh_set_property(result,
-                          MESH_PROPERTY_AABB_MAX,
+                          MESH_PROPERTY_MODEL_AABB_MAX,
                           aabb_max);
         mesh_set_property(result,
-                          MESH_PROPERTY_AABB_MIN,
+                          MESH_PROPERTY_MODEL_AABB_MIN,
                           aabb_min);
 
         /* Read serialized GL data */
@@ -3505,12 +3505,12 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
             mesh_set_layer_property(result,
                                     current_layer,
                                     0, /* n_pass - doesn't matter for this property */
-                                    MESH_LAYER_PROPERTY_AABB_MAX,
+                                    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,
                                     layer_aabb_max);
             mesh_set_layer_property(result,
                                     current_layer,
                                     0, /* n_pass - doesn't matter for this property */
-                                    MESH_LAYER_PROPERTY_AABB_MIN,
+                                    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,
                                     layer_aabb_min);
             mesh_set_layer_property(result,
                                     current_layer,
@@ -4073,7 +4073,7 @@ PUBLIC EMERALD_API void mesh_set_layer_property(__in __notnull mesh             
     {
         _mesh_layer_pass* mesh_layer_pass_ptr = NULL;
 
-        if (property == MESH_LAYER_PROPERTY_AABB_MAX)
+        if (property == MESH_LAYER_PROPERTY_MODEL_AABB_MAX)
         {
             memcpy(mesh_layer_ptr->aabb_max,
                    data,
@@ -4082,7 +4082,7 @@ PUBLIC EMERALD_API void mesh_set_layer_property(__in __notnull mesh             
             _mesh_update_aabb(mesh_ptr);
         }
         else
-        if (property == MESH_LAYER_PROPERTY_AABB_MIN)
+        if (property == MESH_LAYER_PROPERTY_MODEL_AABB_MIN)
         {
             memcpy(mesh_layer_ptr->aabb_min,
                    data,
@@ -4177,7 +4177,7 @@ PUBLIC EMERALD_API void mesh_set_property(__in __notnull mesh          instance,
 
         switch(property)
         {
-            case MESH_PROPERTY_AABB_MAX:
+            case MESH_PROPERTY_MODEL_AABB_MAX:
             {
                 memcpy(mesh_ptr->aabb_max,
                        value,
@@ -4186,7 +4186,7 @@ PUBLIC EMERALD_API void mesh_set_property(__in __notnull mesh          instance,
                 break;
             }
 
-            case MESH_PROPERTY_AABB_MIN:
+            case MESH_PROPERTY_MODEL_AABB_MIN:
             {
                 memcpy(mesh_ptr->aabb_min,
                        value,

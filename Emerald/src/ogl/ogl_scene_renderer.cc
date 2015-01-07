@@ -271,10 +271,10 @@ PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer 
     const _ogl_scene_renderer* renderer_ptr   = (const _ogl_scene_renderer*) renderer;
 
     mesh_get_property      (mesh_gpu,
-                            MESH_PROPERTY_AABB_MAX,
+                            MESH_PROPERTY_MODEL_AABB_MAX,
                            &aabb_max_ptr);
     mesh_get_property      (mesh_gpu,
-                            MESH_PROPERTY_AABB_MIN,
+                            MESH_PROPERTY_MODEL_AABB_MIN,
                            &aabb_min_ptr);
 
     /* Transform the model-space AABB to world-space */

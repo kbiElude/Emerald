@@ -11,8 +11,8 @@ DECLARE_HANDLE(mesh_material);
 
 typedef enum
 {
-    MESH_PROPERTY_AABB_MAX,                                      /*     settable,  float[4]                */
-    MESH_PROPERTY_AABB_MIN,                                      /*     settable,  float[4]                */
+    MESH_PROPERTY_MODEL_AABB_MAX,                                /*     settable,  float[4]                */
+    MESH_PROPERTY_MODEL_AABB_MIN,                                /*     settable,  float[4]                */
     MESH_PROPERTY_CREATION_FLAGS,                                /* not settable,  mesh_creation_flags     */
     MESH_PROPERTY_GL_BO_ID,                                      /* not settable,  GLuint                  */
     MESH_PROPERTY_GL_INDEX_TYPE,                                 /* not settable,  _mesh_index_type        */
@@ -54,8 +54,8 @@ typedef enum
 
 typedef enum
 {
-    MESH_LAYER_PROPERTY_AABB_MAX,                   /*     settable, float*        (this property has the same value for all passes) */
-    MESH_LAYER_PROPERTY_AABB_MIN,                   /*     settable, float*        (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_MODEL_AABB_MAX,             /*     settable, float*        (this property has the same value for all passes) */
+    MESH_LAYER_PROPERTY_MODEL_AABB_MIN,             /*     settable, float*        (this property has the same value for all passes) */
     MESH_LAYER_PROPERTY_GL_BO_ELEMENTS_OFFSET,      /*     settable, uint32_t                                                        */
     MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MAX_INDEX, /*     settable, uint32_t                                                        */
     MESH_LAYER_PROPERTY_GL_ELEMENTS_DATA_MIN_INDEX, /*     settable, uint32_t                                                        */
