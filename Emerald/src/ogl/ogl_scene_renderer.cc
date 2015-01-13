@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -10,6 +10,7 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
+#include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
@@ -92,6 +93,7 @@ typedef struct _ogl_scene_renderer_uber
 typedef struct _ogl_scene_renderer
 {
     ogl_scene_renderer_bbox_preview    bbox_preview;
+    ogl_scene_renderer_lights_preview  lights_preview;
     ogl_scene_renderer_normals_preview normals_preview;
 
     ogl_context    context;
@@ -119,6 +121,7 @@ typedef struct _ogl_scene_renderer
         bbox_preview             = NULL;
         context                  = NULL;
         current_model_matrix     = system_matrix4x4_create();
+        lights_preview           = NULL;
         mesh_id_data_pool        = system_resource_pool_create(sizeof(_ogl_scene_renderer_mesh_id_data),
                                                                4,     /* n_elements_to_preallocate */
                                                                NULL,  /* init_fn */
@@ -154,6 +157,13 @@ typedef struct _ogl_scene_renderer
             system_matrix4x4_release(current_model_matrix);
 
             current_model_matrix = NULL;
+        }
+
+        if (lights_preview != NULL)
+        {
+            ogl_scene_renderer_lights_preview_release(lights_preview);
+
+            lights_preview = NULL;
         }
 
         if (mesh_id_data_pool != NULL)
@@ -481,6 +491,50 @@ end:
 }
 
 /** TODO */
+PRIVATE void _ogl_scene_renderer_get_light_color(__in            __notnull scene_light          light,
+                                                 __in                      system_timeline_time time,
+                                                 __in            __notnull system_variant       temp_float_variant,
+                                                 __out_ecount(3) __notnull float*               out_color)
+{
+    curve_container  light_color_curves      [3];
+    curve_container  light_color_intensity_curve;
+    float            light_color_intensity = 0.0f;
+    scene_light_type light_type            = SCENE_LIGHT_TYPE_UNKNOWN;
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_TYPE,
+                            &light_type);
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_COLOR,
+                             light_color_curves);
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,
+                            &light_color_intensity_curve);
+
+    curve_container_get_value(light_color_intensity_curve,
+                              time,
+                              false, /* should_force */
+                              temp_float_variant);
+    system_variant_get_float (temp_float_variant,
+                             &light_color_intensity);
+
+    for (unsigned int n_color_component = 0;
+                      n_color_component < 3;
+                    ++n_color_component)
+    {
+        curve_container_get_value(light_color_curves[n_color_component],
+                                  time,
+                                  false, /* should_force */
+                                  temp_float_variant);
+        system_variant_get_float (temp_float_variant,
+                                  out_color + n_color_component);
+
+        out_color[n_color_component] *= light_color_intensity;
+    }
+}
+
+/** TODO */
 PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool(system_resource_pool_block block)
 {
     system_resizable_vector* vector_ptr = (system_resizable_vector*) block;
@@ -745,6 +799,8 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
                                                                                       scene,
                                                                                       (ogl_scene_renderer) scene_renderer_ptr);
         scene_renderer_ptr->context          = context;
+        scene_renderer_ptr->lights_preview   = ogl_scene_renderer_lights_preview_create(context,
+                                                                                        scene);
         scene_renderer_ptr->material_manager = NULL;
         scene_renderer_ptr->normals_preview  = ogl_scene_renderer_normals_preview_create(context,
                                                                                          scene,
@@ -932,7 +988,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     system_hash64             material_hash    = 0;
     ogl_uber                  material_uber    = NULL;
     const uint32_t            n_cached_ubers   = system_hash64map_get_amount_of_elements(renderer_ptr->ubers_map);
+    unsigned int              n_scene_lights   = 0;
     _ogl_scene_renderer_uber* uber_details_ptr = NULL;
+
+    scene_get_property(renderer_ptr->scene,
+                       SCENE_PROPERTY_N_LIGHTS,
+                      &n_scene_lights);
 
     for (uint32_t n_uber = 0;
                   n_uber < n_cached_ubers;
@@ -990,12 +1051,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                              vp);
 
         /* Don't forget to update light properties */
-        unsigned int n_uber_items   = 0;
-        unsigned int n_scene_lights = 0;
-
-        scene_get_property(renderer_ptr->scene,
-                           SCENE_PROPERTY_N_LIGHTS,
-                          &n_scene_lights);
+        unsigned int n_uber_items = 0;
 
         ogl_uber_get_shader_general_property(material_uber,
                                              OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
@@ -1015,10 +1071,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 scene_light_type current_light_type                  = SCENE_LIGHT_TYPE_UNKNOWN;
                 curve_container  current_light_attenuation_curves[3];
                 float            current_light_attenuation_floats[3];
-                curve_container  current_light_color_curves      [3];
-                curve_container  current_light_color_intensity_curve;
                 float            current_light_color_floats      [3];
-                float            current_light_color_intensity = 0.0f;
                 float            current_light_direction_floats  [3];
                 float            current_light_position_floats   [3];
 
@@ -1026,33 +1079,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                          SCENE_LIGHT_PROPERTY_TYPE,
                                         &current_light_type);
 
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_COLOR,
-                                         current_light_color_curves);
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,
-                                        &current_light_color_intensity_curve);
-
-                curve_container_get_value(current_light_color_intensity_curve,
-                                          frame_time,
-                                          false, /* should_force */
-                                          renderer_ptr->temp_variant_float);
-                system_variant_get_float (renderer_ptr->temp_variant_float,
-                                         &current_light_color_intensity);
-
-                for (unsigned int n_color_component = 0;
-                                  n_color_component < 3;
-                                ++n_color_component)
-                {
-                    curve_container_get_value(current_light_color_curves[n_color_component],
-                                              frame_time,
-                                              false, /* should_force */
-                                              renderer_ptr->temp_variant_float);
-                    system_variant_get_float (renderer_ptr->temp_variant_float,
-                                              current_light_color_floats + n_color_component);
-
-                    current_light_color_floats[n_color_component] *= current_light_color_intensity;
-                }
+                _ogl_scene_renderer_get_light_color(current_light,
+                                                    frame_time,
+                                                    renderer_ptr->temp_variant_float,
+                                                    current_light_color_floats);
 
                 if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT)
                 {
@@ -1220,6 +1250,98 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                 (system_resource_pool_block) mesh_ptr);
         }
     } /* for (all ubers) */
+
+    if (helper_visualization & HELPER_VISUALIZATION_LIGHTS)
+    {
+        ogl_scene_renderer_lights_preview_start(renderer_ptr->lights_preview);
+        {
+            for (unsigned int n_light = 0;
+                              n_light < n_scene_lights;
+                            ++n_light)
+            {
+                scene_light      current_light              = scene_get_light_by_index(renderer_ptr->scene,
+                                                                                      n_light);
+                scene_light_type current_light_type         = SCENE_LIGHT_TYPE_UNKNOWN;
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_TYPE,
+                                        &current_light_type);
+
+                /* NOTE: We can only show point (& spot) lights.
+                 *
+                 * TODO: Include directional light support. These have no position
+                 *       so we may need to come up with some kind of a *cough* design
+                 *       for this.
+                 */
+                if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+                {
+#if 0
+                    float current_light_direction[3] = {NULL};
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_DIRECTION,
+                                             current_light_direction);
+
+#endif
+                    float current_light_position[3] = {NULL};
+                    float current_light_color   [4] =
+                    {
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        1.0f
+                    };
+
+                    scene_light_get_property           (current_light,
+                                                        SCENE_LIGHT_PROPERTY_POSITION,
+                                                       &current_light_position);
+                    _ogl_scene_renderer_get_light_color(current_light,
+                                                        frame_time,
+                                                        renderer_ptr->temp_variant_float,
+                                                        current_light_color);
+
+                    /* Dispatch the rendering request */
+                    float current_light_position_m[4] =
+                    {
+                        current_light_position[0],
+                        current_light_position[1],
+                        current_light_position[2],
+                        1.0f
+                    };
+                    float current_light_position_mvp      [4];
+#if 0
+                    float current_light_position_w_dir[4] =
+                    {
+                        current_light_position[0] + current_light_direction[0],
+                        current_light_position[1] + current_light_direction[1],
+                        current_light_position[2] + current_light_direction[2],
+                        1.0f
+                    };
+                    float current_light_position_w_dir_mvp[4];
+#endif
+
+                    system_matrix4x4_multiply_by_vector4(vp,
+                                                         current_light_position_m,
+                                                         current_light_position_mvp);
+#if 0
+                    system_matrix4x4_multiply_by_vector4(vp,
+                                                         current_light_position_w_dir,
+                                                         current_light_position_w_dir_mvp);
+#endif
+
+                    ogl_scene_renderer_lights_preview_render(renderer_ptr->lights_preview,
+                                                             current_light_position_mvp,
+                                                             current_light_color,
+#if 0
+                                                             current_light_position_w_dir_mvp);
+#else
+                                                             NULL);
+#endif
+                }
+            }
+        }
+        ogl_scene_renderer_lights_preview_stop(renderer_ptr->lights_preview);
+    }
 
     /* 3. Clean up in anticipation for the next call. We specifically do not cache any of the
      *    data because of the frustum culling which needs to be performed, every time model matrix

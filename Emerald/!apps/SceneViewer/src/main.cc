@@ -461,7 +461,7 @@ void _render_scene(ogl_context          context,
                                               projection,
                                               camera_location,
                                               RENDER_MODE_REGULAR,
-                                              HELPER_VISUALIZATION_NONE,
+                                              HELPER_VISUALIZATION_LIGHTS,
                                               frame_time
                                              );
     }
