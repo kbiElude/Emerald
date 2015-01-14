@@ -26,10 +26,11 @@ typedef enum
 
 typedef enum
 {
-    OGL_SCENE_RENDERER_PROPERTY_GRAPH,              /*         property,                 value: scene_graph */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,      /* indexed property, key: mesh id // value: mesh */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,  /* indexed property, key: mesh id // value: system_matrix4x4 */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX, /* indexed property, key: mesh id // value: system_matrix4x4 */
+    OGL_SCENE_RENDERER_PROPERTY_GRAPH,              /*         property,                 value: scene_graph                       */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,      /* indexed property, key: mesh id // value: mesh                              */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,  /* indexed property, key: mesh id // value: system_matrix4x4                  */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX, /* indexed property, key: mesh id // value: system_matrix4x4                  */
+    OGL_SCENE_RENDERER_PROPERTY_SHADOW_MAPPING,     /*         property,                 value: ogl_scene_renderer_shadow_mapping */
 } ogl_scene_renderer_property;
 
 /** TODO. **/
