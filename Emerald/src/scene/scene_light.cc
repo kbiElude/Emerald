@@ -15,19 +15,25 @@
 #include "system/system_variant.h"
 #include <sstream>
 
+#define DEFAULT_SHADOW_MAP_SIZE (1024)
+
+
 /* Private declarations */
 typedef struct
 {
-    curve_container           constant_attenuation;
-    curve_container           color    [3];
-    curve_container           color_intensity;
-    float                     direction[3];
-    curve_container           linear_attenuation;
-    system_hashed_ansi_string name;
-    float                     position[3];
-    curve_container           quadratic_attenuation;
-    scene_light_type          type;
-    bool                      uses_shadow_map;
+    curve_container            constant_attenuation;
+    curve_container            color    [3];
+    curve_container            color_intensity;
+    float                      direction[3];
+    curve_container            linear_attenuation;
+    system_hashed_ansi_string  name;
+    float                      position[3];
+    curve_container            quadratic_attenuation;
+    ogl_texture_internalformat shadow_map_internalformat;
+    unsigned int               shadow_map_size[2];
+    ogl_texture                shadow_map_texture;
+    scene_light_type           type;
+    bool                       uses_shadow_map;
 
     REFCOUNT_INSERT_VARIABLES
 } _scene_light;
@@ -184,6 +190,11 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
 
+    light_ptr->shadow_map_internalformat = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32F;
+    light_ptr->shadow_map_size[0]        = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_size[1]        = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_texture        = NULL;
+
     /* Direction: used by directional light */
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
@@ -266,6 +277,9 @@ PRIVATE void _scene_light_release(void* data_ptr)
             *containers[n_container] = NULL;
         }
     } /* for (all curve containers) */
+
+    ASSERT_DEBUG_SYNC(light_ptr->shadow_map_texture == NULL,
+                      "Shadow map texture should never be assigned to a scene_light instance at release time");
 }
 
 /** TODO */
@@ -488,6 +502,29 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             }
 
             *(curve_container*) out_result = light_ptr->quadratic_attenuation;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
+        {
+            *(ogl_texture_internalformat*) out_result = light_ptr->shadow_map_internalformat;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE:
+        {
+            memcpy(out_result,
+                   light_ptr->shadow_map_size,
+                   sizeof(light_ptr->shadow_map_size) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
+        {
+            *(ogl_texture*) out_result = light_ptr->shadow_map_texture;
 
             break;
         }
@@ -784,6 +821,32 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             }
 
             light_ptr->quadratic_attenuation = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
+        {
+            light_ptr->shadow_map_internalformat = *(ogl_texture_internalformat*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE:
+        {
+            memcpy(light_ptr->shadow_map_size,
+                   data,
+                   sizeof(light_ptr->shadow_map_size) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
+        {
+            /* NOTE: ogl_texture is considered a state by scene_light. It's not used
+             *       by scene_light in any way, so its reference counter is left intact.
+             */
+            light_ptr->shadow_map_texture = *(ogl_texture*) data;
 
             break;
         }

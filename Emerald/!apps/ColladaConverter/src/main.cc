@@ -167,7 +167,8 @@ void _render_scene(ogl_context          context,
                                               view,
                                               _projection_matrix,
                                               camera_location,
-                                              RENDER_MODE_REGULAR,
+                                              RENDER_MODE_FORWARD,
+                                              SHADOW_MAPPING_TYPE_DISABLED,
                                               HELPER_VISUALIZATION_NONE,
                                               system_time_now() % _animation_duration_time
                                              );

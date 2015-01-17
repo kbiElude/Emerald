@@ -118,5 +118,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_shadow_mapping_toggle(__in
     const ogl_context_gl_entrypoints*   entrypoints_ptr = NULL;
     _ogl_scene_renderer_shadow_mapping* handler_ptr     = (_ogl_scene_renderer_shadow_mapping*) handler;
 
-    // ..
+    /* Configure color/depth masks according to whether SM is being brought up or down */
+    const ogl_context_gl_entrypoints* entry_points = NULL;
+
+    ogl_context_get_property(handler_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    if (should_enable)
+    {
+        entry_points->pGLColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        entry_points->pGLDepthMask(GL_TRUE);
+    }
+    else
+    {
+        entry_points->pGLColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        entry_points->pGLDepthMask(GL_TRUE);
+    }
 }

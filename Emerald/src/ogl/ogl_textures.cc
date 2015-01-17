@@ -613,6 +613,9 @@ PUBLIC EMERALD_API ogl_texture ogl_textures_get_texture_from_pool(__in __notnull
                   spawned_texture_id);
 
         /* No free re-usable texture available. Spawn a new container. */
+        LOG_INFO("Creating a new re-usable texture object [index:%d]..",
+                 spawned_texture_id);
+
         result = ogl_texture_create_and_initialize(context,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("Re-usable texture ",
                                                                                                            spawned_texture_id_text),
