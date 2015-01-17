@@ -16,6 +16,7 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_samplers.h"
+#include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_textures.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -93,6 +94,7 @@ typedef struct
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_samplers                    samplers;
+    ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
     ogl_context_texture_compression texture_compression;
     ogl_textures                    textures;
@@ -228,6 +230,13 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
         ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
 
         context_ptr->sampler_bindings = NULL;
+    }
+
+    if (context_ptr->shadow_mapping != NULL)
+    {
+        ogl_shadow_mapping_release(context_ptr->shadow_mapping);
+
+        context_ptr->shadow_mapping = NULL;
     }
 
     if (context_ptr->state_cache != NULL)
@@ -2174,6 +2183,9 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                         _result->texture_compression = ogl_context_texture_compression_create( (ogl_context) _result);
                                         _result->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) _result);
 
+                                        /* Initialize shadow mapping handler */
+                                        _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
+
                                         /* Retrieve GL context limitations */
                                         _ogl_context_retrieve_GL_limits(_result);
 
@@ -2535,6 +2547,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_SAMPLERS:
         {
             *((ogl_samplers*) out_result) = context_ptr->samplers;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_SHADOW_MAPPING:
+        {
+            *(ogl_shadow_mapping*) out_result = context_ptr->shadow_mapping;
 
             break;
         }

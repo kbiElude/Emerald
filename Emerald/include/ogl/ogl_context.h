@@ -52,6 +52,7 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_MATERIALS,                                       /* not settable, ogl_materials */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,                                /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLERS,                                        /* not settable, ogl_samplers */
+    OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,                                  /* not settable, ogl_shadow_mapping */
     OGL_CONTEXT_PROPERTY_STATE_CACHE,                                     /* not settable, ogl_context_state_cache */
     OGL_CONTEXT_PROPERTY_SUPPORT_ES_EXT_TEXTURE_BUFFER,                   /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,                   /* not settable, bool */

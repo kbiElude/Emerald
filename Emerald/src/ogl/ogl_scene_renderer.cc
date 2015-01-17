@@ -12,7 +12,7 @@
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
-#include "ogl/ogl_scene_renderer_shadow_mapping.h"
+#include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
@@ -109,7 +109,6 @@ typedef struct _ogl_scene_renderer
     ogl_scene_renderer_bbox_preview    bbox_preview;
     ogl_scene_renderer_lights_preview  lights_preview;
     ogl_scene_renderer_normals_preview normals_preview;
-    ogl_scene_renderer_shadow_mapping  shadow_mapping;
 
     ogl_context    context;
     ogl_materials  material_manager;
@@ -147,7 +146,6 @@ typedef struct _ogl_scene_renderer
                                                                4,     /* n_elements_to_preallocate */
                                                                NULL,  /* init_fn */
                                                                NULL); /* deinit_fn */
-        shadow_mapping           = NULL;
         ubers_map                = system_hash64map_create    (sizeof(_ogl_scene_renderer_uber*) );
         vector_pool              = system_resource_pool_create(sizeof(system_resizable_vector),
                                                                64, /* capacity */
@@ -208,13 +206,6 @@ typedef struct _ogl_scene_renderer
             system_resource_pool_release(scene_renderer_mesh_pool);
 
             scene_renderer_mesh_pool = NULL;
-        }
-
-        if (shadow_mapping != NULL)
-        {
-            ogl_scene_renderer_shadow_mapping_release(shadow_mapping);
-
-            shadow_mapping = NULL;
         }
 
         if (temp_variant_float != NULL)
@@ -795,10 +786,14 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                                     __in __notnull const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
                                                     __in           system_timeline_time                           frame_time)
 {
-    uint32_t             n_lights     = 0;
-    _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
-    ogl_textures         texture_pool = NULL;
+    uint32_t             n_lights       = 0;
+    _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
+    ogl_shadow_mapping   shadow_mapping = NULL;
+    ogl_textures         texture_pool   = NULL;
 
+    ogl_context_get_property(renderer_ptr->context,
+                             OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
+                            &shadow_mapping);
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_TEXTURES,
                             &texture_pool);
@@ -829,8 +824,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
 
         if (current_light_is_shadow_caster)
         {
-            /* Grab a texture from the texture pool which will serve as
-             * a depth texture.
+            /* Grab a texture from the texture pool. It will serve as
+             * storage for the shadow map.
              *
              * Note that it is an error for scene_light instance to hold
              * a shadow map texture at this point.
@@ -1082,8 +1077,6 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
                                                                                          scene,
                                                                                          (ogl_scene_renderer) scene_renderer_ptr);
         scene_renderer_ptr->scene            = scene;
-        scene_renderer_ptr->shadow_mapping   = ogl_scene_renderer_shadow_mapping_create(context,
-                                                                                        scene);
 
         scene_retain(scene);
 
@@ -1203,13 +1196,6 @@ PUBLIC EMERALD_API void ogl_scene_renderer_get_property(__in  __notnull ogl_scen
             scene_get_property(renderer_ptr->scene,
                                SCENE_PROPERTY_GRAPH,
                                out_result);
-
-            break;
-        }
-
-        case OGL_SCENE_RENDERER_PROPERTY_SHADOW_MAPPING:
-        {
-            *(ogl_scene_renderer_shadow_mapping*) out_result = renderer_ptr->shadow_mapping;
 
             break;
         }
