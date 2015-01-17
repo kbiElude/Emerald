@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -18,7 +18,7 @@
 typedef struct
 {
     sh_projection_type type;
-    GLint              uniform_locations     [SH_PROJECTOR_PROPERTY_LAST]; 
+    GLint              uniform_locations     [SH_PROJECTOR_PROPERTY_LAST];
     char               value                 [SH_PROJECTOR_PROPERTY_LAST][sizeof(float)*4]; /* need to keep up to vec4s of floats or ints. fits either way. */
     bool               value_needs_gpu_update[SH_PROJECTOR_PROPERTY_LAST];
 } _sh_projector_entry;
@@ -59,26 +59,39 @@ typedef struct
 
     GLuint      pre_rotation_data_cache_bo_id;
     ogl_texture pre_rotation_data_cache_tbo;
-    GLuint      vao_id;
     REFCOUNT_INSERT_VARIABLES
 
 } _sh_projector;
 
 /* Forward declarations */
-PRIVATE                        void _sh_projector_add_projection_call_pre              (                                 _sh_projector*       data_ptr, sh_projection_type projection_type, std::stringstream& vs_variables, std::stringstream& vs_body, uint32_t n_projection);
-PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_convert_rgbXrgbX_to_rrggbb           (__in __notnull                   _sh_projector*       projector_ptr, __in uint32_t result_bo_id, __in uint32_t result_bo_offset);
-PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback                      (__in __notnull                   ogl_context          context, void* arg);
-PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_deinit_rgbrgb_to_rrggbbXX_converter(__in __notnull                   _sh_projector*       data);
-PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_init_rgbrgb_to_rrggbbXX_converter  (                                 _sh_projector*       data);
-PRIVATE                        void _sh_projector_init_sh_projector_entry              (                                 _sh_projector_entry* entry, sh_projection_type projection_type);
-PRIVATE                        void _sh_projector_replace_general_datatype_defines     (                                 _sh_projector*       data, std::string& in);
-PRIVATE                        void _sh_projector_replace_general_loop_define          (__in __notnull                   _sh_projector*       data, std::string& in);
-PRIVATE                        void _sh_projector_replace_general_defines              (                                 _sh_projector*       projector_ptr, std::string& in);
-PRIVATE                        void _sh_projector_release_callback                     (__in __notnull                   ogl_context          context, void* arg);
-PRIVATE                        void _sh_projector_release                              (__in __notnull __deallocate(mem) void*                ptr);
+PRIVATE                        void _sh_projector_add_projection_call_pre              (                                 _sh_projector*       data_ptr,
+                                                                                                                          sh_projection_type  projection_type,
+                                                                                                                          std::stringstream&  vs_variables,
+                                                                                                                          std::stringstream&  vs_body,
+                                                                                                                          uint32_t            n_projection);
+PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_convert_rgbXrgbX_to_rrggbb           (__in __notnull                   _sh_projector*       projector_ptr,
+                                                                                        __in                              uint32_t            result_bo_id,
+                                                                                        __in                              uint32_t            result_bo_offset);
+PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback                      (__in __notnull                    ogl_context         context,
+                                                                                                                          void*               arg);
+PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_deinit_rgbrgb_to_rrggbbXX_converter  (__in __notnull                   _sh_projector*       data);
+PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_init_rgbrgb_to_rrggbbXX_converter    (                                 _sh_projector*       data);
+PRIVATE                        void _sh_projector_init_sh_projector_entry              (                                 _sh_projector_entry* entry,
+                                                                                                                          sh_projection_type  projection_type);
+PRIVATE                        void _sh_projector_replace_general_datatype_defines     (                                 _sh_projector*       data,
+                                                                                                                          std::string&        in);
+PRIVATE                        void _sh_projector_replace_general_loop_define          (__in __notnull                   _sh_projector*       data,
+                                                                                                                          std::string&        in);
+PRIVATE                        void _sh_projector_replace_general_defines              (                                 _sh_projector*       projector_ptr,
+                                                                                                                          std::string&        in);
+PRIVATE                        void _sh_projector_release_callback                     (__in __notnull                    ogl_context         context,
+                                                                                                                          void*               arg);
+PRIVATE                        void _sh_projector_release                              (__in __notnull __deallocate(mem)  void*               ptr);
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(sh_projector, sh_projector, _sh_projector);
+REFCOUNT_INSERT_IMPLEMENTATION(sh_projector,
+                               sh_projector,
+                              _sh_projector);
 
 /* Internal variables */
 const char* sh_projector_preamble = "#version 330 core\n"
@@ -181,7 +194,10 @@ const char* sh_projector_rgbXrgbX_rrggbb_converter_body = "#version 330 core\n"
 
 
 /** TODO */
-PRIVATE void _sh_projector_add_projection_call_pre(_sh_projector* data_ptr, std::stringstream& vs_variables, std::stringstream& vs_functions, uint32_t n_projection)
+PRIVATE void _sh_projector_add_projection_call_pre(_sh_projector*     data_ptr,
+                                                   std::stringstream& vs_variables,
+                                                   std::stringstream& vs_functions,
+                                                   uint32_t           n_projection)
 {
     sh_projection_type projection_type = data_ptr->projections[n_projection].type;
     const char*        projection_body = (projection_type == SH_PROJECTION_TYPE_STATIC_COLOR)      ? sh_projector_static_code       :
@@ -205,7 +221,9 @@ PRIVATE void _sh_projector_add_projection_call_pre(_sh_projector* data_ptr, std:
     n_projection_stringstream         << n_projection;
     projection_variables_stringstream << projection_vars;
 
-    updated_projection_variables_string = projection_variables_stringstream.str().replace(projection_variables_stringstream.str().find("INDEX"), strlen("INDEX"), n_projection_stringstream.str().c_str() );
+    updated_projection_variables_string = projection_variables_stringstream.str().replace(projection_variables_stringstream.str().find("INDEX"),
+                                                                                          strlen("INDEX"),
+                                                                                          n_projection_stringstream.str().c_str() );
 
     vs_variables << updated_projection_variables_string;
 
@@ -235,12 +253,14 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_convert_rgbXrgbX_to_rrggbb(__i
     if (projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo_bo_id == -1)
     {
         /* Throw an assertion if a TBO for a different BO is already available - we should only perform this action once */
-        ASSERT_DEBUG_SYNC(projector_ptr->components >= SH_COMPONENTS_RGB, "RGB/RGBA SH components case only implemented");
+        ASSERT_DEBUG_SYNC(projector_ptr->components >= SH_COMPONENTS_RGB,
+                          "RGB/RGBA SH components case only implemented");
 
-        projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo = ogl_texture_create(projector_ptr->context, system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [RGBRGB->RRGGBBxx converter] ",
-                                                                                                                                                             system_hashed_ansi_string_get_buffer(projector_ptr->name) ));
+        projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo = ogl_texture_create(projector_ptr->context,
+                                                                             system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [RGBRGB->RRGGBBxx converter] ",
+                                                                                                                                     system_hashed_ansi_string_get_buffer(projector_ptr->name) ));
 
-        dsa_entry_points->pGLTextureBufferRangeEXT(projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo, 
+        dsa_entry_points->pGLTextureBufferRangeEXT(projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo,
                                                    GL_TEXTURE_BUFFER,
                                                    GL_R32F,
                                                    result_bo_id,
@@ -256,19 +276,26 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_convert_rgbXrgbX_to_rrggbb(__i
     uint32_t additional_offset = 0;
     uint32_t size              = 0;
 
-    sh_projector_get_projection_result_details( (sh_projector) projector_ptr, SH_PROJECTION_RESULT_RRGGBB, &additional_offset, &size);
+    sh_projector_get_projection_result_details( (sh_projector) projector_ptr,
+                                               SH_PROJECTION_RESULT_RRGGBB,
+                                              &additional_offset,
+                                              &size);
 
     entry_points->pGLUseProgram             (ogl_program_get_id(projector_ptr->rgbrgb_to_rrggbbXX_converter.program) );
-    dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_BUFFER, projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo);
-    entry_points->pGLBindBufferRange        (GL_TRANSFORM_FEEDBACK_BUFFER, 
+    dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                             GL_TEXTURE_BUFFER,
+                                             projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo);
+    entry_points->pGLBindBufferRange        (GL_TRANSFORM_FEEDBACK_BUFFER,
                                              0,
-                                             result_bo_id, 
+                                             result_bo_id,
                                              result_bo_offset + additional_offset,
                                              size);
 
     entry_points->pGLBeginTransformFeedback (GL_POINTS);
     {
-        entry_points->pGLDrawArrays(GL_POINTS, 0, sh_samples_get_amount_of_coeffs(projector_ptr->samples) * 4 /* We need RGBA output representation to support up to 4 bands */);
+        entry_points->pGLDrawArrays(GL_POINTS,
+                                    0,
+                                    sh_samples_get_amount_of_coeffs(projector_ptr->samples) * 4); /* We need RGBA output representation to support up to 4 bands */
     }
     entry_points->pGLEndTransformFeedback();
 }
@@ -294,13 +321,18 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
     std::stringstream vs_variablestream;
 
     vs_body_string = sh_projector_general_template_body;
-    
+
     vs_bodystream << vs_body_string.c_str();
 
     /* Iterate through requested projections and create the program body */
-    for (uint32_t n = 0; n < data->n_projections; ++n)
+    for (uint32_t n = 0;
+                  n < data->n_projections;
+                ++n)
     {
-        _sh_projector_add_projection_call_pre(data,  vs_variablestream, vs_functionsstream, n);
+        _sh_projector_add_projection_call_pre(data,
+                                              vs_variablestream,
+                                              vs_functionsstream,
+                                              n);
     }
 
     /* Replace LOOP with actual calls */
@@ -308,12 +340,18 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
     std::string vs_functionsstream_string = vs_functionsstream.str();
     std::string vs_variablestream_string  = vs_variablestream.str();
 
-    _sh_projector_replace_general_loop_define     (data, vs_bodystream_string);
-    _sh_projector_replace_general_datatype_defines(data, vs_bodystream_string);
-    _sh_projector_replace_general_defines         (data, vs_bodystream_string);
-    _sh_projector_replace_general_datatype_defines(data, vs_functionsstream_string);
-    _sh_projector_replace_general_defines         (data, vs_functionsstream_string);
-    _sh_projector_replace_general_datatype_defines(data, vs_variablestream_string);
+    _sh_projector_replace_general_loop_define     (data,
+                                                   vs_bodystream_string);
+    _sh_projector_replace_general_datatype_defines(data,
+                                                   vs_bodystream_string);
+    _sh_projector_replace_general_defines         (data,
+                                                   vs_bodystream_string);
+    _sh_projector_replace_general_datatype_defines(data,
+                                                   vs_functionsstream_string);
+    _sh_projector_replace_general_defines         (data,
+                                                   vs_functionsstream_string);
+    _sh_projector_replace_general_datatype_defines(data,
+                                                   vs_variablestream_string);
 
     /* Create the actual program */
     const char*        body_parts[]             = {sh_projector_preamble,
@@ -323,14 +361,21 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
                                                   };
     ogl_shader         shader                   = NULL;
     static const char* tf_output_data[]         = {"result.result"};
-    
-    shader        = ogl_shader_create (data->context, SHADER_TYPE_VERTEX, data->name);
-    data->program = ogl_program_create(data->context,                     data->name);
 
-    entry_points->pGLShaderSource(ogl_shader_get_id(shader), sizeof(body_parts) / sizeof(body_parts[0]), body_parts, NULL);
-    
-    ogl_program_attach_shader(data->program, shader);
-    
+    shader        = ogl_shader_create (data->context,
+                                       SHADER_TYPE_VERTEX,
+                                       data->name);
+    data->program = ogl_program_create(data->context,
+                                       data->name);
+
+    entry_points->pGLShaderSource(ogl_shader_get_id(shader),
+                                  sizeof(body_parts) / sizeof(body_parts[0]),
+                                  body_parts,
+                                  NULL);
+
+    ogl_program_attach_shader(data->program,
+                              shader);
+
     entry_points->pGLTransformFeedbackVaryings(ogl_program_get_id(data->program),
                                                sizeof(tf_output_data) / sizeof(tf_output_data[0]),
                                                tf_output_data,
@@ -343,9 +388,15 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
     const ogl_program_uniform_descriptor* theta_phi_descriptor = NULL;
     const ogl_program_uniform_descriptor* unit_vecs_descriptor = NULL;
 
-    ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create("sh_coeffs"), &sh_coeffs_descriptor);
-    ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create("theta_phi"), &theta_phi_descriptor);
-    ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create("unit_vecs"), &unit_vecs_descriptor);
+    ogl_program_get_uniform_by_name(data->program,
+                                    system_hashed_ansi_string_create("sh_coeffs"),
+                                   &sh_coeffs_descriptor);
+    ogl_program_get_uniform_by_name(data->program,
+                                    system_hashed_ansi_string_create("theta_phi"),
+                                   &theta_phi_descriptor);
+    ogl_program_get_uniform_by_name(data->program,
+                                    system_hashed_ansi_string_create("unit_vecs"),
+                                   &unit_vecs_descriptor);
 
     if (sh_coeffs_descriptor != NULL)
     {
@@ -375,7 +426,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
     }
 
     /* Retrieve uniform locations for each projection */
-    for (uint32_t n = 0; n < data->n_projections; ++n)
+    for (uint32_t n = 0;
+                  n < data->n_projections;
+                ++n)
     {
         std::stringstream                     cutoff_stringstream;
         std::stringstream                     linear_exposure_stringstream;
@@ -395,11 +448,21 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
         static_color_stringstream          << "static_color"          << n;
         zenith_luminance_stringstream      << "zenith_luminance"      << n;
 
-        ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create(cutoff_stringstream.str().c_str()               ), &cutoff_descriptor);
-        ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create(linear_exposure_stringstream.str().c_str()      ), &linear_exposure_descriptor);
-        ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create(spherical_map_sampler_stringstream.str().c_str()), &spherical_map_sampler_descriptor);
-        ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create(static_color_stringstream.str().c_str()         ), &static_color_descriptor);
-        ogl_program_get_uniform_by_name(data->program, system_hashed_ansi_string_create(zenith_luminance_stringstream.str().c_str()     ), &zenith_luminance_descriptor);
+        ogl_program_get_uniform_by_name(data->program,
+                                        system_hashed_ansi_string_create(cutoff_stringstream.str().c_str()),
+                                       &cutoff_descriptor);
+        ogl_program_get_uniform_by_name(data->program,
+                                        system_hashed_ansi_string_create(linear_exposure_stringstream.str().c_str()),
+                                       &linear_exposure_descriptor);
+        ogl_program_get_uniform_by_name(data->program,
+                                        system_hashed_ansi_string_create(spherical_map_sampler_stringstream.str().c_str()),
+                                       &spherical_map_sampler_descriptor);
+        ogl_program_get_uniform_by_name(data->program,
+                                        system_hashed_ansi_string_create(static_color_stringstream.str().c_str()),
+                                       &static_color_descriptor);
+        ogl_program_get_uniform_by_name(data->program,
+                                        system_hashed_ansi_string_create(zenith_luminance_stringstream.str().c_str()),
+                                       &zenith_luminance_descriptor);
 
         if (cutoff_descriptor != NULL)
         {
@@ -450,18 +513,18 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
     /* Also initialize rgbXrgbX->rrggbb converter we need for ogl_uber's mental health */
     _sh_projector_init_rgbrgb_to_rrggbbXX_converter(data);
 
-    /* Create VAO */
-    entry_points->pGLGenVertexArrays(1, &data->vao_id);
-
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not generate VAO");    
-
-    /* We will also need a buffer object to hold calculated SH data prior to rotating them. 
+    /* We will also need a buffer object to hold calculated SH data prior to rotating them.
      * For rotation purposes, we will need a TBO as well, bound to the BO */
-    entry_points->pGLGenBuffers            (1, &data->pre_rotation_data_cache_bo_id);
-    dsa_entry_points->pGLNamedBufferDataEXT(data->pre_rotation_data_cache_bo_id, data->total_result_bo_size, NULL, GL_DYNAMIC_COPY);
+    entry_points->pGLGenBuffers            (1,
+                                           &data->pre_rotation_data_cache_bo_id);
+    dsa_entry_points->pGLNamedBufferDataEXT(data->pre_rotation_data_cache_bo_id,
+                                            data->total_result_bo_size,
+                                            NULL,
+                                            GL_DYNAMIC_COPY);
 
-    data->pre_rotation_data_cache_tbo = ogl_texture_create(context, system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [pre-rotation data cache TBO] ",
-                                                                                                                            system_hashed_ansi_string_get_buffer(data->name) ));
+    data->pre_rotation_data_cache_tbo = ogl_texture_create(context,
+                                                           system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [pre-rotation data cache TBO] ",
+                                                                                                                   system_hashed_ansi_string_get_buffer(data->name) ));
 
     dsa_entry_points->pGLTextureBufferRangeEXT(data->pre_rotation_data_cache_tbo,
                                                GL_TEXTURE_BUFFER_EXT,
@@ -516,14 +579,21 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_init_rgbrgb_to_rrggbbXX_conver
     data->rgbrgb_to_rrggbbXX_converter.tbo       = NULL;
 
     /* Link the conversion program */
-    vertex_shader                              = ogl_shader_create (data->context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                                                                               " rgbXrgbX to rrggbbXX"));
-    data->rgbrgb_to_rrggbbXX_converter.program = ogl_program_create(data->context,                     system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                                                                               " rgbXrgbX to rrggbbXX"));
+    vertex_shader                              = ogl_shader_create (data->context,
+                                                                    SHADER_TYPE_VERTEX,
+                                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                                            " rgbXrgbX to rrggbbXX"));
+    data->rgbrgb_to_rrggbbXX_converter.program = ogl_program_create(data->context,
+                                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                                           " rgbXrgbX to rrggbbXX"));
 
-    entry_points->pGLShaderSource(ogl_shader_get_id(vertex_shader), 1, &sh_projector_rgbXrgbX_rrggbb_converter_body, NULL);
-    
-    ogl_program_attach_shader(data->rgbrgb_to_rrggbbXX_converter.program, vertex_shader);
+    entry_points->pGLShaderSource(ogl_shader_get_id(vertex_shader),
+                                  1,
+                                  &sh_projector_rgbXrgbX_rrggbb_converter_body,
+                                  NULL);
+
+    ogl_program_attach_shader(data->rgbrgb_to_rrggbbXX_converter.program,
+                              vertex_shader);
     ogl_shader_release       (vertex_shader);
 
     entry_points->pGLTransformFeedbackVaryings(ogl_program_get_id(data->rgbrgb_to_rrggbbXX_converter.program),
@@ -537,8 +607,12 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_init_rgbrgb_to_rrggbbXX_conver
     const ogl_program_uniform_descriptor* input_data_descriptor   = NULL;
     const ogl_program_uniform_descriptor* n_sh_coeffs_descriptor  = NULL;
 
-    ogl_program_get_uniform_by_name(data->rgbrgb_to_rrggbbXX_converter.program, system_hashed_ansi_string_create("input_data"),   &input_data_descriptor);
-    ogl_program_get_uniform_by_name(data->rgbrgb_to_rrggbbXX_converter.program, system_hashed_ansi_string_create("n_sh_coeffs"),  &n_sh_coeffs_descriptor);
+    ogl_program_get_uniform_by_name(data->rgbrgb_to_rrggbbXX_converter.program,
+                                    system_hashed_ansi_string_create("input_data"),
+                                   &input_data_descriptor);
+    ogl_program_get_uniform_by_name(data->rgbrgb_to_rrggbbXX_converter.program,
+                                    system_hashed_ansi_string_create("n_sh_coeffs"),
+                                   &n_sh_coeffs_descriptor);
 
     data->rgbrgb_to_rrggbbXX_converter.input_data_location  = input_data_descriptor->location;
     data->rgbrgb_to_rrggbbXX_converter.n_sh_coeffs_location = n_sh_coeffs_descriptor->location;
@@ -546,23 +620,33 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_init_rgbrgb_to_rrggbbXX_conver
     /* Set the uniforms */
     GLuint converter_program_id = ogl_program_get_id(data->rgbrgb_to_rrggbbXX_converter.program);
 
-    entry_points->pGLProgramUniform1i(converter_program_id, data->rgbrgb_to_rrggbbXX_converter.n_sh_coeffs_location, sh_samples_get_amount_of_coeffs(data->samples) );
+    entry_points->pGLProgramUniform1i(converter_program_id,
+                                      data->rgbrgb_to_rrggbbXX_converter.n_sh_coeffs_location,
+                                      sh_samples_get_amount_of_coeffs(data->samples) );
 
-    ASSERT_DEBUG_SYNC(data->components >= SH_COMPONENTS_RGB, "Only RGB/RGBA SH data supported");
+    ASSERT_DEBUG_SYNC(data->components >= SH_COMPONENTS_RGB,
+                      "Only RGB/RGBA SH data supported");
 }
 
 /** TODO */
-PRIVATE void _sh_projector_init_sh_projector_entry(_sh_projector_entry* entry, sh_projection_type projection_type)
+PRIVATE void _sh_projector_init_sh_projector_entry(_sh_projector_entry* entry,
+                                                   sh_projection_type   projection_type)
 {
     entry->type = projection_type;
 
-    for (uint32_t n = 0; n < SH_PROJECTOR_PROPERTY_LAST; ++n)
+    for (uint32_t n = 0;
+                  n < SH_PROJECTOR_PROPERTY_LAST;
+                ++n)
     {
         entry->value_needs_gpu_update[n] = true;
     }
 
-    memset(entry->value,             0, sizeof(entry->value) );
-    memset(entry->uniform_locations, 0, sizeof(entry->uniform_locations) );
+    memset(entry->value,
+           0,
+           sizeof(entry->value) );
+    memset(entry->uniform_locations,
+           0,
+           sizeof(entry->uniform_locations) );
 }
 
 /** TODO */
@@ -570,7 +654,7 @@ PRIVATE void _sh_projector_replace_general_datatype_defines(_sh_projector* data,
 {
     /* Prepare datatype / datatype_components strings */
     const char* datatype            = NULL;
-    const char* datatype_components = NULL;    
+    const char* datatype_components = NULL;
 
     switch (data->components)
     {
@@ -606,17 +690,22 @@ PRIVATE void _sh_projector_replace_general_datatype_defines(_sh_projector* data,
 
     while (in.find("DATATYPE_COMPONENTS") != std::string::npos)
     {
-         in.replace(in.find("DATATYPE_COMPONENTS"), strlen("DATATYPE_COMPONENTS"), datatype_components);
+         in.replace(in.find("DATATYPE_COMPONENTS"),
+                    strlen("DATATYPE_COMPONENTS"),
+                    datatype_components);
     }
 
     while (in.find("DATATYPE") != std::string::npos)
     {
-        in.replace(in.find("DATATYPE"), strlen("DATATYPE"), datatype);
+        in.replace(in.find("DATATYPE"),
+                   strlen("DATATYPE"),
+                   datatype);
     }
 }
 
 /** TODO */
-PRIVATE void _sh_projector_replace_general_defines(_sh_projector* projector_ptr, std::string& in)
+PRIVATE void _sh_projector_replace_general_defines(_sh_projector* projector_ptr,
+                                                   std::string&   in)
 {
     uint32_t          n_coeffs  = sh_samples_get_amount_of_coeffs (projector_ptr->samples);
     uint32_t          n_samples = sh_samples_get_amount_of_samples(projector_ptr->samples);
@@ -628,17 +717,22 @@ PRIVATE void _sh_projector_replace_general_defines(_sh_projector* projector_ptr,
 
     while (in.find("N_COEFFS") != std::string::npos)
     {
-        in.replace(in.find("N_COEFFS"),  strlen("N_COEFFS"),  n_coeffs_stringstream.str() );
+        in.replace(in.find("N_COEFFS"),
+                   strlen("N_COEFFS"),
+                   n_coeffs_stringstream.str() );
     }
 
     while (in.find("N_SAMPLES") != std::string::npos)
     {
-        in.replace(in.find("N_SAMPLES"), strlen("N_SAMPLES"), n_samples_stringstream.str());
+        in.replace(in.find("N_SAMPLES"),
+                   strlen("N_SAMPLES"),
+                   n_samples_stringstream.str());
     }
 }
 
 /** TODO */
-PRIVATE void _sh_projector_replace_general_loop_define(_sh_projector* data, std::string& in)
+PRIVATE void _sh_projector_replace_general_loop_define(_sh_projector* data,
+                                                       std::string&   in)
 {
     std::stringstream call_stringstream;
     std::stringstream processed_stringstream;
@@ -648,7 +742,9 @@ PRIVATE void _sh_projector_replace_general_loop_define(_sh_projector* data, std:
         /* Add the template */
         processed_stringstream << sh_projector_general_template_loop;
 
-        for (uint32_t n = 0; n < data->n_projections; ++n)
+        for (uint32_t n = 0;
+                      n < data->n_projections;
+                    ++n)
         {
             /* Create the call string stream */
             switch (data->projections[n].type)
@@ -688,14 +784,21 @@ PRIVATE void _sh_projector_replace_general_loop_define(_sh_projector* data, std:
         /* Replace the template call in the newly inserted template with actual one */
         std::string processed_stringstream_string = processed_stringstream.str();
 
-        processed_stringstream_string.replace(processed_stringstream_string.find("GET_VALUE_CALL"), strlen("GET_VALUE_CALL"), (data->n_projections > 0) ? call_stringstream.str().c_str() : "");
+        processed_stringstream_string.replace(processed_stringstream_string.find("GET_VALUE_CALL"),
+                                              strlen("GET_VALUE_CALL"),
+                                              (data->n_projections > 0) ? call_stringstream.str().c_str() : "");
+
         processed_stringstream.str(processed_stringstream_string);
 
-        in.replace(in.find("LOOP"), strlen("LOOP"), processed_stringstream.str().c_str() );
+        in.replace(in.find("LOOP"),
+                   strlen("LOOP"),
+                   processed_stringstream.str().c_str() );
     }
     else
     {
-        in.replace(in.find("LOOP"), strlen("LOOP"), "");
+        in.replace(in.find("LOOP"),
+                   strlen("LOOP"),
+                   "");
     }
 }
 
@@ -725,33 +828,38 @@ PRIVATE void _sh_projector_release_callback(__in __notnull ogl_context context, 
     }
 
     /* Release buffer and texture objects */
-    entry_points->pGLDeleteBuffers (1, &data_ptr->pre_rotation_data_cache_bo_id);
+    entry_points->pGLDeleteBuffers(1,
+                                   &data_ptr->pre_rotation_data_cache_bo_id);
 
     ogl_texture_release(data_ptr->pre_rotation_data_cache_tbo);
 
     data_ptr->pre_rotation_data_cache_bo_id  = 0;
-
-    /* Release VAO */
-    entry_points->pGLDeleteVertexArrays(1, &data_ptr->vao_id);
 }
 
 /** TODO */
 PRIVATE void _sh_projector_release(__in __notnull __deallocate(mem) void* ptr)
 {
     _sh_projector* data_ptr = (_sh_projector*) ptr;
-    
-    ogl_context_request_callback_from_context_thread(data_ptr->context, _sh_projector_release_callback, data_ptr);
+
+    ogl_context_request_callback_from_context_thread(data_ptr->context,
+                                                     _sh_projector_release_callback,
+                                                     data_ptr);
 }
 
 /** TODO */
-PRIVATE void _sh_projector_store_rgbrgb_result_as_rrggbb(_sh_projector* projector_ptr, float* src_ptr, float* result_ptr, uint32_t n_coeffs)
+PRIVATE void _sh_projector_store_rgbrgb_result_as_rrggbb(_sh_projector* projector_ptr,
+                                                         float*         src_ptr,
+                                                         float*         result_ptr,
+                                                         uint32_t       n_coeffs)
 {
     /* NOTE: Internally, we always output vec3, so that the result data can be directly fed to uber program. */
     switch (projector_ptr->components)
     {
         case SH_COMPONENTS_RED:
         {
-            memcpy(result_ptr, src_ptr, 3 * sizeof(float) * n_coeffs);
+            memcpy(result_ptr,
+                   src_ptr,
+                   3 * sizeof(float) * n_coeffs);
 
             break;
         }
@@ -761,11 +869,16 @@ PRIVATE void _sh_projector_store_rgbrgb_result_as_rrggbb(_sh_projector* projecto
         {
             uint32_t n_bands = sh_samples_get_amount_of_bands(projector_ptr->samples);
 
-            ASSERT_DEBUG_SYNC(n_bands <= 4, "Up to 4 SH bands are supported");
+            ASSERT_DEBUG_SYNC(n_bands <= 4,
+                              "Up to 4 SH bands are supported");
 
-            memset(result_ptr, 0, 3 * sizeof(float) * n_coeffs);
+            memset(result_ptr,
+                   0,
+                   3 * sizeof(float) * n_coeffs);
 
-            for (uint32_t n = 0; n < 3 * n_coeffs; ++n)
+            for (uint32_t n = 0;
+                          n < 3 * n_coeffs;
+                        ++n)
             {
                 uint32_t n_channel       = n % 3;       /* vec3 */
                 uint32_t n_coeff         = n / 3;       /* vec3 */
@@ -780,7 +893,8 @@ PRIVATE void _sh_projector_store_rgbrgb_result_as_rrggbb(_sh_projector* projecto
 
         default:
         {
-            ASSERT_ALWAYS_SYNC(false, "Unrecognized SH components enum value");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized SH components enum value");
         }
     }
 }
@@ -814,7 +928,8 @@ PUBLIC EMERALD_API sh_projector sh_projector_create(__in __notnull ogl_context  
     /* Instantiate the object */
     _sh_projector* result = new (std::nothrow) _sh_projector;
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Could not instantiate result object.");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Could not instantiate result object.");
     if (result != NULL)
     {
         const uint32_t               rrggbb_data_set_size     = 4 /* rrggbb layout is vec3-based */ * sh_samples_get_amount_of_coeffs(samples) * sizeof(GLfloat);
@@ -833,7 +948,9 @@ PUBLIC EMERALD_API sh_projector sh_projector_create(__in __notnull ogl_context  
             rgbrgb_alignment_padding = 0;
         }
 
-        memset(&result->rgbrgb_to_rrggbbXX_converter, 0, sizeof(result->rgbrgb_to_rrggbbXX_converter) );
+        memset(&result->rgbrgb_to_rrggbbXX_converter,
+               0,
+               sizeof(result->rgbrgb_to_rrggbbXX_converter) );
 
         result->components             = components;
         result->context                = context;
@@ -853,12 +970,16 @@ PUBLIC EMERALD_API sh_projector sh_projector_create(__in __notnull ogl_context  
         result->total_result_bo_size   = rrggbb_data_set_size + rgbrgb_data_set_size;
         result->total_result_bo_size  +=                        rgbrgb_alignment_padding;
 
-        ASSERT_ALWAYS_SYNC(result->projections != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(result->projections != NULL,
+                           "Out of memory");
         if (result->projections != NULL)
         {
-            for (uint32_t n_projection = 0; n_projection < n_projections; ++n_projection)
+            for (uint32_t n_projection = 0;
+                          n_projection < n_projections;
+                        ++n_projection)
             {
-                _sh_projector_init_sh_projector_entry(result->projections + n_projection, projections[n_projection]);
+                _sh_projector_init_sh_projector_entry(result->projections + n_projection,
+                                                      projections[n_projection]);
             }
         }
 
@@ -866,12 +987,15 @@ PUBLIC EMERALD_API sh_projector sh_projector_create(__in __notnull ogl_context  
     }
 
     /* Request renderer callback */
-    ogl_context_request_callback_from_context_thread(context, _sh_projector_create_callback, result);
+    ogl_context_request_callback_from_context_thread(context,
+                                                     _sh_projector_create_callback,
+                                                     result);
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                    _sh_projector_release,
                                                    OBJECT_TYPE_SH_PROJECTOR,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\SH Projector\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\SH Projector\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the result */
     return (sh_projector) result;
@@ -888,6 +1012,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void sh_projector_execute(__in        
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     const uint32_t                                            n_coeffs         = sh_samples_get_amount_of_coeffs(projector_ptr->samples);
+    GLuint                                                    vao_id           = 0;
 
     ogl_context_get_property(projector_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -895,18 +1020,25 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void sh_projector_execute(__in        
     ogl_context_get_property(projector_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+    ogl_context_get_property(projector_ptr->context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
 
-    entry_points->pGLBindVertexArray(projector_ptr->vao_id);
+    entry_points->pGLBindVertexArray(vao_id);
     entry_points->pGLEnable         (GL_RASTERIZER_DISCARD);
     {
         /* Make sure all uniforms are configured correctly */
         GLuint program_id = ogl_program_get_id(projector_ptr->program);
 
-        for (uint32_t n = 0; n < projector_ptr->n_projections; ++n)
+        for (uint32_t n = 0;
+                      n < projector_ptr->n_projections;
+                    ++n)
         {
             _sh_projector_entry* projection_ptr = projector_ptr->projections + n;
 
-            for (uint32_t n_entry = 0; n_entry < SH_PROJECTOR_PROPERTY_LAST; ++n_entry)
+            for (uint32_t n_entry = 0;
+                          n_entry < SH_PROJECTOR_PROPERTY_LAST;
+                        ++n_entry)
             {
                 if (projection_ptr->value_needs_gpu_update[n_entry])
                 {
@@ -923,7 +1055,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void sh_projector_execute(__in        
                         case SH_PROJECTOR_PROPERTY_SKY_ZENITH_LUMINANCE:
                         {
                             /* float1 */
-                            entry_points->pGLProgramUniform1f(program_id, projection_ptr->uniform_locations[n_entry], *((GLfloat*) projection_ptr->value[n_entry]));
+                            entry_points->pGLProgramUniform1f(program_id,
+                                                              projection_ptr->uniform_locations[n_entry],
+                                                             *((GLfloat*) projection_ptr->value[n_entry]));
 
                             break;
                         }
@@ -939,32 +1073,77 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void sh_projector_execute(__in        
                             /* datatype-dependent */
                             switch (projector_ptr->components)
                             {
-                                case 1:  entry_points->pGLProgramUniform1fv(program_id, projection_ptr->uniform_locations[n_entry], 1, (GLfloat*) projection_ptr->value[n_entry]); break;
-                                case 2:  entry_points->pGLProgramUniform2fv(program_id, projection_ptr->uniform_locations[n_entry], 1, (GLfloat*) projection_ptr->value[n_entry]); break;
-                                case 3:  entry_points->pGLProgramUniform3fv(program_id, projection_ptr->uniform_locations[n_entry], 1, (GLfloat*) projection_ptr->value[n_entry]); break;
-                                case 4:  entry_points->pGLProgramUniform4fv(program_id, projection_ptr->uniform_locations[n_entry], 1, (GLfloat*) projection_ptr->value[n_entry]); break;
+                                case 1:
+                                {
+                                    entry_points->pGLProgramUniform1fv(program_id,
+                                                                       projection_ptr->uniform_locations[n_entry],
+                                                                       1,
+                                                                       (GLfloat*) projection_ptr->value[n_entry]);
 
-                                default: ASSERT_DEBUG_SYNC(false, "Unrecognized components value");
-                            }
+                                    break;
+                                }
+
+                                case 2:
+                                {
+                                    entry_points->pGLProgramUniform2fv(program_id,
+                                                                       projection_ptr->uniform_locations[n_entry],
+                                                                       1,
+                                                                       (GLfloat*) projection_ptr->value[n_entry]);
+
+                                    break;
+                                }
+
+                                case 3:
+                                {
+                                    entry_points->pGLProgramUniform3fv(program_id,
+                                                                       projection_ptr->uniform_locations[n_entry],
+                                                                       1,
+                                                                       (GLfloat*) projection_ptr->value[n_entry]);
+
+                                    break;
+                                }
+
+                                case 4:
+                                {
+                                    entry_points->pGLProgramUniform4fv(program_id,
+                                                                       projection_ptr->uniform_locations[n_entry],
+                                                                       1,
+                                                                       (GLfloat*) projection_ptr->value[n_entry]);
+
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    ASSERT_DEBUG_SYNC(false,
+                                                      "Unrecognized components value");
+                                }
+                            } /* switch (projector_ptr->components) */
 
                             break;
-                        }
+                        } /* case SH_PROJECTOR_PROPERTY_COLOR: */
 
                         case SH_PROJECTOR_PROPERTY_TEXTURE_ID:
                         {
                             /* sampler2d */
-                            entry_points->pGLProgramUniform1i(program_id, projection_ptr->uniform_locations[n_entry], *((GLint*) projection_ptr->value[n_entry]));
+                            entry_points->pGLProgramUniform1i(program_id,
+                                                              projection_ptr->uniform_locations[n_entry],
+                                                             *((GLint*) projection_ptr->value[n_entry]));
 
                             break;
                         }
 
-                        default: ASSERT_DEBUG_SYNC(false, "Unrecognized property");
-                    }
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized property");
+                        }
+                    } /* switch(n_entry) */
 
                     projection_ptr->value_needs_gpu_update[n_entry] = false;
-                }
-            }
-        }
+                } /* if (projection_ptr->value_needs_gpu_update[n_entry]) */
+            } /* for (all entries) */
+        } /* for (all projections) */
 
         /* Don't forget about the generic uniforms! */
         const GLuint projector_program_id = ogl_program_get_id(projector_ptr->program);
@@ -995,15 +1174,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void sh_projector_execute(__in        
                                                  projector_ptr->rgbrgb_data_bo_size);
 
         /* Glory be */
-        entry_points->pGLBeginTransformFeedback (GL_POINTS);
+        entry_points->pGLBeginTransformFeedback(GL_POINTS);
         {
-            entry_points->pGLDrawArrays(GL_POINTS, 0, n_coeffs);
+            entry_points->pGLDrawArrays(GL_POINTS,
+                                        0,
+                                        n_coeffs);
         }
         entry_points->pGLEndTransformFeedback();
         entry_points->pGLFinish();
 
         /* Rotate the data set */
-        ASSERT_DEBUG_SYNC(sh_samples_get_amount_of_bands(projector_ptr->samples) == 3, "Only 3 bands saupported for now");
+        ASSERT_DEBUG_SYNC(sh_samples_get_amount_of_bands(projector_ptr->samples) == 3,
+                          "Only 3 bands saupported for now");
 
         sh_rot_rotate_xyz(projector_ptr->rotator,
                           rotation_angles_radians[0],
@@ -1015,7 +1197,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void sh_projector_execute(__in        
                           projector_ptr->rgbrgb_data_bo_size);  /* keep RGBRGB data size limit */
 
         /* Output data is in rgbXrgbXrgbX format. ogl_uber implementation expects rrggbb layout so make sure the converted form is also available in our result buffer object */
-        _sh_projector_convert_rgbXrgbX_to_rrggbb(projector_ptr, result_bo_id, result_bo_offset);
+        _sh_projector_convert_rgbXrgbX_to_rrggbb(projector_ptr,
+                                                 result_bo_id,
+                                                 result_bo_offset);
 
         /* We're done. */
     }
@@ -1122,9 +1306,13 @@ PUBLIC EMERALD_API bool sh_projector_set_projection_property(__in __notnull sh_p
 
     if (n_bytes_taken != 0)
     {
-        if (memcmp(projector_ptr->projections[n_projection].value[property], data, n_bytes_taken) != 0)
+        if (memcmp(projector_ptr->projections[n_projection].value[property],
+                   data,
+                   n_bytes_taken) != 0)
         {
-            memcpy(projector_ptr->projections[n_projection].value[property], data, n_bytes_taken);
+            memcpy(projector_ptr->projections[n_projection].value[property],
+                   data,
+                   n_bytes_taken);
 
             projector_ptr->projections[n_projection].value_needs_gpu_update[property] = true;
             result                                                                    = true;

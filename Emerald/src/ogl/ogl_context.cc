@@ -41,6 +41,8 @@ typedef struct
     system_window               window;
     system_window_handle        window_handle;
 
+    GLuint                      vao_no_vaas_id;
+
     /* True if single-frame vsync has been enabled for the context, false otherwise */
     bool vsync_enabled;
 
@@ -195,6 +197,11 @@ end:
 PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
 {
     _ogl_context* context_ptr = (_ogl_context*) ptr;
+
+    /* NOTE: This leaks the no-VAA VAO, but it's not much damage, whereas entering
+     *       a rendering context from this method could be tricky under some
+     *       circumstances.
+     */
 
     if (context_ptr->bo_bindings != NULL)
     {
@@ -2121,6 +2128,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->texture_compression                        = NULL;
                                     _result->textures                                   = ogl_textures_create( (ogl_context) _result);
                                     _result->to_bindings                                = NULL;
+                                    _result->vao_no_vaas_id                             = 0;
                                     _result->vsync_enabled                              = vsync_enabled;
                                     _result->wgl_rendering_context                      = wgl_rendering_context;
                                     _result->window                                     = window;
@@ -2286,6 +2294,11 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                             &_result->entry_points_private);
                                         ogl_context_to_bindings_init        (_result->to_bindings,
                                                                             &_result->entry_points_private);
+
+                                        /* Set up the zero-VAA VAO */
+                                        _result->entry_points_gl.pGLGenVertexArrays(1,
+                                                                                   &_result->vao_no_vaas_id);
+
                                     } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
                                     /* Set context-specific vsync setting */
@@ -2613,6 +2626,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_WINDOW:
         {
             *((system_window*) out_result) = context_ptr->window;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_VAO_NO_VAAS:
+        {
+            *(GLuint*) out_result = context_ptr->vao_no_vaas_id;
 
             break;
         }

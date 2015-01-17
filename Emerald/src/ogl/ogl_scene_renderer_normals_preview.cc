@@ -92,7 +92,6 @@ typedef struct _ogl_scene_renderer_normals_preview
     GLint              preview_program_stride_location;
     GLint              preview_program_vp_location;
     scene              scene;
-    GLuint             vao_id;
 } _ogl_scene_renderer_normals_preview;
 
 /* Forward declarations */
@@ -254,26 +253,6 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_normals_preview_release_renderer_callback(__in __notnull ogl_context context,
-                                                                           __in __notnull void*       preview)
-{
-    const ogl_context_gl_entrypoints*    entrypoints_ptr = NULL;
-    _ogl_scene_renderer_normals_preview* preview_ptr     = (_ogl_scene_renderer_normals_preview*) preview;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    if (preview_ptr->vao_id != 0)
-    {
-        entrypoints_ptr->pGLDeleteVertexArrays(1,
-                                               &preview_ptr->vao_id);
-
-        preview_ptr->vao_id = 0;
-    }
-}
-
-/** TODO */
 #ifdef _DEBUG
     /* TODO */
     PRIVATE void _ogl_scene_renderer_normals_preview_verify_context_type(__in __notnull ogl_context context)
@@ -311,7 +290,6 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
         new_instance->preview_program_stride_location        = -1;
         new_instance->preview_program_vp_location            = -1;
         new_instance->scene                                  = scene;
-        new_instance->vao_id                                 = 0;
 
         scene_retain(scene);
     } /* if (new_instance != NULL) */
@@ -323,10 +301,6 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
 PUBLIC void ogl_scene_renderer_normals_preview_release(__in __notnull __post_invalid ogl_scene_renderer_normals_preview preview)
 {
     _ogl_scene_renderer_normals_preview* preview_ptr = (_ogl_scene_renderer_normals_preview*) preview;
-
-    ogl_context_request_callback_from_context_thread(preview_ptr->context,
-                                                     _ogl_scene_renderer_normals_preview_release_renderer_callback,
-                                                     preview_ptr);
 
     if (preview_ptr->scene != NULL)
     {
@@ -440,15 +414,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(__in
                           "Could not initialize preview program");
     }
 
-    /* Initialize other GL objects */
-    if (preview_ptr->vao_id == 0)
-    {
-        entrypoints_ptr->pGLGenVertexArrays(1,
-                                            &preview_ptr->vao_id);
-    }
-
     /* Set up uniforms that will be shared across subsequent draw calls */
     const GLint program_id = ogl_program_get_id(preview_ptr->preview_program);
+    GLuint      vao_id     = 0;
+
+    ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
 
     entrypoints_ptr->pGLUseProgram             (program_id);
     entrypoints_ptr->pGLProgramUniformMatrix4fv(program_id,
@@ -457,7 +429,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(__in
                                                 GL_TRUE,
                                                 system_matrix4x4_get_row_major_data(vp) );
 
-    entrypoints_ptr->pGLBindVertexArray(preview_ptr->vao_id);
+    entrypoints_ptr->pGLBindVertexArray(vao_id);
 }
 
 /** Please see header for spec */

@@ -98,7 +98,6 @@ typedef struct
     system_hashed_ansi_string name;
     curve_editor_curve_window owner;
     ogl_rendering_handler     rendering_handler;
-    GLuint                    vao_id; 
     HWND                      view_window_handle;
     system_window             window;
 
@@ -1756,7 +1755,6 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
     descriptor->tcb_segments              = system_hash64map_create(sizeof(void*) );
     descriptor->text_renderer             = NULL;
     descriptor->text_variant              = system_variant_create(SYSTEM_VARIANT_ANSI_STRING);
-    descriptor->vao_id                    = 0;
     descriptor->view_window_handle        = view_window_handle;
     descriptor->window                    = NULL;
     descriptor->x1                        = START_X1;
@@ -2848,19 +2846,15 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         return;
     }
 
-    if (descriptor_ptr->vao_id == 0)
-    {
-        entry_points->pGLGenVertexArrays(1,
-                                        &descriptor_ptr->vao_id);
+    /* Since this is the first call-back ever for the window, enable line smoothing */
+    GLuint vao_id = 0;
 
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                          "Could not generate VAO.");
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
 
-        /* Since this is the first call-back ever for the window, enable line smoothing */
-        entry_points->pGLEnable(GL_LINE_SMOOTH);
-    }
-
-    entry_points->pGLBindVertexArray(descriptor_ptr->vao_id);
+    entry_points->pGLEnable         (GL_LINE_SMOOTH);
+    entry_points->pGLBindVertexArray(vao_id);
     {
         /* Retrieve window dimensions */
         system_window_get_dimensions(descriptor_ptr->window,

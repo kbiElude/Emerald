@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  * Uniform buffer data layout is as follows
  *
@@ -137,8 +137,6 @@ typedef struct
     GLuint      draw_text_vertex_shader_n_origin_character_location;
     GLuint      draw_text_vertex_shader_scale_location;
 
-    GLuint      vao_id;
-
     FontTable   font_tables;
 } _global_variables;
 
@@ -210,12 +208,17 @@ const char* vertex_shader_template = "#ifdef GL_ES\n"
 
 
 /* Private forward declarations */
-PRIVATE void _ogl_text_construction_callback_from_renderer        (__in __notnull ogl_context context, void* text);
-PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(__in __notnull ogl_context context, void* text);
-PRIVATE void _ogl_text_destruction_callback_from_renderer         (__in __notnull ogl_context context, void* text);
-PRIVATE void _ogl_text_draw_callback_from_renderer                (__in __notnull ogl_context context, void* text);
-PRIVATE void _ogl_text_release                                    (void* text);
-PRIVATE void _ogl_text_update_vram_data_storage                   (__in __notnull ogl_context context, void* text);
+PRIVATE void _ogl_text_construction_callback_from_renderer        (__in __notnull ogl_context context,
+                                                                                  void*       text);
+PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(__in __notnull ogl_context context,
+                                                                                  void*       text);
+PRIVATE void _ogl_text_destruction_callback_from_renderer         (__in __notnull ogl_context context,
+                                                                                  void*       text);
+PRIVATE void _ogl_text_draw_callback_from_renderer                (__in __notnull ogl_context context,
+                                                                                  void*       text);
+PRIVATE void _ogl_text_release                                    (               void*       text);
+PRIVATE void _ogl_text_update_vram_data_storage                   (__in __notnull ogl_context context,
+                                                                                  void*       text);
 
 /* Private functions */
 
@@ -225,7 +228,9 @@ PRIVATE void _ogl_text_release(void* text)
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* First we need to call-back from the rendering thread, in order to free resources owned by GL */
-    ogl_context_request_callback_from_context_thread(text_ptr->owner_context, _ogl_text_destruction_callback_from_renderer, text);
+    ogl_context_request_callback_from_context_thread(text_ptr->owner_context,
+                                                     _ogl_text_destruction_callback_from_renderer,
+                                                     text);
 
     /* Release other stuff */
     if (text_ptr->data_buffer_contents != NULL)
@@ -268,11 +273,15 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
     uint32_t n_text_strings     = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
     uint32_t summed_text_length = 0;
 
-    for (size_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string)
+    for (size_t n_text_string = 0;
+                n_text_string < n_text_strings;
+              ++n_text_string)
     {
         _ogl_text_string* string_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(text_ptr->strings, n_text_string, &string_ptr) )
+        if (system_resizable_vector_get_element_at(text_ptr->strings,
+                                                   n_text_string,
+                                                  &string_ptr) )
         {
             summed_text_length += string_ptr->string_length;
         }
@@ -308,7 +317,8 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
         text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
         text_ptr->data_buffer_contents        = (void*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
 
-        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != NULL,
+                           "Out of memory");
         if (text_ptr->data_buffer_contents == NULL)
         {
             return;
@@ -350,21 +360,27 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
     uint32_t largest_height               = 0;
     uint32_t summed_width                 = 0;
 
-    for (size_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string)
+    for (size_t n_text_string = 0;
+                n_text_string < n_text_strings;
+              ++n_text_string)
     {
         _ogl_text_string* string_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(text_ptr->strings, n_text_string, &string_ptr) )
+        if (system_resizable_vector_get_element_at(text_ptr->strings,
+                                                   n_text_string,
+                                                  &string_ptr) )
         {
             float summed_x_delta = 0;
 
-            for (uint32_t n_character = 0; n_character < string_ptr->string_length; ++n_character)
+            for (uint32_t n_character = 0;
+                          n_character < string_ptr->string_length;
+                        ++n_character)
             {
                 uint8_t font_height = 0;
                 uint8_t font_width  = 0;
                 float   x_delta     = 0;
 
-                gfx_bfg_font_table_get_character_properties(text_ptr->font_table, 
+                gfx_bfg_font_table_get_character_properties(text_ptr->font_table,
                                                             string_ptr->string[n_character],
                                                             character_data_traveller_ptr+2,  /* U1 */
                                                             character_data_traveller_ptr+3,  /* V1 */
@@ -416,7 +432,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* Generate data buffer object */
-    text_ptr->pGLGenBuffers(1, &text_ptr->data_buffer_id);
+    text_ptr->pGLGenBuffers(1,
+                           &text_ptr->data_buffer_id);
 
     ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
                       "Could not create a buffer object to be used for VRAM data storage");
@@ -471,11 +488,15 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             }
 
             /* Assign the bodies to the shaders */
-            ogl_shader_set_body(_global.draw_text_fragment_shader, system_hashed_ansi_string_create(fs_sstream.str().c_str() ));
-            ogl_shader_set_body(_global.draw_text_vertex_shader,   system_hashed_ansi_string_create(vs_sstream.str().c_str() ));
+            ogl_shader_set_body(_global.draw_text_fragment_shader,
+                                system_hashed_ansi_string_create(fs_sstream.str().c_str() ));
+            ogl_shader_set_body(_global.draw_text_vertex_shader,
+                                system_hashed_ansi_string_create(vs_sstream.str().c_str() ));
 
-            ogl_program_attach_shader(_global.draw_text_program, _global.draw_text_fragment_shader);
-            ogl_program_attach_shader(_global.draw_text_program, _global.draw_text_vertex_shader);
+            ogl_program_attach_shader(_global.draw_text_program,
+                                      _global.draw_text_fragment_shader);
+            ogl_program_attach_shader(_global.draw_text_program,
+                                      _global.draw_text_vertex_shader);
 
             if (!ogl_program_link(_global.draw_text_program) )
             {
@@ -544,13 +565,6 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                               _global.draw_text_vertex_shader_data_location,
                                               0);
             }
-
-            /* Create global VAO */
-            text_ptr->pGLGenVertexArrays(1,
-                                        &_global.vao_id);
-
-            ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
-                              "Could not create VAO");
         }
 
         ++_n_global_owners;
@@ -661,7 +675,8 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* First, free all objects that are not global */
-    text_ptr->pGLDeleteBuffers (1, &text_ptr->data_buffer_id);
+    text_ptr->pGLDeleteBuffers (1,
+                               &text_ptr->data_buffer_id);
 
     if (text_ptr->data_buffer_to != NULL)
     {
@@ -688,8 +703,6 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
             _global.draw_text_fragment_shader = NULL;
             _global.draw_text_program         = NULL;
             _global.draw_text_vertex_shader   = NULL;
-
-            text_ptr->pGLDeleteVertexArrays(1, &_global.vao_id);
         }
 
         --_n_global_owners;
@@ -717,12 +730,19 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
         /* Carry on */
         if (n_strings > 0)
         {
+            GLuint vao_id = 0;
+
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                                    &vao_id);
+
             system_critical_section_enter(_global_cs);
             {
                 /* Mark the text drawing program as active */
                 if (context_type == OGL_CONTEXT_TYPE_GL)
                 {
-                    text_ptr->gl_pGLPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                    text_ptr->gl_pGLPolygonMode(GL_FRONT_AND_BACK,
+                                                GL_FILL);
                 }
 
                 text_ptr->pGLUseProgram (program_id);
@@ -780,7 +800,7 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
                                               0);
 
                 /* Draw! */
-                text_ptr->pGLBindVertexArray(_global.vao_id);
+                text_ptr->pGLBindVertexArray(vao_id);
                 text_ptr->pGLEnable         (GL_BLEND);
                 text_ptr->pGLDisable        (GL_DEPTH_TEST);
                 text_ptr->pGLBlendEquation  (GL_FUNC_ADD);
@@ -790,7 +810,9 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
                     bool     has_enabled_scissor_test  = false;
                     uint32_t n_characters_drawn_so_far = 0;
 
-                    for (uint32_t n_string = 0; n_string < n_strings; ++n_string)
+                    for (uint32_t n_string = 0;
+                                  n_string < n_strings;
+                                ++n_string)
                     {
                         _ogl_text_string* string_ptr = NULL;
 
@@ -914,7 +936,8 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
     _ogl_text* result = NULL;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(context != NULL, "Input context is null!");
+    ASSERT_DEBUG_SYNC(context != NULL,
+                      "Input context is null!");
     if (context == NULL)
     {
         LOG_ERROR("Input context is null - cannot create text instance.");
@@ -925,7 +948,8 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
     /* Instantiate the new object */
     result = new (std::nothrow) _ogl_text;
 
-    ASSERT_ALWAYS_SYNC(result != NULL, "Could not allocate memory for text instance.");
+    ASSERT_ALWAYS_SYNC(result != NULL,
+                       "Could not allocate memory for text instance.");
     if (result == NULL)
     {
         LOG_FATAL("Could not allocate memory for text instance.");
@@ -949,7 +973,8 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
         result->owner_context    = context;
         result->screen_width     = screen_width;
         result->screen_height    = screen_height;
-        result->strings          = system_resizable_vector_create(4 /* default capacity */, sizeof(_ogl_text_string*) );
+        result->strings          = system_resizable_vector_create(4 /* default capacity */,
+                                                                  sizeof(_ogl_text_string*) );
 
         /* Initialize GL func pointers */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -1050,18 +1075,23 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
         /* Make sure the font table has been assigned a texture object */
         if (_global.font_tables.find(font_table) == _global.font_tables.end() )
         {
-            ogl_context_request_callback_from_context_thread(context, _ogl_text_create_font_table_to_callback_from_renderer, result);
+            ogl_context_request_callback_from_context_thread(context,
+                                                             _ogl_text_create_font_table_to_callback_from_renderer,
+                                                             result);
         }
 
         ogl_context_retain(context);
 
         /* We need a call-back, now */
-        ogl_context_request_callback_from_context_thread(context, _ogl_text_construction_callback_from_renderer, result);
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _ogl_text_construction_callback_from_renderer,
+                                                         result);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                        _ogl_text_release,
                                                        OBJECT_TYPE_OGL_TEXT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Text Renderers\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Text Renderers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
 
         goto end;
     }
@@ -1077,7 +1107,9 @@ PUBLIC EMERALD_API void ogl_text_draw(__in __notnull ogl_context context,
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* Make sure the request is handled from rendering thread */
-    ogl_context_request_callback_from_context_thread(context, _ogl_text_draw_callback_from_renderer, text);
+    ogl_context_request_callback_from_context_thread(context,
+                                                     _ogl_text_draw_callback_from_renderer,
+                                                     text);
 }
 
 /** Please see header for specification */
@@ -1259,7 +1291,8 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
     system_critical_section_enter(text_ptr->draw_cs);
 
     /* Make sure input arguments are okay */
-    ASSERT_DEBUG_SYNC(raw_text_ptr != NULL, "Input text pointer is NULL!");
+    ASSERT_DEBUG_SYNC(raw_text_ptr != NULL,
+                      "Input text pointer is NULL!");
 
     if (raw_text_ptr == NULL)
     {
@@ -1285,7 +1318,9 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
     text_string_ptr->height_px = 0;
     text_string_ptr->width_px  = 0;
 
-    for (uint32_t n_character = 0; n_character < raw_text_length; ++n_character)
+    for (uint32_t n_character = 0;
+                  n_character < raw_text_length;
+                ++n_character)
     {
         uint8_t font_height = 0;
         uint8_t font_width  = 0;
@@ -1321,7 +1356,8 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
         text_string_ptr->string_buffer_length = (unsigned int) raw_text_length * 2;
         text_string_ptr->string               = new (std::nothrow) unsigned char[text_string_ptr->string_buffer_length];
 
-        ASSERT_ALWAYS_SYNC(text_string_ptr->string != NULL, "Could not reallocate memory block used for raw text storage!");
+        ASSERT_ALWAYS_SYNC(text_string_ptr->string != NULL,
+                           "Could not reallocate memory block used for raw text storage!");
         if (text_string_ptr->string == NULL)
         {
             LOG_ERROR("Could not reallocate memory block used for raw text storage");
@@ -1334,10 +1370,15 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
 
     if (text_string_ptr->string != NULL)
     {
-        memset(text_string_ptr->string, text_string_ptr->string_buffer_length, 0);
+        memset(text_string_ptr->string,
+               text_string_ptr->string_buffer_length,
+               0);
 
         text_string_ptr->string[raw_text_length] = 0;
-        memcpy((void*) text_string_ptr->string, raw_text_ptr, raw_text_length);
+
+        memcpy((void*) text_string_ptr->string,
+               raw_text_ptr,
+               raw_text_length);
 
         text_string_ptr->string_length = raw_text_length;
     }

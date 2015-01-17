@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -41,14 +41,15 @@ typedef struct
     ogl_texture theta_phi_tbo;
     GLuint      tfo_id;
     ogl_texture unit_vec_tbo;
-    GLuint      vao_id;
 
     REFCOUNT_INSERT_VARIABLES
 
 } _sh_samples;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(sh_samples, sh_samples, _sh_samples);
+REFCOUNT_INSERT_IMPLEMENTATION(sh_samples,
+                               sh_samples,
+                              _sh_samples);
 
 /* Internal variables */
 const char* shared_body                       = "   float n_samples_square_inv = 1.0 / float(n_samples_square);\n"
@@ -73,7 +74,7 @@ const char* unit_vec_generator_body           = "#version 330 core\n"
                                                 "{\n"
                                                 "    vec2 theta_phi;\n"
                                                 "    vec3 unit_vec;\n"
-                                                "\n"                                    
+                                                "\n"
                                                 "} Out;\n"
                                                 "\n"
                                                 "uniform int n_samples_square;\n"
@@ -104,7 +105,7 @@ const char* sh_coeffs_generator_template_body = "#version 330 core\n"
                                                 "out result\n"
                                                 "{\n"
                                                 "    float sh_coefficient;\n"
-                                                "\n"                                    
+                                                "\n"
                                                 "} Out;\n"
                                                 "\n"
                                                 "uniform int n_samples_square;\n"
@@ -156,113 +157,175 @@ PRIVATE void _sh_samples_create_callback(__in __notnull ogl_context context, voi
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLGenTransformFeedbacks(1, &data->tfo_id);
+    entry_points->pGLGenTransformFeedbacks(1,
+                                          &data->tfo_id);
 
     /* Prepare SH coeffs generator body */
-    uint32_t sh_coeffs_body_length = strlen(sh_coeffs_generator_template_body) + strlen(glsl_embeddable_random_crude) + strlen(glsl_embeddable_sh) + strlen(shared_body) + 10;
+    uint32_t sh_coeffs_body_length = strlen(sh_coeffs_generator_template_body) +
+                                     strlen(glsl_embeddable_random_crude)      +
+                                     strlen(glsl_embeddable_sh)                +
+                                     strlen(shared_body)                       +
+                                     10;
     char*    sh_coeffs_body        = new (std::nothrow) char[sh_coeffs_body_length];
 
-    ASSERT_DEBUG_SYNC(sh_coeffs_body != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(sh_coeffs_body != NULL,
+                      "Out of memory");
     if (sh_coeffs_body != NULL)
     {
-        sprintf_s(sh_coeffs_body, sh_coeffs_body_length, sh_coeffs_generator_template_body, data->n_sh_bands, glsl_embeddable_random_crude, glsl_embeddable_sh, shared_body);
+        sprintf_s(sh_coeffs_body,
+                  sh_coeffs_body_length,
+                  sh_coeffs_generator_template_body,
+                  data->n_sh_bands,
+                  glsl_embeddable_random_crude,
+                  glsl_embeddable_sh,
+                  shared_body);
     }
 
     /* Prepare unit vec generator body */
-    uint32_t unit_vec_body_length = strlen(unit_vec_generator_body) + strlen(glsl_embeddable_random_crude) + strlen(shared_body) + 10;
+    uint32_t unit_vec_body_length = strlen(unit_vec_generator_body)      +
+                                    strlen(glsl_embeddable_random_crude) +
+                                    strlen(shared_body)                  +
+                                    10;
     char*    unit_vec_body        = new (std::nothrow) char[unit_vec_body_length];
 
-    ASSERT_DEBUG_SYNC(unit_vec_body != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(unit_vec_body != NULL,
+                      "Out of memory");
     if (unit_vec_body != NULL)
     {
-        sprintf_s(unit_vec_body, unit_vec_body_length, unit_vec_generator_body, data->n_sh_bands, glsl_embeddable_random_crude, shared_body);
+        sprintf_s(unit_vec_body,
+                  unit_vec_body_length,
+                  unit_vec_generator_body,
+                  data->n_sh_bands,
+                  glsl_embeddable_random_crude,
+                  shared_body);
     }
 
     /* Instantiate SH coeffs vertex shader */
     const ogl_program_uniform_descriptor* sh_coeffs_n_samples_square_descriptor = NULL;
     static const char*                    sh_coeffs_tf_output_data[]            = {"result.sh_coefficient"};
 
-    data->sh_coeffs_vertex_shader = ogl_shader_create (data->context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name), " SH coeffs") );
-    data->sh_coeffs_program       = ogl_program_create(data->context, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name), " SH coeffs") );
+    data->sh_coeffs_vertex_shader = ogl_shader_create (data->context,
+                                                       SHADER_TYPE_VERTEX,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                               " SH coeffs") );
+    data->sh_coeffs_program       = ogl_program_create(data->context,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                               " SH coeffs") );
 
-    entry_points->pGLShaderSource(ogl_shader_get_id(data->sh_coeffs_vertex_shader), 
-                                  1, 
+    entry_points->pGLShaderSource(ogl_shader_get_id(data->sh_coeffs_vertex_shader),
+                                  1,
                                   &sh_coeffs_body,
                                   NULL);
-    
+
     /* Instantiate unit vec vertex shader */
     const ogl_program_uniform_descriptor* unit_vec_n_samples_square_descriptor = NULL;
     static const char*                    unit_vec_tf_output_data[]            = {"result.unit_vec", "result.theta_phi"};
 
-    data->unit_vec_vertex_shader = ogl_shader_create (data->context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name), " unit vec") );
-    data->unit_vec_program       = ogl_program_create(data->context, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name), " unit vec") );
+    data->unit_vec_vertex_shader = ogl_shader_create (data->context,
+                                                      SHADER_TYPE_VERTEX,
+                                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                              " unit vec") );
+    data->unit_vec_program       = ogl_program_create(data->context,
+                                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                              " unit vec") );
 
-    entry_points->pGLShaderSource(ogl_shader_get_id(data->unit_vec_vertex_shader), 
-                                  1, 
+    entry_points->pGLShaderSource(ogl_shader_get_id(data->unit_vec_vertex_shader),
+                                  1,
                                   &unit_vec_body,
                                   NULL);
 
     /* Configure SH coeffs program */
-    ogl_program_attach_shader(data->sh_coeffs_program, data->sh_coeffs_vertex_shader);
+    ogl_program_attach_shader(data->sh_coeffs_program,
+                              data->sh_coeffs_vertex_shader);
 
-    entry_points->pGLTransformFeedbackVaryings(ogl_program_get_id(data->sh_coeffs_program),  
-                                               sizeof(sh_coeffs_tf_output_data) / sizeof(sh_coeffs_tf_output_data[0]), 
-                                               sh_coeffs_tf_output_data, 
+    entry_points->pGLTransformFeedbackVaryings(ogl_program_get_id(data->sh_coeffs_program),
+                                               sizeof(sh_coeffs_tf_output_data) / sizeof(sh_coeffs_tf_output_data[0]),
+                                               sh_coeffs_tf_output_data,
                                                GL_INTERLEAVED_ATTRIBS);
 
     ogl_program_link               (data->sh_coeffs_program);
-    ogl_program_get_uniform_by_name(data->sh_coeffs_program, system_hashed_ansi_string_create("n_samples_square"), &sh_coeffs_n_samples_square_descriptor);
+    ogl_program_get_uniform_by_name(data->sh_coeffs_program,
+                                    system_hashed_ansi_string_create("n_samples_square"),
+                                   &sh_coeffs_n_samples_square_descriptor);
 
     data->sh_coeffs_program_n_samples_square_location = sh_coeffs_n_samples_square_descriptor->location;
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not configure SH coeffs program");
+    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                       "Could not configure SH coeffs program");
 
     /* Configure unit vec program */
-    ogl_program_attach_shader(data->unit_vec_program, data->unit_vec_vertex_shader);
-    
-    entry_points->pGLTransformFeedbackVaryings(ogl_program_get_id(data->unit_vec_program),  
-                                               sizeof(unit_vec_tf_output_data) / sizeof(unit_vec_tf_output_data[0]), 
-                                               unit_vec_tf_output_data, 
+    ogl_program_attach_shader(data->unit_vec_program,
+                              data->unit_vec_vertex_shader);
+
+    entry_points->pGLTransformFeedbackVaryings(ogl_program_get_id(data->unit_vec_program),
+                                               sizeof(unit_vec_tf_output_data) / sizeof(unit_vec_tf_output_data[0]),
+                                               unit_vec_tf_output_data,
                                                GL_SEPARATE_ATTRIBS);
 
     ogl_program_link               (data->unit_vec_program);
-    ogl_program_get_uniform_by_name(data->unit_vec_program, system_hashed_ansi_string_create("n_samples_square"), &unit_vec_n_samples_square_descriptor);
+    ogl_program_get_uniform_by_name(data->unit_vec_program,
+                                    system_hashed_ansi_string_create("n_samples_square"),
+                                   &unit_vec_n_samples_square_descriptor);
 
     data->unit_vec_program_n_samples_square_location = unit_vec_n_samples_square_descriptor->location;
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not configure SH coeffs program");
+    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                       "Could not configure SH coeffs program");
 
     /* Prepare objects required for transform feedback */
     data->sample_generator_sh_coeffs_BO_size = data->n_samples * sizeof(GLfloat) * (data->n_sh_bands * data->n_sh_bands);
     data->sample_generator_theta_phi_BO_size = data->n_samples * sizeof(GLfloat) * 2;
     data->sample_generator_unit_vec_BO_size  = data->n_samples * sizeof(GLfloat) * 3;
 
-    entry_points->pGLGenBuffers            (1,                                     &data->sample_generator_sh_coeffs_BO_id);
-    entry_points->pGLGenBuffers            (1,                                     &data->sample_generator_theta_phi_BO_id);
-    entry_points->pGLGenBuffers            (1,                                     &data->sample_generator_unit_vec_BO_id);
-    dsa_entry_points->pGLNamedBufferDataEXT(data->sample_generator_sh_coeffs_BO_id, data->sample_generator_sh_coeffs_BO_size, NULL, GL_STATIC_COPY);
-    dsa_entry_points->pGLNamedBufferDataEXT(data->sample_generator_theta_phi_BO_id, data->sample_generator_theta_phi_BO_size, NULL, GL_STATIC_COPY);
-    dsa_entry_points->pGLNamedBufferDataEXT(data->sample_generator_unit_vec_BO_id,  data->sample_generator_unit_vec_BO_size,  NULL, GL_STATIC_COPY);
+    entry_points->pGLGenBuffers            (1,
+                                           &data->sample_generator_sh_coeffs_BO_id);
+    entry_points->pGLGenBuffers            (1,
+                                           &data->sample_generator_theta_phi_BO_id);
+    entry_points->pGLGenBuffers            (1,
+                                           &data->sample_generator_unit_vec_BO_id);
+    dsa_entry_points->pGLNamedBufferDataEXT(data->sample_generator_sh_coeffs_BO_id,
+                                            data->sample_generator_sh_coeffs_BO_size,
+                                            NULL,
+                                            GL_STATIC_COPY);
+    dsa_entry_points->pGLNamedBufferDataEXT(data->sample_generator_theta_phi_BO_id,
+                                            data->sample_generator_theta_phi_BO_size,
+                                            NULL,
+                                            GL_STATIC_COPY);
+    dsa_entry_points->pGLNamedBufferDataEXT(data->sample_generator_unit_vec_BO_id,
+                                            data->sample_generator_unit_vec_BO_size,
+                                            NULL,
+                                            GL_STATIC_COPY);
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not create sample generator storage for %d samples", data->n_samples);
-
-    /* Create VAO */
-    entry_points->pGLGenVertexArrays(1, &data->vao_id);
-
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not generate VAO");
+    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                       "Could not create sample generator storage for %d samples",
+                       data->n_samples);
 
     /* Create texture buffer */
-    data->sh_coeffs_tbo = ogl_texture_create(data->context, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                                    " SH coeffs TBO") );
-    data->theta_phi_tbo = ogl_texture_create(data->context, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                                    " SH theta/phi TBO") );
-    data->unit_vec_tbo  = ogl_texture_create(data->context, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                                    " SH unit vec TBO") );
-    dsa_entry_points->pGLTextureBufferEXT(data->sh_coeffs_tbo, GL_TEXTURE_BUFFER, GL_R32F,   data->sample_generator_sh_coeffs_BO_id);
-    dsa_entry_points->pGLTextureBufferEXT(data->theta_phi_tbo, GL_TEXTURE_BUFFER, GL_RG32F,  data->sample_generator_theta_phi_BO_id);
-    dsa_entry_points->pGLTextureBufferEXT(data->unit_vec_tbo,  GL_TEXTURE_BUFFER, GL_RGB32F, data->sample_generator_unit_vec_BO_id);
+    data->sh_coeffs_tbo = ogl_texture_create(data->context,
+                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                     " SH coeffs TBO") );
+    data->theta_phi_tbo = ogl_texture_create(data->context,
+                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                     " SH theta/phi TBO") );
+    data->unit_vec_tbo  = ogl_texture_create(data->context,
+                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                     " SH unit vec TBO") );
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Could not generate SH coeffs TBO");
+    dsa_entry_points->pGLTextureBufferEXT(data->sh_coeffs_tbo,
+                                          GL_TEXTURE_BUFFER,
+                                          GL_R32F,
+                                          data->sample_generator_sh_coeffs_BO_id);
+    dsa_entry_points->pGLTextureBufferEXT(data->theta_phi_tbo,
+                                          GL_TEXTURE_BUFFER,
+                                          GL_RG32F,
+                                          data->sample_generator_theta_phi_BO_id);
+    dsa_entry_points->pGLTextureBufferEXT(data->unit_vec_tbo,
+                                          GL_TEXTURE_BUFFER,
+                                          GL_RGB32F,
+                                          data->sample_generator_unit_vec_BO_id);
+
+    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                       "Could not generate SH coeffs TBO");
 
     /* Release bodies */
     if (sh_coeffs_body != NULL)
@@ -298,19 +361,22 @@ PRIVATE void _sh_samples_release_callback(__in __notnull ogl_context context, vo
     ogl_texture_release(data_ptr->theta_phi_tbo);
     ogl_texture_release(data_ptr->unit_vec_tbo);
 
-    entry_points->pGLDeleteBuffers           (1, &data_ptr->sample_generator_sh_coeffs_BO_id);
-    entry_points->pGLDeleteBuffers           (1, &data_ptr->sample_generator_unit_vec_BO_id);
-    entry_points->pGLDeleteTransformFeedbacks(1, &data_ptr->tfo_id);
-    entry_points->pGLDeleteVertexArrays      (1, &data_ptr->vao_id);
-
+    entry_points->pGLDeleteBuffers           (1,
+                                             &data_ptr->sample_generator_sh_coeffs_BO_id);
+    entry_points->pGLDeleteBuffers           (1,
+                                             &data_ptr->sample_generator_unit_vec_BO_id);
+    entry_points->pGLDeleteTransformFeedbacks(1,
+                                             &data_ptr->tfo_id);
 }
 
 /** TODO */
 PRIVATE void _sh_samples_release(__in __notnull __deallocate(mem) void* ptr)
 {
     _sh_samples* data_ptr = (_sh_samples*) ptr;
-    
-    ogl_context_request_callback_from_context_thread(data_ptr->context, _sh_samples_release_callback, data_ptr);
+
+    ogl_context_request_callback_from_context_thread(data_ptr->context,
+                                                     _sh_samples_release_callback,
+                                                     data_ptr);
 }
 
 /** TODO */
@@ -331,14 +397,18 @@ PRIVATE void _sh_samples_release(__in __notnull __deallocate(mem) void* ptr)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API sh_samples sh_samples_create(__in __notnull ogl_context context, __in uint32_t n_samples_squareable, __in uint32_t n_sh_bands, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API sh_samples sh_samples_create(__in __notnull ogl_context               context,
+                                                __in           uint32_t                  n_samples_squareable,
+                                                __in           uint32_t                  n_sh_bands,
+                                                __in __notnull system_hashed_ansi_string name)
 {
     _sh_samples_verify_context_type(context);
 
     /* Instantiate the object */
     _sh_samples* result = new (std::nothrow) _sh_samples;
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Could not instantiate result object.");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Could not instantiate result object.");
     if (result != NULL)
     {
         result->context    = context;
@@ -350,17 +420,20 @@ PUBLIC EMERALD_API sh_samples sh_samples_create(__in __notnull ogl_context conte
     if (context != NULL)
     {
         /* Request renderer callback */
-        ogl_context_request_callback_from_context_thread(context, _sh_samples_create_callback, result);
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _sh_samples_create_callback,
+                                                         result);
     }
     else
     {
         /* Software only mode! */
     }
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                    _sh_samples_release,
                                                    OBJECT_TYPE_SH_SAMPLES,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\SH Sample Generator\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\SH Sample Generator\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the result */
     return (sh_samples) result;
@@ -369,15 +442,20 @@ PUBLIC EMERALD_API sh_samples sh_samples_create(__in __notnull ogl_context conte
 /** Please see header for specification */
 RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_samples_execute(__in __notnull sh_samples samples)
 {
-    _sh_samples*                      samples_ptr      = (_sh_samples*) samples;
     const ogl_context_gl_entrypoints* entry_points     = NULL;
+    _sh_samples*                      samples_ptr      = (_sh_samples*) samples;
+    GLuint                            vao_id           = 0;
 
     ogl_context_get_property(samples_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+    ogl_context_get_property(samples_ptr->context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
 
-    entry_points->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, samples_ptr->tfo_id);
-    entry_points->pGLBindVertexArray(samples_ptr->vao_id);
+    entry_points->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                           samples_ptr->tfo_id);
+    entry_points->pGLBindVertexArray      (vao_id);
     {
         entry_points->pGLEnable(GL_RASTERIZER_DISCARD);
         {
@@ -389,14 +467,20 @@ RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_samples_execute(__in __notnull
                                               (int) sqrt(float(samples_ptr->n_samples)) );
 
             entry_points->pGLUseProgram            (unit_vec_program_id);
-            entry_points->pGLBindBufferBase        (GL_TRANSFORM_FEEDBACK_BUFFER, 0, samples_ptr->sample_generator_unit_vec_BO_id);
-            entry_points->pGLBindBufferBase        (GL_TRANSFORM_FEEDBACK_BUFFER, 1, samples_ptr->sample_generator_theta_phi_BO_id);
+            entry_points->pGLBindBufferBase        (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                                    0,
+                                                    samples_ptr->sample_generator_unit_vec_BO_id);
+            entry_points->pGLBindBufferBase        (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                                    1,
+                                                    samples_ptr->sample_generator_theta_phi_BO_id);
             entry_points->pGLBeginTransformFeedback(GL_POINTS);
             {
-                entry_points->pGLDrawArrays(GL_POINTS, 0, samples_ptr->n_samples);
+                entry_points->pGLDrawArrays(GL_POINTS,
+                                            0,
+                                            samples_ptr->n_samples);
             }
             entry_points->pGLEndTransformFeedback();
-            
+
             /* 2. Generate SH coefficients using another instanced draw call */
             GLuint sh_coeffs_program_id = ogl_program_get_id(samples_ptr->sh_coeffs_program);
 
@@ -405,24 +489,27 @@ RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_samples_execute(__in __notnull
                                               (int) sqrt(float(samples_ptr->n_samples)) );
 
             entry_points->pGLUseProgram            (sh_coeffs_program_id);
-            entry_points->pGLBindBufferBase        (GL_TRANSFORM_FEEDBACK_BUFFER, 0, samples_ptr->sample_generator_sh_coeffs_BO_id);
+            entry_points->pGLBindBufferBase        (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                                    0,
+                                                    samples_ptr->sample_generator_sh_coeffs_BO_id);
             entry_points->pGLBeginTransformFeedback(GL_POINTS);
             {
-                entry_points->pGLDrawArrays(GL_POINTS, 0, samples_ptr->n_sh_bands * samples_ptr->n_sh_bands * samples_ptr->n_samples);
+                entry_points->pGLDrawArrays(GL_POINTS,
+                                            0,
+                                            samples_ptr->n_sh_bands * samples_ptr->n_sh_bands * samples_ptr->n_samples);
             }
             entry_points->pGLEndTransformFeedback();
-            
-            entry_points->pGLBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, 0);
+
+            entry_points->pGLBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER,
+                                            0,
+                                            0);
             entry_points->pGLUseProgram    (0);
         }
         entry_points->pGLDisable(GL_RASTERIZER_DISCARD);
-       
-        GLuint error_code = entry_points->pGLGetError();
-        ASSERT_ALWAYS_SYNC(error_code == GL_NO_ERROR, "Could not generate samples");
-
     }
     entry_points->pGLBindVertexArray      (0);
-    entry_points->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+    entry_points->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                           0);
 }
 
 /** TODO */

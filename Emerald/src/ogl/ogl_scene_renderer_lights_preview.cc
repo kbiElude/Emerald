@@ -51,14 +51,12 @@ typedef struct _ogl_scene_renderer_lights_preview
 
     ogl_program preview_program;
     scene       scene;
-    GLuint      vao_id;
 
     _ogl_scene_renderer_lights_preview()
     {
         context         = NULL;
         preview_program = NULL;
         scene           = NULL;
-        vao_id          = 0;
     }
 
 } _ogl_scene_renderer_lights_preview;
@@ -149,26 +147,6 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_lights_preview_release_renderer_callback(__in __notnull ogl_context context,
-                                                                          __in __notnull void*       preview)
-{
-    const ogl_context_gl_entrypoints*   entrypoints_ptr = NULL;
-    _ogl_scene_renderer_lights_preview* preview_ptr     = (_ogl_scene_renderer_lights_preview*) preview;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entrypoints_ptr);
-
-    if (preview_ptr->vao_id != 0)
-    {
-        entrypoints_ptr->pGLDeleteVertexArrays(1,
-                                               &preview_ptr->vao_id);
-
-        preview_ptr->vao_id = 0;
-    }
-}
-
-/** TODO */
 #ifdef _DEBUG
     /* TODO */
     PRIVATE void _ogl_scene_renderer_lights_preview_verify_context_type(__in __notnull ogl_context context)
@@ -200,7 +178,6 @@ PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_creat
         new_instance->context         = context;
         new_instance->preview_program = NULL;
         new_instance->scene           = scene;
-        new_instance->vao_id          = 0;
 
         scene_retain(scene);
     } /* if (new_instance != NULL) */
@@ -212,10 +189,6 @@ PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_creat
 PUBLIC void ogl_scene_renderer_lights_preview_release(__in __notnull __post_invalid ogl_scene_renderer_lights_preview preview)
 {
     _ogl_scene_renderer_lights_preview* preview_ptr = (_ogl_scene_renderer_lights_preview*) preview;
-
-    ogl_context_request_callback_from_context_thread(preview_ptr->context,
-                                                     _ogl_scene_renderer_lights_preview_release_renderer_callback,
-                                                     preview_ptr);
 
     if (preview_ptr->scene != NULL)
     {
@@ -300,13 +273,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_start(__in 
     }
 
     /* Initialize other GL objects */
-    if (preview_ptr->vao_id == 0)
-    {
-        entrypoints_ptr->pGLGenVertexArrays(1,
-                                            &preview_ptr->vao_id);
-    }
+    GLuint vao_id = 0;
 
-    entrypoints_ptr->pGLBindVertexArray(preview_ptr->vao_id);
+    ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
+
+    entrypoints_ptr->pGLBindVertexArray(vao_id);
     entrypoints_ptr->pGLLineWidth      (4.0f);
     entrypoints_ptr->pGLPointSize      (16.0f);
     entrypoints_ptr->pGLUseProgram     (ogl_program_get_id(preview_ptr->preview_program) );

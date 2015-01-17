@@ -123,7 +123,6 @@ typedef struct _ogl_scene_renderer_bbox_preview
     GLint              preview_program_model_location;
     GLint              preview_program_vp_location;
     scene              scene;
-    GLuint             vao_id;
 
     bool is_bs_supported; /* GL only */
 
@@ -400,14 +399,6 @@ PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(__in __n
 
         preview_ptr->data_bo_id = 0;
     }
-
-    if (preview_ptr->vao_id != 0)
-    {
-        preview_ptr->pGLDeleteVertexArrays(1,
-                                          &preview_ptr->vao_id);
-
-        preview_ptr->vao_id = 0;
-    }
 }
 
 /** Please see header for spec */
@@ -432,7 +423,6 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
         new_instance->preview_program_model_location = -1;
         new_instance->preview_program_vp_location    = -1;
         new_instance->scene                          = scene;
-        new_instance->vao_id                         = 0;
 
         /* Is buffer_storage supported? */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -584,15 +574,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(__in __
         _ogl_context_scene_renderer_bbox_preview_init_ub_data(preview_ptr);
     }
 
-    /* Initialize other GL objects */
-    if (preview_ptr->vao_id == 0)
-    {
-        preview_ptr->pGLGenVertexArrays(1,
-                                       &preview_ptr->vao_id);
-    }
-
     /* Issue the draw call */
     const GLint program_id = ogl_program_get_id(preview_ptr->preview_program);
+    GLuint      vao_id     = 0;
+
+    ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
 
     preview_ptr->pGLUseProgram             (program_id);
     preview_ptr->pGLProgramUniformMatrix4fv(program_id,
@@ -605,7 +593,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(__in __
                                     0, /* index */
                                     preview_ptr->data_bo_id);
 
-    preview_ptr->pGLBindVertexArray(preview_ptr->vao_id);
+    preview_ptr->pGLBindVertexArray(vao_id);
 }
 
 /** Please see header for spec */

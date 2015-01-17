@@ -1,7 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
+ * NOTE: UI renderer is built under assumption that UI components need not use attributes.
+ *       This is owing to the fact ogl_ui uses the context-wide no-VAA VAO for rendering.
+ *       Change this if necessary (but face the performance penalty due to VAO rebindings).
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
@@ -66,7 +69,6 @@ typedef struct
     system_critical_section   rendering_cs;
     ogl_text                  text_renderer;
     system_window             window;
-    GLuint                    vao_id;
 
     system_hash64map registered_ui_control_callbacks; /* stores a system_resizable_vector storing _ogl_ui_callback instances.
                                                        * this is the least optimal way of storing registered callbacks,
@@ -82,7 +84,6 @@ typedef struct
     PFNGLBINDVERTEXARRAYPROC pGLBindVertexArray;
 
     REFCOUNT_INSERT_VARIABLES
-
 } _ogl_ui;
 
 typedef struct
@@ -166,7 +167,9 @@ PRIVATE void* _ogl_ui_get_internal_control_ptr(__in __notnull ogl_ui_control con
 /** TODO */
 PRIVATE void _ogl_ui_control_init(__in __notnull _ogl_ui_control* ui_control_ptr)
 {
-    memset(ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+    memset(ui_control_ptr,
+           0,
+           sizeof(_ogl_ui_control) );
 }
 
 /** TODO */
@@ -204,9 +207,6 @@ PRIVATE void _ogl_ui_deinit_gl_renderer_callback(ogl_context context,
 
         pGLDeleteVertexArrays = entry_points->pGLDeleteVertexArrays;
     }
-
-    pGLDeleteVertexArrays(1, &ui_ptr->vao_id);
-    ui_ptr->vao_id = 0;
 }
 
 /** TODO */
@@ -358,8 +358,6 @@ PRIVATE void _ogl_ui_init_gl_renderer_callback(ogl_context context,
 
         pGLGenVertexArrays = entry_points->pGLGenVertexArrays;
     }
-
-    pGLGenVertexArrays(1, &ui_ptr->vao_id);
 }
 
 /** TODO */
@@ -380,7 +378,6 @@ PRIVATE void _ogl_ui_init(__in __notnull _ogl_ui*                  ui_ptr,
     ui_ptr->rendering_cs                    = system_critical_section_create();
     ui_ptr->text_renderer                   = text_renderer;
     ui_ptr->window                          = NULL;
-    ui_ptr->vao_id                          = 0;
 
     ogl_text_retain(text_renderer);
 
@@ -494,7 +491,8 @@ PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
                                                       &control_ptr) )
             {
                 if (control_ptr->pfn_is_over_func_ptr != NULL &&
-                    control_ptr->pfn_is_over_func_ptr(control_ptr->internal, click_xy) )
+                    control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
+                                                      click_xy) )
                 {
                     control_ptr->pfn_on_lbm_down_func_ptr(control_ptr->internal,
                                                           click_xy);
@@ -528,8 +526,12 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
         int   window_x      = 0;
         int   window_y      = 0;
 
-        system_window_get_dimensions(ui_ptr->window, &window_width, &window_height);
-        system_window_get_position  (ui_ptr->window, &window_x,     &window_y);
+        system_window_get_dimensions(ui_ptr->window,
+                                    &window_width,
+                                    &window_height);
+        system_window_get_position  (ui_ptr->window,
+                                    &window_x,
+                                    &window_y);
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
@@ -558,7 +560,8 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
             {
                 if (control_ptr->pfn_on_lbm_up_func_ptr != NULL)
                 {
-                    control_ptr->pfn_on_lbm_up_func_ptr(control_ptr->internal, click_xy);
+                    control_ptr->pfn_on_lbm_up_func_ptr(control_ptr->internal,
+                                                        click_xy);
                 }
             } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
         } /* foreach (control) */
@@ -582,8 +585,12 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
     int      window_y      = 0;
     _ogl_ui* ui_ptr        = (_ogl_ui*) ui_instance;
 
-    system_window_get_dimensions(ui_ptr->window, &window_width, &window_height);
-    system_window_get_position  (ui_ptr->window, &window_x,     &window_y);
+    system_window_get_dimensions(ui_ptr->window,
+                                &window_width,
+                                &window_height);
+    system_window_get_position  (ui_ptr->window,
+                                &window_x,
+                                &window_y);
 
     system_critical_section_enter(ui_ptr->rendering_cs);
     {
@@ -608,9 +615,10 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
                                                    n_control,
                                                   &control_ptr) )
         {
-            if (control_ptr->pfn_is_over_func_ptr != NULL                                          &&
-                control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) &&
-                control_ptr->pfn_hover_func_ptr   != NULL)
+            if (control_ptr->pfn_is_over_func_ptr != NULL                   &&
+                control_ptr->pfn_hover_func_ptr   != NULL                   &&
+                control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
+                                                  ui_ptr->current_mouse_xy))
             {
                 control_ptr->pfn_hover_func_ptr(control_ptr->internal,
                                                 ui_ptr->current_mouse_xy);
@@ -644,8 +652,12 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
     int      window_y      = 0;
     _ogl_ui* ui_ptr        = (_ogl_ui*) ui_instance;
 
-    system_window_get_dimensions(ui_ptr->window, &window_width, &window_height);
-    system_window_get_position  (ui_ptr->window, &window_x,     &window_y);
+    system_window_get_dimensions(ui_ptr->window,
+                                &window_width,
+                                &window_height);
+    system_window_get_position  (ui_ptr->window,
+                                &window_x,
+                                &window_y);
 
     system_critical_section_enter(ui_ptr->rendering_cs);
     {
@@ -670,9 +682,10 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
                                                    n_control,
                                                   &control_ptr) )
         {
-            if (control_ptr->pfn_is_over_func_ptr        != NULL                                   &&
-                control_ptr->pfn_on_mouse_wheel_func_ptr != NULL                                   &&
-                control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) )
+            if (control_ptr->pfn_is_over_func_ptr        != NULL              &&
+                control_ptr->pfn_on_mouse_wheel_func_ptr != NULL              &&
+                control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
+                                                  ui_ptr->current_mouse_xy) )
             {
                 control_ptr->pfn_on_mouse_wheel_func_ptr(control_ptr->internal,
                                                          float(wheel_delta) / float(WHEEL_DELTA) );
@@ -702,7 +715,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   o
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -714,9 +728,17 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   o
 
         x2y2[0]      = x1y1[0] + 100.0f / window_width;
         x2y2[1]      = x1y1[1] + 20.0f  / window_height;
-        new_internal = ogl_ui_button_init(ui_instance, ui_ptr->text_renderer, name, x1y1, x2y2, pfn_fire_ptr, fire_user_arg);
+        new_internal = ogl_ui_button_init(ui_instance,
+                                          ui_ptr->text_renderer,
+                                          name,
+                                          x1y1,
+                                          x2y2,
+                                          pfn_fire_ptr,
+                                          fire_user_arg);
 
-        memset(new_ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+        memset(new_ui_control_ptr,
+               0,
+               sizeof(_ogl_ui_control) );
 
         new_ui_control_ptr->internal                    = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_button_deinit;
@@ -731,7 +753,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   o
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -750,7 +773,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
+
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -758,7 +783,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
         int   window_width  = 0;
         float x2y2[2]       = {0};
 
-        system_window_get_dimensions(ui_ptr->window, &window_width, &window_height);
+        system_window_get_dimensions(ui_ptr->window,
+                                    &window_width,
+                                    &window_height);
 
         x2y2[0]      = x1y1[0] + 100.0f / window_width;
         x2y2[1]      = x1y1[1] + 20.0f  / window_height;
@@ -785,7 +812,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -807,7 +835,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -849,7 +878,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -864,7 +894,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(__in           __notnull ogl_
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -872,7 +903,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(__in           __notnull ogl_
         new_internal = ogl_ui_frame_init(ui_instance,
                                          x1y1x2y2);
 
-        memset(new_ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+        memset(new_ui_control_ptr,
+               0,
+               sizeof(_ogl_ui_control) );
 
         new_ui_control_ptr->internal                    = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_frame_deinit;
@@ -887,7 +920,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(__in           __notnull ogl_
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -903,7 +937,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -913,7 +948,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_
                                          name,
                                          x1y1);
 
-        memset(new_ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+        memset(new_ui_control_ptr,
+               0,
+               sizeof(_ogl_ui_control) );
 
         new_ui_control_ptr->internal                    = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_label_deinit;
@@ -928,7 +965,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -950,7 +988,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -958,7 +997,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
         int   window_width  = 0;
         float x2y2[2]       = {0};
 
-        system_window_get_dimensions(ui_ptr->window, &window_width, &window_height);
+        system_window_get_dimensions(ui_ptr->window,
+                                    &window_width,
+                                    &window_height);
 
         x2y2[0] = x1y1[0] + 100.0f / window_width;
         x2y2[1] = x1y1[1] + 36.0f  / window_height;
@@ -975,7 +1016,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
                                              pfn_set_current_value_ptr,
                                              set_current_value_ptr_user_arg);
 
-        memset(new_ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+        memset(new_ui_control_ptr,
+               0,
+               sizeof(_ogl_ui_control) );
 
         new_ui_control_ptr->internal                    = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_scrollbar_deinit;
@@ -990,7 +1033,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -1009,7 +1053,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
     _ogl_ui*         ui_ptr             = (_ogl_ui*) ui_instance;
 
-    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_ui_control_ptr != NULL,
+                       "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
         void* new_internal  = NULL;
@@ -1032,7 +1077,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            system_resizable_vector_push(ui_ptr->controls, new_ui_control_ptr);
+            system_resizable_vector_push(ui_ptr->controls,
+                                         new_ui_control_ptr);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
     }
@@ -1049,12 +1095,15 @@ PUBLIC EMERALD_API ogl_ui ogl_ui_create(__in __notnull ogl_text                 
     ASSERT_ALWAYS_SYNC(ui_ptr != NULL, "Out of memory");
     if (ui_ptr != NULL)
     {
-        _ogl_ui_init(ui_ptr, name, text_renderer);
+        _ogl_ui_init(ui_ptr,
+                     name,
+                     text_renderer);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(ui_ptr,
                                                        _ogl_ui_release,
                                                        OBJECT_TYPE_OGL_UI,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL UIs\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL UIs\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (ogl_ui) ui_ptr;
@@ -1067,9 +1116,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui
     ogl_context                       context     = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     size_t                            n_controls  = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+    GLuint                            vao_id      = 0;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
 
     ui_ptr->pGLDisable        (GL_CULL_FACE);
-    ui_ptr->pGLBindVertexArray(ui_ptr->vao_id);
+    ui_ptr->pGLBindVertexArray(vao_id);
 
     for (size_t n_control = 0;
                 n_control < n_controls;
@@ -1202,7 +1256,8 @@ PUBLIC EMERALD_API void ogl_ui_register_control_callback(__in __notnull ogl_ui  
     /* Spawn the callback descriptor */
     _ogl_ui_callback* new_callback = new (std::nothrow) _ogl_ui_callback;
 
-    ASSERT_ALWAYS_SYNC(new_callback != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_callback != NULL,
+                       "Out of memory");
     if (new_callback != NULL)
     {
         new_callback->callback_id            = callback_id;
