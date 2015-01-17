@@ -15,9 +15,7 @@ typedef enum _ogl_texture_mipmap_property
 {
     OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,      /* not settable, unsigned int; currently only set for loaded compressed texture mipmaps */
     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,          /* not settable, unsigned int */
-    OGL_TEXTURE_MIPMAP_PROPERTY_DIMENSIONALITY, /* not settable, ogl_texture_dimensionality */
     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,         /* not settable, unsigned int */
-    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT, /* not settable, GLint */
     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,          /* not settable, unsigned int */
 
     /* Always last */
@@ -26,12 +24,17 @@ typedef enum _ogl_texture_mipmap_property
 
 typedef enum _ogl_texture_property
 {
-    OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND, /* settable,     bool */
-    OGL_TEXTURE_PROPERTY_ID,             /* not settable, GLuint */
-    OGL_TEXTURE_PROPERTY_NAME,           /* not settable, system_hashed_ansi_string */
-    OGL_TEXTURE_PROPERTY_N_MIPMAPS,      /* not settable, unsigned int */
-    OGL_TEXTURE_PROPERTY_SRC_FILENAME,   /* not settable, system_hashed_ansi_string */
-    OGL_TEXTURE_PROPERTY_TARGET,         /* not settable, GLenum */
+    OGL_TEXTURE_PROPERTY_DIMENSIONALITY,         /* not settable, ogl_texture_dimensionality */
+    OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS, /* not settable, bool */
+    OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND,         /* settable,     bool; tells if the texture object has been bound at least once.
+                                                  *                     necessary for the state caching layer to work correctly. */
+    OGL_TEXTURE_PROPERTY_ID,                     /* not settable, GLuint */
+    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,         /* not settable, GLint */
+    OGL_TEXTURE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
+    OGL_TEXTURE_PROPERTY_N_MIPMAPS,              /* not settable, unsigned int */
+    OGL_TEXTURE_PROPERTY_N_SAMPLES,              /* not settable, unsigned int */
+    OGL_TEXTURE_PROPERTY_SRC_FILENAME,           /* not settable, system_hashed_ansi_string */
+    OGL_TEXTURE_PROPERTY_TARGET,                 /* not settable, GLenum */
 
     /* Always last */
     OGL_TEXTURE_PROPERTY_COUNT
@@ -46,6 +49,18 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context    
 PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull ogl_context               context,
                                                                  __in __notnull gfx_image                 image,
                                                                  __in __notnull system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(__in __notnull ogl_context                context,
+                                                                                        __in __notnull system_hashed_ansi_string  name,
+                                                                                        __in           ogl_texture_dimensionality dimensionality,
+                                                                                        __in           unsigned int               n_mipmaps,
+                                                                                        __in           GLenum                     internalformat,
+                                                                                        __in           unsigned int               base_mipmap_width,
+                                                                                        __in           unsigned int               base_mipmap_height,
+                                                                                        __in           unsigned int               base_mipmap_depth,
+                                                                                        __in           unsigned int               n_samples,
+                                                                                        __in           bool                       fixed_sample_locations);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_texture_generate_mipmaps(__in __notnull ogl_texture texture);
@@ -63,7 +78,6 @@ PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_textu
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_texture                 texture,
-                                                        __in           ogl_texture_dimensionality  dimensionality,
                                                         __in           unsigned int                n_mipmap,
                                                         __in           ogl_texture_mipmap_property property_value,
                                                         __in           void*                       value_ptr);

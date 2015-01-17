@@ -22,10 +22,13 @@ typedef struct
     ogl_context context;
 
     ogl_texture_dimensionality dimensionality;
+    bool                       fixed_sample_locations;
     GLuint                     gl_id;
     bool                       has_been_bound;
+    ogl_texture_internalformat internalformat;
     system_resizable_vector    mipmaps; /* stores _ogl_texture_mipmap instances, indexed by mipmap level */
     system_hashed_ansi_string  name;
+    unsigned int               n_samples;
     system_hashed_ansi_string  src_filename;
 
     gfx_image src_image;
@@ -39,7 +42,6 @@ typedef struct
     ogl_texture_dimensionality dimensionality;
     unsigned int               depth;
     unsigned int               height;
-    ogl_texture_internalformat internalformat;
     bool                       was_configured;
     unsigned int               width;
 } _ogl_texture_mipmap;
@@ -114,7 +116,6 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
 
     /* Retrieve base mip-map details. */
     unsigned int base_image_height         = 0;
-    GLenum       base_image_internalformat = GL_NONE;
     bool         base_image_is_compressed  = false;
     unsigned int base_image_row_alignment  = 0;
     unsigned int base_image_width          = 0;
@@ -126,7 +127,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
     gfx_image_get_mipmap_property(texture_ptr->src_image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                 &base_image_internalformat);
+                                 &texture_ptr->internalformat);
     gfx_image_get_mipmap_property(texture_ptr->src_image,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_IS_COMPRESSED,
@@ -156,7 +157,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
         gl_pGLTextureStorage2DEXT((ogl_texture) texture,
                                   GL_TEXTURE_2D,
                                   levels,
-                                  base_image_internalformat,
+                                  texture_ptr->internalformat,
                                   base_image_width,
                                   base_image_height);
     }
@@ -165,7 +166,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
         pGLBindTexture (GL_TEXTURE_2D, texture_ptr->gl_id);
         pGLTexStorage2D(GL_TEXTURE_2D,
                         levels,
-                        base_image_internalformat,
+                        texture_ptr->internalformat,
                         base_image_width,
                         base_image_height);
     }
@@ -178,7 +179,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
 
     if (!base_image_is_compressed)
     {
-        _ogl_texture_get_texture_format_type_from_internalformat(base_image_internalformat,
+        _ogl_texture_get_texture_format_type_from_internalformat(texture_ptr->internalformat,
                                                                 &texture_format,
                                                                 &texture_type);
     }
@@ -225,7 +226,7 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
                                      &image_width);
 
         /* Sanity checks */
-        ASSERT_DEBUG_SYNC(base_image_internalformat == image_internalformat,
+        ASSERT_DEBUG_SYNC(texture_ptr->internalformat == image_internalformat,
                           "Non-base mipmap does not use the same internalformat as the base mipmap");
         ASSERT_DEBUG_SYNC(base_image_row_alignment  == image_row_alignment,
                           "Non-base mipmap does not use the same row alignment as the base mipmap");
@@ -407,7 +408,9 @@ PRIVATE void _ogl_texture_mipmap_deinit(__in __notnull _ogl_texture_mipmap* mipm
 /** TODO */
 PRIVATE void _ogl_texture_mipmap_init(__in __notnull _ogl_texture_mipmap* mipmap_ptr)
 {
-    memset(mipmap_ptr, 0, sizeof(_ogl_texture_mipmap) );
+    memset(mipmap_ptr,
+           0,
+           sizeof(_ogl_texture_mipmap) );
 }
 
 /** TODO */
@@ -490,12 +493,16 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context    
                0,
                sizeof(_ogl_texture) );
 
-        new_texture->context         = context;
-        new_texture->dimensionality  = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
-        new_texture->has_been_bound  = false;
-        new_texture->mipmaps         = system_resizable_vector_create(1, sizeof(_ogl_texture*) );
-        new_texture->name            = name;
-        new_texture->src_filename    = src_filename;
+        new_texture->context                = context;
+        new_texture->dimensionality         = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
+        new_texture->fixed_sample_locations = false;
+        new_texture->has_been_bound         = false;
+        new_texture->internalformat         = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
+        new_texture->mipmaps                = system_resizable_vector_create(1,
+                                                                             sizeof(_ogl_texture*) );
+        new_texture->name                   = name;
+        new_texture->n_samples              = 0;
+        new_texture->src_filename           = src_filename;
 
         if (src_filename != NULL)
         {
@@ -554,6 +561,138 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context    
     }
 
     return (ogl_texture) new_texture;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_initialize(__in __notnull ogl_context                context,
+                                                                                        __in __notnull system_hashed_ansi_string  name,
+                                                                                        __in           ogl_texture_dimensionality dimensionality,
+                                                                                        __in           unsigned int               n_mipmaps,
+                                                                                        __in           GLenum                     internalformat,
+                                                                                        __in           unsigned int               base_mipmap_width,
+                                                                                        __in           unsigned int               base_mipmap_height,
+                                                                                        __in           unsigned int               base_mipmap_depth,
+                                                                                        __in           unsigned int               n_samples,
+                                                                                        __in           bool                       fixed_sample_locations)
+{
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    ogl_texture                                               result           = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entry_points);
+
+    #ifdef _DEBUG
+    {
+        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_TYPE,
+                                &context_type);
+
+        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+            "Only GL contexts are supported by ogl_textures_get_texture_from_pool()");
+    }
+    #endif
+
+    result = ogl_texture_create(context,
+                                name);
+
+    if (result == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "ogl_texture_create() failure.");
+
+        goto end;
+    }
+
+    switch (dimensionality)
+    {
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D:
+        {
+            dsa_entry_points->pGLTextureStorage1DEXT(result,
+                                                     dimensionality,
+                                                     n_mipmaps,
+                                                     internalformat,
+                                                     base_mipmap_width);
+
+            break;
+        }
+
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D_ARRAY:
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D:
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP:
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_RECTANGLE:
+        {
+            dsa_entry_points->pGLTextureStorage2DEXT(result,
+                                                     dimensionality,
+                                                     n_mipmaps,
+                                                     internalformat,
+                                                     base_mipmap_width,
+                                                     base_mipmap_height);
+
+            break;
+        }
+
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE:
+        {
+            dsa_entry_points->pGLTextureStorage2DMultisampleEXT(result,
+                                                                dimensionality,
+                                                                n_samples,
+                                                                internalformat,
+                                                                base_mipmap_width,
+                                                                base_mipmap_height,
+                                                                fixed_sample_locations);
+
+            break;
+        }
+
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY:
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D:
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP_ARRAY:
+        {
+            dsa_entry_points->pGLTextureStorage3DEXT(result,
+                                                     dimensionality,
+                                                     n_mipmaps,
+                                                     internalformat,
+                                                     base_mipmap_width,
+                                                     base_mipmap_height,
+                                                     base_mipmap_depth);
+
+            break;
+        }
+
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+        {
+            dsa_entry_points->pGLTextureStorage3DMultisampleEXT(result,
+                                                                dimensionality,
+                                                                n_samples,
+                                                                internalformat,
+                                                                base_mipmap_width,
+                                                                base_mipmap_height,
+                                                                base_mipmap_depth,
+                                                                fixed_sample_locations);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized texture dimensionality");
+        }
+    } /* switch (dimensionality) */
+
+    /* Store the properties */
+    _ogl_texture* result_ptr = (_ogl_texture*) result;
+
+    result_ptr->dimensionality         = dimensionality;
+    result_ptr->fixed_sample_locations = fixed_sample_locations;
+    result_ptr->internalformat         = (ogl_texture_internalformat) internalformat;
+    result_ptr->n_samples              = n_samples;
+
+end:
+    return result;
 }
 
 /* Please see header for specificaiton */
@@ -652,23 +791,9 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_text
                 break;
             }
 
-            case OGL_TEXTURE_MIPMAP_PROPERTY_DIMENSIONALITY:
-            {
-                *(ogl_texture_dimensionality*) out_result = mipmap_ptr->dimensionality;
-
-                break;
-            }
-
             case OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT:
             {
                 *(unsigned int*) out_result = mipmap_ptr->height;
-
-                break;
-            }
-
-            case OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT:
-            {
-                *(GLint*) out_result = mipmap_ptr->internalformat;
 
                 break;
             }
@@ -716,9 +841,30 @@ PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_textu
 
     switch (property)
     {
+        case OGL_TEXTURE_PROPERTY_DIMENSIONALITY:
+        {
+            *(ogl_texture_dimensionality*) out_result = texture_ptr->dimensionality;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS:
+        {
+            *(bool*) out_result = texture_ptr->fixed_sample_locations;
+
+            break;
+        }
+
         case OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND:
         {
             *((bool*) out_result) = texture_ptr->has_been_bound;
+
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_INTERNALFORMAT:
+        {
+            *(GLint*) out_result = texture_ptr->internalformat;
 
             break;
         }
@@ -764,6 +910,13 @@ PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_textu
             break;
         }
 
+        case OGL_TEXTURE_PROPERTY_N_SAMPLES:
+        {
+            *((unsigned int*) out_result) = texture_ptr->n_samples;
+
+            break;
+        }
+
         case OGL_TEXTURE_PROPERTY_SRC_FILENAME:
         {
             *((system_hashed_ansi_string*) out_result) = texture_ptr->src_filename;
@@ -791,7 +944,6 @@ end:
 
 /* Please see header for specification */
 PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_texture                 texture,
-                                                        __in           ogl_texture_dimensionality  dimensionality,
                                                         __in           unsigned int                n_mipmap,
                                                         __in           ogl_texture_mipmap_property property_value,
                                                         __in           void*                       value_ptr)
@@ -850,41 +1002,9 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_textu
                 break;
             }
 
-            case OGL_TEXTURE_MIPMAP_PROPERTY_DIMENSIONALITY:
-            {
-                ASSERT_DEBUG_SYNC(texture_ptr->dimensionality == dimensionality                     ||
-                                  texture_ptr->dimensionality == OGL_TEXTURE_DIMENSIONALITY_UNKNOWN,
-                                  "Texture type mismatch");
-
-                mipmap_ptr->dimensionality = *(ogl_texture_dimensionality*) value_ptr;
-
-                if (mipmap_ptr->dimensionality == GL_TEXTURE_CUBE_MAP_NEGATIVE_X ||
-                    mipmap_ptr->dimensionality == GL_TEXTURE_CUBE_MAP_NEGATIVE_Y ||
-                    mipmap_ptr->dimensionality == GL_TEXTURE_CUBE_MAP_NEGATIVE_Z ||
-                    mipmap_ptr->dimensionality == GL_TEXTURE_CUBE_MAP_POSITIVE_X ||
-                    mipmap_ptr->dimensionality == GL_TEXTURE_CUBE_MAP_POSITIVE_Y ||
-                    mipmap_ptr->dimensionality == GL_TEXTURE_CUBE_MAP_POSITIVE_Z)
-                {
-                    texture_ptr->dimensionality = OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP;
-                }
-                else
-                {
-                    texture_ptr->dimensionality = mipmap_ptr->dimensionality;
-                }
-
-                break;
-            }
-
             case OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT:
             {
                 mipmap_ptr->height = *(unsigned int*) value_ptr;
-
-                break;
-            }
-
-            case OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT:
-            {
-                mipmap_ptr->internalformat = *(ogl_texture_internalformat*) value_ptr;
 
                 break;
             }
@@ -928,6 +1048,18 @@ PUBLIC EMERALD_API void ogl_texture_set_property(__in  __notnull ogl_texture    
                                "OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND about to be set to a non-true value!");
 
             texture_ptr->has_been_bound = *(bool*) data;
+            break;
+        }
+
+        case OGL_TEXTURE_PROPERTY_INTERNALFORMAT:
+        {
+            /* Emerald only supports immutable textures. */
+            ASSERT_DEBUG_SYNC(texture_ptr->internalformat == OGL_TEXTURE_INTERNALFORMAT_UNKNOWN ||
+                              texture_ptr->internalformat == *(ogl_texture_internalformat*) data,
+                              "Invalid setter call!");
+
+            texture_ptr->internalformat = *(ogl_texture_internalformat*) data;
+
             break;
         }
 

@@ -256,14 +256,12 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                                                                  NULL, /* out_mipmap_level - irrelevant */
                                                                  NULL);/* out_sampler - irrelevant */
 
-                ogl_texture_get_mipmap_property(material_a_texture,
-                                                0, /* mipmap_level */
-                                                OGL_TEXTURE_MIPMAP_PROPERTY_DIMENSIONALITY,
-                                               &material_a_dimensionality);
-                ogl_texture_get_mipmap_property(material_b_texture,
-                                                0, /* mipmap_level */
-                                                OGL_TEXTURE_MIPMAP_PROPERTY_DIMENSIONALITY,
-                                               &material_b_dimensionality);
+                ogl_texture_get_property(material_a_texture,
+                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
+                                        &material_a_dimensionality);
+                ogl_texture_get_property(material_b_texture,
+                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
+                                        &material_b_dimensionality);
 
                 if (material_a_dimensionality != material_b_dimensionality)
                 {
