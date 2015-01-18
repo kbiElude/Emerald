@@ -38,7 +38,8 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode             (__in 
 PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool  (                system_resource_pool_block);
 PRIVATE void _ogl_scene_renderer_render_shadow_maps                       (__in __notnull  ogl_scene_renderer                             renderer,
                                                                            __in __notnull  const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
-                                                                           __in            system_timeline_time                           frame_time);
+                                                                           __in            system_timeline_time                           frame_time,
+                                                                           __in __notnull  system_matrix4x4                               projection);
 PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (__in __notnull  ogl_uber                                       material_uber,
                                                                            __in __notnull  scene                                          scene,
                                                                            __in            system_timeline_time                           frame_time,
@@ -784,8 +785,10 @@ PRIVATE void _ogl_scene_renderer_new_model_matrix(__in __notnull system_matrix4x
 /** TODO */
 PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_renderer                             renderer,
                                                     __in __notnull const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
-                                                    __in           system_timeline_time                           frame_time)
+                                                    __in           system_timeline_time                           frame_time,
+                                                    __in __notnull system_matrix4x4                               projection)
 {
+    scene_graph          graph          = NULL;
     uint32_t             n_lights       = 0;
     _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
     ogl_shadow_mapping   shadow_mapping = NULL;
@@ -797,6 +800,9 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_TEXTURES,
                             &texture_pool);
+    scene_get_property      (renderer_ptr->scene,
+                             SCENE_PROPERTY_GRAPH,
+                            &graph);
     scene_get_property      (renderer_ptr->scene,
                              SCENE_PROPERTY_N_LIGHTS,
                             &n_lights);
@@ -874,8 +880,10 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
                                     &current_light_shadow_map);
 
-            /* Prepare for rendering.. TODO .. */
-
+            /* Configure the GL for depth map rendering */
+            ogl_shadow_mapping_toggle(shadow_mapping,
+                                      current_light,
+                                      true); /* should_enable */
         } /* if (current_light_is_shadow_caster) */
     } /* for (all scene lights) */
 }
@@ -1240,7 +1248,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     {
         _ogl_scene_renderer_render_shadow_maps(renderer,
                                                shadow_mapping,
-                                               frame_time);
+                                               frame_time,
+                                               projection);
     } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 1. Traverse the scene graph and:

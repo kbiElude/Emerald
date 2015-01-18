@@ -19,6 +19,9 @@ enum scene_camera_property
     SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH,                /* not settable, float */
     SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,                 /*     settable, curve_container */
     SCENE_CAMERA_PROPERTY_F_STOP,                         /*     settable, curve_container */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,               /* not settable, float[3].
+                                                           *
+                                                           * Throws an assertion failure if use_camera_physical_props is on */
     SCENE_CAMERA_PROPERTY_NAME,                           /* not settable, system_hashed_ansi_string */
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,            /*     settable, float */
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT,              /* not settable, float */
@@ -33,8 +36,17 @@ enum scene_camera_property
                                                            * to calculate the requested values using
                                                            * F-Stop, Focal Distance and Zoom Factor curves.
                                                            */
-    SCENE_CAMERA_PROPERTY_VERTICAL_FOV,                   /*     settable, curve_container */
-    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,  /* not settable, float */
+    SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV,        /*     settable, bool */
+    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM,            /*     settable, curve_container;
+                                                           *
+                                                           * Getter will throw an assertion failure if use_custom_vertical_fov
+                                                           * is false.
+                                                           **/
+    SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,  /* not settable, float.
+                                                           *
+                                                           * Getter will throw an assertion failure if use_custom_vertical_fov
+                                                           * is true.
+                                                           */
     SCENE_CAMERA_PROPERTY_ZOOM_FACTOR                     /* not settable, curve_container */
 };
 

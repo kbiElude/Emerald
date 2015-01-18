@@ -2040,6 +2040,10 @@ PUBLIC EMERALD_API void scene_graph_attach_object_to_node(__in __notnull scene_g
             system_resizable_vector_push(node_ptr->attached_lights,
                                          instance);
 
+            scene_light_set_property( (scene_light) instance,
+                                      SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,
+                                     &node_ptr);
+
             break;
         }
 

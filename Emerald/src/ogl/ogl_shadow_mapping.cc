@@ -9,6 +9,7 @@
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader.h"
 #include "scene/scene.h"
+#include "scene/scene_light.h"
 #include "system/system_matrix4x4.h"
 #include <string>
 #include <sstream>
@@ -22,9 +23,13 @@ typedef struct _ogl_shadow_mapping
      */
     ogl_context context;
 
+    GLuint fbo_id; /* FBO used to render depth data to light-specific depth texture. */
+
+
     _ogl_shadow_mapping()
     {
         context = NULL;
+        fbo_id  = 0;
     }
 
 } _ogl_shadow_mapping;
@@ -38,18 +43,41 @@ typedef struct _ogl_shadow_mapping
 
 
 /** TODO */
-PRIVATE void _ogl_context_scene_renderer_shadow_mapping_init_program(__in __notnull _ogl_shadow_mapping* handler_ptr)
+PRIVATE void _ogl_shadow_mapping_init_renderer_callback(__in __notnull ogl_context context,
+                                                        __in __notnull void*       shadow_mapping)
 {
-    // ...
+    ogl_context_gl_entrypoints* entry_points       = NULL;
+    _ogl_shadow_mapping*        shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    /* Generate a FBO id. */
+    entry_points->pGLGenFramebuffers(1,
+                                    &shadow_mapping_ptr->fbo_id);
+
 }
 
 /** TODO */
 PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_context context,
-                                                           __in __notnull void*       handler)
+                                                           __in __notnull void*       shadow_mapping)
 {
-    _ogl_shadow_mapping* handler_ptr = (_ogl_shadow_mapping*) handler;
+    ogl_context_gl_entrypoints* entry_points       = NULL;
+    _ogl_shadow_mapping*        shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
 
-    // ..
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    /* Release the FBO */
+    if (shadow_mapping_ptr->fbo_id != 0)
+    {
+        entry_points->pGLDeleteFramebuffers(1,
+                                           &shadow_mapping_ptr->fbo_id);
+
+        shadow_mapping_ptr->fbo_id = 0;
+    }
 }
 
 /** TODO */
@@ -80,6 +108,8 @@ PUBLIC ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context c
     if (new_instance != NULL)
     {
         new_instance->context = context;
+
+
     } /* if (new_instance != NULL) */
 
     return (ogl_shadow_mapping) new_instance;
@@ -115,12 +145,41 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
     if (should_enable)
     {
-        entry_points->pGLColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+        ogl_texture light_shadow_map = NULL;
+
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
+                                &light_shadow_map);
+
+        ASSERT_DEBUG_SYNC(light_shadow_map != NULL,
+                          "Shadow map is NULL");
+
+        /* Set up color & depth masks */
+        entry_points->pGLColorMask(GL_FALSE,
+                                   GL_FALSE,
+                                   GL_FALSE,
+                                   GL_FALSE);
         entry_points->pGLDepthMask(GL_TRUE);
+
+        /* Set up draw FBO */
+        entry_points->pGLBindFramebuffer     (GL_DRAW_FRAMEBUFFER,
+                                              handler_ptr->fbo_id);
+        entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
+                                              GL_DEPTH_ATTACHMENT,
+                                              GL_TEXTURE_2D,
+                                              light_shadow_map,
+                                              0); /* level */
     }
     else
     {
-        entry_points->pGLColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        entry_points->pGLColorMask(GL_TRUE,
+                                   GL_TRUE,
+                                   GL_TRUE,
+                                   GL_TRUE);
         entry_points->pGLDepthMask(GL_TRUE);
+
+        /* Unbind the SM FBO */
+        entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                         0);
     }
 }

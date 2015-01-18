@@ -18,9 +18,13 @@ PUBLIC ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context c
 /** TODO. **/
 PUBLIC void ogl_shadow_mapping_release(__in __notnull ogl_shadow_mapping handler);
 
-/** TODO */
+/** TODO.
+ *
+ *  NOTE: This function changes the draw framebuffer binding!
+ *
+ **/
 PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_shadow_mapping handler,
-                                                                            __in __notnull scene_light                       light,
-                                                                            __in           bool                              should_enable);
+                                                             __in __notnull scene_light        light,
+                                                             __in           bool               should_enable);
 
 #endif /* OGL_SHADOW_MAPPING_H */

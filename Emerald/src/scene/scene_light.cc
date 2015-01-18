@@ -25,6 +25,7 @@ typedef struct
     curve_container            color    [3];
     curve_container            color_intensity;
     float                      direction[3];
+    scene_graph_node           graph_owner_node;
     curve_container            linear_attenuation;
     system_hashed_ansi_string  name;
     float                      position[3];
@@ -457,6 +458,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE:
+        {
+            *(scene_graph_node*) out_result = light_ptr->graph_owner_node;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -770,6 +778,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             memcpy(light_ptr->direction,
                    data,
                    sizeof(light_ptr->direction) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE:
+        {
+            light_ptr->graph_owner_node = *(scene_graph_node*) data;
 
             break;
         }

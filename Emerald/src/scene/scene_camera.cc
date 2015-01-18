@@ -31,7 +31,8 @@ typedef struct
     system_hashed_ansi_string name;
     _scene_camera_type        type;
     bool                      use_camera_physical_properties;
-    curve_container           yfov;
+    bool                      use_custom_vertical_fov;
+    curve_container           yfov_custom;
     float                     zfar;
     float                     znear;
     system_timeline_time      zfar_znear_last_recalc_time;
@@ -41,6 +42,9 @@ typedef struct
     float far_plane_width;
     float near_plane_height;
     float near_plane_width;
+
+    float                frustum_centroid[3];
+    system_timeline_time frustum_centroid_last_recalc_time;
 
     scene_graph_node owner_node;
     system_variant   temp_variant;
@@ -57,7 +61,7 @@ PRIVATE void _scene_camera_init                             (__in     __notnull 
                                                              __in     __notnull system_hashed_ansi_string name);
 PRIVATE void _scene_camera_init_default_f_stop_curve        (__in     __notnull _scene_camera*            camera_ptr);
 PRIVATE void _scene_camera_init_default_focal_distance_curve(__in     __notnull _scene_camera*            camera_ptr);
-PRIVATE void _scene_camera_init_default_yfov_curve          (__in     __notnull _scene_camera*            camera_ptr);
+PRIVATE void _scene_camera_init_default_yfov_custom_curve   (__in     __notnull _scene_camera*            camera_ptr);
 PRIVATE void _scene_camera_init_default_zoom_factor_curve   (__in     __notnull _scene_camera*            camera_ptr);
 PRIVATE bool _scene_camera_load_curve                       (__in_opt           scene                     owner_scene,
                                                              __in     __notnull curve_container*          curve_ptr,
@@ -77,23 +81,42 @@ PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_c
 {
     float yfov_value;
 
-    if (camera_ptr->yfov == NULL)
+    if (camera_ptr->use_custom_vertical_fov)
     {
-        _scene_camera_init_default_yfov_curve(camera_ptr);
-    }
+        if (camera_ptr->yfov_custom == NULL)
+        {
+            _scene_camera_init_default_yfov_custom_curve(camera_ptr);
+        }
 
-    curve_container_get_value(camera_ptr->yfov,
-                              time,
-                              false,
-                              camera_ptr->temp_variant);
-    system_variant_get_float (camera_ptr->temp_variant,
-                             &yfov_value);
+        curve_container_get_value(camera_ptr->yfov_custom,
+                                  time,
+                                  false,
+                                  camera_ptr->temp_variant);
+        system_variant_get_float (camera_ptr->temp_variant,
+                                 &yfov_value);
+    }
+    else
+    {
+        scene_camera_get_property( (scene_camera) camera_ptr,
+                                   SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
+                                   time,
+                                  &yfov_value);
+    }
 
     /* NOTE: Update get_property() if you start calcing more values here */
     camera_ptr->far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
     camera_ptr->far_plane_width   = camera_ptr->far_plane_height  * camera_ptr->ar;
     camera_ptr->near_plane_height = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->znear;
     camera_ptr->near_plane_width  = camera_ptr->near_plane_height * camera_ptr->ar;
+}
+
+/** TODO */
+PRIVATE void _scene_camera_calculate_frustum_centroid(__in __notnull _scene_camera*       camera_ptr,
+                                                      __in           system_timeline_time time)
+{
+    //todo;
+    //scene_camera_get_property( (scene_camera) camera_ptr,
+    //                           SCENE_CAMERA_PROPERTY_VERTICAL_FOV
 }
 
 /** TODO */
@@ -173,12 +196,13 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
     camera_ptr->owner_node             = NULL;
     camera_ptr->temp_variant           = system_variant_create(SYSTEM_VARIANT_FLOAT);
     camera_ptr->type                   = SCENE_CAMERA_TYPE_UNDEFINED;
-    camera_ptr->yfov                   = NULL;
+    camera_ptr->yfov_custom            = NULL;
     camera_ptr->zfar                   = 0.0f;
     camera_ptr->znear                  = 0.0f;
     camera_ptr->zoom_factor            = NULL;
 
     camera_ptr->use_camera_physical_properties = false;
+    camera_ptr->use_custom_vertical_fov        = true;
     camera_ptr->zfar_znear_last_recalc_time    = -1;
 }
 
@@ -205,14 +229,14 @@ PRIVATE void _scene_camera_init_default_focal_distance_curve(__in __notnull _sce
 }
 
 /** TODO */
-PRIVATE void _scene_camera_init_default_yfov_curve(__in __notnull _scene_camera* camera_ptr)
+PRIVATE void _scene_camera_init_default_yfov_custom_curve(__in __notnull _scene_camera* camera_ptr)
 {
-    ASSERT_DEBUG_SYNC(camera_ptr->yfov == NULL,
+    ASSERT_DEBUG_SYNC(camera_ptr->yfov_custom == NULL,
                       "Overwriting existing YFov curve with the default one.");
 
-    camera_ptr->yfov = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(camera_ptr->name),
-                                                                                                      " YFov"),
-                                              SYSTEM_VARIANT_FLOAT);
+    camera_ptr->yfov_custom = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(camera_ptr->name),
+                                                                                                             " YFov"),
+                                                     SYSTEM_VARIANT_FLOAT);
 }
 
 /** TODO */
@@ -288,11 +312,11 @@ PRIVATE void _scene_camera_release(void* data_ptr)
         camera_ptr->temp_variant = NULL;
     }
 
-    if (camera_ptr->yfov != NULL)
+    if (camera_ptr->yfov_custom != NULL)
     {
-        curve_container_release(camera_ptr->yfov);
+        curve_container_release(camera_ptr->yfov_custom);
 
-        camera_ptr->yfov = NULL;
+        camera_ptr->yfov_custom = NULL;
     }
 
     if (camera_ptr->zoom_factor != NULL)
@@ -365,14 +389,20 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
                                              property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT ||
                                              property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH);
 
-    if (camera_ptr->dirty                                                    ||
-        camera_ptr->dirty_last_recalc_time != time && recalc_value_requested)
+    if (property == SCENE_CAMERA_PROPERTY_FAR_PLANE_HEIGHT  ||
+        property == SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH   ||
+        property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT ||
+        property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH)
     {
-        _scene_camera_calculate_clipping_plane_data(camera_ptr,
-                                                    time);
+        if (camera_ptr->dirty                                                    ||
+            camera_ptr->dirty_last_recalc_time != time && recalc_value_requested)
+        {
+            _scene_camera_calculate_clipping_plane_data(camera_ptr,
+                                                        time);
 
-        camera_ptr->dirty                  = false;
-        camera_ptr->dirty_last_recalc_time = time;
+            camera_ptr->dirty                  = false;
+            camera_ptr->dirty_last_recalc_time = time;
+        }
     }
 
     switch (property)
@@ -431,6 +461,21 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
             break;
         }
 
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID:
+        {
+            if (camera_ptr->frustum_centroid_last_recalc_time != time)
+            {
+                _scene_camera_calculate_frustum_centroid(camera_ptr,
+                                                         time);
+            }
+
+            memcpy(out_result,
+                   camera_ptr->frustum_centroid,
+                   sizeof(camera_ptr->frustum_centroid) );
+
+            break;
+        }
+
         case SCENE_CAMERA_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = camera_ptr->name;
@@ -482,31 +527,49 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
             break;
         }
 
-        case SCENE_CAMERA_PROPERTY_VERTICAL_FOV:
+        case SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM:
         {
-            if (camera_ptr->yfov == NULL)
+            if (!camera_ptr->use_custom_vertical_fov)
             {
-                _scene_camera_init_default_yfov_curve(camera_ptr);
+                ASSERT_DEBUG_SYNC(false,
+                                  "VERTICAL_FOV_CUSTOM query issued against a scene_camera, whose "
+                                  "USE_CUSTOM_VERTICAL_FOV is false");
             }
+            else
+            {
+                if (camera_ptr->yfov_custom == NULL)
+                {
+                    _scene_camera_init_default_yfov_custom_curve(camera_ptr);
+                }
 
-            *(curve_container*) out_result = camera_ptr->yfov;
+                *(curve_container*) out_result = camera_ptr->yfov_custom;
+            }
 
             break;
         }
 
         case SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR:
         {
-            float zoom_factor = 0.0f;
+            if (camera_ptr->use_custom_vertical_fov)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "VERTICAL_FOV_FROM_ZOOM_FACTOR query issued against a scene_camera"
+                                  ", whose USE_CUSTOM_VERTICAL_FOV is true");
+            }
+            else
+            {
+                float zoom_factor = 0.0f;
 
-            curve_container_get_value(camera_ptr->zoom_factor,
-                                      time,
-                                      false, /* should_force */
-                                      camera_ptr->temp_variant);
-            system_variant_get_float (camera_ptr->temp_variant,
-                                     &zoom_factor);
+                curve_container_get_value(camera_ptr->zoom_factor,
+                                          time,
+                                          false, /* should_force */
+                                          camera_ptr->temp_variant);
+                system_variant_get_float (camera_ptr->temp_variant,
+                                         &zoom_factor);
 
-            *(float*) out_result = 2.0f * atan2(1.0f,
-                                                zoom_factor);
+                *(float*) out_result = 2.0f * atan2(1.0f,
+                                                    zoom_factor);
+            }
 
             break;
         }
@@ -573,11 +636,11 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer 
         result_ptr->focal_distance = NULL;
     }
 
-    if (result_ptr->yfov != NULL)
+    if (result_ptr->yfov_custom != NULL)
     {
-        curve_container_release(result_ptr->yfov);
+        curve_container_release(result_ptr->yfov_custom);
 
-        result_ptr->yfov = NULL;
+        result_ptr->yfov_custom = NULL;
     }
 
     if (result_ptr->zoom_factor != NULL)
@@ -592,11 +655,12 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer 
     curve_container    camera_f_stop         = NULL;
     curve_container    camera_focal_distance = NULL;
     _scene_camera_type camera_type;
+    bool               camera_use_custom_vertical_fov = false;
     bool               camera_use_physical_properties = false;
     curve_container    camera_yfov                    = NULL;
     float              camera_zfar;
     float              camera_znear;
-    curve_container    camera_zoom_factor    = NULL;
+    curve_container    camera_zoom_factor = NULL;
 
     if (!system_file_serializer_read (serializer,
                                       sizeof(camera_ar),
@@ -610,6 +674,9 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer 
         !system_file_serializer_read (serializer,
                                       sizeof(camera_type),
                                      &camera_type)                          ||
+        !system_file_serializer_read (serializer,
+                                      sizeof(camera_use_custom_vertical_fov),
+                                     &camera_use_custom_vertical_fov)       ||
         !_scene_camera_load_curve    (owner_scene,
                                      &camera_yfov,
                                       serializer)                           ||
@@ -645,10 +712,13 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer 
     scene_camera_set_property(result,
                               SCENE_CAMERA_PROPERTY_USE_CAMERA_PHYSICAL_PROPERTIES,
                              &camera_use_physical_properties);
+    scene_camera_set_property(result,
+                              SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV,
+                             &camera_use_custom_vertical_fov);
 
     result_ptr->f_stop         = camera_f_stop;
     result_ptr->focal_distance = camera_focal_distance;
-    result_ptr->yfov           = camera_yfov;
+    result_ptr->yfov_custom    = camera_yfov;
     result_ptr->zoom_factor    = camera_zoom_factor;
 
     /* All done */
@@ -690,8 +760,11 @@ PUBLIC bool scene_camera_save(__in __notnull system_file_serializer serializer,
     result &= system_file_serializer_write                   (serializer,
                                                               sizeof(camera_ptr->type),
                                                              &camera_ptr->type);
+    result &= system_file_serializer_write                   (serializer,
+                                                              sizeof(camera_ptr->use_custom_vertical_fov),
+                                                             &camera_ptr->use_custom_vertical_fov);
     result &= _scene_camera_save_curve                      (owner_scene,
-                                                             camera_ptr->yfov,
+                                                             camera_ptr->yfov_custom,
                                                              serializer);
     result &= system_file_serializer_write                  (serializer,
                                                               sizeof(camera_ptr->zfar),
@@ -816,24 +889,31 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
             break;
         }
 
-        case SCENE_CAMERA_PROPERTY_VERTICAL_FOV:
+        case SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV:
+        {
+            camera_ptr->use_custom_vertical_fov = *(bool*) data;
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM:
         {
             /* TODO: This is bad and can/will backfire in gazillion ways in indeterministic
              *       future. Please implement a property copy constructor-like function for
              *       curve containers.
              */
-            if (camera_ptr->yfov != NULL)
+            if (camera_ptr->yfov_custom != NULL)
             {
-                curve_container_release(camera_ptr->yfov);
+                curve_container_release(camera_ptr->yfov_custom);
 
-                camera_ptr->yfov = NULL;
+                camera_ptr->yfov_custom = NULL;
             }
 
-            camera_ptr->yfov = *(curve_container*) data;
+            camera_ptr->yfov_custom = *(curve_container*) data;
 
-            if (camera_ptr->yfov != NULL)
+            if (camera_ptr->yfov_custom != NULL)
             {
-                curve_container_retain(camera_ptr->yfov);
+                curve_container_retain(camera_ptr->yfov_custom);
             }
 
             break;
