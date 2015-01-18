@@ -10,6 +10,7 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
+#include "ogl/ogl_scene_renderer_frustum_preview.h"
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shadow_mapping.h"
@@ -108,6 +109,7 @@ typedef struct _ogl_scene_renderer_uber
 typedef struct _ogl_scene_renderer
 {
     ogl_scene_renderer_bbox_preview    bbox_preview;
+    ogl_scene_renderer_frustum_preview frustum_preview;
     ogl_scene_renderer_lights_preview  lights_preview;
     ogl_scene_renderer_normals_preview normals_preview;
 

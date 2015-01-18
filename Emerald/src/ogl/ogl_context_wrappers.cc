@@ -1819,6 +1819,51 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
 }
 
 /** Please see header for spec */
+PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum               mode,
+                                                                          const GLsizei*       count,
+                                                                          GLenum               type,
+                                                                          const GLvoid* const* indices,
+                                                                          GLsizei              drawcount,
+                                                                          const GLint*         basevertex)
+{
+    ogl_context                  context          = ogl_context_get_current_context ();
+    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_state_cache      state_cache      = NULL;
+    ogl_context_to_bindings      to_bindings      = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
+                            &sampler_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &to_bindings);
+
+    ogl_context_state_cache_sync     (state_cache,
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+    ogl_context_bo_bindings_sync     (bo_bindings,
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_sampler_bindings_sync(sampler_bindings);
+    ogl_context_to_bindings_sync     (to_bindings,
+                                      OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
+
+    _private_entrypoints_ptr->pGLMultiDrawElementsBaseVertex(mode,
+                                                             count,
+                                                             type,
+                                                             indices,
+                                                             drawcount,
+                                                             basevertex);
+}
+
+/** Please see header for spec */
 PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
                                                                GLenum access)
 {

@@ -1056,6 +1056,7 @@ typedef struct
     PFNGLMEMORYBARRIEREXTPROC                    pGLMemoryBarrier;
     PFNGLMULTIDRAWARRAYSPROC                     pGLMultiDrawArrays;
     PFNGLMULTIDRAWELEMENTSPROC                   pGLMultiDrawElements;
+    PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC         pGLMultiDrawElementsBaseVertex;
     PFNGLPAUSETRANSFORMFEEDBACKPROC              pGLPauseTransformFeedback;
     PFNGLPIXELSTOREFPROC                         pGLPixelStoref;
     PFNGLPIXELSTOREIPROC                         pGLPixelStorei;
@@ -1295,6 +1296,7 @@ typedef struct
     PFNGLMAPBUFFERRANGEPROC                  pGLMapBufferRange;
     PFNGLMULTIDRAWARRAYSPROC                 pGLMultiDrawArrays;
     PFNGLMULTIDRAWELEMENTSPROC               pGLMultiDrawElements;
+    PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC     pGLMultiDrawElementsBaseVertex;
     PFNGLREADPIXELSPROC                      pGLReadPixels;
     PFNGLRESUMETRANSFORMFEEDBACKPROC         pGLResumeTransformFeedback;
     PFNGLSAMPLERPARAMETERFPROC               pGLSamplerParameterf;

@@ -14,7 +14,8 @@ typedef enum
     HELPER_VISUALIZATION_NONE           = 0,
     HELPER_VISUALIZATION_BOUNDING_BOXES = 1 << 0,
     HELPER_VISUALIZATION_NORMALS        = 1 << 1,
-    HELPER_VISUALIZATION_LIGHTS         = 1 << 2
+    HELPER_VISUALIZATION_LIGHTS         = 1 << 2,
+    HELPER_VISUALIZATION_FRUSTUMS       = 1 << 3, /* before using, adjust CAMERA_FRUSTUM_TO_RENDER property */
 } _ogl_scene_renderer_helper_visualization;
 
 typedef enum
@@ -49,10 +50,10 @@ typedef enum
 
 typedef enum
 {
-    OGL_SCENE_RENDERER_PROPERTY_GRAPH,              /*         property,                 value: scene_graph      */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,      /* indexed property, key: mesh id // value: mesh             */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,  /* indexed property, key: mesh id // value: system_matrix4x4 */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX, /* indexed property, key: mesh id // value: system_matrix4x4 */
+    OGL_SCENE_RENDERER_PROPERTY_GRAPH,                     /*         property,                 value: scene_graph      */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,             /* indexed property, key: mesh id // value: mesh             */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,         /* indexed property, key: mesh id // value: system_matrix4x4 */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,        /* indexed property, key: mesh id // value: system_matrix4x4 */
 } ogl_scene_renderer_property;
 
 /** TODO. **/
@@ -70,7 +71,10 @@ PUBLIC EMERALD_API void ogl_scene_renderer_get_property(__in  __notnull ogl_scen
                                                         __in            ogl_scene_renderer_property property,
                                                         __out __notnull void*                       out_result);
 
-/** TODO */
+/** TODO.
+ *
+ *  TODO: state-ify render_mode / shadow_mapping_type / helper_visualization arguments..
+ **/
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in           __notnull ogl_scene_renderer                             renderer,
                                                                                      __in           __notnull system_matrix4x4                               view,
                                                                                      __in           __notnull system_matrix4x4                               projection,

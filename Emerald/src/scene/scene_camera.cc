@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -11,6 +11,7 @@
 #include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_log.h"
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
@@ -25,9 +26,11 @@ typedef struct
      *       caller tries to access any of the curve-based properties, but ALWAYS make
      *       sure a curve_container you need to use is available before accessing it! */
     float                     ar;
+    system_callback_manager   callback_manager;
     curve_container           focal_distance;
     curve_container           f_stop;
     system_hashed_ansi_string name;
+    bool                      show_frustum;
     _scene_camera_type        type;
     bool                      use_camera_physical_properties;
     bool                      use_custom_vertical_fov;
@@ -393,11 +396,13 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
                                 __in __notnull system_hashed_ansi_string name)
 {
     camera_ptr->ar                       = 0.0f;
+    camera_ptr->callback_manager         = system_callback_manager_create( (_callback_id) SCENE_CAMERA_CALLBACK_ID_COUNT);
     camera_ptr->focal_distance           = NULL;
     camera_ptr->f_stop                   = NULL;
     camera_ptr->frustum_last_recalc_time = -1;
     camera_ptr->name                     = name;
     camera_ptr->owner_node               = NULL;
+    camera_ptr->show_frustum             = false;
     camera_ptr->temp_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
     camera_ptr->type                     = SCENE_CAMERA_TYPE_UNDEFINED;
     camera_ptr->yfov_custom              = NULL;
@@ -494,6 +499,13 @@ PRIVATE bool _scene_camera_load_curve(__in_opt           scene                  
 PRIVATE void _scene_camera_release(void* data_ptr)
 {
     _scene_camera* camera_ptr = (_scene_camera*) data_ptr;
+
+    if (camera_ptr->callback_manager != NULL)
+    {
+        system_callback_manager_release(camera_ptr->callback_manager);
+
+        camera_ptr->callback_manager = NULL;
+    }
 
     if (camera_ptr->f_stop != NULL)
     {
@@ -763,6 +775,13 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
         case SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE:
         {
             *(scene_graph_node*) out_result = camera_ptr->owner_node;
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM:
+        {
+            *(bool*) out_result = camera_ptr->show_frustum;
 
             break;
         }
@@ -1118,6 +1137,17 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
                               "Owner scene graph node already set for a scene_camera instance");
 
             camera_ptr->owner_node = *(scene_graph_node*) data;
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM:
+        {
+            camera_ptr->show_frustum = *(bool*) data;
+
+            system_callback_manager_call_back(camera_ptr->callback_manager,
+                                              SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
+                                              camera_ptr);
 
             break;
         }

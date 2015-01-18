@@ -1664,6 +1664,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLMemoryBarrier,                       "glMemoryBarrier"},
             {&context_ptr->entry_points_private.pGLMultiDrawArrays,                "glMultiDrawArrays"},
             {&context_ptr->entry_points_private.pGLMultiDrawElements,              "glMultiDrawElements"},
+            {&context_ptr->entry_points_private.pGLMultiDrawElementsBaseVertex,    "glMultiDrawElementsBaseVertex"},
             {&context_ptr->entry_points_gl.pGLPauseTransformFeedback,              "glPauseTransformFeedback"},
             {&context_ptr->entry_points_gl.pGLPixelStoref,                         "glPixelStoref"},
             {&context_ptr->entry_points_gl.pGLPixelStorei,                         "glPixelStorei"},
@@ -1912,6 +1913,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLMapBufferRange                  = ogl_context_wrappers_glMapBufferRange;
         context_ptr->entry_points_gl.pGLMultiDrawArrays                 = ogl_context_wrappers_glMultiDrawArrays;
         context_ptr->entry_points_gl.pGLMultiDrawElements               = ogl_context_wrappers_glMultiDrawElements;
+        context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex     = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
         context_ptr->entry_points_gl.pGLReadPixels                      = ogl_context_wrappers_glReadPixels;
         context_ptr->entry_points_gl.pGLResumeTransformFeedback         = ogl_context_wrappers_glResumeTransformFeedback;
         context_ptr->entry_points_gl.pGLSamplerParameterf               = ogl_context_wrappers_glSamplerParameterf;
