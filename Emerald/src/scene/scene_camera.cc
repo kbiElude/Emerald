@@ -12,6 +12,7 @@
 #include "scene/scene_graph.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_file_serializer.h"
 #include "system/system_variant.h"
@@ -26,8 +27,6 @@ typedef struct
     float                     ar;
     curve_container           focal_distance;
     curve_container           f_stop;
-    bool                      dirty;
-    system_timeline_time      dirty_last_recalc_time; /* time, for which the last recalc was done */
     system_hashed_ansi_string name;
     _scene_camera_type        type;
     bool                      use_camera_physical_properties;
@@ -38,13 +37,16 @@ typedef struct
     system_timeline_time      zfar_znear_last_recalc_time;
     curve_container           zoom_factor;
 
-    float far_plane_height;
-    float far_plane_width;
-    float near_plane_height;
-    float near_plane_width;
-
+    system_timeline_time frustum_last_recalc_time;
+    float                frustum_far_bottom_left[3];
+    float                frustum_far_bottom_right[3];
+    float                frustum_far_top_left[3];
+    float                frustum_far_top_right[3];
+    float                frustum_near_bottom_left[3];
+    float                frustum_near_bottom_right[3];
+    float                frustum_near_top_left[3];
+    float                frustum_near_top_right[3];
     float                frustum_centroid[3];
-    system_timeline_time frustum_centroid_last_recalc_time;
 
     scene_graph_node owner_node;
     system_variant   temp_variant;
@@ -53,7 +55,7 @@ typedef struct
 } _scene_camera;
 
 /* Forward declarations */
-PRIVATE void _scene_camera_calculate_clipping_plane_data    (__in     __notnull _scene_camera*            camera_ptr,
+PRIVATE void _scene_camera_calculate_frustum                (__in     __notnull _scene_camera*            camera_ptr,
                                                              __in               system_timeline_time      time);
 PRIVATE void _scene_camera_calculate_zfar_znear             (__in     __notnull _scene_camera*            camera_ptr,
                                                              __in               system_timeline_time      time);
@@ -76,8 +78,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_camera, scene_camera, _scene_camera);
 
 
 /** TODO */
-PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_camera*       camera_ptr,
-                                                         __in           system_timeline_time time)
+PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*       camera_ptr,
+                                             __in           system_timeline_time time)
 {
     float yfov_value;
 
@@ -103,20 +105,227 @@ PRIVATE void _scene_camera_calculate_clipping_plane_data(__in __notnull _scene_c
                                   &yfov_value);
     }
 
-    /* NOTE: Update get_property() if you start calcing more values here */
-    camera_ptr->far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
-    camera_ptr->far_plane_width   = camera_ptr->far_plane_height  * camera_ptr->ar;
-    camera_ptr->near_plane_height = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->znear;
-    camera_ptr->near_plane_width  = camera_ptr->near_plane_height * camera_ptr->ar;
-}
+    /* Calculate far/near plane properties */
+    float far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
+    float far_plane_width   = far_plane_height              * camera_ptr->ar;
+    float near_plane_height = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->znear;
+    float near_plane_width  = near_plane_height             * camera_ptr->ar;
 
-/** TODO */
-PRIVATE void _scene_camera_calculate_frustum_centroid(__in __notnull _scene_camera*       camera_ptr,
-                                                      __in           system_timeline_time time)
-{
-    //todo;
-    //scene_camera_get_property( (scene_camera) camera_ptr,
-    //                           SCENE_CAMERA_PROPERTY_VERTICAL_FOV
+    /* We need forward, right & up vectors for the camera. We will calculate those, using
+     * the inversed camera matrix.
+     */
+    system_matrix4x4 inversed_transformation_matrix   = NULL;
+    system_matrix4x4 owner_node_transformation_matrix = NULL;
+
+    ASSERT_DEBUG_SYNC(camera_ptr->owner_node != NULL,
+                      "No scene graph node assigned to a scene_camera instance!");
+
+    scene_graph_node_get_property(camera_ptr->owner_node,
+                                  SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
+                                 &owner_node_transformation_matrix);
+
+    inversed_transformation_matrix = system_matrix4x4_create();
+
+    system_matrix4x4_set_from_matrix4x4(inversed_transformation_matrix,
+                                        owner_node_transformation_matrix);
+    system_matrix4x4_invert            (inversed_transformation_matrix);
+
+    /* Transform forward/right/up vectors by the inversed matrix */
+    const float forward_vector[4] = {0.0f, 0.0f, -1.0f, 1.0f};
+    const float right_vector  [4] = {1.0f, 0.0f,  0.0f, 1.0f};
+    const float up_vector     [4] = {0.0f, 1.0f,  0.0f, 1.0f};
+    const float zero_point    [4] = {0.0f, 0.0f,  0.0f, 1.0f};
+
+    float transformed_forward    [4] = {0.0f};
+    float transformed_forward_dir[4] = {0.0f};
+    float transformed_right      [4] = {0.0f};
+    float transformed_right_dir  [4] = {0.0f};
+    float transformed_up         [4] = {0.0f};
+    float transformed_up_dir     [4] = {0.0f};
+    float transformed_zero       [4] = {0.0f};
+
+    system_matrix4x4_multiply_by_vector4(owner_node_transformation_matrix,
+                                         forward_vector,
+                                         transformed_forward);
+    system_matrix4x4_multiply_by_vector4(owner_node_transformation_matrix,
+                                         right_vector,
+                                         transformed_right);
+    system_matrix4x4_multiply_by_vector4(owner_node_transformation_matrix,
+                                         up_vector,
+                                         transformed_up);
+    system_matrix4x4_multiply_by_vector4(owner_node_transformation_matrix,
+                                         zero_point,
+                                         transformed_zero);
+
+    ASSERT_DEBUG_SYNC(transformed_forward[3] != 0.0f &&
+                      transformed_right  [3] != 0.0f &&
+                      transformed_up     [3] != 0.0f &&
+                      transformed_zero   [3] != 0.0f,
+                      "Div by zero");
+
+    system_math_vector_mul3_float(transformed_forward,
+                                  1.0f / transformed_forward[3],
+                                  transformed_forward);
+    system_math_vector_mul3_float(transformed_right,
+                                  1.0f / transformed_right[3],
+                                  transformed_right);
+    system_math_vector_mul3_float(transformed_up,
+                                  1.0f / transformed_up[3],
+                                  transformed_up);
+    system_math_vector_mul3_float(transformed_zero,
+                                  1.0f / transformed_zero[3],
+                                  transformed_zero);
+
+    /* Compute direction vectors */
+    system_math_vector_minus3(transformed_forward,
+                              transformed_zero,
+                              transformed_forward_dir);
+    system_math_vector_minus3(transformed_right,
+                              transformed_zero,
+                              transformed_right_dir);
+    system_math_vector_minus3(transformed_up,
+                              transformed_zero,
+                              transformed_up_dir);
+
+    system_math_vector_normalize3(transformed_forward_dir,
+                                  transformed_forward_dir);
+    system_math_vector_normalize3(transformed_right_dir,
+                                  transformed_right_dir);
+    system_math_vector_normalize3(transformed_up_dir,
+                                  transformed_up_dir);
+
+    /* Compute clipping points: (camera position + dir * far/near clipping plane distance) */
+    float far_plane_clipping_point [3] = {0.0f};
+    float near_plane_clipping_point[3] = {0.0f};
+
+    system_math_vector_mul3_float(transformed_forward_dir,
+                                  camera_ptr->zfar,
+                                  far_plane_clipping_point);
+    system_math_vector_mul3_float(transformed_forward_dir,
+                                  camera_ptr->znear,
+                                  near_plane_clipping_point);
+
+    system_math_vector_add3(far_plane_clipping_point,
+                            transformed_zero,
+                            far_plane_clipping_point);
+    system_math_vector_add3(near_plane_clipping_point,
+                            transformed_zero,
+                            near_plane_clipping_point);
+
+    /* Proceed with frustum calculation: */
+    float right_mul_far_plane_height_half [3] = {0.0f};
+    float right_mul_near_plane_height_half[3] = {0.0f};
+    float up_mul_far_plane_height_half    [3] = {0.0f};
+    float up_mul_near_plane_height_half   [3] = {0.0f};
+
+    system_math_vector_mul3_float(transformed_right_dir,
+                                  far_plane_height * 0.5f,
+                                  right_mul_far_plane_height_half);
+    system_math_vector_mul3_float(transformed_right_dir,
+                                  near_plane_height * 0.5f,
+                                  right_mul_near_plane_height_half);
+    system_math_vector_mul3_float(transformed_up_dir,
+                                  far_plane_height * 0.5f,
+                                  up_mul_far_plane_height_half);
+    system_math_vector_mul3_float(transformed_up_dir,
+                                  near_plane_height * 0.5f,
+                                  up_mul_near_plane_height_half);
+
+    /* a) far top-left corner */
+    system_math_vector_add3  (far_plane_clipping_point,
+                              up_mul_far_plane_height_half,
+                              camera_ptr->frustum_far_top_left);
+    system_math_vector_minus3(camera_ptr->frustum_far_top_left,
+                              right_mul_far_plane_height_half,
+                              camera_ptr->frustum_far_top_left);
+
+    /* b) far top-right corner */
+    system_math_vector_add3(far_plane_clipping_point,
+                            up_mul_far_plane_height_half,
+                            camera_ptr->frustum_far_top_right);
+    system_math_vector_add3(camera_ptr->frustum_far_top_right,
+                            right_mul_far_plane_height_half,
+                            camera_ptr->frustum_far_top_right);
+
+    /* c) far bottom-left corner */
+    system_math_vector_minus3(far_plane_clipping_point,
+                              up_mul_far_plane_height_half,
+                              camera_ptr->frustum_far_bottom_left);
+    system_math_vector_minus3(camera_ptr->frustum_far_bottom_left,
+                              right_mul_far_plane_height_half,
+                              camera_ptr->frustum_far_bottom_left);
+
+    /* d) far bottom-right corner */
+    system_math_vector_minus3(far_plane_clipping_point,
+                              up_mul_far_plane_height_half,
+                              camera_ptr->frustum_far_bottom_right);
+    system_math_vector_minus3(camera_ptr->frustum_far_bottom_right,
+                              right_mul_far_plane_height_half,
+                              camera_ptr->frustum_far_bottom_right);
+
+    /* e) near top-left corner */
+    system_math_vector_add3  (near_plane_clipping_point,
+                              up_mul_near_plane_height_half,
+                              camera_ptr->frustum_near_top_left);
+    system_math_vector_minus3(camera_ptr->frustum_near_top_left,
+                              right_mul_near_plane_height_half,
+                              camera_ptr->frustum_near_top_left);
+
+    /* f) near top-right corner */
+    system_math_vector_add3(near_plane_clipping_point,
+                            up_mul_near_plane_height_half,
+                            camera_ptr->frustum_near_top_right);
+    system_math_vector_add3(camera_ptr->frustum_near_top_right,
+                            right_mul_near_plane_height_half,
+                            camera_ptr->frustum_near_top_right);
+
+    /* g) near bottom-left corner */
+    system_math_vector_minus3(near_plane_clipping_point,
+                              up_mul_near_plane_height_half,
+                              camera_ptr->frustum_near_bottom_left);
+    system_math_vector_minus3(camera_ptr->frustum_near_bottom_left,
+                              right_mul_near_plane_height_half,
+                              camera_ptr->frustum_near_bottom_left);
+
+    /* h) near bottom-right corner */
+    system_math_vector_minus3(near_plane_clipping_point,
+                              up_mul_near_plane_height_half,
+                              camera_ptr->frustum_near_bottom_right);
+    system_math_vector_minus3(camera_ptr->frustum_near_bottom_right,
+                              right_mul_near_plane_height_half,
+                              camera_ptr->frustum_near_bottom_right);
+
+    /* Finally, compute the frustum centroid */
+    system_math_vector_add3(camera_ptr->frustum_far_bottom_left,
+                            camera_ptr->frustum_far_bottom_right,
+                            camera_ptr->frustum_centroid);
+    system_math_vector_add3(camera_ptr->frustum_centroid,
+                            camera_ptr->frustum_far_top_left,
+                            camera_ptr->frustum_centroid);
+    system_math_vector_add3(camera_ptr->frustum_centroid,
+                            camera_ptr->frustum_far_top_right,
+                            camera_ptr->frustum_centroid);
+
+    system_math_vector_add3(camera_ptr->frustum_centroid,
+                            camera_ptr->frustum_near_bottom_left,
+                            camera_ptr->frustum_centroid);
+    system_math_vector_add3(camera_ptr->frustum_centroid,
+                            camera_ptr->frustum_near_bottom_right,
+                            camera_ptr->frustum_centroid);
+    system_math_vector_add3(camera_ptr->frustum_centroid,
+                            camera_ptr->frustum_near_top_left,
+                            camera_ptr->frustum_centroid);
+    system_math_vector_add3(camera_ptr->frustum_centroid,
+                            camera_ptr->frustum_near_top_right,
+                            camera_ptr->frustum_centroid);
+
+    system_math_vector_mul3_float(camera_ptr->frustum_centroid,
+                                  1.0f / 8.0f,
+                                  camera_ptr->frustum_centroid);
+
+    /* Clean up */
+    system_matrix4x4_release(inversed_transformation_matrix);
+
 }
 
 /** TODO */
@@ -183,23 +392,18 @@ PRIVATE void _scene_camera_calculate_zfar_znear(__in __notnull _scene_camera*   
 PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_ptr,
                                 __in __notnull system_hashed_ansi_string name)
 {
-    camera_ptr->ar                     = 0.0f;
-    camera_ptr->dirty                  = true;
-    camera_ptr->dirty_last_recalc_time = -1;
-    camera_ptr->far_plane_height       = 0.0f;
-    camera_ptr->far_plane_width        = 0.0f;
-    camera_ptr->focal_distance         = NULL;
-    camera_ptr->f_stop                 = NULL;
-    camera_ptr->name                   = name;
-    camera_ptr->near_plane_height      = 0.0f;
-    camera_ptr->near_plane_width       = 0.0f;
-    camera_ptr->owner_node             = NULL;
-    camera_ptr->temp_variant           = system_variant_create(SYSTEM_VARIANT_FLOAT);
-    camera_ptr->type                   = SCENE_CAMERA_TYPE_UNDEFINED;
-    camera_ptr->yfov_custom            = NULL;
-    camera_ptr->zfar                   = 0.0f;
-    camera_ptr->znear                  = 0.0f;
-    camera_ptr->zoom_factor            = NULL;
+    camera_ptr->ar                       = 0.0f;
+    camera_ptr->focal_distance           = NULL;
+    camera_ptr->f_stop                   = NULL;
+    camera_ptr->frustum_last_recalc_time = -1;
+    camera_ptr->name                     = name;
+    camera_ptr->owner_node               = NULL;
+    camera_ptr->temp_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    camera_ptr->type                     = SCENE_CAMERA_TYPE_UNDEFINED;
+    camera_ptr->yfov_custom              = NULL;
+    camera_ptr->zfar                     = 0.0f;
+    camera_ptr->znear                    = 0.0f;
+    camera_ptr->zoom_factor              = NULL;
 
     camera_ptr->use_camera_physical_properties = false;
     camera_ptr->use_custom_vertical_fov        = true;
@@ -384,25 +588,24 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
                                                   __out __notnull void*                 out_result)
 {
     _scene_camera* camera_ptr             = (_scene_camera*) camera;
-    const bool     recalc_value_requested = (property == SCENE_CAMERA_PROPERTY_FAR_PLANE_HEIGHT  ||
-                                             property == SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH   ||
-                                             property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT ||
-                                             property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH);
+    const bool     recalc_value_requested = (property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT   ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT  ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT      ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT     ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT  ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT     ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT    ||
+                                             property == SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID);
 
-    if (property == SCENE_CAMERA_PROPERTY_FAR_PLANE_HEIGHT  ||
-        property == SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH   ||
-        property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT ||
-        property == SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH)
+    if (recalc_value_requested &&
+        camera_ptr->frustum_last_recalc_time != time)
     {
-        if (camera_ptr->dirty                                                    ||
-            camera_ptr->dirty_last_recalc_time != time && recalc_value_requested)
-        {
-            _scene_camera_calculate_clipping_plane_data(camera_ptr,
-                                                        time);
+        /* NOTE: This mechanism does not account for curve value changes! */
+        _scene_camera_calculate_frustum(camera_ptr,
+                                        time);
 
-            camera_ptr->dirty                  = false;
-            camera_ptr->dirty_last_recalc_time = time;
-        }
+        camera_ptr->frustum_last_recalc_time = time;
     }
 
     switch (property)
@@ -419,20 +622,6 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
             }
 
             *(float*) out_result = camera_ptr->zfar;
-
-            break;
-        }
-
-        case SCENE_CAMERA_PROPERTY_FAR_PLANE_HEIGHT:
-        {
-            *(float*) out_result = camera_ptr->far_plane_height;
-
-            break;
-        }
-
-        case SCENE_CAMERA_PROPERTY_FAR_PLANE_WIDTH:
-        {
-            *(float*) out_result = camera_ptr->far_plane_width;
 
             break;
         }
@@ -463,15 +652,87 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID:
         {
-            if (camera_ptr->frustum_centroid_last_recalc_time != time)
+            if (camera_ptr->frustum_last_recalc_time != time)
             {
-                _scene_camera_calculate_frustum_centroid(camera_ptr,
-                                                         time);
+                _scene_camera_calculate_frustum(camera_ptr,
+                                                time);
             }
 
             memcpy(out_result,
                    camera_ptr->frustum_centroid,
                    sizeof(camera_ptr->frustum_centroid) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_far_bottom_left,
+                   sizeof(camera_ptr->frustum_far_bottom_left) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_far_bottom_right,
+                   sizeof(camera_ptr->frustum_far_bottom_right) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_far_top_left,
+                   sizeof(camera_ptr->frustum_far_top_left) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_far_top_right,
+                   sizeof(camera_ptr->frustum_far_top_right) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_near_bottom_left,
+                   sizeof(camera_ptr->frustum_near_bottom_left) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_near_bottom_right,
+                   sizeof(camera_ptr->frustum_near_bottom_right) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_near_top_left,
+                   sizeof(camera_ptr->frustum_near_top_left) );
+
+            break;
+        }
+
+        case SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT:
+        {
+            memcpy(out_result,
+                   camera_ptr->frustum_near_top_right,
+                   sizeof(camera_ptr->frustum_near_top_right) );
 
             break;
         }
@@ -495,20 +756,6 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
             }
 
             *(float*) out_result = camera_ptr->znear;
-
-            break;
-        }
-
-        case SCENE_CAMERA_PROPERTY_NEAR_PLANE_HEIGHT:
-        {
-            *(float*) out_result = camera_ptr->near_plane_height;
-
-            break;
-        }
-
-        case SCENE_CAMERA_PROPERTY_NEAR_PLANE_WIDTH:
-        {
-            *(float*) out_result = camera_ptr->near_plane_width;
 
             break;
         }
@@ -948,6 +1195,4 @@ PUBLIC EMERALD_API void scene_camera_set_property(__in __notnull scene_camera   
                               "Unrecognized scene_camera property");
         }
     } /* switch (property) */
-
-    camera_ptr->dirty = true;
 }
