@@ -13,6 +13,7 @@
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "system/system_callback_manager.h"
+#include "system/system_log.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
 #include <string>
@@ -32,7 +33,7 @@
  *     NBL--NBR               NTR: near top-right    corner (index: 3)
  *                            OO:  origin                   (index: 0)
  *
- * 27 UBYTE indices describing index data for the frustum.
+ * n UBYTE indices describing index data for the frustum.
  * n_cameras * 9 vertices (4 comps each)
  * n_lights  * 9 vertices (4 comps each)
  *
@@ -44,9 +45,15 @@
 
 PRIVATE const unsigned char index_data_array[] =
 {
-    0, 1, 5, 6, 2, 0, 3, 7, 8, 4, 0, PRIMITIVE_RESTART_TERMINATOR_INDEX,
-    1, 2, 3, 4, 1,                   PRIMITIVE_RESTART_TERMINATOR_INDEX,
-    5, 6, 7, 8, 5
+    /* side planes */
+    0, 1, 5, 6, 2,
+    0, 3, 7, 8, 4, 0, PRIMITIVE_RESTART_TERMINATOR_INDEX,
+
+    1, 2, 3, 4, 1,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* near plane */
+    5, 6, 7, 8, 5,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* far  plane */
+
+    4, 1, 5, 8, 4,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* bottom plane */
+    2, 6, 7, 3, 2,    PRIMITIVE_RESTART_TERMINATOR_INDEX, /* top    plane */
 };
 
 #define BO_DATA_INDEX_FTL    (6)
@@ -247,6 +254,8 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     entry_points->pGLGenVertexArrays(1,
                                     &preview_ptr->vao_id);
     entry_points->pGLBindVertexArray(preview_ptr->vao_id);
+    entry_points->pGLBindBuffer     (GL_ARRAY_BUFFER,
+                                     preview_ptr->data_bo_id);
     entry_points->pGLBindBuffer     (GL_ELEMENT_ARRAY_BUFFER,
                                      preview_ptr->data_bo_id);
 
@@ -316,6 +325,9 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
 PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __notnull _ogl_scene_renderer_frustum_preview* preview_ptr,
                                                                        __in           system_timeline_time                 frame_time)
 {
+    ASSERT_DEBUG_SYNC(preview_ptr->data_bo_buffer != NULL,
+                      "Data BO buffer is NULL");
+
     /* Update index data */
     memcpy(preview_ptr->data_bo_buffer,
            index_data_array,
@@ -424,7 +436,6 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,
                                   frame_time,
                                   frustum_ftr);
-
         scene_camera_get_property(current_camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,
                                   frame_time,
@@ -444,32 +455,32 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
 
         system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
                                              frustum_origin,
-                                             bo_vertex_data + BO_DATA_INDEX_ORIGIN);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_fbl,
-                                             bo_vertex_data + BO_DATA_INDEX_FBL);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_fbr,
-                                             bo_vertex_data + BO_DATA_INDEX_FBR);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_ftl,
-                                             bo_vertex_data + BO_DATA_INDEX_FTL);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_ftr,
-                                             bo_vertex_data + BO_DATA_INDEX_FTR);
+                                             bo_vertex_data + 4 * BO_DATA_INDEX_ORIGIN);
 
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_nbl,
-                                             bo_vertex_data + BO_DATA_INDEX_NBL);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_nbr,
-                                             bo_vertex_data + BO_DATA_INDEX_NBR);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_ntl,
-                                             bo_vertex_data + BO_DATA_INDEX_NTL);
-        system_matrix4x4_multiply_by_vector4(current_camera_transformation_matrix,
-                                             frustum_ntr,
-                                             bo_vertex_data + BO_DATA_INDEX_NTR);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_FBL,
+               frustum_fbl,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_FBR,
+               frustum_fbr,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_FTL,
+               frustum_ftl,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_FTR,
+               frustum_ftr,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_NBL,
+               frustum_nbl,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_NBR,
+               frustum_nbr,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_NTL,
+               frustum_ntl,
+               sizeof(float) * 4);
+        memcpy(bo_vertex_data + 4 * BO_DATA_INDEX_NTR,
+               frustum_ntr,
+               sizeof(float) * 4);
 
         /* Update MDEBV draw call arguments */
         preview_ptr->mdebv_basevertex_array[n_camera] = bo_vertex_offset - BO_DATA_VERTEX_DATA_OFFSET;
@@ -559,7 +570,7 @@ PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(__in __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_lights_preview_create(__in __notnull ogl_context context)
+PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(__in __notnull ogl_context context)
 {
     _ogl_scene_renderer_frustum_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_frustum_preview;
 
@@ -602,6 +613,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
 
     /* Retrieve entry-points */
     ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entrypoints_ptr);
+    ogl_context_get_property(preview_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
 
@@ -638,19 +652,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
         preview_ptr->data_bo_buffer_last_update_time = time;
     } /* if (preview_ptr->data_bo_buffer_last_update_time != time) */
 
+    /* Update line width */
+    entrypoints_ptr->pGLLineWidth(2.0f);
+
     /* Update VP before we kick off */
     const GLuint po_id = ogl_program_get_id(preview_ptr->po);
 
-    entrypoints_ptr->pGLUseProgram       (po_id);
-    entrypoints_ptr->pGLProgramUniform4fv(po_id,
-                                          preview_ptr->po_vp_location,
-                                          1, /* count */
-                                          system_matrix4x4_get_column_major_data(vp) );
+    entrypoints_ptr->pGLUseProgram             (po_id);
+    entrypoints_ptr->pGLProgramUniformMatrix4fv(po_id,
+                                                preview_ptr->po_vp_location,
+                                                1,        /* count */
+                                                GL_FALSE, /* transpose */
+                                                system_matrix4x4_get_column_major_data(vp) );
 
     /* Draw! */
     entrypoints_ptr->pGLEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
     {
-        entrypoints_ptr->pGLMultiDrawElementsBaseVertex(GL_TRIANGLE_STRIP,
+        entrypoints_ptr->pGLMultiDrawElementsBaseVertex(GL_LINE_STRIP,
                                                         preview_ptr->mdebv_count_array,
                                                         GL_UNSIGNED_BYTE,
                                                         preview_ptr->mdebv_indices_array,

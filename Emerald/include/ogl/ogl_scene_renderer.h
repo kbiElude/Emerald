@@ -13,9 +13,9 @@ typedef enum
 {
     HELPER_VISUALIZATION_NONE           = 0,
     HELPER_VISUALIZATION_BOUNDING_BOXES = 1 << 0,
+    HELPER_VISUALIZATION_FRUSTUMS       = 1 << 3,
     HELPER_VISUALIZATION_NORMALS        = 1 << 1,
     HELPER_VISUALIZATION_LIGHTS         = 1 << 2,
-    HELPER_VISUALIZATION_FRUSTUMS       = 1 << 3, /* before using, adjust CAMERA_FRUSTUM_TO_RENDER property */
 } _ogl_scene_renderer_helper_visualization;
 
 typedef enum

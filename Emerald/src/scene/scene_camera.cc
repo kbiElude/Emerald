@@ -117,7 +117,6 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     /* We need forward, right & up vectors for the camera. We will calculate those, using
      * the inversed camera matrix.
      */
-    system_matrix4x4 inversed_transformation_matrix   = NULL;
     system_matrix4x4 owner_node_transformation_matrix = NULL;
 
     ASSERT_DEBUG_SYNC(camera_ptr->owner_node != NULL,
@@ -126,12 +125,6 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     scene_graph_node_get_property(camera_ptr->owner_node,
                                   SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
                                  &owner_node_transformation_matrix);
-
-    inversed_transformation_matrix = system_matrix4x4_create();
-
-    system_matrix4x4_set_from_matrix4x4(inversed_transformation_matrix,
-                                        owner_node_transformation_matrix);
-    system_matrix4x4_invert            (inversed_transformation_matrix);
 
     /* Transform forward/right/up vectors by the inversed matrix */
     const float forward_vector[4] = {0.0f, 0.0f, -1.0f, 1.0f};
@@ -325,10 +318,6 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     system_math_vector_mul3_float(camera_ptr->frustum_centroid,
                                   1.0f / 8.0f,
                                   camera_ptr->frustum_centroid);
-
-    /* Clean up */
-    system_matrix4x4_release(inversed_transformation_matrix);
-
 }
 
 /** TODO */
@@ -395,6 +384,8 @@ PRIVATE void _scene_camera_calculate_zfar_znear(__in __notnull _scene_camera*   
 PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_ptr,
                                 __in __notnull system_hashed_ansi_string name)
 {
+    static int test = 0;
+
     camera_ptr->ar                       = 0.0f;
     camera_ptr->callback_manager         = system_callback_manager_create( (_callback_id) SCENE_CAMERA_CALLBACK_ID_COUNT);
     camera_ptr->focal_distance           = NULL;
@@ -402,7 +393,7 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
     camera_ptr->frustum_last_recalc_time = -1;
     camera_ptr->name                     = name;
     camera_ptr->owner_node               = NULL;
-    camera_ptr->show_frustum             = false;
+    camera_ptr->show_frustum             = (test++ == 0); /* TEMP TEMP TODO */
     camera_ptr->temp_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
     camera_ptr->type                     = SCENE_CAMERA_TYPE_UNDEFINED;
     camera_ptr->yfov_custom              = NULL;
@@ -622,6 +613,13 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 
     switch (property)
     {
+        case SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result = camera_ptr->callback_manager;
+
+            break;
+        }
+
         case SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE:
         {
             if (camera_ptr->use_camera_physical_properties)

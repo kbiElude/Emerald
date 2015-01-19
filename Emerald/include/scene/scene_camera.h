@@ -25,15 +25,15 @@ enum scene_camera_property
     SCENE_CAMERA_PROPERTY_F_STOP,                         /*     settable, curve_container */
     SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,             /*     settable, float */
     SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,                 /*     settable, curve_container */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,               /* not settable, float[3].*/
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,        /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,       /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,           /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,          /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,       /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,      /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,          /* not settable, float[3] */
-    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,         /* not settable, float[3] */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,               /* not settable, float[3]. Model space coordinates.*/
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,        /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,       /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,           /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,          /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,       /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,      /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,          /* not settable, float[3]. Model space coordinates */
+    SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,         /* not settable, float[3]. Model space coordinates */
     SCENE_CAMERA_PROPERTY_NAME,                           /* not settable, system_hashed_ansi_string */
     SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,            /*     settable, float */
     SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,               /*     settable, scene_graph_node */

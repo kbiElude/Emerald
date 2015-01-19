@@ -14,8 +14,7 @@ DECLARE_HANDLE(ogl_scene_renderer_frustum_preview);
 
 
 /** TODO */
-PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(__in __notnull ogl_context context,
-                                                                                    __in __notnull scene       scene);
+PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(__in __notnull ogl_context context);
 
 /** TODO */
 PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(__in __notnull ogl_scene_renderer_frustum_preview preview,

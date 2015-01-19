@@ -356,6 +356,15 @@ void _render_scene(ogl_context          context,
                                           time,
                                           &znear);
 
+                float new_zfar = 0.01f;
+                float new_znear = 100.0f;
+                scene_camera_set_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+                                         &new_zfar);
+                scene_camera_set_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+                                         &new_znear);
+
                 projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
                                                                                    1280 / 720.0f,
                                                                                    0.01f,   //znear,
@@ -462,7 +471,7 @@ void _render_scene(ogl_context          context,
                                               camera_location,
                                               RENDER_MODE_FORWARD,
                                               SHADOW_MAPPING_TYPE_DISABLED,
-                                              HELPER_VISUALIZATION_LIGHTS,
+                                              (_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
                                               frame_time
                                              );
     }

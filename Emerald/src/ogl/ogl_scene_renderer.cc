@@ -17,6 +17,7 @@
 #include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
+#include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
@@ -41,6 +42,7 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps                       (__in 
                                                                            __in __notnull  const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
                                                                            __in            system_timeline_time                           frame_time,
                                                                            __in __notnull  system_matrix4x4                               projection);
+PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (__in __notnull  struct _ogl_scene_renderer*                    renderer_ptr);
 PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (__in __notnull  ogl_uber                                       material_uber,
                                                                            __in __notnull  scene                                          scene,
                                                                            __in            system_timeline_time                           frame_time,
@@ -607,8 +609,22 @@ PRIVATE void _ogl_scene_renderer_on_light_added(const void* unused,
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) scene_renderer;
 
+    /* TODO: Subscribe for "show frustum changed" setting! */
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO: subscriptions!");
+
     /* Reset all cached ubers */
     system_hash64map_clear(renderer_ptr->ubers_map);
+}
+
+/** TODO */
+PRIVATE void _ogl_scene_renderer_on_camera_show_frustum_setting_changed(const void* unused,
+                                                                              void* scene_renderer)
+{
+    _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) scene_renderer;
+
+    /* Use a shared handler to re-create the frustum assignments for the frustum preview renderer */
+    _ogl_scene_renderer_update_frustum_preview_assigned_cameras(renderer_ptr);
 }
 
 /** TODO */
@@ -891,6 +907,60 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
 }
 
 /** TODO */
+PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(__in __notnull _ogl_scene_renderer* renderer_ptr)
+{
+    /* Prepare a buffer that can hold up to the number of cameras added to the scene */
+    scene_camera* assigned_cameras   = NULL;
+    uint32_t      n_assigned_cameras = 0;
+    uint32_t      n_scene_cameras    = 0;
+
+    scene_get_property(renderer_ptr->scene,
+                       SCENE_PROPERTY_N_CAMERAS,
+                      &n_scene_cameras);
+
+    if (n_scene_cameras != 0)
+    {
+        assigned_cameras = new (std::nothrow) scene_camera[n_scene_cameras];
+
+        ASSERT_DEBUG_SYNC(assigned_cameras != NULL,
+                          "Out of memory");
+
+        for (uint32_t n_scene_camera = 0;
+                      n_scene_camera < n_scene_cameras;
+                    ++n_scene_camera)
+        {
+            bool         current_camera_show_frustum = false;
+            scene_camera current_camera              = scene_get_camera_by_index(renderer_ptr->scene,
+                                                                                 n_scene_camera);
+
+            scene_camera_get_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_SHOW_FRUSTUM,
+                                      0, /* time is irrelevant */
+                                     &current_camera_show_frustum);
+
+            if (current_camera_show_frustum)
+            {
+                assigned_cameras[n_assigned_cameras] = current_camera;
+                n_assigned_cameras++;
+            }
+        } /* for (all scene cameras) */
+    } /* if (n_scene_cameras != 0) */
+
+    /* Feed the data to the frustum preview renderer */
+    ogl_scene_renderer_frustum_preview_assign_cameras(renderer_ptr->frustum_preview,
+                                                      n_assigned_cameras,
+                                                      assigned_cameras);
+
+    /* Clean up */
+    if (assigned_cameras != NULL)
+    {
+        delete [] assigned_cameras;
+
+        assigned_cameras = NULL;
+    }
+}
+
+/** TODO */
 PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_light light,
                                                          __in           void*       renderer)
 {
@@ -1080,8 +1150,9 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
                                                                                       scene,
                                                                                       (ogl_scene_renderer) scene_renderer_ptr);
         scene_renderer_ptr->context          = context;
-        scene_renderer_ptr->lights_preview   = ogl_scene_renderer_lights_preview_create(context,
-                                                                                        scene);
+        scene_renderer_ptr->frustum_preview  = ogl_scene_renderer_frustum_preview_create(context);
+        scene_renderer_ptr->lights_preview   = ogl_scene_renderer_lights_preview_create (context,
+                                                                                         scene);
         scene_renderer_ptr->material_manager = NULL;
         scene_renderer_ptr->normals_preview  = ogl_scene_renderer_normals_preview_create(context,
                                                                                          scene,
@@ -1094,16 +1165,45 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
                                  OGL_CONTEXT_PROPERTY_MATERIALS,
                                 &scene_renderer_ptr->material_manager);
 
-        /* Since ogl_scene_renderer caches ogl_uber instances, given current scene configuration,
-         * we need to register for various scene call-backs in order to ensure these instances
-         * are reset, if the scene configuration ever changes.
-         */
+        /* Sign up for "show frustum" state changes for cameras & lights. This is needed to properly
+         * re-route the events to the scene renderer */
+        uint32_t                n_scene_cameras        = 0;
         system_callback_manager scene_callback_manager = NULL;
 
         scene_get_property(scene,
                            SCENE_PROPERTY_CALLBACK_MANAGER,
                           &scene_callback_manager);
+        scene_get_property(scene,
+                           SCENE_PROPERTY_N_CAMERAS,
+                          &n_scene_cameras);
 
+        for (uint32_t n_scene_camera = 0;
+                      n_scene_camera < n_scene_cameras;
+                    ++n_scene_camera)
+        {
+            system_callback_manager current_camera_callback_manager = NULL;
+            scene_camera            current_camera                  = scene_get_camera_by_index(scene,
+                                                                                                n_scene_camera);
+
+            scene_camera_get_property(current_camera,
+                                      SCENE_CAMERA_PROPERTY_CALLBACK_MANAGER,
+                                      0, /* time - irrelevant */
+                                     &current_camera_callback_manager);
+
+            system_callback_manager_subscribe_for_callbacks(current_camera_callback_manager,
+                                                            SCENE_CAMERA_CALLBACK_ID_SHOW_FRUSTUM_CHANGED,
+                                                            CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                            _ogl_scene_renderer_on_camera_show_frustum_setting_changed,
+                                                            scene_renderer_ptr);
+        } /* for (all scene cameras) */
+
+        /* Assign existing cameras to the call-back */
+        _ogl_scene_renderer_update_frustum_preview_assigned_cameras(scene_renderer_ptr);
+
+        /* Since ogl_scene_renderer caches ogl_uber instances, given current scene configuration,
+         * we need to register for various scene call-backs in order to ensure these instances
+         * are reset, if the scene configuration ever changes.
+         */
         system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
                                                         SCENE_CALLBACK_ID_LIGHT_ADDED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
@@ -1243,17 +1343,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                              OGL_CONTEXT_PROPERTY_MATERIALS,
                             &materials);
 
-    /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
-     * rendering proceeds.
-     */
-    if (shadow_mapping != SHADOW_MAPPING_TYPE_DISABLED)
-    {
-        _ogl_scene_renderer_render_shadow_maps(renderer,
-                                               shadow_mapping,
-                                               frame_time,
-                                               projection);
-    } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
-
     /* 1. Traverse the scene graph and:
      *
      *    - update light direction vectors.
@@ -1276,6 +1365,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                          _ogl_scene_renderer_process_mesh_for_forward_rendering,
                          renderer,
                          frame_time);
+
+    /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
+     * rendering proceeds.
+     */
+    if (shadow_mapping != SHADOW_MAPPING_TYPE_DISABLED)
+    {
+        _ogl_scene_renderer_render_shadow_maps(renderer,
+                                               shadow_mapping,
+                                               frame_time,
+                                               projection);
+    } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 2. Start uber rendering. Issue as many render requests as there are materials.
      *
@@ -1378,6 +1478,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 }
                 ogl_scene_renderer_bbox_preview_stop(renderer_ptr->bbox_preview);
             }
+        }
+
+        if (helper_visualization & HELPER_VISUALIZATION_FRUSTUMS)
+        {
+            ogl_scene_renderer_frustum_preview_render(renderer_ptr->frustum_preview,
+                                                      frame_time,
+                                                      vp);
         }
 
         if (helper_visualization & HELPER_VISUALIZATION_NORMALS)
