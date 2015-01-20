@@ -9,6 +9,7 @@
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
 #include "ogl/ogl_shader.h"
+#include "ogl/ogl_text.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -65,6 +66,7 @@ PRIVATE const unsigned char index_data_array[] =
 #define BO_DATA_INDEX_NTL    (2)
 #define BO_DATA_INDEX_NTR    (3)
 #define BO_DATA_INDEX_ORIGIN (0)
+#define BO_DATA_INDEX_MAX    (8)
 
 #define BO_DATA_INDEX_DATA_OFFSET          (0)
 #define BO_DATA_VERTEX_DATA_OFFSET         (sizeof(index_data_array) )
@@ -79,6 +81,8 @@ typedef struct _ogl_scene_renderer_frustum_preview
      *
      */
     system_resizable_vector assigned_cameras;
+    ogl_text_string_id      test_text_id;
+
     ogl_context             context;
     unsigned char*          data_bo_buffer;
     system_timeline_time    data_bo_buffer_last_update_time;
@@ -112,6 +116,8 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_indices_array             = NULL;
         po_vp_location                  = -1;
         vao_id                          = 0;
+
+        test_text_id = -1;
     }
 
     ~_ogl_scene_renderer_frustum_preview()
@@ -483,9 +489,15 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
                sizeof(float) * 4);
 
         /* Update MDEBV draw call arguments */
-        preview_ptr->mdebv_basevertex_array[n_camera] = bo_vertex_offset - BO_DATA_VERTEX_DATA_OFFSET;
+        preview_ptr->mdebv_basevertex_array[n_camera] = (BO_DATA_INDEX_MAX + 1) * n_camera;
         preview_ptr->mdebv_count_array     [n_camera] = sizeof(index_data_array) / sizeof(index_data_array[0]);
         preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) 0;
+
+        /* Update camera label location */
+        if (preview_ptr->test_text_id == -1)
+        {
+            // ...
+        }
     } /* for (all assigned cameras) */
 }
 

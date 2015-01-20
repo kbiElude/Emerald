@@ -393,7 +393,7 @@ PRIVATE void _scene_camera_init(__in __notnull _scene_camera*            camera_
     camera_ptr->frustum_last_recalc_time = -1;
     camera_ptr->name                     = name;
     camera_ptr->owner_node               = NULL;
-    camera_ptr->show_frustum             = (test++ == 0); /* TEMP TEMP TODO */
+    camera_ptr->show_frustum             = (test++) == 0;
     camera_ptr->temp_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
     camera_ptr->type                     = SCENE_CAMERA_TYPE_UNDEFINED;
     camera_ptr->yfov_custom              = NULL;
