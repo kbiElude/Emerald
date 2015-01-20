@@ -49,7 +49,8 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
                                   __in                   __notnull   system_hashed_ansi_string  name,
                                   __in_ecount(2)         __notnull   const float*               x1y1,
                                   __in                   __notnull   PFNOGLUIFIREPROCPTR        pfn_fire_proc_ptr,
-                                  __in                   __maybenull void*                      fire_proc_user_arg);
+                                  __in                   __maybenull void*                      fire_proc_user_arg,
+                                  __in                   __notnull   ogl_ui_control             owner_control);
 
 /** TODO */
 PUBLIC bool ogl_ui_dropdown_is_over(      void*  internal_instance,

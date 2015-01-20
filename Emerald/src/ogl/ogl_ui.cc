@@ -829,7 +829,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
                                             name,
                                             x1y1,
                                             pfn_fire_ptr,
-                                            fire_user_arg);
+                                            fire_user_arg,
+                                            (ogl_ui_control) new_ui_control_ptr);
 
         memset(new_ui_control_ptr,
                0,

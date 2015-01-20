@@ -16,15 +16,14 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_window.h"
+#include <string>
 
 const float _ui_texture_preview_text_color[] = {1, 1, 1, 1.0f};
-
-/** Internal definitions */
-static system_hashed_ansi_string ui_texture_preview_program_name = system_hashed_ansi_string_create("UI Texture Preview");
 
 /** Internal types */
 typedef struct
 {
+    float                       border_width[2];
     float                       max_size[2];
     ogl_ui_texture_preview_type preview_type;
     float                       x1y1x2y2[4];
@@ -54,9 +53,9 @@ typedef struct
 } _ogl_ui_texture_preview;
 
 /** Internal variables */
-static const char* ui_texture_preview_renderer_alpha_body  = "#define RENDER_RESULT result = 0.1 * textureLod(texture, uv, 0).aaa;\n";
-static const char* ui_texture_preview_renderer_red_body    = "#define RENDER_RESULT result = textureLod(texture, uv, 0).xxx;\n";
-static const char* ui_texture_preview_renderer_rgb_body    = "#define RENDER_RESULT result = textureLod(texture, uv, 0).xyz;\n";
+static const char* ui_texture_preview_renderer_alpha_body  = "result = textureLod(texture, uv, 0).aaa;\n";
+static const char* ui_texture_preview_renderer_red_body    = "result = textureLod(texture, uv, 0).xxx;\n";
+static const char* ui_texture_preview_renderer_rgb_body    = "result = textureLod(texture, uv, 0).xyz;\n";
 static const char* ui_texture_preview_fragment_shader_body = "#version 330\n"
                                                              "\n"
                                                              "in      vec2      uv;\n"
@@ -73,22 +72,41 @@ static const char* ui_texture_preview_fragment_shader_body = "#version 330\n"
                                                              "}\n";
 
 /** TODO */
+PRIVATE const char* _ogl_ui_texture_preview_get_program_name(__in ogl_ui_texture_preview_type type)
+{
+    const char* result = (type == OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA) ? "UI texture preview [alpha]" :
+                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_RED)   ? "UI texture preview [red]"   :
+                                                                       "UI texture preview [rgb]";
+
+    return result;
+}
+
+/** TODO */
 PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui                   ui,
                                                   __in __notnull _ogl_ui_texture_preview* texture_preview_ptr)
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("UI texture preview fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create(context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("UI texture preview vertex shader") );
+    ogl_shader  fragment_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type), " fragment shader") );
+    ogl_shader  vertex_shader   = ogl_shader_create(context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create_by_merging_two_strings(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type), " vertex shader") );
 
     texture_preview_ptr->program = ogl_program_create(context, system_hashed_ansi_string_create("UI texture preview program") );
 
-    /* Set up shaders */
-    const char* renderer_body = (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA) ? ui_texture_preview_renderer_alpha_body :
-                                (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_RED)   ? ui_texture_preview_renderer_red_body   :
-                                                                                                           ui_texture_preview_renderer_rgb_body;
+    /* Set up FS body */
+    std::string fs_body            = ui_texture_preview_fragment_shader_body;
+    const char* render_result_body = (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA) ? ui_texture_preview_renderer_alpha_body :
+                                     (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_RED)   ? ui_texture_preview_renderer_red_body   :
+                                                                                                                ui_texture_preview_renderer_rgb_body;
+    const char* token              = "RENDER_RESULT";
+    std::size_t token_location     = std::string::npos;
 
-    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create_by_merging_two_strings(renderer_body, ui_texture_preview_fragment_shader_body) );
+    while ( (token_location = fs_body.find(token) ) != std::string::npos)
+    {
+        fs_body.replace(token_location, strlen(token), render_result_body);
+    }
+
+    /* Set up shaders */
+    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create(fs_body.c_str() ));
     ogl_shader_set_body(vertex_shader,   system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
 
     ogl_shader_compile(fragment_shader);
@@ -101,7 +119,9 @@ PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui         
     ogl_program_link(texture_preview_ptr->program);
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui, ui_texture_preview_program_name, texture_preview_ptr->program);
+    ogl_ui_register_program(ui,
+                            system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)),
+                            texture_preview_ptr->program);
 
     /* Release shaders we will no longer need */
     ogl_shader_release(fragment_shader);
@@ -111,7 +131,6 @@ PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui         
 /** TODO */
 PRIVATE void _ogl_ui_texture_preview_init_renderer_callback(ogl_context context, void* texture_preview)
 {
-    float                    border_width[2]     = {0};
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
     const GLuint             program_id          = ogl_program_get_id(texture_preview_ptr->program);
     system_window            window              = NULL;
@@ -177,8 +196,8 @@ PRIVATE void _ogl_ui_texture_preview_init_renderer_callback(ogl_context context,
     texture_preview_ptr->x1y1x2y2[2] = texture_preview_ptr->x1y1x2y2[0] + preview_width_ss;
     texture_preview_ptr->x1y1x2y2[3] = texture_preview_ptr->x1y1x2y2[1] - preview_height_ss;
 
-    border_width[0] = 1.0f / (float)(preview_width_ss  * window_width  + 1);
-    border_width[1] = 1.0f / (float)(preview_height_ss * window_height + 1);
+    texture_preview_ptr->border_width[0] = 1.0f / (float)(preview_width_ss  * window_width  + 1);
+    texture_preview_ptr->border_width[1] = 1.0f / (float)(preview_height_ss * window_height + 1);
 
     /* Configure the text to be shown below the preview */
     ogl_text_set(texture_preview_ptr->text_renderer, texture_preview_ptr->text_index, system_hashed_ansi_string_get_buffer(texture_preview_ptr->name) );
@@ -217,14 +236,17 @@ PRIVATE void _ogl_ui_texture_preview_init_renderer_callback(ogl_context context,
     ogl_program_get_uniform_by_name(texture_preview_ptr->program, system_hashed_ansi_string_create("texture"),      &texture_uniform);
     ogl_program_get_uniform_by_name(texture_preview_ptr->program, system_hashed_ansi_string_create("x1y1x2y2"),     &x1y1x2y2_uniform);
 
-    texture_preview_ptr->program_border_width_uniform_location = border_width_uniform->location;
-    texture_preview_ptr->program_texture_uniform_location      = texture_uniform->location;
-    texture_preview_ptr->program_x1y1x2y2_uniform_location     = x1y1x2y2_uniform->location;
+    if (border_width_uniform != NULL)
+    {
+        texture_preview_ptr->program_border_width_uniform_location = border_width_uniform->location;
+    }
+    else
+    {
+        texture_preview_ptr->program_border_width_uniform_location = -1;
+    }
 
-    /* Set them up */
-    texture_preview_ptr->pGLProgramUniform2fv(program_id, border_width_uniform->location, 1, border_width);
-    texture_preview_ptr->pGLProgramUniform4fv(program_id, x1y1x2y2_uniform->location,     1, texture_preview_ptr->x1y1x2y2);
-
+    texture_preview_ptr->program_texture_uniform_location  = texture_uniform->location;
+    texture_preview_ptr->program_x1y1x2y2_uniform_location = x1y1x2y2_uniform->location;
 }
 
 /** Please see header for specification */
@@ -264,6 +286,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
 
     GLuint program_id = ogl_program_get_id(texture_preview_ptr->program);
 
+    /* Set up uniforms */
+    texture_preview_ptr->pGLProgramUniform2fv(program_id, texture_preview_ptr->program_border_width_uniform_location, 1, texture_preview_ptr->border_width);
+    texture_preview_ptr->pGLProgramUniform4fv(program_id, texture_preview_ptr->program_x1y1x2y2_uniform_location,     1, texture_preview_ptr->x1y1x2y2);
+
     /* Draw */
     texture_preview_ptr->pGLUseProgram(ogl_program_get_id(texture_preview_ptr->program) );
     texture_preview_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -284,8 +310,9 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
     if (new_texture_preview != NULL)
     {
         /* Initialize fields */
-        memset(new_texture_preview,           0,        sizeof(_ogl_ui_texture_preview)    );
-        memcpy(new_texture_preview->max_size, max_size, sizeof(float)                   * 2);
+        memset(new_texture_preview->border_width, 0,        sizeof(new_texture_preview->border_width) );
+        memset(new_texture_preview,               0,        sizeof(_ogl_ui_texture_preview)    );
+        memcpy(new_texture_preview->max_size,     max_size, sizeof(float)                   * 2);
 
         new_texture_preview->x1y1x2y2[0] =     x1y1[0];
         new_texture_preview->x1y1x2y2[1] = 1 - x1y1[1];
@@ -350,7 +377,8 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
         }
 
         /* Retrieve the rendering program */
-        new_texture_preview->program = ogl_ui_get_registered_program(instance, ui_texture_preview_program_name);
+        new_texture_preview->program = ogl_ui_get_registered_program(instance,
+                                                                     system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(preview_type)) );
 
         if (new_texture_preview->program == NULL)
         {

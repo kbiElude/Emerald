@@ -141,6 +141,8 @@ typedef struct
     ogl_text                  text_renderer;
     ogl_ui                    ui; /* NOT reference-counted */
 
+    ogl_ui_control            owner_control; /* this object, as visible for applications */
+
     bool visible;
 
     /* Cached func ptrs */
@@ -1328,7 +1330,8 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
                                   __in                   __notnull   system_hashed_ansi_string  name,
                                   __in_ecount(2)         __notnull   const float*               x1y1,
                                   __in                   __notnull   PFNOGLUIFIREPROCPTR        pfn_fire_proc_ptr,
-                                  __in                   __maybenull void*                      fire_proc_user_arg)
+                                  __in                   __maybenull void*                      fire_proc_user_arg,
+                                  __in                   __notnull   ogl_ui_control             owner_control)
 {
     _ogl_ui_dropdown* new_dropdown = new (std::nothrow) _ogl_ui_dropdown;
 
@@ -1349,6 +1352,7 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
         new_dropdown->label_string_id     = -1;
         new_dropdown->label_text          = label_text;
         new_dropdown->n_selected_entry    = n_selected_entry;
+        new_dropdown->owner_control       = owner_control;
         new_dropdown->pfn_fire_proc_ptr   = pfn_fire_proc_ptr;
         new_dropdown->text_renderer       = text_renderer;
         new_dropdown->ui                  = instance;

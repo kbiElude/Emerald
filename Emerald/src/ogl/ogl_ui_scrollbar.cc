@@ -392,6 +392,7 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
             new_scrollbar->pGLDrawArrays        = entry_points->pGLDrawArrays;
             new_scrollbar->pGLEnable            = entry_points->pGLEnable;
             new_scrollbar->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
+            new_scrollbar->pGLProgramUniform1i  = entry_points->pGLProgramUniform1i;
             new_scrollbar->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
             new_scrollbar->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
             new_scrollbar->pGLUseProgram        = entry_points->pGLUseProgram;
@@ -412,6 +413,7 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
             new_scrollbar->pGLDrawArrays        = entry_points->pGLDrawArrays;
             new_scrollbar->pGLEnable            = entry_points->pGLEnable;
             new_scrollbar->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
+            new_scrollbar->pGLProgramUniform1i  = entry_points->pGLProgramUniform1i;
             new_scrollbar->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
             new_scrollbar->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
             new_scrollbar->pGLUseProgram        = entry_points->pGLUseProgram;
