@@ -15,8 +15,10 @@
 #include "scene/scene_graph.h"
 #include "system/system_callback_manager.h"
 #include "system/system_log.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_resources.h"
 #include <string>
 #include <sstream>
 
@@ -73,6 +75,37 @@ PRIVATE const unsigned char index_data_array[] =
 #define N_BYTES_PER_BO_DATA_ENTRY          (9 * sizeof(float) * 4)
 
 /** TODO */
+typedef struct _ogl_scene_renderer_frustum_preview_camera
+{
+    scene_camera       camera;
+    ogl_text_string_id camera_text_id;
+    ogl_text           text_renderer;
+
+    explicit _ogl_scene_renderer_frustum_preview_camera(__in __notnull scene_camera       in_camera,
+                                                        __in __notnull ogl_text           in_text_renderer,
+                                                        __in           ogl_text_string_id in_camera_text_id)
+    {
+        camera         = in_camera;
+        camera_text_id = in_camera_text_id;
+        text_renderer  = in_text_renderer;
+
+        scene_camera_retain(camera);
+    }
+
+    ~_ogl_scene_renderer_frustum_preview_camera()
+    {
+        if (camera != NULL)
+        {
+            ogl_text_delete_string(text_renderer,
+                                   camera_text_id);
+
+            scene_camera_release(camera);
+
+            camera = NULL;
+        }
+    }
+} _ogl_scene_renderer_frustum_preview_camera;
+
 typedef struct _ogl_scene_renderer_frustum_preview
 {
     /* DO NOT retain/release ogl_context copy, as this object is managed
@@ -80,7 +113,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
      * to never release itself.
      *
      */
-    system_resizable_vector assigned_cameras;
+    system_resizable_vector assigned_cameras; /* holds _ogl_scene_renderer_frustum_preview_camera instances */
     ogl_text_string_id      test_text_id;
 
     ogl_context             context;
@@ -91,6 +124,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     unsigned int            data_bo_size;
     ogl_program             po;
     GLint                   po_vp_location;
+    ogl_text                text_renderer;  /* TODO: use a global text renderer */
     GLuint                  vao_id;
 
     /* The following arrays are used for the multi draw-call. The number of elements
@@ -103,7 +137,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     _ogl_scene_renderer_frustum_preview()
     {
         assigned_cameras                = system_resizable_vector_create(4, /* capacity */
-                                                                         sizeof(scene_camera) );
+                                                                         sizeof(_ogl_scene_renderer_frustum_preview_camera*) );
         context                         = NULL;
         data_bo_buffer                  = NULL;
         data_bo_buffer_size             = 0;
@@ -115,6 +149,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_count_array               = NULL;
         mdebv_indices_array             = NULL;
         po_vp_location                  = -1;
+        text_renderer                   = NULL;
         vao_id                          = 0;
 
         test_text_id = -1;
@@ -124,14 +159,14 @@ typedef struct _ogl_scene_renderer_frustum_preview
     {
         if (assigned_cameras != NULL)
         {
-            scene_camera current_camera = NULL;
+            _ogl_scene_renderer_frustum_preview_camera* current_camera_ptr = NULL;
 
             while (system_resizable_vector_pop(assigned_cameras,
-                                              &current_camera) )
+                                              &current_camera_ptr) )
             {
-                scene_camera_release(current_camera);
+                delete current_camera_ptr;
 
-                current_camera = NULL;
+                current_camera_ptr = NULL;
             }
 
             system_resizable_vector_release(assigned_cameras);
@@ -164,6 +199,13 @@ typedef struct _ogl_scene_renderer_frustum_preview
             delete [] mdebv_indices_array;
 
             mdebv_indices_array = NULL;
+        }
+
+        if (text_renderer != NULL)
+        {
+            ogl_text_release(text_renderer);
+
+            text_renderer = NULL;
         }
     }
 } _ogl_scene_renderer_frustum_preview;
@@ -252,6 +294,29 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    /* Initialize the text renderer */
+    const float text_color[4] = {1, 0, 0, 1};
+    const float text_scale    = 0.5f;
+    GLint       viewport[4];
+
+    entry_points->pGLGetIntegerv(GL_VIEWPORT,
+                                 viewport);
+
+    preview_ptr->text_renderer = ogl_text_create(system_hashed_ansi_string_create("Frustum preview text renderer"),
+                                                 context,
+                                                 system_resources_get_meiryo_font_table(),
+                                                 viewport[2],
+                                                 viewport[3]);
+
+    ogl_text_set_text_string_property(preview_ptr->text_renderer,
+                                      TEXT_STRING_ID_DEFAULT,
+                                      OGL_TEXT_STRING_PROPERTY_COLOR,
+                                      text_color);
+    ogl_text_set_text_string_property(preview_ptr->text_renderer,
+                                      TEXT_STRING_ID_DEFAULT,
+                                      OGL_TEXT_STRING_PROPERTY_SCALE,
+                                     &text_scale);
+
     /* Generate data BO. Actual storage will be initialized at a later time. */
     entry_points->pGLGenBuffers(1,
                                 &preview_ptr->data_bo_id);
@@ -329,7 +394,8 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
 
 /** TODO */
 PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __notnull _ogl_scene_renderer_frustum_preview* preview_ptr,
-                                                                       __in           system_timeline_time                 frame_time)
+                                                                       __in           system_timeline_time                 frame_time,
+                                                                       __in __notnull system_matrix4x4                     vp)
 {
     ASSERT_DEBUG_SYNC(preview_ptr->data_bo_buffer != NULL,
                       "Data BO buffer is NULL");
@@ -383,13 +449,13 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
                 ++n_camera)
     {
         /* Retrieve transformation matrix for current camera */
-        scene_camera     current_camera                       = NULL;
-        scene_graph_node current_camera_owner_graph_node      = NULL;
-        system_matrix4x4 current_camera_transformation_matrix = NULL;
+        _ogl_scene_renderer_frustum_preview_camera* camera_ptr                           = NULL;
+        scene_graph_node                            current_camera_owner_graph_node      = NULL;
+        system_matrix4x4                            current_camera_transformation_matrix = NULL;
 
         if (!system_resizable_vector_get_element_at(preview_ptr->assigned_cameras,
                                                     n_camera,
-                                                   &current_camera) )
+                                                   &camera_ptr) )
         {
             ASSERT_DEBUG_SYNC(false,
                               "Could not retrieve scene_camera instance at index [%d]",
@@ -398,7 +464,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
             continue;
         } /* if (could not retrieve scene_camera instance) */
 
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
                                   0, /* time is irrelevant for the query */
                                  &current_camera_owner_graph_node);
@@ -426,35 +492,35 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
         float        frustum_ntl[4]    = {0.0f, 0.0f, 0.0f, 1.0f};
         float        frustum_ntr[4]    = {0.0f, 0.0f, 0.0f, 1.0f};
 
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,
                                   frame_time,
                                   frustum_fbl);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,
                                   frame_time,
                                   frustum_fbr);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,
                                   frame_time,
                                   frustum_ftl);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,
                                   frame_time,
                                   frustum_ftr);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,
                                   frame_time,
                                   frustum_nbl);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,
                                   frame_time,
                                   frustum_nbr);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,
                                   frame_time,
                                   frustum_ntl);
-        scene_camera_get_property(current_camera,
+        scene_camera_get_property(camera_ptr->camera,
                                   SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,
                                   frame_time,
                                   frustum_ntr);
@@ -488,16 +554,56 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
                frustum_ntr,
                sizeof(float) * 4);
 
+        /* Position the label at camera origin. Now, the origin we have calculated
+         * is in world space, so we need to move it to window space before repositioning
+         * the text string.
+         */
+        const float* origin_model_space = bo_vertex_data + 4 * BO_DATA_INDEX_ORIGIN;
+              float  origin_mvp_space   [4];
+              float  origin_window_space[2];
+
+        system_matrix4x4_multiply_by_vector4(vp,
+                                             origin_model_space,
+                                             origin_mvp_space);
+
+        system_math_vector_mul3_float(origin_mvp_space,
+                                      1.0f / origin_mvp_space[3],
+                                      origin_mvp_space);
+
+        /* Squeeze MVP to window coords and use this as the label's position.
+         * If the camera is invisible, make sure it stays hidden in window space.
+         */
+        if (origin_mvp_space[3] >= 0.0f)
+        {
+            static const bool is_visible = true;
+
+            origin_window_space[0] =         origin_mvp_space[0] * 0.5f + 0.5f;
+            origin_window_space[1] = 1.0f - (origin_mvp_space[1] * 0.5f + 0.5f);
+
+            ogl_text_set_text_string_property(camera_ptr->text_renderer,
+                                              camera_ptr->camera_text_id,
+                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                             &is_visible);
+        }
+        else
+        {
+            static const bool is_visible = false;
+
+            ogl_text_set_text_string_property(camera_ptr->text_renderer,
+                                              camera_ptr->camera_text_id,
+                                              OGL_TEXT_STRING_PROPERTY_VISIBILITY,
+                                             &is_visible);
+        }
+
+        ogl_text_set_text_string_property(camera_ptr->text_renderer,
+                                          camera_ptr->camera_text_id,
+                                          OGL_TEXT_STRING_PROPERTY_POSITION_SS,
+                                          origin_window_space);
+
         /* Update MDEBV draw call arguments */
         preview_ptr->mdebv_basevertex_array[n_camera] = (BO_DATA_INDEX_MAX + 1) * n_camera;
         preview_ptr->mdebv_count_array     [n_camera] = sizeof(index_data_array) / sizeof(index_data_array[0]);
         preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) 0;
-
-        /* Update camera label location */
-        if (preview_ptr->test_text_id == -1)
-        {
-            // ...
-        }
     } /* for (all assigned cameras) */
 }
 
@@ -527,14 +633,14 @@ PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(__in __notnull ogl
 
     /* Release all cameras that may have been assigned in the past */
     {
-        scene_camera current_camera = NULL;
+        _ogl_scene_renderer_frustum_preview_camera* current_camera_ptr = NULL;
 
         while (system_resizable_vector_pop(preview_ptr->assigned_cameras,
-                                          &current_camera) )
+                                          &current_camera_ptr) )
         {
-            scene_camera_release(current_camera);
+            delete current_camera_ptr;
 
-            current_camera = NULL;
+            current_camera_ptr = NULL;
         }
     }
 
@@ -544,10 +650,24 @@ PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(__in __notnull ogl
                       n_camera < n_cameras;
                     ++n_camera)
         {
-            system_resizable_vector_push(preview_ptr->assigned_cameras,
-                                         cameras[n_camera]);
+            system_hashed_ansi_string camera_name   = NULL;
+            ogl_text_string_id        label_text_id = ogl_text_add_string(preview_ptr->text_renderer);
 
-            scene_camera_retain(cameras[n_camera]);
+            scene_camera_get_property(cameras[n_camera],
+                                      SCENE_CAMERA_PROPERTY_NAME,
+                                      0, /* time - irrelevant */
+                                     &camera_name);
+
+            ogl_text_set(preview_ptr->text_renderer,
+                         label_text_id,
+                         system_hashed_ansi_string_get_buffer(camera_name) );
+
+            _ogl_scene_renderer_frustum_preview_camera* current_camera_ptr = new _ogl_scene_renderer_frustum_preview_camera(cameras[n_camera],
+                                                                                                                            preview_ptr->text_renderer,
+                                                                                                                            label_text_id);
+
+            system_resizable_vector_push(preview_ptr->assigned_cameras,
+                                         current_camera_ptr);
         }
     }
 
@@ -638,7 +758,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
     if (preview_ptr->data_bo_buffer_last_update_time != time)
     {
         _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(preview_ptr,
-                                                                  time);
+                                                                  time,
+                                                                  vp);
 
         if (preview_ptr->data_bo_size < preview_ptr->data_bo_buffer_size)
         {
@@ -688,6 +809,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
                                                         preview_ptr->mdebv_basevertex_array);
     }
     entrypoints_ptr->pGLDisable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+
+    /* Draw the labels */
+    ogl_text_draw(preview_ptr->context,
+                  preview_ptr->text_renderer);
 }
 
 

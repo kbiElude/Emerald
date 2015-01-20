@@ -182,12 +182,17 @@ const char* vertex_shader_template = "#ifdef GL_ES\n"
                                      "void main()\n"
                                      "{\n"
                                      "   int   character_id    = gl_VertexID / 6;\n"
-                                     "   int   vertex_id_mod_3 = gl_VertexID % 3;\n"
-                                     "   int   vertex_id_mod_6 = gl_VertexID % 6;\n"
                                      "   vec2  vertex_data;\n"
                                      "\n"
-                                     "   if (vertex_id_mod_3 == 2 || vertex_id_mod_6 == 4) vertex_data[0] = 1.0;else vertex_data[0] = 0.0;\n"
-                                     "   if (vertex_id_mod_3 == 0 || vertex_id_mod_6 == 4) vertex_data[1] = 1.0;else vertex_data[1] = 0.0;\n"
+                                     "    switch (gl_VertexID % 6)\n"
+                                     "    {\n"
+                                     "        case 0: vertex_data = vec2(0.0, 1.0); break;\n"
+                                     "        case 1: vertex_data = vec2(0.0, 0.0); break;\n"
+                                     "        case 2:\n"
+                                     "        case 3: vertex_data = vec2(1.0, 0.0); break;\n"
+                                     "        case 4: vertex_data = vec2(1.0, 1.0); break;\n"
+                                     "        case 5: vertex_data = vec2(0.0, 1.0); break;\n"
+                                     "    }\n"
                                      "\n"
                                      "   vec2  x1_y1_origin = texelFetch(data, n_origin_character * 2).xy;\n"
                                      "   vec4  x1_y1_u1_v1  = texelFetch(data, character_id * 2);\n"
@@ -725,6 +730,8 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
         if (text_ptr->dirty)
         {
             _ogl_text_update_vram_data_storage(context, text);
+
+            text_ptr->dirty = false;
         }
 
         /* Carry on */
@@ -1098,6 +1105,13 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
 
 end:
     return (ogl_text) result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void ogl_text_delete_string(__in __notnull ogl_text           text,
+                                               __in           ogl_text_string_id text_id)
+{
+    ASSERT_DEBUG_SYNC(false, "TODO");
 }
 
 /** Please see header for specification */
@@ -1518,4 +1532,6 @@ PUBLIC EMERALD_API void ogl_text_set_text_string_property(__in __notnull ogl_tex
                               "Unrecognized text string property");
         }
     } /* switch (property) */
+
+    text_ptr->dirty = true;
 }
