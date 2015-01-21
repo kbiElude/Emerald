@@ -10,6 +10,29 @@
 
 /*** OTHER CONTEXT-WIDE STATE */
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
+                                                       GLfloat green,
+                                                       GLfloat blue,
+                                                       GLfloat alpha);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquation(GLenum mode);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquationSeparate(GLenum modeRGB,
+                                                                  GLenum modeAlpha);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendFunc(GLenum sfactor,
+                                                      GLenum dfactor);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendFuncSeparate(GLenum srcRGB,
+                                                              GLenum dstRGB,
+                                                              GLenum srcAlpha,
+                                                              GLenum dstAlpha);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask);
 
 /** TODO */
@@ -17,6 +40,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
                                                        GLfloat alpha);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDisablei(GLenum cap,
+                                                     GLuint index);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glEnable(GLenum cap);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
+                                                    GLuint index);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,

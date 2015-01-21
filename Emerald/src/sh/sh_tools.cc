@@ -1456,9 +1456,16 @@ RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_tools_generate_preview(__in  _
                                                                          __in  __notnull procedural_mesh_sphere reference_sphere,
                                                                          __out __notnull GLuint*                out_vertex_color_bo_id)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points          = NULL;
-    const ogl_context_gl_entrypoints*                         entry_points              = NULL;
-    uint32_t                                                  n_reference_sphere_points = procedural_mesh_sphere_get_number_of_points(reference_sphere);
+#if 1
+    ASSERT_DEBUG_SYNC(false,
+                      "The former implementation seems to be.. broken?");
+#else
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    unsigned int                                              n_points         = 0;
+    procedural_mesh_sphere_get_property(reference_sphere,
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_N_POINTS,
+                                       &n_points);
 
     _sh_tools_verify_context_type(context);
 
@@ -1525,7 +1532,7 @@ RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_tools_generate_preview(__in  _
     if (*out_vertex_color_bo_id == 0)
     {
         entry_points->pGLGenBuffers            (1,                       out_vertex_color_bo_id);
-        dsa_entry_points->pGLNamedBufferDataEXT(*out_vertex_color_bo_id, n_reference_sphere_points * sizeof(GLfloat) * 3, NULL, GL_STATIC_COPY);
+        dsa_entry_points->pGLNamedBufferDataEXT(*out_vertex_color_bo_id, n_reference_sphere_points * sizeof(GLfloat) * 3, NULL, GL_STATIC_COPY);    <- NULL?!
     }
 
     dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_BUFFER, input_light_sh_data_tbo);
@@ -1541,4 +1548,5 @@ RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_tools_generate_preview(__in  _
     }
     entry_points->pGLEndTransformFeedback();
     entry_points->pGLDisable             (GL_RASTERIZER_DISCARD);
+#endif
 }

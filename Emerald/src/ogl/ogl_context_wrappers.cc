@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2013-2014)
+ * Emerald (kbi/elude @2013-2015)
  *
  */
 #include "shared.h"
@@ -16,7 +16,114 @@
 __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
 
 
-/******************************************************** VERTEX ARRAY OBJECTS *********************************************************/
+/************************************************************* OTHER STATE ************************************************************/
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
+                                                       GLfloat green,
+                                                       GLfloat blue,
+                                                       GLfloat alpha)
+{
+    const GLfloat           blend_color[] = {red, green, blue, alpha};
+    ogl_context             context       = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache   = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR,
+                                         blend_color);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquation(GLenum mode)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA,
+                                        &mode);
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB,
+                                        &mode);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendEquationSeparate(GLenum modeRGB,
+                                                                  GLenum modeAlpha)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA,
+                                        &modeRGB);
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB,
+                                        &modeAlpha);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendFunc(GLenum sfactor,
+                                                      GLenum dfactor)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA,
+                                        &dfactor);
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB,
+                                        &dfactor);
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA,
+                                        &sfactor);
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB,
+                                        &sfactor);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlendFuncSeparate(GLenum srcRGB,
+                                                              GLenum dstRGB,
+                                                              GLenum srcAlpha,
+                                                              GLenum dstAlpha)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA,
+                                        &dstAlpha);
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB,
+                                        &dstRGB);
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA,
+                                        &srcAlpha);
+    ogl_context_state_cache_set_property(state_cache,
+                                        OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB,
+                                        &srcRGB);
+}
+
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
 {
@@ -51,6 +158,106 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
     ogl_context_state_cache_set_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,
                                          color);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap)
+{
+    /* TODO: Add support for other modes */
+    if (cap == GL_BLEND)
+    {
+        ogl_context             context     = ogl_context_get_current_context();
+        const bool              new_state   = false;
+        ogl_context_state_cache state_cache = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+
+        ogl_context_state_cache_set_property(state_cache,
+                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
+                                            &new_state);
+    }
+    else
+    {
+        _private_entrypoints_ptr->pGLDisable(cap);
+    }
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glDisablei(GLenum cap,
+                                                     GLuint index)
+{
+    /* TODO: Add support for other modes */
+    if (cap == GL_BLEND && index == 0)
+    {
+        ogl_context             context     = ogl_context_get_current_context();
+        const bool              new_state   = false;
+        ogl_context_state_cache state_cache = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+
+        ogl_context_state_cache_set_property(state_cache,
+                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
+                                            &new_state);
+    }
+    else
+    {
+        _private_entrypoints_ptr->pGLDisablei(cap,
+                                              index);
+    }
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glEnable(GLenum cap)
+{
+    /* TODO: Add support for other modes */
+    if (cap == GL_BLEND)
+    {
+        ogl_context             context     = ogl_context_get_current_context();
+        const bool              new_state   = true;
+        ogl_context_state_cache state_cache = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+
+        ogl_context_state_cache_set_property(state_cache,
+                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
+                                            &new_state);
+    }
+    else
+    {
+        _private_entrypoints_ptr->pGLEnable(cap);
+    }
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
+                                                    GLuint index)
+{
+    /* TODO: Add support for other modes */
+    if (cap == GL_BLEND && index == 0)
+    {
+        ogl_context             context     = ogl_context_get_current_context();
+        const bool              new_state   = true;
+        ogl_context_state_cache state_cache = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+
+        ogl_context_state_cache_set_property(state_cache,
+                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
+                                            &new_state);
+    }
+    else
+    {
+        _private_entrypoints_ptr->pGLEnablei(cap,
+                                             index);
+    }
 }
 
 /** Please see header for spec */
@@ -787,7 +994,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -827,7 +1034,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -869,7 +1076,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -911,7 +1118,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -953,7 +1160,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -997,7 +1204,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1038,7 +1245,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1510,7 +1717,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1552,7 +1759,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
 
     ogl_context_state_cache_sync     (state_cache,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);

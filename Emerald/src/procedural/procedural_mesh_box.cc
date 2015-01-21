@@ -326,7 +326,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
         ASSERT_DEBUG_SYNC(assertion_check_cnt == n_ordered_indexes, "Element indices counter is wrong!");
     }
 
-    if (mesh_box->data & DATA_ARRAYS)
+    if (mesh_box->data & DATA_BO_ARRAYS)
     {
         /* Primitive restart doesn't make sense for array-based calls. We need to convert the data we have to triangles */
         GLfloat* normals             = new (std::nothrow) GLfloat[n_ordered_indexes * 9];
@@ -411,7 +411,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
         }
     }
 
-    if (mesh_box->data & DATA_ELEMENTS)
+    if (mesh_box->data & DATA_BO_ELEMENTS)
     {
         /* Set offsets. */
         mesh_box->elements_indexes_offset =                                     n_points      * 3 * sizeof(GLfloat);
@@ -448,12 +448,12 @@ PRIVATE void _procedural_mesh_box_release_renderer_callback(ogl_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    if (mesh_box->data & DATA_ARRAYS)
+    if (mesh_box->data & DATA_BO_ARRAYS)
     {
         entry_points->pGLDeleteBuffers(1, &mesh_box->arrays_bo_id);
     }
 
-    if (mesh_box->data & DATA_ELEMENTS)
+    if (mesh_box->data & DATA_BO_ELEMENTS)
     {
         entry_points->pGLDeleteBuffers(1, &mesh_box->elements_bo_id);
     }

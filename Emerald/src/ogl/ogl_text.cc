@@ -84,6 +84,7 @@ typedef struct
     PFNGLBINDBUFFERPROC                  pGLBindBuffer;
     PFNGLBINDTEXTUREPROC                 pGLBindTexture;
     PFNGLBINDVERTEXARRAYPROC             pGLBindVertexArray;
+    PFNGLBLENDEQUATIONPROC               pGLBlendEquation;
     PFNGLBLENDFUNCPROC                   pGLBlendFunc;
     PFNGLBUFFERDATAPROC                  pGLBufferData;
     PFNGLBUFFERSUBDATAPROC               pGLBufferSubData;
@@ -782,7 +783,9 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
                 text_ptr->pGLBindVertexArray(_global.vao_id);
                 text_ptr->pGLEnable         (GL_BLEND);
                 text_ptr->pGLDisable        (GL_DEPTH_TEST);
-                text_ptr->pGLBlendFunc      (GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                text_ptr->pGLBlendEquation  (GL_FUNC_ADD);
+                text_ptr->pGLBlendFunc      (GL_ONE,
+                                             GL_ONE_MINUS_SRC_ALPHA);
                 {
                     bool     has_enabled_scissor_test  = false;
                     uint32_t n_characters_drawn_so_far = 0;
@@ -971,6 +974,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLBindBuffer         = entry_points->pGLBindBuffer;
             result->pGLBindTexture        = entry_points->pGLBindTexture;
             result->pGLBindVertexArray    = entry_points->pGLBindVertexArray;
+            result->pGLBlendEquation      = entry_points->pGLBlendEquation;
             result->pGLBlendFunc          = entry_points->pGLBlendFunc;
             result->pGLBufferData         = entry_points->pGLBufferData;
             result->pGLBufferSubData      = entry_points->pGLBufferSubData;
@@ -1019,6 +1023,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLActiveTexture               = entry_points->pGLActiveTexture;
             result->pGLBindBuffer                  = entry_points->pGLBindBuffer;
             result->pGLBindVertexArray             = entry_points->pGLBindVertexArray;
+            result->pGLBlendEquation               = entry_points->pGLBlendEquation;
             result->pGLBlendFunc                   = entry_points->pGLBlendFunc;
             result->pGLBufferData                  = entry_points->pGLBufferData;
             result->pGLBufferSubData               = entry_points->pGLBufferSubData;

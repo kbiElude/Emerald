@@ -1050,6 +1050,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         return;
     }
 
+    /* Prepare for rendeirng */
+    dropdown_ptr->pGLDisable(GL_DEPTH_TEST);
+
     /* Update brightness if necessary */
     float brightness = dropdown_ptr->current_gpu_brightness_level;
 

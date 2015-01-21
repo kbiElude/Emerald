@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  * Helps cache general state information. Note that these functions are private only.
  */
@@ -11,11 +11,19 @@
 
 enum ogl_context_state_cache_property
 {
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,        /* settable, GLint[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,        /* settable, GLfloat[4] */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,     /* settable, GLuint */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,       /* settable, GLuint (GL_TEXTURE0 = 0, ..) */
-    OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR,          /* settable, GLfloat[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA, /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB,   /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA, /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB,   /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA, /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB,   /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,   /* settable, bool */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,          /* settable, GLfloat[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,       /* settable, GLuint */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,          /* settable, GLint[4] */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_TEXTURE_UNIT,         /* settable, GLuint (GL_TEXTURE0 = 0, ..) */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT   /* settable, GLuint */
 };
 
 enum ogl_context_state_cache_sync_bit
@@ -25,6 +33,7 @@ enum ogl_context_state_cache_sync_bit
     STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT = 1 << 2,
     STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_COLOR         = 1 << 3,
     STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         = 1 << 4,
+    STATE_CACHE_SYNC_BIT_BLENDING                   = 1 << 5,
     STATE_CACHE_SYNC_BIT_ALL                        = 0xFFFFFFFF
 };
 
@@ -49,7 +58,7 @@ PUBLIC void ogl_context_state_cache_release(__in __notnull __post_invalid ogl_co
 /** TODO */
 PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_state_cache          cache,
                                                  __in           ogl_context_state_cache_property property,
-                                                 __in __notnull void*                            data);
+                                                 __in __notnull const void*                      data);
 
 /** TODO
  *

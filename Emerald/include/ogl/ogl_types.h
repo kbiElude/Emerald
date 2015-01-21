@@ -1234,6 +1234,11 @@ typedef struct
     PFNGLBINDSAMPLERPROC                     pGLBindSampler;
     PFNGLBINDTEXTUREPROC                     pGLBindTexture;
     PFNGLBINDVERTEXARRAYPROC                 pGLBindVertexArray;
+    PFNGLBLENDCOLORPROC                      pGLBlendColor;
+    PFNGLBLENDEQUATIONPROC                   pGLBlendEquation;
+    PFNGLBLENDEQUATIONSEPARATEPROC           pGLBlendEquationSeparate;
+    PFNGLBLENDFUNCPROC                       pGLBlendFunc;
+    PFNGLBLENDFUNCSEPARATEPROC               pGLBlendFuncSeparate;
     PFNGLBUFFERDATAPROC                      pGLBufferData;
     PFNGLBUFFERSUBDATAPROC                   pGLBufferSubData;
     PFNGLCLEARPROC                           pGLClear;
@@ -1251,6 +1256,8 @@ typedef struct
     PFNGLCOPYTEXSUBIMAGE3DPROC               pGLCopyTexSubImage3D;
     PFNGLDELETEBUFFERSPROC                   pGLDeleteBuffers;
     PFNGLDELETEVERTEXARRAYSPROC              pGLDeleteVertexArrays;
+    PFNGLDISABLEPROC                         pGLDisable;
+    PFNGLDISABLEIPROC                        pGLDisablei;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC        pGLDisableVertexAttribArray;
     PFNGLDRAWARRAYSPROC                      pGLDrawArrays;
     PFNGLDRAWARRAYSINSTANCEDPROC             pGLDrawArraysInstanced;
@@ -1259,6 +1266,8 @@ typedef struct
     PFNGLDRAWELEMENTSINSTANCEDPROC           pGLDrawElementsInstanced;
     PFNGLDRAWRANGEELEMENTSPROC               pGLDrawRangeElements;
     PFNGLDRAWTRANSFORMFEEDBACKPROC           pGLDrawTransformFeedback;
+    PFNGLENABLEPROC                          pGLEnable;
+    PFNGLENABLEIPROC                         pGLEnablei;
     PFNGLENABLEVERTEXATTRIBARRAYPROC         pGLEnableVertexAttribArray;
     PFNGLFRAMEBUFFERTEXTUREPROC              pGLFramebufferTexture;
     PFNGLFRAMEBUFFERTEXTURE1DPROC            pGLFramebufferTexture1D;
@@ -1747,6 +1756,7 @@ typedef enum
     OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA,
     OGL_UI_TEXTURE_PREVIEW_TYPE_RED,
     OGL_UI_TEXTURE_PREVIEW_TYPE_RGB,
+    OGL_UI_TEXTURE_PREVIEW_TYPE_RGBA,
 } ogl_ui_texture_preview_type;
 
 /* UI control handle */

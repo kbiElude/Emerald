@@ -980,13 +980,13 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
         new_ui_control_ptr->internal                    = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_scrollbar_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ogl_ui_scrollbar_draw;
-        new_ui_control_ptr->pfn_get_property_func_ptr   = NULL;
+        new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_scrollbar_get_property;
         new_ui_control_ptr->pfn_is_over_func_ptr        = ogl_ui_scrollbar_is_over;
         new_ui_control_ptr->pfn_on_lbm_down_func_ptr    = ogl_ui_scrollbar_on_lbm_down;
         new_ui_control_ptr->pfn_on_lbm_up_func_ptr      = ogl_ui_scrollbar_on_lbm_up;
         new_ui_control_ptr->pfn_on_mouse_move_func_ptr  = ogl_ui_scrollbar_on_mouse_move;
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
-        new_ui_control_ptr->pfn_set_property_func_ptr   = NULL;
+        new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_scrollbar_set_property;
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
@@ -1027,8 +1027,8 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
         new_ui_control_ptr->internal                   = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr        = ogl_ui_texture_preview_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr          = ogl_ui_texture_preview_draw;
-        new_ui_control_ptr->pfn_get_property_func_ptr  = NULL;
-        new_ui_control_ptr->pfn_set_property_func_ptr   = NULL;
+        new_ui_control_ptr->pfn_get_property_func_ptr  = ogl_ui_texture_preview_get_property;
+        new_ui_control_ptr->pfn_set_property_func_ptr  = ogl_ui_texture_preview_set_property;
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {

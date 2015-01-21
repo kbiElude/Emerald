@@ -67,6 +67,9 @@ PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_
     data_ptr->glosiness        = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                 " Glosiness [default]"),
                                                         SYSTEM_VARIANT_FLOAT);
+    data_ptr->luminance        = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                " Luminance [default]"),
+                                                        SYSTEM_VARIANT_FLOAT);
     data_ptr->name             = name;
     data_ptr->reflection_ratio = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                 " Reflection Ratio [default]"),

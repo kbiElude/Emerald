@@ -541,6 +541,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
         {
             case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
             {
+                ASSERT_DEBUG_SYNC(config.curve_data[0] != NULL,
+                                  "NULL curve container");
+
                 mesh_material_set_shading_property_to_curve_container_float(result_material,
                                                                             config.shading_property,
                                                                             config.curve_data[0]);
@@ -922,7 +925,10 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_fl
     material_ptr->shading_properties[property].attachment              = MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT;
     material_ptr->shading_properties[property].curve_container_data[0] = data;
 
-    curve_container_retain(data);
+    if (data != NULL)
+    {
+        curve_container_retain(data);
+    }
 }
 
 /* Please see header for specification */

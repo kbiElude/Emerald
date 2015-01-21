@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -1489,11 +1489,11 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLBindTexture,                    "glBindTexture"},
             {&context_ptr->entry_points_gl.pGLBindTransformFeedback,               "glBindTransformFeedback"},
             {&context_ptr->entry_points_private.pGLBindVertexArray,                "glBindVertexArray"},
-            {&context_ptr->entry_points_gl.pGLBlendColor,                          "glBlendColor"},
-            {&context_ptr->entry_points_gl.pGLBlendEquation,                       "glBlendEquation"},
-            {&context_ptr->entry_points_gl.pGLBlendEquationSeparate,               "glBlendEquationSeparate"},
-            {&context_ptr->entry_points_gl.pGLBlendFunc,                           "glBlendFunc"},
-            {&context_ptr->entry_points_gl.pGLBlendFuncSeparate,                   "glBlendFuncSeparate"},
+            {&context_ptr->entry_points_private.pGLBlendColor,                     "glBlendColor"},
+            {&context_ptr->entry_points_private.pGLBlendEquation,                  "glBlendEquation"},
+            {&context_ptr->entry_points_private.pGLBlendEquationSeparate,          "glBlendEquationSeparate"},
+            {&context_ptr->entry_points_private.pGLBlendFunc,                      "glBlendFunc"},
+            {&context_ptr->entry_points_private.pGLBlendFuncSeparate,              "glBlendFuncSeparate"},
             {&context_ptr->entry_points_gl.pGLBlitFramebuffer,                     "glBlitFramebuffer"},
             {&context_ptr->entry_points_private.pGLBufferData,                     "glBufferData"},
             {&context_ptr->entry_points_private.pGLGetBufferParameteriv,           "glGetBufferParameteriv"},
@@ -1541,8 +1541,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLDepthMask,                           "glDepthMask"},
             {&context_ptr->entry_points_gl.pGLDepthRange,                          "glDepthRange"},
             {&context_ptr->entry_points_gl.pGLDetachShader,                        "glDetachShader"},
-            {&context_ptr->entry_points_gl.pGLDisable,                             "glDisable"},
-            {&context_ptr->entry_points_gl.pGLDisablei,                            "glDisablei"},
+            {&context_ptr->entry_points_private.pGLDisable,                        "glDisable"},
+            {&context_ptr->entry_points_private.pGLDisablei,                       "glDisablei"},
             {&context_ptr->entry_points_private.pGLDisableVertexAttribArray,       "glDisableVertexAttribArray"},
             {&context_ptr->entry_points_private.pGLDrawArrays,                     "glDrawArrays"},
             {&context_ptr->entry_points_private.pGLDrawArraysInstanced,            "glDrawArraysInstanced"},
@@ -1553,8 +1553,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLDrawElementsInstanced,          "glDrawElementsInstanced"},
             {&context_ptr->entry_points_private.pGLDrawRangeElements,              "glDrawRangeElements"},
             {&context_ptr->entry_points_private.pGLDrawTransformFeedback,          "glDrawTransformFeedback"},
-            {&context_ptr->entry_points_gl.pGLEnable,                              "glEnable"},
-            {&context_ptr->entry_points_gl.pGLEnablei,                             "glEnablei"},
+            {&context_ptr->entry_points_private.pGLEnable,                         "glEnable"},
+            {&context_ptr->entry_points_private.pGLEnablei,                        "glEnablei"},
             {&context_ptr->entry_points_private.pGLEnableVertexAttribArray,        "glEnableVertexAttribArray"},
             {&context_ptr->entry_points_gl.pGLEndConditionalRender,                "glEndConditionalRender"},
             {&context_ptr->entry_points_gl.pGLEndQuery,                            "glEndQuery"},
@@ -1820,6 +1820,11 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLBindSampler                     = ogl_context_wrappers_glBindSampler;
         context_ptr->entry_points_gl.pGLBindTexture                     = ogl_context_wrappers_glBindTexture;
         context_ptr->entry_points_gl.pGLBindVertexArray                 = ogl_context_wrappers_glBindVertexArray;
+        context_ptr->entry_points_gl.pGLBlendColor                      = ogl_context_wrappers_glBlendColor;
+        context_ptr->entry_points_gl.pGLBlendEquation                   = ogl_context_wrappers_glBlendEquation;
+        context_ptr->entry_points_gl.pGLBlendEquationSeparate           = ogl_context_wrappers_glBlendEquationSeparate;
+        context_ptr->entry_points_gl.pGLBlendFunc                       = ogl_context_wrappers_glBlendFunc;
+        context_ptr->entry_points_gl.pGLBlendFuncSeparate               = ogl_context_wrappers_glBlendFuncSeparate;
         context_ptr->entry_points_gl.pGLBufferData                      = ogl_context_wrappers_glBufferData;
         context_ptr->entry_points_gl.pGLBufferSubData                   = ogl_context_wrappers_glBufferSubData;
         context_ptr->entry_points_gl.pGLClear                           = ogl_context_wrappers_glClear;
@@ -1837,6 +1842,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLCopyTexSubImage3D               = ogl_context_wrappers_glCopyTexSubImage3D;
         context_ptr->entry_points_gl.pGLDeleteBuffers                   = ogl_context_wrappers_glDeleteBuffers;
         context_ptr->entry_points_gl.pGLDeleteVertexArrays              = ogl_context_wrappers_glDeleteVertexArrays;
+        context_ptr->entry_points_gl.pGLDisable                         = ogl_context_wrappers_glDisable;
+        context_ptr->entry_points_gl.pGLDisablei                        = ogl_context_wrappers_glDisablei;
         context_ptr->entry_points_gl.pGLDisableVertexAttribArray        = ogl_context_wrappers_glDisableVertexAttribArray;
         context_ptr->entry_points_gl.pGLDrawArrays                      = ogl_context_wrappers_glDrawArrays;
         context_ptr->entry_points_gl.pGLDrawArraysInstanced             = ogl_context_wrappers_glDrawArraysInstanced;
@@ -1845,6 +1852,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLDrawElementsInstanced           = ogl_context_wrappers_glDrawElementsInstanced;
         context_ptr->entry_points_gl.pGLDrawRangeElements               = ogl_context_wrappers_glDrawRangeElements;
         context_ptr->entry_points_gl.pGLDrawTransformFeedback           = ogl_context_wrappers_glDrawTransformFeedback;
+        context_ptr->entry_points_gl.pGLEnable                          = ogl_context_wrappers_glEnable;
+        context_ptr->entry_points_gl.pGLEnablei                         = ogl_context_wrappers_glEnablei;
         context_ptr->entry_points_gl.pGLEnableVertexAttribArray         = ogl_context_wrappers_glEnableVertexAttribArray;
         context_ptr->entry_points_gl.pGLFramebufferTexture              = ogl_context_wrappers_glFramebufferTexture;
         context_ptr->entry_points_gl.pGLFramebufferTexture1D            = ogl_context_wrappers_glFramebufferTexture1D;
@@ -2250,7 +2259,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                                                                      NULL,
                                                                                                                      true);
 
-                                                _result->entry_points_gl.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+                                                _result->entry_points_private.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
                                                 ASSERT_DEBUG_SYNC(_result->entry_points_gl.pGLGetError() == GL_NO_ERROR,
                                                                   "Could not set up OpenGL debug output callbacks!");

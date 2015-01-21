@@ -21,7 +21,7 @@ typedef enum
     OGL_UI_DROPDOWN_PROPERTY_IS_DROPAREA_VISIBLE, /* not settable, bool */
     OGL_UI_DROPDOWN_PROPERTY_LABEL_BG_X1Y1X2Y2,   /* not settable, float[4] */
     OGL_UI_DROPDOWN_PROPERTY_LABEL_X1Y1,          /* not settable, float[2] */
-    OGL_UI_DROPDOWN_PROPERTY_VISIBLE,             /* not settable, bool */
+    OGL_UI_DROPDOWN_PROPERTY_VISIBLE,             /*     settable, bool */
     OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,            /* not settable, float[4] */
     OGL_UI_DROPDOWN_PROPERTY_X1Y1,                /*     settable, float[2] */
 };

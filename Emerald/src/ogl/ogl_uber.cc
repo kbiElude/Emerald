@@ -1937,12 +1937,19 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                 } /* for (all attachments) */
 
                 /* Issue the draw call */
+#if 0
                 entry_points->pGLDrawRangeElements(GL_TRIANGLES,
                                                    layer_pass_index_min_value,
                                                    layer_pass_index_max_value,
                                                    layer_pass_n_elements,
                                                    gl_index_type,
                                                   (const GLvoid*) layer_pass_elements_offset);
+#else
+                entry_points->pGLDrawElements(GL_TRIANGLES,
+                                              layer_pass_n_elements,
+                                              gl_index_type,
+                                             (const GLvoid*) layer_pass_elements_offset);
+#endif
             } /* for (all mesh layer passes) */
         } /* for (all mesh layers) */
     } /* if (mesh_gpu != NULL) */

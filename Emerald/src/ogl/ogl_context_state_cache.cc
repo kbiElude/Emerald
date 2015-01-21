@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -26,6 +26,24 @@ typedef struct _ogl_context_state_cache
 
     GLuint active_vertex_array_object_context;
     GLuint active_vertex_array_object_local;
+
+    /* Blending */
+    GLfloat blend_color_context[4];
+    GLfloat blend_color_local  [4];
+    GLenum  blend_equation_alpha_context;
+    GLenum  blend_equation_alpha_local;
+    GLenum  blend_equation_rgb_context;
+    GLenum  blend_equation_rgb_local;
+    GLenum  blend_function_dst_alpha_context;
+    GLenum  blend_function_dst_alpha_local;
+    GLenum  blend_function_dst_rgb_context;
+    GLenum  blend_function_dst_rgb_local;
+    GLenum  blend_function_src_alpha_context;
+    GLenum  blend_function_src_alpha_local;
+    GLenum  blend_function_src_rgb_context;
+    GLenum  blend_function_src_rgb_local;
+    bool    is_blend_mode_enabled_context;
+    bool    is_blend_mode_enabled_local;
 
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
@@ -59,11 +77,60 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
 
     switch (property)
     {
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR:
         {
             memcpy(out_result,
-                   cache_ptr->active_scissor_box_local,
-                   sizeof(cache_ptr->active_scissor_box_local) );
+                   cache_ptr->blend_color_local,
+                   sizeof(cache_ptr->blend_color_local) );
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA:
+        {
+            *(GLenum*) out_result = cache_ptr->blend_equation_alpha_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB:
+        {
+            *(GLenum*) out_result = cache_ptr->blend_equation_rgb_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA:
+        {
+            *(GLenum*) out_result = cache_ptr->blend_function_dst_alpha_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB:
+        {
+            *(GLenum*) out_result = cache_ptr->blend_function_dst_rgb_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA:
+        {
+            *(GLenum*) out_result = cache_ptr->blend_function_src_alpha_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB:
+        {
+            *(GLenum*) out_result = cache_ptr->blend_function_src_rgb_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED:
+        {
+            *(bool*) out_result = cache_ptr->is_blend_mode_enabled_local;
 
             break;
         }
@@ -71,6 +138,15 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
             *((GLuint*) out_result) = cache_ptr->active_program_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
+        {
+            memcpy(out_result,
+                   cache_ptr->active_scissor_box_local,
+                   sizeof(cache_ptr->active_scissor_box_local) );
 
             break;
         }
@@ -107,19 +183,63 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
     /* Cache info in private descriptor */
     cache_ptr->entrypoints_private_ptr = entrypoints_private_ptr;
 
-    /* Set default state */
-    memset(cache_ptr->active_clear_color_context, 0, sizeof(cache_ptr->active_clear_color_context) );
-    memset(cache_ptr->active_clear_color_local,   0, sizeof(cache_ptr->active_clear_color_local) );
-
+    /* Set default state: active program */
     cache_ptr->active_program_context      = 0;
     cache_ptr->active_program_local        = 0;
 
+    /* Set default state: active texture unit */
     cache_ptr->active_texture_unit_context = 0;
     cache_ptr->active_texture_unit_local   = 0;
 
+    /* Set default state: active VAO */
     cache_ptr->active_vertex_array_object_context = 0;
     cache_ptr->active_vertex_array_object_local   = 0;
 
+    /* Set default state: blend color */
+    memset(cache_ptr->blend_color_context,
+           0,
+           sizeof(cache_ptr->blend_color_context) );
+    memset(cache_ptr->blend_color_local,
+           0,
+           sizeof(cache_ptr->blend_color_local) );
+
+    /* Set default state: blend equation (alpha) */
+    cache_ptr->blend_equation_alpha_context = GL_FUNC_ADD;
+    cache_ptr->blend_equation_alpha_local   = GL_FUNC_ADD;
+
+    /* Set default state: blend equation (RGB) */
+    cache_ptr->blend_equation_rgb_context = GL_FUNC_ADD;
+    cache_ptr->blend_equation_rgb_local   = GL_FUNC_ADD;
+
+    /* Set default state: blend function (destination, alpha) */
+    cache_ptr->blend_function_dst_alpha_context = GL_ZERO;
+    cache_ptr->blend_function_dst_alpha_local   = GL_ZERO;
+
+    /* Set default state: blend function (destination, RGB) */
+    cache_ptr->blend_function_dst_rgb_context = GL_ZERO;
+    cache_ptr->blend_function_dst_rgb_local   = GL_ZERO;
+
+    /* Set default state: blend function (source, alpha) */
+    cache_ptr->blend_function_src_alpha_context = GL_ONE;
+    cache_ptr->blend_function_src_alpha_local   = GL_ONE;
+
+    /* Set default state: blend function (source, RGB) */
+    cache_ptr->blend_function_src_rgb_context = GL_ONE;
+    cache_ptr->blend_function_src_rgb_local   = GL_ONE;
+
+    /* Set default state: blend rendering mode */
+    cache_ptr->is_blend_mode_enabled_context = false;
+    cache_ptr->is_blend_mode_enabled_local   = false;
+
+    /* Set default state: clear color */
+    memset(cache_ptr->active_clear_color_context,
+           0,
+           sizeof(cache_ptr->active_clear_color_context) );
+    memset(cache_ptr->active_clear_color_local,
+           0,
+           sizeof(cache_ptr->active_clear_color_local) );
+
+    /* Set default state: scissor box */
     entrypoints_private_ptr->pGLGetIntegerv(GL_SCISSOR_BOX,
                                             cache_ptr->active_scissor_box_context);
     memcpy                                 (cache_ptr->active_scissor_box_local,
@@ -141,17 +261,66 @@ PUBLIC void ogl_context_state_cache_release(__in __notnull __post_invalid ogl_co
 /* Please see header for spec */
 PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_state_cache          cache,
                                                  __in           ogl_context_state_cache_property property,
-                                                 __in __notnull void*                            data)
+                                                 __in __notnull const void*                      data)
 {
     _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
 
     switch (property)
     {
-        case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_COLOR:
         {
-            memcpy(cache_ptr->active_scissor_box_local,
+            memcpy(cache_ptr->blend_color_local,
                    data,
-                   sizeof(cache_ptr->active_scissor_box_local) );
+                   sizeof(cache_ptr->blend_color_local) );
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_ALPHA:
+        {
+            cache_ptr->blend_equation_alpha_local = *(GLenum*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_EQUATION_RGB:
+        {
+            cache_ptr->blend_equation_rgb_local = *(GLenum*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_ALPHA:
+        {
+            cache_ptr->blend_function_dst_alpha_local = *(GLenum*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_DST_RGB:
+        {
+            cache_ptr->blend_function_dst_rgb_local = *(GLenum*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_ALPHA:
+        {
+            cache_ptr->blend_function_src_alpha_local = *(GLenum*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_FUNC_SRC_RGB:
+        {
+            cache_ptr->blend_function_src_rgb_local = *(GLenum*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED:
+        {
+            cache_ptr->is_blend_mode_enabled_local = *(bool*) data;
 
             break;
         }
@@ -168,6 +337,15 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
             cache_ptr->active_program_local = *(GLuint*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX:
+        {
+            memcpy(cache_ptr->active_scissor_box_local,
+                   data,
+                   sizeof(cache_ptr->active_scissor_box_local) );
 
             break;
         }
@@ -202,6 +380,60 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
     if (cache != NULL)
     {
         _ogl_context_state_cache* cache_ptr = (_ogl_context_state_cache*) cache;
+
+        /* Blending configuration */
+        if ((sync_bits & STATE_CACHE_SYNC_BIT_BLENDING) )
+        {
+            if (cache_ptr->blend_function_dst_alpha_context != cache_ptr->blend_function_dst_alpha_local ||
+                cache_ptr->blend_function_dst_rgb_context   != cache_ptr->blend_function_dst_rgb_local   ||
+                cache_ptr->blend_function_src_alpha_context != cache_ptr->blend_function_src_alpha_local ||
+                cache_ptr->blend_function_src_rgb_context   != cache_ptr->blend_function_src_rgb_local)
+            {
+                cache_ptr->entrypoints_private_ptr->pGLBlendFuncSeparate(cache_ptr->blend_function_src_rgb_local,
+                                                                         cache_ptr->blend_function_dst_rgb_local,
+                                                                         cache_ptr->blend_function_src_alpha_local,
+                                                                         cache_ptr->blend_function_dst_alpha_local);
+
+                cache_ptr->blend_function_dst_alpha_context = cache_ptr->blend_function_dst_alpha_local;
+                cache_ptr->blend_function_dst_rgb_context   = cache_ptr->blend_function_dst_rgb_local;
+                cache_ptr->blend_function_src_alpha_context = cache_ptr->blend_function_src_alpha_local;
+                cache_ptr->blend_function_src_rgb_context   = cache_ptr->blend_function_src_rgb_local;
+            }
+
+            if (cache_ptr->blend_equation_rgb_context   != cache_ptr->blend_equation_rgb_local ||
+                cache_ptr->blend_equation_alpha_context != cache_ptr->blend_equation_alpha_local)
+            {
+                cache_ptr->entrypoints_private_ptr->pGLBlendEquationSeparate(cache_ptr->blend_equation_rgb_local,
+                                                                             cache_ptr->blend_equation_alpha_local);
+
+                cache_ptr->blend_equation_alpha_context = cache_ptr->blend_equation_alpha_local;
+                cache_ptr->blend_equation_rgb_context   = cache_ptr->blend_equation_rgb_local;
+            }
+
+            if (memcmp(cache_ptr->blend_color_local,
+                       cache_ptr->blend_color_context,
+                       sizeof(cache_ptr->blend_color_local) ) != 0)
+            {
+                cache_ptr->entrypoints_private_ptr->pGLBlendColor(cache_ptr->blend_color_local[0],
+                                                                  cache_ptr->blend_color_local[1],
+                                                                  cache_ptr->blend_color_local[2],
+                                                                  cache_ptr->blend_color_local[3]);
+            }
+
+            if (cache_ptr->is_blend_mode_enabled_context != cache_ptr->is_blend_mode_enabled_local)
+            {
+                if (cache_ptr->is_blend_mode_enabled_local)
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLEnable(GL_BLEND);
+                }
+                else
+                {
+                    cache_ptr->entrypoints_private_ptr->pGLDisable(GL_BLEND);
+                }
+
+                cache_ptr->is_blend_mode_enabled_context = cache_ptr->is_blend_mode_enabled_local;
+            }
+        }
 
         /* Clear color */
         if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_COLOR) &&

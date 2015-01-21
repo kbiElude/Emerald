@@ -9,6 +9,13 @@
 #ifndef OGL_UI_SCROLLBAR_H
 #define OGL_UI_SCROLLBAR_H
 
+/** Properties */
+typedef enum
+{
+    OGL_UI_SCROLLBAR_PROPERTY_VISIBLE, /* settable, bool */
+};
+
+
 /** TODO */
 PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance);
 
@@ -16,7 +23,13 @@ PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance);
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance);
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_hover(void* internal_instance, const float* xy_screen_norm);
+PUBLIC void ogl_ui_scrollbar_get_property(__in  __notnull const void* scrollbar,
+                                          __in  __notnull int         property_value,
+                                          __out __notnull void*       out_result);
+
+/** TODO */
+PUBLIC void ogl_ui_scrollbar_hover(void*        internal_instance,
+                                   const float* xy_screen_norm);
 
 /** TODO */
 PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui                         instance,
@@ -32,15 +45,24 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                    __in           __maybenull void*                          set_current_value_ptr_user_arg);
 
 /** TODO */
-PUBLIC bool ogl_ui_scrollbar_is_over(void* internal_instance, const float* xy);
+PUBLIC bool ogl_ui_scrollbar_is_over(void*        internal_instance,
+                                     const float* xy);
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_lbm_down(void* internal_instance, const float* xy);
+PUBLIC void ogl_ui_scrollbar_on_lbm_down(void*        internal_instance,
+                                         const float* xy);
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_lbm_up(void* internal_instance, const float* xy);
+PUBLIC void ogl_ui_scrollbar_on_lbm_up(void*        internal_instance,
+                                       const float* xy);
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_mouse_move(void* internal_instance, const float* xy);
+PUBLIC void ogl_ui_scrollbar_on_mouse_move(void*        internal_instance,
+                                           const float* xy);
+
+/** TODO */
+PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*       scrollbar,
+                                          __in __notnull int         property_value,
+                                          __in __notnull const void* data);
 
 #endif /* OGL_UI_SCROLLBAR_H */
