@@ -1509,7 +1509,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLClearColor,                     "glClearColor"},
             {&context_ptr->entry_points_gl.pGLClearStencil,                        "glClearStencil"},
             {&context_ptr->entry_points_gl.pGLClearDepth,                          "glClearDepth"},
-            {&context_ptr->entry_points_gl.pGLColorMask,                           "glColorMask"},
+            {&context_ptr->entry_points_private.pGLColorMask,                      "glColorMask"},
             {&context_ptr->entry_points_gl.pGLColorMaski,                          "glColorMaski"},
             {&context_ptr->entry_points_gl.pGLCompileShader,                       "glCompileShader"},
             {&context_ptr->entry_points_private.pGLCompressedTexImage1D,           "glCompressedTexImage1D"},
@@ -1538,7 +1538,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLDeleteQueries,                       "glDeleteQueries"},
             {&context_ptr->entry_points_private.pGLDeleteVertexArrays,             "glDeleteVertexArrays"},
             {&context_ptr->entry_points_gl.pGLDepthFunc,                           "glDepthFunc"},
-            {&context_ptr->entry_points_gl.pGLDepthMask,                           "glDepthMask"},
+            {&context_ptr->entry_points_private.pGLDepthMask,                      "glDepthMask"},
             {&context_ptr->entry_points_gl.pGLDepthRange,                          "glDepthRange"},
             {&context_ptr->entry_points_gl.pGLDetachShader,                        "glDetachShader"},
             {&context_ptr->entry_points_private.pGLDisable,                        "glDisable"},
@@ -1829,6 +1829,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLBufferSubData                   = ogl_context_wrappers_glBufferSubData;
         context_ptr->entry_points_gl.pGLClear                           = ogl_context_wrappers_glClear;
         context_ptr->entry_points_gl.pGLClearColor                      = ogl_context_wrappers_glClearColor;
+        context_ptr->entry_points_gl.pGLColorMask                       = ogl_context_wrappers_glColorMask;
         context_ptr->entry_points_gl.pGLCompressedTexImage1D            = ogl_context_wrappers_glCompressedTexImage1D;
         context_ptr->entry_points_gl.pGLCompressedTexImage2D            = ogl_context_wrappers_glCompressedTexImage2D;
         context_ptr->entry_points_gl.pGLCompressedTexImage3D            = ogl_context_wrappers_glCompressedTexImage3D;
@@ -1842,6 +1843,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLCopyTexSubImage3D               = ogl_context_wrappers_glCopyTexSubImage3D;
         context_ptr->entry_points_gl.pGLDeleteBuffers                   = ogl_context_wrappers_glDeleteBuffers;
         context_ptr->entry_points_gl.pGLDeleteVertexArrays              = ogl_context_wrappers_glDeleteVertexArrays;
+        context_ptr->entry_points_gl.pGLDepthMask                       = ogl_context_wrappers_glDepthMask;
         context_ptr->entry_points_gl.pGLDisable                         = ogl_context_wrappers_glDisable;
         context_ptr->entry_points_gl.pGLDisablei                        = ogl_context_wrappers_glDisablei;
         context_ptr->entry_points_gl.pGLDisableVertexAttribArray        = ogl_context_wrappers_glDisableVertexAttribArray;

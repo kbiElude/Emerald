@@ -1243,6 +1243,7 @@ typedef struct
     PFNGLBUFFERSUBDATAPROC                   pGLBufferSubData;
     PFNGLCLEARPROC                           pGLClear;
     PFNGLCLEARCOLORPROC                      pGLClearColor;
+    PFNGLCOLORMASKPROC                       pGLColorMask;
     PFNGLCOMPRESSEDTEXIMAGE3DPROC            pGLCompressedTexImage3D;
     PFNGLCOMPRESSEDTEXIMAGE2DPROC            pGLCompressedTexImage2D;
     PFNGLCOMPRESSEDTEXIMAGE1DPROC            pGLCompressedTexImage1D;
@@ -1256,6 +1257,7 @@ typedef struct
     PFNGLCOPYTEXSUBIMAGE3DPROC               pGLCopyTexSubImage3D;
     PFNGLDELETEBUFFERSPROC                   pGLDeleteBuffers;
     PFNGLDELETEVERTEXARRAYSPROC              pGLDeleteVertexArrays;
+    PFNGLDEPTHMASKPROC                       pGLDepthMask;
     PFNGLDISABLEPROC                         pGLDisable;
     PFNGLDISABLEIPROC                        pGLDisablei;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC        pGLDisableVertexAttribArray;

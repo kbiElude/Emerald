@@ -42,6 +42,15 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
                                                        GLfloat alpha);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glColorMask(GLboolean red,
+                                                      GLboolean green,
+                                                      GLboolean blue,
+                                                      GLboolean alpha);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDepthMask(GLboolean flag);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap);
 
 /** TODO */

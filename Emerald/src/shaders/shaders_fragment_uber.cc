@@ -351,6 +351,13 @@ PRIVATE void _shaders_fragment_uber_release(__in __notnull __deallocate(mem) voi
         {
             switch (item_ptr->type)
             {
+                case SHADERS_FRAGMENT_UBER_ITEM_INPUT_ATTRIBUTE:
+                {
+                    /* data holds a single value, nothing to release */
+
+                    break;
+                }
+
                 case SHADERS_FRAGMENT_UBER_ITEM_LIGHT:
                 {
                     delete (_shaders_fragment_uber_item_light*) item_ptr->data;

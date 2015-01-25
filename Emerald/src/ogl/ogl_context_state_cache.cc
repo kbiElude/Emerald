@@ -15,6 +15,11 @@ typedef struct _ogl_context_state_cache
     GLfloat active_clear_color_context[4];
     GLfloat active_clear_color_local  [4];
 
+    GLboolean active_color_mask_context[4];
+    GLboolean active_color_mask_local  [4];
+    GLboolean active_depth_mask_context;
+    GLboolean active_depth_mask_local;
+
     GLuint active_program_context;
     GLuint active_program_local;
 
@@ -135,6 +140,22 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK:
+        {
+            memcpy(out_result,
+                   cache_ptr->active_color_mask_local,
+                   sizeof(cache_ptr->active_color_mask_local) );
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK:
+        {
+            *(GLboolean*) out_result = cache_ptr->active_depth_mask_local;
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
             *((GLuint*) out_result) = cache_ptr->active_program_local;
@@ -182,6 +203,20 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
 
     /* Cache info in private descriptor */
     cache_ptr->entrypoints_private_ptr = entrypoints_private_ptr;
+
+    /* Set default state: active color mask */
+    cache_ptr->active_color_mask_context[0] = GL_TRUE;
+    cache_ptr->active_color_mask_context[1] = GL_TRUE;
+    cache_ptr->active_color_mask_context[2] = GL_TRUE;
+    cache_ptr->active_color_mask_context[3] = GL_TRUE;
+
+    memcpy(cache_ptr->active_color_mask_local,
+           cache_ptr->active_color_mask_context,
+           sizeof(cache_ptr->active_color_mask_local) );
+
+    /* Set default state: active depth mask */
+    cache_ptr->active_depth_mask_context = GL_TRUE;
+    cache_ptr->active_depth_mask_local   = GL_TRUE;
 
     /* Set default state: active program */
     cache_ptr->active_program_context      = 0;
@@ -334,6 +369,22 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK:
+        {
+            memcpy(cache_ptr->active_color_mask_local,
+                   data,
+                   sizeof(cache_ptr->active_color_mask_local) );
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK:
+        {
+            cache_ptr->active_depth_mask_local = *(GLboolean*) data;
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
             cache_ptr->active_program_local = *(GLuint*) data;
@@ -450,6 +501,31 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
             memcpy(cache_ptr->active_clear_color_context,
                    cache_ptr->active_clear_color_local,
                    sizeof(cache_ptr->active_clear_color_context) );
+        }
+
+        /* Color / depth mask */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK)
+        {
+            if (memcmp(cache_ptr->active_color_mask_context,
+                       cache_ptr->active_color_mask_local,
+                       sizeof(cache_ptr->active_color_mask_context)) != 0)
+            {
+                cache_ptr->entrypoints_private_ptr->pGLColorMask(cache_ptr->active_color_mask_local[0],
+                                                                 cache_ptr->active_color_mask_local[1],
+                                                                 cache_ptr->active_color_mask_local[2],
+                                                                 cache_ptr->active_color_mask_local[3]);
+
+                memcpy(cache_ptr->active_color_mask_context,
+                       cache_ptr->active_color_mask_local,
+                       sizeof(cache_ptr->active_color_mask_context) );
+            }
+
+            if (cache_ptr->active_depth_mask_context != cache_ptr->active_depth_mask_local)
+            {
+                cache_ptr->entrypoints_private_ptr->pGLDepthMask(cache_ptr->active_depth_mask_local);
+
+                cache_ptr->active_depth_mask_context = cache_ptr->active_depth_mask_local;
+            }
         }
 
         /* Program object */
