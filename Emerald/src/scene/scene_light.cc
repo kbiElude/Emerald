@@ -191,7 +191,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
 
-    light_ptr->shadow_map_internalformat = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT32F;
+    light_ptr->shadow_map_internalformat = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
     light_ptr->shadow_map_size[0]        = DEFAULT_SHADOW_MAP_SIZE;
     light_ptr->shadow_map_size[1]        = DEFAULT_SHADOW_MAP_SIZE;
     light_ptr->shadow_map_texture        = NULL;

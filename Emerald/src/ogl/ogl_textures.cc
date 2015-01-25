@@ -153,6 +153,8 @@ typedef enum
 
 typedef enum
 {
+    OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT16,
+    OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT24,
     OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32F,
     OGL_TEXTURES_KEY_INTERNALFORMAT_R11F_G11F_B10F,
     OGL_TEXTURES_KEY_INTERNALFORMAT_R16,
@@ -261,6 +263,8 @@ PRIVATE GLenum _ogl_textures_get_glenum_internalformat_for_key_internalformat(__
 
     switch (internalformat)
     {
+        case OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT16:  result = GL_DEPTH_COMPONENT16;  break;
+        case OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT24:  result = GL_DEPTH_COMPONENT24;  break;
         case OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32F: result = GL_DEPTH_COMPONENT32F; break;
         case OGL_TEXTURES_KEY_INTERNALFORMAT_R11F_G11F_B10F:     result = GL_R11F_G11F_B10F;     break;
         case OGL_TEXTURES_KEY_INTERNALFORMAT_R16:                result = GL_R16;                break;
@@ -370,6 +374,8 @@ PRIVATE _ogl_textures_key_internalformat _ogl_textures_get_key_internalformat_fo
 
     switch (internalformat)
     {
+        case GL_DEPTH_COMPONENT16:  result = OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT16;  break;
+        case GL_DEPTH_COMPONENT24:  result = OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT24;  break;
         case GL_DEPTH_COMPONENT32F: result = OGL_TEXTURES_KEY_INTERNALFORMAT_DEPTH_COMPONENT32F; break;
         case GL_R11F_G11F_B10F:     result = OGL_TEXTURES_KEY_INTERNALFORMAT_R11F_G11F_B10F;     break;
         case GL_R16:                result = OGL_TEXTURES_KEY_INTERNALFORMAT_R16;                break;
