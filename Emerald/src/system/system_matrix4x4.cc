@@ -83,9 +83,9 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create()
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) float* camera_location,
-                                                                          __in_ecount(3) float* look_at_point,
-                                                                          __in_ecount(3) float* base_up_vector)
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) const float* camera_location,
+                                                                          __in_ecount(3) const float* look_at_point,
+                                                                          __in_ecount(3) const float* base_up_vector)
 {
     float                         direction_vector[3];
     system_matrix4x4              new_matrix          = system_matrix4x4_create();
@@ -94,8 +94,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_e
     float                         up_vector       [3];
 
     /* Calculate direction vector */
-    system_math_vector_minus3    (look_at_point,
-                                  camera_location,
+    system_math_vector_minus3    (camera_location,
+                                  look_at_point,
                                   direction_vector);
     system_math_vector_normalize3(direction_vector,
                                   direction_vector);
@@ -112,33 +112,24 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_e
                               right_vector,
                               up_vector);
 
-    /* Construct the result matrix */
-    memset(new_matrix_ptr->data,
-           0,
-           sizeof(new_matrix_ptr->data) );
-
-    memcpy(new_matrix_ptr->data + 4 * 0,
-           right_vector,
-           sizeof(right_vector) );
-    memcpy(new_matrix_ptr->data + 4 * 1,
-           up_vector,
-           sizeof(up_vector) );
-
-    new_matrix_ptr->data[4 * 2 + 0] = -direction_vector[0];
-    new_matrix_ptr->data[4 * 2 + 1] = -direction_vector[1];
-    new_matrix_ptr->data[4 * 2 + 2] = -direction_vector[2];
-    new_matrix_ptr->data[4 * 2 + 3] = 1.0f;
-
-    /* Move the matrix to the requested camera location */
-    const float translation_vector[3] =
-    {
-        -camera_location[0],
-        -camera_location[1],
-        -camera_location[2],
-    };
-
-    system_matrix4x4_translate(new_matrix,
-                               translation_vector);
+    /* Construct the result matrix (D3DXMatrixLookAtRH () ) */
+    new_matrix_ptr->data[0]       = right_vector[0];
+    new_matrix_ptr->data[1]       = right_vector[1];
+    new_matrix_ptr->data[2]       = right_vector[2];
+    new_matrix_ptr->data[3]       = system_math_vector_dot3(camera_location, right_vector); /* translation factor */
+    new_matrix_ptr->data[4]       = up_vector[0];
+    new_matrix_ptr->data[5]       = up_vector[1];
+    new_matrix_ptr->data[6]       = up_vector[2];
+    new_matrix_ptr->data[7]       = system_math_vector_dot3(camera_location, up_vector); /* translation factor */
+    new_matrix_ptr->data[8]       = direction_vector[0];
+    new_matrix_ptr->data[9]       = direction_vector[1];
+    new_matrix_ptr->data[10]      = direction_vector[2];
+    new_matrix_ptr->data[11]      = system_math_vector_dot3(camera_location, direction_vector); /* translation factor */
+    new_matrix_ptr->data[12]      = 0.0f;
+    new_matrix_ptr->data[13]      = 0.0f;
+    new_matrix_ptr->data[14]      = 0.0f;
+    new_matrix_ptr->data[15]      = 1.0f;
+    new_matrix_ptr->is_data_dirty = true;
 
     return new_matrix;
 }
@@ -149,29 +140,30 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_mat
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
 
-    float a   =  2.0f / (right - left);
-    float b   =  2.0f / (top   - bottom);
-    float c   = -2.0f / (z_far - z_near);
-    float t_x = -(right + left)   / (right - left);
-    float t_y = -(top   + bottom) / (top   - bottom);
-    float t_z = -(z_far + z_near) / (z_far - z_near);
+    float a = 2.0f / (right  - left);
+    float b = 2.0f / (bottom - top);
 
-    new_matrix_ptr->data[0 ] = a;
-    new_matrix_ptr->data[1 ] = 0;
-    new_matrix_ptr->data[2 ] = 0;
-    new_matrix_ptr->data[3 ] = 0;
-    new_matrix_ptr->data[4 ] = 0;
-    new_matrix_ptr->data[5 ] = b;
-    new_matrix_ptr->data[6 ] = 0;
-    new_matrix_ptr->data[7 ] = 0;
-    new_matrix_ptr->data[8 ] = 0;
-    new_matrix_ptr->data[9 ] = 0;
-    new_matrix_ptr->data[10] = c;
-    new_matrix_ptr->data[11] = 0;
-    new_matrix_ptr->data[12] = t_x;
-    new_matrix_ptr->data[13] = t_y;
-    new_matrix_ptr->data[14] = t_z;
-    new_matrix_ptr->data[15] = 1;
+    /* D3DXMatrixOrthoRH() */
+    new_matrix_ptr->data[0 ]      = a;
+    new_matrix_ptr->data[1 ]      = 0;
+    new_matrix_ptr->data[2 ]      = 0;
+    new_matrix_ptr->data[3 ]      = 0.0f;
+
+    new_matrix_ptr->data[4 ]      = 0;
+    new_matrix_ptr->data[5 ]      = b;
+    new_matrix_ptr->data[6 ]      = 0;
+    new_matrix_ptr->data[7 ]      = 0.0f;
+
+    new_matrix_ptr->data[8 ]      = 0;
+    new_matrix_ptr->data[9 ]      = 0;
+    new_matrix_ptr->data[10]      = 1.0f   / (z_near - z_far);
+    new_matrix_ptr->data[11]      = z_near / (z_near - z_far);
+
+    new_matrix_ptr->data[12]      = 0;
+    new_matrix_ptr->data[13]      = 0;
+    new_matrix_ptr->data[14]      = 0.0f;
+    new_matrix_ptr->data[15]      = 1;
+    new_matrix_ptr->is_data_dirty = true;
 
     return new_matrix;
 }
@@ -185,38 +177,26 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
     ASSERT_DEBUG_SYNC(z_near > 0, "Near Z must be positive");
 
     float f = tan(pi / 2.0f - fov_y / 2.0f);
-    //float f = 1.0f / tan(fov_y * (pi / 360.0f) );
-    
-    new_matrix_ptr->data[0]      = f / ar;
-    new_matrix_ptr->data[4]      = 0;
-    new_matrix_ptr->data[8]      = 0;
-    new_matrix_ptr->data[12]     = 0;
-    new_matrix_ptr->data[1]      = 0;
-    new_matrix_ptr->data[5]      = f;
-    new_matrix_ptr->data[9]      = 0;
-    new_matrix_ptr->data[13]     = 0;
-    new_matrix_ptr->data[2]      = 0;
-    new_matrix_ptr->data[6]      = 0;
-    new_matrix_ptr->data[10]     = (z_far + z_near) / (z_near - z_far);
-    new_matrix_ptr->data[14]     = -1;
-    new_matrix_ptr->data[3]      = 0;
-    new_matrix_ptr->data[7]      = 0;
-    new_matrix_ptr->data[11]     = 2 * z_far * z_near / (z_near - z_far);
-    new_matrix_ptr->data[15]     = 0;
 
-    /* The commented out code uses row-major order which is incorrect */
-    //float ymax = z_near * tanf(fov_y * pi / 360.0f);
-    //float xmax = ymax * ar;
-    //float temp = 2.0f * z_near;
-    //float temp2 = 2 * xmax;
-    //float temp3 = 2 * ymax;
-    //float temp4 = z_far - z_near;
-    //
-    //new_matrix_ptr->data[0]  = temp              / temp2;
-    //new_matrix_ptr->data[5]  = temp              / temp3;
-    //new_matrix_ptr->data[10] = (-z_far - z_near) / temp4;
-    //new_matrix_ptr->data[11] = -1.0f;
-    //new_matrix_ptr->data[14] = (-temp * z_far)   / temp4;
+    new_matrix_ptr->data[0]  = f / ar;
+    new_matrix_ptr->data[1]  = 0;
+    new_matrix_ptr->data[2]  = 0;
+    new_matrix_ptr->data[3]  = 0;
+
+    new_matrix_ptr->data[4]  = 0;
+    new_matrix_ptr->data[5]  = f;
+    new_matrix_ptr->data[6]  = 0;
+    new_matrix_ptr->data[7]  = 0;
+
+    new_matrix_ptr->data[8]  = 0;
+    new_matrix_ptr->data[9]  = 0;
+    new_matrix_ptr->data[10] = (z_far + z_near)   / (z_near - z_far);
+    new_matrix_ptr->data[11] = 2 * z_far * z_near / (z_near - z_far);
+
+    new_matrix_ptr->data[12] = 0;
+    new_matrix_ptr->data[13] = 0;
+    new_matrix_ptr->data[14] = -1;
+    new_matrix_ptr->data[15] = 0;
     new_matrix_ptr->is_data_dirty = true;
 
     return new_matrix;

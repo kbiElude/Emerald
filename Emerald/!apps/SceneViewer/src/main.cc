@@ -22,9 +22,11 @@
 #include "ogl/ogl_uber.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_dropdown.h"
+#include "ogl/ogl_ui_texture_preview.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
+#include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -65,6 +67,7 @@ ogl_text                   _text_renderer                = NULL;
 ogl_ui                     _ui                           = NULL;
 ogl_ui_control             _ui_active_camera_control     = NULL;
 ogl_ui_control             _ui_active_path_control       = NULL;
+ogl_ui_control             _ui_texture_preview           = NULL;
 system_window              _window                       = NULL;
 system_event               _window_closed_event          = system_event_create(true, false);
 
@@ -358,7 +361,7 @@ void _render_scene(ogl_context          context,
                                           &znear);
 
                 float new_zfar = 0.01f;
-                float new_znear = 100.0f;
+                float new_znear = 10.0f;
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);
@@ -369,7 +372,7 @@ void _render_scene(ogl_context          context,
                 projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
                                                                                    1280 / 720.0f,
                                                                                    0.01f,   //znear,
-                                                                                   100.0f); //zfar);
+                                                                                   10.0f); //zfar);
 
                 if (_ui_active_path_control != NULL)
                 {
@@ -466,21 +469,17 @@ void _render_scene(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
-    {
-        ogl_scene_renderer_render_scene_graph(_scene_renderer,
-                                              view,
-                                              projection,
-                                              camera,
-                                              camera_location,
-                                              RENDER_MODE_FORWARD,
-                                              SHADOW_MAPPING_TYPE_PLAIN,
-                                              //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
-                                              HELPER_VISUALIZATION_NONE,
-                                              frame_time
-                                             );
-    }
-    entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
+    ogl_scene_renderer_render_scene_graph(_scene_renderer,
+                                          view,
+                                          projection,
+                                          camera,
+                                          camera_location,
+                                          RENDER_MODE_FORWARD,
+                                          SHADOW_MAPPING_TYPE_PLAIN,
+                                          //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
+                                          HELPER_VISUALIZATION_NONE,
+                                          frame_time
+                                         );
 
     /* Draw curves marked as active.
      *
@@ -511,9 +510,27 @@ void _render_scene(ogl_context          context,
         system_matrix4x4_release(vp);
     }
 
+    /* Configure texture preview. Shadow maps are assigned from the texture pool, so we need to
+     * refresh the texture assigned to the texture preview control every frame */
+    scene_light light    = scene_get_light_by_index(_test_scene,
+                                                    0);
+    ogl_texture light_sm = NULL;
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
+                            &light_sm);
+
+    if (_ui_texture_preview != NULL)
+    {
+        ogl_ui_set_property(_ui_texture_preview,
+                            OGL_UI_TEXTURE_PREVIEW_PROPERTY_TEXTURE,
+                           &light_sm);
+    }
+
     /* Render UI */
     ogl_ui_draw  (_ui);
-    ogl_text_draw(_context, _text_renderer);
+    ogl_text_draw(_context,
+                  _text_renderer);
 
     /* All done */
     system_matrix4x4_release(view);
@@ -566,8 +583,10 @@ void _setup_ui()
                                                     NULL);
 
     /* Create camera path selector */
-    float next_ui_control_x1y1[2];
+    float next_ui_control_x1y1    [2];
     float prev_ui_control_x1y1x2y2[4];
+    float texture_preview_x1y1    [2] = {0.1f, 0.1f};
+    float texture_preview_max_size[2] = {0.75f, 0.75f};
 
     ogl_ui_get_property(_ui_active_camera_control,
                         OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
@@ -585,6 +604,14 @@ void _setup_ui()
                                                   next_ui_control_x1y1,
                                                   _on_shown_camera_path_changed,
                                                   NULL);
+
+    /* Create shadow map preview */
+    _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
+                                                     system_hashed_ansi_string_create("Texture preview"),
+                                                     texture_preview_x1y1,
+                                                     texture_preview_max_size,
+                                                     NULL, /* texture */
+                                                     OGL_UI_TEXTURE_PREVIEW_TYPE_DEPTH);
 
     /* Update the visibility of the UI controls */
     _on_active_camera_changed(NULL,

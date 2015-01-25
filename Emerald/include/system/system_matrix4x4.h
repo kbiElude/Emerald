@@ -28,9 +28,9 @@ enum system_matrix4x4_clipping_plane
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create();
 
 /** TODO */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) float* camera_location,
-                                                                          __in_ecount(3) float* look_at_point,
-                                                                          __in_ecount(3) float* up_vector);
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) const float* camera_location,
+                                                                          __in_ecount(3) const float* look_at_point,
+                                                                          __in_ecount(3) const float* up_vector);
 
 /** TODO */
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_matrix(float left,

@@ -12,15 +12,16 @@
 /** Properties */
 typedef enum
 {
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_COLOR,              /* settable, GLfloat[4] */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_ALPHA,     /* settable, GLenum     */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_RGB,       /* settable, GLenum     */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_ALPHA, /* settable, GLenum     */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_RGB,   /* settable, GLenum     */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_ALPHA, /* settable, GLenum     */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_RGB,   /* settable, GLenum     */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_IS_BLENDING_ENABLED,      /* settable, bool       */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_SHOW_TEXTURE_NAME,        /* settable, bool       */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_COLOR,              /* settable, GLfloat[4]  */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_ALPHA,     /* settable, GLenum      */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_RGB,       /* settable, GLenum      */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_ALPHA, /* settable, GLenum      */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_RGB,   /* settable, GLenum      */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_ALPHA, /* settable, GLenum      */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_RGB,   /* settable, GLenum      */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_IS_BLENDING_ENABLED,      /* settable, bool        */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_SHOW_TEXTURE_NAME,        /* settable, bool        */
+    OGL_UI_TEXTURE_PREVIEW_PROPERTY_TEXTURE,                  /* settable, ogl_texture */
 };
 
 /** TODO */

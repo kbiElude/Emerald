@@ -14,6 +14,7 @@
 #include "scene/scene_light.h"
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
+#include "system/system_window.h"
 #include <string>
 #include <sstream>
 
@@ -131,135 +132,70 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                                                                   __out_ecount(3) __notnull float*               out_camera_position)
 {
     /* Retrieve camera's frustum properties */
-    float frustum_centroid_model[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-    float frustum_centroid_mv   [4] = {0.0f, 0.0f, 0.0f, 1.0f};
-
-    float frustum_fbl_model     [3];
-    float frustum_fbr_model     [3];
-    float frustum_ftl_model     [3];
-    float frustum_ftr_model     [3];
-    float frustum_nbl_model     [3];
-    float frustum_nbr_model     [3];
-    float frustum_ntl_model     [3];
-    float frustum_ntr_model     [3];
-    float frustum_x_max_model;
-    float frustum_x_min_model;
-    float frustum_y_max_model;
-    float frustum_y_min_model;
-    float frustum_z_max_model;
-    float frustum_z_min_model;
+    float frustum_centroid_camera_view[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_fbl_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_fbr_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_ftl_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_ftr_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_nbl_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_nbr_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_ntl_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_ntr_camera_view     [4] = {0.0f, 0.0f, 0.0f, 1.0f};
 
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,
                               frame_time,
-                              frustum_centroid_model);
+                              frustum_centroid_camera_view);
 
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,
                               frame_time,
-                              frustum_fbl_model);
+                              frustum_fbl_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,
                               frame_time,
-                              frustum_fbr_model);
+                              frustum_fbr_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,
                               frame_time,
-                              frustum_nbl_model);
+                              frustum_nbl_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,
                               frame_time,
-                              frustum_nbr_model);
-
+                              frustum_nbr_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,
                               frame_time,
-                              frustum_ftl_model);
+                              frustum_ftl_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,
                               frame_time,
-                              frustum_ftr_model);
+                              frustum_ftr_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,
                               frame_time,
-                              frustum_ntl_model);
+                              frustum_ntl_camera_view);
     scene_camera_get_property(sm_user_camera,
                               SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,
                               frame_time,
-                              frustum_ntr_model);
+                              frustum_ntr_camera_view);
 
-    /* Calculate camera's frustum centroid in world space */
+    /* Calculate camera's far Z setting */
+    float            camera_far_z;
     scene_graph_node camera_owner_node            = NULL;
     system_matrix4x4 camera_transformation_matrix = NULL;
 
-    scene_camera_get_property(sm_user_camera,
-                              SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
-                              frame_time,
-                             &camera_owner_node);
-
-    ASSERT_DEBUG_SYNC(camera_owner_node != NULL,
-                      "Camera's scene graph owner node is NULL");
-
+    scene_camera_get_property    (sm_user_camera,
+                                  SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+                                  frame_time,
+                                 &camera_far_z);
+    scene_camera_get_property    (sm_user_camera,
+                                  SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+                                  frame_time,
+                                 &camera_owner_node);
     scene_graph_node_get_property(camera_owner_node,
                                   SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
                                  &camera_transformation_matrix);
-
-    system_matrix4x4_multiply_by_vector4(camera_transformation_matrix,
-                                         frustum_centroid_model,
-                                         frustum_centroid_mv);
-
-    /* Obtain min & max values of all 3 components for the frustum vertices */
-    const float* frustum_vertices[] =
-    {
-        frustum_fbl_model,
-        frustum_fbr_model,
-        frustum_ftl_model,
-        frustum_ftr_model,
-        frustum_nbl_model,
-        frustum_nbr_model,
-        frustum_ntl_model,
-        frustum_ntr_model,
-    };
-    const uint32_t n_frustum_vertices = sizeof(frustum_vertices) / sizeof(frustum_vertices);
-
-    frustum_x_max_model = frustum_vertices[0][0];
-    frustum_x_min_model = frustum_vertices[0][0];
-    frustum_y_max_model = frustum_vertices[0][1];
-    frustum_y_min_model = frustum_vertices[0][1];
-    frustum_z_max_model = frustum_vertices[0][2];
-    frustum_z_min_model = frustum_vertices[0][2];
-
-    for (uint32_t n_frustum_vertex = 1; /* skip the first entry */
-                  n_frustum_vertex < n_frustum_vertices;
-                ++n_frustum_vertex)
-    {
-        if (frustum_x_max_model < frustum_vertices[n_frustum_vertex][0])
-        {
-            frustum_x_max_model = frustum_vertices[n_frustum_vertex][0];
-        }
-        if (frustum_x_min_model > frustum_vertices[n_frustum_vertex][0])
-        {
-            frustum_x_min_model = frustum_vertices[n_frustum_vertex][0];
-        }
-
-        if (frustum_y_max_model < frustum_vertices[n_frustum_vertex][1])
-        {
-            frustum_y_max_model = frustum_vertices[n_frustum_vertex][1];
-        }
-        if (frustum_y_min_model > frustum_vertices[n_frustum_vertex][1])
-        {
-            frustum_y_min_model = frustum_vertices[n_frustum_vertex][1];
-        }
-
-        if (frustum_z_max_model < frustum_vertices[n_frustum_vertex][2])
-        {
-            frustum_z_max_model = frustum_vertices[n_frustum_vertex][2];
-        }
-        if (frustum_z_min_model > frustum_vertices[n_frustum_vertex][2])
-        {
-            frustum_z_min_model = frustum_vertices[n_frustum_vertex][2];
-        }
-    } /* for (all frustum Z's) */
 
     /* Now retrieve the light direction vector */
     float light_direction_vector[3] = {0};
@@ -271,44 +207,128 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
     ASSERT_DEBUG_SYNC(fabs(system_math_vector_length3(light_direction_vector) - 1.0f) < 1e-5f,
                       "Light direction vector is not normalized");
 
-    /* We will need a vector that is orthogonal to the light direction. Now, for a single 3D vector
-     * there's an infinite number of orthogonal vectors, so use a cross product to come up with one.
-     */
-    const float light_arbitrary_vector           [3] = {light_direction_vector[1],
-                                                        light_direction_vector[2],
-                                                        light_direction_vector[0]};
-          float light_direction_orthogonal_vector[3] = {0};
-
-    system_math_vector_cross3(light_direction_vector,
-                              light_arbitrary_vector,
-                              light_direction_orthogonal_vector);
-
     /* Move away from the frustum centroid in the light direction, using the max z
      * value we've retrieved.
      */
-    float sm_camera_location[3] =
+    float sm_camera_location_camera_view[4] =
     {
-        frustum_centroid_model[0] - light_direction_vector[0] * frustum_z_max_model,
-        frustum_centroid_model[1] - light_direction_vector[1] * frustum_z_max_model,
-        frustum_centroid_model[2] - light_direction_vector[2] * frustum_z_max_model,
+        frustum_centroid_camera_view[0] - light_direction_vector[0] * camera_far_z,
+        frustum_centroid_camera_view[1] - light_direction_vector[1] * camera_far_z,
+        frustum_centroid_camera_view[2] - light_direction_vector[2] * camera_far_z,
+        1.0f
     };
 
     memcpy(out_camera_position,
-           sm_camera_location,
-           sizeof(sm_camera_location) );
+           sm_camera_location_camera_view,
+           sizeof(float) * 3);
+
+    /* Set up the light's view matrix */
+    static const float up_vector[3] = {0.0f, 1.0f, 0.0f};
+
+    *out_view_matrix = system_matrix4x4_create_lookat_matrix(sm_camera_location_camera_view, /* eye_position */
+                                                             frustum_centroid_camera_view,   /* lookat_point */
+                                                             up_vector);                     /* up_vector */
+
+    /* Calculate light view frustum vertex locations */
+    float frustum_fbl_light_view      [4];
+    float frustum_fbr_light_view      [4];
+    float frustum_ftl_light_view      [4];
+    float frustum_ftr_light_view      [4];
+    float frustum_nbl_light_view      [4];
+    float frustum_nbr_light_view      [4];
+    float frustum_ntl_light_view      [4];
+    float frustum_ntr_light_view      [4];
+    float frustum_x_max_light_view;
+    float frustum_x_min_light_view;
+    float frustum_y_max_light_view;
+    float frustum_y_min_light_view;
+    float frustum_z_max_light_view;
+    float frustum_z_min_light_view;
+
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_fbl_camera_view,
+                                         frustum_fbl_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_fbr_camera_view,
+                                         frustum_fbr_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_ftl_camera_view,
+                                         frustum_ftl_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_ftr_camera_view,
+                                         frustum_ftr_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_nbl_camera_view,
+                                         frustum_nbl_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_nbr_camera_view,
+                                         frustum_nbr_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_ntl_camera_view,
+                                         frustum_ntl_light_view);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         frustum_ntr_camera_view,
+                                         frustum_ntr_light_view);
+
+    float* frustum_vertices_light_view[] =
+    {
+        frustum_fbl_light_view,
+        frustum_fbr_light_view,
+        frustum_ftl_light_view,
+        frustum_ftr_light_view,
+        frustum_nbl_light_view,
+        frustum_nbr_light_view,
+        frustum_ntl_light_view,
+        frustum_ntr_light_view,
+    };
+    const uint32_t n_frustum_vertices = sizeof(frustum_vertices_light_view) / sizeof(frustum_vertices_light_view[0]);
+
+    frustum_x_max_light_view = frustum_vertices_light_view[0][0];
+    frustum_x_min_light_view = frustum_vertices_light_view[0][0];
+    frustum_y_max_light_view = frustum_vertices_light_view[0][1];
+    frustum_y_min_light_view = frustum_vertices_light_view[0][1];
+    frustum_z_max_light_view = frustum_vertices_light_view[0][2];
+    frustum_z_min_light_view = frustum_vertices_light_view[0][2];
+
+    for (uint32_t n_frustum_vertex = 1; /* skip the first entry */
+                  n_frustum_vertex < n_frustum_vertices;
+                ++n_frustum_vertex)
+    {
+        if (frustum_x_max_light_view < frustum_vertices_light_view[n_frustum_vertex][0])
+        {
+            frustum_x_max_light_view = frustum_vertices_light_view[n_frustum_vertex][0];
+        }
+        if (frustum_x_min_light_view > frustum_vertices_light_view[n_frustum_vertex][0])
+        {
+            frustum_x_min_light_view = frustum_vertices_light_view[n_frustum_vertex][0];
+        }
+
+        if (frustum_y_max_light_view < frustum_vertices_light_view[n_frustum_vertex][1])
+        {
+            frustum_y_max_light_view = frustum_vertices_light_view[n_frustum_vertex][1];
+        }
+        if (frustum_y_min_light_view > frustum_vertices_light_view[n_frustum_vertex][1])
+        {
+            frustum_y_min_light_view = frustum_vertices_light_view[n_frustum_vertex][1];
+        }
+
+        if (frustum_z_max_light_view < frustum_vertices_light_view[n_frustum_vertex][2])
+        {
+            frustum_z_max_light_view = frustum_vertices_light_view[n_frustum_vertex][2];
+        }
+        if (frustum_z_min_light_view > frustum_vertices_light_view[n_frustum_vertex][2])
+        {
+            frustum_z_min_light_view = frustum_vertices_light_view[n_frustum_vertex][2];
+        }
+    } /* for (all frustum Z's) */
 
     /* Set up projection matrix */
-    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(frustum_x_min_model,                        /* left */
-                                                                             frustum_x_max_model,                        /* right */
-                                                                             frustum_y_min_model,                        /* bottom */
-                                                                             frustum_y_max_model,                        /* top */
-                                                                             0.0001f,                                    /* near z */
-                                                                             frustum_z_max_model - frustum_z_min_model); /* far z */
-
-    /* Set up the view matrix */
-    *out_view_matrix = system_matrix4x4_create_lookat_matrix(sm_camera_location,                 /* eye_position */
-                                                             frustum_centroid_mv,                /* lookat_point */
-                                                             light_direction_orthogonal_vector); /* up_vector */
+    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(frustum_x_min_light_view, /* left */
+                                                                             frustum_x_max_light_view, /* right */
+                                                                             frustum_y_min_light_view, /* bottom */
+                                                                             frustum_y_max_light_view, /* top */
+                                                                             0.0f,
+                                                                             frustum_z_max_light_view + frustum_z_min_light_view);
 }
 
 /** Please see header for spec */
@@ -341,11 +361,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
     if (should_enable)
     {
-        ogl_texture light_shadow_map = NULL;
+        ogl_texture light_shadow_map         = NULL;
+        uint32_t    light_shadow_map_size[2] = {0};
 
         scene_light_get_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
                                 &light_shadow_map);
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
+                                 light_shadow_map_size);
 
         ASSERT_DEBUG_SYNC(light_shadow_map != NULL,
                           "Shadow map is NULL");
@@ -365,14 +389,41 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                               GL_TEXTURE_2D,
                                               light_shadow_map,
                                               0); /* level */
+
+        /* Clear the depth buffer */
+        entry_points->pGLClearDepth(1.0);
+        entry_points->pGLClear     (GL_DEPTH_BUFFER_BIT);
+        entry_points->pGLDepthFunc (GL_LESS);
+        entry_points->pGLEnable    (GL_DEPTH_TEST);
+        entry_points->pGLViewport  (0, /* x */
+                                    0, /* y */
+                                    light_shadow_map_size[0],
+                                    light_shadow_map_size[1]);
     }
     else
     {
+        system_window context_window        = NULL;
+        int32_t       context_window_height = 0;
+        int32_t       context_window_width  = 0;
+
         entry_points->pGLColorMask(GL_TRUE,
                                    GL_TRUE,
                                    GL_TRUE,
                                    GL_TRUE);
         entry_points->pGLDepthMask(GL_TRUE);
+        entry_points->pGLDisable  (GL_DEPTH_TEST);
+
+        ogl_context_get_property    (handler_ptr->context,
+                                     OGL_CONTEXT_PROPERTY_WINDOW,
+                                    &context_window);
+        system_window_get_dimensions(context_window,
+                                    &context_window_width,
+                                    &context_window_height);
+
+        entry_points->pGLViewport(0, /* x */
+                                  0, /* y */
+                                  context_window_width,
+                                  context_window_height);
 
         /* Unbind the SM FBO */
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,

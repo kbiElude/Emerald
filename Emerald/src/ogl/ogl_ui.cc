@@ -1047,7 +1047,7 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
                                                              __in __notnull           system_hashed_ansi_string   name,
                                                              __in_ecount(2) __notnull const float*                x1y1,
                                                              __in_ecount(2) __notnull const float*                max_size,
-                                                             __in           __notnull ogl_texture                 texture,
+                                                             __in_opt                 ogl_texture                 texture,
                                                              __in                     ogl_ui_texture_preview_type preview_type)
 {
     _ogl_ui_control* new_ui_control_ptr = new (std::nothrow) _ogl_ui_control;
@@ -1067,7 +1067,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
                                                    texture,
                                                    preview_type);
 
-        memset(new_ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+        memset(new_ui_control_ptr,
+               0,
+               sizeof(_ogl_ui_control) );
 
         new_ui_control_ptr->internal                   = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr        = ogl_ui_texture_preview_deinit;

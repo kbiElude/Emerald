@@ -41,8 +41,7 @@ PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool  (     
 PRIVATE void _ogl_scene_renderer_render_shadow_maps                       (__in __notnull  ogl_scene_renderer                             renderer,
                                                                            __in __notnull  scene_camera                                   target_camera,
                                                                            __in __notnull  const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
-                                                                           __in            system_timeline_time                           frame_time,
-                                                                           __in __notnull  system_matrix4x4                               projection);
+                                                                           __in            system_timeline_time                           frame_time);
 PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras  (__in __notnull  struct _ogl_scene_renderer*                    renderer_ptr);
 PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties         (__in __notnull  ogl_uber                                       material_uber,
                                                                            __in __notnull  scene                                          scene,
@@ -887,8 +886,7 @@ PRIVATE void _ogl_scene_renderer_new_model_matrix(__in __notnull system_matrix4x
 PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_renderer                             renderer,
                                                     __in __notnull scene_camera                                   target_camera,
                                                     __in __notnull const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
-                                                    __in           system_timeline_time                           frame_time,
-                                                    __in __notnull system_matrix4x4                               projection)
+                                                    __in           system_timeline_time                           frame_time)
 {
     scene_graph          graph          = NULL;
     uint32_t             n_lights       = 0;
@@ -942,6 +940,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
             GLenum       current_light_shadow_map_internalformat = GL_NONE;
             unsigned int current_light_shadow_map_size[2]        = {0};
 
+#if 0
+            Taking the check out for UI preview of shadow maps.
             #ifdef _DEBUG
             {
                 scene_light_get_property(current_light,
@@ -952,6 +952,7 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                   "Shadow map texture is already assigned to a scene_light instance!");
             }
             #endif /* _DEBUG */
+#endif
 
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
@@ -983,9 +984,9 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                     &current_light_shadow_map);
 
             /* Configure the GL for depth map rendering */
-            system_matrix4x4 projection_matrix     = NULL;
+            system_matrix4x4 sm_projection_matrix     = NULL;
             float            sm_camera_location[3];
-            system_matrix4x4 view_matrix          = NULL;
+            system_matrix4x4 sm_view_matrix          = NULL;
 
             ogl_shadow_mapping_toggle(shadow_mapping,
                                       current_light,
@@ -998,8 +999,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                     ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
                                                                           target_camera,
                                                                           frame_time,
-                                                                         &view_matrix,
-                                                                         &projection_matrix,
+                                                                         &sm_view_matrix,
+                                                                         &sm_projection_matrix,
                                                                           sm_camera_location);
 
                     break;
@@ -1012,8 +1013,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                 }
            } /* switch (current_light_type) */
 
-            ASSERT_DEBUG_SYNC(view_matrix       != NULL &&
-                              projection_matrix != NULL,
+            ASSERT_DEBUG_SYNC(sm_view_matrix       != NULL &&
+                              sm_projection_matrix != NULL,
                               "Projection/view matrix for shadow map rendering is NULL");
 
            /* NOTE: This call is recursive (this function was called by exactly the same function,
@@ -1022,8 +1023,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
             *       geometry.
             */
            ogl_scene_renderer_render_scene_graph( (ogl_scene_renderer) renderer_ptr,
-                                                  view_matrix,
-                                                  projection,
+                                                  sm_view_matrix,
+                                                  sm_projection_matrix,
                                                   target_camera,
                                                   sm_camera_location,
                                                   RENDER_MODE_NO_RASTERIZATION,
@@ -1036,11 +1037,11 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                      false); /* should_enable */
 
            /* Clean up */
-           system_matrix4x4_release(projection_matrix);
-           projection_matrix = NULL;
+           system_matrix4x4_release(sm_projection_matrix);
+           sm_projection_matrix = NULL;
 
-           system_matrix4x4_release(view_matrix);
-           view_matrix = NULL;
+           system_matrix4x4_release(sm_view_matrix);
+           sm_view_matrix = NULL;
         } /* if (current_light_is_shadow_caster) */
     } /* for (all scene lights) */
 }
@@ -1086,9 +1087,13 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(__in __notnull ogl_s
             ogl_textures_return_reusable(renderer_ptr->context,
                                          current_light_sm_texture);
 
+#if 0
+            Let's leave the assignment for UI preview
+
             scene_light_set_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
                                      &null_texture);
+#endif
         } /* if (current_light_is_shadow_caster) */
     } /* for (all scene lights) */
 }
@@ -1516,10 +1521,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                                          __in           __notnull _ogl_scene_renderer_helper_visualization       helper_visualization,
                                                                          __in                     system_timeline_time                           frame_time)
 {
-    _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
-    scene_graph          graph          = NULL;
-    ogl_materials        materials      = NULL;
-    unsigned int         n_scene_lights = 0;
+    _ogl_scene_renderer*              renderer_ptr   = (_ogl_scene_renderer*) renderer;
+    const ogl_context_gl_entrypoints* entry_points   = NULL;
+    scene_graph                       graph          = NULL;
+    ogl_materials                     materials      = NULL;
+    unsigned int                      n_scene_lights = 0;
 
     scene_get_property      (renderer_ptr->scene,
                              SCENE_PROPERTY_GRAPH,
@@ -1528,8 +1534,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                              SCENE_PROPERTY_N_LIGHTS,
                             &n_scene_lights);
     ogl_context_get_property(renderer_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+    ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_MATERIALS,
                             &materials);
+
+    /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
+     * rendering proceeds.
+     */
+    if (shadow_mapping != SHADOW_MAPPING_TYPE_DISABLED)
+    {
+        _ogl_scene_renderer_render_shadow_maps(renderer,
+                                               camera,
+                                               shadow_mapping,
+                                               frame_time);
+    } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 1. Traverse the scene graph and:
      *
@@ -1555,36 +1575,37 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                          renderer,
                          frame_time);
 
-    /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
-     * rendering proceeds.
-     */
-    if (shadow_mapping != SHADOW_MAPPING_TYPE_DISABLED)
+    /* Set up GL before we continue */
+    entry_points->pGLFrontFace(GL_CCW);
+    entry_points->pGLDepthFunc(GL_LESS);
+    entry_points->pGLEnable   (GL_CULL_FACE);
+    entry_points->pGLEnable   (GL_DEPTH_TEST);
+
+    if (render_mode == RENDER_MODE_FORWARD)
     {
-        _ogl_scene_renderer_render_shadow_maps(renderer,
-                                               camera,
-                                               shadow_mapping,
-                                               frame_time,
-                                               projection);
-    } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
+        entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
+    }
 
     /* 2. Start uber rendering. Issue as many render requests as there are materials.
      *
      *    TODO: We could obviously expand this by performing more complicated sorting
      *          but this will do for now.
      */
-    system_hash64             material_hash    = 0;
-    ogl_uber                  material_uber    = NULL;
-    uint32_t                  n_iterations     = 0;
-    _ogl_scene_renderer_uber* uber_details_ptr = NULL;
+    system_hash64             material_hash     = 0;
+    ogl_uber                  material_uber     = NULL;
+    uint32_t                  n_iteration_items = 0;
+    uint32_t                  n_iterations      = 0;
+    _ogl_scene_renderer_uber* uber_details_ptr  = NULL;
 
     if (render_mode == RENDER_MODE_NO_RASTERIZATION)
     {
         mesh_material dummy_material = ogl_materials_get_special_material(materials,
                                                                           SPECIAL_MATERIAL_DUMMY);
 
-        material_uber = mesh_material_get_ogl_uber                    (dummy_material,
-                                                                       renderer_ptr->scene);
-        n_iterations  = system_resizable_vector_get_amount_of_elements(renderer_ptr->current_no_rasterization_meshes);
+        material_uber     = mesh_material_get_ogl_uber                    (dummy_material,
+                                                                           renderer_ptr->scene);
+        n_iterations      = 1;
+        n_iteration_items = system_resizable_vector_get_amount_of_elements(renderer_ptr->current_no_rasterization_meshes);
     }
     else
     {
@@ -1595,12 +1616,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                   n_iteration < n_iterations;
                 ++n_iteration)
     {
-        uint32_t n_iteration_items = 0;
-
         /* Retrieve ogl_uber instance */
         if (render_mode == RENDER_MODE_NO_RASTERIZATION)
         {
-            n_iteration_items = system_resizable_vector_get_amount_of_elements(renderer_ptr->current_no_rasterization_meshes);
+            /* Nothing to do - n_iteration_items is already set */
         }
         else
         if (render_mode == RENDER_MODE_FORWARD)
@@ -1672,7 +1691,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                item_ptr->model_matrix,
                                                item_ptr->normal_matrix,
                                                material_uber,
-                                               item_ptr->material,
+                                               (render_mode != RENDER_MODE_NO_RASTERIZATION) ? item_ptr->material : NULL,
                                                frame_time);
             }
         }
@@ -1866,6 +1885,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     }
 
     /* All done! Good to shut down the show */
+    if (render_mode == RENDER_MODE_FORWARD)
+    {
+        entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
+    }
+
     if (vp != NULL)
     {
         system_matrix4x4_release(vp);
