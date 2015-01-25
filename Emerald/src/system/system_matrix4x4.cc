@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "system/system_assertions.h"
 #include "system/system_constants.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resource_pool.h"
 #include <math.h>
@@ -79,6 +80,67 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create()
     ((_system_matrix4x4_descriptor*)result)->is_data_dirty = false;
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) float* camera_location,
+                                                                          __in_ecount(3) float* look_at_point,
+                                                                          __in_ecount(3) float* base_up_vector)
+{
+    float                         direction_vector[3];
+    system_matrix4x4              new_matrix          = system_matrix4x4_create();
+    _system_matrix4x4_descriptor* new_matrix_ptr      = (_system_matrix4x4_descriptor*) new_matrix;
+    float                         right_vector    [3];
+    float                         up_vector       [3];
+
+    /* Calculate direction vector */
+    system_math_vector_minus3    (look_at_point,
+                                  camera_location,
+                                  direction_vector);
+    system_math_vector_normalize3(direction_vector,
+                                  direction_vector);
+
+    /* Calculate right vector (f x up)*/
+    system_math_vector_cross3    (base_up_vector,
+                                  direction_vector,
+                                  right_vector);
+    system_math_vector_normalize3(right_vector,
+                                  right_vector);
+
+    /* Calculate up vector (dir x right) */
+    system_math_vector_cross3(direction_vector,
+                              right_vector,
+                              up_vector);
+
+    /* Construct the result matrix */
+    memset(new_matrix_ptr->data,
+           0,
+           sizeof(new_matrix_ptr->data) );
+
+    memcpy(new_matrix_ptr->data + 4 * 0,
+           right_vector,
+           sizeof(right_vector) );
+    memcpy(new_matrix_ptr->data + 4 * 1,
+           up_vector,
+           sizeof(up_vector) );
+
+    new_matrix_ptr->data[4 * 2 + 0] = -direction_vector[0];
+    new_matrix_ptr->data[4 * 2 + 1] = -direction_vector[1];
+    new_matrix_ptr->data[4 * 2 + 2] = -direction_vector[2];
+    new_matrix_ptr->data[4 * 2 + 3] = 1.0f;
+
+    /* Move the matrix to the requested camera location */
+    const float translation_vector[3] =
+    {
+        -camera_location[0],
+        -camera_location[1],
+        -camera_location[2],
+    };
+
+    system_matrix4x4_translate(new_matrix,
+                               translation_vector);
+
+    return new_matrix;
 }
 
 /** Please see header for specification */
@@ -163,7 +225,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_matrix4x4_release(__in __notnull __deallocate(mem) system_matrix4x4 matrix)
 {
-    system_resource_pool_return_to_pool(matrix_pool, (system_resource_pool_block) matrix);
+    system_resource_pool_return_to_pool(matrix_pool,
+                                        (system_resource_pool_block) matrix);
 }
 
 /** Please see header for specification */

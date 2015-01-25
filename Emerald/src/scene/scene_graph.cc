@@ -3202,7 +3202,8 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                     /* Nope, issue a notification */
                     if (on_new_transformation_matrix_proc != NULL)
                     {
-                        on_new_transformation_matrix_proc(node_ptr->transformation_matrix.data, user_arg);
+                        on_new_transformation_matrix_proc(node_ptr->transformation_matrix.data,
+                                                          user_arg);
                     }
 
                     node_ptr->transformation_matrix.has_fired_event = true;
@@ -3227,21 +3228,29 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                         {
                             void* object = NULL;
 
-                            if (system_resizable_vector_get_element_at(objects, n_object, &object) )
+                            if (system_resizable_vector_get_element_at(objects,
+                                                                       n_object,
+                                                                      &object) )
                             {
-                                if (n_iteration == 0 && insert_camera_proc != NULL)
+                                if (n_iteration        == 0 &&
+                                    insert_camera_proc != NULL)
                                 {
-                                    insert_camera_proc( (scene_camera) object, user_arg);
+                                    insert_camera_proc( (scene_camera) object,
+                                                        user_arg);
                                 }
                                 else
-                                if (n_iteration == 1 && insert_mesh_proc != NULL)
+                                if (n_iteration      == 1 &&
+                                    insert_mesh_proc != NULL)
                                 {
-                                    insert_mesh_proc( (scene_mesh) object, user_arg);
+                                    insert_mesh_proc( (scene_mesh) object,
+                                                      user_arg);
                                 }
                                 else
-                                if (n_iteration == 2 && insert_light_proc != NULL)
+                                if (n_iteration       == 2 &&
+                                    insert_light_proc != NULL)
                                 {
-                                    insert_light_proc( (scene_light) object, user_arg);
+                                    insert_light_proc( (scene_light) object,
+                                                       user_arg);
                                 }
                             }
                             else

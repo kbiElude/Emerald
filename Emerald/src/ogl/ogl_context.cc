@@ -2185,9 +2185,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                         _result->texture_compression = ogl_context_texture_compression_create( (ogl_context) _result);
                                         _result->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) _result);
 
-                                        /* Initialize shadow mapping handler */
-                                        _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
-
                                         /* Retrieve GL context limitations */
                                         _ogl_context_retrieve_GL_limits(_result);
 
@@ -2308,6 +2305,9 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                             &_result->entry_points_private);
                                         ogl_context_to_bindings_init        (_result->to_bindings,
                                                                             &_result->entry_points_private);
+
+                                        /* Initialize shadow mapping handler */
+                                        _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
 
                                         /* Set up the zero-VAA VAO */
                                         _result->entry_points_gl.pGLGenVertexArrays(1,

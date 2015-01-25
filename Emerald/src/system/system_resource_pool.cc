@@ -87,6 +87,8 @@ PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool
     }
     system_critical_section_leave(descriptor->cs);
 
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "NULL blob returned by system_resource_pool");
     return result;
 }
 
@@ -118,6 +120,8 @@ PUBLIC EMERALD_API void system_resource_pool_return_to_pool(__in __notnull syste
 {
     _system_resource_pool_internals* descriptor = (_system_resource_pool_internals*) pool;
 
+    ASSERT_DEBUG_SYNC(block != NULL,
+                      "NULL block returned to the pool!");
     system_critical_section_enter(descriptor->cs);
     {
         system_resizable_vector_push(descriptor->released_blocks, block);

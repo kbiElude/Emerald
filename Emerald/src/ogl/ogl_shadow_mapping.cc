@@ -9,7 +9,10 @@
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader.h"
 #include "scene/scene.h"
+#include "scene/scene_camera.h"
+#include "scene/scene_graph.h"
 #include "scene/scene_light.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include <string>
 #include <sstream>
@@ -98,7 +101,7 @@ PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_co
 
 
 /** Please see header for spec */
-PUBLIC ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context context)
+PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context context)
 {
     _ogl_shadow_mapping* new_instance = new (std::nothrow) _ogl_shadow_mapping;
 
@@ -109,10 +112,203 @@ PUBLIC ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context c
     {
         new_instance->context = context;
 
-
+        /* NOTE: We cannot make an usual ogl_context renderer callback request at this point,
+         *       since shadow mapping handler is initialized by ogl_context itself. Assume
+         *       we're already within a GL rendering context.. */
+        _ogl_shadow_mapping_init_renderer_callback(context,
+                                                   new_instance);
     } /* if (new_instance != NULL) */
 
     return (ogl_shadow_mapping) new_instance;
+}
+
+/** Please see header for spec */
+PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in            __notnull scene_light          light,
+                                                                  __in            __notnull scene_camera         sm_user_camera,
+                                                                  __in                      system_timeline_time frame_time,
+                                                                  __out           __notnull system_matrix4x4*    out_view_matrix,
+                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix,
+                                                                  __out_ecount(3) __notnull float*               out_camera_position)
+{
+    /* Retrieve camera's frustum properties */
+    float frustum_centroid_model[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float frustum_centroid_mv   [4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
+    float frustum_fbl_model     [3];
+    float frustum_fbr_model     [3];
+    float frustum_ftl_model     [3];
+    float frustum_ftr_model     [3];
+    float frustum_nbl_model     [3];
+    float frustum_nbr_model     [3];
+    float frustum_ntl_model     [3];
+    float frustum_ntr_model     [3];
+    float frustum_x_max_model;
+    float frustum_x_min_model;
+    float frustum_y_max_model;
+    float frustum_y_min_model;
+    float frustum_z_max_model;
+    float frustum_z_min_model;
+
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID,
+                              frame_time,
+                              frustum_centroid_model);
+
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,
+                              frame_time,
+                              frustum_fbl_model);
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,
+                              frame_time,
+                              frustum_fbr_model);
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,
+                              frame_time,
+                              frustum_nbl_model);
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,
+                              frame_time,
+                              frustum_nbr_model);
+
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,
+                              frame_time,
+                              frustum_ftl_model);
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,
+                              frame_time,
+                              frustum_ftr_model);
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,
+                              frame_time,
+                              frustum_ntl_model);
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,
+                              frame_time,
+                              frustum_ntr_model);
+
+    /* Calculate camera's frustum centroid in world space */
+    scene_graph_node camera_owner_node            = NULL;
+    system_matrix4x4 camera_transformation_matrix = NULL;
+
+    scene_camera_get_property(sm_user_camera,
+                              SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+                              frame_time,
+                             &camera_owner_node);
+
+    ASSERT_DEBUG_SYNC(camera_owner_node != NULL,
+                      "Camera's scene graph owner node is NULL");
+
+    scene_graph_node_get_property(camera_owner_node,
+                                  SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
+                                 &camera_transformation_matrix);
+
+    system_matrix4x4_multiply_by_vector4(camera_transformation_matrix,
+                                         frustum_centroid_model,
+                                         frustum_centroid_mv);
+
+    /* Obtain min & max values of all 3 components for the frustum vertices */
+    const float* frustum_vertices[] =
+    {
+        frustum_fbl_model,
+        frustum_fbr_model,
+        frustum_ftl_model,
+        frustum_ftr_model,
+        frustum_nbl_model,
+        frustum_nbr_model,
+        frustum_ntl_model,
+        frustum_ntr_model,
+    };
+    const uint32_t n_frustum_vertices = sizeof(frustum_vertices) / sizeof(frustum_vertices);
+
+    frustum_x_max_model = frustum_vertices[0][0];
+    frustum_x_min_model = frustum_vertices[0][0];
+    frustum_y_max_model = frustum_vertices[0][1];
+    frustum_y_min_model = frustum_vertices[0][1];
+    frustum_z_max_model = frustum_vertices[0][2];
+    frustum_z_min_model = frustum_vertices[0][2];
+
+    for (uint32_t n_frustum_vertex = 1; /* skip the first entry */
+                  n_frustum_vertex < n_frustum_vertices;
+                ++n_frustum_vertex)
+    {
+        if (frustum_x_max_model < frustum_vertices[n_frustum_vertex][0])
+        {
+            frustum_x_max_model = frustum_vertices[n_frustum_vertex][0];
+        }
+        if (frustum_x_min_model > frustum_vertices[n_frustum_vertex][0])
+        {
+            frustum_x_min_model = frustum_vertices[n_frustum_vertex][0];
+        }
+
+        if (frustum_y_max_model < frustum_vertices[n_frustum_vertex][1])
+        {
+            frustum_y_max_model = frustum_vertices[n_frustum_vertex][1];
+        }
+        if (frustum_y_min_model > frustum_vertices[n_frustum_vertex][1])
+        {
+            frustum_y_min_model = frustum_vertices[n_frustum_vertex][1];
+        }
+
+        if (frustum_z_max_model < frustum_vertices[n_frustum_vertex][2])
+        {
+            frustum_z_max_model = frustum_vertices[n_frustum_vertex][2];
+        }
+        if (frustum_z_min_model > frustum_vertices[n_frustum_vertex][2])
+        {
+            frustum_z_min_model = frustum_vertices[n_frustum_vertex][2];
+        }
+    } /* for (all frustum Z's) */
+
+    /* Now retrieve the light direction vector */
+    float light_direction_vector[3] = {0};
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_DIRECTION,
+                             light_direction_vector);
+
+    ASSERT_DEBUG_SYNC(fabs(system_math_vector_length3(light_direction_vector) - 1.0f) < 1e-5f,
+                      "Light direction vector is not normalized");
+
+    /* We will need a vector that is orthogonal to the light direction. Now, for a single 3D vector
+     * there's an infinite number of orthogonal vectors, so use a cross product to come up with one.
+     */
+    const float light_arbitrary_vector           [3] = {light_direction_vector[1],
+                                                        light_direction_vector[2],
+                                                        light_direction_vector[0]};
+          float light_direction_orthogonal_vector[3] = {0};
+
+    system_math_vector_cross3(light_direction_vector,
+                              light_arbitrary_vector,
+                              light_direction_orthogonal_vector);
+
+    /* Move away from the frustum centroid in the light direction, using the max z
+     * value we've retrieved.
+     */
+    float sm_camera_location[3] =
+    {
+        frustum_centroid_model[0] - light_direction_vector[0] * frustum_z_max_model,
+        frustum_centroid_model[1] - light_direction_vector[1] * frustum_z_max_model,
+        frustum_centroid_model[2] - light_direction_vector[2] * frustum_z_max_model,
+    };
+
+    memcpy(out_camera_position,
+           sm_camera_location,
+           sizeof(sm_camera_location) );
+
+    /* Set up projection matrix */
+    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(frustum_x_min_model,                        /* left */
+                                                                             frustum_x_max_model,                        /* right */
+                                                                             frustum_y_min_model,                        /* bottom */
+                                                                             frustum_y_max_model,                        /* top */
+                                                                             0.0001f,                                    /* near z */
+                                                                             frustum_z_max_model - frustum_z_min_model); /* far z */
+
+    /* Set up the view matrix */
+    *out_view_matrix = system_matrix4x4_create_lookat_matrix(sm_camera_location,                 /* eye_position */
+                                                             frustum_centroid_mv,                /* lookat_point */
+                                                             light_direction_orthogonal_vector); /* up_vector */
 }
 
 /** Please see header for spec */

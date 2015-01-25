@@ -108,10 +108,14 @@ typedef struct _ogl_materials
     _ogl_materials()
     {
         context                       = NULL;
-        forced_mesh_material_settings = system_resizable_vector_create(4 /* capacity */, sizeof(_ogl_materials_mesh_material_setting*) );
-        ubers                         = system_resizable_vector_create(4 /* capacity */, sizeof(_ogl_materials_uber*) );
+        forced_mesh_material_settings = system_resizable_vector_create(4 /* capacity */,
+                                                                       sizeof(_ogl_materials_mesh_material_setting*) );
+        ubers                         = system_resizable_vector_create(4 /* capacity */,
+                                                                       sizeof(_ogl_materials_uber*) );
 
-        memset(special_materials, 0, sizeof(special_materials) );
+        memset(special_materials,
+               0,
+               sizeof(special_materials) );
     }
 
     ~_ogl_materials()
@@ -120,7 +124,8 @@ typedef struct _ogl_materials
         {
             _ogl_materials_mesh_material_setting* mesh_material_setting_ptr = NULL;
 
-            while (system_resizable_vector_pop(forced_mesh_material_settings, &mesh_material_setting_ptr) )
+            while (system_resizable_vector_pop(forced_mesh_material_settings,
+                                              &mesh_material_setting_ptr) )
             {
                 delete mesh_material_setting_ptr;
 
@@ -147,7 +152,8 @@ typedef struct _ogl_materials
         {
             _ogl_materials_uber* uber_ptr = NULL;
 
-            while (system_resizable_vector_pop(ubers, &uber_ptr) )
+            while (system_resizable_vector_pop(ubers,
+                                              &uber_ptr) )
             {
                 if (uber_ptr->material != NULL)
                 {
@@ -213,8 +219,10 @@ PRIVATE bool _ogl_materials_are_materials_a_match(__in __notnull mesh_material m
                     ++n_material_property)
     {
         mesh_material_shading_property    property              = (mesh_material_shading_property) n_material_property;
-        mesh_material_property_attachment material_a_attachment = mesh_material_get_shading_property_attachment_type(material_a, property);
-        mesh_material_property_attachment material_b_attachment = mesh_material_get_shading_property_attachment_type(material_b, property);
+        mesh_material_property_attachment material_a_attachment = mesh_material_get_shading_property_attachment_type(material_a,
+                                                                                                                     property);
+        mesh_material_property_attachment material_b_attachment = mesh_material_get_shading_property_attachment_type(material_b,
+                                                                                                                     property);
 
         if (material_a_attachment != material_b_attachment)
         {
@@ -529,6 +537,11 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
             } /* if (scene != NULL) */
         } /* if (material_shading == MESH_MATERIAL_SHADING_LAMBERT || material_shading == MESH_MATERIAL_SHADING_PHONG) */
         else
+        if (material_shading == MESH_MATERIAL_SHADING_NONE)
+        {
+            /* Nothing to be done here! */
+        }
+        else
         {
             /* Sanity checks */
             mesh_material_input_fragment_attribute input_fragment_attribute   = MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
@@ -553,8 +566,19 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
             switch (input_fragment_attribute)
             {
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:   uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;   break;
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD: uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD; break;
+                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:
+                {
+                    uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;
+
+                    break;
+                }
+
+                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD:
+                {
+                    uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD;
+
+                    break;
+                }
 
                 default:
                 {
@@ -671,11 +695,15 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
     const _ogl_materials* materials_ptr     = (const _ogl_materials*) materials;
     const unsigned int    n_forced_settings = system_resizable_vector_get_amount_of_elements(materials_ptr->forced_mesh_material_settings);
 
-    for (unsigned int n_setting = 0; n_setting < n_forced_settings; ++n_setting)
+    for (unsigned int n_setting = 0;
+                      n_setting < n_forced_settings;
+                    ++n_setting)
     {
         _ogl_materials_mesh_material_setting* setting_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(materials_ptr->forced_mesh_material_settings, n_setting, &setting_ptr) )
+        if (system_resizable_vector_get_element_at(materials_ptr->forced_mesh_material_settings,
+                                                   n_setting,
+                                                  &setting_ptr) )
         {
             if (setting_ptr->property == shading_property)
             {
@@ -702,16 +730,24 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
 /** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
-    mesh_material_shading shading_type              = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
-    mesh_material         special_material_normal   = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),  materials_ptr->context);
-    mesh_material         special_material_texcoord = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"), materials_ptr->context);
+    mesh_material_shading shading_type_attribute_data = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
+    mesh_material_shading shading_type_none           = MESH_MATERIAL_SHADING_NONE;
+    mesh_material         special_material_dummy      = mesh_material_create(system_hashed_ansi_string_create("Special material: dummy"),
+                                                                             materials_ptr->context);
+    mesh_material         special_material_normal     = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
+                                                                             materials_ptr->context);
+    mesh_material         special_material_texcoord   = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
+                                                                             materials_ptr->context);
 
+    mesh_material_set_property(special_material_dummy,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &shading_type_none);
     mesh_material_set_property(special_material_normal,
                                MESH_MATERIAL_PROPERTY_SHADING,
-                              &shading_type);
+                              &shading_type_attribute_data);
     mesh_material_set_property(special_material_texcoord,
                                MESH_MATERIAL_PROPERTY_SHADING,
-                              &shading_type);
+                              &shading_type_attribute_data);
 
     mesh_material_set_shading_property_to_input_fragment_attribute(special_material_normal,
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
@@ -720,6 +756,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
                                                                    MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD);
 
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DUMMY]    = special_material_dummy;
     materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]  = special_material_normal;
     materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD] = special_material_texcoord;
 }
@@ -730,7 +767,9 @@ PUBLIC ogl_materials ogl_materials_create(__in __notnull ogl_context context)
 {
     _ogl_materials* materials_ptr = new (std::nothrow) _ogl_materials;
 
-    ASSERT_ALWAYS_SYNC(materials_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(materials_ptr != NULL,
+                       "Out of memory");
+
     if (materials_ptr != NULL)
     {
         materials_ptr->context = context;
@@ -750,7 +789,9 @@ PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attac
     _ogl_materials*                       materials_ptr   = (_ogl_materials*) materials;
     _ogl_materials_mesh_material_setting* new_setting_ptr = new _ogl_materials_mesh_material_setting;
 
-    ASSERT_ALWAYS_SYNC(new_setting_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_setting_ptr != NULL,
+                       "Out of memory");
+
     if (new_setting_ptr != NULL)
     {
         /* TODO: This really could check if the property is not already overloaded with another attachment */
@@ -758,7 +799,8 @@ PUBLIC EMERALD_API void ogl_materials_force_mesh_material_shading_property_attac
         new_setting_ptr->attachment_data = attachment_data;
         new_setting_ptr->property        = property;
 
-        system_resizable_vector_push(materials_ptr->forced_mesh_material_settings, new_setting_ptr);
+        system_resizable_vector_push(materials_ptr->forced_mesh_material_settings,
+                                     new_setting_ptr);
     } /* if (new_setting_ptr != NULL) */
 }
 
@@ -780,15 +822,21 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
     /* First, iterate over existing uber containers and check if there's a match */
     const unsigned int n_materials = system_resizable_vector_get_amount_of_elements(materials_ptr->ubers);
 
-    for (unsigned int n_material = 0; n_material < n_materials; ++n_material)
+    for (unsigned int n_material = 0;
+                      n_material < n_materials;
+                    ++n_material)
     {
         _ogl_materials_uber* uber_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(materials_ptr->ubers, n_material, &uber_ptr) )
+        if (system_resizable_vector_get_element_at(materials_ptr->ubers,
+                                                   n_material,
+                                                  &uber_ptr) )
         {
-            if (_ogl_materials_are_materials_a_match(uber_ptr->material, material)            &&
-                (scene == NULL                                                                ||
-                 scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber, scene) ))
+            if (_ogl_materials_are_materials_a_match(uber_ptr->material,
+                                                     material)                          &&
+                (scene == NULL                                                          ||
+                 scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
+                                                                       scene) ))
             {
                 result = uber_ptr->uber;
 
@@ -804,23 +852,31 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
     if (result == NULL)
     {
         /* Nope? Gotta bake a new uber then */
-        ogl_uber new_uber = _ogl_materials_bake_uber(materials, material, scene);
+        ogl_uber new_uber = _ogl_materials_bake_uber(materials,
+                                                     material,
+                                                     scene);
 
-        ASSERT_DEBUG_SYNC(new_uber != NULL, "Could not bake a new uber");
+        ASSERT_DEBUG_SYNC(new_uber != NULL,
+                          "Could not bake a new uber");
+
         if (new_uber != NULL)
         {
             _ogl_materials_uber* new_uber_descriptor = new (std::nothrow) _ogl_materials_uber;
 
-            ASSERT_ALWAYS_SYNC(new_uber_descriptor != NULL, "Out of memory");
+            ASSERT_ALWAYS_SYNC(new_uber_descriptor != NULL,
+                               "Out of memory");
+
             if (new_uber_descriptor != NULL)
             {
                 const char* src_material_name = system_hashed_ansi_string_get_buffer(mesh_material_get_name(material) );
 
-                new_uber_descriptor->material = mesh_material_create_copy(system_hashed_ansi_string_create_by_merging_two_strings(src_material_name, " copy"), material);
+                new_uber_descriptor->material = mesh_material_create_copy(system_hashed_ansi_string_create_by_merging_two_strings(src_material_name, " copy"),
+                                                                          material);
                 new_uber_descriptor->uber     = new_uber;
                 result                        = new_uber;
 
-                system_resizable_vector_push(materials_ptr->ubers, new_uber_descriptor);
+                system_resizable_vector_push(materials_ptr->ubers,
+                                             new_uber_descriptor);
             }
         }
     }

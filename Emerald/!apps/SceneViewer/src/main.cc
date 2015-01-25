@@ -315,6 +315,7 @@ void _render_scene(ogl_context          context,
            system_timeline_time frame_time = /* 0; */(system_time_now() - start_time) % _animation_duration_time;
 
     /* Update view matrix */
+    scene_camera     camera             = NULL; /* TODO: this will be incorrectly null for flyby camera - FIXME */
     float            camera_location[4] = {0, 0, 0, 0};
     bool             is_flyby_active    = false;
     system_matrix4x4 projection         = system_matrix4x4_create();
@@ -376,6 +377,8 @@ void _render_scene(ogl_context          context,
                                         OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
                                        &new_visibility);
                 }
+
+                camera = camera_ptr->camera;
             }
             else
             {
@@ -468,10 +471,12 @@ void _render_scene(ogl_context          context,
         ogl_scene_renderer_render_scene_graph(_scene_renderer,
                                               view,
                                               projection,
+                                              camera,
                                               camera_location,
                                               RENDER_MODE_FORWARD,
-                                              SHADOW_MAPPING_TYPE_DISABLED,
-                                              (_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
+                                              SHADOW_MAPPING_TYPE_PLAIN,
+                                              //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
+                                              HELPER_VISUALIZATION_NONE,
                                               frame_time
                                              );
     }

@@ -40,6 +40,12 @@ PUBLIC EMERALD_API float system_math_vector_dot3(__in_ecount(3) const float* a,
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
+/* Please see header for description */
+PUBLIC EMERALD_API float system_math_vector_length3(__in_ecount(3) const float* a)
+{
+    return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+}
+
 /** Please see header for description */
 PUBLIC EMERALD_API void system_math_vector_minus3(__in_ecount(3)  const float* a,
                                                   __in_ecount(3)  const float* b,
@@ -74,7 +80,7 @@ PUBLIC EMERALD_API void system_math_vector_mul3_float(__in_ecount(3)  const floa
 PUBLIC EMERALD_API void system_math_vector_normalize3(__in_ecount(3)  const float* a,
                                                       __out_ecount(3)       float* result)
 {
-    float len = sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+    float len = system_math_vector_length3(a);
 
     if (len >= epsilon)
     {

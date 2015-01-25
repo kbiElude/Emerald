@@ -333,6 +333,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_
 
         _scene_light_init(new_scene_light);
 
+        /* Ambient light never casts shadows */
+        new_scene_light->uses_shadow_map = false;
+
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
@@ -540,6 +543,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_TYPE:
         {
             *((scene_light_type*) out_result) = light_ptr->type;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP:
+        {
+            *(bool*) out_result = light_ptr->uses_shadow_map;
 
             break;
         }
