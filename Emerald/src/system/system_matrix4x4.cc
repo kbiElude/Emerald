@@ -231,7 +231,7 @@ PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(__in __notnu
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnull system_matrix4x4 mat_a, 
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnull system_matrix4x4 mat_a,
                                                                    __in __notnull system_matrix4x4 mat_b)
 {
     system_matrix4x4              result            = system_matrix4x4_create();
@@ -572,24 +572,6 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull syste
     y_vector[1] = z_vector[0] * x_vector[2] - z_vector[2] * x_vector[0];
     y_vector[2] = z_vector[1] * x_vector[0] - z_vector[0] * x_vector[1];
 
-    /*
-    Not needed - always one (because z & x are orthogonal and of unit length 
-    vectorMagnitude = sqrt(yVector[0] * yVector[0] + yVector[1] * yVector[1] + yVector[2] * yVector[2]);
-    if (vectorMagnitude != 0)
-    {
-        yVector[0] /= vectorMagnitude;
-        yVector[1] /= vectorMagnitude;
-        yVector[2] /= vectorMagnitude;
-    }
-
-    ..but leave an assertion check just in case.
-    */
-    #ifdef _DEBUG
-        float len = (y_vector[0] * y_vector[0] + y_vector[1] * y_vector[1] + y_vector[2] * y_vector[2]);
-
-        ASSERT_DEBUG_SYNC(len >= 0.9999f && len <= 1.0001f, "Up vector not normalized!");
-    #endif
-
     //
     float translation_vec [3]  = {-camera_position[0], -camera_position[1], -camera_position[2]};
     float view_matrix_data[16] = { x_vector[0],         x_vector[1],         x_vector[2],        0,
@@ -609,6 +591,32 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull syste
 
     system_matrix4x4_release(view_matrix);
     system_matrix4x4_release(result_matrix);
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull system_matrix4x4 a,
+                                                               __in __notnull system_matrix4x4 b)
+{
+    _system_matrix4x4_descriptor* a_ptr = (_system_matrix4x4_descriptor*) a;
+    _system_matrix4x4_descriptor* b_ptr = (_system_matrix4x4_descriptor*) b;
+    _system_matrix4x4_descriptor  temp;
+
+    for (unsigned char column = 0; column < 4; ++column)
+    {
+        for (unsigned char row = 0; row < 4; ++row)
+        {
+            temp.data[WORD_INDEX(column, row)] = a_ptr->data[WORD_INDEX(0, row)] * b_ptr->data[WORD_INDEX(column, 0)] +
+                                                 a_ptr->data[WORD_INDEX(1, row)] * b_ptr->data[WORD_INDEX(column, 1)] +
+                                                 a_ptr->data[WORD_INDEX(2, row)] * b_ptr->data[WORD_INDEX(column, 2)] +
+                                                 a_ptr->data[WORD_INDEX(3, row)] * b_ptr->data[WORD_INDEX(column, 3)];
+        }
+    }
+
+    memcpy(&a_ptr->data,
+           temp.data,
+           sizeof(temp.data) );
+
+    a_ptr->is_data_dirty = true;
 }
 
 /** Please see header for specification */

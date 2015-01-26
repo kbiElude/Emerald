@@ -606,12 +606,14 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
+#if 0
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,
                                                      texture_preview_max_size,
                                                      NULL, /* texture */
                                                      OGL_UI_TEXTURE_PREVIEW_TYPE_DEPTH);
+#endif
 
     /* Update the visibility of the UI controls */
     _on_active_camera_changed(NULL,

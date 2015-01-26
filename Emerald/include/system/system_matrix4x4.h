@@ -120,6 +120,13 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull      
                                                             __in __notnull __ecount(3) const float*,
                                                             __in __notnull __ecount(3) const float*);
 
+/** TODO
+ *
+ *  a *= b;
+ */
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull system_matrix4x4 a,
+                                                               __in __notnull system_matrix4x4 b);
+
 /** Multiples 4x4 matrix object by 4-dimensional user vector.
  *  Result is stored in user-provided vector.
  *

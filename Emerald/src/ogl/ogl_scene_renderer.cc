@@ -984,9 +984,10 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                     &current_light_shadow_map);
 
             /* Configure the GL for depth map rendering */
-            system_matrix4x4 sm_projection_matrix     = NULL;
+            system_matrix4x4 sm_projection_matrix    = NULL;
             float            sm_camera_location[3];
             system_matrix4x4 sm_view_matrix          = NULL;
+            system_matrix4x4 sm_vp_matrix            = NULL;
 
             ogl_shadow_mapping_toggle(shadow_mapping,
                                       current_light,
@@ -1013,9 +1014,19 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                 }
            } /* switch (current_light_type) */
 
+            /* Update light's shadow VP matrix */
             ASSERT_DEBUG_SYNC(sm_view_matrix       != NULL &&
                               sm_projection_matrix != NULL,
                               "Projection/view matrix for shadow map rendering is NULL");
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
+                                    &sm_vp_matrix);
+
+            system_matrix4x4_set_from_matrix4x4   (sm_vp_matrix,
+                                                   sm_projection_matrix);
+            system_matrix4x4_multiply_by_matrix4x4(sm_vp_matrix,
+                                                   sm_view_matrix);
 
            /* NOTE: This call is recursive (this function was called by exactly the same function,
             *       but we're requesting no shadow maps this time AND the scene graph has already
