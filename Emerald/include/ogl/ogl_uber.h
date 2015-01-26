@@ -53,6 +53,7 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,    /* settable, float[3]. used by directional lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,     /* settable, float[3]. used by point lights  */
 
+    OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,      /* settable, float[16], row-major */
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
 
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,

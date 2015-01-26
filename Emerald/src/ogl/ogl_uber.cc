@@ -77,10 +77,21 @@ typedef struct _ogl_uber_fragment_shader_item
 } _ogl_uber_fragment_shader_item;
 
 /* Holds all properties that may be used for a vertex shader item */
-typedef struct
+typedef struct _ogl_uber_vertex_shader_item
 {
+    float current_light_depth_vp[16]; /* row-major */
+    bool  current_light_depth_vp_dirty;
+    GLint current_light_depth_vp_ub_offset;
+
     _ogl_uber_light_sh_data current_light_sh_data;
     GLint                   current_light_sh_data_ub_offset;
+
+    _ogl_uber_vertex_shader_item()
+    {
+        current_light_depth_vp_ub_offset = -1;
+        current_light_depth_vp_dirty     = true;
+    }
+
 } _ogl_uber_vertex_shader_item;
 
 /* A single item added to ogl_uber used to construct a program object managed by ogl_uber */
@@ -1256,8 +1267,22 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 }
 
                 /* Vertex shader stuff */
-                shaders_vertex_uber_light light_type = SHADERS_VERTEX_UBER_LIGHT_NONE;
+                std::stringstream                     light_depth_vb_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_depth_vb_uniform_ptr = NULL;
+                shaders_vertex_uber_light             light_type                 = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
+                light_depth_vb_uniform_name_sstream << "light" << n_item << "_depth_vp";
+
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_depth_vb_uniform_name_sstream.str().c_str() ),
+                                               &light_depth_vb_uniform_ptr);
+
+                if (light_depth_vb_uniform_ptr != NULL)
+                {
+                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ptr->ub_offset;
+                }
+
+                /* Outdated SH stuff */
                 shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex,
                                                    n_item,
                                                   &light_type);
@@ -2072,6 +2097,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_location_dirty = false;
                     }
 
+                    /* Verrex shader part */
+                    if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1 &&
+                        item_ptr->vertex_shader_item.current_light_depth_vp_dirty)
+                    {
+                        memcpy((char*) uber_ptr->bo_data + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
+                               item_ptr->vertex_shader_item.current_light_depth_vp,
+                               sizeof(float) * 16);
+
+                        has_modified_bo_data                                      = true;
+                        item_ptr->vertex_shader_item.current_light_depth_vp_dirty = false;
+                    }
+
                     break;
                 }
 
@@ -2312,6 +2349,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
+        case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
 
@@ -2419,6 +2457,22 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                             item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_location_dirty = true;
+                        }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
+                    {
+                        if (memcmp(item_ptr->vertex_shader_item.current_light_depth_vp,
+                                   data,
+                                   sizeof(float) * 16) != 0)
+                        {
+                            memcpy(item_ptr->vertex_shader_item.current_light_depth_vp,
+                                   data,
+                                   sizeof(float) * 16);
+
+                            item_ptr->vertex_shader_item.current_light_depth_vp_dirty = true;
                         }
 
                         break;
