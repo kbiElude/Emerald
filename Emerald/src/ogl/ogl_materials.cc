@@ -526,10 +526,19 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                         }
                     } /* switch (material_shading) */
 
+                    /* Determine if we should check visibility for the light. */
+                    bool uses_shadow_mapping = false;
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                            &uses_shadow_mapping);
+
+                    /* Add the light item if not a NULL light */
                     if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                     {
                         ogl_uber_add_light_item(new_uber,
                                                 uber_light_type,
+                                                uses_shadow_mapping,
                                                 n_uber_fragment_property_value_pairs,
                                                 uber_fragment_property_value_pairs);
                     } /* if (uber_light_type != UBER_LIGHT_NONE) */
@@ -634,15 +643,21 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                       n_light < n_uber_lights;
                     ++n_light)
     {
-        scene_light_type                 current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
-        _ogl_uber_item_type              current_uber_item_type  = OGL_UBER_ITEM_UNKNOWN;
-        shaders_fragment_uber_light_type current_uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
+        bool                             current_light_is_shadow_caster     = false;
+        scene_light_type                 current_light_type                 = SCENE_LIGHT_TYPE_UNKNOWN;
+        bool                             current_uber_item_is_shadow_caster = false;
+        shaders_fragment_uber_light_type current_uber_item_light_type       = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
+        _ogl_uber_item_type              current_uber_item_type             = OGL_UBER_ITEM_UNKNOWN;
 
         current_light = scene_get_light_by_index(scene, n_light);
 
-        scene_light_get_property         (current_light,
-                                          SCENE_LIGHT_PROPERTY_TYPE,
-                                          &current_light_type);
+        scene_light_get_property(current_light,
+                                 SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                &current_light_is_shadow_caster);
+        scene_light_get_property(current_light,
+                                 SCENE_LIGHT_PROPERTY_TYPE,
+                                &current_light_type);
+
         ogl_uber_get_shader_item_property(uber,
                                           n_light,
                                           OGL_UBER_ITEM_PROPERTY_TYPE,
@@ -658,8 +673,12 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
 
         ogl_uber_get_shader_item_property(uber,
                                           n_light,
+                                          OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
+                                         &current_uber_item_is_shadow_caster);
+        ogl_uber_get_shader_item_property(uber,
+                                          n_light,
                                           OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
-                                         &current_uber_light_type);
+                                         &current_uber_item_light_type);
 
         /* TODO: Expand to support other light types */
         ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_AMBIENT     ||
@@ -667,11 +686,19 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                           current_light_type == SCENE_LIGHT_TYPE_POINT,
                           "TODO: Unsupported light type, expand.");
 
-        if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT     &&  current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             ||
-            current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
-                                                                   current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
-            current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
-                                                                   current_uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT) )
+        if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT     &&  current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             ||
+            current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
+                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
+            current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
+                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT) )
+        {
+            /* Nope */
+            result = false;
+
+            goto end;
+        }
+
+        if (current_uber_item_is_shadow_caster != current_light_is_shadow_caster)
         {
             /* Nope */
             result = false;

@@ -7,6 +7,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
+#include "ogl/ogl_shadow_mapping.h"
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -57,24 +58,30 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(__in __notnull ogl_shade
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC4,
                                                       9, /* array_size */
                                                       vs_ub_id,
-                                                      system_hashed_ansi_string_create(light_sh3_variable_name_sstream.str().c_str() ));
+                                                      system_hashed_ansi_string_create(light_sh3_variable_name_sstream.str().c_str() ),
+                                                      NULL /* out_variable_id */);
 
     /* Add uniform variables */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_SAMPLERBUFFER,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("mesh_sh3"));
+                                                      system_hashed_ansi_string_create("mesh_sh3"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_INT,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("mesh_sh3_data_offset"));
+                                                      system_hashed_ansi_string_create("mesh_sh3_data_offset"),
+                                                      NULL /* out_variable_id */);
 
     /* Add output variables */
     std::stringstream light_mesh_ambient_diffuse_sh3_name_sstream;
@@ -83,10 +90,12 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(__in __notnull ogl_shade
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create(light_mesh_ambient_diffuse_sh3_name_sstream.str().c_str() ));
+                                                      system_hashed_ansi_string_create(light_mesh_ambient_diffuse_sh3_name_sstream.str().c_str() ),
+                                                      NULL /* out_variable_id */);
 
     /* Compute output variable value */
     std::stringstream body;
@@ -118,24 +127,30 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(__in __notnull ogl_shade
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC4,
                                                       12, /* array_size */
                                                       vs_ub_id,
-                                                      system_hashed_ansi_string_create(light_sh3_variable_name_sstream.str().c_str() ));
+                                                      system_hashed_ansi_string_create(light_sh3_variable_name_sstream.str().c_str() ),
+                                                      NULL /* out_variable_id */);
 
     /* Add uniform variables */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_SAMPLERBUFFER,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("mesh_sh4"));
+                                                      system_hashed_ansi_string_create("mesh_sh4"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_INT,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("mesh_sh4_data_offset"));
+                                                      system_hashed_ansi_string_create("mesh_sh4_data_offset"),
+                                                      NULL /* out_variable_id */);
 
     /* Add output variables */
     std::stringstream light_mesh_ambient_diffuse_sh4_name_sstream;
@@ -144,10 +159,12 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(__in __notnull ogl_shade
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create(light_mesh_ambient_diffuse_sh4_name_sstream.str().c_str() ));
+                                                      system_hashed_ansi_string_create(light_mesh_ambient_diffuse_sh4_name_sstream.str().c_str() ),
+                                                      NULL /* out_variable_id */);
 
     /* Compute output variable value */
     std::stringstream body;
@@ -220,10 +237,12 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
     /* Add input attribute */
     if (!ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                            VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                           LAYOUT_QUALIFIER_NONE,
                                                            in_attribute_variable_type,
                                                            0, /* array_size */
                                                            0, /* uniform_block */
-                                                           in_attribute_name) )
+                                                           in_attribute_name,
+                                                           NULL /* out_variable_id */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not add input attribute [%s] to the uber vertex shader",
@@ -233,10 +252,12 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
     /* Add output attribute */
     if (!ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
                                                            VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                           LAYOUT_QUALIFIER_NONE,
                                                            in_attribute_variable_type,
                                                            0, /* array_size */
                                                            0, /* uniform_block */
-                                                           out_attribute_name) )
+                                                           out_attribute_name,
+                                                           NULL /* out_variable_id */) )
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not add output attribute [%s] to the uber vertex shader",
@@ -263,7 +284,8 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
 
 /** Please see header for specification */
 PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__in __notnull shaders_vertex_uber       uber,
-                                                                             __in           shaders_vertex_uber_light light)
+                                                                             __in           shaders_vertex_uber_light light,
+                                                                             __in           bool                      is_shadow_caster)
 {
     _shaders_vertex_uber*       uber_ptr = (_shaders_vertex_uber*) uber;
     const unsigned int          n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
@@ -278,14 +300,18 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
 
         case SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS:
         {
-            _shaders_vertex_uber_add_sh3_light_support(uber_ptr->shader_constructor, n_items, uber_ptr->vs_ub_id);
+            _shaders_vertex_uber_add_sh3_light_support(uber_ptr->shader_constructor,
+                                                       n_items,
+                                                       uber_ptr->vs_ub_id);
 
             break;
         }
 
         case SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS:
         {
-            _shaders_vertex_uber_add_sh4_light_support(uber_ptr->shader_constructor, n_items, uber_ptr->vs_ub_id);
+            _shaders_vertex_uber_add_sh4_light_support(uber_ptr->shader_constructor,
+                                                       n_items,
+                                                       uber_ptr->vs_ub_id);
 
             break;
         }
@@ -297,6 +323,15 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
             goto end;
         }
     } /* switch (light) */
+
+    /* Add shadow mapping code if needed */
+    if (is_shadow_caster)
+    {
+        ogl_shadow_mapping_adjust_vertex_uber_code(uber_ptr->shader_constructor,
+                                                   n_items, /* n_light */
+                                                   uber_ptr->vs_ub_id,
+                                                   system_hashed_ansi_string_create("world_vertex_temp") );
+    }
 
     /* Spawn new descriptor */
     _shaders_vertex_uber_item* new_item_ptr = new (std::nothrow) _shaders_vertex_uber_item;
@@ -352,64 +387,82 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC4,
                                                       0, /* array_size */
                                                       ub_id,
-                                                      system_hashed_ansi_string_create("world_camera") );
+                                                      system_hashed_ansi_string_create("world_camera"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_MAT4,
                                                       0, /* array_size */
                                                       ub_id,
-                                                      system_hashed_ansi_string_create("vp") );
+                                                      system_hashed_ansi_string_create("vp"),
+                                                      NULL /* out_variable_id */);
 
     /* Proceed with input attributes */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("object_normal"));
+                                                      system_hashed_ansi_string_create("object_normal"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("object_vertex"));
+                                                      system_hashed_ansi_string_create("object_vertex"),
+                                                      NULL /* out_variable_id */);
 
     /* Time for output attributes */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("world_vertex"));
+                                                      system_hashed_ansi_string_create("world_vertex"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("out_vs_normal"));
+                                                      system_hashed_ansi_string_create("out_vs_normal"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_VEC3,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("view_vector"));
+                                                      system_hashed_ansi_string_create("view_vector"),
+                                                      NULL /* out_variable_id */);
 
     /* Finally, uniforms */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_MAT4,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("model"));
+                                                      system_hashed_ansi_string_create("model"),
+                                                      NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_NONE,
                                                       TYPE_MAT4,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("normal_matrix"));
+                                                      system_hashed_ansi_string_create("normal_matrix"),
+                                                      NULL /* out_variable_id */);
 
     /* Set general body */
     ogl_shader_constructor_set_function_body(shader_constructor,

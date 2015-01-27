@@ -13,6 +13,9 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_shader_constructor, ogl_shader_constructor)
 
 typedef enum
 {
+    /* TODO: Bindings or locations are not currently supported by this scheme. Well.. :) */
+    LAYOUT_QUALIFIER_NONE         = 0,
+
     LAYOUT_QUALIFIER_COLUMN_MAJOR = 1 << 0,
     LAYOUT_QUALIFIER_PACKED       = 1 << 1,
     LAYOUT_QUALIFIER_ROW_MAJOR    = 1 << 2,
@@ -33,6 +36,7 @@ typedef enum
 
 typedef enum
 {
+    VARIABLE_TYPE_CONST,
     VARIABLE_TYPE_INPUT_ATTRIBUTE,
     VARIABLE_TYPE_NONE, /* only used internally for function arguments */
     VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
@@ -45,6 +49,7 @@ typedef enum
 typedef unsigned int _function_id;
 typedef unsigned int _structure_id;
 typedef unsigned int _uniform_block_id;
+typedef unsigned int _variable_id;
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(__in  __notnull ogl_shader_constructor    constructor,
@@ -67,12 +72,14 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure
                                                                                  __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in __notnull ogl_shader_constructor    constructor,
-                                                                          __in           _variable_type            variable_type,
-                                                                          __in           _shader_variable_type     type,
-                                                                          __in           uint32_t                  array_size,
-                                                                          __in           _uniform_block_id         uniform_block,
-                                                                          __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in      __notnull ogl_shader_constructor    constructor,
+                                                                          __in                _variable_type            variable_type,
+                                                                          __in                _layout_qualifier         layout_qualifiers,
+                                                                          __in                _shader_variable_type     type,
+                                                                          __in                uint32_t                  array_size,
+                                                                          __in                _uniform_block_id         uniform_block,
+                                                                          __in      __notnull system_hashed_ansi_string name,
+                                                                          __out_opt           _variable_id*             out_variable_id);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(__in __notnull ogl_shader_constructor    constructor,
@@ -106,8 +113,23 @@ PUBLIC EMERALD_API unsigned int ogl_shader_constructor_get_amount_of_variables_i
 PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_constructor_get_shader_body(__in __notnull ogl_shader_constructor constructor);
 
 /** TODO */
+PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(__in __notnull ogl_shader_constructor    constructor,
+                                                                         __in           _uniform_block_id         uniform_block,
+                                                                         __in __notnull system_hashed_ansi_string var_name);
+
+/** TODO */
 PUBLIC EMERALD_API void ogl_shader_constructor_set_function_body(__in __notnull ogl_shader_constructor    constructor,
                                                                  __in           _function_id              function_id,
                                                                  __in __notnull system_hashed_ansi_string body);
+
+/** TODO.
+ *
+ *  @param uniform_block Must be 0 (that is: refer to the default UB).
+ */
+PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_value(__in      __notnull ogl_shader_constructor constructor,
+                                                                                  __in                _uniform_block_id      uniform_block,
+                                                                                  __in                _variable_id           variable_id,
+                                                                                  __in      __notnull const void*            data,
+                                                                                  __out_opt           uint32_t*              out_n_bytes_to_read);
 
 #endif /* OGL_SHADER_CONSTRUCTOR_H */

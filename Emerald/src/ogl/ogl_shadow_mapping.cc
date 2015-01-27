@@ -8,6 +8,7 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader.h"
+#include "ogl/ogl_shader_constructor.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -100,6 +101,130 @@ PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_co
     }
 #endif
 
+
+/** Please see header for spec */
+PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader_constructor    shader_constructor_vs,
+                                                       __in           uint32_t                  n_light,
+                                                       __in           _uniform_block_id         ub_vs,
+                                                       __in __notnull system_hashed_ansi_string world_vertex_vec4_variable_name)
+{
+    static const float depth_bias_matrix_data[] = /* column_major */
+    {
+        0.5f, 0.0f, 0.0f, 0.5f,
+        0.0f, 0.5f, 0.0f, 0.5f,
+        0.0f, 0.0f, 0.5f, 0.5f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+    static uint32_t           n_depth_bias_matrix_data_entries = sizeof(depth_bias_matrix_data) / sizeof(depth_bias_matrix_data[0]);
+    system_hashed_ansi_string depth_bias_matrix_var_name       = system_hashed_ansi_string_create("depth_bias");
+
+    /* Add a global depth bias matrix which normalizes coordinates at range <-1, 1> to <0, 1> */
+    bool is_depth_bias_matrix_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
+                                                                                       0, /* uniform_block */
+                                                                                       depth_bias_matrix_var_name);
+
+    if (!is_depth_bias_matrix_added)
+    {
+        uint32_t     matrix_variable_data_size = 0;
+        _variable_id matrix_variable_id        = -1;
+
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
+                                                          VARIABLE_TYPE_CONST,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_MAT4,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          depth_bias_matrix_var_name,
+                                                         &matrix_variable_id);
+
+        ogl_shader_constructor_set_general_variable_default_value(shader_constructor_vs,
+                                                                  0,                         /* uniform_block */
+                                                                  matrix_variable_id,
+                                                                  NULL,                      /* data */
+                                                                 &matrix_variable_data_size);
+
+        ASSERT_DEBUG_SYNC(matrix_variable_data_size == sizeof(depth_bias_matrix_data),
+                          "ogl_shader_constructor glitch detected");
+
+        ogl_shader_constructor_set_general_variable_default_value(shader_constructor_vs ,
+                                                                  0,                      /* uniform_block */
+                                                                  matrix_variable_id,
+                                                                  depth_bias_matrix_data,
+                                                                  NULL);                  /* n_bytes_to_read */
+    }
+
+    /* Add the light-specific depth VP matrix */
+    system_hashed_ansi_string depth_vp_matrix_name_has     = NULL;
+    std::stringstream         depth_vp_matrix_name_sstream;
+    bool                      is_depth_vp_matrix_added     = false;
+
+    depth_vp_matrix_name_sstream << "light_"
+                                 << n_light
+                                 << "_depth_vp";
+
+    depth_vp_matrix_name_has = system_hashed_ansi_string_create                (depth_vp_matrix_name_sstream.str().c_str() );
+    is_depth_vp_matrix_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
+                                                                                ub_vs,
+                                                                                depth_vp_matrix_name_has);
+
+    ASSERT_DEBUG_SYNC(!is_depth_vp_matrix_added,
+                      "Depth VP already added to VS UB for light [%d]",
+                      n_light);
+
+    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
+                                                      VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_ROW_MAJOR,
+                                                      TYPE_MAT4,
+                                                      0, /* array_size */
+                                                      ub_vs,
+                                                      depth_vp_matrix_name_has,
+                                                      NULL); /* out_variable_id */
+
+    /* Add an output variable that calculates the vertex position in light-view space */
+    bool                      is_light_shadow_coord_added = false;
+    system_hashed_ansi_string light_shadow_coord_name_has = NULL;
+    std::stringstream         light_shadow_coord_name_sstream;
+
+    light_shadow_coord_name_sstream << "light_"
+                                    << n_light
+                                    << "_shadow_coord";
+
+    light_shadow_coord_name_has = system_hashed_ansi_string_create                (light_shadow_coord_name_sstream.str().c_str() );
+    is_light_shadow_coord_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_vs,
+                                                                                   ub_vs,
+                                                                                   light_shadow_coord_name_has);
+
+    ASSERT_DEBUG_SYNC(!is_light_shadow_coord_added,
+                      "Light shadow coord for light [%d] already added",
+                      n_light);
+
+    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_vs,
+                                                      VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                      LAYOUT_QUALIFIER_NONE,
+                                                      TYPE_VEC4,
+                                                      0, /* array_size */
+                                                      0, /* ub_id */
+                                                      light_shadow_coord_name_has,
+                                                      NULL); /* out_variable_id */
+
+    /* Add new code snippet to main() */
+    const char*               world_vertex_vec4_name_raw = system_hashed_ansi_string_get_buffer(world_vertex_vec4_variable_name);
+    system_hashed_ansi_string vs_code_has                = NULL;
+    std::stringstream         vs_code_sstream;
+
+    vs_code_sstream << light_shadow_coord_name_sstream.str()
+                    << " = "
+                    << depth_vp_matrix_name_sstream.str()
+                    << " * "
+                    << world_vertex_vec4_name_raw
+                    << ";\n";
+
+    vs_code_has = system_hashed_ansi_string_create(vs_code_sstream.str().c_str() );
+
+    ogl_shader_constructor_append_to_function_body(shader_constructor_vs,
+                                                   0, /* function_id */
+                                                   vs_code_has);
+}
 
 /** Please see header for spec */
 PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context context)

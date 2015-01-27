@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -99,6 +99,7 @@ typedef struct _ogl_uber_item
 {
     shaders_fragment_uber_item_id  fs_item_id;
     _ogl_uber_fragment_shader_item fragment_shader_item;
+    bool                           is_shadow_caster;
     _ogl_uber_vertex_shader_item   vertex_shader_item;
     shaders_vertex_uber_item_id    vs_item_id;
 
@@ -106,9 +107,10 @@ typedef struct _ogl_uber_item
 
     _ogl_uber_item()
     {
-        fs_item_id = -1;
-        type       = OGL_UBER_ITEM_UNKNOWN;
-        vs_item_id = -1;
+        fs_item_id       = -1;
+        is_shadow_caster = false;
+        type             = OGL_UBER_ITEM_UNKNOWN;
+        vs_item_id       = -1;
     }
 } _ogl_uber_item;
 
@@ -797,6 +799,7 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber                         uber,
                                                             __in                                  shaders_fragment_uber_light_type light_type,
+                                                            __in                                  bool                             is_shadow_caster,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values)
 {
@@ -818,12 +821,14 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         {
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,
+                                                         is_shadow_caster,
                                                          n_light_properties,
                                                          light_property_values,
                                                          _ogl_uber_add_item_shaders_fragment_callback_handler,
                                                          uber);
             vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex,
-                                                         SHADERS_VERTEX_UBER_LIGHT_NONE);
+                                                         SHADERS_VERTEX_UBER_LIGHT_NONE,
+                                                         is_shadow_caster);
 
             break;
         }
@@ -841,11 +846,14 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
 
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,
+                                                         is_shadow_caster,
                                                          n_light_properties,
                                                          light_property_values,
                                                          NULL, /* callback proc - not used */
                                                          NULL  /* callback proc user arg - not used */);
-            vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex, vs_light);
+            vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex,
+                                                         vs_light,
+                                                         is_shadow_caster);
 
             break;
         }
@@ -865,10 +873,11 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         goto end;
     }
 
-    new_item_ptr->fs_item_id = fs_item_id;
-    new_item_ptr->type       = OGL_UBER_ITEM_LIGHT;
-    new_item_ptr->vs_item_id = vs_item_id;
-    result                   = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    new_item_ptr->fs_item_id       = fs_item_id;
+    new_item_ptr->is_shadow_caster = is_shadow_caster;
+    new_item_ptr->type             = OGL_UBER_ITEM_LIGHT;
+    new_item_ptr->vs_item_id       = vs_item_id;
+    result                         = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
     /* Add the descriptor to the added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -1537,6 +1546,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                                   "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION requested but the underlying shader does not use the property");
 
                 *((float**) result) = item_ptr->fragment_shader_item.current_light_location;
+
+                break;
+            }
+
+            case OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
+                                  "Invalid OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP request");
+
+                *(bool*) result = item_ptr->is_shadow_caster;
 
                 break;
             }

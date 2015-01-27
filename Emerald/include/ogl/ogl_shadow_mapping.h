@@ -7,10 +7,17 @@
 #define OGL_SHADOW_MAPPING_H
 
 #include "ogl/ogl_types.h"
+#include "ogl/ogl_shader_constructor.h"
 #include "scene/scene_types.h"
 
 DECLARE_HANDLE(ogl_shadow_mapping);
 
+
+/** TODO */
+PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader_constructor    shader_constructor_vs,
+                                                       __in           uint32_t                  n_light,
+                                                       __in           _uniform_block_id         ub_vs,
+                                                       __in __notnull system_hashed_ansi_string world_vertex_vec4_variable_name);
 
 /** TODO.
  *

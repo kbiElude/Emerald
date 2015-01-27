@@ -56,6 +56,7 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,      /* settable, float[16], row-major */
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
 
+    OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
     OGL_UBER_ITEM_PROPERTY_TYPE,
 
@@ -79,6 +80,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
 /** TODO */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber,
                                                             __in                                  shaders_fragment_uber_light_type,
+                                                            __in                                  bool                             is_shadow_caster,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values);
 
