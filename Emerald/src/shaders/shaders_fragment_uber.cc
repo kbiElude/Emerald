@@ -1,12 +1,13 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
+#include "ogl/ogl_shadow_mapping.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -76,7 +77,8 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                        __in           unsigned int                             n_item,
                                                                        __in __notnull shaders_fragment_uber_property_value*    properties,
                                                                        __in __notnull PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
-                                                                       __in_opt       void*                                    user_arg)
+                                                                       __in_opt       void*                                    user_arg,
+                                                                       __in_opt       system_hashed_ansi_string                light_visibility_var_name)
 {
     /* Add a lambert_diffuse() function (if not already added) */
     _function_id lambert_diffuse_func_id = 0;
@@ -131,7 +133,17 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                 properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT);
     const bool is_luminosity_texture_defined = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D);
 
-    line << "result_fragment += (";
+    line << "result_fragment += ";
+
+    if (light_visibility_var_name != NULL                                     &&
+        light_type                != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
+    {
+        line << "vec4("
+             << system_hashed_ansi_string_get_buffer(light_visibility_var_name)
+             << ") * ";
+    }
+
+    line << "(";
 
     if (light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
     {
@@ -221,8 +233,9 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
 }
 
 /** TODO */
-PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in __notnull ogl_shader_constructor shader_constructor,
-                                                              __in           unsigned int           n_light)
+PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in     __notnull ogl_shader_constructor    shader_constructor,
+                                                              __in               unsigned int              n_light,
+                                                              __in_opt           system_hashed_ansi_string light_visibility_var_name)
 {
     /* Add a phong_specular() function (if not already added) */
     _function_id phong_specular_func_id = -1;
@@ -271,7 +284,16 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in __notnull ogl
     /* Compute the light contribution */
     std::stringstream line;
 
-    line << "result_fragment += vec4(vec3(phong_specular(normal, light" << n_light << "_vector, light" << n_light << "_LdotN)), 0.0);\n";
+    line << "result_fragment += ";
+
+    if (light_visibility_var_name != NULL)
+    {
+        line << "vec4("
+             << system_hashed_ansi_string_get_buffer(light_visibility_var_name)
+             << ") * ";
+    }
+    
+    line << "vec4(vec3(phong_specular(normal, light" << n_light << "_vector, light" << n_light << "_LdotN)), 0.0);\n";
 
     ogl_shader_constructor_append_to_function_body(shader_constructor,
                                                    0, /* main() */
@@ -544,10 +566,20 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     /* Add properties to shader-wide named uniform buffer */
-    std::stringstream light_attenuations_name_sstream;
-    std::stringstream light_diffuse_name_sstream;
-    std::stringstream light_direction_name_sstream;
-    std::stringstream light_world_pos_name_sstream;
+    std::stringstream         light_attenuations_name_sstream;
+    std::stringstream         light_diffuse_name_sstream;
+    std::stringstream         light_direction_name_sstream;
+    system_hashed_ansi_string light_visibility_var_name_has = NULL;
+    std::stringstream         light_world_pos_name_sstream;
+
+    /* Add shadow map support */
+    if (is_shadow_caster)
+    {
+        ogl_shadow_mapping_adjust_fragment_uber_code(uber_ptr->shader_constructor,
+                                                     n_items,
+                                                     uber_ptr->fragment_shader_properties_ub,
+                                                    &light_visibility_var_name_has);
+    }
 
     /* Add light properties */
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
@@ -891,7 +923,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                       n_items,
                                                                       new_light_item_data_ptr->properties,
                                                                       pCallbackProc,
-                                                                      user_arg);
+                                                                      user_arg,
+                                                                      light_visibility_var_name_has);
 
             break;
         }
@@ -931,7 +964,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
         {
             _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor,
-                                                             n_items);
+                                                             n_items,
+                                                             light_visibility_var_name_has);
 
             break;
         }

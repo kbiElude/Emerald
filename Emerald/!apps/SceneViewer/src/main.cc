@@ -360,19 +360,19 @@ void _render_scene(ogl_context          context,
                                           time,
                                           &znear);
 
-                float new_zfar = 0.01f;
-                float new_znear = 10.0f;
+                float new_zfar = 20.0f;
+                float new_znear = 0.01f;
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);
                 scene_camera_set_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
+                                          SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
                                          &new_znear);
 
                 projection = system_matrix4x4_create_perspective_projection_matrix(yfov_value,
                                                                                    1280 / 720.0f,
-                                                                                   0.01f,   //znear,
-                                                                                   10.0f); //zfar);
+                                                                                   new_znear,
+                                                                                   new_zfar);
 
                 if (_ui_active_path_control != NULL)
                 {

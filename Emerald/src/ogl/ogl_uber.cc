@@ -60,13 +60,19 @@ typedef struct _ogl_uber_fragment_shader_item
     bool  current_light_location_dirty;
     GLint current_light_location_ub_offset;
 
+    ogl_texture current_light_shadow_map_texture;
+    GLuint      current_light_shadow_map_texture_sampler_location;
+
     _ogl_uber_fragment_shader_item()
     {
-        ambient_color_ub_offset              = -1;
-        current_light_attenuations_ub_offset = -1;
-        current_light_diffuse_ub_offset      = -1;
-        current_light_direction_ub_offset    = -1;
-        current_light_location_ub_offset     = -1;
+        ambient_color_ub_offset                           = -1;
+        current_light_attenuations_ub_offset              = -1;
+        current_light_diffuse_ub_offset                   = -1;
+        current_light_direction_ub_offset                 = -1;
+        current_light_location_ub_offset                  = -1;
+        current_light_shadow_map_texture_sampler_location = -1;
+
+        current_light_shadow_map_texture = NULL;
 
         ambient_color_dirty              = true;
         current_light_attenuations_dirty = true;
@@ -169,6 +175,7 @@ typedef struct
     uint32_t                     bo_data_vertex_offset;
     GLuint                       bo_id;
     bool                         is_rendering;
+    uint32_t                     n_texture_units_assigned;
     ogl_program_uniform_block_id ub_fs_id;
     ogl_program_uniform_block_id ub_vs_id;
 
@@ -1228,11 +1235,14 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_direction_uniform_ptr = NULL;
                 std::stringstream                     light_location_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_location_uniform_ptr = NULL;
+                std::stringstream                     light_shadow_map_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_shadow_map_uniform_ptr = NULL;
 
                 light_attenuations_uniform_name_sstream << "light" << n_item << "_attenuations";
                 light_diffuse_uniform_name_sstream      << "light" << n_item << "_diffuse";
                 light_direction_uniform_name_sstream    << "light" << n_item << "_direction";
                 light_location_uniform_name_sstream     << "light" << n_item << "_world_pos";
+                light_shadow_map_uniform_name_sstream   << "light" << n_item << "_shadow_map";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create("ambient_color"),
@@ -1249,6 +1259,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
                                                &light_location_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_shadow_map_uniform_name_sstream.str().c_str() ),
+                                               &light_shadow_map_uniform_ptr);
 
                 if (light_ambient_color_uniform_ptr != NULL)
                 {
@@ -1273,6 +1286,11 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 if (light_location_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
+                }
+
+                if (light_shadow_map_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location = light_shadow_map_uniform_ptr->location;
                 }
 
                 /* Vertex shader stuff */
@@ -1398,6 +1416,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->mesh_to_vao_descriptor_map    = system_hash64map_create(sizeof(_ogl_uber_vao*),
                                                                         false);
         result->name                          = name;
+        result->n_texture_units_assigned      = 0;
         result->shader_fragment               = shaders_fragment_uber_create(context,
                                                                              name);
         result->shader_vertex                 = shaders_vertex_uber_create  (context,
@@ -1758,7 +1777,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                 uint32_t      layer_pass_index_min_value = 0;
                 mesh_material layer_pass_material        = NULL;
                 uint32_t      layer_pass_n_elements      = 0;
-                uint32_t      n_texture_units_used       = 0;
+                uint32_t      n_texture_units_used       = uber_ptr->n_texture_units_assigned;
 
                 /* Retrieve layer pass properties */
                 mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
@@ -2027,6 +2046,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     ASSERT_DEBUG_SYNC(!uber_ptr->is_rendering,
                       "Already started");
 
+    /* Reset texture unit use counter */
+    uber_ptr->n_texture_units_assigned = 0;
+
     /* Update shaders if the configuration has been changed since the last call */
     if (uber_ptr->dirty)
     {
@@ -2036,7 +2058,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                           "Relinking did not reset the dirty flag");
     }
 
-    /* Set up UB contents */
+    /* Set up UB contents & texture samplers */
     bool               has_modified_bo_data = false;
     const unsigned int n_items              = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
@@ -2116,13 +2138,29 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_location_dirty = false;
                     }
 
-                    /* Verrex shader part */
+                    if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location != -1)
+                    {
+                        /* Bind the shadow map */
+                        GLuint n_texture_unit = uber_ptr->n_texture_units_assigned++;
+
+                        ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture != NULL,
+                                          "No shadow map assigned to a light which casts shadows");
+
+                        dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
+                                                                 GL_TEXTURE_2D,
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture);
+                        entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location,
+                                                                 n_texture_unit);
+                    }
+
+                    /* Vertex shader part */
                     if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1 &&
                         item_ptr->vertex_shader_item.current_light_depth_vp_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
+                        memcpy((char*) uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
                                item_ptr->vertex_shader_item.current_light_depth_vp,
-                               sizeof(float) * 16);
+                               sizeof(item_ptr->vertex_shader_item.current_light_depth_vp) );
 
                         has_modified_bo_data                                      = true;
                         item_ptr->vertex_shader_item.current_light_depth_vp_dirty = false;
@@ -2368,6 +2406,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
@@ -2477,6 +2516,13 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                             item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_location_dirty = true;
                         }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
+                    {
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture = *(ogl_texture*) data;
 
                         break;
                     }

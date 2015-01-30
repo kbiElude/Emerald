@@ -1263,17 +1263,28 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
         {
             const float*     current_light_depth_vp_row_major = NULL;
             system_matrix4x4 current_light_depth_vp           = NULL;
+            ogl_texture      current_light_shadow_map_texture = NULL;
 
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
+                                    &current_light_shadow_map_texture);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
                                     &current_light_depth_vp);
 
+            /* Depth VP matrix */
             current_light_depth_vp_row_major = system_matrix4x4_get_row_major_data(current_light_depth_vp);
 
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,
                                               current_light_depth_vp_row_major);
+
+            /* Shadow map */
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP,
+                                             &current_light_shadow_map_texture);
         }
 
         _ogl_scene_renderer_get_light_color(current_light,

@@ -14,6 +14,12 @@ DECLARE_HANDLE(ogl_shadow_mapping);
 
 
 /** TODO */
+PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor     shader_constructor_fs,
+                                                         __in            uint32_t                   n_light,
+                                                         __in            _uniform_block_id          ub_fs,
+                                                         __out __notnull system_hashed_ansi_string* out_visibility_var_name);
+
+/** TODO */
 PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader_constructor    shader_constructor_vs,
                                                        __in           uint32_t                  n_light,
                                                        __in           _uniform_block_id         ub_vs,
