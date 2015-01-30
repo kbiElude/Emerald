@@ -53,8 +53,11 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,    /* settable, float[3]. used by directional lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,     /* settable, float[3]. used by point lights  */
 
+    OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,      /* settable, float[16], row-major */
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
 
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP,
+    OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
     OGL_UBER_ITEM_PROPERTY_TYPE,
 
@@ -78,6 +81,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
 /** TODO */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber,
                                                             __in                                  shaders_fragment_uber_light_type,
+                                                            __in                                  bool                             is_shadow_caster,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values);
 
@@ -97,12 +101,12 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                                                           __out          void*                   result);
 
 /** TODO */
-PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 mesh_gpu,
-                                           __in __notnull system_matrix4x4     model,
-                                           __in __notnull system_matrix4x4     normal_matrix,
-                                           __in __notnull ogl_uber             uber,
-                                           __in __notnull mesh_material        material,
-                                           __in           system_timeline_time time);
+PUBLIC void ogl_uber_rendering_render_mesh(__in     __notnull mesh                 mesh_gpu,
+                                           __in     __notnull system_matrix4x4     model,
+                                           __in     __notnull system_matrix4x4     normal_matrix,
+                                           __in     __notnull ogl_uber             uber,
+                                           __in_opt           mesh_material        material,
+                                           __in               system_timeline_time time);
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __notnull ogl_uber);

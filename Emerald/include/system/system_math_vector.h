@@ -23,6 +23,9 @@ PUBLIC EMERALD_API void system_math_vector_cross3(__in_ecount(3)  const float* a
 PUBLIC EMERALD_API float system_math_vector_dot3(__in_ecount(3) const float* a,
                                                  __in_ecount(3) const float* b);
 
+/** TODO */
+PUBLIC EMERALD_API float system_math_vector_length3(__in_ecount(3) const float* a);
+
 /** TODO.
  *
  *  a = a - b

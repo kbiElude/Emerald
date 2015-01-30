@@ -13,15 +13,21 @@ REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
 
 typedef enum scene_light_property
 {
-    SCENE_LIGHT_PROPERTY_COLOR,                 /* Settable,     curve_container[3]         */
-    SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,       /* Settable,     curve_container            */
-    SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,  /* Settable,     curve_container            */
-    SCENE_LIGHT_PROPERTY_DIRECTION,             /* Settable,     float[3]. Set in run-time  */
-    SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,    /* Settable,     curve_container            */
-    SCENE_LIGHT_PROPERTY_NAME,                  /* Not settable, system_hashed_ansi_string  */
-    SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION, /* Settable,     curve_container            */
-    SCENE_LIGHT_PROPERTY_TYPE,                  /* Not settable, scene_light_type           */
-    SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,       /* Settable,     bool                       */
+    SCENE_LIGHT_PROPERTY_COLOR,                     /* Settable,     curve_container[3]                                     */
+    SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,           /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,      /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_DIRECTION,                 /* Settable,     float[3]. Set in run-time                              */
+    SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,        /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_NAME,                      /* Not settable, system_hashed_ansi_string                              */
+    SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,          /* Settable,     scene_graph_node. Set in run-time.                     */
+    SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,     /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT, /* Settable,     ogl_texture_internalformat                             */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,           /* Settable,     uint[2].                                               */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,        /* Settable,     ogl_texture. Set in run-time.                          */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,             /* Not settable, system_matrix4x4. Update by doing system_matrix4x4_*()
+                                                     *                                 calls on the exposed matrix.         */
+    SCENE_LIGHT_PROPERTY_TYPE,                      /* Not settable, scene_light_type                                       */
+    SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,           /* Settable,     bool                                                   */
 
     /* NOTE: This property is set during run-time by ogl_scene_renderer and is NOT
      *       serialized. It acts merely as a communication mean between the scene

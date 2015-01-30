@@ -866,7 +866,7 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     yfov_variant = system_variant_create_float(DEG_TO_RAD(yfov_value) );
 
     scene_camera_get_property(new_camera_instance,
-                              SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                              SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM,
                               0, /* time - irrelevant for our purposes */
                              &yfov_curve);
 

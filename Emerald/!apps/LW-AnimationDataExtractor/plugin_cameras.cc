@@ -197,6 +197,7 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
 
         /* Configure the camera using the properties we've retrieved */
         const bool uses_physical_properties = true;
+        const bool uses_custom_yfov         = false;
 
         scene_camera_set_property(new_camera,
                                   SCENE_CAMERA_PROPERTY_FOCAL_DISTANCE,
@@ -211,15 +212,22 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
         /* NOTE: We do not export properties like vertical FOV from LW (since it's calculated
          *       from Zoom Factor), but we still need to add them to the Curves Module, or
          *       scene_save() will crash.
+         *
+         * NOTE: We only modify use_custom_vertical_fov after we retrieve vertical fov curve,
+         *       because otherwise the getter would throw an assertion failure.
          */
         curve_container yfov_curve = NULL;
 
         scene_camera_get_property(new_camera,
-                                  SCENE_CAMERA_PROPERTY_VERTICAL_FOV,
+                                  SCENE_CAMERA_PROPERTY_VERTICAL_FOV_CUSTOM,
                                   0, /* time - irrelevant */
                                  &yfov_curve);
 
         AddCurveContainerToEnvelopeIDToCurveContainerHashMap(yfov_curve);
+
+        scene_camera_set_property(new_camera,
+                                  SCENE_CAMERA_PROPERTY_USE_CUSTOM_VERTICAL_FOV,
+                                 &uses_custom_yfov);
 
         /* Add the camera */
         if (!scene_add_camera(in_scene,

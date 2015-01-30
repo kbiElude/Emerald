@@ -52,6 +52,7 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_MATERIALS,                                       /* not settable, ogl_materials */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,                                /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLERS,                                        /* not settable, ogl_samplers */
+    OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,                                  /* not settable, ogl_shadow_mapping */
     OGL_CONTEXT_PROPERTY_STATE_CACHE,                                     /* not settable, ogl_context_state_cache */
     OGL_CONTEXT_PROPERTY_SUPPORT_ES_EXT_TEXTURE_BUFFER,                   /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,                   /* not settable, bool */
@@ -65,6 +66,10 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_TO_BINDINGS,                                     /* not settable, ogl_context_to_bindings */
     OGL_CONTEXT_PROPERTY_TYPE,                                            /* not settable, ogl_context_type */
     OGL_CONTEXT_PROPERTY_WINDOW,                                          /* not settable, system_window */
+    OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,                                     /* not settable, GLuint; ID of a VAO, for which no VAAS were configured.
+                                                                           *                       Useful for draw calls which do not rely on input variables.
+                                                                           *                       DO NOT MODIFY THE VAO'S CONFIGURATION.
+                                                                           */
 
 #ifdef _WIN32
     OGL_CONTEXT_PROPERTY_DC,                                           /* not settable, HDC */

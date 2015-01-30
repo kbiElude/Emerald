@@ -12,22 +12,31 @@
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_log.h"
+#include "system/system_matrix4x4.h"
 #include "system/system_variant.h"
 #include <sstream>
+
+#define DEFAULT_SHADOW_MAP_SIZE (1024)
+
 
 /* Private declarations */
 typedef struct
 {
-    curve_container           constant_attenuation;
-    curve_container           color    [3];
-    curve_container           color_intensity;
-    float                     direction[3];
-    curve_container           linear_attenuation;
-    system_hashed_ansi_string name;
-    float                     position[3];
-    curve_container           quadratic_attenuation;
-    scene_light_type          type;
-    bool                      uses_shadow_map;
+    curve_container            constant_attenuation;
+    curve_container            color    [3];
+    curve_container            color_intensity;
+    float                      direction[3];
+    scene_graph_node           graph_owner_node;
+    curve_container            linear_attenuation;
+    system_hashed_ansi_string  name;
+    float                      position[3];
+    curve_container            quadratic_attenuation;
+    ogl_texture_internalformat shadow_map_internalformat;
+    unsigned int               shadow_map_size[2];
+    ogl_texture                shadow_map_texture;
+    system_matrix4x4           shadow_map_vp;
+    scene_light_type           type;
+    bool                       uses_shadow_map;
 
     REFCOUNT_INSERT_VARIABLES
 } _scene_light;
@@ -184,6 +193,14 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
 
+    light_ptr->shadow_map_internalformat = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
+    light_ptr->shadow_map_size[0]        = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_size[1]        = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_texture        = NULL;
+    light_ptr->shadow_map_vp             = system_matrix4x4_create();
+
+    system_matrix4x4_set_to_identity(light_ptr->shadow_map_vp);
+
     /* Direction: used by directional light */
     if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
@@ -266,6 +283,16 @@ PRIVATE void _scene_light_release(void* data_ptr)
             *containers[n_container] = NULL;
         }
     } /* for (all curve containers) */
+
+    if (light_ptr->shadow_map_vp != NULL)
+    {
+        system_matrix4x4_release(light_ptr->shadow_map_vp);
+
+        light_ptr->shadow_map_vp = NULL;
+    }
+
+    ASSERT_DEBUG_SYNC(light_ptr->shadow_map_texture == NULL,
+                      "Shadow map texture should never be assigned to a scene_light instance at release time");
 }
 
 /** TODO */
@@ -317,6 +344,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_
         new_scene_light->type = SCENE_LIGHT_TYPE_AMBIENT;
 
         _scene_light_init(new_scene_light);
+
+        /* Ambient light never casts shadows */
+        new_scene_light->uses_shadow_map = false;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
@@ -443,6 +473,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE:
+        {
+            *(scene_graph_node*) out_result = light_ptr->graph_owner_node;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -492,9 +529,46 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
+        {
+            *(ogl_texture_internalformat*) out_result = light_ptr->shadow_map_internalformat;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE:
+        {
+            memcpy(out_result,
+                   light_ptr->shadow_map_size,
+                   sizeof(light_ptr->shadow_map_size) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
+        {
+            *(ogl_texture*) out_result = light_ptr->shadow_map_texture;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP:
+        {
+            *(system_matrix4x4*) out_result = light_ptr->shadow_map_vp;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_TYPE:
         {
             *((scene_light_type*) out_result) = light_ptr->type;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP:
+        {
+            *(bool*) out_result = light_ptr->uses_shadow_map;
 
             break;
         }
@@ -737,6 +811,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE:
+        {
+            light_ptr->graph_owner_node = *(scene_graph_node*) data;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -784,6 +865,32 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             }
 
             light_ptr->quadratic_attenuation = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
+        {
+            light_ptr->shadow_map_internalformat = *(ogl_texture_internalformat*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE:
+        {
+            memcpy(light_ptr->shadow_map_size,
+                   data,
+                   sizeof(light_ptr->shadow_map_size) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
+        {
+            /* NOTE: ogl_texture is considered a state by scene_light. It's not used
+             *       by scene_light in any way, so its reference counter is left intact.
+             */
+            light_ptr->shadow_map_texture = *(ogl_texture*) data;
 
             break;
         }

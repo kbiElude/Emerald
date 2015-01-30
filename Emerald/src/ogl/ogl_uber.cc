@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -60,13 +60,19 @@ typedef struct _ogl_uber_fragment_shader_item
     bool  current_light_location_dirty;
     GLint current_light_location_ub_offset;
 
+    ogl_texture current_light_shadow_map_texture;
+    GLuint      current_light_shadow_map_texture_sampler_location;
+
     _ogl_uber_fragment_shader_item()
     {
-        ambient_color_ub_offset              = -1;
-        current_light_attenuations_ub_offset = -1;
-        current_light_diffuse_ub_offset      = -1;
-        current_light_direction_ub_offset    = -1;
-        current_light_location_ub_offset     = -1;
+        ambient_color_ub_offset                           = -1;
+        current_light_attenuations_ub_offset              = -1;
+        current_light_diffuse_ub_offset                   = -1;
+        current_light_direction_ub_offset                 = -1;
+        current_light_location_ub_offset                  = -1;
+        current_light_shadow_map_texture_sampler_location = -1;
+
+        current_light_shadow_map_texture = NULL;
 
         ambient_color_dirty              = true;
         current_light_attenuations_dirty = true;
@@ -77,10 +83,21 @@ typedef struct _ogl_uber_fragment_shader_item
 } _ogl_uber_fragment_shader_item;
 
 /* Holds all properties that may be used for a vertex shader item */
-typedef struct
+typedef struct _ogl_uber_vertex_shader_item
 {
+    float current_light_depth_vp[16]; /* row-major */
+    bool  current_light_depth_vp_dirty;
+    GLint current_light_depth_vp_ub_offset;
+
     _ogl_uber_light_sh_data current_light_sh_data;
     GLint                   current_light_sh_data_ub_offset;
+
+    _ogl_uber_vertex_shader_item()
+    {
+        current_light_depth_vp_ub_offset = -1;
+        current_light_depth_vp_dirty     = true;
+    }
+
 } _ogl_uber_vertex_shader_item;
 
 /* A single item added to ogl_uber used to construct a program object managed by ogl_uber */
@@ -88,6 +105,7 @@ typedef struct _ogl_uber_item
 {
     shaders_fragment_uber_item_id  fs_item_id;
     _ogl_uber_fragment_shader_item fragment_shader_item;
+    bool                           is_shadow_caster;
     _ogl_uber_vertex_shader_item   vertex_shader_item;
     shaders_vertex_uber_item_id    vs_item_id;
 
@@ -95,9 +113,10 @@ typedef struct _ogl_uber_item
 
     _ogl_uber_item()
     {
-        fs_item_id = -1;
-        type       = OGL_UBER_ITEM_UNKNOWN;
-        vs_item_id = -1;
+        fs_item_id       = -1;
+        is_shadow_caster = false;
+        type             = OGL_UBER_ITEM_UNKNOWN;
+        vs_item_id       = -1;
     }
 } _ogl_uber_item;
 
@@ -156,6 +175,7 @@ typedef struct
     uint32_t                     bo_data_vertex_offset;
     GLuint                       bo_id;
     bool                         is_rendering;
+    uint32_t                     n_texture_units_assigned;
     ogl_program_uniform_block_id ub_fs_id;
     ogl_program_uniform_block_id ub_vs_id;
 
@@ -786,6 +806,7 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber                         uber,
                                                             __in                                  shaders_fragment_uber_light_type light_type,
+                                                            __in                                  bool                             is_shadow_caster,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values)
 {
@@ -807,12 +828,14 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         {
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,
+                                                         is_shadow_caster,
                                                          n_light_properties,
                                                          light_property_values,
                                                          _ogl_uber_add_item_shaders_fragment_callback_handler,
                                                          uber);
             vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex,
-                                                         SHADERS_VERTEX_UBER_LIGHT_NONE);
+                                                         SHADERS_VERTEX_UBER_LIGHT_NONE,
+                                                         is_shadow_caster);
 
             break;
         }
@@ -830,11 +853,14 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
 
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,
+                                                         is_shadow_caster,
                                                          n_light_properties,
                                                          light_property_values,
                                                          NULL, /* callback proc - not used */
                                                          NULL  /* callback proc user arg - not used */);
-            vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex, vs_light);
+            vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex,
+                                                         vs_light,
+                                                         is_shadow_caster);
 
             break;
         }
@@ -854,10 +880,11 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         goto end;
     }
 
-    new_item_ptr->fs_item_id = fs_item_id;
-    new_item_ptr->type       = OGL_UBER_ITEM_LIGHT;
-    new_item_ptr->vs_item_id = vs_item_id;
-    result                   = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    new_item_ptr->fs_item_id       = fs_item_id;
+    new_item_ptr->is_shadow_caster = is_shadow_caster;
+    new_item_ptr->type             = OGL_UBER_ITEM_LIGHT;
+    new_item_ptr->vs_item_id       = vs_item_id;
+    result                         = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
     /* Add the descriptor to the added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -1208,11 +1235,14 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_direction_uniform_ptr = NULL;
                 std::stringstream                     light_location_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_location_uniform_ptr = NULL;
+                std::stringstream                     light_shadow_map_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_shadow_map_uniform_ptr = NULL;
 
                 light_attenuations_uniform_name_sstream << "light" << n_item << "_attenuations";
                 light_diffuse_uniform_name_sstream      << "light" << n_item << "_diffuse";
                 light_direction_uniform_name_sstream    << "light" << n_item << "_direction";
                 light_location_uniform_name_sstream     << "light" << n_item << "_world_pos";
+                light_shadow_map_uniform_name_sstream   << "light" << n_item << "_shadow_map";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create("ambient_color"),
@@ -1229,6 +1259,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
                                                &light_location_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_shadow_map_uniform_name_sstream.str().c_str() ),
+                                               &light_shadow_map_uniform_ptr);
 
                 if (light_ambient_color_uniform_ptr != NULL)
                 {
@@ -1255,9 +1288,28 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                     item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
                 }
 
-                /* Vertex shader stuff */
-                shaders_vertex_uber_light light_type = SHADERS_VERTEX_UBER_LIGHT_NONE;
+                if (light_shadow_map_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location = light_shadow_map_uniform_ptr->location;
+                }
 
+                /* Vertex shader stuff */
+                std::stringstream                     light_depth_vb_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_depth_vb_uniform_ptr = NULL;
+                shaders_vertex_uber_light             light_type                 = SHADERS_VERTEX_UBER_LIGHT_NONE;
+
+                light_depth_vb_uniform_name_sstream << "light" << n_item << "_depth_vp";
+
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_depth_vb_uniform_name_sstream.str().c_str() ),
+                                               &light_depth_vb_uniform_ptr);
+
+                if (light_depth_vb_uniform_ptr != NULL)
+                {
+                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ptr->ub_offset;
+                }
+
+                /* Outdated SH stuff */
                 shaders_vertex_uber_get_light_type(uber_ptr->shader_vertex,
                                                    n_item,
                                                   &light_type);
@@ -1364,6 +1416,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->mesh_to_vao_descriptor_map    = system_hash64map_create(sizeof(_ogl_uber_vao*),
                                                                         false);
         result->name                          = name;
+        result->n_texture_units_assigned      = 0;
         result->shader_fragment               = shaders_fragment_uber_create(context,
                                                                              name);
         result->shader_vertex                 = shaders_vertex_uber_create  (context,
@@ -1516,6 +1569,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                 break;
             }
 
+            case OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
+                                  "Invalid OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP request");
+
+                *(bool*) result = item_ptr->is_shadow_caster;
+
+                break;
+            }
+
             case OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE:
             {
                 ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
@@ -1554,12 +1617,18 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
  *
  *  Used by ogl_scene_renderer.
  *
+ *  @param material Material to issue draw calls for. Note that this function
+ *                  does not change current GL active program state - it merely
+ *                  issues draw calls for those layers whose material matches
+ *                  the one passed as an argument.
+ *                  If @param material is NULL, all layers will be rendered
+ *                  using currently bound program.
  **/
 PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 mesh_gpu,
                                            __in __notnull system_matrix4x4     model,
                                            __in __notnull system_matrix4x4     normal_matrix,
                                            __in __notnull ogl_uber             uber,
-                                           __in __notnull mesh_material        material,
+                                           __in_opt       mesh_material        material,
                                            __in           system_timeline_time time)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
@@ -1638,6 +1707,9 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
         entry_points->pGLBindVertexArray(vao_ptr->vao_id);
 
         /* Update model matrix */
+        ASSERT_DEBUG_SYNC(uber_ptr->model_uniform_location != -1,
+                          "No model matrix uniform found");
+
         entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
                                                  uber_ptr->model_uniform_location,
                                                  1 /* count */,
@@ -1646,12 +1718,18 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                                 );
 
         /* Update normal matrix */
-        entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
-                                                 uber_ptr->normal_matrix_uniform_location,
-                                                 1 /* count */,
-                                                 GL_FALSE,
-                                                 system_matrix4x4_get_row_major_data(normal_matrix)
-                                                );
+        if (uber_ptr->normal_matrix_uniform_location != -1)
+        {
+            ASSERT_DEBUG_SYNC(normal_matrix != NULL,
+                              "Normal matrix is NULL but is required.");
+
+            entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
+                                                     uber_ptr->normal_matrix_uniform_location,
+                                                     1 /* count */,
+                                                     GL_FALSE,
+                                                     system_matrix4x4_get_row_major_data(normal_matrix)
+                                                    );
+        }
 
         /* Retrieve mesh index type and convert it to GL equivalent */
         GLenum           gl_index_type = GL_NONE;
@@ -1699,7 +1777,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                 uint32_t      layer_pass_index_min_value = 0;
                 mesh_material layer_pass_material        = NULL;
                 uint32_t      layer_pass_n_elements      = 0;
-                uint32_t      n_texture_units_used       = 0;
+                uint32_t      n_texture_units_used       = uber_ptr->n_texture_units_assigned;
 
                 /* Retrieve layer pass properties */
                 mesh_get_layer_pass_property(mesh_instantiation_parent_gpu,
@@ -1728,228 +1806,224 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                              MESH_LAYER_PROPERTY_N_ELEMENTS,
                                             &layer_pass_n_elements);
 
-                if (layer_pass_material != material)
+                if (layer_pass_material != material && material != NULL)
                 {
                     continue;
                 }
 
-                /* Bind shading data for each supported shading property */
-                struct _attachment
+                if (material != NULL)
                 {
-                    mesh_material_shading_property property;
-                    int32_t                        shader_sampler_uniform_location;
-                    int32_t                        shader_scalar_uniform_location;
-                    int32_t                        shader_uv_attribute_location;
-                    bool                           convert_to_linear;
-                } attachments[] =
-                {
+                    /* Bind shading data for each supported shading property */
+                    struct _attachment
                     {
-                        MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
-                        uber_ptr->ambient_material_sampler_uniform_location,
-                        uber_ptr->ambient_material_vec4_uniform_location,
-                        uber_ptr->object_uv_attribute_location,
-                        true,
-                    },
-
+                        mesh_material_shading_property property;
+                        int32_t                        shader_sampler_uniform_location;
+                        int32_t                        shader_scalar_uniform_location;
+                        int32_t                        shader_uv_attribute_location;
+                        bool                           convert_to_linear;
+                    } attachments[] =
                     {
-                        MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-                        uber_ptr->diffuse_material_sampler_uniform_location,
-                        uber_ptr->diffuse_material_vec4_uniform_location,
-                        uber_ptr->object_uv_attribute_location,
-                        true,
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-                        uber_ptr->luminosity_material_sampler_uniform_location,
-                        uber_ptr->luminosity_material_float_uniform_location,
-                        uber_ptr->object_uv_attribute_location,
-                        false
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                        uber_ptr->shininess_material_sampler_uniform_location,
-                        uber_ptr->shininess_material_float_uniform_location,
-                        uber_ptr->object_uv_attribute_location,
-                        false
-                    },
-
-                    {
-                        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-                        uber_ptr->specular_material_sampler_uniform_location,
-                        uber_ptr->specular_material_float_uniform_location,
-                        uber_ptr->object_uv_attribute_location,
-                        false
-                    },
-                };
-                const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
-
-                for (uint32_t n_attachment = 0;
-                              n_attachment < n_attachments;
-                            ++n_attachment)
-                {
-                    const _attachment&                      attachment      = attachments[n_attachment];
-                    const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
-                                                                                                                                 attachment.property);
-
-                    switch (attachment_type)
-                    {
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
                         {
-                            /* Nothing to be done here */
-                            break;
-                        }
+                            MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                            uber_ptr->ambient_material_sampler_uniform_location,
+                            uber_ptr->ambient_material_vec4_uniform_location,
+                            uber_ptr->object_uv_attribute_location,
+                            true,
+                        },
 
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                         {
-                            float        data_vec3[3];
-                            unsigned int n_components = 1;
+                            MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                            uber_ptr->diffuse_material_sampler_uniform_location,
+                            uber_ptr->diffuse_material_vec4_uniform_location,
+                            uber_ptr->object_uv_attribute_location,
+                            true,
+                        },
 
-                            if (attachment.shader_scalar_uniform_location == -1)
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                            uber_ptr->luminosity_material_sampler_uniform_location,
+                            uber_ptr->luminosity_material_float_uniform_location,
+                            uber_ptr->object_uv_attribute_location,
+                            false
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                            uber_ptr->shininess_material_sampler_uniform_location,
+                            uber_ptr->shininess_material_float_uniform_location,
+                            uber_ptr->object_uv_attribute_location,
+                            false
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                            uber_ptr->specular_material_sampler_uniform_location,
+                            uber_ptr->specular_material_float_uniform_location,
+                            uber_ptr->object_uv_attribute_location,
+                            false
+                        },
+                    };
+                    const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
+
+                    for (uint32_t n_attachment = 0;
+                                  n_attachment < n_attachments;
+                                ++n_attachment)
+                    {
+                        const _attachment&                      attachment      = attachments[n_attachment];
+                        const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
+                                                                                                                                     attachment.property);
+
+                        switch (attachment_type)
+                        {
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
                             {
-                                continue;
+                                /* Nothing to be done here */
+                                break;
                             }
 
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                             {
-                                mesh_material_get_shading_property_value_float(layer_pass_material,
-                                                                               attachment.property,
-                                                                               data_vec3 + 0);
-                            }
-                            else
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
-                            {
-                                mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
-                                                                                               attachment.property,
-                                                                                               time,
-                                                                                               data_vec3 + 0);
-                            }
-                            else
-                            {
-                                mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
-                                                                                              attachment.property,
-                                                                                              time,
-                                                                                              data_vec3);
+                                float        data_vec3[3];
+                                unsigned int n_components = 1;
 
-                                n_components = 3;
-                            }
-
-                            if (attachment.convert_to_linear)
-                            {
-                                for (unsigned int n_component = 0;
-                                                  n_component < n_components;
-                                                ++n_component)
+                                if (attachment.shader_scalar_uniform_location == -1)
                                 {
-                                    data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                    continue;
                                 }
-                            } /* if (attachment.convert_to_linear) */
 
-                            if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
-                                attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT)
+                                {
+                                    mesh_material_get_shading_property_value_float(layer_pass_material,
+                                                                                   attachment.property,
+                                                                                   data_vec3 + 0);
+                                }
+                                else
+                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                                {
+                                    mesh_material_get_shading_property_value_curve_container_float(layer_pass_material,
+                                                                                                   attachment.property,
+                                                                                                   time,
+                                                                                                   data_vec3 + 0);
+                                }
+                                else
+                                {
+                                    mesh_material_get_shading_property_value_curve_container_vec3(layer_pass_material,
+                                                                                                  attachment.property,
+                                                                                                  time,
+                                                                                                  data_vec3);
+
+                                    n_components = 3;
+                                }
+
+                                if (attachment.convert_to_linear)
+                                {
+                                    for (unsigned int n_component = 0;
+                                                      n_component < n_components;
+                                                    ++n_component)
+                                    {
+                                        data_vec3[n_component] = convert_sRGB_to_linear(data_vec3[n_component]);
+                                    }
+                                } /* if (attachment.convert_to_linear) */
+
+                                if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
+                                    attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                                {
+                                    entry_points->pGLProgramUniform1f(po_id,
+                                                                      attachment.shader_scalar_uniform_location,
+                                                                      data_vec3[0]);
+                                }
+                                else
+                                {
+                                    entry_points->pGLProgramUniform3fv(po_id,
+                                                                       attachment.shader_scalar_uniform_location,
+                                                                       1, /* count */
+                                                                       data_vec3);
+                                }
+
+                                break;
+                            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT: */
+
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
                             {
-                                entry_points->pGLProgramUniform1f(po_id,
-                                                                  attachment.shader_scalar_uniform_location,
-                                                                  data_vec3[0]);
-                            }
-                            else
+                                ogl_sampler  layer_pass_sampler              = NULL;
+                                ogl_texture  layer_pass_texture              = NULL;
+                                unsigned int layer_pass_texture_mipmap_level = 0;
+
+                                if (attachment.shader_sampler_uniform_location == -1)
+                                {
+                                    continue;
+                                }
+
+                                /* Set up the sampler */
+                                mesh_material_get_shading_property_value_texture(layer_pass_material,
+                                                                                 attachment.property,
+                                                                                &layer_pass_texture,
+                                                                                &layer_pass_texture_mipmap_level,
+                                                                                &layer_pass_sampler);
+
+                                entry_points->pGLBindSampler(n_texture_units_used,
+                                                             ogl_sampler_get_id(layer_pass_sampler) );
+
+                                dsa_entry_points->pGLBindMultiTextureEXT (GL_TEXTURE0 + n_texture_units_used,
+                                                                          GL_TEXTURE_2D,
+                                                                          layer_pass_texture);
+                                entry_points->pGLProgramUniform1i        (po_id,
+                                                                          attachment.shader_sampler_uniform_location,
+                                                                          n_texture_units_used);
+
+                                n_texture_units_used++;
+
+                                break;
+                            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
+
+                            case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
                             {
-                                entry_points->pGLProgramUniform3fv(po_id,
+                                float data_vec4[4];
+
+                                if (attachment.shader_scalar_uniform_location == -1)
+                                {
+                                    continue;
+                                }
+
+                                mesh_material_get_shading_property_value_vec4(layer_pass_material,
+                                                                              attachment.property,
+                                                                              data_vec4);
+
+                                if (attachment.convert_to_linear)
+                                {
+                                    for (unsigned int n_component = 0;
+                                                      n_component < 4;
+                                                    ++n_component)
+                                    {
+                                        data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
+                                    }
+                                } /* if (attachment.convert_to_linear) */
+
+                                entry_points->pGLProgramUniform4fv(po_id,
                                                                    attachment.shader_scalar_uniform_location,
                                                                    1, /* count */
-                                                                   data_vec3);
-                            }
+                                                                   data_vec4);
 
-                            break;
-                        } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT: */
+                                break;
+                            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4: */
 
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-                        {
-                            ogl_sampler  layer_pass_sampler              = NULL;
-                            ogl_texture  layer_pass_texture              = NULL;
-                            unsigned int layer_pass_texture_mipmap_level = 0;
-
-                            if (attachment.shader_sampler_uniform_location == -1)
+                            default:
                             {
-                                continue;
+                                ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
                             }
-
-                            /* Set up the sampler */
-                            mesh_material_get_shading_property_value_texture(layer_pass_material,
-                                                                             attachment.property,
-                                                                            &layer_pass_texture,
-                                                                            &layer_pass_texture_mipmap_level,
-                                                                            &layer_pass_sampler);
-
-                            entry_points->pGLBindSampler(n_texture_units_used,
-                                                         ogl_sampler_get_id(layer_pass_sampler) );
-
-                            dsa_entry_points->pGLBindMultiTextureEXT (GL_TEXTURE0 + n_texture_units_used,
-                                                                      GL_TEXTURE_2D,
-                                                                      layer_pass_texture);
-                            entry_points->pGLProgramUniform1i        (po_id,
-                                                                      attachment.shader_sampler_uniform_location,
-                                                                      n_texture_units_used);
-
-                            n_texture_units_used++;
-
-                            break;
-                        } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-                        {
-                            float data_vec4[4];
-
-                            if (attachment.shader_scalar_uniform_location == -1)
-                            {
-                                continue;
-                            }
-
-                            mesh_material_get_shading_property_value_vec4(layer_pass_material,
-                                                                          attachment.property,
-                                                                          data_vec4);
-
-                            if (attachment.convert_to_linear)
-                            {
-                                for (unsigned int n_component = 0;
-                                                  n_component < 4;
-                                                ++n_component)
-                                {
-                                    data_vec4[n_component] = convert_sRGB_to_linear(data_vec4[n_component]);
-                                }
-                            } /* if (attachment.convert_to_linear) */
-
-                            entry_points->pGLProgramUniform4fv(po_id,
-                                                               attachment.shader_scalar_uniform_location,
-                                                               1, /* count */
-                                                               data_vec4);
-
-                            break;
-                        } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4: */
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false, "Unrecognized material property attachment");
-                        }
-                    } /* switch (attachment_type) */
-                } /* for (all attachments) */
+                        } /* switch (attachment_type) */
+                    } /* for (all attachments) */
+                } /* if (material != NULL) */
 
                 /* Issue the draw call */
-#if 0
                 entry_points->pGLDrawRangeElements(GL_TRIANGLES,
                                                    layer_pass_index_min_value,
                                                    layer_pass_index_max_value,
                                                    layer_pass_n_elements,
                                                    gl_index_type,
                                                   (const GLvoid*) layer_pass_elements_offset);
-#else
-                entry_points->pGLDrawElements(GL_TRIANGLES,
-                                              layer_pass_n_elements,
-                                              gl_index_type,
-                                             (const GLvoid*) layer_pass_elements_offset);
-#endif
             } /* for (all mesh layer passes) */
         } /* for (all mesh layers) */
     } /* if (mesh_gpu != NULL) */
@@ -1972,6 +2046,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     ASSERT_DEBUG_SYNC(!uber_ptr->is_rendering,
                       "Already started");
 
+    /* Reset texture unit use counter */
+    uber_ptr->n_texture_units_assigned = 0;
+
     /* Update shaders if the configuration has been changed since the last call */
     if (uber_ptr->dirty)
     {
@@ -1981,7 +2058,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                           "Relinking did not reset the dirty flag");
     }
 
-    /* Set up UB contents */
+    /* Set up UB contents & texture samplers */
     bool               has_modified_bo_data = false;
     const unsigned int n_items              = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
@@ -2059,6 +2136,34 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
 
                         has_modified_bo_data                                        = true;
                         item_ptr->fragment_shader_item.current_light_location_dirty = false;
+                    }
+
+                    if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location != -1)
+                    {
+                        /* Bind the shadow map */
+                        GLuint n_texture_unit = uber_ptr->n_texture_units_assigned++;
+
+                        ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture != NULL,
+                                          "No shadow map assigned to a light which casts shadows");
+
+                        dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
+                                                                 GL_TEXTURE_2D,
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture);
+                        entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location,
+                                                                 n_texture_unit);
+                    }
+
+                    /* Vertex shader part */
+                    if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1 &&
+                        item_ptr->vertex_shader_item.current_light_depth_vp_dirty)
+                    {
+                        memcpy((char*) uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
+                               item_ptr->vertex_shader_item.current_light_depth_vp,
+                               sizeof(item_ptr->vertex_shader_item.current_light_depth_vp) );
+
+                        has_modified_bo_data                                      = true;
+                        item_ptr->vertex_shader_item.current_light_depth_vp_dirty = false;
                     }
 
                     break;
@@ -2301,6 +2406,8 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
+        case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
 
@@ -2408,6 +2515,29 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                             item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_location_dirty = true;
+                        }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
+                    {
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture = *(ogl_texture*) data;
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
+                    {
+                        if (memcmp(item_ptr->vertex_shader_item.current_light_depth_vp,
+                                   data,
+                                   sizeof(float) * 16) != 0)
+                        {
+                            memcpy(item_ptr->vertex_shader_item.current_light_depth_vp,
+                                   data,
+                                   sizeof(float) * 16);
+
+                            item_ptr->vertex_shader_item.current_light_depth_vp_dirty = true;
                         }
 
                         break;

@@ -69,6 +69,7 @@ typedef enum
     MESH_MATERIAL_SHADING_LAMBERT,
     MESH_MATERIAL_SHADING_PHONG,
 
+    MESH_MATERIAL_SHADING_NONE, /* used for dummy material, which is in turn used for shadow map rendering */
     MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE,
 
     /* Always last */

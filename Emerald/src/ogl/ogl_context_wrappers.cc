@@ -1819,6 +1819,51 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
 }
 
 /** Please see header for spec */
+PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum               mode,
+                                                                          const GLsizei*       count,
+                                                                          GLenum               type,
+                                                                          const GLvoid* const* indices,
+                                                                          GLsizei              drawcount,
+                                                                          const GLint*         basevertex)
+{
+    ogl_context                  context          = ogl_context_get_current_context ();
+    ogl_context_bo_bindings      bo_bindings      = NULL;
+    ogl_context_sampler_bindings sampler_bindings = NULL;
+    ogl_context_state_cache      state_cache      = NULL;
+    ogl_context_to_bindings      to_bindings      = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
+                            &sampler_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TO_BINDINGS,
+                            &to_bindings);
+
+    ogl_context_state_cache_sync     (state_cache,
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+    ogl_context_bo_bindings_sync     (bo_bindings,
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+    ogl_context_sampler_bindings_sync(sampler_bindings);
+    ogl_context_to_bindings_sync     (to_bindings,
+                                      OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
+
+    _private_entrypoints_ptr->pGLMultiDrawElementsBaseVertex(mode,
+                                                             count,
+                                                             type,
+                                                             indices,
+                                                             drawcount,
+                                                             basevertex);
+}
+
+/** Please see header for spec */
 PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
                                                                GLenum access)
 {
@@ -2121,34 +2166,45 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(__in __notnull ogl_c
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_gl_id);
 
-    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture, texture_target, level, GL_TEXTURE_DEPTH,           &mipmap_depth);
-    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture, texture_target, level, GL_TEXTURE_HEIGHT,          &mipmap_height);
-    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture, texture_target, level, GL_TEXTURE_INTERNAL_FORMAT, &mipmap_internalformat);
-    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture, texture_target, level, GL_TEXTURE_WIDTH,           &mipmap_width);
+    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture,
+                                                      texture_target,
+                                                      level,
+                                                      GL_TEXTURE_DEPTH,
+                                                     &mipmap_depth);
+    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture,
+                                                      texture_target,
+                                                      level,
+                                                      GL_TEXTURE_HEIGHT,
+                                                     &mipmap_height);
+    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture,
+                                                      texture_target,
+                                                      level,
+                                                      GL_TEXTURE_INTERNAL_FORMAT,
+                                                     &mipmap_internalformat);
+    dsa_entrypoints->pGLGetTextureLevelParameterivEXT(texture,
+                                                      texture_target,
+                                                      level,
+                                                      GL_TEXTURE_WIDTH,
+                                                     &mipmap_width);
 
     if (mipmap_depth  != 0 ||
         mipmap_height != 0 ||
         mipmap_width  != 0)
     {
         ogl_texture_set_mipmap_property(texture,
-                                        (ogl_texture_dimensionality) texture_target,
                                         level,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                         &mipmap_width);
         ogl_texture_set_mipmap_property(texture,
-                                        (ogl_texture_dimensionality) texture_target,
                                         level,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                         &mipmap_height);
         ogl_texture_set_mipmap_property(texture,
-                                        (ogl_texture_dimensionality) texture_target,
                                         level,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                         &mipmap_depth);
-        ogl_texture_set_mipmap_property(texture,
-                                        (ogl_texture_dimensionality) texture_target,
-                                        level,
-                                        OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
+        ogl_texture_set_property       (texture,
+                                        OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
                                         &mipmap_internalformat);
     }
 }
@@ -2374,25 +2430,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexImage3D(GLenum        t
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                     &depth);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -2446,20 +2497,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexImage2D(GLenum        t
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -2511,15 +2558,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTexImage1D(GLenum        t
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -2830,15 +2874,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureImage1DEXT(ogl_text
                                                              bits);
 
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -2884,20 +2925,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureImage2DEXT(ogl_text
                                                              bits);
 
     ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
-    ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -2945,25 +2982,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCompressedTextureImage3DEXT(ogl_text
                                                              bits);
 
     ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
     ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                     &depth);
-    ogl_texture_set_mipmap_property(texture,
-                                    (ogl_texture_dimensionality) OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -3010,15 +3042,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage1D(GLenum  target,
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -3067,20 +3096,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage2D(GLenum  target,
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -3218,15 +3243,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage1DEXT(ogl_texture te
                                                        border);
 
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -3257,20 +3279,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage2DEXT(ogl_texture te
                                                        border);
 
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -4028,11 +4046,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,
                                                                           texture_unit,
                                                                           target);
 
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER,
-                                    0,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property(bound_texture,
+                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                            &internalformat);
 }
 
 /* Please see header for specification */
@@ -4079,11 +4095,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexBufferRange(GLenum     target,
                                                                           texture_unit,
                                                                           target);
 
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER,
-                                    0,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property(bound_texture,
+                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                            &internalformat);
 }
 
 /* Please see header for specification */
@@ -4137,15 +4151,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexImage1D(GLenum        target,
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -4201,20 +4212,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexImage2D(GLenum        target,
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -4272,25 +4279,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTexImage3D(GLenum        target,
                                                                           target);
 
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
     ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                     &depth);
-    ogl_texture_set_mipmap_property(bound_texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (bound_texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -4830,11 +4832,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferEXT(ogl_texture texture
                                                   internalformat,
                                                   buffer);
 
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER,
-                                    0,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                            &internalformat);
 }
 
 /* Please see header for specification */
@@ -4866,11 +4866,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureBufferRangeEXT(ogl_texture te
                                                        offset,
                                                        size);
 
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_BUFFER,
-                                    0,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property(texture,
+                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                            &internalformat);
 }
 
 /* Please see header for specification */
@@ -4909,15 +4907,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureImage1DEXT(ogl_texture   text
                                                    pixels);
 
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_1D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -4958,20 +4953,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureImage2DEXT(ogl_texture   text
                                                    pixels);
 
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */
@@ -5014,25 +5005,20 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureImage3DEXT(ogl_texture  textu
                                                    pixels);
 
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                     &width);
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                     &height);
     ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
                                     level,
                                     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                     &depth);
-    ogl_texture_set_mipmap_property(texture,
-                                    OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_3D,
-                                    level,
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                    &internalformat);
+    ogl_texture_set_property       (texture,
+                                    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                                   &internalformat);
 }
 
 /* Please see header for specification */

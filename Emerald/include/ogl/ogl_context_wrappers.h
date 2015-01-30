@@ -382,6 +382,14 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                                                                 GLsizei              primcount);
 
 /** TODO */
+PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum               mode,
+                                                                          const GLsizei*       count,
+                                                                          GLenum               type,
+                                                                          const GLvoid* const* indices,
+                                                                          GLsizei              drawcount,
+                                                                          const GLint*         basevertex);
+
+/** TODO */
 PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
                                                                GLenum access);
 

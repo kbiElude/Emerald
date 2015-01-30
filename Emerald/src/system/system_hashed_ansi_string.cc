@@ -220,7 +220,14 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_get_defau
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(__in __notnull system_hashed_ansi_string string)
 {
-    return (uint32_t) ((_system_hashed_ansi_string_descriptor*) string)->length;
+    if (string != NULL)
+    {
+        return (uint32_t) ((_system_hashed_ansi_string_descriptor*) string)->length;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 /** Please see header for specification */

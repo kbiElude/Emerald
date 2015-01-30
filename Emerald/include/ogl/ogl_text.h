@@ -38,6 +38,11 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
                                             __in           uint32_t                   screen_width,
                                             __in           uint32_t                   screen_height);
 
+/** TODO */
+PUBLIC EMERALD_API void ogl_text_delete_string(__in __notnull ogl_text           text,
+                                               __in           ogl_text_string_id text_id);
+
+/** TODO */
 PUBLIC EMERALD_API void ogl_text_draw(__in __notnull ogl_context context,
                                       __in __notnull ogl_text    text);
 

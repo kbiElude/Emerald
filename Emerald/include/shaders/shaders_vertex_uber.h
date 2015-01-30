@@ -37,7 +37,8 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
 
 /** TODO */
 PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__in __notnull shaders_vertex_uber       uber,
-                                                                             __in           shaders_vertex_uber_light light);
+                                                                             __in           shaders_vertex_uber_light light,
+                                                                             __in           bool                      is_shadow_caster);
 
 /** TODO
  * 

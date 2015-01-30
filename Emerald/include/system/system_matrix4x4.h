@@ -28,6 +28,11 @@ enum system_matrix4x4_clipping_plane
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create();
 
 /** TODO */
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_ecount(3) const float* camera_location,
+                                                                          __in_ecount(3) const float* look_at_point,
+                                                                          __in_ecount(3) const float* up_vector);
+
+/** TODO */
 PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_matrix(float left,
                                                                                     float right,
                                                                                     float bottom,
@@ -114,6 +119,13 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull      
                                                             __in __notnull __ecount(3) const float*,
                                                             __in __notnull __ecount(3) const float*,
                                                             __in __notnull __ecount(3) const float*);
+
+/** TODO
+ *
+ *  a *= b;
+ */
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull system_matrix4x4 a,
+                                                               __in __notnull system_matrix4x4 b);
 
 /** Multiples 4x4 matrix object by 4-dimensional user vector.
  *  Result is stored in user-provided vector.

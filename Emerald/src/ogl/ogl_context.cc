@@ -16,6 +16,7 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_samplers.h"
+#include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_textures.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -40,6 +41,8 @@ typedef struct
     HGLRC                       wgl_rendering_context;
     system_window               window;
     system_window_handle        window_handle;
+
+    GLuint                      vao_no_vaas_id;
 
     /* True if single-frame vsync has been enabled for the context, false otherwise */
     bool vsync_enabled;
@@ -91,6 +94,7 @@ typedef struct
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_samplers                    samplers;
+    ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
     ogl_context_texture_compression texture_compression;
     ogl_textures                    textures;
@@ -196,6 +200,11 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
 {
     _ogl_context* context_ptr = (_ogl_context*) ptr;
 
+    /* NOTE: This leaks the no-VAA VAO, but it's not much damage, whereas entering
+     *       a rendering context from this method could be tricky under some
+     *       circumstances.
+     */
+
     if (context_ptr->bo_bindings != NULL)
     {
         ogl_context_bo_bindings_release(context_ptr->bo_bindings);
@@ -221,6 +230,13 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
         ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
 
         context_ptr->sampler_bindings = NULL;
+    }
+
+    if (context_ptr->shadow_mapping != NULL)
+    {
+        ogl_shadow_mapping_release(context_ptr->shadow_mapping);
+
+        context_ptr->shadow_mapping = NULL;
     }
 
     if (context_ptr->state_cache != NULL)
@@ -1648,6 +1664,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLMemoryBarrier,                       "glMemoryBarrier"},
             {&context_ptr->entry_points_private.pGLMultiDrawArrays,                "glMultiDrawArrays"},
             {&context_ptr->entry_points_private.pGLMultiDrawElements,              "glMultiDrawElements"},
+            {&context_ptr->entry_points_private.pGLMultiDrawElementsBaseVertex,    "glMultiDrawElementsBaseVertex"},
             {&context_ptr->entry_points_gl.pGLPauseTransformFeedback,              "glPauseTransformFeedback"},
             {&context_ptr->entry_points_gl.pGLPixelStoref,                         "glPixelStoref"},
             {&context_ptr->entry_points_gl.pGLPixelStorei,                         "glPixelStorei"},
@@ -1896,6 +1913,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLMapBufferRange                  = ogl_context_wrappers_glMapBufferRange;
         context_ptr->entry_points_gl.pGLMultiDrawArrays                 = ogl_context_wrappers_glMultiDrawArrays;
         context_ptr->entry_points_gl.pGLMultiDrawElements               = ogl_context_wrappers_glMultiDrawElements;
+        context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex     = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
         context_ptr->entry_points_gl.pGLReadPixels                      = ogl_context_wrappers_glReadPixels;
         context_ptr->entry_points_gl.pGLResumeTransformFeedback         = ogl_context_wrappers_glResumeTransformFeedback;
         context_ptr->entry_points_gl.pGLSamplerParameterf               = ogl_context_wrappers_glSamplerParameterf;
@@ -2121,6 +2139,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->texture_compression                        = NULL;
                                     _result->textures                                   = ogl_textures_create( (ogl_context) _result);
                                     _result->to_bindings                                = NULL;
+                                    _result->vao_no_vaas_id                             = 0;
                                     _result->vsync_enabled                              = vsync_enabled;
                                     _result->wgl_rendering_context                      = wgl_rendering_context;
                                     _result->window                                     = window;
@@ -2286,6 +2305,14 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                             &_result->entry_points_private);
                                         ogl_context_to_bindings_init        (_result->to_bindings,
                                                                             &_result->entry_points_private);
+
+                                        /* Initialize shadow mapping handler */
+                                        _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
+
+                                        /* Set up the zero-VAA VAO */
+                                        _result->entry_points_gl.pGLGenVertexArrays(1,
+                                                                                   &_result->vao_no_vaas_id);
+
                                     } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
                                     /* Set context-specific vsync setting */
@@ -2526,6 +2553,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_SHADOW_MAPPING:
+        {
+            *(ogl_shadow_mapping*) out_result = context_ptr->shadow_mapping;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_STATE_CACHE:
         {
             *((ogl_context_state_cache*) out_result) = context_ptr->state_cache;
@@ -2613,6 +2647,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_WINDOW:
         {
             *((system_window*) out_result) = context_ptr->window;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_VAO_NO_VAAS:
+        {
+            *(GLuint*) out_result = context_ptr->vao_no_vaas_id;
 
             break;
         }

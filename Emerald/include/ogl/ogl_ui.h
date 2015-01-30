@@ -75,7 +75,7 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
                                                              __in __notnull           system_hashed_ansi_string   name,
                                                              __in_ecount(2) __notnull const float*                x1y1,
                                                              __in_ecount(2) __notnull const float*                max_size,
-                                                             __in __notnull           ogl_texture                 texture,
+                                                             __in_opt                 ogl_texture                 texture,
                                                              __in                     ogl_ui_texture_preview_type preview_type);
 /** TODO */
 PUBLIC EMERALD_API ogl_ui ogl_ui_create(__in __notnull ogl_text                  text_renderer,
