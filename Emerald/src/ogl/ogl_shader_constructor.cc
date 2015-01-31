@@ -1217,7 +1217,6 @@ PUBLIC EMERALD_API void ogl_shader_constructor_append_to_function_body(__in __no
 
     /* Form the new body */
     body_sstream << system_hashed_ansi_string_get_buffer(function_ptr->body)
-                 << "\n"
                  << system_hashed_ansi_string_get_buffer(body_to_append);
 
     /* Update function descriptor */

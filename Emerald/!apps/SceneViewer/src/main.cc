@@ -361,7 +361,7 @@ void _render_scene(ogl_context          context,
                                           &znear);
 
                 float new_zfar = 20.0f;
-                float new_znear = 0.1f;
+                float new_znear = 0.01f;
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);

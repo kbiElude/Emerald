@@ -80,34 +80,10 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                        __in_opt       void*                                    user_arg,
                                                                        __in_opt       system_hashed_ansi_string                light_visibility_var_name)
 {
-    /* Add a lambert_diffuse() function (if not already added) */
-    _function_id lambert_diffuse_func_id = 0;
-
-    if (ogl_shader_constructor_add_function(shader_constructor,
-                                            system_hashed_ansi_string_create("lambert_diffuse"),
-                                            TYPE_FLOAT, /* returned_value_type */
-                                            &lambert_diffuse_func_id) )
-    {
-        /* The func takes a light_vector and normal arguments */
-        ogl_shader_constructor_add_function_argument(shader_constructor,
-                                                     lambert_diffuse_func_id,
-                                                     SHADER_ARGUMENT_QUALIFIER_IN,
-                                                     TYPE_VEC3,
-                                                     system_hashed_ansi_string_create("light_vector") );
-        ogl_shader_constructor_add_function_argument(shader_constructor,
-                                                     lambert_diffuse_func_id,
-                                                     SHADER_ARGUMENT_QUALIFIER_IN,
-                                                     TYPE_VEC3,
-                                                     system_hashed_ansi_string_create("normal") );
-
-        /* Set the body */
-        ogl_shader_constructor_set_function_body(shader_constructor,
-                                                 lambert_diffuse_func_id,
-                                                 system_hashed_ansi_string_create("return max(0.0, dot(normal, light_vector) );") );
-    }
-
     /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream line;
+
+    line << "\n// Lambert: ambient+diffuse (light:[" << n_item << "])\n";
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
         light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
@@ -120,15 +96,6 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
     }
 
     /* Compute diffuse factor for non-ambient lights */
-    if (light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
-    {
-        line << "float light" << n_item << "_LdotN "
-             << "= lambert_diffuse("
-             << "light" << n_item << "_vector"
-             << ", normal);\n";
-    }
-
-    /* Start forming the shader. */
     const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT ||
                                                 properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT);
     const bool is_luminosity_texture_defined = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D);
@@ -160,9 +127,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
         /* Compute the light contribution: diffuse */
         if (properties[SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE] != SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_NONE)
         {
-            line << "+ vec4("
-                    "light" << n_item << "_LdotN"
-                    ")";
+            line << "+ vec4(light" << n_item << "_LdotN_clamped)";
         }
     }
     else
@@ -284,7 +249,8 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in     __notnull
     /* Compute the light contribution */
     std::stringstream line;
 
-    line << "result_fragment += ";
+    line << "\n// Phong: specular (light:[" << n_light << "])\n"
+            "result_fragment += ";
 
     if (light_visibility_var_name != NULL)
     {
@@ -571,15 +537,6 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     std::stringstream         light_direction_name_sstream;
     system_hashed_ansi_string light_visibility_var_name_has = NULL;
     std::stringstream         light_world_pos_name_sstream;
-
-    /* Add shadow map support */
-    if (is_shadow_caster)
-    {
-        ogl_shadow_mapping_adjust_fragment_uber_code(uber_ptr->shader_constructor,
-                                                     n_items,
-                                                     uber_ptr->fragment_shader_properties_ub,
-                                                    &light_visibility_var_name_has);
-    }
 
     /* Add light properties */
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
@@ -908,6 +865,33 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
             }
         } /* if (properties[iteration_data.property] == iteration_data.value) */
     } /* for (all properties items) */
+
+    /* Add a variable storing result of dot(normal, light). This is used by both shading &
+     * shadow map calculations */
+    if (light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
+    {
+        std::stringstream ldotn_sstream;
+
+        ldotn_sstream << "float light" << n_items << "_LdotN "
+                      << "= dot("
+                      << "light" << n_items << "_vector"
+                      << ", normal);\n";
+        ldotn_sstream << "float light"   << n_items << "_LdotN_clamped "
+                      << "= clamp(light" << n_items << "_LdotN, 0.0, 1.0);\n";
+
+        ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
+                                                           0, /* main() */
+                                                           system_hashed_ansi_string_create(ldotn_sstream.str().c_str() ));
+    }
+
+    /* Add shadow map support */
+    if (is_shadow_caster)
+    {
+        ogl_shadow_mapping_adjust_fragment_uber_code(uber_ptr->shader_constructor,
+                                                     n_items,
+                                                     uber_ptr->fragment_shader_properties_ub,
+                                                    &light_visibility_var_name_has);
+    }
 
     /* Compute ambient + diffuse light factors */
     switch (light_type)
