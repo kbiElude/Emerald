@@ -1586,12 +1586,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
      * rendering proceeds.
      */
+    static const bool shadow_mapping_disabled = false;
+    static const bool shadow_mapping_enabled  = true;
+
     if (shadow_mapping != SHADOW_MAPPING_TYPE_DISABLED)
     {
+        scene_set_property(renderer_ptr->scene,
+                           SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                          &shadow_mapping_disabled);
+
         _ogl_scene_renderer_render_shadow_maps(renderer,
                                                camera,
                                                shadow_mapping,
                                                frame_time);
+
+        scene_set_property(renderer_ptr->scene,
+                           SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                          &shadow_mapping_enabled);
     } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 1. Traverse the scene graph and:

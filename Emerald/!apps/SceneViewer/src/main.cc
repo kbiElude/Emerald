@@ -475,7 +475,7 @@ void _render_scene(ogl_context          context,
                                           camera,
                                           camera_location,
                                           RENDER_MODE_FORWARD,
-                                          SHADOW_MAPPING_TYPE_DISABLED,
+                                          SHADOW_MAPPING_TYPE_PLAIN,
                                           //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
                                           HELPER_VISUALIZATION_NONE,
                                           frame_time

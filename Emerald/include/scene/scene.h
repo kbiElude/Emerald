@@ -27,6 +27,14 @@ enum scene_property
     SCENE_PROPERTY_N_MATERIALS,            /* not settable, uint32_t */
     SCENE_PROPERTY_N_MESH_INSTANCES,       /* not settable, uint32_t */
     SCENE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
+
+    SCENE_PROPERTY_SHADOW_MAPPING_ENABLED, /*     settable, bool. Set in run-time.
+                                            *
+                                            * Tells if shadow mapping should be enabled for lights
+                                            * which are marked as shadow caster. This is used by
+                                            * material manager to determine which materials should be
+                                            * returned.
+                                            */
 };
 
 typedef enum

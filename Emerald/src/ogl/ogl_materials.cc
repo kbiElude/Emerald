@@ -318,11 +318,15 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                        "Could not spawn an uber instance");
     if (new_uber != NULL)
     {
-        mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+        mesh_material_shading material_shading             = MESH_MATERIAL_SHADING_UNKNOWN;
+        bool                  scene_shadow_mapping_enabled = false;
 
         mesh_material_get_property(material,
                                    MESH_MATERIAL_PROPERTY_SHADING,
                                   &material_shading);
+        scene_get_property        (scene,
+                                   SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                                  &scene_shadow_mapping_enabled);
 
         if (material_shading == MESH_MATERIAL_SHADING_LAMBERT ||
             material_shading == MESH_MATERIAL_SHADING_PHONG)
@@ -526,12 +530,18 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                         }
                     } /* switch (material_shading) */
 
-                    /* Determine if we should check visibility for the light. */
+                    /* Determine if we should check visibility for the light.
+                     *
+                     * Note that scene has a property called SCENE_PROPERTY_SHADOW_MAPPING_ENABLED which
+                     * should be ANDed with light's property.
+                     */
                     bool uses_shadow_mapping = false;
 
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
                                             &uses_shadow_mapping);
+
+                    uses_shadow_mapping &= scene_shadow_mapping_enabled;
 
                     /* Add the light item if not a NULL light */
                     if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
@@ -619,13 +629,17 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
     /* The purpose of this function is to make sure that uber we're fed implements shading
      * for exactly the same light configuration as defined in scene.
      */
-    scene_light  current_light  = NULL;
-    unsigned int n_uber_lights  = 0;
-    unsigned int n_scene_lights = 0;
+    scene_light  current_light                = NULL;
+    unsigned int n_scene_lights               = 0;
+    unsigned int n_uber_lights                = 0;
+    bool         scene_shadow_mapping_enabled = false;
 
     scene_get_property                  (scene,
                                          SCENE_PROPERTY_N_LIGHTS,
                                         &n_scene_lights);
+    scene_get_property                  (scene,
+                                         SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                                        &scene_shadow_mapping_enabled);
     ogl_uber_get_shader_general_property(uber,
                                          OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
                                         &n_uber_lights);
@@ -671,10 +685,19 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
             goto end;
         }
 
+        /* Check if the light should be considered a shadow caster. Note that this setting
+         * is overriden by a scene property called SCENE_PROPERTY_SHADOW_MAPPING_ENABLED
+         * which is toggled on and off at different stages of the rendering pipeline execution.
+         */
         ogl_uber_get_shader_item_property(uber,
                                           n_light,
                                           OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
                                          &current_uber_item_is_shadow_caster);
+
+        current_light_is_shadow_caster     &= scene_shadow_mapping_enabled;
+        current_uber_item_is_shadow_caster &= scene_shadow_mapping_enabled;
+
+        /* Carry on with other light stuff */
         ogl_uber_get_shader_item_property(uber,
                                           n_light,
                                           OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,

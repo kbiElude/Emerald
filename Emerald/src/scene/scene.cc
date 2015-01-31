@@ -42,6 +42,7 @@ typedef struct
     scene_graph               graph;
     float                     max_animation_duration;
     system_hashed_ansi_string name;
+    bool                      shadow_mapping_enabled;
 
     system_callback_manager   callback_manager;
 
@@ -396,9 +397,9 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
             ogl_context_retain(context);
         }
 
-        new_scene->context = context;
-
-        new_scene->callback_manager = system_callback_manager_create( (_callback_id) SCENE_CALLBACK_ID_LIGHT_ADDED);
+        new_scene->context                = context;
+        new_scene->callback_manager       = system_callback_manager_create( (_callback_id) SCENE_CALLBACK_ID_LIGHT_ADDED);
+        new_scene->shadow_mapping_enabled = false;
 
         new_scene->cameras                = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
@@ -805,6 +806,13 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
         case SCENE_PROPERTY_NAME:
         {
             *((system_hashed_ansi_string*) out_result) = scene_ptr->name;
+
+            break;
+        }
+
+        case SCENE_PROPERTY_SHADOW_MAPPING_ENABLED:
+        {
+            *(bool*) out_result = scene_ptr->shadow_mapping_enabled;
 
             break;
         }
@@ -2140,6 +2148,13 @@ PUBLIC EMERALD_API void scene_set_property(__in __notnull scene          scene,
         case SCENE_PROPERTY_MAX_ANIMATION_DURATION:
         {
             scene_ptr->max_animation_duration = *(float*) data;
+
+            break;
+        }
+
+        case SCENE_PROPERTY_SHADOW_MAPPING_ENABLED:
+        {
+            scene_ptr->shadow_mapping_enabled = *(bool*) data;
 
             break;
         }
