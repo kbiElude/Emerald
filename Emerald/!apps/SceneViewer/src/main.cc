@@ -606,7 +606,7 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
-#if 1
+#if 0
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,

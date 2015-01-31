@@ -71,7 +71,7 @@ typedef struct
 
 /** Internal variables */
 static const char* ui_texture_preview_renderer_alpha_body  = "result = vec4(textureLod(texture, uv, 0).aaa, 1.0);\n";
-static const char* ui_texture_preview_renderer_depth_body  = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0) * vec4(0.5) + vec4(0.5);\n";
+static const char* ui_texture_preview_renderer_depth_body  = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0);\n";
 static const char* ui_texture_preview_renderer_red_body    = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0);\n";
 static const char* ui_texture_preview_renderer_rgb_body    = "result = vec4(textureLod(texture, uv, 0).xyz, 1.0);\n";
 static const char* ui_texture_preview_renderer_rgba_body   = "result = textureLod(texture, uv, 0);\n";

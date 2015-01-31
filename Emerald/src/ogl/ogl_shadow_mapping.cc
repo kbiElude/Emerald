@@ -62,6 +62,13 @@ PRIVATE void _ogl_shadow_mapping_init_renderer_callback(__in __notnull ogl_conte
     entry_points->pGLGenFramebuffers(1,
                                     &shadow_mapping_ptr->fbo_id);
 
+    /* Set up the FBO state */
+    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
+                                     shadow_mapping_ptr->fbo_id);
+    entry_points->pGLDrawBuffer     (GL_NONE);
+
+    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
+                                     0);
 }
 
 /** TODO */
@@ -171,27 +178,14 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
 
     code_snippet_sstream << "float "
                          << light_visibility_var_name_sstream.str()
-#if 1
                          << " = (textureLod("
                          << shadow_map_sampler_var_name_sstream.str()
                          << ", "
                          << light_shadow_coord_var_name_sstream.str()
-                         << ".xy, 0).z < "
+                         << ".xy, 0).x < ("
                          << light_shadow_coord_var_name_sstream.str()
-                         << ".z ? 0.0 : 1.0);\n";
-#endif
-#if 0
-                         << " = "
-                         << light_shadow_coord_var_name_sstream.str()
-                         << ".y;\n";
-#endif
-#if 0
-                         << " = textureLod("
-                         << shadow_map_sampler_var_name_sstream.str()
-                         << ", "
-                         << light_shadow_coord_var_name_sstream.str()
-                         << ".xy, 0).z;\n";
-#endif
+                         << ".z - 0.001) ? 0.0 : 1.0);\n";
+
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 
     ogl_shader_constructor_append_to_function_body(shader_constructor_fs,
@@ -210,10 +204,10 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader
 {
     static const float depth_bias_matrix_data[] = /* column_major */
     {
-        0.5f, 0.0f, 0.0f, 0.5f,
-        0.0f, 0.5f, 0.0f, 0.5f,
-        0.0f, 0.0f, 0.5f, 0.5f,
-        0.0f, 0.0f, 0.0f, 1.0f
+        0.5f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.5f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.5f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f
     };
     static uint32_t           n_depth_bias_matrix_data_entries = sizeof(depth_bias_matrix_data) / sizeof(depth_bias_matrix_data[0]);
     system_hashed_ansi_string depth_bias_matrix_var_name       = system_hashed_ansi_string_create("depth_bias");
@@ -314,7 +308,7 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader
 
     vs_code_sstream << light_shadow_coord_name_sstream.str()
                     << " = "
-#if 0
+#if 1
                     << system_hashed_ansi_string_get_buffer(depth_bias_matrix_var_name)
                     << " * "
                     << depth_vp_matrix_name_sstream.str()
@@ -323,9 +317,9 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader
 #else
                     << world_vertex_vec4_name_raw
                     << " * "
-                    << system_hashed_ansi_string_get_buffer(depth_bias_matrix_var_name)
-                    << " * "
                     << depth_vp_matrix_name_sstream.str()
+                    << " * "
+                    << system_hashed_ansi_string_get_buffer(depth_bias_matrix_var_name)
 #endif
                     << ";\n";
 
@@ -458,7 +452,11 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
            sizeof(float) * 3);
 
     /* Set up the light's view matrix */
-    static const float up_vector[3] = {0.0f, 1.0f, 0.0f};
+    static const float up_vector[3] = {
+        light_direction_vector[1],
+        light_direction_vector[2],
+        light_direction_vector[0]
+    };
 
     *out_view_matrix = system_matrix4x4_create_lookat_matrix(sm_camera_location_camera_view, /* eye_position */
                                                              frustum_centroid_camera_view,   /* lookat_point */
