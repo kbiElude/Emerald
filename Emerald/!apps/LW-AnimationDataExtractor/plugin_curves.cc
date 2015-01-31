@@ -98,6 +98,11 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
     system_resizable_vector keys       = system_resizable_vector_create(4, /* capacity */
                                                                         sizeof(_curve_key*) );
 
+    if (currentKey == NULL)
+    {
+        currentKey = envelope_ptr->nextKey(envelope, NULL);
+    }
+
     ASSERT_ALWAYS_SYNC(currentKey != NULL, "Could not find the first envelope key");
     ASSERT_ALWAYS_SYNC(keys       != NULL, "Could not create keys vector");
 
