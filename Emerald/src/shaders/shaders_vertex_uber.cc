@@ -395,7 +395,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                       NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE,
+                                                      LAYOUT_QUALIFIER_ROW_MAJOR,
                                                       TYPE_MAT4,
                                                       0, /* array_size */
                                                       ub_id,
@@ -449,7 +449,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     /* Finally, uniforms */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE,
+                                                      LAYOUT_QUALIFIER_NONE, /* global UB, so we must use column-major ordering */
                                                       TYPE_MAT4,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
@@ -457,7 +457,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                       NULL /* out_variable_id */);
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE,
+                                                      LAYOUT_QUALIFIER_NONE, /* default UB - must use column-major ordering */
                                                       TYPE_MAT4,
                                                       0, /* array_size */
                                                       0, /* uniform_block */
@@ -467,11 +467,11 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     /* Set general body */
     ogl_shader_constructor_set_function_body(shader_constructor,
                                              0, /* main() */
-                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = vec4(object_vertex, 1.0) * model;\n"
+                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = model * vec4(object_vertex, 1.0);\n"
                                                                               "\n"
-                                                                              "gl_Position   = world_vertex_temp * vp;\n"
+                                                                              "gl_Position   = vp * world_vertex_temp;\n"
                                                                               "world_vertex  = world_vertex_temp.xyz;\n"
-                                                                              "out_vs_normal = normalize((vec4(object_normal, 0.0) * normal_matrix).xyz);\n"
+                                                                              "out_vs_normal = normalize((normal_matrix * vec4(object_normal, 0.0) ).xyz);\n"
                                                                               "view_vector   = normalize(world_camera.xyz - world_vertex.xyz);\n"
                                                                               "\n"));
 

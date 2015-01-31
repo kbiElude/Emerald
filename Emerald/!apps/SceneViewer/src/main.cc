@@ -361,7 +361,7 @@ void _render_scene(ogl_context          context,
                                           &znear);
 
                 float new_zfar = 20.0f;
-                float new_znear = 0.01f;
+                float new_znear = 0.1f;
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);
@@ -475,7 +475,7 @@ void _render_scene(ogl_context          context,
                                           camera,
                                           camera_location,
                                           RENDER_MODE_FORWARD,
-                                          SHADOW_MAPPING_TYPE_PLAIN,
+                                          SHADOW_MAPPING_TYPE_DISABLED,
                                           //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
                                           HELPER_VISUALIZATION_NONE,
                                           frame_time
@@ -606,7 +606,7 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
-#if 0
+#if 1
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,

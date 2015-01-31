@@ -156,8 +156,8 @@ typedef struct
     uint32_t                  mesh_sh3_data_offset_uniform_location;
     uint32_t                  mesh_sh4_uniform_location;
     uint32_t                  mesh_sh4_data_offset_uniform_location;
-    uint32_t                  model_uniform_location;
-    uint32_t                  normal_matrix_uniform_location;
+    uint32_t                  model_uniform_location;         /* column major ordering! */
+    uint32_t                  normal_matrix_uniform_location; /* column-major ordering! */
     uint32_t                  object_normal_attribute_location;
     uint32_t                  object_uv_attribute_location;
     uint32_t                  object_vertex_attribute_location;
@@ -1712,8 +1712,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
 
         entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
                                                  uber_ptr->model_uniform_location,
-                                                 1 /* count */,
-                                                 GL_FALSE,
+                                                 1,       /* count */
+                                                 GL_TRUE, /* transpose */
                                                  system_matrix4x4_get_row_major_data(model)
                                                 );
 
@@ -1725,8 +1725,8 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
 
             entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
                                                      uber_ptr->normal_matrix_uniform_location,
-                                                     1 /* count */,
-                                                     GL_FALSE,
+                                                     1,       /* count */
+                                                     GL_TRUE, /* transpose */
                                                      system_matrix4x4_get_row_major_data(normal_matrix)
                                                     );
         }

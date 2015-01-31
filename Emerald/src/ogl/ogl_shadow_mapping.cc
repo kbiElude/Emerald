@@ -178,7 +178,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                          << light_shadow_coord_var_name_sstream.str()
                          << ".xy, 0).z < "
                          << light_shadow_coord_var_name_sstream.str()
-                         << ".z ? 0.1 : 1.0);\n";
+                         << ".z ? 0.0 : 1.0);\n";
 #endif
 #if 0
                          << " = "
@@ -314,11 +314,19 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader
 
     vs_code_sstream << light_shadow_coord_name_sstream.str()
                     << " = "
+#if 0
                     << system_hashed_ansi_string_get_buffer(depth_bias_matrix_var_name)
                     << " * "
                     << depth_vp_matrix_name_sstream.str()
                     << " * "
                     << world_vertex_vec4_name_raw
+#else
+                    << world_vertex_vec4_name_raw
+                    << " * "
+                    << system_hashed_ansi_string_get_buffer(depth_bias_matrix_var_name)
+                    << " * "
+                    << depth_vp_matrix_name_sstream.str()
+#endif
                     << ";\n";
 
     vs_code_has = system_hashed_ansi_string_create(vs_code_sstream.str().c_str() );
@@ -555,7 +563,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                                                                              frustum_y_min_light_view, /* bottom */
                                                                              frustum_y_max_light_view, /* top */
                                                                              0.0f,
-                                                                             fabs(frustum_z_max_light_view) + fabs(frustum_z_min_light_view) );
+                                                                             2.0f * (fabs(frustum_z_max_light_view) + fabs(frustum_z_min_light_view)) );
 }
 
 /** Please see header for spec */
