@@ -44,7 +44,7 @@ typedef enum
     /* Plain shadow mapping.
      *
      * Support implemented for:
-     * a) Distant lights: no
+     * a) Distant lights: yes
      * b) Point lights:   no
      * c) Spot lights:    no
      *

@@ -120,6 +120,9 @@ typedef struct _ogl_scene_renderer
     scene          scene;
     system_variant temp_variant_float;
 
+    float                                    current_aabb_max[3];
+    float                                    current_aabb_min[3];
+    scene_camera                             current_camera;
     _ogl_scene_renderer_helper_visualization current_helper_visualization;
     system_matrix4x4                         current_model_matrix;
     system_resizable_vector                  current_no_rasterization_meshes; /* only used for the "no rasterization" mode. holds _ogl_scene_renderer_mesh* items */
@@ -140,6 +143,7 @@ typedef struct _ogl_scene_renderer
     {
         bbox_preview                    = NULL;
         context                         = NULL;
+        current_camera                  = NULL;
         current_model_matrix            = system_matrix4x4_create();
         current_no_rasterization_meshes = system_resizable_vector_create(4, /* capacity */
                                                                          sizeof(_ogl_scene_renderer_mesh*) );
@@ -298,16 +302,18 @@ PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(syste
 /** TODO.
  *
  *  Implementation based on http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
+ *  and http://gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf.
+ *
+ *  This function also adjusts ogl_scene_renderer's max & min AABB coordinates.
  */
 PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer renderer,
                                               __in __notnull mesh               mesh_gpu)
 {
-    bool result = true;
+    _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
 
     /* Retrieve AABB for the mesh */
-    const float*               aabb_max_ptr   = NULL;
-    const float*               aabb_min_ptr   = NULL;
-    const _ogl_scene_renderer* renderer_ptr   = (const _ogl_scene_renderer*) renderer;
+    const float* aabb_max_ptr = NULL;
+    const float* aabb_min_ptr = NULL;
 
     mesh_get_property      (mesh_gpu,
                             MESH_PROPERTY_MODEL_AABB_MAX,
@@ -316,15 +322,62 @@ PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer 
                             MESH_PROPERTY_MODEL_AABB_MIN,
                            &aabb_min_ptr);
 
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(aabb_max_ptr[0] != aabb_min_ptr[0] &&
+                      aabb_max_ptr[1] != aabb_min_ptr[1] &&
+                      aabb_max_ptr[2] != aabb_min_ptr[2],
+                      "Sanity checks failed");
+
+    /* Retrieve clipping planes from the VP. This gives us world clipping planes in world space. */
+    float world_clipping_plane_bottom[4];
+    float world_clipping_plane_front [4];
+    float world_clipping_plane_left  [4];
+    float world_clipping_plane_near  [4];
+    float world_clipping_plane_right [4];
+    float world_clipping_plane_top   [4];
+
+    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_BOTTOM,
+                                        world_clipping_plane_bottom);
+    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_FAR,
+                                        world_clipping_plane_front);
+    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_LEFT,
+                                        world_clipping_plane_left);
+    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_NEAR,
+                                        world_clipping_plane_near);
+    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_RIGHT,
+                                        world_clipping_plane_right);
+    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_TOP,
+                                        world_clipping_plane_top);
+
+    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_bottom,
+                                                  world_clipping_plane_bottom);
+    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_front,
+                                                  world_clipping_plane_front);
+    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_left,
+                                                  world_clipping_plane_left);
+    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_near,
+                                                  world_clipping_plane_near);
+    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_right,
+                                                  world_clipping_plane_right);
+    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_top,
+                                                  world_clipping_plane_top);
+
+    /* Prepare an array holding OBB of the model's AABB transformed into clip space. */
     /* Transform the model-space AABB to world-space */
-    float transformed_aabb_min[3];
-    float transformed_aabb_max[3];
+    float world_aabb_max     [3];
+    float world_aabb_min     [3];
+    float world_aabb_vertices[8][4];
 
     for (uint32_t n_vertex = 0;
                   n_vertex < 8;
                 ++n_vertex)
     {
-        float transformed_vertex[4];
         float vertex[4] =
         {
             (n_vertex & 1) ? aabb_max_ptr[0] : aabb_min_ptr[0],
@@ -335,64 +388,39 @@ PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer 
 
         system_matrix4x4_multiply_by_vector4(renderer_ptr->current_model_matrix,
                                              vertex,
-                                             transformed_vertex);
+                                             world_aabb_vertices[n_vertex]);
 
         for (uint32_t n = 0;
                       n < 3;
                     ++n)
         {
             if (n_vertex == 0 ||
-                n_vertex != 0 && transformed_aabb_min[n] > transformed_vertex[n])
+                n_vertex != 0 && world_aabb_min[n] > world_aabb_vertices[n_vertex][n])
             {
-                transformed_aabb_min[n] = transformed_vertex[n];
+                world_aabb_min[n] = world_aabb_vertices[n_vertex][n];
             }
 
             if (n_vertex == 0 ||
-                n_vertex != 0 && transformed_aabb_max[n] < transformed_vertex[n])
+                n_vertex != 0 && world_aabb_max[n] < world_aabb_vertices[n_vertex][n])
             {
-                transformed_aabb_max[n] = transformed_vertex[n];
+                world_aabb_max[n] = world_aabb_vertices[n_vertex][n];
             }
         }
     }
 
-    /* Retrieve clipping planes from the MVP */
-    float        clipping_plane_bottom[4];
-    float        clipping_plane_front [4];
-    float        clipping_plane_left  [4];
-    float        clipping_plane_near  [4];
-    float        clipping_plane_right [4];
-    float        clipping_plane_top   [4];
-    const float* clipping_planes      [] =
+    /* Iterate over all clipping planes.. */
+    const float* clipping_planes[] =
     {
-        clipping_plane_bottom,
-        clipping_plane_front,
-        clipping_plane_left,
-        clipping_plane_near,
-        clipping_plane_right,
-        clipping_plane_top
+        world_clipping_plane_bottom,
+        world_clipping_plane_front,
+        world_clipping_plane_left,
+        world_clipping_plane_near,
+        world_clipping_plane_right,
+        world_clipping_plane_top
     };
     const uint32_t n_clipping_planes = sizeof(clipping_planes) / sizeof(clipping_planes[0]);
+    bool           result            = true;
 
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_BOTTOM,
-                                        clipping_plane_bottom);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_FAR,
-                                        clipping_plane_front);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_LEFT,
-                                        clipping_plane_left);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_NEAR,
-                                        clipping_plane_near);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_RIGHT,
-                                        clipping_plane_right);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_TOP,
-                                        clipping_plane_top);
-
-    /* Iterate over all clipping planes.. */
     for (uint32_t n_clipping_plane = 0;
                   n_clipping_plane < n_clipping_planes;
                 ++n_clipping_plane)
@@ -409,32 +437,15 @@ PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer 
             clipping_plane[2],
             clipping_plane[3]
         };
-        float clipping_plane_normal_length = sqrt(clipping_plane_normal[0] * clipping_plane_normal[0] +
-                                                  clipping_plane_normal[1] * clipping_plane_normal[1] +
-                                                  clipping_plane_normal[2] * clipping_plane_normal[2]);
-
-        clipping_plane_normal[0] /= clipping_plane_normal_length;
-        clipping_plane_normal[1] /= clipping_plane_normal_length;
-        clipping_plane_normal[2] /= clipping_plane_normal_length;
-
-#if USE_BRUTEFORCE_METHOD
-        clipping_plane_normal[3] /= clipping_plane_normal_length; /* NOTE: this is needed for proper point-plane distance calculation */
 
         for (uint32_t n_vertex = 0;
-                      n_vertex < 8 && (counter_inside == 0);
+                      n_vertex < 8 && (counter_inside == 0 || counter_outside == 0);
                     ++n_vertex)
         {
-            float vertex[3] =
-            {
-                (n_vertex & 1) ? transformed_aabb_max[0] : transformed_aabb_min[0],
-                (n_vertex & 2) ? transformed_aabb_max[1] : transformed_aabb_min[1],
-                (n_vertex & 4) ? transformed_aabb_max[2] : transformed_aabb_min[2]
-            };
-
             /* Is the vertex inside? */
-            float distance = clipping_plane_normal[3] + ((vertex[0] * clipping_plane_normal[0]) +
-                                                         (vertex[1] * clipping_plane_normal[1]) +
-                                                         (vertex[2] * clipping_plane_normal[2]) );
+            float distance = clipping_plane_normal[3] + ((world_aabb_vertices[n_vertex][0] * clipping_plane_normal[0]) +
+                                                         (world_aabb_vertices[n_vertex][1] * clipping_plane_normal[1]) +
+                                                         (world_aabb_vertices[n_vertex][2] * clipping_plane_normal[2]) );
 
             if (distance < 0)
             {
@@ -454,68 +465,34 @@ PRIVATE bool _ogl_scene_renderer_frustum_cull(__in __notnull ogl_scene_renderer 
             goto end;
         }
         else
-        if (counter_outside)
+        if (counter_outside > 0)
         {
-            /* Intersection, need to render */
-            goto end;
+            /* Intersection, need to keep iterating */
         }
-#else
-        /* Get negative & positive vertex data */
-        float negative_vertex[3] =
-        {
-            transformed_aabb_max[0],
-            transformed_aabb_max[1],
-            transformed_aabb_max[2]
-        };
-        float positive_vertex[3] =
-        {
-            transformed_aabb_min[0],
-            transformed_aabb_min[1],
-            transformed_aabb_min[2]
-        };
-
-        if (clipping_plane[0] >= 0.0f)
-        {
-            negative_vertex[0] = transformed_aabb_min[0];
-            positive_vertex[0] = transformed_aabb_max[0];
-        }
-        if (clipping_plane[1] >= 0.0f)
-        {
-            negative_vertex[1] = transformed_aabb_min[1];
-            positive_vertex[1] = transformed_aabb_max[1];
-        }
-        if (clipping_plane[2] >= 0.0f)
-        {
-            negative_vertex[2] = transformed_aabb_min[2];
-            positive_vertex[2] = transformed_aabb_max[2];
-        }
-
-        /* Is the positive vertex outside? */
-        float distance = clipping_plane[3] + ((positive_vertex[0] * clipping_plane[0]) +
-                                              (positive_vertex[1] * clipping_plane[1]) +
-                                              (positive_vertex[2] * clipping_plane[2]) );
-
-        if (distance < 0)
-        {
-            result = false;
-
-            goto end;
-        }
-
-        /* Is the negative vertex outside? */
-        distance = clipping_plane[3] + ((negative_vertex[0] * clipping_plane[0]) +
-                                        (negative_vertex[1] * clipping_plane[1]) +
-                                        (negative_vertex[2] * clipping_plane[2]) );
-
-        if (distance < 0)
-        {
-            goto end;
-        }
-#endif /* USE_BRUTEFORCE_METHOD */
     } /* for (all clipping planes) */
 
 end:
     /* All done */
+    if (result)
+    {
+        /* Update max & min AABB coordinates stored in ogl_scene_renderer,
+         * as the tested mesh is a part of the frustum */
+        for (unsigned int n_component = 0;
+                          n_component < 3;
+                        ++n_component)
+        {
+            if (renderer_ptr->current_aabb_max[n_component] < world_aabb_max[n_component])
+            {
+                renderer_ptr->current_aabb_max[n_component] = world_aabb_max[n_component];
+            }
+
+            if (renderer_ptr->current_aabb_min[n_component] > world_aabb_min[n_component])
+            {
+                renderer_ptr->current_aabb_min[n_component] = world_aabb_min[n_component];
+            }
+        }
+    }
+
     return result;
 }
 
@@ -696,6 +673,11 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
 
     /* Perform frustum culling to make sure it actually makes sense to render
      * this mesh.
+     *
+     * NOTE: We use the actual mesh instance for the culling process, NOT the
+     *       parent which provides the mesh data. This is to ensure that the
+     *       model matrix we use for the calculations refers to the actual object
+     *       of our interest.
      */
     if (!_ogl_scene_renderer_frustum_cull( (ogl_scene_renderer) renderer,
                                           mesh_instantiation_parent_gpu) )
@@ -873,6 +855,31 @@ end:
 }
 
 /** TODO */
+PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass(__notnull scene_mesh scene_mesh_instance,
+                                                                      __in      void*      renderer)
+{
+    _ogl_scene_renderer* renderer_ptr                  = (_ogl_scene_renderer*) renderer;
+    mesh                 mesh_gpu                      = NULL;
+    mesh                 mesh_instantiation_parent_gpu = NULL;
+
+    scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_MESH,
+                           &mesh_gpu);
+    mesh_get_property      (mesh_gpu,
+                            MESH_PROPERTY_INSTANTIATION_PARENT,
+                           &mesh_instantiation_parent_gpu);
+
+    if (mesh_instantiation_parent_gpu != NULL)
+    {
+        mesh_gpu = mesh_instantiation_parent_gpu;
+    }
+
+    /* Perform frustum culling. This is where the AABBs are also updated. */
+    _ogl_scene_renderer_frustum_cull( (ogl_scene_renderer) renderer,
+                                     mesh_gpu);
+}
+
+/** TODO */
 PRIVATE void _ogl_scene_renderer_new_model_matrix(__in __notnull system_matrix4x4 transformation_matrix,
                                                   __in __notnull void*            renderer)
 {
@@ -888,12 +895,16 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                                     __in __notnull const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
                                                     __in           system_timeline_time                           frame_time)
 {
-    scene_graph          graph          = NULL;
-    uint32_t             n_lights       = 0;
-    _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
-    ogl_shadow_mapping   shadow_mapping = NULL;
-    ogl_textures         texture_pool   = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
+    scene_graph                                               graph           = NULL;
+    uint32_t                                                  n_lights        = 0;
+    _ogl_scene_renderer*                                      renderer_ptr    = (_ogl_scene_renderer*) renderer;
+    ogl_shadow_mapping                                        shadow_mapping  = NULL;
+    ogl_textures                                              texture_pool    = NULL;
 
+    ogl_context_get_property(renderer_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entrypoints);
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
                             &shadow_mapping);
@@ -978,6 +989,15 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
             ASSERT_DEBUG_SYNC(current_light_shadow_map != NULL,
                              "Could not retrieve a shadow map texture from the texture pool.");
 
+            dsa_entrypoints->pGLTextureParameteriEXT(current_light_shadow_map,
+                                                     GL_TEXTURE_2D,
+                                                     GL_TEXTURE_MAG_FILTER,
+                                                     GL_NEAREST);
+            dsa_entrypoints->pGLTextureParameteriEXT(current_light_shadow_map,
+                                                     GL_TEXTURE_2D,
+                                                     GL_TEXTURE_MIN_FILTER,
+                                                     GL_NEAREST);
+
             /* Assign the shadow map texture to the light */
             scene_light_set_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
@@ -998,8 +1018,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                 case SCENE_LIGHT_TYPE_DIRECTIONAL:
                 {
                     ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
-                                                                          target_camera,
-                                                                          frame_time,
+                                                                          renderer_ptr->current_aabb_min,
+                                                                          renderer_ptr->current_aabb_max,
                                                                          &sm_view_matrix,
                                                                          &sm_projection_matrix,
                                                                           sm_camera_location);
@@ -1036,8 +1056,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
            ogl_scene_renderer_render_scene_graph( (ogl_scene_renderer) renderer_ptr,
                                                   sm_view_matrix,
                                                   sm_projection_matrix,
-                                                  target_camera,
-                                                  sm_camera_location,
+                                                  NULL, /* camera */
+                                                  NULL, /* camera_location */
                                                   RENDER_MODE_NO_RASTERIZATION,
                                                   SHADOW_MAPPING_TYPE_DISABLED,
                                                   HELPER_VISUALIZATION_NONE,
@@ -1583,6 +1603,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                              OGL_CONTEXT_PROPERTY_MATERIALS,
                             &materials);
 
+    /* Prepare graph traversal parameters */
+    system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
+                                                         view);
+
+    memset(renderer_ptr->current_aabb_max,
+           0,
+           sizeof(renderer_ptr->current_aabb_max) );
+    memset(renderer_ptr->current_aabb_min,
+           0,
+           sizeof(renderer_ptr->current_aabb_min) );
+
+    renderer_ptr->current_camera               = camera;
+    renderer_ptr->current_projection           = projection;
+    renderer_ptr->current_view                 = view;
+    renderer_ptr->current_vp                   = vp;
+    renderer_ptr->current_helper_visualization = helper_visualization;
+
     /* If the caller has requested shadow mapping support, we need to render shadow maps before actual
      * rendering proceeds.
      */
@@ -1595,6 +1632,26 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                            SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
                           &shadow_mapping_disabled);
 
+        /* For the call below, in order to support distant lights,
+         * we need to know what the AABB (expressed in the world space)
+         * for the scene, as seen from the camera viewpoint, is. */
+        scene_graph_traverse(graph,
+                             _ogl_scene_renderer_new_model_matrix,
+                             NULL, /* insert_camera_proc */
+                             NULL, /* insert_light_proc  */
+                             _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass,
+                             renderer,
+                             frame_time);
+
+        LOG_INFO("Camera AABB:[%.4f, %.4f, %.4f]x[%.4f, %.4f, %.4f]",
+                 renderer_ptr->current_aabb_min[0],
+                 renderer_ptr->current_aabb_min[1],
+                 renderer_ptr->current_aabb_min[2],
+                 renderer_ptr->current_aabb_max[0],
+                 renderer_ptr->current_aabb_max[1],
+                 renderer_ptr->current_aabb_max[2]);
+
+        /* Carry on with the shadow map preparation */
         _ogl_scene_renderer_render_shadow_maps(renderer,
                                                camera,
                                                shadow_mapping,
@@ -1603,6 +1660,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
         scene_set_property(renderer_ptr->scene,
                            SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
                           &shadow_mapping_enabled);
+
+        /* The _ogl_scene_renderer_render_shadow_maps() call might have messed up
+         * projection, view & vp matrices we set up.
+         *
+         * Revert the original settings */
+        renderer_ptr->current_projection = projection;
+        renderer_ptr->current_view       = view;
+        renderer_ptr->current_vp         = vp;
     } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 1. Traverse the scene graph and:
@@ -1613,13 +1678,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
      *  NOTE: We cache 'helper visualization' setting, as the helper rendering requires
      *        additional information that needs not be stored otherwise.
      */
-    system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection, view);
-
-    renderer_ptr->current_projection           = projection;
-    renderer_ptr->current_view                 = view;
-    renderer_ptr->current_vp                   = vp;
-    renderer_ptr->current_helper_visualization = helper_visualization;
-
     scene_graph_traverse(graph,
                          _ogl_scene_renderer_new_model_matrix,
                          NULL, /* insert_camera_proc */
@@ -1712,9 +1770,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
         }
 
         /* Update ogl_uber's camera location and vp properties */
-        ogl_uber_set_shader_general_property(material_uber,
-                                             OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
-                                             camera_location);
+        if (camera_location != NULL)
+        {
+            ogl_uber_set_shader_general_property(material_uber,
+                                                 OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+                                                 camera_location);
+        }
+
         ogl_uber_set_shader_general_property(material_uber,
                                              OGL_UBER_GENERAL_PROPERTY_VP,
                                              vp);

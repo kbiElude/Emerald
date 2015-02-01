@@ -93,3 +93,22 @@ PUBLIC EMERALD_API void system_math_vector_normalize3(__in_ecount(3)  const floa
         LOG_ERROR("system_math_vector_normalize3() called for a vector of length 0.");
     }
 }
+
+/** TODO */
+PUBLIC EMERALD_API void system_math_vector_normalize4_use_vec3_length(__in_ecount(4)  const float* a,
+                                                                      __out_ecount(4)       float* result)
+{
+    float len = system_math_vector_length3(a);
+
+    if (len >= epsilon)
+    {
+        result[0] = a[0] / len;
+        result[1] = a[1] / len;
+        result[2] = a[2] / len;
+        result[3] = a[3] / len;
+    }
+    else
+    {
+        LOG_ERROR("system_math_vector_normalize4_use_vec3_length() called for a vector of length 0.");
+    }
+}

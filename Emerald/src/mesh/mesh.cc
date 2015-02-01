@@ -1210,13 +1210,13 @@ PRIVATE void _mesh_update_aabb(__in __notnull _mesh* mesh_ptr)
              n_dimension < 3; /* x, y, z */
            ++n_dimension)
     {
-        _mesh_layer* layer_ptr = NULL;
-
         mesh_ptr->aabb_max[n_dimension] = 0;
         mesh_ptr->aabb_min[n_dimension] = 0;
     }
 
-    for (uint32_t n_layer = 0; n_layer < n_layers; ++n_layer)
+    for (uint32_t n_layer = 0;
+                  n_layer < n_layers;
+                ++n_layer)
     {
         _mesh_layer* layer_ptr = NULL;
 

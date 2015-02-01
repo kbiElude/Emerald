@@ -140,6 +140,10 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_mat
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
 
+    ASSERT_DEBUG_SYNC(left   < right, "");
+    ASSERT_DEBUG_SYNC(bottom < top,   "");
+    ASSERT_DEBUG_SYNC(z_near < z_far, "");
+
     float a = 2.0f / (right  - left);
     float b = 2.0f / (bottom - top);
 
@@ -409,10 +413,7 @@ PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(__in            __no
     _system_matrix4x4_descriptor* mvp_ptr = (_system_matrix4x4_descriptor*) mvp;
 
     if (mvp_ptr->is_data_dirty)
-    {
-        _system_matrix4x4_generate_column_major_data(mvp_ptr);
-    }
-
+    _system_matrix4x4_generate_column_major_data(mvp_ptr);
     /* The idea behind this implementation is a fairly straightforward derivation of how clipping works:
      *
      * Let p = (x, y, z, 1)

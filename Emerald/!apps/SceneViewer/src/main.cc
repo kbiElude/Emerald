@@ -361,7 +361,7 @@ void _render_scene(ogl_context          context,
                                           &znear);
 
                 float new_zfar = 20.0f;
-                float new_znear = 0.01f;
+                float new_znear = 0.1f;
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);
@@ -447,7 +447,8 @@ void _render_scene(ogl_context          context,
                                                  &scene_camera_transformation_matrix);
 
                     /* For the view matrix, we need to take the inverse of the transformation matrix */
-                    system_matrix4x4_set_from_matrix4x4(view, scene_camera_transformation_matrix);
+                    system_matrix4x4_set_from_matrix4x4(view,
+                                                        scene_camera_transformation_matrix);
                     system_matrix4x4_invert            (view);
 
                     const float* view_matrix_data = system_matrix4x4_get_row_major_data(view);
@@ -475,8 +476,10 @@ void _render_scene(ogl_context          context,
                                           camera,
                                           camera_location,
                                           RENDER_MODE_FORWARD,
-                                          SHADOW_MAPPING_TYPE_PLAIN,
-                                          //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS | HELPER_VISUALIZATION_LIGHTS),
+                                          //SHADOW_MAPPING_TYPE_PLAIN,
+                                          SHADOW_MAPPING_TYPE_DISABLED,
+                                          //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS),
+                                          //HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           HELPER_VISUALIZATION_NONE,
                                           frame_time
                                          );
@@ -586,7 +589,7 @@ void _setup_ui()
     float next_ui_control_x1y1    [2];
     float prev_ui_control_x1y1x2y2[4];
     float texture_preview_x1y1    [2] = {0.1f, 0.1f};
-    float texture_preview_max_size[2] = {0.75f, 0.75f};
+    float texture_preview_max_size[2] = {0.5f, 0.5f};
 
     ogl_ui_get_property(_ui_active_camera_control,
                         OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
@@ -606,7 +609,7 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
-#if 0
+#if 1
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,

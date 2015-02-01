@@ -314,26 +314,44 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
                           n_mesh < preview_ptr->data_n_meshes;
                         ++n_mesh)
         {
-            float*     aabb_max_ptr  = NULL;
-            float*     aabb_min_ptr  = NULL;
-            uint32_t   mesh_id       = -1;
-            scene_mesh mesh_instance = scene_get_mesh_instance_by_index(preview_ptr->scene,
-                                                                        n_mesh);
-            mesh       mesh          = NULL;
+            float*     aabb_max_ptr              = NULL;
+            float*     aabb_min_ptr              = NULL;
+            uint32_t   mesh_id                   = -1;
+            scene_mesh mesh_instance             = scene_get_mesh_instance_by_index(preview_ptr->scene,
+                                                                                    n_mesh);
+            mesh       mesh_current              = NULL;
+            mesh       mesh_instantiation_parent = NULL;
 
             scene_mesh_get_property(mesh_instance,
                                     SCENE_MESH_PROPERTY_ID,
                                    &mesh_id);
             scene_mesh_get_property(mesh_instance,
                                     SCENE_MESH_PROPERTY_MESH,
-                                   &mesh);
+                                   &mesh_current);
+
+            mesh_get_property(mesh_current,
+                              MESH_PROPERTY_INSTANTIATION_PARENT,
+                             &mesh_instantiation_parent);
+
+            if (mesh_instantiation_parent != NULL)
+            {
+                mesh_current = mesh_instantiation_parent;
+            }
+
+            mesh_get_property(mesh_current,
+                              MESH_PROPERTY_MODEL_AABB_MAX,
+                              &aabb_max_ptr);
+            mesh_get_property(mesh_current,
+                              MESH_PROPERTY_MODEL_AABB_MIN,
+                              &aabb_min_ptr);
+
+            ASSERT_DEBUG_SYNC(aabb_max_ptr[0] != aabb_min_ptr[0] &&
+                              aabb_max_ptr[1] != aabb_min_ptr[1] &&
+                              aabb_max_ptr[2] != aabb_min_ptr[2],
+                              "Invalid AABB");
 
             if (n_iteration == 0)
             {
-                mesh_get_property(mesh,
-                                  MESH_PROPERTY_MODEL_AABB_MAX,
-                                  &aabb_max_ptr);
-
                 traveller_ptr = ub_data + 4 /* vec4 */ * mesh_id;
 
                 memcpy(traveller_ptr,
@@ -342,10 +360,6 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
             }
             else
             {
-                mesh_get_property(mesh,
-                              MESH_PROPERTY_MODEL_AABB_MIN,
-                              &aabb_min_ptr);
-
                 traveller_ptr = ub_data + 4 /* vec4 */ * (preview_ptr->data_n_meshes + mesh_id);
 
                 memcpy(traveller_ptr,

@@ -43,6 +43,20 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_COUNT
 };
 
+#if 0
+    TODO: support
+
+    typedef enum scene_light_shadow_map_bias
+    {
+        /* No bias at all */
+        SCENE_LIGHT_SHADOW_MAP_BIAS_NONE,
+        /* Uses a constant bias value */
+        SCENE_LIGHT_SHADOW_MAP_BIAS_CONSTANT,
+        /* Uses a bias value that adapts on a per-sample basis (acos(tan(dot(normal, light))) */
+        SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE,
+    };
+#endif
+
 /** TODO */
 PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_hashed_ansi_string name);
 
