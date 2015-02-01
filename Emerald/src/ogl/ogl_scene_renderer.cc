@@ -31,6 +31,9 @@
 #include "system/system_variant.h"
 #include <float.h>
 
+#define DEFAULT_AABB_MAX_VALUE (FLT_MIN)
+#define DEFAULT_AABB_MIN_VALUE (FLT_MAX)
+
 /* Forward declarations */
 PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents         (__in  __notnull system_hash64map                               cached_materials_map);
 PRIVATE void _ogl_scene_renderer_deinit_resizable_vector_for_resource_pool(                system_resource_pool_block);
@@ -1014,66 +1017,77 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                       current_light,
                                       true); /* should_enable */
 
-            switch (current_light_type)
+            if (renderer_ptr->current_aabb_max[0] != renderer_ptr->current_aabb_min[0] &&
+                renderer_ptr->current_aabb_max[1] != renderer_ptr->current_aabb_min[1] &&
+                renderer_ptr->current_aabb_max[2] != renderer_ptr->current_aabb_min[2])
             {
-                case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                switch (current_light_type)
                 {
-                    ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
-                                                                          renderer_ptr->current_aabb_min,
-                                                                          renderer_ptr->current_aabb_max,
-                                                                         &sm_view_matrix,
-                                                                         &sm_projection_matrix,
-                                                                          sm_camera_location);
+                    case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                    {
+                        ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
+                                                                              renderer_ptr->current_aabb_min,
+                                                                              renderer_ptr->current_aabb_max,
+                                                                             &sm_view_matrix,
+                                                                             &sm_projection_matrix,
+                                                                              sm_camera_location);
 
-                    break;
-                }
+                        break;
+                    }
 
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Unsupported light encountered for enabled plain shadow mapping.");
-                }
-           } /* switch (current_light_type) */
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Unsupported light encountered for enabled plain shadow mapping.");
+                    }
+                } /* switch (current_light_type) */
 
-            /* Update light's shadow VP matrix */
-            ASSERT_DEBUG_SYNC(sm_view_matrix       != NULL &&
-                              sm_projection_matrix != NULL,
-                              "Projection/view matrix for shadow map rendering is NULL");
+                /* Update light's shadow VP matrix */
+                ASSERT_DEBUG_SYNC(sm_view_matrix       != NULL &&
+                                  sm_projection_matrix != NULL,
+                                  "Projection/view matrix for shadow map rendering is NULL");
 
-            scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
-                                    &sm_vp_matrix);
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
+                                        &sm_vp_matrix);
 
-            system_matrix4x4_set_from_matrix4x4   (sm_vp_matrix,
-                                                   sm_projection_matrix);
-            system_matrix4x4_multiply_by_matrix4x4(sm_vp_matrix,
-                                                   sm_view_matrix);
+                system_matrix4x4_set_from_matrix4x4   (sm_vp_matrix,
+                                                       sm_projection_matrix);
+                system_matrix4x4_multiply_by_matrix4x4(sm_vp_matrix,
+                                                       sm_view_matrix);
 
-           /* NOTE: This call is recursive (this function was called by exactly the same function,
-            *       but we're requesting no shadow maps this time AND the scene graph has already
-            *       been traversed, so it should be fairly inexpensive and focus solely on drawing
-            *       geometry.
-            */
-           ogl_scene_renderer_render_scene_graph( (ogl_scene_renderer) renderer_ptr,
-                                                  sm_view_matrix,
-                                                  sm_projection_matrix,
-                                                  NULL, /* camera */
-                                                  NULL, /* camera_location */
-                                                  RENDER_MODE_NO_RASTERIZATION,
-                                                  SHADOW_MAPPING_TYPE_DISABLED,
-                                                  HELPER_VISUALIZATION_NONE,
-                                                  frame_time);
+                /* NOTE: This call is recursive (this function was called by exactly the same function,
+                 *       but we're requesting no shadow maps this time AND the scene graph has already
+                 *       been traversed, so it should be fairly inexpensive and focus solely on drawing
+                 *       geometry.
+                 */
+                ogl_scene_renderer_render_scene_graph( (ogl_scene_renderer) renderer_ptr,
+                                                       sm_view_matrix,
+                                                       sm_projection_matrix,
+                                                       NULL, /* camera */
+                                                       NULL, /* camera_location */
+                                                       RENDER_MODE_NO_RASTERIZATION,
+                                                       SHADOW_MAPPING_TYPE_DISABLED,
+                                                       HELPER_VISUALIZATION_NONE,
+                                                       frame_time);
+           } /* if (it makes sense to render SM) */
 
            ogl_shadow_mapping_toggle(shadow_mapping,
                                      current_light,
                                      false); /* should_enable */
 
            /* Clean up */
-           system_matrix4x4_release(sm_projection_matrix);
-           sm_projection_matrix = NULL;
+           if (sm_projection_matrix != NULL)
+           {
+                system_matrix4x4_release(sm_projection_matrix);
+                sm_projection_matrix = NULL;
+           }
 
-           system_matrix4x4_release(sm_view_matrix);
-           sm_view_matrix = NULL;
+           if (sm_view_matrix != NULL)
+           {
+                system_matrix4x4_release(sm_view_matrix);
+                sm_view_matrix = NULL;
+           }
         } /* if (current_light_is_shadow_caster) */
     } /* for (all scene lights) */
 }
@@ -1608,12 +1622,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
                                                          view);
 
-    renderer_ptr->current_aabb_max[0] = FLT_MIN;
-    renderer_ptr->current_aabb_max[1] = FLT_MIN;
-    renderer_ptr->current_aabb_max[2] = FLT_MIN;
-    renderer_ptr->current_aabb_min[0] = FLT_MAX;
-    renderer_ptr->current_aabb_min[1] = FLT_MAX;
-    renderer_ptr->current_aabb_min[2] = FLT_MAX;
+    renderer_ptr->current_aabb_max[0] = DEFAULT_AABB_MAX_VALUE;
+    renderer_ptr->current_aabb_max[1] = DEFAULT_AABB_MAX_VALUE;
+    renderer_ptr->current_aabb_max[2] = DEFAULT_AABB_MAX_VALUE;
+    renderer_ptr->current_aabb_min[0] = DEFAULT_AABB_MIN_VALUE;
+    renderer_ptr->current_aabb_min[1] = DEFAULT_AABB_MIN_VALUE;
+    renderer_ptr->current_aabb_min[2] = DEFAULT_AABB_MIN_VALUE;
 
     renderer_ptr->current_camera               = camera;
     renderer_ptr->current_projection           = projection;
@@ -1644,15 +1658,19 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                              renderer,
                              frame_time);
 
-#if 0
-        LOG_INFO("Camera AABB:[%.4f, %.4f, %.4f]x[%.4f, %.4f, %.4f]",
-                 renderer_ptr->current_aabb_min[0],
-                 renderer_ptr->current_aabb_min[1],
-                 renderer_ptr->current_aabb_min[2],
-                 renderer_ptr->current_aabb_max[0],
-                 renderer_ptr->current_aabb_max[1],
-                 renderer_ptr->current_aabb_max[2]);
-#endif
+        /* Proceed with shadow map generation even if no meshes are in the range.
+         * The SM still needs to be cleared! */
+        if (renderer_ptr->current_aabb_max[0] == DEFAULT_AABB_MAX_VALUE ||
+            renderer_ptr->current_aabb_min[0] == DEFAULT_AABB_MIN_VALUE)
+        {
+            memset(renderer_ptr->current_aabb_max,
+                   0,
+                   sizeof(renderer_ptr->current_aabb_max) );
+
+            memset(renderer_ptr->current_aabb_min,
+                   0,
+                   sizeof(renderer_ptr->current_aabb_min) );
+        }
 
         /* Carry on with the shadow map preparation */
         _ogl_scene_renderer_render_shadow_maps(renderer,

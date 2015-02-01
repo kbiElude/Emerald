@@ -361,7 +361,7 @@ void _render_scene(ogl_context          context,
                                           &znear);
 
                 float new_zfar = 20.0f;
-                float new_znear = 0.1f;
+                float new_znear = 1.0f;
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);
@@ -390,7 +390,7 @@ void _render_scene(ogl_context          context,
                 projection = system_matrix4x4_create_perspective_projection_matrix(45.0f,
                                                                                    1280 / 720.0f,
                                                                                    1.0f,
-                                                                                   10000.0f);
+                                                                                   40.0f);
 
                 if (_ui_active_path_control != NULL)
                 {
@@ -476,8 +476,8 @@ void _render_scene(ogl_context          context,
                                           camera,
                                           camera_location,
                                           RENDER_MODE_FORWARD,
-                                          //SHADOW_MAPPING_TYPE_PLAIN,
-                                          SHADOW_MAPPING_TYPE_DISABLED,
+                                          SHADOW_MAPPING_TYPE_PLAIN,
+                                          //SHADOW_MAPPING_TYPE_DISABLED,
                                           //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS),
                                           //HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           HELPER_VISUALIZATION_NONE,
@@ -609,7 +609,7 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
-#if 1
+#if 0
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,

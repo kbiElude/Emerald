@@ -373,9 +373,9 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                       "Light direction vector is not normalized");
 
     /* sanity checks */
-    ASSERT_DEBUG_SYNC(aabb_min_world[0] < aabb_max_world[0] &&
-                      aabb_min_world[1] < aabb_max_world[1] &&
-                      aabb_min_world[2] < aabb_max_world[2],
+    ASSERT_DEBUG_SYNC(aabb_min_world[0] <= aabb_max_world[0] &&
+                      aabb_min_world[1] <= aabb_max_world[1] &&
+                      aabb_min_world[2] <= aabb_max_world[2],
                       "AABB corruption");
 
     /* Move away from the frustum centroid in the light direction, using the max z
