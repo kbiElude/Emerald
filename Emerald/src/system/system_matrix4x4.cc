@@ -145,18 +145,18 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_mat
     ASSERT_DEBUG_SYNC(z_near < z_far, "");
 
     float a = 2.0f / (right  - left);
-    float b = 2.0f / (bottom - top);
+    float b = 2.0f / (top    - bottom);
 
-    /* D3DXMatrixOrthoRH() */
+    /* D3DXMatrixOrthoOffCenterRH () */
     new_matrix_ptr->data[0 ]      = a;
     new_matrix_ptr->data[1 ]      = 0;
     new_matrix_ptr->data[2 ]      = 0;
-    new_matrix_ptr->data[3 ]      = 0.0f;
+    new_matrix_ptr->data[3 ]      = (left + right) / (left - right);
 
     new_matrix_ptr->data[4 ]      = 0;
     new_matrix_ptr->data[5 ]      = b;
     new_matrix_ptr->data[6 ]      = 0;
-    new_matrix_ptr->data[7 ]      = 0.0f;
+    new_matrix_ptr->data[7 ]      = (top + bottom) / (bottom - top);
 
     new_matrix_ptr->data[8 ]      = 0;
     new_matrix_ptr->data[9 ]      = 0;

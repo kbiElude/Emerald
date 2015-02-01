@@ -29,6 +29,7 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 #include "system/system_variant.h"
+#include <float.h>
 
 /* Forward declarations */
 PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents         (__in  __notnull system_hash64map                               cached_materials_map);
@@ -1607,12 +1608,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
                                                          view);
 
-    memset(renderer_ptr->current_aabb_max,
-           0,
-           sizeof(renderer_ptr->current_aabb_max) );
-    memset(renderer_ptr->current_aabb_min,
-           0,
-           sizeof(renderer_ptr->current_aabb_min) );
+    renderer_ptr->current_aabb_max[0] = FLT_MIN;
+    renderer_ptr->current_aabb_max[1] = FLT_MIN;
+    renderer_ptr->current_aabb_max[2] = FLT_MIN;
+    renderer_ptr->current_aabb_min[0] = FLT_MAX;
+    renderer_ptr->current_aabb_min[1] = FLT_MAX;
+    renderer_ptr->current_aabb_min[2] = FLT_MAX;
 
     renderer_ptr->current_camera               = camera;
     renderer_ptr->current_projection           = projection;
@@ -1643,6 +1644,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                              renderer,
                              frame_time);
 
+#if 0
         LOG_INFO("Camera AABB:[%.4f, %.4f, %.4f]x[%.4f, %.4f, %.4f]",
                  renderer_ptr->current_aabb_min[0],
                  renderer_ptr->current_aabb_min[1],
@@ -1650,6 +1652,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                  renderer_ptr->current_aabb_max[0],
                  renderer_ptr->current_aabb_max[1],
                  renderer_ptr->current_aabb_max[2]);
+#endif
 
         /* Carry on with the shadow map preparation */
         _ogl_scene_renderer_render_shadow_maps(renderer,

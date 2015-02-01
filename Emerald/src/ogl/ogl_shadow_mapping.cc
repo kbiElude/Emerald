@@ -184,7 +184,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                          << light_shadow_coord_var_name_sstream.str()
                          << ".xy, 0).x < ("
                          << light_shadow_coord_var_name_sstream.str()
-                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0)) ? 0.0 : 1.0);\n";
+                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0)) ? 0.1 : 1.0);\n";
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 
@@ -381,22 +381,21 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
     /* Move away from the frustum centroid in the light direction, using the max z
      * value we've retrieved.
      */
-    const float frustum_centroid_world[3] =
+    const float sm_eye_world[3] =
     {
-        /* Position is not really relevant here */
-        0.0f,
-        0.0f,
-        0.0f,
+        aabb_min_world[0] + (aabb_max_world[0] - aabb_min_world[0]) * 0.5f,
+        aabb_min_world[1] + (aabb_max_world[1] - aabb_min_world[1]) * 0.5f,
+        aabb_min_world[2] + (aabb_max_world[2] - aabb_min_world[2]) * 0.5f,
     };
-    const float sm_camera_location_world[4] =
+    const float sm_lookat_world[4] =
     {
-        -light_direction_vector[0],
-        -light_direction_vector[1],
-        -light_direction_vector[2],
+        sm_eye_world[0] + light_direction_vector[0],
+        sm_eye_world[1] + light_direction_vector[1],
+        sm_eye_world[2] + light_direction_vector[2],
     };
 
     memcpy(out_camera_position,
-           sm_camera_location_world,
+           sm_eye_world,
            sizeof(float) * 3);
 
     /* Set up the light's view matrix */
@@ -406,19 +405,19 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
         0.0f
     };
 
-    *out_view_matrix = system_matrix4x4_create_lookat_matrix(sm_camera_location_world, /* eye_position */
-                                                             frustum_centroid_world,   /* lookat_point */
-                                                             up_vector);               /* up_vector */
+    *out_view_matrix = system_matrix4x4_create_lookat_matrix(sm_eye_world,    /* eye_position */
+                                                             sm_lookat_world, /* lookat_point */
+                                                             up_vector);      /* up_vector */
 
     /* Transfer the AABB to the light's eye space */
-    const float  aabb_vec4_fbl_world[4] = {aabb_min_world[0], aabb_max_world[1], aabb_max_world[2], 1.0f};
-    const float  aabb_vec4_fbr_world[4] = {aabb_max_world[0], aabb_max_world[1], aabb_max_world[2], 1.0f};
-    const float  aabb_vec4_ftl_world[4] = {aabb_min_world[0], aabb_min_world[1], aabb_max_world[2], 1.0f};
-    const float  aabb_vec4_ftr_world[4] = {aabb_max_world[0], aabb_min_world[1], aabb_max_world[2], 1.0f};
-    const float  aabb_vec4_nbl_world[4] = {aabb_min_world[0], aabb_max_world[1], aabb_min_world[2], 1.0f};
-    const float  aabb_vec4_nbr_world[4] = {aabb_max_world[0], aabb_max_world[1], aabb_min_world[2], 1.0f};
-    const float  aabb_vec4_ntl_world[4] = {aabb_min_world[0], aabb_min_world[1], aabb_min_world[2], 1.0f};
-    const float  aabb_vec4_ntr_world[4] = {aabb_max_world[0], aabb_min_world[1], aabb_min_world[2], 1.0f};
+    const float  aabb_vec4_fbl_world[4] = {aabb_min_world[0], aabb_min_world[1], aabb_max_world[2], 1.0f};
+    const float  aabb_vec4_fbr_world[4] = {aabb_max_world[0], aabb_min_world[1], aabb_max_world[2], 1.0f};
+    const float  aabb_vec4_ftl_world[4] = {aabb_min_world[0], aabb_max_world[1], aabb_max_world[2], 1.0f};
+    const float  aabb_vec4_ftr_world[4] = {aabb_max_world[0], aabb_max_world[1], aabb_max_world[2], 1.0f};
+    const float  aabb_vec4_nbl_world[4] = {aabb_min_world[0], aabb_min_world[1], aabb_min_world[2], 1.0f};
+    const float  aabb_vec4_nbr_world[4] = {aabb_max_world[0], aabb_min_world[1], aabb_min_world[2], 1.0f};
+    const float  aabb_vec4_ntl_world[4] = {aabb_min_world[0], aabb_max_world[1], aabb_min_world[2], 1.0f};
+    const float  aabb_vec4_ntr_world[4] = {aabb_max_world[0], aabb_max_world[1], aabb_min_world[2], 1.0f};
           float  obb_vec4_fbl_light[4];
           float  obb_vec4_fbr_light[4];
           float  obb_vec4_ftl_light[4];
@@ -463,7 +462,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
         obb_vec4_nbl_light,
         obb_vec4_nbr_light,
         obb_vec4_ntl_light,
-        obb_vec4_ntr_light
+        obb_vec4_ntr_light,
     };
     float          obb_max_light[3]     = {obb_vec4_fbl_light[0], obb_vec4_fbl_light[1], obb_vec4_fbl_light[2]};
     float          obb_min_light[3]     = {obb_vec4_fbl_light[0], obb_vec4_fbl_light[1], obb_vec4_fbl_light[2]};
@@ -506,13 +505,17 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                       obb_min_light[2] < obb_max_light[2],
                       "Something's nuts with the OBB min/max calcs");
 
-    /* Use the AABB data to compute the reuslt projection matrix */
-    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(obb_min_light[0],  /* left   */
-                                                                             obb_max_light[0],  /* right  */
-                                                                             obb_min_light[1],  /* bottom */
-                                                                             obb_max_light[1],  /* top    */
-                                                                             obb_min_light[2],  /* near   */
-                                                                             obb_max_light[2]); /* far    */
+    /* Use the AABB data to compute the reuslt projection matrix.
+     *
+     * We're doing a bit of heuristical approach with far/near ranges here
+     * but this solution seems to do the trick.
+     */
+    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(obb_min_light[0],                           /* left   */
+                                                                             obb_max_light[0],                           /* right  */
+                                                                             obb_min_light[1],                           /* bottom */
+                                                                             obb_max_light[1],                           /* top    */
+                                                                                 -obb_max_light[2]  + obb_min_light[2],  /* near   */
+                                                                             fabs(obb_min_light[2]) + obb_max_light[2]); /* far    */
 }
 
 /** Please see header for spec */
