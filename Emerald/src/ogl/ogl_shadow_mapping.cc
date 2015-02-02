@@ -185,9 +185,9 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                          << light_shadow_coord_var_name_sstream.str()
                          << ".xy, "
                          << light_shadow_coord_var_name_sstream.str()
-//                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n" <- slowest
-//                         << ".z - 0.001 * acos(clamp(light" << n_light << "_LdotN_clamped, 0.0, 1.0)) )\n"     <- approximation of the above
-                         << ".z)\n"                                                                           // <- works w/o bias with shadow textures due to multi-taps - HW-dependent!
+//                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n"// <- slowest
+//                         << ".z - 0.001 * acos(clamp(light" << n_light << "_LdotN_clamped, 0.0, 1.0)) )\n"    //<- approximation of the above
+                         << ".z)\n"                                                                             // <- works OK if front face culling is enabled.
                          << ", 0.0);\n";
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
@@ -612,7 +612,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
             {
                 dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
                                                           GL_TEXTURE_2D,
-                                                          GL_TEXTURE_MIN_FILTER,
+                                                          GL_TEXTURE_MAG_FILTER,
                                                           GL_LINEAR);
 
                 break;
@@ -622,7 +622,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
             {
                 dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
                                                           GL_TEXTURE_2D,
-                                                          GL_TEXTURE_MIN_FILTER,
+                                                          GL_TEXTURE_MAG_FILTER,
                                                           GL_NEAREST);
 
                 break;
@@ -637,7 +637,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
         dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
                                                   GL_TEXTURE_2D,
-                                                  GL_TEXTURE_MAG_FILTER,
+                                                  GL_TEXTURE_MIN_FILTER,
                                                   GL_NEAREST);
         dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
                                                   GL_TEXTURE_2D,
