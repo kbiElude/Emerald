@@ -187,7 +187,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                          << light_shadow_coord_var_name_sstream.str()
 //                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n" <- slowest
 //                         << ".z - 0.001 * acos(clamp(light" << n_light << "_LdotN_clamped, 0.0, 1.0)) )\n"     <- approximation of the above
-                         << ".z)\n"                                                                           // <- seems to work w/o bias with shadow textures..?
+                         << ".z)\n"                                                                           // <- works w/o bias with shadow textures due to multi-taps - HW-dependent!
                          << ", 0.0);\n";
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
@@ -559,9 +559,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
          * Note that it is an error for scene_light instance to hold
          * a shadow map texture at this point.
          */
-        ogl_texture light_shadow_map                = NULL;
-        GLenum      light_shadow_map_internalformat = GL_NONE;
-        uint32_t    light_shadow_map_size[2]        = {0};
+        ogl_texture                      light_shadow_map                = NULL;
+        scene_light_shadow_map_filtering light_shadow_map_filtering      = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+        GLenum                           light_shadow_map_internalformat = GL_NONE;
+        uint32_t                         light_shadow_map_size[2]        = {0};
 
 #if 0
         Taking the check out for UI preview of shadow maps.
@@ -578,6 +579,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 #endif
 
         /* Set up the shadow map */
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
+                                &light_shadow_map_filtering);
         scene_light_get_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
                                 &light_shadow_map_internalformat);
@@ -602,13 +606,38 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         ASSERT_DEBUG_SYNC(light_shadow_map != NULL,
                          "Could not retrieve a shadow map texture from the texture pool.");
 
+        switch (light_shadow_map_filtering)
+        {
+            case SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF:
+            {
+                dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
+                                                          GL_TEXTURE_2D,
+                                                          GL_TEXTURE_MIN_FILTER,
+                                                          GL_LINEAR);
+
+                break;
+            }
+
+            case SCENE_LIGHT_SHADOW_MAP_FILTERING_PLAIN:
+            {
+                dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
+                                                          GL_TEXTURE_2D,
+                                                          GL_TEXTURE_MIN_FILTER,
+                                                          GL_NEAREST);
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized shadow map filtering mode");
+            }
+        } /* switch (light_shadow_map_filtering) */
+
         dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
                                                   GL_TEXTURE_2D,
                                                   GL_TEXTURE_MAG_FILTER,
-                                                  GL_NEAREST);
-        dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
-                                                  GL_TEXTURE_2D,
-                                                  GL_TEXTURE_MIN_FILTER,
                                                   GL_NEAREST);
         dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
                                                   GL_TEXTURE_2D,
@@ -622,6 +651,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         scene_light_set_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
                                 &light_shadow_map);
+
         /* Set up color & depth masks */
         entry_points->pGLColorMask(GL_FALSE,
                                    GL_FALSE,

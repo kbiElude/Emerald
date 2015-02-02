@@ -21,6 +21,7 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_NAME,                      /* Not settable, system_hashed_ansi_string                              */
     SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,          /* Settable,     scene_graph_node. Set in run-time.                     */
     SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,     /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,      /* Settable,     scene_light_shadow_map_filtering.                      */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT, /* Settable,     ogl_texture_internalformat                             */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,           /* Settable,     uint[2].                                               */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,        /* Settable,     ogl_texture. Set in run-time.                          */
@@ -42,6 +43,16 @@ typedef enum scene_light_property
     /* Always last */
     SCENE_LIGHT_PROPERTY_COUNT
 };
+
+typedef enum
+{
+    /* Single splat should be enough for everybody! */
+    SCENE_LIGHT_SHADOW_MAP_FILTERING_PLAIN,
+    /* Well, maybe not? */
+    SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF,
+
+    SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN
+} scene_light_shadow_map_filtering;
 
 #if 0
     TODO: support
