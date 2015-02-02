@@ -161,7 +161,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_fs,
                                                       VARIABLE_TYPE_UNIFORM,
                                                       LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_SAMPLER2D,
+                                                      TYPE_SAMPLER2DSHADOW,
                                                       0,     /* array_size */
                                                       0,     /* uniform_block */
                                                       shadow_map_sampler_var_name_has,
@@ -178,6 +178,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
 
     code_snippet_sstream << "float "
                          << light_visibility_var_name_sstream.str()
+#if 0
                          << " = (textureLod("
                          << shadow_map_sampler_var_name_sstream.str()
                          << ", "
@@ -185,6 +186,17 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                          << ".xy, 0).x < ("
                          << light_shadow_coord_var_name_sstream.str()
                          << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0)) ? 0.1 : 1.0);\n";
+#else
+                         << " = 0.1 + 0.9 * textureLod("
+                         << shadow_map_sampler_var_name_sstream.str()
+                         << ", vec3("
+                         << light_shadow_coord_var_name_sstream.str()
+                         << ".xy, "
+                         << light_shadow_coord_var_name_sstream.str()
+                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n"
+                         << ", 0.0);\n";
+
+#endif
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 

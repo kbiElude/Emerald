@@ -1001,6 +1001,14 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                                      GL_TEXTURE_2D,
                                                      GL_TEXTURE_MIN_FILTER,
                                                      GL_NEAREST);
+            dsa_entrypoints->pGLTextureParameteriEXT(current_light_shadow_map,
+                                                     GL_TEXTURE_2D,
+                                                     GL_TEXTURE_COMPARE_FUNC,
+                                                     GL_LESS);
+            dsa_entrypoints->pGLTextureParameteriEXT(current_light_shadow_map,
+                                                     GL_TEXTURE_2D,
+                                                     GL_TEXTURE_COMPARE_MODE,
+                                                     GL_COMPARE_REF_TO_TEXTURE);
 
             /* Assign the shadow map texture to the light */
             scene_light_set_property(current_light,
