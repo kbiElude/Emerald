@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -22,7 +22,8 @@ typedef struct _ogl_samplers
     _ogl_samplers()
     {
         context  = NULL;
-        samplers = system_resizable_vector_create(4 /* capacity */, sizeof(ogl_sampler) );
+        samplers = system_resizable_vector_create(4 /* capacity */,
+                                                  sizeof(ogl_sampler) );
     }
 
     ~_ogl_samplers()
@@ -33,7 +34,8 @@ typedef struct _ogl_samplers
         {
             ogl_sampler sampler = NULL;
 
-            while (system_resizable_vector_pop(samplers, &sampler) )
+            while (system_resizable_vector_pop(samplers,
+                                              &sampler) )
             {
                 ogl_sampler_release(sampler);
 
@@ -178,11 +180,14 @@ PUBLIC ogl_samplers ogl_samplers_create(__in __notnull ogl_context context)
 {
     _ogl_samplers* samplers_ptr = new (std::nothrow) _ogl_samplers;
 
-    ASSERT_ALWAYS_SYNC(samplers_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(samplers_ptr != NULL,
+                       "Out of memory");
+
     if (samplers_ptr != NULL)
     {
         samplers_ptr->context  = context;
-        samplers_ptr->samplers = system_resizable_vector_create(4 /* capacity */, sizeof(ogl_sampler) );
+        samplers_ptr->samplers = system_resizable_vector_create(4 /* capacity */,
+                                                                sizeof(ogl_sampler) );
     }
 
     return (ogl_samplers) samplers_ptr;
@@ -191,15 +196,15 @@ PUBLIC ogl_samplers ogl_samplers_create(__in __notnull ogl_context context)
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __notnull ogl_samplers   samplers,
                                                         __in_ecount_opt(4)           const GLfloat* border_color,
-                                                        __in_opt                     GLenum*        mag_filter_ptr,
-                                                        __in_opt                     GLfloat*       max_lod_ptr,
-                                                        __in_opt                     GLenum*        min_filter_ptr,
-                                                        __in_opt                     GLfloat*       min_lod_ptr,
-                                                        __in_opt                     GLenum*        texture_compare_func_ptr,
-                                                        __in_opt                     GLenum*        texture_compare_mode_ptr,
-                                                        __in_opt                     GLenum*        wrap_r_ptr,
-                                                        __in_opt                     GLenum*        wrap_s_ptr,
-                                                        __in_opt                     GLenum*        wrap_t_ptr)
+                                                        __in_opt                     const GLenum*  mag_filter_ptr,
+                                                        __in_opt                     const GLfloat* max_lod_ptr,
+                                                        __in_opt                     const GLenum*  min_filter_ptr,
+                                                        __in_opt                     const GLfloat* min_lod_ptr,
+                                                        __in_opt                     const GLenum*  texture_compare_func_ptr,
+                                                        __in_opt                     const GLenum*  texture_compare_mode_ptr,
+                                                        __in_opt                     const GLenum*  wrap_r_ptr,
+                                                        __in_opt                     const GLenum*  wrap_s_ptr,
+                                                        __in_opt                     const GLenum*  wrap_t_ptr)
 {
     const _ogl_samplers* samplers_ptr = (const _ogl_samplers*) samplers;
     const uint32_t       n_samplers   = system_resizable_vector_get_amount_of_elements(samplers_ptr->samplers);
@@ -213,7 +218,9 @@ PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __not
     {
         ogl_sampler current_sampler = NULL;
 
-        if (system_resizable_vector_get_element_at(samplers_ptr->samplers, n_sampler, &current_sampler) )
+        if (system_resizable_vector_get_element_at(samplers_ptr->samplers,
+                                                   n_sampler,
+                                                  &current_sampler) )
         {
             GLfloat current_sampler_border_color[4]      = {0};
             GLenum  current_sampler_mag_filter           = GL_NONE;
@@ -226,16 +233,36 @@ PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __not
             GLenum  current_sampler_wrap_s               = GL_NONE;
             GLenum  current_sampler_wrap_t               = GL_NONE;
 
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_BORDER_COLOR,         &current_sampler_border_color);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_MAG_FILTER,           &current_sampler_mag_filter);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_MAX_LOD,              &current_sampler_max_lod);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_MIN_FILTER,           &current_sampler_min_filter);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_MIN_LOD,              &current_sampler_min_lod);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_TEXTURE_COMPARE_FUNC, &current_sampler_texture_compare_func);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_TEXTURE_COMPARE_MODE, &current_sampler_texture_compare_mode);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_WRAP_R,               &current_sampler_wrap_r);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_WRAP_S,               &current_sampler_wrap_s);
-            ogl_sampler_get_property(current_sampler, OGL_SAMPLER_PROPERTY_WRAP_T,               &current_sampler_wrap_t);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_BORDER_COLOR,
+                                    &current_sampler_border_color);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_MAG_FILTER,
+                                    &current_sampler_mag_filter);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_MAX_LOD,
+                                    &current_sampler_max_lod);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_MIN_FILTER,
+                                    &current_sampler_min_filter);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_MIN_LOD,
+                                    &current_sampler_min_lod);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_TEXTURE_COMPARE_FUNC,
+                                    &current_sampler_texture_compare_func);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_TEXTURE_COMPARE_MODE,
+                                    &current_sampler_texture_compare_mode);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_WRAP_R,
+                                    &current_sampler_wrap_r);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_WRAP_S,
+                                    &current_sampler_wrap_s);
+            ogl_sampler_get_property(current_sampler,
+                                     OGL_SAMPLER_PROPERTY_WRAP_T,
+                                    &current_sampler_wrap_t);
 
             if ((border_color             == NULL ||
                 (border_color             != NULL && fabs(current_sampler_border_color[0] - border_color[0]) < 1e-5f    &&
@@ -309,7 +336,8 @@ PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __not
 
         if (result != NULL)
         {
-            system_resizable_vector_push(samplers_ptr->samplers, result);
+            system_resizable_vector_push(samplers_ptr->samplers,
+                                         result);
         }
     }
 

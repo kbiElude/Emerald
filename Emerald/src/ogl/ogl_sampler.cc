@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -52,7 +52,9 @@ typedef struct _ogl_sampler
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_sampler, ogl_sampler, _ogl_sampler);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_sampler,
+                               ogl_sampler,
+                               _ogl_sampler);
 
 /* Forward declarations */
 #ifdef _DEBUG
@@ -97,8 +99,8 @@ PRIVATE void _ogl_sampler_release(__in __notnull __post_invalid void* arg)
 #endif
 
 /* Please see header for specification */
-PUBLIC EMERALD_API ogl_sampler ogl_sampler_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name)
+PUBLIC ogl_sampler ogl_sampler_create(__in __notnull ogl_context               context,
+                                      __in __notnull system_hashed_ansi_string name)
 {
     _ogl_sampler* new_sampler = new (std::nothrow) _ogl_sampler(context);
 
@@ -125,7 +127,8 @@ PUBLIC EMERALD_API ogl_sampler ogl_sampler_create(__in __notnull ogl_context    
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_sampler,
                                                        _ogl_sampler_release,
                                                        OBJECT_TYPE_OGL_SAMPLER,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Samplers\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Samplers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (ogl_sampler) new_sampler;
@@ -138,9 +141,9 @@ PUBLIC EMERALD_API GLuint ogl_sampler_get_id(__in __notnull ogl_sampler sampler)
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_sampler_get_property(__in  __notnull const ogl_sampler    sampler,
-                                                 __in            ogl_sampler_property property,
-                                                 __out           void*                out_result)
+PUBLIC void ogl_sampler_get_property(__in  __notnull const ogl_sampler    sampler,
+                                     __in            ogl_sampler_property property,
+                                     __out           void*                out_result)
 {
     const _ogl_sampler* sampler_ptr = (const _ogl_sampler*) sampler;
 
@@ -240,9 +243,9 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC EMERALD_API void ogl_sampler_set_property(__in __notnull ogl_sampler          sampler,
-                                                 __in           ogl_sampler_property property,
-                                                 __in           const void*          in_data)
+PUBLIC void ogl_sampler_set_property(__in __notnull ogl_sampler          sampler,
+                                     __in           ogl_sampler_property property,
+                                     __in           const void*          in_data)
 {
     _ogl_sampler*                     sampler_ptr = (_ogl_sampler*) sampler;
     const ogl_context_gl_entrypoints* entrypoints = NULL;
@@ -271,7 +274,9 @@ PUBLIC EMERALD_API void ogl_sampler_set_property(__in __notnull ogl_sampler     
     {
         case OGL_SAMPLER_PROPERTY_BORDER_COLOR:
         {
-            memcpy(sampler_ptr->border_color, (float*) in_data, sizeof(sampler_ptr->border_color) );
+            memcpy(sampler_ptr->border_color,
+                   (float*) in_data,
+                   sizeof(sampler_ptr->border_color) );
 
             entrypoints->pGLSamplerParameterfv(sampler_ptr->gl_id,
                                                GL_TEXTURE_BORDER_COLOR,

@@ -179,25 +179,16 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
 
     code_snippet_sstream << "float "
                          << light_visibility_var_name_sstream.str()
-#if 0
-                         << " = (textureLod("
-                         << shadow_map_sampler_var_name_sstream.str()
-                         << ", "
-                         << light_shadow_coord_var_name_sstream.str()
-                         << ".xy, 0).x < ("
-                         << light_shadow_coord_var_name_sstream.str()
-                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0)) ? 0.1 : 1.0);\n";
-#else
                          << " = 0.1 + 0.9 * textureLod("
                          << shadow_map_sampler_var_name_sstream.str()
                          << ", vec3("
                          << light_shadow_coord_var_name_sstream.str()
                          << ".xy, "
                          << light_shadow_coord_var_name_sstream.str()
-                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n"
+//                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n" <- slowest
+//                         << ".z - 0.001 * acos(clamp(light" << n_light << "_LdotN_clamped, 0.0, 1.0)) )\n"     <- approximation of the above
+                         << ".z)\n"                                                                           // <- seems to work w/o bias with shadow textures..?
                          << ", 0.0);\n";
-
-#endif
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 
