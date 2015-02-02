@@ -9,6 +9,7 @@
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
+#include "ogl/ogl_textures.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -548,31 +549,88 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                                              __in __notnull scene_light        light,
                                                              __in           bool               should_enable)
 {
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-    _ogl_shadow_mapping*              handler_ptr     = (_ogl_shadow_mapping*) handler;
-
-    /* Configure color/depth masks according to whether SM is being brought up or down */
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    _ogl_shadow_mapping*                                      handler_ptr      = (_ogl_shadow_mapping*) handler;
 
     ogl_context_get_property(handler_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+    ogl_context_get_property(handler_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entry_points);
 
     if (should_enable)
     {
-        ogl_texture light_shadow_map         = NULL;
-        uint32_t    light_shadow_map_size[2] = {0};
+        /* Grab a texture from the texture pool. It will serve as
+         * storage for the shadow map.
+         *
+         * Note that it is an error for scene_light instance to hold
+         * a shadow map texture at this point.
+         */
+        ogl_texture light_shadow_map                = NULL;
+        GLenum      light_shadow_map_internalformat = GL_NONE;
+        uint32_t    light_shadow_map_size[2]        = {0};
 
+#if 0
+        Taking the check out for UI preview of shadow maps.
+        #ifdef _DEBUG
+        {
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
+                                    &current_light_shadow_map);
+
+            ASSERT_DEBUG_SYNC(current_light_shadow_map == NULL,
+                              "Shadow map texture is already assigned to a scene_light instance!");
+        }
+        #endif /* _DEBUG */
+#endif
+
+        /* Set up the shadow map */
         scene_light_get_property(light,
-                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
-                                &light_shadow_map);
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
+                                &light_shadow_map_internalformat);
         scene_light_get_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
                                  light_shadow_map_size);
 
-        ASSERT_DEBUG_SYNC(light_shadow_map != NULL,
-                          "Shadow map is NULL");
+        ASSERT_DEBUG_SYNC(light_shadow_map_size[0] > 0 &&
+                          light_shadow_map_size[1] > 0,
+                          "Invalid shadow map size requested for a scene_light instance.");
 
+        light_shadow_map = ogl_textures_get_texture_from_pool(handler_ptr->context,
+                                                              OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
+                                                              1, /* n_mipmaps */
+                                                              light_shadow_map_internalformat,
+                                                              light_shadow_map_size[0],
+                                                              light_shadow_map_size[1],
+                                                              1,      /* base_mipmap_depth */
+                                                              0,      /* n_samples */
+                                                              false); /* fixed_samples_location */
+
+        ASSERT_DEBUG_SYNC(light_shadow_map != NULL,
+                         "Could not retrieve a shadow map texture from the texture pool.");
+
+        dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
+                                                  GL_TEXTURE_2D,
+                                                  GL_TEXTURE_MAG_FILTER,
+                                                  GL_NEAREST);
+        dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
+                                                  GL_TEXTURE_2D,
+                                                  GL_TEXTURE_MIN_FILTER,
+                                                  GL_NEAREST);
+        dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
+                                                  GL_TEXTURE_2D,
+                                                  GL_TEXTURE_COMPARE_FUNC,
+                                                  GL_LESS);
+        dsa_entry_points->pGLTextureParameteriEXT(light_shadow_map,
+                                                  GL_TEXTURE_2D,
+                                                  GL_TEXTURE_COMPARE_MODE,
+                                                  GL_COMPARE_REF_TO_TEXTURE);
+
+        scene_light_set_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
+                                &light_shadow_map);
         /* Set up color & depth masks */
         entry_points->pGLColorMask(GL_FALSE,
                                    GL_FALSE,
