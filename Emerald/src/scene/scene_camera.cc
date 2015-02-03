@@ -109,6 +109,9 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     }
 
     /* Calculate far/near plane properties */
+    ASSERT_DEBUG_SYNC(camera_ptr->ar != 0.0f,
+                      "AR for the camera is 0");
+
     float far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
     float far_plane_width   = far_plane_height              * camera_ptr->ar;
     float near_plane_height = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->znear;
@@ -255,7 +258,7 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     system_math_vector_minus3(far_plane_clipping_point,
                               up_mul_far_plane_height_half,
                               camera_ptr->frustum_far_bottom_right);
-    system_math_vector_minus3(camera_ptr->frustum_far_bottom_right,
+    system_math_vector_add3  (camera_ptr->frustum_far_bottom_right,
                               right_mul_far_plane_height_half,
                               camera_ptr->frustum_far_bottom_right);
 
@@ -287,7 +290,7 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     system_math_vector_minus3(near_plane_clipping_point,
                               up_mul_near_plane_height_half,
                               camera_ptr->frustum_near_bottom_right);
-    system_math_vector_minus3(camera_ptr->frustum_near_bottom_right,
+    system_math_vector_add3  (camera_ptr->frustum_near_bottom_right,
                               right_mul_near_plane_height_half,
                               camera_ptr->frustum_near_bottom_right);
 
@@ -660,12 +663,6 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 
         case SCENE_CAMERA_PROPERTY_FRUSTUM_CENTROID:
         {
-            if (camera_ptr->frustum_last_recalc_time != time)
-            {
-                _scene_camera_calculate_frustum(camera_ptr,
-                                                time);
-            }
-
             memcpy(out_result,
                    camera_ptr->frustum_centroid,
                    sizeof(camera_ptr->frustum_centroid) );

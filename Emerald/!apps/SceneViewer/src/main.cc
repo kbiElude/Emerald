@@ -360,8 +360,13 @@ void _render_scene(ogl_context          context,
                                           time,
                                           &znear);
 
-                float new_zfar = 20.0f;
+                float new_ar    = 1280.0f / 720.0f;
+                float new_zfar  = 20.0f;
                 float new_znear = 1.0f;
+
+                scene_camera_set_property(camera_ptr->camera,
+                                          SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
+                                         &new_ar);
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);

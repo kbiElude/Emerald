@@ -955,15 +955,14 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                       current_light,
                                       true); /* should_enable */
 
-            if (renderer_ptr->current_aabb_max[0] != renderer_ptr->current_aabb_min[0] &&
-                renderer_ptr->current_aabb_max[1] != renderer_ptr->current_aabb_min[1] &&
-                renderer_ptr->current_aabb_max[2] != renderer_ptr->current_aabb_min[2])
             {
                 switch (current_light_type)
                 {
                     case SCENE_LIGHT_TYPE_DIRECTIONAL:
                     {
                         ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
+                                                                              renderer_ptr->current_camera,
+                                                                              frame_time,
                                                                               renderer_ptr->current_aabb_min,
                                                                               renderer_ptr->current_aabb_max,
                                                                              &sm_view_matrix,
@@ -1591,7 +1590,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
         scene_graph_traverse(graph,
                              _ogl_scene_renderer_new_model_matrix,
                              NULL, /* insert_camera_proc */
-                             NULL, /* insert_light_proc  */
+                             _ogl_scene_renderer_update_light_properties,
                              _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass,
                              renderer,
                              frame_time);

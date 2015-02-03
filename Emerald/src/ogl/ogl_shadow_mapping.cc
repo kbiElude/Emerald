@@ -14,6 +14,7 @@
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
+#include "system/system_log.h"
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_window.h"
@@ -349,18 +350,24 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in 
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in            __notnull scene_light       light,
-                                                                  __in_ecount(3)  __notnull const float*      aabb_min_world,
-                                                                  __in_ecount(3)  __notnull const float*      aabb_max_world,
-                                                                  __out           __notnull system_matrix4x4* out_view_matrix,
-                                                                  __out           __notnull system_matrix4x4* out_projection_matrix,
-                                                                  __out_ecount(3) __notnull float*            out_camera_position)
+PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in            __notnull scene_light          light,
+                                                                  __in_ecount(3)  __notnull scene_camera         current_camera,
+                                                                  __in                      system_timeline_time time,
+                                                                  __in_ecount(3)  __notnull const float*         aabb_min_world,
+                                                                  __in_ecount(3)  __notnull const float*         aabb_max_world,
+                                                                  __out           __notnull system_matrix4x4*    out_view_matrix,
+                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix,
+                                                                  __out_ecount(3) __notnull float*               out_camera_position)
 {
-    /* What we take as input is AABB of the part of the scene that's visible from the camera viewpoint, which is great.
-     * We use this data to spawn a view matrix that presents stuff from a fake position of the directional light.
-     * Once we have the view matrix, we transfer the AABB to the light's eye space (which usually does funky stuff with
-     * the AABB coordinates, making it an OBB!). We then calculate an AABB out of this OBB and use this to compute
-     * a projection matrix.
+    /* What we take as input is AABB of the part of the scene that's visible from the camera viewpoint.
+     *
+     * First, we spawn a view matrix that presents stuff from a fake position of the directional light.
+     * The actual position doesn't really matter, since the real nitty gritty happens when projection
+     * matrix is formed.
+     *
+     * For this, we transfer both frustum AABBs AND the AABB we're provided to the light's eye space (which
+     * usually does funky stuff with the AABB coordinates, making it an OBB!). We then calculate an AABB
+     * of an union of both OBBs, and use the result to compute a projection matrix.
      *
      * Once we have the data, we output both the view and projection matrices, so they can be used to render the
      * shadow maps for the light.
@@ -382,16 +389,104 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                       aabb_min_world[2] <= aabb_max_world[2],
                       "AABB corruption");
 
+    /* Retrieve camera frustum data */
+    float            aabb_frustum_vec4_fbl_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_fbr_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ftl_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ftr_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_nbl_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_nbr_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ntl_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ntr_model[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_fbl_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_fbr_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ftl_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ftr_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_nbl_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_nbr_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ntl_world[4] = {0, 0, 0, 1.0f};
+    float            aabb_frustum_vec4_ntr_world[4] = {0, 0, 0, 1.0f};
+    system_matrix4x4 current_camera_model_matrix    = NULL;
+    scene_graph_node current_camera_node            = NULL;
+    float            camera_position_model[]        = {0.0f, 0.0f, 0.0f, 1.0f};
+    float            camera_position_world[4];
+
+    scene_camera_get_property    (current_camera,
+                                  SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
+                                  time,
+                                 &current_camera_node);
+    scene_graph_node_get_property(current_camera_node,
+                                  SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
+                                 &current_camera_model_matrix);
+
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_LEFT,
+                              time,
+                              aabb_frustum_vec4_fbl_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_BOTTOM_RIGHT,
+                              time,
+                              aabb_frustum_vec4_fbr_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_LEFT,
+                              time,
+                              aabb_frustum_vec4_ftl_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_FAR_TOP_RIGHT,
+                              time,
+                              aabb_frustum_vec4_ftr_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_LEFT,
+                              time,
+                              aabb_frustum_vec4_nbl_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_BOTTOM_RIGHT,
+                              time,
+                              aabb_frustum_vec4_nbr_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_LEFT,
+                              time,
+                              aabb_frustum_vec4_ntl_model);
+    scene_camera_get_property(current_camera,
+                              SCENE_CAMERA_PROPERTY_FRUSTUM_NEAR_TOP_RIGHT,
+                              time,
+                              aabb_frustum_vec4_ntr_model);
+
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_fbl_model,
+                                         aabb_frustum_vec4_fbl_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_fbr_model,
+                                         aabb_frustum_vec4_fbr_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_ftl_model,
+                                         aabb_frustum_vec4_ftl_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_ftr_model,
+                                         aabb_frustum_vec4_ftr_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_nbl_model,
+                                         aabb_frustum_vec4_nbl_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_nbr_model,
+                                         aabb_frustum_vec4_nbr_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_ntl_model,
+                                         aabb_frustum_vec4_ntl_world);
+    system_matrix4x4_multiply_by_vector4(current_camera_model_matrix,
+                                         aabb_frustum_vec4_ntr_model,
+                                         aabb_frustum_vec4_ntr_world);
+
     /* Move away from the frustum centroid in the light direction, using the max z
      * value we've retrieved.
      */
     const float sm_eye_world[3] =
     {
-        aabb_min_world[0] + (aabb_max_world[0] - aabb_min_world[0]) * 0.5f,
-        aabb_min_world[1] + (aabb_max_world[1] - aabb_min_world[1]) * 0.5f,
-        aabb_min_world[2] + (aabb_max_world[2] - aabb_min_world[2]) * 0.5f,
+        0,
+        0,
+        0,
     };
-    const float sm_lookat_world[4] =
+    const float sm_lookat_world[3] =
     {
         sm_eye_world[0] + light_direction_vector[0],
         sm_eye_world[1] + light_direction_vector[1],
@@ -413,7 +508,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                                                              sm_lookat_world, /* lookat_point */
                                                              up_vector);      /* up_vector */
 
-    /* Transfer the AABB to the light's eye space */
+    /* Transfer both camera frustum AABB *AND* visible scene AABB to the light's eye space */
     const float  aabb_vec4_fbl_world[4] = {aabb_min_world[0], aabb_min_world[1], aabb_max_world[2], 1.0f};
     const float  aabb_vec4_fbr_world[4] = {aabb_max_world[0], aabb_min_world[1], aabb_max_world[2], 1.0f};
     const float  aabb_vec4_ftl_world[4] = {aabb_min_world[0], aabb_max_world[1], aabb_max_world[2], 1.0f};
@@ -422,54 +517,96 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
     const float  aabb_vec4_nbr_world[4] = {aabb_max_world[0], aabb_min_world[1], aabb_min_world[2], 1.0f};
     const float  aabb_vec4_ntl_world[4] = {aabb_min_world[0], aabb_max_world[1], aabb_min_world[2], 1.0f};
     const float  aabb_vec4_ntr_world[4] = {aabb_max_world[0], aabb_max_world[1], aabb_min_world[2], 1.0f};
-          float  obb_vec4_fbl_light[4];
-          float  obb_vec4_fbr_light[4];
-          float  obb_vec4_ftl_light[4];
-          float  obb_vec4_ftr_light[4];
-          float  obb_vec4_nbl_light[4];
-          float  obb_vec4_nbr_light[4];
-          float  obb_vec4_ntl_light[4];
-          float  obb_vec4_ntr_light[4];
+
+          float  obb_aabb_vec4_fbl_light[4];
+          float  obb_aabb_vec4_fbr_light[4];
+          float  obb_aabb_vec4_ftl_light[4];
+          float  obb_aabb_vec4_ftr_light[4];
+          float  obb_aabb_vec4_nbl_light[4];
+          float  obb_aabb_vec4_nbr_light[4];
+          float  obb_aabb_vec4_ntl_light[4];
+          float  obb_aabb_vec4_ntr_light[4];
+          float  obb_frustum_vec4_fbl_light[4];
+          float  obb_frustum_vec4_fbr_light[4];
+          float  obb_frustum_vec4_ftl_light[4];
+          float  obb_frustum_vec4_ftr_light[4];
+          float  obb_frustum_vec4_nbl_light[4];
+          float  obb_frustum_vec4_nbr_light[4];
+          float  obb_frustum_vec4_ntl_light[4];
+          float  obb_frustum_vec4_ntr_light[4];
 
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_fbl_world,
-                                         obb_vec4_fbl_light);
+                                         obb_aabb_vec4_fbl_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_fbr_world,
-                                         obb_vec4_fbr_light);
+                                         obb_aabb_vec4_fbr_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_ftl_world,
-                                         obb_vec4_ftl_light);
+                                         obb_aabb_vec4_ftl_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_ftr_world,
-                                         obb_vec4_ftr_light);
+                                         obb_aabb_vec4_ftr_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_nbl_world,
-                                         obb_vec4_nbl_light);
+                                         obb_aabb_vec4_nbl_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_nbr_world,
-                                         obb_vec4_nbr_light);
+                                         obb_aabb_vec4_nbr_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_ntl_world,
-                                         obb_vec4_ntl_light);
+                                         obb_aabb_vec4_ntl_light);
     system_matrix4x4_multiply_by_vector4(*out_view_matrix,
                                          aabb_vec4_ntr_world,
-                                         obb_vec4_ntr_light);
+                                         obb_aabb_vec4_ntr_light);
+
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_fbl_world,
+                                         obb_frustum_vec4_fbl_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_fbr_world,
+                                         obb_frustum_vec4_fbr_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_ftl_world,
+                                         obb_frustum_vec4_ftl_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_ftr_world,
+                                         obb_frustum_vec4_ftr_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_nbl_world,
+                                         obb_frustum_vec4_nbl_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_nbr_world,
+                                         obb_frustum_vec4_nbr_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_ntl_world,
+                                         obb_frustum_vec4_ntl_light);
+    system_matrix4x4_multiply_by_vector4(*out_view_matrix,
+                                         aabb_frustum_vec4_ntr_world,
+                                         obb_frustum_vec4_ntr_light);
 
     /* This gives us coordinates of an OBB. Great. Compute an AABB for this data */
     const float* obb_light_vertices[]  =
     {
-        obb_vec4_fbl_light,
-        obb_vec4_fbr_light,
-        obb_vec4_ftl_light,
-        obb_vec4_ftr_light,
-        obb_vec4_nbl_light,
-        obb_vec4_nbr_light,
-        obb_vec4_ntl_light,
-        obb_vec4_ntr_light,
+        obb_frustum_vec4_fbl_light,
+        obb_frustum_vec4_fbr_light,
+        obb_frustum_vec4_ftl_light,
+        obb_frustum_vec4_ftr_light,
+        obb_frustum_vec4_nbl_light,
+        obb_frustum_vec4_nbr_light,
+        obb_frustum_vec4_ntl_light,
+        obb_frustum_vec4_ntr_light,
+        obb_aabb_vec4_fbl_light,
+        obb_aabb_vec4_fbr_light,
+        obb_aabb_vec4_ftl_light,
+        obb_aabb_vec4_ftr_light,
+        obb_aabb_vec4_nbl_light,
+        obb_aabb_vec4_nbr_light,
+        obb_aabb_vec4_ntl_light,
+        obb_aabb_vec4_ntr_light,
     };
-    float          obb_max_light[3]     = {obb_vec4_fbl_light[0], obb_vec4_fbl_light[1], obb_vec4_fbl_light[2]};
-    float          obb_min_light[3]     = {obb_vec4_fbl_light[0], obb_vec4_fbl_light[1], obb_vec4_fbl_light[2]};
+    float          obb_max_light[3]     = {obb_frustum_vec4_fbl_light[0], obb_frustum_vec4_fbl_light[1], obb_frustum_vec4_fbl_light[2]};
+    float          obb_min_light[3]     = {obb_frustum_vec4_fbl_light[0], obb_frustum_vec4_fbl_light[1], obb_frustum_vec4_fbl_light[2]};
     const uint32_t n_obb_light_vertices = sizeof(obb_light_vertices) / sizeof(obb_light_vertices[0]);
 
     for (uint32_t n_obb_light_vertex = 1; /* skip the first entry */
@@ -512,14 +649,28 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
     /* Use the AABB data to compute the reuslt projection matrix.
      *
      * We're doing a bit of heuristical approach with far/near ranges here
-     * but this solution seems to do the trick.
+     * but this solution seems to do the trick. For some reason, the naive
+     * approach goes bollocks under some scenes - I'm probably missing 
+     * an important location in obb_light_vertices but couldn't figure out
+     * which it might be.
      */
-    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(obb_min_light[0],                           /* left   */
-                                                                             obb_max_light[0],                           /* right  */
-                                                                             obb_min_light[1],                           /* bottom */
-                                                                             obb_max_light[1],                           /* top    */
-                                                                                 -obb_max_light[2]  + obb_min_light[2],  /* near   */
-                                                                             fabs(obb_min_light[2]) + obb_max_light[2]); /* far    */
+    float max_z;
+
+    if (fabs(obb_min_light[2]) < fabs(obb_max_light[2]) )
+    {
+        max_z = fabs(obb_max_light[2]);
+    }
+    else
+    {
+        max_z = fabs(obb_min_light[2]);
+    }
+
+    *out_projection_matrix = system_matrix4x4_create_ortho_projection_matrix(obb_min_light[0],  /* left   */
+                                                                             obb_max_light[0],  /* right  */
+                                                                             obb_min_light[1],  /* bottom */
+                                                                             obb_max_light[1],  /* top    */
+                                                                            -fabs(max_z),
+                                                                             fabs(max_z) );
 }
 
 /** Please see header for spec */
