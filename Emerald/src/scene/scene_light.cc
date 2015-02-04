@@ -32,6 +32,7 @@ typedef struct
     float                            position[3];
     curve_container                  quadratic_attenuation;
     scene_light_shadow_map_bias      shadow_map_bias;           /* NOTE: This property affects the generated ogl_uber! */
+    bool                             shadow_map_cull_front_faces;
     scene_light_shadow_map_filtering shadow_map_filtering;
     ogl_texture_internalformat       shadow_map_internalformat;
     unsigned int                     shadow_map_size[2];
@@ -57,7 +58,9 @@ PRIVATE bool _scene_light_save_curve                        (__in_opt           
                                                              __in     __notnull system_file_serializer serializer);
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(scene_light, scene_light, _scene_light);
+REFCOUNT_INSERT_IMPLEMENTATION(scene_light,
+                               scene_light,
+                               _scene_light);
 
 
 /** TODO */
@@ -195,13 +198,14 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
 
-    light_ptr->shadow_map_bias           = SCENE_LIGHT_SHADOW_MAP_BIAS_NONE;
-    light_ptr->shadow_map_filtering      = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
-    light_ptr->shadow_map_internalformat = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
-    light_ptr->shadow_map_size[0]        = DEFAULT_SHADOW_MAP_SIZE;
-    light_ptr->shadow_map_size[1]        = DEFAULT_SHADOW_MAP_SIZE;
-    light_ptr->shadow_map_texture        = NULL;
-    light_ptr->shadow_map_vp             = system_matrix4x4_create();
+    light_ptr->shadow_map_bias             = SCENE_LIGHT_SHADOW_MAP_BIAS_NONE;
+    light_ptr->shadow_map_cull_front_faces = true;
+    light_ptr->shadow_map_filtering        = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
+    light_ptr->shadow_map_internalformat   = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
+    light_ptr->shadow_map_size[0]          = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_size[1]          = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_texture          = NULL;
+    light_ptr->shadow_map_vp               = system_matrix4x4_create();
 
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_vp);
 
@@ -540,6 +544,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
+        {
+            *(bool*) out_result = light_ptr->shadow_map_cull_front_faces;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING:
         {
             *(scene_light_shadow_map_filtering*) out_result = light_ptr->shadow_map_filtering;
@@ -813,6 +824,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             }
 
             light_ptr->constant_attenuation = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
+        {
+            light_ptr->shadow_map_cull_front_faces = *(bool*) data;
 
             break;
         }

@@ -750,10 +750,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
          * Note that it is an error for scene_light instance to hold
          * a shadow map texture at this point.
          */
-        ogl_texture                      light_shadow_map                = NULL;
-        scene_light_shadow_map_filtering light_shadow_map_filtering      = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-        GLenum                           light_shadow_map_internalformat = GL_NONE;
-        uint32_t                         light_shadow_map_size[2]        = {0};
+        ogl_texture                      light_shadow_map                  = NULL;
+        bool                             light_shadow_map_cull_front_faces = false;
+        scene_light_shadow_map_filtering light_shadow_map_filtering        = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+        GLenum                           light_shadow_map_internalformat   = GL_NONE;
+        uint32_t                         light_shadow_map_size[2]          = {0};
 
 #if 0
         Taking the check out for UI preview of shadow maps.
@@ -770,6 +771,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 #endif
 
         /* Set up the shadow map */
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,
+                                &light_shadow_map_cull_front_faces);
         scene_light_get_property(light,
                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
                                 &light_shadow_map_filtering);
@@ -864,8 +868,16 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         entry_points->pGLClear     (GL_DEPTH_BUFFER_BIT);
 
         /* render back-facing faces only: THIS WON'T WORK FOR NON-CONVEX GEOMETRY */
-        entry_points->pGLCullFace  (GL_FRONT);
-        entry_points->pGLEnable    (GL_CULL_FACE);
+        if (light_shadow_map_cull_front_faces)
+        {
+            entry_points->pGLCullFace  (GL_FRONT);
+            entry_points->pGLEnable    (GL_CULL_FACE);
+        }
+        else
+        {
+            /* :C */
+            entry_points->pGLDisable(GL_CULL_FACE);
+        }
 
         /* Set up depth function */
         entry_points->pGLDepthFunc (GL_LESS);

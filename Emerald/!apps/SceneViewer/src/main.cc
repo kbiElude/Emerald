@@ -42,7 +42,7 @@
 #include <string>
 #include <sstream>
 
-#define CAMERA_SETTING_Z_FAR (100.0f)
+#define CAMERA_SETTING_Z_FAR (20.0f)
 
 
 uint32_t                   _active_camera_index          = 0;
@@ -617,7 +617,7 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
-#if 0
+#if 1
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,
