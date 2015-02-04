@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -56,10 +56,13 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
     }
     else
     {
-        serializer_descriptor->file_size = ::GetFileSize(serializer_descriptor->file_handle, NULL);
+        serializer_descriptor->file_size = ::GetFileSize(serializer_descriptor->file_handle,
+                                                         NULL);
         serializer_descriptor->contents  = new (std::nothrow) char[serializer_descriptor->file_size + 1];
 
-        memset(serializer_descriptor->contents, 0, serializer_descriptor->file_size + 1);
+        memset(serializer_descriptor->contents,
+               0,
+               serializer_descriptor->file_size + 1);
 
         /* Read the contents now. */
         DWORD n_bytes_read = 0;
@@ -69,7 +72,7 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                                         &n_bytes_read,
                                         NULL);                           /* overlapped access not needed */
 
-        ASSERT_ALWAYS_SYNC(result == TRUE, 
+        ASSERT_ALWAYS_SYNC(result == TRUE,
                            "Could not read %d bytes for file [%s]",
                            serializer_descriptor->file_size,
                            system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
@@ -80,7 +83,8 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
 
         serializer_descriptor->file_handle = NULL;
 
-        LOG_INFO("Contents cached for file [%s]", system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name) );
+        LOG_INFO("Contents cached for file [%s]",
+                 system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name) );
 
         /* Now retrieve path to the file */
         DWORD path_length_wo_terminator = ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
@@ -89,12 +93,15 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                                                             NULL); /* lpFilePart */
         char* path                      = new (std::nothrow) char[path_length_wo_terminator + 1];
 
-        ASSERT_ALWAYS_SYNC(path != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(path != NULL,
+                           "Out of memory");
         if (path != NULL)
         {
             char* file_inside_path = NULL;
 
-            memset(path, 0, path_length_wo_terminator + 1);
+            memset(path,
+                   0,
+                   path_length_wo_terminator + 1);
 
             ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
                               path_length_wo_terminator + 1,
@@ -114,6 +121,48 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
     system_event_set(serializer_descriptor->reading_finished_event);
 }
 
+/** TODO */
+PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _system_file_serializer_descriptor* descriptor)
+{
+    if (descriptor->file_handle == NULL)
+    {
+        /* Open the file for writing. If a file already exists, overwrite it */
+        descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(descriptor->file_name),
+                                               GENERIC_WRITE,
+                                               0,                      /* no sharing */
+                                               NULL,                   /* no specific security attributes */
+                                               CREATE_ALWAYS,          /* always create a new file*/
+                                               FILE_ATTRIBUTE_NORMAL,
+                                               NULL);                  /* no template file */
+
+        ASSERT_ALWAYS_SYNC(descriptor->file_handle != INVALID_HANDLE_VALUE,
+                           "File %s could not have been created for writing",
+                           system_hashed_ansi_string_get_buffer(descriptor->file_name)
+                          );
+    }
+
+    if (descriptor->file_handle != INVALID_HANDLE_VALUE)
+    {
+        DWORD n_bytes_written = 0;
+        BOOL  result          = ::WriteFile(descriptor->file_handle,
+                                            descriptor->contents,
+                                            descriptor->file_size,
+                                            &n_bytes_written,
+                                            NULL);              /* no overlapped behavior needed */
+
+        ASSERT_ALWAYS_SYNC(result == TRUE,
+                          "Could not write file [%s]",
+                          system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+        ASSERT_ALWAYS_SYNC(n_bytes_written == descriptor->file_size,
+                           "Could not fully write file [%s] (%d bytes written out of %db)",
+                           system_hashed_ansi_string_get_buffer(descriptor->file_name),
+                           n_bytes_written,
+                           descriptor->file_size);
+
+        /* Reset the index used for storing incoming data*/
+        descriptor->file_size = 0;
+    }
+}
 
 /** Please see header file for specification */
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(__in __notnull system_hashed_ansi_string file_name,
@@ -123,10 +172,12 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
 
     new_descriptor->contents               = NULL;
     new_descriptor->current_index          = 0;
+    new_descriptor->file_handle            = NULL;
     new_descriptor->file_name              = file_name;
     new_descriptor->file_size              = 0;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true, false);
+    new_descriptor->reading_finished_event = system_event_create(true,
+                                                                 false);
 
     if (async_read)
     {
@@ -154,18 +205,22 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writ
 {
     _system_file_serializer_descriptor* new_descriptor = new (std::nothrow) _system_file_serializer_descriptor;
 
-    ASSERT_ALWAYS_SYNC(new_descriptor != NULL, "Could not alloc new descriptor");
+    ASSERT_ALWAYS_SYNC(new_descriptor != NULL,
+                       "Could not alloc new descriptor");
+
     if (new_descriptor != NULL)
     {
         new_descriptor->contents               = new (std::nothrow) char[FILE_SERIALIZER_START_CAPACITY];
         new_descriptor->current_index          = 0;
+        new_descriptor->file_handle            = NULL;
         new_descriptor->file_name              = file_name;
         new_descriptor->file_size              = 0;
         new_descriptor->for_reading            = false;
         new_descriptor->reading_finished_event = NULL;
         new_descriptor->writing_capacity       = FILE_SERIALIZER_START_CAPACITY;
 
-        ASSERT_ALWAYS_SYNC(new_descriptor->contents != NULL, "Could not allocate writing buffer.");
+        ASSERT_ALWAYS_SYNC(new_descriptor->contents != NULL,
+                           "Could not allocate writing buffer.");
     }
 
     return (system_file_serializer) new_descriptor;
@@ -224,7 +279,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
         {
             if (out_result != NULL)
             {
-                memcpy(out_result, descriptor->contents + descriptor->current_index, n_bytes);
+                memcpy(out_result,
+                       descriptor->contents + descriptor->current_index,
+                       n_bytes);
             }
 
             descriptor->current_index += n_bytes;
@@ -266,8 +323,11 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     system_variant_type       variant_type  = (system_variant_type) -1;
 
     /* Read generic properties */
-    if (!system_file_serializer_read_hashed_ansi_string(serializer, &curve_name)                         ||
-        !system_file_serializer_read                   (serializer, sizeof(variant_type), &variant_type))
+    if (!system_file_serializer_read_hashed_ansi_string(serializer,
+                                                       &curve_name)          ||
+        !system_file_serializer_read                   (serializer,
+                                                        sizeof(variant_type),
+                                                       &variant_type))
     {
         ASSERT_DEBUG_SYNC(false, "Reading operation failed");
 
@@ -294,11 +354,14 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     }
 
     /* Iterate through all dimensions */
-    uint32_t n_segments = 0; 
+    uint32_t n_segments = 0;
 
     /* Read amount of segments and default value */
-    if (!system_file_serializer_read        (serializer, sizeof(n_segments), &n_segments)  ||
-        !system_file_serializer_read_variant(serializer,                     temp_variant) )
+    if (!system_file_serializer_read        (serializer,
+                                             sizeof(n_segments),
+                                            &n_segments)        ||
+        !system_file_serializer_read_variant(serializer,
+                                             temp_variant) )
     {
         ASSERT_DEBUG_SYNC(false, "Reading operation failed");
 
@@ -306,7 +369,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     }
 
     /* Set the default value */
-    if (!curve_container_set_default_value(*result_container, temp_variant) )
+    if (!curve_container_set_default_value(*result_container,
+                                           temp_variant) )
     {
         ASSERT_DEBUG_SYNC(false, "Could not set default value");
 
@@ -317,12 +381,19 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     bool                                       is_pre_post_behavior_on = false;
     curve_container_envelope_boundary_behavior pre_behavior            = (curve_container_envelope_boundary_behavior) -1;
     curve_container_envelope_boundary_behavior post_behavior           = (curve_container_envelope_boundary_behavior) -1;
-    
-    if (!system_file_serializer_read(serializer, sizeof(is_pre_post_behavior_on), &is_pre_post_behavior_on) ||
-        !system_file_serializer_read(serializer, sizeof(pre_behavior),            &pre_behavior)            ||
-        !system_file_serializer_read(serializer, sizeof(post_behavior),           &post_behavior) )
+
+    if (!system_file_serializer_read(serializer,
+                                     sizeof(is_pre_post_behavior_on),
+                                    &is_pre_post_behavior_on)        ||
+        !system_file_serializer_read(serializer,
+                                     sizeof(pre_behavior),
+                                    &pre_behavior)                   ||
+        !system_file_serializer_read(serializer,
+                                     sizeof(post_behavior),
+                                    &post_behavior) )
     {
-        ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Reading operation failed");
 
         goto end;
     }
@@ -335,9 +406,15 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
         system_timeline_time segment_end_time   = 0;
         curve_segment_type   segment_type       = (curve_segment_type) -1;
 
-        if (!system_file_serializer_read(serializer, sizeof(segment_start_time), &segment_start_time) ||
-            !system_file_serializer_read(serializer, sizeof(segment_end_time),   &segment_end_time)   ||
-            !system_file_serializer_read(serializer, sizeof(segment_type),       &segment_type) )
+        if (!system_file_serializer_read(serializer,
+                                         sizeof(segment_start_time),
+                                        &segment_start_time) ||
+            !system_file_serializer_read(serializer,
+                                         sizeof(segment_end_time),
+                                        &segment_end_time)   ||
+            !system_file_serializer_read(serializer,
+                                         sizeof(segment_type),
+                                        &segment_type) )
         {
             ASSERT_DEBUG_SYNC(false, "Reading operation failed");
 
@@ -349,7 +426,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
 
         if (variant_type == SYSTEM_VARIANT_BOOL)
         {
-            if (!system_file_serializer_read(serializer, sizeof(segment_threshold), &segment_threshold) )
+            if (!system_file_serializer_read(serializer,
+                                             sizeof(segment_threshold),
+                                            &segment_threshold) )
             {
                 ASSERT_DEBUG_SYNC(false, "Reading operation failed");
 
@@ -365,10 +444,13 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
             case CURVE_SEGMENT_LERP:
             {
                 /* Read start/end values */
-                if (!system_file_serializer_read_variant(serializer, temp_variant) ||
-                    !system_file_serializer_read_variant(serializer, temp_variant2))
+                if (!system_file_serializer_read_variant(serializer,
+                                                         temp_variant)  ||
+                    !system_file_serializer_read_variant(serializer,
+                                                         temp_variant2))
                 {
-                    ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Reading operation failed");
 
                     goto end;
                 }
@@ -381,7 +463,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                       temp_variant2,
                                                      &spawned_segment_id) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not spawn LERP segment");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not spawn LERP segment");
 
                     goto end;
                 }
@@ -392,9 +475,11 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
             case CURVE_SEGMENT_STATIC:
             {
                 /* Read value */
-                if (!system_file_serializer_read_variant(serializer, temp_variant))
+                if (!system_file_serializer_read_variant(serializer,
+                                                         temp_variant))
                 {
-                    ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Reading operation failed");
 
                     goto end;
                 }
@@ -406,7 +491,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                               temp_variant,
                                                              &spawned_segment_id) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not spawn static value segment");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not spawn static value segment");
 
                     goto end;
                 }
@@ -427,26 +513,34 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                 } _node_descriptor;
 
                 uint32_t                n_segment_nodes = 0;
-                system_resizable_vector nodes           = system_resizable_vector_create(4, sizeof(void*) );
+                system_resizable_vector nodes           = system_resizable_vector_create(4,
+                                                                                         sizeof(void*) );
 
                 if (!system_file_serializer_read(serializer,
                                                  sizeof(n_segment_nodes),
                                                 &n_segment_nodes) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Reading operation failed");
 
                     goto end;
                 }
 
-                for (uint32_t n_node = 0; n_node < n_segment_nodes; ++n_node)
+                for (uint32_t n_node = 0;
+                              n_node < n_segment_nodes;
+                            ++n_node)
                 {
                     curve_segment_node_id node_id = (curve_segment_node_id) - 1;
 
-                    if (!system_file_serializer_read_variant(serializer, temp_variant  /* bias */) ||
-                        !system_file_serializer_read_variant(serializer, temp_variant2 /* cont */) ||
-                        !system_file_serializer_read_variant(serializer, temp_variant3 /* tens */) )
+                    if (!system_file_serializer_read_variant(serializer,
+                                                             temp_variant  /* bias */) ||
+                        !system_file_serializer_read_variant(serializer,
+                                                             temp_variant2 /* cont */) ||
+                        !system_file_serializer_read_variant(serializer,
+                                                             temp_variant3 /* tens */) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Reading operation failed");
 
                         goto end;
                     }
@@ -455,10 +549,14 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                     system_timeline_time node_time  = (system_timeline_time) -1;
                     system_variant       node_value = system_variant_create(variant_type);
 
-                    if (!system_file_serializer_read        (serializer, sizeof(node_time), &node_time) ||
-                        !system_file_serializer_read_variant(serializer, node_value /* value */) )
+                    if (!system_file_serializer_read        (serializer,
+                                                             sizeof(node_time),
+                                                            &node_time)                ||
+                        !system_file_serializer_read_variant(serializer,
+                                                             node_value /* value */) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Reading operation failed");
 
                         goto end;
                     }
@@ -468,14 +566,19 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
 
                     if (new_node == NULL)
                     {
-                        ASSERT_DEBUG_SYNC(false, "Out of memory");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Out of memory");
 
                         goto end;
                     }
 
-                    system_variant_get_float(temp_variant,  &new_node->bias);
-                    system_variant_get_float(temp_variant2, &new_node->continuity);
-                    system_variant_get_float(temp_variant3, &new_node->tension);
+                    system_variant_get_float(temp_variant,
+                                            &new_node->bias);
+                    system_variant_get_float(temp_variant2,
+                                            &new_node->continuity);
+                    system_variant_get_float(temp_variant3,
+                                            &new_node->tension);
+
                     new_node->time  = node_time;
                     new_node->value = node_value;
 
@@ -487,10 +590,15 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                 _node_descriptor* first_node  = NULL;
                 _node_descriptor* second_node = NULL;
 
-                if (!system_resizable_vector_get_element_at(nodes, 0, &first_node) ||
-                    !system_resizable_vector_get_element_at(nodes, 1, &second_node) )
+                if (!system_resizable_vector_get_element_at(nodes,
+                                                            0,
+                                                           &first_node) ||
+                    !system_resizable_vector_get_element_at(nodes,
+                                                            1,
+                                                           &second_node) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve node descriptors");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve node descriptors");
 
                     goto end;
                 }
@@ -509,7 +617,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                      second_node->bias,
                                                     &spawned_segment_id) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not create TCB curve");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not create TCB curve");
 
                     goto end;
                 }
@@ -520,12 +629,15 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
 
                 if (tcb_segment == NULL)
                 {
-                    ASSERT_DEBUG_SYNC(false, "Could not retrieve spawned TCB curve segment");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Could not retrieve spawned TCB curve segment");
 
                     goto end;
                 }
 
-                for (uint32_t n_node = 2; n_node < n_segment_nodes; ++n_node)
+                for (uint32_t n_node = 2;
+                              n_node < n_segment_nodes;
+                            ++n_node)
                 {
                     _node_descriptor* current_node = NULL;
 
@@ -533,7 +645,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                                 n_node,
                                                                &current_node) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Could not retrieve node descriptor");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not retrieve node descriptor");
 
                         goto end;
                     }
@@ -553,22 +666,36 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                                                            &new_node_id) )
 #endif
                         {
-                            ASSERT_DEBUG_SYNC(false, "Could not add a node to TCB curve segment");
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not add a node to TCB curve segment");
 
                             goto end;
                         } /* if (node does not exist) */
                     } /* if (failed to add a node) */
 
                     /* Adjust TCB properties for the node */
-                    system_variant_set_float(temp_variant,  current_node->bias);
-                    system_variant_set_float(temp_variant2, current_node->continuity);
-                    system_variant_set_float(temp_variant3, current_node->tension);
+                    system_variant_set_float(temp_variant,
+                                             current_node->bias);
+                    system_variant_set_float(temp_variant2,
+                                             current_node->continuity);
+                    system_variant_set_float(temp_variant3,
+                                             current_node->tension);
 
-                    if (!curve_segment_modify_node_property(tcb_segment, new_node_id, CURVE_SEGMENT_NODE_PROPERTY_BIAS,       temp_variant)  ||
-                        !curve_segment_modify_node_property(tcb_segment, new_node_id, CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY, temp_variant2) ||
-                        !curve_segment_modify_node_property(tcb_segment, new_node_id, CURVE_SEGMENT_NODE_PROPERTY_TENSION,    temp_variant3) )
+                    if (!curve_segment_modify_node_property(tcb_segment,
+                                                            new_node_id,
+                                                            CURVE_SEGMENT_NODE_PROPERTY_BIAS,
+                                                            temp_variant)                           ||
+                        !curve_segment_modify_node_property(tcb_segment,
+                                                            new_node_id,
+                                                            CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY,
+                                                            temp_variant2)                          ||
+                        !curve_segment_modify_node_property(tcb_segment,
+                                                            new_node_id,
+                                                            CURVE_SEGMENT_NODE_PROPERTY_TENSION,
+                                                            temp_variant3) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Could not adjust TCB settings for a TCB curve segment node.");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not adjust TCB settings for a TCB curve segment node.");
 
                         goto end;
                     }
@@ -581,9 +708,11 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
                     {
                         _node_descriptor* node = NULL;
 
-                        if (!system_resizable_vector_pop(nodes, &node) )
+                        if (!system_resizable_vector_pop(nodes,
+                                                        &node) )
                         {
-                            ASSERT_DEBUG_SYNC(false, "Could not pop node descriptor off nodes vector.");
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not pop node descriptor off nodes vector.");
 
                             goto end;
                         }
@@ -601,7 +730,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
 
             default:
             {
-                ASSERT_DEBUG_SYNC(false, "Unrecognized segment type [%d]", segment_type);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized segment type [%d]",
+                                  segment_type);
             }
         } /* switch (segment_type) */
 
@@ -657,14 +788,20 @@ PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __n
     int  n_characters = 0;
     bool result       = false;
 
-    if (system_file_serializer_read(serializer, sizeof(n_characters), &n_characters) )
+    if (system_file_serializer_read(serializer,
+                                    sizeof(n_characters),
+                                   &n_characters) )
     {
         char* buffer = new (std::nothrow) char[n_characters + 1];
 
-        ASSERT_ALWAYS_SYNC(buffer != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(buffer != NULL,
+                           "Out of memory");
+
         if (buffer != NULL)
         {
-            if (system_file_serializer_read(serializer, n_characters, buffer))
+            if (system_file_serializer_read(serializer,
+                                            n_characters,
+                                            buffer))
             {
                 buffer[n_characters] = 0;
 
@@ -673,7 +810,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __n
             }
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Reading operation failed");
             }
 
             /* Release the buffer */
@@ -682,7 +820,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __n
     }
     else
     {
-        ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Reading operation failed");
     }
 
     return result;
@@ -711,10 +850,12 @@ PUBLIC EMERALD_API bool system_file_serializer_read_matrix4x4(__in  __notnull sy
         goto end;
     }
 
-    system_matrix4x4_set_from_row_major_raw(*out_result, matrix_row_major_data);
+    system_matrix4x4_set_from_row_major_raw(*out_result,
+                                            matrix_row_major_data);
 
 end:
-    ASSERT_DEBUG_SYNC(result, "4x4 matrix data serialization failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "4x4 matrix data serialization failed");
 
     return result;
 }
@@ -726,7 +867,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
     bool                result = false;
     system_variant_type variant_type;
 
-    if (system_file_serializer_read(serializer, sizeof(system_variant_type), &variant_type) )
+    if (system_file_serializer_read(serializer,
+                                    sizeof(system_variant_type),
+                                   &variant_type) )
     {
         switch(variant_type)
         {
@@ -734,23 +877,30 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
             {
                 int length = 0;
 
-                if (system_file_serializer_read(serializer, sizeof(length), &length) )
+                if (system_file_serializer_read(serializer,
+                                                sizeof(length),
+                                               &length) )
                 {
                     char* buffer = new (std::nothrow) char[length + 1];
 
                     if (buffer != NULL)
                     {
-                        if (system_file_serializer_read(serializer, length, buffer) )
+                        if (system_file_serializer_read(serializer,
+                                                        length,
+                                                        buffer) )
                         {
                             buffer[length] = 0;
-                            
-                            system_variant_set_ansi_string(out_result, system_hashed_ansi_string_create(buffer), false);
+
+                            system_variant_set_ansi_string(out_result,
+                                                           system_hashed_ansi_string_create(buffer),
+                                                           false);
 
                             result = true;
                         }
                         else
                         {
-                            ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Reading operation failed");
                         }
 
                         delete [] buffer;
@@ -758,12 +908,14 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
                     }
                     else
                     {
-                        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+                        ASSERT_ALWAYS_SYNC(false,
+                                           "Out of memory");
                     }
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Reading operation failed");
                 }
 
                 break;
@@ -773,15 +925,19 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
             {
                 bool value = false;
 
-                if (system_file_serializer_read(serializer, sizeof(value), &value) )
+                if (system_file_serializer_read(serializer,
+                                                sizeof(value),
+                                               &value) )
                 {
                     result = true;
 
-                    system_variant_set_boolean(out_result, value);
+                    system_variant_set_boolean(out_result,
+                                               value);
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Reading operation failed");
                 }
 
                 break;
@@ -792,24 +948,30 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
             {
                 char buffer[4];
 
-                if (system_file_serializer_read(serializer, sizeof(buffer), buffer) )
+                if (system_file_serializer_read(serializer,
+                                                sizeof(buffer),
+                                                buffer) )
                 {
                     result = true;
 
                     if (variant_type == SYSTEM_VARIANT_INTEGER)
                     {
-                        system_variant_set_integer(out_result, *((int*)buffer), false);
+                        system_variant_set_integer(out_result,
+                                                   *((int*)buffer),
+                                                   false);
                     }
                     else
                     {
-                        system_variant_set_float(out_result, *((float*)buffer) );
+                        system_variant_set_float(out_result,
+                                                 *((float*)buffer) );
                     }
 
                     break;
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Reading operation failed");
                 }
 
                 break;
@@ -817,13 +979,16 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
 
             default:
             {
-                ASSERT_DEBUG_SYNC(false, "Unrecognized variant type [%d]", variant_type);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized variant type [%d]",
+                                  variant_type);
             }
         }
     }
     else
     {
-        ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Reading operation failed");
     }
 
     return result;
@@ -838,47 +1003,22 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     {
         /* Wait till reading finishes */
         system_event_wait_single_infinite(descriptor->reading_finished_event);
-    
+
         /* Release reading-specific fields */
         system_event_release(descriptor->reading_finished_event);
         delete [] descriptor->contents;
     }
     else
     {
-        /* Open the file for writing. If a file already exists, overwrite it */
-        descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(descriptor->file_name),
-                                               GENERIC_WRITE,
-                                               0,                      /* no sharing */
-                                               NULL,                   /* no specific security attributes */
-                                               CREATE_ALWAYS,          /* always create a new file*/
-                                               FILE_ATTRIBUTE_NORMAL,
-                                               NULL);                  /* no template file */
-    
-        ASSERT_ALWAYS_SYNC(descriptor->file_handle != INVALID_HANDLE_VALUE,
-                           "File %s could not have been created for writing",
-                           system_hashed_ansi_string_get_buffer(descriptor->file_name)
-                          );
+        _system_file_serializer_write_down_data_to_file(descriptor);
 
-        if (descriptor->file_handle != INVALID_HANDLE_VALUE)
+        if (descriptor->file_handle != INVALID_HANDLE_VALUE &&
+            descriptor->file_handle != NULL)
         {
-            DWORD n_bytes_written = 0;
-            BOOL  result          = ::WriteFile(descriptor->file_handle,
-                                                descriptor->contents,
-                                                descriptor->file_size,
-                                                &n_bytes_written,
-                                                NULL);              /* no overlapped behavior needed */
-
-            ASSERT_ALWAYS_SYNC(result == TRUE,
-                              "Could not write file [%s]",
-                              system_hashed_ansi_string_get_buffer(descriptor->file_name) );
-            ASSERT_ALWAYS_SYNC(n_bytes_written == descriptor->file_size,
-                               "Could not fully write file [%s] (%d bytes written out of %db)",
-                               system_hashed_ansi_string_get_buffer(descriptor->file_name),
-                               n_bytes_written,
-                               descriptor->file_size);
-
             /* Cool to close the file now. */
             ::CloseHandle(descriptor->file_handle);
+
+            descriptor->file_handle = NULL;
         }
 
         /* Release all occupied blocks */
@@ -910,26 +1050,40 @@ PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_
             /* Got to realloc */
             char* new_contents = new (std::nothrow) char[new_capacity];
 
-            ASSERT_ALWAYS_SYNC(new_contents != NULL, "Could not alloc new buffer for writing, crash ahead.");
             if (new_contents != NULL)
             {
                 /* Copy existing data */
-                memcpy(new_contents, descriptor->contents, descriptor->file_size);
+                memcpy(new_contents,
+                       descriptor->contents,
+                       descriptor->file_size);
 
                 delete [] descriptor->contents;
                 descriptor->contents         = new_contents;
                 descriptor->writing_capacity = new_capacity;
             }
+            else
+            {
+                /* Sigh, we ran out of memory. Write down what we have queued up so far,
+                 * and reset the offsets.
+                 *
+                 * NOTE: This happens in LW exporter plug-in for large scenes,
+                 *       so until we move to AWE, we need this.
+                 */
+                _system_file_serializer_write_down_data_to_file(descriptor);
+            }
         }
 
         /* Append new data */
-        memcpy(descriptor->contents + descriptor->file_size, data_to_write, n_bytes);
+        memcpy(descriptor->contents + descriptor->file_size,
+               data_to_write,
+               n_bytes);
 
         descriptor->file_size += n_bytes;
         result                 = true;
     }
 
-    ASSERT_DEBUG_SYNC(result, "Writing operation failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "Writing operation failed");
 
     return result;
 }
@@ -955,16 +1109,20 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                 &curve_name);
 
     /* Store generic properties */
-    if (!system_file_serializer_write_hashed_ansi_string(serializer, curve_name)                          ||
-        !system_file_serializer_write                   (serializer, sizeof(variant_type), &variant_type))
+    if (!system_file_serializer_write_hashed_ansi_string(serializer,
+                                                         curve_name)            ||
+        !system_file_serializer_write                   (serializer,
+                                                         sizeof(variant_type),
+                                                        &variant_type))
     {
-        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Writing operation failed");
 
         goto end;
     }
 
     /* Iterate through all dimensions */
-    uint32_t n_segments = 0; 
+    uint32_t n_segments = 0;
 
     /* Get amount of segments */
     curve_container_get_property(curve,
@@ -976,7 +1134,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                            false,
                                            temp_variant) )
     {
-        ASSERT_DEBUG_SYNC(false, "Cannot query default curve dimension value");
+        ASSERT_DEBUG_SYNC(false,
+                          "Cannot query default curve dimension value");
 
         goto end;
     }
@@ -997,19 +1156,31 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                 &is_pre_post_behavior_on);
 
     /* Stash them */
-    if (!system_file_serializer_write        (serializer, sizeof(n_segments),              &n_segments)              ||
-        !system_file_serializer_write_variant(serializer, temp_variant)                                              ||
-        !system_file_serializer_write        (serializer, sizeof(is_pre_post_behavior_on), &is_pre_post_behavior_on) ||
-        !system_file_serializer_write        (serializer, sizeof(pre_behavior),            &pre_behavior)            ||
-        !system_file_serializer_write        (serializer, sizeof(post_behavior),           &post_behavior))
+    if (!system_file_serializer_write        (serializer,
+                                              sizeof(n_segments),
+                                             &n_segments)                     ||
+        !system_file_serializer_write_variant(serializer,
+                                              temp_variant)                   ||
+        !system_file_serializer_write        (serializer,
+                                              sizeof(is_pre_post_behavior_on),
+                                             &is_pre_post_behavior_on)        ||
+        !system_file_serializer_write        (serializer,
+                                              sizeof(pre_behavior),
+                                             &pre_behavior)                   ||
+        !system_file_serializer_write        (serializer,
+                                              sizeof(post_behavior),
+                                             &post_behavior))
     {
-        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Writing operation failed");
 
         goto end;
     }
 
     /* Iterate through all segments */
-    for (uint32_t n_segment = 0; n_segment < n_segments; ++n_segment)
+    for (uint32_t n_segment = 0;
+                  n_segment < n_segments;
+                ++n_segment)
     {
         /* Retrieve curve segment id */
         curve_segment_id segment_id = -1;
@@ -1018,7 +1189,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                                             n_segment,
                                                            &segment_id) )
         {
-            ASSERT_DEBUG_SYNC(false, "Cannot query curve segment id");
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot query curve segment id");
 
             goto end;
         }
@@ -1042,11 +1214,18 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                             &segment_type);
 
         /* Stash them */
-        if (!system_file_serializer_write(serializer, sizeof(segment_start_time), &segment_start_time) ||
-            !system_file_serializer_write(serializer, sizeof(segment_end_time),   &segment_end_time)   ||
-            !system_file_serializer_write(serializer, sizeof(segment_type),       &segment_type) )
+        if (!system_file_serializer_write(serializer,
+                                          sizeof(segment_start_time),
+                                         &segment_start_time)        ||
+            !system_file_serializer_write(serializer,
+                                          sizeof(segment_end_time),
+                                         &segment_end_time)          ||
+            !system_file_serializer_write(serializer,
+                                          sizeof(segment_type),
+                                         &segment_type) )
         {
-            ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+            ASSERT_DEBUG_SYNC(false,
+                              "Writing operation failed");
 
             goto end;
         }
@@ -1065,7 +1244,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                               sizeof(segment_threshold),
                                              &segment_threshold) )
             {
-                ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Writing operation failed");
 
                 goto end;
             }
@@ -1077,7 +1257,8 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
 
         if (segment == NULL)
         {
-            ASSERT_DEBUG_SYNC(false, "Cannot retrieve curve segment instance");
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot retrieve curve segment instance");
 
             goto end;
         }
@@ -1088,22 +1269,32 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
             {
                 system_timeline_time temp;
 
-                if (!curve_segment_get_node(segment, 0, &temp, temp_variant)  ||
-                    !curve_segment_get_node(segment, 1, &temp, temp_variant2) )
+                if (!curve_segment_get_node(segment,
+                                            0,
+                                           &temp,
+                                            temp_variant)   ||
+                    !curve_segment_get_node(segment,
+                                            1,
+                                           &temp,
+                                            temp_variant2) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Cannot query LERP segment node values");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Cannot query LERP segment node values");
 
                     goto end;
                 }
 
-                if (!system_file_serializer_write_variant(serializer, temp_variant) ||
-                    !system_file_serializer_write_variant(serializer, temp_variant2))
+                if (!system_file_serializer_write_variant(serializer,
+                                                          temp_variant) ||
+                    !system_file_serializer_write_variant(serializer,
+                                                          temp_variant2))
                 {
-                    ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Writing operation failed");
 
                     goto end;
                 }
-                
+
                 break;
             }
 
@@ -1111,16 +1302,22 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
             {
                 system_timeline_time temp;
 
-                if (!curve_segment_get_node(segment, 0, &temp, temp_variant) )
+                if (!curve_segment_get_node(segment,
+                                            0,
+                                           &temp,
+                                           temp_variant) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Cannot query static segment node value");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Cannot query static segment node value");
 
                     goto end;
                 }
 
-                if (!system_file_serializer_write_variant(serializer, temp_variant) )
+                if (!system_file_serializer_write_variant(serializer,
+                                                          temp_variant) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Writing operation failed");
 
                     goto end;
                 }
@@ -1138,32 +1335,57 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                                      CURVE_CONTAINER_SEGMENT_PROPERTY_N_NODES,
                                                     &n_segment_nodes);
 
-                if (!system_file_serializer_write(serializer, sizeof(n_segment_nodes), &n_segment_nodes) )
+                if (!system_file_serializer_write(serializer,
+                                                  sizeof(n_segment_nodes),
+                                                 &n_segment_nodes) )
                 {
-                    ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Writing operation failed");
 
                     goto end;
                 }
 
-                for (uint32_t n_node = 0; n_node < n_segment_nodes; ++n_node)
+                for (uint32_t n_node = 0;
+                              n_node < n_segment_nodes;
+                            ++n_node)
                 {
                     curve_segment_node_id node_id = (curve_segment_node_id) - 1;
 
-                    if (!curve_container_get_node_id_for_node_at(curve, segment_id, n_node,  &node_id)                                              ||
-                        !curve_container_get_node_property      (curve, segment_id, node_id, CURVE_SEGMENT_NODE_PROPERTY_BIAS,       temp_variant)  ||
-                        !curve_container_get_node_property      (curve, segment_id, node_id, CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY, temp_variant2) ||
-                        !curve_container_get_node_property      (curve, segment_id, node_id, CURVE_SEGMENT_NODE_PROPERTY_TENSION,    temp_variant3) )
+                    if (!curve_container_get_node_id_for_node_at(curve,
+                                                                 segment_id,
+                                                                 n_node,
+                                                                &node_id)                                 ||
+                        !curve_container_get_node_property      (curve,
+                                                                 segment_id,
+                                                                 node_id,
+                                                                 CURVE_SEGMENT_NODE_PROPERTY_BIAS,
+                                                                 temp_variant)                            ||
+                        !curve_container_get_node_property      (curve,
+                                                                 segment_id,
+                                                                 node_id,
+                                                                 CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY,
+                                                                 temp_variant2)                           ||
+                        !curve_container_get_node_property      (curve,
+                                                                 segment_id,
+                                                                 node_id,
+                                                                 CURVE_SEGMENT_NODE_PROPERTY_TENSION,
+                                                                 temp_variant3) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Cannot query TCB curve segment node property");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Cannot query TCB curve segment node property");
 
                         goto end;
                     }
 
-                    if (!system_file_serializer_write_variant(serializer, temp_variant)  ||
-                        !system_file_serializer_write_variant(serializer, temp_variant2) ||
-                        !system_file_serializer_write_variant(serializer, temp_variant3))
+                    if (!system_file_serializer_write_variant(serializer,
+                                                              temp_variant)  ||
+                        !system_file_serializer_write_variant(serializer,
+                                                              temp_variant2) ||
+                        !system_file_serializer_write_variant(serializer,
+                                                              temp_variant3))
                     {
-                        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Writing operation failed");
 
                         goto end;
                     }
@@ -1176,15 +1398,20 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
                                                &node_time,
                                                 temp_variant) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Cannot query TCB curve segment node general properties");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Cannot query TCB curve segment node general properties");
 
                         goto end;
                     }
 
-                    if (!system_file_serializer_write        (serializer, sizeof(node_time), &node_time) ||
-                        !system_file_serializer_write_variant(serializer, temp_variant) )
+                    if (!system_file_serializer_write        (serializer,
+                                                              sizeof(node_time),
+                                                             &node_time)         ||
+                        !system_file_serializer_write_variant(serializer,
+                                                              temp_variant) )
                     {
-                        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Writing operation failed");
 
                         goto end;
                     }
@@ -1195,7 +1422,9 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
 
             default:
             {
-                ASSERT_DEBUG_SYNC(false, "Unrecognized segment type [%d]", segment_type);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized segment type [%d]",
+                                  segment_type);
             }
         } /* switch (segment_type) */
     } /* for (uint32_t n_segment = 0; n_segment < n_segments; ++n_segment)*/
@@ -1222,26 +1451,32 @@ end:
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(__in __notnull system_file_serializer    serializer, 
+PUBLIC EMERALD_API bool system_file_serializer_write_hashed_ansi_string(__in __notnull system_file_serializer    serializer,
                                                                         __in __notnull system_hashed_ansi_string string)
 {
     bool result        = false;
     int  string_length = system_hashed_ansi_string_get_length(string);
 
-    if (system_file_serializer_write(serializer, sizeof(string_length), &string_length))
+    if (system_file_serializer_write(serializer,
+                                     sizeof(string_length),
+                                    &string_length))
     {
-        if (system_file_serializer_write(serializer, string_length, system_hashed_ansi_string_get_buffer(string) ))
+        if (system_file_serializer_write(serializer,
+                                         string_length,
+                                         system_hashed_ansi_string_get_buffer(string) ))
         {
             result = true;
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+            ASSERT_DEBUG_SYNC(false,
+                              "Writing operation failed");
         }
     }
     else
     {
-        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Writing operation failed");
     }
 
     return result;
@@ -1265,7 +1500,9 @@ PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull syst
     bool                result       = false;
     system_variant_type variant_type = system_variant_get_type(variant);
 
-    if (system_file_serializer_write(serializer, sizeof(variant_type), &variant_type) )
+    if (system_file_serializer_write(serializer,
+                                     sizeof(variant_type),
+                                    &variant_type) )
     {
         switch(variant_type)
         {
@@ -1273,25 +1510,33 @@ PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull syst
             {
                 system_hashed_ansi_string string        = NULL;
                 int                       string_length = 0;
-                
-                system_variant_get_ansi_string(variant, false, &string);
-                
+
+                system_variant_get_ansi_string(variant,
+                                               false,
+                                              &string);
+
                 string_length = system_hashed_ansi_string_get_length(string);
 
-                if (system_file_serializer_write(serializer, sizeof(string_length), &string_length) )
+                if (system_file_serializer_write(serializer,
+                                                 sizeof(string_length),
+                                                &string_length) )
                 {
-                    if (system_file_serializer_write(serializer, string_length, system_hashed_ansi_string_get_buffer(string) ))
+                    if (system_file_serializer_write(serializer,
+                                                     string_length,
+                                                     system_hashed_ansi_string_get_buffer(string) ))
                     {
                         result = true;
                     }
                     else
                     {
-                        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Writing operation failed");
                     }
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Writing operation failed");
                 }
 
                 break;
@@ -1301,15 +1546,19 @@ PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull syst
             {
                 bool variant_value = false;
 
-                system_variant_get_boolean(variant, &variant_value);
+                system_variant_get_boolean(variant,
+                                          &variant_value);
 
-                if (system_file_serializer_write(serializer, sizeof(variant_value), &variant_value) )
+                if (system_file_serializer_write(serializer,
+                                                 sizeof(variant_value),
+                                                &variant_value) )
                 {
                     result = true;
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Writing operation failed");
                 }
 
                 break;
@@ -1322,20 +1571,25 @@ PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull syst
 
                 if (variant_type == SYSTEM_VARIANT_FLOAT)
                 {
-                    system_variant_get_float(variant, (float*)buffer);
+                    system_variant_get_float(variant,
+                                             (float*)buffer);
                 }
                 else
                 {
-                    system_variant_get_integer(variant, (int*)buffer);
+                    system_variant_get_integer(variant,
+                                               (int*)buffer);
                 }
 
-                if (system_file_serializer_write(serializer, sizeof(buffer), buffer))
+                if (system_file_serializer_write(serializer,
+                                                 sizeof(buffer),
+                                                 buffer))
                 {
                     result = true;
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Writing operation failed");
                 }
 
                 break;
@@ -1343,13 +1597,16 @@ PUBLIC EMERALD_API bool system_file_serializer_write_variant(__in __notnull syst
 
             default:
             {
-                ASSERT_DEBUG_SYNC(false, "Unrecognized variant type [%d]", variant_type);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized variant type [%d]",
+                                  variant_type);
             }
         }
     }
     else
     {
-        ASSERT_DEBUG_SYNC(false, "Writing operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Writing operation failed");
     }
 
     return result;
