@@ -546,9 +546,16 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     /* Add the light item if not a NULL light */
                     if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                     {
+                        scene_light_shadow_map_bias current_light_shadow_map_bias = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
+
+                        scene_light_get_property(current_light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                                                &current_light_shadow_map_bias);
+
                         ogl_uber_add_light_item(new_uber,
                                                 uber_light_type,
                                                 uses_shadow_mapping,
+                                                current_light_shadow_map_bias,
                                                 n_uber_fragment_property_value_pairs,
                                                 uber_fragment_property_value_pairs);
                     } /* if (uber_light_type != UBER_LIGHT_NONE) */
@@ -657,14 +664,19 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                       n_light < n_uber_lights;
                     ++n_light)
     {
+        scene_light_shadow_map_bias      current_light_shadow_map_bias      = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
         bool                             current_light_is_shadow_caster     = false;
         scene_light_type                 current_light_type                 = SCENE_LIGHT_TYPE_UNKNOWN;
         bool                             current_uber_item_is_shadow_caster = false;
         shaders_fragment_uber_light_type current_uber_item_light_type       = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
+        scene_light_shadow_map_bias      current_uber_item_shadow_map_bias  = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
         _ogl_uber_item_type              current_uber_item_type             = OGL_UBER_ITEM_UNKNOWN;
 
         current_light = scene_get_light_by_index(scene, n_light);
 
+        scene_light_get_property(current_light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                                &current_light_shadow_map_bias);
         scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
                                 &current_light_is_shadow_caster);
@@ -700,6 +712,10 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
         /* Carry on with other light stuff */
         ogl_uber_get_shader_item_property(uber,
                                           n_light,
+                                          OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,
+                                         &current_uber_item_shadow_map_bias);
+        ogl_uber_get_shader_item_property(uber,
+                                          n_light,
                                           OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
                                          &current_uber_item_light_type);
 
@@ -714,6 +730,14 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                                                    current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
             current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
                                                                    current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT) )
+        {
+            /* Nope */
+            result = false;
+
+            goto end;
+        }
+
+        if (current_uber_item_shadow_map_bias != current_light_shadow_map_bias)
         {
             /* Nope */
             result = false;

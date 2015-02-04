@@ -112,10 +112,11 @@ PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_co
 
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor     shader_constructor_fs,
-                                                         __in            uint32_t                   n_light,
-                                                         __in            _uniform_block_id          ub_fs,
-                                                         __out __notnull system_hashed_ansi_string* out_visibility_var_name)
+PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor      shader_constructor_fs,
+                                                         __in            uint32_t                    n_light,
+                                                         __in            scene_light_shadow_map_bias sm_bias,
+                                                         __in            _uniform_block_id           ub_fs,
+                                                         __out __notnull system_hashed_ansi_string*  out_visibility_var_name)
 {
     /* Add the light-specific shadow coordinate input variable */
     bool                      is_light_shadow_coord_var_added = false;
@@ -186,10 +187,49 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                          << light_shadow_coord_var_name_sstream.str()
                          << ".xy, "
                          << light_shadow_coord_var_name_sstream.str()
-//                         << ".z - clamp(0.001 * tan(acos(light" << n_light << "_LdotN_clamped)), 0.0, 1.0))\n"// <- slowest
-//                         << ".z - 0.001 * acos(clamp(light" << n_light << "_LdotN_clamped, 0.0, 1.0)) )\n"    //<- approximation of the above
-                         << ".z)\n"                                                                             // <- works OK if front face culling is enabled.
-                         << ", 0.0);\n";
+                         << ".z";
+
+    switch (sm_bias)
+    {
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE:
+        {
+            code_snippet_sstream << " - clamp(0.001 * tan(acos(light"
+                                 << n_light
+                                 << "_LdotN_clamped)), 0.0, 1.0))\n";
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE_FAST:
+        {
+            code_snippet_sstream << " - 0.001 * acos(clamp(light"
+                                 << n_light
+                                 << "_LdotN_clamped, 0.0, 1.0)) )\n";
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_CONSTANT:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "TODO");
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_NONE:
+        {
+            code_snippet_sstream << ")\n";
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized shadow map bias requested");
+        }
+    } /* switch (sm_bias) */
+
+    code_snippet_sstream << ", 0.0);\n";
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 

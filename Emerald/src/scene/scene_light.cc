@@ -31,6 +31,7 @@ typedef struct
     system_hashed_ansi_string        name;
     float                            position[3];
     curve_container                  quadratic_attenuation;
+    scene_light_shadow_map_bias      shadow_map_bias;           /* NOTE: This property affects the generated ogl_uber! */
     scene_light_shadow_map_filtering shadow_map_filtering;
     ogl_texture_internalformat       shadow_map_internalformat;
     unsigned int                     shadow_map_size[2];
@@ -194,6 +195,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
 
+    light_ptr->shadow_map_bias           = SCENE_LIGHT_SHADOW_MAP_BIAS_NONE;
     light_ptr->shadow_map_filtering      = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
     light_ptr->shadow_map_size[0]        = DEFAULT_SHADOW_MAP_SIZE;
@@ -527,6 +529,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             }
 
             *(curve_container*) out_result = light_ptr->quadratic_attenuation;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS:
+        {
+            *(scene_light_shadow_map_bias*) out_result = light_ptr->shadow_map_bias;
 
             break;
         }
@@ -874,6 +883,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             }
 
             light_ptr->quadratic_attenuation = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS:
+        {
+            light_ptr->shadow_map_bias = *(scene_light_shadow_map_bias*) data;
 
             break;
         }

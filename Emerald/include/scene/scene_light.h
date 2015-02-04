@@ -21,6 +21,7 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_NAME,                      /* Not settable, system_hashed_ansi_string                              */
     SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,          /* Settable,     scene_graph_node. Set in run-time.                     */
     SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,     /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,           /* Settable,     scene_light_shadow_map_bias.                           */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,      /* Settable,     scene_light_shadow_map_filtering.                      */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT, /* Settable,     ogl_texture_internalformat                             */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,           /* Settable,     uint[2].                                               */
@@ -53,20 +54,6 @@ typedef enum
 
     SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN
 } scene_light_shadow_map_filtering;
-
-#if 0
-    TODO: support
-
-    typedef enum scene_light_shadow_map_bias
-    {
-        /* No bias at all */
-        SCENE_LIGHT_SHADOW_MAP_BIAS_NONE,
-        /* Uses a constant bias value */
-        SCENE_LIGHT_SHADOW_MAP_BIAS_CONSTANT,
-        /* Uses a bias value that adapts on a per-sample basis (acos(tan(dot(normal, light))) */
-        SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE,
-    };
-#endif
 
 /** TODO */
 PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_hashed_ansi_string name);

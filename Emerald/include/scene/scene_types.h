@@ -32,6 +32,20 @@ typedef enum
 
 typedef enum
 {
+    /* No bias at all */
+    SCENE_LIGHT_SHADOW_MAP_BIAS_NONE,
+    /* Uses a constant bias value */
+    SCENE_LIGHT_SHADOW_MAP_BIAS_CONSTANT,
+    /* Uses a bias value that adapts on a per-sample basis (acos(tan(dot(normal, light))) */
+    SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE,
+    /* Uses a bias value that adapts on a per-sample basis (approximation of ADAPTIVE) */
+    SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE_FAST,
+
+    SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN
+} scene_light_shadow_map_bias;
+
+typedef enum
+{
     SCENE_LIGHT_TYPE_AMBIENT,
     SCENE_LIGHT_TYPE_DIRECTIONAL,
     SCENE_LIGHT_TYPE_POINT,

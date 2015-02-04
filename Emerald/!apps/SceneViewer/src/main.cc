@@ -42,6 +42,9 @@
 #include <string>
 #include <sstream>
 
+#define CAMERA_SETTING_Z_FAR (100.0f)
+
+
 uint32_t                   _active_camera_index          = 0;
 uint32_t                   _active_camera_path_index     = 0; /* none */
 float                      _animation_duration_float     = 0.0f;
@@ -361,7 +364,7 @@ void _render_scene(ogl_context          context,
                                           &znear);
 
                 float new_ar    = 1280.0f / 720.0f;
-                float new_zfar  = 20.0f;
+                float new_zfar  = CAMERA_SETTING_Z_FAR;
                 float new_znear = 1.0f;
 
                 scene_camera_set_property(camera_ptr->camera,

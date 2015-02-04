@@ -499,6 +499,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
 PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in     __notnull                    shaders_fragment_uber                    uber,
                                                                                  __in                                  shaders_fragment_uber_light_type         light_type,
                                                                                  __in                                  bool                                     is_shadow_caster,
+                                                                                 __in                                  scene_light_shadow_map_bias              sm_bias,
                                                                                  __in      __notnull                   unsigned int                             n_light_properties,
                                                                                  __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
                                                                                  __in_opt __notnull                    PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -889,6 +890,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         ogl_shadow_mapping_adjust_fragment_uber_code(uber_ptr->shader_constructor,
                                                      n_items,
+                                                     sm_bias,
                                                      uber_ptr->fragment_shader_properties_ub,
                                                     &light_visibility_var_name_has);
     }
