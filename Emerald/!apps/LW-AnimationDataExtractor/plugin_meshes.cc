@@ -15,6 +15,7 @@
 #include "mesh/mesh_material.h"
 #include "scene/scene.h"
 #include "scene/scene_material.h"
+#include "scene/scene_mesh.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -183,6 +184,14 @@ PRIVATE void AddMeshToScene(__in __notnull scene           in_scene,
                             new_scene_mesh,
                             NULL,  /* on_remove_callback */
                             NULL); /* on_remove_callback_user_arg */
+
+    /* Configure the mesh instance */
+    scene_mesh_set_property(new_scene_mesh,
+                            SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+                           &instance_ptr->is_shadow_caster);
+    scene_mesh_set_property(new_scene_mesh,
+                            SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER,
+                           &instance_ptr->is_shadow_receiver);
 }
 
 /** TODO */

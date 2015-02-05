@@ -16,7 +16,7 @@
 #include "system/system_variant.h"
 #include <sstream>
 
-#define DEFAULT_SHADOW_MAP_SIZE (1024)
+#define DEFAULT_SHADOW_MAP_SIZE (4096)
 
 
 /* Private declarations */

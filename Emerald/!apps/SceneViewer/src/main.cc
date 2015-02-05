@@ -42,7 +42,7 @@
 #include <string>
 #include <sstream>
 
-#define CAMERA_SETTING_Z_FAR (20.0f)
+#define CAMERA_SETTING_Z_FAR (200.0f)
 
 
 uint32_t                   _active_camera_index          = 0;

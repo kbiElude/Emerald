@@ -129,7 +129,7 @@ typedef struct _ogl_scene_renderer
     scene_camera                             current_camera;
     _ogl_scene_renderer_helper_visualization current_helper_visualization;
     system_matrix4x4                         current_model_matrix;
-    system_resizable_vector                  current_no_rasterization_meshes; /* only used for the "no rasterization" mode. holds _ogl_scene_renderer_mesh* items */
+    system_resizable_vector                  current_shadow_map_meshes; /* only used for the "shadow map" mode. holds _ogl_scene_renderer_mesh* items */
     system_matrix4x4                         current_projection;
     system_matrix4x4                         current_view;
     system_matrix4x4                         current_vp;
@@ -149,7 +149,7 @@ typedef struct _ogl_scene_renderer
         context                         = NULL;
         current_camera                  = NULL;
         current_model_matrix            = system_matrix4x4_create();
-        current_no_rasterization_meshes = system_resizable_vector_create(4, /* capacity */
+        current_shadow_map_meshes       = system_resizable_vector_create(4, /* capacity */
                                                                          sizeof(_ogl_scene_renderer_mesh*) );
         lights_preview                  = NULL;
         mesh_id_data_pool               = system_resource_pool_create(sizeof(_ogl_scene_renderer_mesh_id_data),
@@ -189,11 +189,11 @@ typedef struct _ogl_scene_renderer
             current_model_matrix = NULL;
         }
 
-        if (current_no_rasterization_meshes != NULL)
+        if (current_shadow_map_meshes != NULL)
         {
-            system_resizable_vector_release(current_no_rasterization_meshes);
+            system_resizable_vector_release(current_shadow_map_meshes);
 
-            current_no_rasterization_meshes = NULL;
+            current_shadow_map_meshes = NULL;
         }
 
         if (lights_preview != NULL)
@@ -559,7 +559,7 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
             break;
         }
 
-        case RENDER_MODE_NO_RASTERIZATION:
+        case RENDER_MODE_SHADOW_MAP:
         {
             *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
                                                                                              SPECIAL_MATERIAL_DUMMY),
@@ -792,8 +792,8 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_process_mesh_for_no_rasterization_rendering(__notnull scene_mesh scene_mesh_instance,
-                                                                             __in      void*      renderer)
+PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_rendering(__notnull scene_mesh scene_mesh_instance,
+                                                                       __in      void*      renderer)
 {
     _ogl_scene_renderer*      renderer_ptr                  = (_ogl_scene_renderer*) renderer;
     mesh_material             material                      = ogl_materials_get_special_material(renderer_ptr->material_manager,
@@ -801,14 +801,24 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_no_rasterization_rendering(__n
     mesh                      mesh_gpu                      = NULL;
     mesh                      mesh_instantiation_parent_gpu = NULL;
     uint32_t                  mesh_id                       = -1;
+    bool                      mesh_is_shadow_caster         = false;
     bool                      mesh_needs_gl_update          = false;
     ogl_uber                  mesh_uber                     = NULL;
     _ogl_scene_renderer_uber* uber_ptr                      = NULL;
 
     scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+                           &mesh_is_shadow_caster);
+
+    if (!mesh_is_shadow_caster)
+    {
+        /* Do not render if not a shadow caster! */
+        goto end;
+    }
+
+    scene_mesh_get_property(scene_mesh_instance,
                             SCENE_MESH_PROPERTY_MESH,
                            &mesh_gpu);
-
     mesh_get_property(mesh_gpu,
                       MESH_PROPERTY_INSTANTIATION_PARENT,
                      &mesh_instantiation_parent_gpu);
@@ -851,36 +861,52 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_no_rasterization_rendering(__n
     system_matrix4x4_set_from_matrix4x4(new_mesh_item->model_matrix,
                                         renderer_ptr->current_model_matrix);
 
-    system_resizable_vector_push(renderer_ptr->current_no_rasterization_meshes,
+    system_resizable_vector_push(renderer_ptr->current_shadow_map_meshes,
                                  new_mesh_item);
 
 end:
     ;
 }
 
-/** TODO */
+/** This method is called to calculate AABB of the visible part of the scene, as perceived by
+ *  active camera.
+ *
+ *  @param scene_mesh_instance TODO
+ *  @param renderer
+ *
+ **/
 PRIVATE void _ogl_scene_renderer_process_mesh_for_shadow_map_pre_pass(__notnull scene_mesh scene_mesh_instance,
                                                                       __in      void*      renderer)
 {
     _ogl_scene_renderer* renderer_ptr                  = (_ogl_scene_renderer*) renderer;
     mesh                 mesh_gpu                      = NULL;
     mesh                 mesh_instantiation_parent_gpu = NULL;
+    bool                 mesh_is_shadow_caster         = false;
 
     scene_mesh_get_property(scene_mesh_instance,
-                            SCENE_MESH_PROPERTY_MESH,
-                           &mesh_gpu);
-    mesh_get_property      (mesh_gpu,
-                            MESH_PROPERTY_INSTANTIATION_PARENT,
-                           &mesh_instantiation_parent_gpu);
+                            SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+                           &mesh_is_shadow_caster);
 
-    if (mesh_instantiation_parent_gpu != NULL)
+    /* Only update visibility AABB for meshes that are shadow casters. */
+    if (mesh_is_shadow_caster)
     {
-        mesh_gpu = mesh_instantiation_parent_gpu;
-    }
+        scene_mesh_get_property(scene_mesh_instance,
+                                SCENE_MESH_PROPERTY_MESH,
+                               &mesh_gpu);
 
-    /* Perform frustum culling. This is where the AABBs are also updated. */
-    _ogl_scene_renderer_frustum_cull( (ogl_scene_renderer) renderer,
-                                     mesh_gpu);
+        mesh_get_property(mesh_gpu,
+                          MESH_PROPERTY_INSTANTIATION_PARENT,
+                         &mesh_instantiation_parent_gpu);
+
+        if (mesh_instantiation_parent_gpu != NULL)
+        {
+            mesh_gpu = mesh_instantiation_parent_gpu;
+        }
+
+        /* Perform frustum culling. This is where the AABBs are also updated. */
+        _ogl_scene_renderer_frustum_cull( (ogl_scene_renderer) renderer,
+                                          mesh_gpu);
+    }
 }
 
 /** TODO */
@@ -1003,7 +1029,7 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                                        sm_projection_matrix,
                                                        NULL, /* camera */
                                                        NULL, /* camera_location */
-                                                       RENDER_MODE_NO_RASTERIZATION,
+                                                       RENDER_MODE_SHADOW_MAP,
                                                        SHADOW_MAPPING_TYPE_DISABLED,
                                                        HELPER_VISUALIZATION_NONE,
                                                        frame_time);
@@ -1640,8 +1666,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                          _ogl_scene_renderer_new_model_matrix,
                          NULL, /* insert_camera_proc */
                          _ogl_scene_renderer_update_light_properties,
-                         (render_mode == RENDER_MODE_NO_RASTERIZATION) ? _ogl_scene_renderer_process_mesh_for_no_rasterization_rendering
-                                                                       : _ogl_scene_renderer_process_mesh_for_forward_rendering,
+                         (render_mode == RENDER_MODE_SHADOW_MAP) ? _ogl_scene_renderer_process_mesh_for_shadow_map_rendering
+                                                                 : _ogl_scene_renderer_process_mesh_for_forward_rendering,
                          renderer,
                          frame_time);
 
@@ -1667,7 +1693,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     uint32_t                  n_iterations      = 0;
     _ogl_scene_renderer_uber* uber_details_ptr  = NULL;
 
-    if (render_mode == RENDER_MODE_NO_RASTERIZATION)
+    if (render_mode == RENDER_MODE_SHADOW_MAP)
     {
         mesh_material dummy_material = ogl_materials_get_special_material(materials,
                                                                           SPECIAL_MATERIAL_DUMMY);
@@ -1675,7 +1701,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
         material_uber     = mesh_material_get_ogl_uber                    (dummy_material,
                                                                            renderer_ptr->scene);
         n_iterations      = 1;
-        n_iteration_items = system_resizable_vector_get_amount_of_elements(renderer_ptr->current_no_rasterization_meshes);
+        n_iteration_items = system_resizable_vector_get_amount_of_elements(renderer_ptr->current_shadow_map_meshes);
     }
     else
     {
@@ -1687,7 +1713,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 ++n_iteration)
     {
         /* Retrieve ogl_uber instance */
-        if (render_mode == RENDER_MODE_NO_RASTERIZATION)
+        if (render_mode == RENDER_MODE_SHADOW_MAP)
         {
             /* Nothing to do - n_iteration_items is already set */
         }
@@ -1748,9 +1774,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                           n_iteration_item < n_iteration_items;
                         ++n_iteration_item)
             {
-                if (render_mode == RENDER_MODE_NO_RASTERIZATION)
+                if (render_mode == RENDER_MODE_SHADOW_MAP)
                 {
-                    system_resizable_vector_get_element_at(renderer_ptr->current_no_rasterization_meshes,
+                    system_resizable_vector_get_element_at(renderer_ptr->current_shadow_map_meshes,
                                                            n_iteration_item,
                                                           &item_ptr);
                 }
@@ -1765,14 +1791,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                item_ptr->model_matrix,
                                                item_ptr->normal_matrix,
                                                material_uber,
-                                               (render_mode != RENDER_MODE_NO_RASTERIZATION) ? item_ptr->material : NULL,
+                                               (render_mode != RENDER_MODE_SHADOW_MAP) ? item_ptr->material : NULL,
                                                frame_time);
             }
         }
         ogl_uber_rendering_stop(material_uber);
 
         /* Any helper visualization, handle it at this point */
-        if (render_mode != RENDER_MODE_NO_RASTERIZATION)
+        if (render_mode != RENDER_MODE_SHADOW_MAP)
         {
             if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES && n_iteration_items > 0)
             {
@@ -1817,11 +1843,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 }
                 ogl_scene_renderer_normals_preview_stop(renderer_ptr->normals_preview);
             } /* if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0) */
-        } /* if (render_mode != RENDER_MODE_NO_RASTERIZATION) */
+        } /* if (render_mode != RENDER_MODE_SHADOW_MAP) */
 
         /* Clean up */
-        system_resizable_vector   mesh_item_vector = (render_mode == RENDER_MODE_NO_RASTERIZATION) ? renderer_ptr->current_no_rasterization_meshes
-                                                                                                   : uber_details_ptr->meshes;
+        system_resizable_vector   mesh_item_vector = (render_mode == RENDER_MODE_SHADOW_MAP) ? renderer_ptr->current_shadow_map_meshes
+                                                                                             : uber_details_ptr->meshes;
         _ogl_scene_renderer_mesh* mesh_ptr         = NULL;
 
         while (system_resizable_vector_pop(mesh_item_vector,

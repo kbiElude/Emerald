@@ -13,9 +13,11 @@ REFCOUNT_INSERT_DECLARATIONS(scene_mesh, scene_mesh)
 
 enum scene_mesh_property
 {
-    SCENE_MESH_PROPERTY_ID,   /*      settable, uint32_t */
-    SCENE_MESH_PROPERTY_MESH, /* not settable, mesh */
-    SCENE_MESH_PROPERTY_NAME, /* not settable, system_hashed_ansi_string */
+    SCENE_MESH_PROPERTY_ID,                 /*     settable, uint32_t                  */
+    SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,   /*     settable, bool                      */
+    SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER, /*     settable, bool                      */
+    SCENE_MESH_PROPERTY_MESH,               /* not settable, mesh                      */
+    SCENE_MESH_PROPERTY_NAME,               /* not settable, system_hashed_ansi_string */
 };
 
 /** TODO */

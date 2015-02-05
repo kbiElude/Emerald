@@ -32,7 +32,7 @@ typedef enum
 
     /* Dummy fragment shader will be used. This mode is used for rendering
      * shadow maps via ogl_scene_renderer. */
-    RENDER_MODE_NO_RASTERIZATION,
+    RENDER_MODE_SHADOW_MAP,
 
 } _ogl_scene_renderer_render_mode;
 
