@@ -70,6 +70,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
                                                     GLsizei width,
                                                     GLsizei height);
 
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
+                                                     GLint   y,
+                                                     GLsizei width,
+                                                     GLsizei height);
+
 /*** VERTEX ARRAY OBJECTS ***/
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexArray(GLuint array);

@@ -314,6 +314,25 @@ PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
                                          scissor_box);
 }
 
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glViewport(GLint   x,
+                                                     GLint   y,
+                                                     GLsizei width,
+                                                     GLsizei height)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+    GLint                   viewport[]  = {x, y, width, height};
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
+                                         viewport);
+}
+
 /******************************************************** VERTEX ARRAY OBJECTS *********************************************************/
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glBindVertexArray(GLuint array)
@@ -1028,9 +1047,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1069,9 +1088,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1112,9 +1131,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1155,9 +1174,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1198,9 +1217,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1243,9 +1262,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1285,9 +1304,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1758,9 +1777,9 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1801,9 +1820,9 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX    | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
@@ -1846,8 +1865,9 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT);
     ogl_context_bo_bindings_sync     (bo_bindings,
                                       BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
                                       BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);

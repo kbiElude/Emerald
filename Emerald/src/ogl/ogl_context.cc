@@ -1819,7 +1819,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLVertexAttribI4usv,                   "glVertexAttribI4usv"},
             {&context_ptr->entry_points_private.pGLVertexAttribIPointer,           "glVertexAttribIPointer"},
             {&context_ptr->entry_points_private.pGLVertexAttribPointer,            "glVertexAttribPointer"},
-            {&context_ptr->entry_points_gl.pGLViewport,                            "glViewport"}
+            {&context_ptr->entry_points_private.pGLViewport,                       "glViewport"}
         };
         const uint32_t n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
 
@@ -1943,6 +1943,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLUseProgram                      = ogl_context_wrappers_glUseProgram;
         context_ptr->entry_points_gl.pGLVertexAttribIPointer            = ogl_context_wrappers_glVertexAttribIPointer;
         context_ptr->entry_points_gl.pGLVertexAttribPointer             = ogl_context_wrappers_glVertexAttribPointer;
+        context_ptr->entry_points_gl.pGLViewport                        = ogl_context_wrappers_glViewport;
     }
     else
     {

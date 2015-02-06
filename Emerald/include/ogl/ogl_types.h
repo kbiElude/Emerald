@@ -1321,6 +1321,7 @@ typedef struct
     PFNGLUSEPROGRAMPROC                      pGLUseProgram;
     PFNGLVERTEXATTRIBIPOINTERPROC            pGLVertexAttribIPointer;
     PFNGLVERTEXATTRIBPOINTERPROC             pGLVertexAttribPointer;
+    PFNGLVIEWPORTPROC                        pGLViewport;
 
     /* DSA */
     PFNGLBINDMULTITEXTUREEXTPROC             pGLBindMultiTextureEXT;

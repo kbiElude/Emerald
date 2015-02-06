@@ -6,6 +6,8 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_context_state_cache.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_curve.h"
@@ -854,7 +856,8 @@ PUBLIC EMERALD_API void scene_camera_get_property(__in  __notnull scene_camera  
 }
 
 /* Please see header for specification */
-PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer serializer,
+PUBLIC scene_camera scene_camera_load(__in     __notnull ogl_context            context,
+                                      __in     __notnull system_file_serializer serializer,
                                       __in_opt           scene                  owner_scene)
 {
     scene_camera   result     = NULL;
@@ -954,6 +957,41 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull system_file_serializer 
     {
         goto end_error;
     }
+
+    /* If camera AR is 0, try to retrieve current viewport's size.
+     *
+     * This will not work if we're not in a rendering context, in
+     * which case throw an assertion failure.
+     */
+    if (fabs(camera_ar) < 1e-5f)
+    {
+        ogl_context_state_cache state_cache = NULL;
+
+        ASSERT_DEBUG_SYNC(context != NULL,
+                          "No active rendering context but camera AR is set at 0.0!");
+        if (context != NULL)
+        {
+            float current_viewport_height;
+            GLint current_viewport_size[4];
+            float current_viewport_width;
+
+            ogl_context_get_property            (context,
+                                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                                &state_cache);
+            ogl_context_state_cache_get_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT,
+                                                 current_viewport_size);
+
+            current_viewport_height = (float) current_viewport_size[3];
+            current_viewport_width  = (float) current_viewport_size[2];
+
+            ASSERT_DEBUG_SYNC(current_viewport_height > 0 &&
+                              current_viewport_width  > 0,
+                              "Invalid viewport's dimensions");
+
+            camera_ar = current_viewport_width / current_viewport_height;
+        } /* if (context != NULL) */
+    } /* if (fabs(camera_ar) < 1e-5f) */
 
     /* Set the float properties */
     scene_camera_set_property(result,

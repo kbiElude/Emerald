@@ -32,6 +32,9 @@ typedef struct _ogl_context_state_cache
     GLuint active_vertex_array_object_context;
     GLuint active_vertex_array_object_local;
 
+    GLint  active_viewport_context[4];
+    GLint  active_viewport_local  [4];
+
     /* Blending */
     GLfloat blend_color_context[4];
     GLfloat blend_color_local  [4];
@@ -64,7 +67,9 @@ PUBLIC ogl_context_state_cache ogl_context_state_cache_create(__in __notnull ogl
 {
     _ogl_context_state_cache* new_cache = new (std::nothrow) _ogl_context_state_cache;
 
-    ASSERT_ALWAYS_SYNC(new_cache != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_cache != NULL,
+                       "Out of memory");
+
     if (new_cache != NULL)
     {
         new_cache->context = context;
@@ -186,6 +191,15 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT:
+        {
+            memcpy(out_result,
+                   cache_ptr->active_viewport_local,
+                   sizeof(cache_ptr->active_viewport_local) );
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -280,6 +294,13 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
     memcpy                                 (cache_ptr->active_scissor_box_local,
                                             cache_ptr->active_scissor_box_context,
                                             sizeof(cache_ptr->active_scissor_box_local) );
+
+    /* Set default state: viewport */
+    entrypoints_private_ptr->pGLGetIntegerv(GL_VIEWPORT,
+                                            cache_ptr->active_viewport_context);
+    memcpy                                 (cache_ptr->active_viewport_local,
+                                            cache_ptr->active_viewport_context,
+                                            sizeof(cache_ptr->active_viewport_local) );
 }
 
 /** Please see header for spec */
@@ -411,6 +432,15 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT:
         {
             cache_ptr->active_vertex_array_object_local = *((GLuint*) data);
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_VIEWPORT:
+        {
+            memcpy(cache_ptr->active_viewport_local,
+                   data,
+                   sizeof(cache_ptr->active_viewport_local) );
 
             break;
         }
@@ -570,6 +600,23 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
             cache_ptr->entrypoints_private_ptr->pGLBindVertexArray(cache_ptr->active_vertex_array_object_local);
 
             cache_ptr->active_vertex_array_object_context = cache_ptr->active_vertex_array_object_local;
+        }
+
+        /* Viewport */
+        if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT)                            &&
+            (cache_ptr->active_viewport_context[0] != cache_ptr->active_viewport_local[0] ||
+             cache_ptr->active_viewport_context[1] != cache_ptr->active_viewport_local[1] ||
+             cache_ptr->active_viewport_context[2] != cache_ptr->active_viewport_local[2] ||
+             cache_ptr->active_viewport_context[3] != cache_ptr->active_viewport_local[3] ))
+        {
+            cache_ptr->entrypoints_private_ptr->pGLViewport(cache_ptr->active_viewport_local[0],
+                                                            cache_ptr->active_viewport_local[1],
+                                                            cache_ptr->active_viewport_local[2],
+                                                            cache_ptr->active_viewport_local[3]);
+
+            memcpy(cache_ptr->active_viewport_context,
+                   cache_ptr->active_viewport_local,
+                   sizeof(cache_ptr->active_viewport_local) );
         }
     } /* if (cache != NULL) */
 }

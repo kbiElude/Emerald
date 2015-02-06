@@ -42,8 +42,8 @@
 #include <string>
 #include <sstream>
 
-#define CAMERA_SETTING_Z_FAR (200.0f)
-
+#define CAMERA_SETTING_Z_FAR (80.0f)
+//#define SHOW_SM_PREVIEW
 
 uint32_t                   _active_camera_index          = 0;
 uint32_t                   _active_camera_path_index     = 0; /* none */
@@ -398,7 +398,7 @@ void _render_scene(ogl_context          context,
                 projection = system_matrix4x4_create_perspective_projection_matrix(45.0f,
                                                                                    1280 / 720.0f,
                                                                                    1.0f,
-                                                                                   40.0f);
+                                                                                   CAMERA_SETTING_Z_FAR * 10.0f);
 
                 if (_ui_active_path_control != NULL)
                 {
@@ -617,7 +617,7 @@ void _setup_ui()
                                                   NULL);
 
     /* Create shadow map preview */
-#if 1
+#ifdef SHOW_SM_PREVIEW
     _ui_texture_preview = ogl_ui_add_texture_preview(_ui,
                                                      system_hashed_ansi_string_create("Texture preview"),
                                                      texture_preview_x1y1,

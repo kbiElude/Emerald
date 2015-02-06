@@ -828,7 +828,6 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     scene_camera new_camera_instance = scene_camera_create(instance_name);
 
     /* Set camera instance properties */
-    float                     ar           = 0.0f;
     _scene_camera_type        camera_type  = SCENE_CAMERA_TYPE_PERSPECTIVE;
     system_hashed_ansi_string name         = NULL;
     float                     xfov         = 0.0f;
@@ -846,9 +845,6 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     collada_data_camera_get_property(collada_camera,
                                      COLLADA_DATA_CAMERA_PROPERTY_NAME,
                                     &name);
-    collada_data_camera_get_property(collada_camera,
-                                     COLLADA_DATA_CAMERA_PROPERTY_AR,
-                                    &ar);
     collada_data_camera_get_property(collada_camera,
                                      COLLADA_DATA_CAMERA_PROPERTY_XFOV,
                                     &xfov);
@@ -875,9 +871,6 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     system_variant_release           (yfov_variant);
 
     /* Carry on */
-    scene_camera_set_property(new_camera_instance,
-                              SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
-                             &ar);
     scene_camera_set_property(new_camera_instance,
                               SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                              &zfar);

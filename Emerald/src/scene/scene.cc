@@ -1011,7 +1011,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                   n_scene_camera < n_scene_cameras;
                 ++n_scene_camera)
     {
-        scene_camera new_camera = scene_camera_load(serializer,
+        scene_camera new_camera = scene_camera_load(context,
+                                                    serializer,
                                                     result_scene);
 
         ASSERT_DEBUG_SYNC(new_camera != NULL,
