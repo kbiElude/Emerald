@@ -563,7 +563,8 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
         {
             *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
                                                                                              SPECIAL_MATERIAL_DUMMY),
-                                                          scene);
+                                                          scene,
+                                                          false); /* use_shadow_maps */
 
             break;
         }
@@ -572,7 +573,8 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
         {
             *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
                                                                                              SPECIAL_MATERIAL_NORMALS),
-                                                          scene);
+                                                          scene,
+                                                          false); /* use_shadow_maps */
 
             break;
         }
@@ -581,7 +583,8 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
         {
             *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
                                                                                              SPECIAL_MATERIAL_TEXCOORD),
-                                                          scene);
+                                                          scene,
+                                                          false); /* use_shadow_maps */
 
             break;
         }
@@ -689,6 +692,13 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
         goto end;
     }
 
+    /* Is this mesh a shadow receiver? */
+    bool is_shadow_receiver = false;
+
+    scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_IS_SHADOW_RECEIVER,
+                           &is_shadow_receiver);
+
     /* Cache the mesh for rendering */
     for (unsigned int n_mesh_material = 0;
                       n_mesh_material < n_mesh_materials;
@@ -709,7 +719,8 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
          * scene configuration.
          */
         mesh_uber = mesh_material_get_ogl_uber(material,
-                                               renderer_ptr->scene);
+                                               renderer_ptr->scene,
+                                               is_shadow_receiver);
 
         if (!system_hash64map_get(renderer_ptr->ubers_map,
                                   (system_hash64) mesh_uber,
@@ -1699,7 +1710,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                                           SPECIAL_MATERIAL_DUMMY);
 
         material_uber     = mesh_material_get_ogl_uber                    (dummy_material,
-                                                                           renderer_ptr->scene);
+                                                                           renderer_ptr->scene,
+                                                                           false); /* use_shadow_maps */
         n_iterations      = 1;
         n_iteration_items = system_resizable_vector_get_amount_of_elements(renderer_ptr->current_shadow_map_meshes);
     }

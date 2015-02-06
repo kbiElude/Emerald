@@ -2162,6 +2162,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture != NULL,
                                           "No shadow map assigned to a light which casts shadows");
 
+                        entry_points->pGLBindSampler            (n_texture_unit,
+                                                                 0);            /* TODO: use a sampler instead of SM texture state! */
                         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
                                                                  GL_TEXTURE_2D,
                                                                  item_ptr->fragment_shader_item.current_light_shadow_map_texture);

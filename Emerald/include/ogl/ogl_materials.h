@@ -45,7 +45,8 @@ PUBLIC mesh_material ogl_materials_get_special_material(__in __notnull ogl_mater
  **/
 PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials,
                                        __in     __notnull mesh_material,
-                                       __in_opt           scene);
+                                       __in_opt           scene,
+                                       __in               bool          use_shadow_maps);
 
 /** TODO.
  *

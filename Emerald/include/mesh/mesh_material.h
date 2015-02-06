@@ -135,7 +135,8 @@ PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnu
  *  to consider lighting.
  */
 PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_material material,
-                                                       __in_opt           scene         scene);
+                                                       __in_opt           scene         scene,
+                                                       __in               bool          use_shadow_maps);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material          material,

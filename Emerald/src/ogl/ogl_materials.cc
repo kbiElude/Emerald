@@ -73,11 +73,13 @@ typedef struct _ogl_materials_uber
 {
     mesh_material material;
     ogl_uber      uber;
+    bool          use_shadow_maps;
 
     _ogl_materials_uber()
     {
-        material = NULL;
-        uber     = NULL;
+        material        = NULL;
+        uber            = NULL;
+        use_shadow_maps = false;
     }
 
     ~_ogl_materials_uber()
@@ -301,7 +303,8 @@ end:
 /** TODO */
 PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials,
                                           __in __notnull mesh_material material,
-                                          __in __notnull scene         scene)
+                                          __in __notnull scene         scene,
+                                          __in           bool          use_shadow_maps)
 {
     _ogl_materials* materials_ptr = (_ogl_materials*) materials;
     ogl_context     context       = materials_ptr->context;
@@ -309,10 +312,11 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     LOG_INFO("Performance warning: _ogl_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
-    system_hashed_ansi_string material_name = mesh_material_get_name(material);
-    ogl_uber                  new_uber      = ogl_uber_create       (context,
-                                                                     system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(material_name),
-                                                                                                                             " uber") );
+    system_hashed_ansi_string material_name    = mesh_material_get_name(material);
+    const char*               uber_name_suffix = use_shadow_maps ? " uber with SM" : " uber without SM";
+    ogl_uber                  new_uber         = ogl_uber_create       (context,
+                                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(material_name),
+                                                                                                                                uber_name_suffix) );
 
     ASSERT_ALWAYS_SYNC(new_uber != NULL,
                        "Could not spawn an uber instance");
@@ -534,6 +538,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                      *
                      * Note that scene has a property called SCENE_PROPERTY_SHADOW_MAPPING_ENABLED which
                      * should be ANDed with light's property.
+                     *
+                     * Also note that we must not forget about the global "use shadow maps" setting here.
                      */
                     bool uses_shadow_mapping = false;
 
@@ -542,6 +548,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                             &uses_shadow_mapping);
 
                     uses_shadow_mapping &= scene_shadow_mapping_enabled;
+                    uses_shadow_mapping &= use_shadow_maps;
 
                     /* Add the light item if not a NULL light */
                     if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
@@ -888,7 +895,8 @@ PUBLIC mesh_material ogl_materials_get_special_material(__in __notnull ogl_mater
 /** Please see header for specification */
 PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials materials,
                                        __in     __notnull mesh_material material,
-                                       __in_opt           scene         scene)
+                                       __in_opt           scene         scene,
+                                       __in               bool          use_shadow_maps)
 {
     _ogl_materials* materials_ptr = (_ogl_materials*) materials;
     ogl_uber        result        = NULL;
@@ -906,11 +914,16 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
                                                    n_material,
                                                   &uber_ptr) )
         {
-            if (_ogl_materials_are_materials_a_match(uber_ptr->material,
-                                                     material)                          &&
-                (scene == NULL                                                          ||
-                 scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
-                                                                       scene) ))
+            bool do_materials_match        = _ogl_materials_are_materials_a_match                  (uber_ptr->material,
+                                                                                                    material);
+            bool does_material_match_scene = (scene == NULL                                                          ||
+                                              scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
+                                                                                                    scene) );
+            bool does_sm_setting_match     = (uber_ptr->use_shadow_maps == use_shadow_maps);
+
+            if ( do_materials_match       &&
+                does_material_match_scene &&
+                does_sm_setting_match)
             {
                 result = uber_ptr->uber;
 
@@ -919,7 +932,9 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not get uber descriptor at index [%d]", n_material);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not get uber descriptor at index [%d]",
+                              n_material);
         }
     } /* for (all materials) */
 
@@ -928,7 +943,8 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
         /* Nope? Gotta bake a new uber then */
         ogl_uber new_uber = _ogl_materials_bake_uber(materials,
                                                      material,
-                                                     scene);
+                                                     scene,
+                                                     use_shadow_maps);
 
         ASSERT_DEBUG_SYNC(new_uber != NULL,
                           "Could not bake a new uber");
@@ -943,11 +959,14 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
             if (new_uber_descriptor != NULL)
             {
                 const char* src_material_name = system_hashed_ansi_string_get_buffer(mesh_material_get_name(material) );
+                const char* name_suffix       = (use_shadow_maps) ? " copy with SM" : " copy without SM";
 
-                new_uber_descriptor->material = mesh_material_create_copy(system_hashed_ansi_string_create_by_merging_two_strings(src_material_name, " copy"),
-                                                                          material);
-                new_uber_descriptor->uber     = new_uber;
-                result                        = new_uber;
+                new_uber_descriptor->material        = mesh_material_create_copy(system_hashed_ansi_string_create_by_merging_two_strings(src_material_name,
+                                                                                                                                         name_suffix),
+                                                                                 material);
+                new_uber_descriptor->uber            = new_uber;
+                new_uber_descriptor->use_shadow_maps = use_shadow_maps;
+                result                               = new_uber;
 
                 system_resizable_vector_push(materials_ptr->ubers,
                                              new_uber_descriptor);

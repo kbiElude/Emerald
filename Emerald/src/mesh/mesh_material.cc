@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -92,11 +92,13 @@ typedef struct _mesh_material
     ogl_context               context;
     bool                      dirty;
     system_hashed_ansi_string name;
+    scene                     owner_scene;
     mesh_material_shading     shading;
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
     scene_material            source_scene_material;
     system_variant            temp_variant_float;
-    ogl_uber                  uber;
+    ogl_uber                  uber_non_sm; /*         uses shadow maps for per-light visibility calculation */
+    ogl_uber                  uber_sm;     /* does not use shadow maps for per-light visibility calculation */
 
     system_hashed_ansi_string uv_map_name; /* NULL by default, needs to be manually set */
     float                     vertex_smoothing_angle;
@@ -107,9 +109,11 @@ typedef struct _mesh_material
         context                = NULL;
         dirty                  = true;
         name                   = NULL;
+        owner_scene            = NULL;
         source_scene_material  = NULL;
         temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
-        uber                   = NULL;
+        uber_non_sm            = NULL;
+        uber_sm                = NULL;
         uv_map_name            = NULL;
         vertex_smoothing_angle = 0.0f;
     }
@@ -291,10 +295,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
         unsigned int n_name_strings = sizeof(name_strings) / sizeof(name_strings[0]);
 
         /* Copy relevant fields */
-        new_material_ptr->dirty   = src_material_ptr->dirty;
-        new_material_ptr->name    = src_material_ptr->name;
-        new_material_ptr->shading = src_material_ptr->shading;
-        new_material_ptr->uber    = src_material_ptr->uber;
+        new_material_ptr->dirty       = src_material_ptr->dirty;
+        new_material_ptr->name        = src_material_ptr->name;
+        new_material_ptr->shading     = src_material_ptr->shading;
+        new_material_ptr->uber_non_sm = src_material_ptr->uber_non_sm;
+        new_material_ptr->uber_sm     = src_material_ptr->uber_sm;
 
         memcpy(new_material_ptr->shading_properties,
                src_material_ptr->shading_properties,
@@ -639,7 +644,8 @@ PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnu
 
 /* Please see header for specification */
 PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_material material,
-                                                       __in_opt           scene         scene)
+                                                       __in_opt           scene         scene,
+                                                       __in               bool          use_shadow_maps)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
@@ -653,7 +659,7 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
 
         LOG_INFO("Material is dirty - baking..");
 
-        if (material_ptr->uber == NULL)
+        if (material_ptr->owner_scene == NULL)
         {
             system_callback_manager scene_callback_manager = NULL;
 
@@ -666,15 +672,23 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
                                                             CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                             _mesh_material_on_lights_added_to_scene,
                                                             material_ptr);
+
+            material_ptr->owner_scene = scene;
         }
 
-        material_ptr->dirty = false;
-        material_ptr->uber  = ogl_materials_get_uber(materials,
-                                                     material,
-                                                     scene);
+        material_ptr->dirty       = false;
+        material_ptr->uber_sm     = ogl_materials_get_uber(materials,
+                                                           material,
+                                                           scene,
+                                                           true); /* use_shadow_maps */
+        material_ptr->uber_non_sm = ogl_materials_get_uber(materials,
+                                                           material,
+                                                           scene,
+                                                           false); /* use_shadow_maps */
     }
 
-    return material_ptr->uber;
+    return use_shadow_maps ? material_ptr->uber_sm
+                           : material_ptr->uber_non_sm;
 }
 
 /* Please see header for specification */
