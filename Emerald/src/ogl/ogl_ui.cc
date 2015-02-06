@@ -95,8 +95,6 @@ typedef struct
     /* NOT called from a rendering thread */
     PFNOGLUIGETPROPERTYPROCPTR    pfn_get_property_func_ptr;
     /* NOT called from a rendering thread */
-    PFNOGLUIHOVERPROCPTR          pfn_hover_func_ptr;
-    /* NOT called from a rendering thread */
     PFNOGLUIISOVERPROCPTR         pfn_is_over_func_ptr;
     /* NOT called from a rendering thread */
     PFNOGLUIONLBMDOWNPROCPTR      pfn_on_lbm_down_func_ptr;
@@ -615,13 +613,13 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
                                                    n_control,
                                                   &control_ptr) )
         {
-            if (control_ptr->pfn_is_over_func_ptr != NULL                   &&
-                control_ptr->pfn_hover_func_ptr   != NULL                   &&
+            if (control_ptr->pfn_is_over_func_ptr       != NULL           &&
+                control_ptr->pfn_on_mouse_move_func_ptr != NULL           &&
                 control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
                                                   ui_ptr->current_mouse_xy))
             {
-                control_ptr->pfn_hover_func_ptr(control_ptr->internal,
-                                                ui_ptr->current_mouse_xy);
+                control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
+                                                        ui_ptr->current_mouse_xy);
 
                 break;
             } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) ) */
