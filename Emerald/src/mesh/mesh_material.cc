@@ -312,6 +312,18 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
         {
             _mesh_material_property& shading_property = new_material_ptr->shading_properties[n_shading_properties];
 
+            if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+            {
+                curve_container_retain(shading_property.curve_container_data[0]);
+            }
+            else
+            if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3)
+            {
+                curve_container_retain(shading_property.curve_container_data[0]);
+                curve_container_retain(shading_property.curve_container_data[1]);
+                curve_container_retain(shading_property.curve_container_data[2]);
+            }
+            else
             if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
             {
                 ogl_sampler_retain(shading_property.texture_data.sampler);
@@ -880,6 +892,115 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
     memcpy(out_vec4_data,
            property_ptr->vec4_data,
            sizeof(float) * 4);
+}
+
+/* Please see header for specification */
+PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_material material_a,
+                                                      __in __notnull mesh_material material_b)
+{
+    bool result = false;
+
+    /* We only check the properties that affect how the shaders are built */
+
+    /* 1. Shading */
+    mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+    mesh_material_shading material_b_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+
+    mesh_material_get_property(material_a,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &material_a_shading);
+    mesh_material_get_property(material_b,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &material_b_shading);
+
+    if (material_a_shading != material_b_shading)
+    {
+        goto end;
+    }
+
+    /* 2. Shading properties */
+    for (unsigned int n_material_property = 0;
+                      n_material_property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
+                    ++n_material_property)
+    {
+        mesh_material_shading_property    property              = (mesh_material_shading_property) n_material_property;
+        mesh_material_property_attachment material_a_attachment = mesh_material_get_shading_property_attachment_type(material_a,
+                                                                                                                     property);
+        mesh_material_property_attachment material_b_attachment = mesh_material_get_shading_property_attachment_type(material_b,
+                                                                                                                     property);
+
+        if (material_a_attachment != material_b_attachment)
+        {
+            goto end;
+        }
+
+        switch (material_a_attachment)
+        {
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
+            {
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+            {
+                /* Single-component floating-point attachments are handled by uniforms so the actual data is irrelevant.
+                 * Same goes for curve container based attachments*/
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+            {
+                ogl_texture_dimensionality material_a_dimensionality;
+                ogl_texture                material_a_texture = NULL;
+                ogl_texture_dimensionality material_b_dimensionality;
+                ogl_texture                material_b_texture = NULL;
+
+                mesh_material_get_shading_property_value_texture(material_a,
+                                                                 property,
+                                                                &material_a_texture,
+                                                                 NULL, /* out_mipmap_level - irrelevant */
+                                                                 NULL);/* out_sampler - irrelevant */
+
+                mesh_material_get_shading_property_value_texture(material_b,
+                                                                 property,
+                                                                &material_b_texture,
+                                                                 NULL, /* out_mipmap_level - irrelevant */
+                                                                 NULL);/* out_sampler - irrelevant */
+
+                ogl_texture_get_property(material_a_texture,
+                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
+                                        &material_a_dimensionality);
+                ogl_texture_get_property(material_b_texture,
+                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
+                                        &material_b_dimensionality);
+
+                if (material_a_dimensionality != material_b_dimensionality)
+                {
+                    goto end;
+                }
+
+                break;
+            }
+
+            case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+            {
+                /* Vec4 attachments are handled by uniforms so the actual data is irrelevant */
+                break;
+            }
+
+            default:
+            {
+                ASSERT_ALWAYS_SYNC(false, "Unrecognized material property attachment [%d]", material_a_attachment);
+            }
+        } /* switch (material_a_attachment) */
+    } /* for (all material properties) */
+
+    /* Done */
+    result = true;
+end:
+    return result;
 }
 
 /* Please see header for specification */

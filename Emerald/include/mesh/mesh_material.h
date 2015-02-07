@@ -181,20 +181,9 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
                                                                       __in                     mesh_material_shading_property property,
                                                                       __out_ecount(4)          float*                         out_vec4_data);
 
-#if 0
-
-TODO: REMOVE
-
 /** TODO */
-PUBLIC mesh_material mesh_material_load(__in __notnull system_file_serializer serializer,
-                                        __in __notnull ogl_context            context,
-                                        __in __notnull system_hash64map       texture_id_to_ogl_texture_map);
-
-/** TODO */
-PUBLIC bool mesh_material_save(__in __notnull system_file_serializer serializer,
-                               __in __notnull mesh_material          material);
-#endif
-
+PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_material material_a,
+                                                      __in __notnull mesh_material material_b);
 
 /** TODO */
 PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material          material,

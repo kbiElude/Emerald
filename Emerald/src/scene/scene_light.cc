@@ -299,8 +299,9 @@ PRIVATE void _scene_light_release(void* data_ptr)
         light_ptr->shadow_map_vp = NULL;
     }
 
-    ASSERT_DEBUG_SYNC(light_ptr->shadow_map_texture == NULL,
-                      "Shadow map texture should never be assigned to a scene_light instance at release time");
+    /* NOTE: We do not release the shadow map texture at this point, as it is
+     *       owned by the texture pool.
+     */
 }
 
 /** TODO */
