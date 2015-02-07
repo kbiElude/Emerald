@@ -13,6 +13,7 @@
 #include "scene/scene_graph.h"
 #include "system/system_critical_section.h"
 #include "system/system_resizable_vector.h"
+#include "app_config.h"
 #include "include/main.h"
 #include "state.h"
 
@@ -361,7 +362,7 @@ PUBLIC void state_init(__in __notnull system_hashed_ansi_string scene_filename)
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
-    const float movement_delta = 1.5f;
+    const float movement_delta = MOVEMENT_DELTA;
 
     _scene_renderer = ogl_scene_renderer_create(_context,
                                                 _scene);

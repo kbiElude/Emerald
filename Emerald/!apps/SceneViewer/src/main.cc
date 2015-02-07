@@ -107,21 +107,11 @@ PUBLIC void _render_scene(ogl_context          context,
 
             /* Create projection matrix */
             float yfov_value;
-            float zfar;
-            float znear;
 
             scene_camera_get_property(camera,
                                       SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
                                       time,
                                       &yfov_value);
-            scene_camera_get_property(camera,
-                                      SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
-                                      time,
-                                      &zfar);
-            scene_camera_get_property(camera,
-                                      SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
-                                      time,
-                                      &znear);
 
             float new_zfar  = CAMERA_SETTING_Z_FAR;
             float new_znear = 1.0f;
