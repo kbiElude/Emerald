@@ -161,8 +161,8 @@ PUBLIC void ui_init()
     /* Create camera path selector */
     float next_ui_control_x1y1    [2];
     float prev_ui_control_x1y1x2y2[4];
-    float texture_preview_x1y1    [2] = {0.1f, 0.1f};
-    float texture_preview_max_size[2] = {0.5f, 0.5f};
+    float texture_preview_x1y1    [2] = {0.7f, 0.7f};
+    float texture_preview_max_size[2] = {0.2f, 0.2f};
 
     ogl_ui_get_property(_ui_active_camera_control,
                         OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,

@@ -100,6 +100,8 @@ PUBLIC void _render_scene(ogl_context          context,
         /* If there is no projection matrix available, initialize one now */
         /* Retrieve the camera descriptro */
         ogl_ui_control active_path_control = ui_get_active_path_control();
+        float          new_zfar            = CAMERA_SETTING_Z_FAR;
+        float          new_znear           = 1.0f;
 
         if (!camera_is_flyby_active)
         {
@@ -112,9 +114,6 @@ PUBLIC void _render_scene(ogl_context          context,
                                       SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
                                       time,
                                       &yfov_value);
-
-            float new_zfar  = CAMERA_SETTING_Z_FAR;
-            float new_znear = 1.0f;
 
             scene_camera_set_property(camera,
                                       SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
@@ -154,6 +153,12 @@ PUBLIC void _render_scene(ogl_context          context,
             ogl_flyby_get_property(context,
                                    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA,
                                   &camera);
+            ogl_flyby_set_property(context,
+                                   OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR,
+                                  &new_zfar);
+            ogl_flyby_set_property(context,
+                                   OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR,
+                                  &new_znear);
         }
 
         if (camera_is_flyby_active)
@@ -226,7 +231,11 @@ PUBLIC void _render_scene(ogl_context          context,
 #else
                                           SHADOW_MAPPING_TYPE_DISABLED,
 #endif
+#ifdef ENABLE_BB_VISUALIZATION
+                                          HELPER_VISUALIZATION_BOUNDING_BOXES,
+#else
                                           HELPER_VISUALIZATION_NONE,
+#endif
                                           frame_time
                                          );
 

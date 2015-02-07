@@ -113,6 +113,8 @@ PRIVATE void _scene_camera_calculate_frustum(__in __notnull _scene_camera*      
     /* Calculate far/near plane properties */
     ASSERT_DEBUG_SYNC(camera_ptr->ar != 0.0f,
                       "AR for the camera is 0");
+    ASSERT_DEBUG_SYNC(yfov_value != 0.0f,
+                      "YFov for the camera is 0");
 
     float far_plane_height  = 2.0f * tan(yfov_value * 0.5f) * camera_ptr->zfar;
     float far_plane_width   = far_plane_height              * camera_ptr->ar;
@@ -437,9 +439,15 @@ PRIVATE void _scene_camera_init_default_yfov_custom_curve(__in __notnull _scene_
     ASSERT_DEBUG_SYNC(camera_ptr->yfov_custom == NULL,
                       "Overwriting existing YFov curve with the default one.");
 
+    /* Use a default Yfov of 45 degrees */
     camera_ptr->yfov_custom = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(camera_ptr->name),
                                                                                                              " YFov"),
                                                      SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (camera_ptr->temp_variant,
+                                      DEG_TO_RAD(45.0f) );
+    curve_container_set_default_value(camera_ptr->yfov_custom,
+                                      camera_ptr->temp_variant);
 }
 
 /** TODO */

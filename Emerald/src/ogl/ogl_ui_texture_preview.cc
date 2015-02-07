@@ -55,6 +55,7 @@ typedef struct
     PFNWRAPPEDGLBINDTEXTUREPROC          gl_pGLBindTexture;
     PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC gl_pGLTextureParameteriEXT;
     PFNGLACTIVETEXTUREPROC               pGLActiveTexture;
+    PFNGLBINDSAMPLERPROC                 pGLBindSampler;
     PFNGLBINDTEXTUREPROC                 pGLBindTexture;
     PFNGLBLENDCOLORPROC                  pGLBlendColor;
     PFNGLBLENDEQUATIONSEPARATEPROC       pGLBlendEquationSeparate;
@@ -346,6 +347,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     }
 
     /* Make sure user-requested texture is bound to zeroth texture unit before we continue */
+    texture_preview_ptr->pGLBindSampler(0,  /* unit    */
+                                        0); /* sampler */
+
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)
     {
         texture_preview_ptr->gl_pGLBindMultiTextureEXT(GL_TEXTURE0,
@@ -595,6 +599,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->gl_pGLBindTexture          = NULL;
             new_texture_preview->gl_pGLTextureParameteriEXT = NULL;
             new_texture_preview->pGLActiveTexture           = entry_points->pGLActiveTexture;
+            new_texture_preview->pGLBindSampler             = entry_points->pGLBindSampler;
             new_texture_preview->pGLBindTexture             = entry_points->pGLBindTexture;
             new_texture_preview->pGLBlendColor              = entry_points->pGLBlendColor;
             new_texture_preview->pGLBlendEquationSeparate   = entry_points->pGLBlendEquationSeparate;
@@ -628,6 +633,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->gl_pGLBindTexture          = entry_points->pGLBindTexture;
             new_texture_preview->gl_pGLTextureParameteriEXT = dsa_entry_points->pGLTextureParameteriEXT;
             new_texture_preview->pGLActiveTexture           = entry_points->pGLActiveTexture;
+            new_texture_preview->pGLBindSampler             = entry_points->pGLBindSampler;
             new_texture_preview->pGLBlendColor              = entry_points->pGLBlendColor;
             new_texture_preview->pGLBlendEquationSeparate   = entry_points->pGLBlendEquationSeparate;
             new_texture_preview->pGLBlendFuncSeparate       = entry_points->pGLBlendFuncSeparate;
