@@ -2428,9 +2428,9 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
-                                                                                            __in __notnull system_matrix4x4     matrix,
-                                                                                            __in           scene_graph_node_tag tag)
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in_opt           scene_graph          graph,
+                                                                                            __in     __notnull system_matrix4x4     matrix,
+                                                                                            __in               scene_graph_node_tag tag)
 {
     _scene_graph*      graph_ptr    = (_scene_graph*) graph;
     _scene_graph_node* new_node_ptr = new (std::nothrow) _scene_graph_node(NULL);
@@ -2442,11 +2442,28 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix, tag);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_matrix4x4_static(matrix,
+                                                                                        tag);
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_STATIC_MATRIX4X4;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_static_matrix4x4;
+
+    /* NOTE: There's one use case (ogl_flyby wrapped in a scene_graph_node) where we need
+     *       transformation_matrix.data to be != NULL.
+     *
+     *       This matrix will be released back to the pool upon the first graph traversal.
+     */
+    new_node_ptr->transformation_matrix.data = system_matrix4x4_create();
+
+    if (graph_ptr != NULL)
+    {
+        new_node_ptr->dag_node = system_dag_add_node(graph_ptr->dag,
+                                                     new_node_ptr);
+    }
+    else
+    {
+        new_node_ptr->dag_node = NULL;
+    }
 
 end:
     return (scene_graph_node) new_node_ptr;
@@ -2919,6 +2936,15 @@ PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull
     }
 
     return result;
+}
+
+/* Please see header for specification */
+PUBLIC void scene_graph_node_release(__in __notnull __post_invalid scene_graph_node node)
+{
+    _scene_graph_node* node_ptr = (_scene_graph_node*) node;
+
+    delete node_ptr;
+    node_ptr = NULL;
 }
 
 /* Please see header for specification */

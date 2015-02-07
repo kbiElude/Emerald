@@ -198,7 +198,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
 
-    light_ptr->shadow_map_bias             = SCENE_LIGHT_SHADOW_MAP_BIAS_NONE;
+    light_ptr->shadow_map_bias             = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
     light_ptr->shadow_map_cull_front_faces = true;
     light_ptr->shadow_map_filtering        = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat   = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;

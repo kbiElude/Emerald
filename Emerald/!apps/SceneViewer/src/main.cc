@@ -43,10 +43,11 @@
 #include <sstream>
 
 #define CAMERA_SETTING_Z_FAR (80.0f)
+#define ENABLE_ANIMATION
 #define ENABLE_SM
 
 #ifdef ENABLE_SM
-    //#define SHOW_SM_PREVIEW
+//    #define SHOW_SM_PREVIEW
 #endif
 
 
@@ -323,11 +324,15 @@ void _render_scene(ogl_context          context,
                    void*                not_used)
 {
     static system_timeline_time start_time = system_time_now();
-//           system_timeline_time frame_time = 0;
+
+#ifdef ENABLE_ANIMATION
            system_timeline_time frame_time = (system_time_now() - start_time) % _animation_duration_time;
+#else
+           system_timeline_time frame_time = 0;
+#endif
 
     /* Update view matrix */
-    scene_camera     camera          = NULL; /* TODO: this will be incorrectly null for flyby camera - FIXME */
+    scene_camera     camera          = NULL;
     bool             is_flyby_active = false;
     system_matrix4x4 projection      = system_matrix4x4_create();
     system_matrix4x4 view            = system_matrix4x4_create();
@@ -391,7 +396,7 @@ void _render_scene(ogl_context          context,
                 }
 
                 camera = camera_ptr->camera;
-            }
+            } /* if (!camera_ptr->is_flyby) */
             else
             {
                 bool new_visibility = true;
@@ -407,6 +412,10 @@ void _render_scene(ogl_context          context,
                                         OGL_UI_DROPDOWN_PROPERTY_VISIBLE,
                                        &new_visibility);
                 }
+
+                ogl_flyby_get_property(context,
+                                       OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA,
+                                      &camera);
             }
 
             if (camera_ptr->is_flyby)
@@ -418,8 +427,9 @@ void _render_scene(ogl_context          context,
                     ogl_flyby_update(_context);
 
                     /* Retrieve flyby view matrix */
-                    ogl_flyby_get_view_matrix(_context,
-                                              view);
+                    ogl_flyby_get_property(_context,
+                                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                                          &view);
                 }
                 ogl_flyby_unlock();
             } /* if (camera_ptr->is_flyby) */
@@ -736,11 +746,16 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
+    const float movement_delta = 1.5f;
+
     _current_matrix = system_matrix4x4_create();
     _scene_renderer = ogl_scene_renderer_create(_context, _test_scene);
 
-    ogl_flyby_activate(_context, camera_position);
-    ogl_flyby_set_movement_delta(_context, 1.25f);
+    ogl_flyby_activate    (_context,
+                           camera_position);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                          &movement_delta);
 
     /* Construct the pipeline object */
     _pipeline = ogl_pipeline_create(_context,

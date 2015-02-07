@@ -1,12 +1,41 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_FLYBY_H
 #define OGL_FLYBY_H
 
 #include "ogl/ogl_types.h"
+
+typedef enum
+{
+    OGL_FLYBY_PROPERTY_CAMERA_LOCATION, /*     settable, float[3]         */
+    OGL_FLYBY_PROPERTY_IS_ACTIVE,       /* not settable, bool             */
+    OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,  /*     settable, float            */
+    OGL_FLYBY_PROPERTY_PITCH,           /*     settable, float            */
+    OGL_FLYBY_PROPERTY_ROTATION_DELTA,  /*     settable, float            */
+    OGL_FLYBY_PROPERTY_YAW,             /*     settable, float            */
+
+    /* not settable.
+     *
+     * This property returns a fake scene_camera instance which wraps
+     * the owning ogl_flyby. The returned instance is not a part of
+     * any scene instance.
+     */
+    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA,
+
+    /* settable, float */
+    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR,
+    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR,
+
+    /* not settable.
+     *
+     * Will set @param out_result to the contents of the view matrix
+     * assigned to the flyby at the time of the call.
+     */
+    OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+} ogl_flyby_property;
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_flyby_activate(__in           __notnull ogl_context context,
@@ -16,41 +45,17 @@ PUBLIC EMERALD_API void ogl_flyby_activate(__in           __notnull ogl_context 
 PUBLIC EMERALD_API void ogl_flyby_deactivate(__in __notnull ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API const float* ogl_flyby_get_camera_location(__in __notnull ogl_context);
-
-/** TODO */
-PUBLIC EMERALD_API void ogl_flyby_get_up_forward_right_vectors(__in            __notnull ogl_context context,
-                                                               __out_ecount(3) __notnull float*      up,
-                                                               __out_ecount(3) __notnull float*      forward,
-                                                               __out_ecount(3) __notnull float*      right);
-/** TODO */
-PUBLIC EMERALD_API bool ogl_flyby_get_view_matrix(__in __notnull ogl_context      context,
-                                                  __in __notnull system_matrix4x4 result);
-
-/** TODO */
-PUBLIC EMERALD_API bool ogl_flyby_is_active(__in __notnull ogl_context context);
+PUBLIC EMERALD_API void ogl_flyby_get_property(__in  __notnull ogl_context        context,
+                                               __in            ogl_flyby_property property,
+                                               __out __notnull void*              out_result);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_flyby_lock();
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_pitch_yaw(__in __notnull ogl_context context,
-                                                __in           float       pitch,
-                                                __in           float       yaw);
-
-/** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_position(__in __notnull ogl_context context,
-                                               __in           float       x,
-                                               __in           float       y,
-                                               __in           float       z);
-
-/** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_movement_delta(__in __notnull ogl_context context,
-                                                     __in           float);
-
-/** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_rotation_delta(__in __notnull ogl_context context,
-                                                     __in           float);
+PUBLIC EMERALD_API void ogl_flyby_set_property(__in __notnull ogl_context        context,
+                                               __in           ogl_flyby_property property,
+                                               __in __notnull const void*        data);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_flyby_unlock();

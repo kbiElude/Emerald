@@ -70,7 +70,8 @@ typedef enum
     SCENE_GRAPH_NODE_PROPERTY_PARENT_NODE,           /* not settable, scene_graph_node */
     SCENE_GRAPH_NODE_PROPERTY_TAG,                   /* not settable, scene_graph_node_tag */
     SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX, /* not settable, system_matrix4x4 */
-    SCENE_GRAPH_NODE_PROPERTY_TYPE                   /* not settable, scene_graph_node_type */
+    SCENE_GRAPH_NODE_PROPERTY_TYPE,                  /* not settable, scene_graph_node_type */
+
 } scene_graph_node_property;
 
 typedef enum
@@ -132,9 +133,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(__in  
                                                                           __in                     scene_graph_node_tag tag);
 
 /** TODO */
-PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in __notnull scene_graph          graph,
-                                                                                            __in __notnull system_matrix4x4     matrix,
-                                                                                            __in           scene_graph_node_tag tag);
+PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transformation_node(__in_opt           scene_graph          graph,
+                                                                                            __in     __notnull system_matrix4x4     matrix,
+                                                                                            __in               scene_graph_node_tag tag);
 
 /** TODO */
 PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(__in           __notnull scene_graph          graph,
@@ -200,6 +201,9 @@ PUBLIC EMERALD_API bool scene_graph_node_get_transformation_node(__in  __notnull
 PUBLIC EMERALD_API void scene_graph_node_replace(__in                __notnull scene_graph      graph,
                                                  __in                __notnull scene_graph_node dst_node,
                                                  __in __post_invalid __notnull scene_graph_node src_node);
+
+/** TODO */
+PUBLIC void scene_graph_node_release(__in __notnull __post_invalid scene_graph_node node);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_graph_release(__in __notnull __post_invalid scene_graph graph);
