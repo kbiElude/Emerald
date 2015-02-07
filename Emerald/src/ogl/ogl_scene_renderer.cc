@@ -124,8 +124,8 @@ typedef struct _ogl_scene_renderer
     scene          scene;
     system_variant temp_variant_float;
 
-    float                                    current_aabb_max[3];
-    float                                    current_aabb_min[3];
+    float                                    current_camera_visible_world_aabb_max[3];
+    float                                    current_camera_visible_world_aabb_min[3];
     scene_camera                             current_camera;
     _ogl_scene_renderer_helper_visualization current_helper_visualization;
     system_matrix4x4                         current_model_matrix;
@@ -485,14 +485,14 @@ end:
                           n_component < 3;
                         ++n_component)
         {
-            if (renderer_ptr->current_aabb_max[n_component] < world_aabb_max[n_component])
+            if (renderer_ptr->current_camera_visible_world_aabb_max[n_component] < world_aabb_max[n_component])
             {
-                renderer_ptr->current_aabb_max[n_component] = world_aabb_max[n_component];
+                renderer_ptr->current_camera_visible_world_aabb_max[n_component] = world_aabb_max[n_component];
             }
 
-            if (renderer_ptr->current_aabb_min[n_component] > world_aabb_min[n_component])
+            if (renderer_ptr->current_camera_visible_world_aabb_min[n_component] > world_aabb_min[n_component])
             {
-                renderer_ptr->current_aabb_min[n_component] = world_aabb_min[n_component];
+                renderer_ptr->current_camera_visible_world_aabb_min[n_component] = world_aabb_min[n_component];
             }
         }
     }
@@ -999,8 +999,8 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                         ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
                                                                               renderer_ptr->current_camera,
                                                                               frame_time,
-                                                                              renderer_ptr->current_aabb_min,
-                                                                              renderer_ptr->current_aabb_max,
+                                                                              renderer_ptr->current_camera_visible_world_aabb_min,
+                                                                              renderer_ptr->current_camera_visible_world_aabb_max,
                                                                              &sm_view_matrix,
                                                                              &sm_projection_matrix);
 
@@ -1612,12 +1612,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,
                                                          view);
 
-    renderer_ptr->current_aabb_max[0] = DEFAULT_AABB_MAX_VALUE;
-    renderer_ptr->current_aabb_max[1] = DEFAULT_AABB_MAX_VALUE;
-    renderer_ptr->current_aabb_max[2] = DEFAULT_AABB_MAX_VALUE;
-    renderer_ptr->current_aabb_min[0] = DEFAULT_AABB_MIN_VALUE;
-    renderer_ptr->current_aabb_min[1] = DEFAULT_AABB_MIN_VALUE;
-    renderer_ptr->current_aabb_min[2] = DEFAULT_AABB_MIN_VALUE;
+    renderer_ptr->current_camera_visible_world_aabb_max[0] = DEFAULT_AABB_MAX_VALUE;
+    renderer_ptr->current_camera_visible_world_aabb_max[1] = DEFAULT_AABB_MAX_VALUE;
+    renderer_ptr->current_camera_visible_world_aabb_max[2] = DEFAULT_AABB_MAX_VALUE;
+    renderer_ptr->current_camera_visible_world_aabb_min[0] = DEFAULT_AABB_MIN_VALUE;
+    renderer_ptr->current_camera_visible_world_aabb_min[1] = DEFAULT_AABB_MIN_VALUE;
+    renderer_ptr->current_camera_visible_world_aabb_min[2] = DEFAULT_AABB_MIN_VALUE;
 
     renderer_ptr->current_camera               = camera;
     renderer_ptr->current_projection           = projection;
@@ -1650,16 +1650,16 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
         /* Proceed with shadow map generation even if no meshes are in the range.
          * The SM still needs to be cleared! */
-        if (renderer_ptr->current_aabb_max[0] == DEFAULT_AABB_MAX_VALUE ||
-            renderer_ptr->current_aabb_min[0] == DEFAULT_AABB_MIN_VALUE)
+        if (renderer_ptr->current_camera_visible_world_aabb_max[0] == DEFAULT_AABB_MAX_VALUE ||
+            renderer_ptr->current_camera_visible_world_aabb_min[0] == DEFAULT_AABB_MIN_VALUE)
         {
-            memset(renderer_ptr->current_aabb_max,
+            memset(renderer_ptr->current_camera_visible_world_aabb_max,
                    0,
-                   sizeof(renderer_ptr->current_aabb_max) );
+                   sizeof(renderer_ptr->current_camera_visible_world_aabb_max) );
 
-            memset(renderer_ptr->current_aabb_min,
+            memset(renderer_ptr->current_camera_visible_world_aabb_min,
                    0,
-                   sizeof(renderer_ptr->current_aabb_min) );
+                   sizeof(renderer_ptr->current_camera_visible_world_aabb_min) );
         }
 
         /* Carry on with the shadow map preparation */
