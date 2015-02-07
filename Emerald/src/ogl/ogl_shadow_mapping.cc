@@ -396,8 +396,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                                                                   __in_ecount(3)  __notnull const float*         aabb_min_world,
                                                                   __in_ecount(3)  __notnull const float*         aabb_max_world,
                                                                   __out           __notnull system_matrix4x4*    out_view_matrix,
-                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix,
-                                                                  __out_ecount(3) __notnull float*               out_camera_position)
+                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix)
 {
     /* What we take as input is AABB of the part of the scene that's visible from the camera viewpoint.
      *
@@ -448,8 +447,6 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
     float            aabb_frustum_vec4_ntr_world[4] = {0, 0, 0, 1.0f};
     system_matrix4x4 current_camera_model_matrix    = NULL;
     scene_graph_node current_camera_node            = NULL;
-    float            camera_position_model[]        = {0.0f, 0.0f, 0.0f, 1.0f};
-    float            camera_position_world[4];
 
     scene_camera_get_property    (current_camera,
                                   SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
@@ -532,10 +529,6 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
         sm_eye_world[1] + light_direction_vector[1],
         sm_eye_world[2] + light_direction_vector[2],
     };
-
-    memcpy(out_camera_position,
-           sm_eye_world,
-           sizeof(float) * 3);
 
     /* Set up the light's view matrix */
     static const float up_vector[3] = {

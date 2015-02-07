@@ -984,7 +984,6 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
         {
             /* Configure the GL for depth map rendering */
             system_matrix4x4 sm_projection_matrix    = NULL;
-            float            sm_camera_location[3];
             system_matrix4x4 sm_view_matrix          = NULL;
             system_matrix4x4 sm_vp_matrix            = NULL;
 
@@ -1003,8 +1002,7 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                                                               renderer_ptr->current_aabb_min,
                                                                               renderer_ptr->current_aabb_max,
                                                                              &sm_view_matrix,
-                                                                             &sm_projection_matrix,
-                                                                              sm_camera_location);
+                                                                             &sm_projection_matrix);
 
                         break;
                     }

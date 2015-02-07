@@ -43,7 +43,12 @@
 #include <sstream>
 
 #define CAMERA_SETTING_Z_FAR (80.0f)
-//#define SHOW_SM_PREVIEW
+#define ENABLE_SM
+
+#ifdef ENABLE_SM
+    //#define SHOW_SM_PREVIEW
+#endif
+
 
 uint32_t                   _active_camera_index          = 0;
 uint32_t                   _active_camera_path_index     = 0; /* none */
@@ -471,8 +476,11 @@ void _render_scene(ogl_context          context,
                                           projection,
                                           camera,
                                           RENDER_MODE_FORWARD,
-                                          //SHADOW_MAPPING_TYPE_PLAIN,
+#ifdef ENABLE_SM
+                                          SHADOW_MAPPING_TYPE_PLAIN,
+#else
                                           SHADOW_MAPPING_TYPE_DISABLED,
+#endif
                                           //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS),
                                           //HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           HELPER_VISUALIZATION_NONE,

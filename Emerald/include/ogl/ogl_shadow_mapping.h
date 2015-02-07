@@ -39,8 +39,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in          
                                                                   __in_ecount(3)  __notnull const float*         aabb_min_world,
                                                                   __in_ecount(3)  __notnull const float*         aabb_max_world,
                                                                   __out           __notnull system_matrix4x4*    out_view_matrix,
-                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix,
-                                                                  __out_ecount(3) __notnull float*               out_camera_position);
+                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix);
 
 /** TODO. **/
 PUBLIC void ogl_shadow_mapping_release(__in __notnull ogl_shadow_mapping handler);
