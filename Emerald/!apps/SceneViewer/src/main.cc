@@ -318,14 +318,14 @@ void _render_scene(ogl_context          context,
                    void*                not_used)
 {
     static system_timeline_time start_time = system_time_now();
-           system_timeline_time frame_time = /* 0; */(system_time_now() - start_time) % _animation_duration_time;
+//           system_timeline_time frame_time = 0;
+           system_timeline_time frame_time = (system_time_now() - start_time) % _animation_duration_time;
 
     /* Update view matrix */
-    scene_camera     camera             = NULL; /* TODO: this will be incorrectly null for flyby camera - FIXME */
-    float            camera_location[4] = {0, 0, 0, 0};
-    bool             is_flyby_active    = false;
-    system_matrix4x4 projection         = system_matrix4x4_create();
-    system_matrix4x4 view               = system_matrix4x4_create();
+    scene_camera     camera          = NULL; /* TODO: this will be incorrectly null for flyby camera - FIXME */
+    bool             is_flyby_active = false;
+    system_matrix4x4 projection      = system_matrix4x4_create();
+    system_matrix4x4 view            = system_matrix4x4_create();
 
     system_critical_section_enter(_camera_cs);
     {
@@ -363,13 +363,9 @@ void _render_scene(ogl_context          context,
                                           time,
                                           &znear);
 
-                float new_ar    = 1280.0f / 720.0f;
                 float new_zfar  = CAMERA_SETTING_Z_FAR;
                 float new_znear = 1.0f;
 
-                scene_camera_set_property(camera_ptr->camera,
-                                          SCENE_CAMERA_PROPERTY_ASPECT_RATIO,
-                                         &new_ar);
                 scene_camera_set_property(camera_ptr->camera,
                                           SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                                          &new_zfar);
@@ -416,14 +412,9 @@ void _render_scene(ogl_context          context,
                 {
                     ogl_flyby_update(_context);
 
-                    /* Retrieve flyby details */
-                    const float* flyby_camera_location = ogl_flyby_get_camera_location(_context);
-
-                    memcpy(camera_location,
-                           flyby_camera_location,
-                           sizeof(float) * 3);
-
-                    ogl_flyby_get_view_matrix(_context, view);
+                    /* Retrieve flyby view matrix */
+                    ogl_flyby_get_view_matrix(_context,
+                                              view);
                 }
                 ogl_flyby_unlock();
             } /* if (camera_ptr->is_flyby) */
@@ -454,16 +445,13 @@ void _render_scene(ogl_context          context,
                                                   SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
                                                  &scene_camera_transformation_matrix);
 
-                    /* For the view matrix, we need to take the inverse of the transformation matrix */
-                    system_matrix4x4_set_from_matrix4x4(view,
-                                                        scene_camera_transformation_matrix);
-                    system_matrix4x4_invert            (view);
-
-                    const float* view_matrix_data = system_matrix4x4_get_row_major_data(view);
-
-                    camera_location[0] = view_matrix_data[0];
-                    camera_location[1] = view_matrix_data[1];
-                    camera_location[2] = view_matrix_data[2];
+                    /* Extract camera location.
+                     *
+                     * For the view matrix, we need to take the inverse of the transformation matrix.
+                     **/
+                    system_matrix4x4_set_from_matrix4x4 (view,
+                                                         scene_camera_transformation_matrix);
+                    system_matrix4x4_invert             (view);
                 }
                 scene_graph_unlock(scene_renderer_graph);
             }
@@ -482,10 +470,9 @@ void _render_scene(ogl_context          context,
                                           view,
                                           projection,
                                           camera,
-                                          camera_location,
                                           RENDER_MODE_FORWARD,
-                                          SHADOW_MAPPING_TYPE_PLAIN,
-                                          //SHADOW_MAPPING_TYPE_DISABLED,
+                                          //SHADOW_MAPPING_TYPE_PLAIN,
+                                          SHADOW_MAPPING_TYPE_DISABLED,
                                           //(_ogl_scene_renderer_helper_visualization) (HELPER_VISUALIZATION_FRUSTUMS),
                                           //HELPER_VISUALIZATION_BOUNDING_BOXES,
                                           HELPER_VISUALIZATION_NONE,
@@ -667,7 +654,7 @@ void _update_ui_controls_location()
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
-    float                 camera_position[3]       = {0, 0, 0};
+    float                 camera_position[3]       = {2, 6, 8};
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_size    [2]       = {1280, 720};

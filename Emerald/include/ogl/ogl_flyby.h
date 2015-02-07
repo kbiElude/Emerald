@@ -34,16 +34,23 @@ PUBLIC EMERALD_API bool ogl_flyby_is_active(__in __notnull ogl_context context);
 PUBLIC EMERALD_API void ogl_flyby_lock();
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_pitch_yaw(__in __notnull ogl_context context, __in float pitch, __in float yaw);
+PUBLIC EMERALD_API void ogl_flyby_set_pitch_yaw(__in __notnull ogl_context context,
+                                                __in           float       pitch,
+                                                __in           float       yaw);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_position(__in __notnull ogl_context context, __in float x, __in float y, __in float z);
+PUBLIC EMERALD_API void ogl_flyby_set_position(__in __notnull ogl_context context,
+                                               __in           float       x,
+                                               __in           float       y,
+                                               __in           float       z);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_movement_delta(__in __notnull ogl_context context, __in float);
+PUBLIC EMERALD_API void ogl_flyby_set_movement_delta(__in __notnull ogl_context context,
+                                                     __in           float);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_rotation_delta(__in __notnull ogl_context context, __in float);
+PUBLIC EMERALD_API void ogl_flyby_set_rotation_delta(__in __notnull ogl_context context,
+                                                     __in           float);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_flyby_unlock();

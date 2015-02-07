@@ -1039,7 +1039,6 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                                                        sm_view_matrix,
                                                        sm_projection_matrix,
                                                        NULL, /* camera */
-                                                       NULL, /* camera_location */
                                                        RENDER_MODE_SHADOW_MAP,
                                                        SHADOW_MAPPING_TYPE_DISABLED,
                                                        HELPER_VISUALIZATION_NONE,
@@ -1567,17 +1566,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                                          __in           __notnull system_matrix4x4                               view,
                                                                          __in           __notnull system_matrix4x4                               projection,
                                                                          __in           __notnull scene_camera                                   camera,
-                                                                         __in_ecount(3) __notnull const float*                                   camera_location,   /* TODO: MOVE OUT */
                                                                          __in                     const _ogl_scene_renderer_render_mode&         render_mode,
                                                                          __in                     const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping,
                                                                          __in           __notnull _ogl_scene_renderer_helper_visualization       helper_visualization,
                                                                          __in                     system_timeline_time                           frame_time)
 {
-    _ogl_scene_renderer*              renderer_ptr   = (_ogl_scene_renderer*) renderer;
-    const ogl_context_gl_entrypoints* entry_points   = NULL;
-    scene_graph                       graph          = NULL;
-    ogl_materials                     materials      = NULL;
-    unsigned int                      n_scene_lights = 0;
+    _ogl_scene_renderer*              renderer_ptr       = (_ogl_scene_renderer*) renderer;
+    float                             camera_location[4];
+    const ogl_context_gl_entrypoints* entry_points       = NULL;
+    scene_graph                       graph              = NULL;
+    ogl_materials                     materials          = NULL;
+    unsigned int                      n_scene_lights     = 0;
 
     scene_get_property      (renderer_ptr->scene,
                              SCENE_PROPERTY_GRAPH,
@@ -1591,6 +1590,25 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_MATERIALS,
                             &materials);
+
+    /* Calculate camera location */
+    {
+        /* Matrix inverse = transposal for view matrices (which never use scaling) */
+        system_matrix4x4 view_transposed      = system_matrix4x4_create();
+        const float*     view_transposed_data = NULL;
+
+        system_matrix4x4_set_from_matrix4x4(view_transposed,
+                                            view);
+        system_matrix4x4_transpose         (view_transposed);
+
+        view_transposed_data = system_matrix4x4_get_row_major_data(view_transposed);
+        camera_location[0]   = view_transposed_data[3];
+        camera_location[1]   = view_transposed_data[7];
+        camera_location[2]   = view_transposed_data[11];
+        camera_location[3]   = 1.0f;
+
+        system_matrix4x4_release(view_transposed);
+    }
 
     /* Prepare graph traversal parameters */
     system_matrix4x4 vp = system_matrix4x4_create_by_mul(projection,

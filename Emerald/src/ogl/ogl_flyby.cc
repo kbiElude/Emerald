@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -11,6 +11,7 @@
 #include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_window.h"
 
@@ -59,14 +60,6 @@ system_hash64map _context_to_flyby = system_hash64map_create(sizeof(_ogl_flyby*)
 
 /** WARNING: TODO, WILL LEAK. but then who cares. ;) */
 system_critical_section _cs = system_critical_section_create();
-
-/** 3-dimensional cross product */
-inline void _cross(float* a, float* b, float* result)
-{
-    result[0] = a[1] * b[2] - a[2] * b[1];
-    result[1] = a[2] * b[0] - a[0] * b[2];
-    result[2] = a[0] * b[1] - a[1] * b[0];
-}
 
 /** TODO */
 PRIVATE bool _ogl_flyby_key_down_callback(system_window window, unsigned short key_char, void* arg)
@@ -184,7 +177,11 @@ PRIVATE bool _ogl_flyby_key_up_callback(system_window window, unsigned short key
 }
 
 /* todo */
-PRIVATE bool _ogl_flyby_lbd(system_window window, unsigned short x, unsigned short y, system_window_vk_status new_status, void* arg)
+PRIVATE bool _ogl_flyby_lbd(system_window           window,
+                            unsigned short          x,
+                            unsigned short          y,
+                            system_window_vk_status new_status,
+                            void*                   arg)
 {
     _ogl_flyby* flyby = (_ogl_flyby*) arg;
 
@@ -204,7 +201,11 @@ PRIVATE bool _ogl_flyby_lbd(system_window window, unsigned short x, unsigned sho
 }
 
 /* todo */
-PRIVATE bool _ogl_flyby_lbu(system_window window, unsigned short x, unsigned short y, system_window_vk_status new_status, void* arg)
+PRIVATE bool _ogl_flyby_lbu(system_window           window,
+                            unsigned short          x,
+                            unsigned short          y,
+                            system_window_vk_status new_status,
+                            void*                   arg)
 {
     _ogl_flyby* flyby = (_ogl_flyby*) arg;
 
@@ -218,7 +219,11 @@ PRIVATE bool _ogl_flyby_lbu(system_window window, unsigned short x, unsigned sho
 }
 
 /* todo */
-PRIVATE bool _ogl_flyby_mouse_move(system_window window, unsigned short x, unsigned short y, system_window_vk_status new_status, void* arg)
+PRIVATE bool _ogl_flyby_mouse_move(system_window           window,
+                                   unsigned short          x,
+                                   unsigned short          y,
+                                   system_window_vk_status new_status,
+                                   void*                   arg)
 {
     _ogl_flyby* flyby = (_ogl_flyby*) arg;
 
@@ -246,16 +251,20 @@ PRIVATE bool _ogl_flyby_mouse_move(system_window window, unsigned short x, unsig
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_activate(__in __notnull ogl_context context, __in_ecount(3) __notnull const float* camera_pos)
+PUBLIC EMERALD_API void ogl_flyby_activate(__in           __notnull ogl_context  context,
+                                           __in_ecount(3) __notnull const float* camera_pos)
 {
     system_critical_section_enter(_cs);
     {
-        if (!system_hash64map_contains(_context_to_flyby, (system_hash64) context) )
+        if (!system_hash64map_contains(_context_to_flyby,
+                                       (system_hash64) context) )
         {
             /* Instantiate new descriptor */
             _ogl_flyby* new_entry = new (std::nothrow) _ogl_flyby;
 
-            ASSERT_DEBUG_SYNC(new_entry != NULL, "Cannot activate flyby - out of memory");
+            ASSERT_DEBUG_SYNC(new_entry != NULL,
+                              "Cannot activate flyby - out of memory");
+
             if (new_entry != NULL)
             {
                 new_entry->is_lbm_down    = false;
@@ -283,14 +292,37 @@ PUBLIC EMERALD_API void ogl_flyby_activate(__in __notnull ogl_context context, _
                                          OGL_CONTEXT_PROPERTY_WINDOW,
                                         &context_window);
 
-                system_window_add_callback_func(context_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,         _ogl_flyby_key_down_callback, new_entry);
-                system_window_add_callback_func(context_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,           _ogl_flyby_key_up_callback,   new_entry);
-                system_window_add_callback_func(context_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN, _ogl_flyby_lbd,               new_entry);
-                system_window_add_callback_func(context_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,   _ogl_flyby_lbu,               new_entry);
-                system_window_add_callback_func(context_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,       _ogl_flyby_mouse_move,        new_entry);
+                system_window_add_callback_func(context_window,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
+                                                _ogl_flyby_key_down_callback, new_entry);
+                system_window_add_callback_func(context_window,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
+                                                _ogl_flyby_key_up_callback,
+                                                new_entry);
+                system_window_add_callback_func(context_window,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                                _ogl_flyby_lbd,
+                                                new_entry);
+                system_window_add_callback_func(context_window,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
+                                                _ogl_flyby_lbu,
+                                                new_entry);
+                system_window_add_callback_func(context_window,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                                SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
+                                                _ogl_flyby_mouse_move,
+                                                new_entry);
 
                 /* Store the descriptor */
-                system_hash64map_insert(_context_to_flyby, (system_hash64) context, new_entry, NULL, NULL);
+                system_hash64map_insert(_context_to_flyby,
+                                        (system_hash64) context,
+                                        new_entry,
+                                        NULL,
+                                        NULL);
 
                 /* Issue a manual update - useful for pipeline object */
                 ogl_flyby_update(context);
@@ -309,20 +341,26 @@ PUBLIC EMERALD_API void ogl_flyby_deactivate(__in __notnull ogl_context context)
 {
     system_critical_section_enter(_cs);
     {
-        if (system_hash64map_contains(_context_to_flyby, (system_hash64) context) )
+        if (system_hash64map_contains(_context_to_flyby,
+                                      (system_hash64) context) )
         {
             /* Remove the descriptor */
             _ogl_flyby* existing_entry = NULL;
 
-            system_hash64map_get(_context_to_flyby, (system_hash64) context, &existing_entry);
+            system_hash64map_get(_context_to_flyby,
+                                  (system_hash64) context,
+                                 &existing_entry);
 
-            ASSERT_DEBUG_SYNC(existing_entry != NULL, "Should never happen");
+            ASSERT_DEBUG_SYNC(existing_entry != NULL,
+                              "Should never happen");
+
             if (existing_entry != NULL)
             {
                 system_matrix4x4_release(existing_entry->view_matrix);
             }
 
-            system_hash64map_remove(_context_to_flyby, (system_hash64) context);
+            system_hash64map_remove(_context_to_flyby,
+                                    (system_hash64) context);
 
             delete existing_entry;
             existing_entry = NULL;
@@ -340,7 +378,9 @@ PUBLIC EMERALD_API const float* ogl_flyby_get_camera_location(__in __notnull ogl
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
             result = entry->position;
         }
@@ -362,11 +402,19 @@ PUBLIC EMERALD_API void ogl_flyby_get_up_forward_right_vectors(__in            _
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
-            memcpy(forward, entry->forward, sizeof(float) * 3);
-            memcpy(right,   entry->right,   sizeof(float) * 3);
-            memcpy(up,      entry->up,      sizeof(float) * 3);
+            memcpy(forward,
+                   entry->forward,
+                   sizeof(float) * 3);
+            memcpy(right,
+                   entry->right,
+                   sizeof(float) * 3);
+            memcpy(up,
+                   entry->up,
+                   sizeof(float) * 3);
         }
     }
     system_critical_section_leave(_cs);
@@ -382,9 +430,12 @@ PUBLIC EMERALD_API bool ogl_flyby_get_view_matrix(__in __notnull ogl_context    
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
-            system_matrix4x4_set_from_matrix4x4(result, entry->view_matrix);
+            system_matrix4x4_set_from_matrix4x4(result,
+                                                entry->view_matrix);
 
             b_result = true;
         }
@@ -397,7 +448,8 @@ PUBLIC EMERALD_API bool ogl_flyby_get_view_matrix(__in __notnull ogl_context    
 /* Please see header for specification */
 PUBLIC EMERALD_API bool ogl_flyby_is_active(__in __notnull ogl_context context)
 {
-    return system_hash64map_contains(_context_to_flyby, (system_hash64) context);
+    return system_hash64map_contains(_context_to_flyby,
+                                     (system_hash64) context);
 }
 
 /* Please see header for specification */
@@ -407,13 +459,16 @@ PUBLIC EMERALD_API void ogl_flyby_lock()
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_set_movement_delta(__in __notnull ogl_context context, __in float new_value)
+PUBLIC EMERALD_API void ogl_flyby_set_movement_delta(__in __notnull ogl_context context,
+                                                     __in           float       new_value)
 {
     system_critical_section_enter(_cs);
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
             entry->movement_delta = new_value;
         }
@@ -422,7 +477,9 @@ PUBLIC EMERALD_API void ogl_flyby_set_movement_delta(__in __notnull ogl_context 
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_set_pitch_yaw(__in __notnull ogl_context context, __in float pitch, __in float yaw)
+PUBLIC EMERALD_API void ogl_flyby_set_pitch_yaw(__in __notnull ogl_context context,
+                                                __in           float       pitch,
+                                                __in           float       yaw)
 {
     system_critical_section_enter(_cs);
     {
@@ -438,13 +495,18 @@ PUBLIC EMERALD_API void ogl_flyby_set_pitch_yaw(__in __notnull ogl_context conte
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_set_position(__in __notnull ogl_context context, __in float x, __in float y, __in float z)
+PUBLIC EMERALD_API void ogl_flyby_set_position(__in __notnull ogl_context context,
+                                               __in           float       x,
+                                               __in           float       y,
+                                               __in           float       z)
 {
     system_critical_section_enter(_cs);
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
             entry->position[0] = x;
             entry->position[1] = y;
@@ -455,13 +517,16 @@ PUBLIC EMERALD_API void ogl_flyby_set_position(__in __notnull ogl_context contex
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void ogl_flyby_set_rotation_delta(__in __notnull ogl_context context, __in float new_value)
+PUBLIC EMERALD_API void ogl_flyby_set_rotation_delta(__in __notnull ogl_context context,
+                                                     __in           float       new_value)
 {
     system_critical_section_enter(_cs);
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
             entry->rotation_delta = new_value;
         }
@@ -482,7 +547,9 @@ PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_context context)
     {
         _ogl_flyby* entry = NULL;
 
-        if (system_hash64map_get(_context_to_flyby, (system_hash64) context, &entry) )
+        if (system_hash64map_get(_context_to_flyby,
+                                 (system_hash64) context,
+                                &entry) )
         {
             /* Calculate current time */
             system_timeline_time time_now         = system_time_now();
@@ -491,7 +558,8 @@ PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_context context)
             float                time_delta_s     = 0;
             float                ease_in_modifier = 1;
 
-            system_time_get_msec_for_timeline_time(time_delta, &time_delta_msec);
+            system_time_get_msec_for_timeline_time(time_delta,
+                                                  &time_delta_msec);
 
             /* Smooth down the movement */
             ease_in_modifier = float(time_delta_msec) / 1000.0f * 3.0f;
@@ -501,21 +569,30 @@ PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_context context)
             }
 
             /* Calculate movement vectors */
-            float forward    [3] = {sin(entry->yaw) * cos(entry->pitch), sin(entry->pitch), cos(entry->pitch) * cos(entry->yaw) };
-            float up         [3] = {0, 1, 0};
-            float right      [3] = {0};
-            bool  redo_target    = false;
+            const float forward    [3] = {sin(entry->yaw) * cos(entry->pitch),
+                                          sin(entry->pitch),
+                                          cos(entry->pitch) * cos(entry->yaw) };
+            const float up         [3] = {0,
+                                          1,
+                                          0};
+            float       right      [3] = {0};
+            bool        redo_target    = false;
 
-            _cross(forward, up, right);
+            system_math_vector_cross3    (forward,
+                                          up,
+                                          right);
+            system_math_vector_normalize3(right,
+                                          right);
 
-            float l = sqrt(right[0] * right[0] + right[1] * right[1] + right[2] * right[2]);
-            right[0]/=l;
-            right[1]/=l;
-            right[2]/=l;
-
-            memcpy(entry->forward, forward, sizeof(float) * 3);
-            memcpy(entry->right,   right,   sizeof(float) * 3);
-            memcpy(entry->up,      up,      sizeof(float) * 3);
+            memcpy(entry->forward,
+                   forward,
+                   sizeof(float) * 3);
+            memcpy(entry->right,
+                   right,
+                   sizeof(float) * 3);
+            memcpy(entry->up,
+                   up,
+                   sizeof(float) * 3);
 
             if (entry->key_bits & KEY_RIGHT_BIT)
             {
@@ -551,10 +628,18 @@ PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_context context)
 
 
             /* Update view matrix */
-            float target[3] = {entry->position[0] + forward[0], entry->position[1] + forward[1], entry->position[2] + forward[2]};
+            const float target[3] =
+            {
+                entry->position[0] + forward[0],
+                entry->position[1] + forward[1],
+                entry->position[2] + forward[2]
+            };
 
             system_matrix4x4_set_to_identity   (entry->view_matrix);
-            system_matrix4x4_multiply_by_lookat(entry->view_matrix, entry->position, target, up);
+            system_matrix4x4_multiply_by_lookat(entry->view_matrix,
+                                                entry->position,
+                                                target,
+                                                up);
         }
     }
     system_critical_section_leave(_cs);
