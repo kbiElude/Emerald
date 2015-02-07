@@ -3,8 +3,8 @@
  * Emerald (kbi/elude @2012)
  *
  */
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef APPMAIN_H
+#define APPMAIN_H
 
 #include "system/system_types.h"
 
@@ -25,4 +25,4 @@ EMERALD_API void main_force_deinit();
 /** Initialized in DLL_PROCESS_ATTACH */
 extern HINSTANCE _global_instance;
 
-#endif /* MAIN_H */
+#endif /* APPMAIN_H */

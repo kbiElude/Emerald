@@ -1,0 +1,73 @@
+/**
+ *
+ * Internal Emerald scene viewer (kbi/elude @2014-2015)
+ *
+ */
+#ifndef STATE_H
+#define STATE_H
+
+/** TODO */
+PUBLIC void state_deinit();
+
+/** TODO */
+PUBLIC unsigned int state_get_active_camera_index();
+
+/** TODO */
+PUBLIC unsigned int state_get_active_camera_path_index();
+
+/** TODO */
+PUBLIC system_timeline_time state_get_animation_duration_time();
+
+/** TODO */
+PUBLIC void** state_get_camera_indices();
+
+/** TODO */
+PUBLIC system_hashed_ansi_string* state_get_camera_names();
+
+/** TODO */
+PUBLIC system_resizable_vector state_get_cameras();
+
+/** TODO */
+PUBLIC void** state_get_camera_path_indices();
+
+/** TODO */
+PUBLIC system_hashed_ansi_string* state_get_camera_path_names();
+
+/** TODO */
+PUBLIC ogl_curve_renderer state_get_curve_renderer();
+
+/** TODO */
+PUBLIC ogl_curve_item_id state_get_curve_renderer_item_id();
+
+/** TODO */
+PUBLIC void state_lock_current_camera(__out __notnull scene_camera* out_current_camera,
+                                      __out           bool*         out_is_flyby);
+
+/** TODO */
+PUBLIC uint32_t state_get_number_of_cameras();
+
+/** TODO */
+PUBLIC ogl_pipeline state_get_pipeline();
+
+/** TODO */
+PUBLIC uint32_t state_get_pipeline_stage_id();
+
+/** TODO */
+PUBLIC scene state_get_scene();
+
+/** TODO */
+PUBLIC ogl_scene_renderer state_get_scene_renderer();
+
+/** TODO */
+PUBLIC void state_init(__in __notnull system_hashed_ansi_string scene_filename);
+
+/** TODO */
+PUBLIC void state_set_active_camera_index(unsigned int index);
+
+/** TODO */
+PUBLIC void state_set_active_camera_path_index(unsigned int index);
+
+/** TODO */
+PUBLIC void state_unlock_current_camera();
+
+#endif /* STATE_H */

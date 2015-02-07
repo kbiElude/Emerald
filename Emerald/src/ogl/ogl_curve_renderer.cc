@@ -448,10 +448,10 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                    ogl_curve_renderer   renderer,
-                                                __in                              unsigned int         n_item_ids,
-                                                __in_ecount(n_item_ids) __notnull ogl_curve_item_id*   item_ids,
-                                                __in                              system_matrix4x4     mvp)
+PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                          ogl_curve_renderer   renderer,
+                                                __in                                    unsigned int         n_item_ids,
+                                                __in_ecount(n_item_ids) __notnull const ogl_curve_item_id*   item_ids,
+                                                __in                                    system_matrix4x4     mvp)
 {
     _ogl_curve_renderer* renderer_ptr = (_ogl_curve_renderer*) renderer;
 
