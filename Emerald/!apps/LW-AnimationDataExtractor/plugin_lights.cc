@@ -175,6 +175,52 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
     if (new_light_type == SCENE_LIGHT_TYPE_POINT ||
         new_light_type == SCENE_LIGHT_TYPE_SPOT)
     {
+        /* Fall-off */
+        scene_light_falloff falloff_emerald = SCENE_LIGHT_FALLOFF_UNKNOWN;
+        int                 falloff_setting = light_info_ptr->falloff(new_light_item_id);
+
+        switch (falloff_setting)
+        {
+            case LWLFALL_OFF:
+            {
+                falloff_emerald = SCENE_LIGHT_FALLOFF_OFF;
+
+                break;
+            }
+
+            case LWLFALL_LINEAR:
+            {
+                falloff_emerald = SCENE_LIGHT_FALLOFF_LINEAR;
+
+                break;
+            }
+
+            case LWLFALL_INV_DIST:
+            {
+                falloff_emerald = SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE;
+
+                break;
+            }
+
+            case LWLFALL_INV_DIST_2:
+            {
+                falloff_emerald = SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE;
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized falloff setting");
+            }
+        } /* switch (falloff_setting) */
+
+        scene_light_set_property(new_light,
+                                 SCENE_LIGHT_PROPERTY_FALLOFF,
+                                &falloff_emerald);
+
+        /* Range setting */
         GetCurveContainerForProperty(new_light_name_has,
                                      ITEM_PROPERTY_LIGHT_RANGE,
                                      new_light_item_id,
@@ -260,9 +306,9 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
                             NULL,  /* on_remove_callback */
                             NULL); /* on_remove_callback_user_arg */
 
-    /* NOTE: We do not export attenuation information at this point, but we still need
-     *       to add the default curves to the plugin_curves module, or otherwise scene_save()
-     *       will crash. */
+    /* NOTE: Lightwave does not handle attenuation in the usual constant/linear/quadratic
+     *       attenuation factor manner. Make sure to add the default curves to the
+     *       plugin_curves module, or otherwise scene_save() will crash. */
     if (new_light_type == SCENE_LIGHT_TYPE_POINT)
     {
         curve_container attenuation_curves[3] = {NULL};

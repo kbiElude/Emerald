@@ -1376,6 +1376,8 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                 } /* case SCENE_LIGHT_FALLOFF_CUSTOM: */
 
                 case SCENE_LIGHT_FALLOFF_LINEAR:
+                case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
+                case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE:
                 {
                     scene_light_get_property (current_light,
                                               SCENE_LIGHT_PROPERTY_RANGE,
@@ -1395,12 +1397,11 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                     break;
                 } /* case SCENE_LIGHT_FALLOFF_LINEAR: */
 
-                case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
-                case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE:
+                case SCENE_LIGHT_FALLOFF_OFF:
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "TODO");
-                } /* case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE: */
+                    /* Nothing to do here */
+                    break;
+                }
 
                 default:
                 {

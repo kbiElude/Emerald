@@ -811,20 +811,34 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                                                   result_light_ptr->direction);
         }
 
-        if (light_type == SCENE_LIGHT_TYPE_POINT)
+        if (light_type == SCENE_LIGHT_TYPE_POINT ||
+            light_type == SCENE_LIGHT_TYPE_SPOT)
         {
-            result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->constant_attenuation,
-                                              serializer);
-            result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->linear_attenuation,
-                                              serializer);
-            result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->quadratic_attenuation,
-                                              serializer);
-            result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->range,
-                                              serializer);
+            result &= system_file_serializer_read(serializer,
+                                                  sizeof(result_light_ptr->falloff),
+                                                 &result_light_ptr->falloff);
+
+            if (result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_CUSTOM)
+            {
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->constant_attenuation,
+                                                  serializer);
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->linear_attenuation,
+                                                  serializer);
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->quadratic_attenuation,
+                                                  serializer);
+            }
+            else
+            if (result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE        ||
+                result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE ||
+                result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_LINEAR)
+            {
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->range,
+                                                  serializer);
+            }
         }
 
         if (light_type == SCENE_LIGHT_TYPE_SPOT)
@@ -894,20 +908,34 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
                                                light_ptr->direction);
     }
 
-    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
+    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+        light_ptr->type == SCENE_LIGHT_TYPE_SPOT)
     {
-        result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->constant_attenuation,
-                                          serializer);
-        result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->linear_attenuation,
-                                          serializer);
-        result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->quadratic_attenuation,
-                                          serializer);
-        result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->range,
-                                          serializer);
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(light_ptr->falloff),
+                                              &light_ptr->falloff);
+
+        if (light_ptr->falloff == SCENE_LIGHT_FALLOFF_CUSTOM)
+        {
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->constant_attenuation,
+                                              serializer);
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->linear_attenuation,
+                                              serializer);
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->quadratic_attenuation,
+                                              serializer);
+        }
+        else
+        if (light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE        ||
+            light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE ||
+            light_ptr->falloff == SCENE_LIGHT_FALLOFF_LINEAR)
+        {
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->range,
+                                              serializer);
+        }
     }
 
     if (light_ptr->type == SCENE_LIGHT_TYPE_SPOT)

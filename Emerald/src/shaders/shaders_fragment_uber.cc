@@ -133,6 +133,50 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                 break;
             }
 
+            case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
+            {
+                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                  VARIABLE_TYPE_UNIFORM,
+                                                                  LAYOUT_QUALIFIER_NONE,
+                                                                  TYPE_FLOAT,
+                                                                  0, /* array_size */
+                                                                  fs_props_ub_id,
+                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                  NULL /* out_variable_id */);
+
+                line << "float "
+                     << light_attenuation_var_name_sstream.str() << " = "
+                     << light_range_var_name_sstream.str()
+                     << " / "
+                     << light_distance_var_name_sstream.str()
+                     << ";\n";
+
+                 break;
+            }
+
+            case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE:
+            {
+                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                  VARIABLE_TYPE_UNIFORM,
+                                                                  LAYOUT_QUALIFIER_NONE,
+                                                                  TYPE_FLOAT,
+                                                                  0, /* array_size */
+                                                                  fs_props_ub_id,
+                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                  NULL /* out_variable_id */);
+
+                line << "float "
+                     << light_attenuation_var_name_sstream.str() << " = "
+                     << light_range_var_name_sstream.str()
+                     << " / ("
+                     << light_distance_var_name_sstream.str()
+                     << " * "
+                     << light_distance_var_name_sstream.str()
+                     << ");\n";
+
+                 break;
+            }
+
             case SCENE_LIGHT_FALLOFF_LINEAR:
             {
                 ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
