@@ -123,6 +123,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                                  __in                                  shaders_fragment_uber_light_type,
                                                                                  __in                                  bool                                     is_shadow_caster,
                                                                                  __in                                  scene_light_shadow_map_bias              sm_bias,
+                                                                                 __in                                  scene_light_falloff                      falloff,
                                                                                  __in      __notnull                   unsigned int                             n_light_properties,
                                                                                  __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
                                                                                  __in_opt  __notnull                   PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,

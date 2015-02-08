@@ -82,17 +82,20 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
 {
     /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream line;
+    bool              uses_attenuation = false;
 
     line << "\n// Lambert: ambient+diffuse (light:[" << n_item << "])\n";
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
         light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
     {
-        line << "float light"   << n_item << "_distance    = length(light" << n_item << "_vector);\n"
+        line << "float light"   << n_item << "_distance    = length(light" << n_item << "_vector_non_norm);\n"
                 "float light"   << n_item << "_attenuation = "
                 "1.0f / (light" << n_item << "_attenuations.x + "
                         "light" << n_item << "_attenuations.y * light" << n_item << "_distance + "
                         "light" << n_item << "_attenuations.z * light" << n_item << "_distance * light" << n_item << "_distance);\n";
+
+        uses_attenuation = true;
     }
 
     /* Compute diffuse factor for non-ambient lights */
@@ -108,6 +111,11 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
         line << "vec4("
              << system_hashed_ansi_string_get_buffer(light_visibility_var_name)
              << ") * ";
+    }
+
+    if (uses_attenuation)
+    {
+        line << "vec4(light" << n_item << "_attenuation) * ";
     }
 
     line << "(";
@@ -259,7 +267,7 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in     __notnull
              << ") * ";
     }
     
-    line << "vec4(vec3(phong_specular(normal, light" << n_light << "_vector, light" << n_light << "_LdotN)), 0.0);\n";
+    line << "vec4(vec3(phong_specular(normal, light" << n_light << "_vector_norm, light" << n_light << "_LdotN)), 0.0);\n";
 
     ogl_shader_constructor_append_to_function_body(shader_constructor,
                                                    0, /* main() */
@@ -500,6 +508,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                                  __in                                  shaders_fragment_uber_light_type         light_type,
                                                                                  __in                                  bool                                     is_shadow_caster,
                                                                                  __in                                  scene_light_shadow_map_bias              sm_bias,
+                                                                                 __in                                  scene_light_falloff                      falloff,
                                                                                  __in      __notnull                   unsigned int                             n_light_properties,
                                                                                  __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
                                                                                  __in_opt __notnull                    PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -612,9 +621,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         {
             line << "vec3 light"
                  << n_items
-                 << "_vector = -normalize("
+                 << "_vector_non_norm = -"
                  << light_direction_name_sstream.str()
-                 << ");\n";
+                 << ";\n"
+                 << "vec3 light"
+                 << n_items
+                 << "_vector_norm = normalize(light"
+                 << n_items
+                 << "_vector_non_norm);\n";
         }
         else
         {
@@ -624,9 +638,14 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
             line << "vec3 light"
                  << n_items
-                 << "_vector = normalize("
+                 << "_vector_non_norm = "
                  << light_world_pos_name_sstream.str()
-                 << ".xyz - world_vertex);\n";
+                 << ".xyz - world_vertex;\n"
+                 << "vec3 light"
+                 << n_items
+                 << "_vector_norm = normalize(light"
+                 << n_items
+                 << "_vector_non_norm);\n";
         }
 
         ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
@@ -875,7 +894,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         ldotn_sstream << "float light" << n_items << "_LdotN "
                       << "= dot("
-                      << "light" << n_items << "_vector"
+                      << "light" << n_items << "_vector_norm"
                       << ", normal);\n";
         ldotn_sstream << "float light"   << n_items << "_LdotN_clamped "
                       << "= clamp(light" << n_items << "_LdotN, 0.0, 1.0);\n";

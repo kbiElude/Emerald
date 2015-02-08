@@ -103,6 +103,7 @@ typedef struct _ogl_uber_vertex_shader_item
 /* A single item added to ogl_uber used to construct a program object managed by ogl_uber */
 typedef struct _ogl_uber_item
 {
+    scene_light_falloff            falloff;
     shaders_fragment_uber_item_id  fs_item_id;
     _ogl_uber_fragment_shader_item fragment_shader_item;
     bool                           is_shadow_caster;
@@ -114,6 +115,7 @@ typedef struct _ogl_uber_item
 
     _ogl_uber_item()
     {
+        falloff          = SCENE_LIGHT_FALLOFF_UNKNOWN;
         fs_item_id       = -1;
         is_shadow_caster = false;
         shadow_map_bias  = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
@@ -810,6 +812,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                                                             __in                                  shaders_fragment_uber_light_type light_type,
                                                             __in                                  bool                             is_shadow_caster,
                                                             __in                                  scene_light_shadow_map_bias      shadow_map_bias,
+                                                            __in                                  scene_light_falloff              falloff,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values)
 {
@@ -833,6 +836,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                                                          light_type,
                                                          is_shadow_caster,
                                                          shadow_map_bias,
+                                                         falloff,
                                                          n_light_properties,
                                                          light_property_values,
                                                          _ogl_uber_add_item_shaders_fragment_callback_handler,
@@ -859,6 +863,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                                                          light_type,
                                                          is_shadow_caster,
                                                          shadow_map_bias,
+                                                         falloff,
                                                          n_light_properties,
                                                          light_property_values,
                                                          NULL, /* callback proc - not used */
@@ -1571,6 +1576,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                                   "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION requested but the underlying shader does not use the property");
 
                 *((float**) result) = item_ptr->fragment_shader_item.current_light_location;
+
+                break;
+            }
+
+            case OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
+                                  "Invalid OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF request");
+
+                *(scene_light_falloff*) result = item_ptr->falloff;
 
                 break;
             }
@@ -2425,7 +2440,6 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
-        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;

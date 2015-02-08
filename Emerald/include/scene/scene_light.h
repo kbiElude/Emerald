@@ -15,12 +15,14 @@ typedef enum scene_light_property
 {
     SCENE_LIGHT_PROPERTY_COLOR,                       /* Settable,     curve_container[3]                                     */
     SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,             /* Settable,     curve_container                                        */
-    SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,        /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_CONE_ANGLE,                  /* Settable,     curve_container (? degrees / radians ?).               *
+                                                       *                               Spot lights only.                      */
+    SCENE_LIGHT_PROPERTY_EDGE_ANGLE,                  /* Settable,     curve_container (? degrees / radians ?).               *
+                                                       *                               Spot lights only.                      */
     SCENE_LIGHT_PROPERTY_DIRECTION,                   /* Settable,     float[3]. Set in run-time                              */
-    SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,          /* Settable,     curve_container                                        */
     SCENE_LIGHT_PROPERTY_NAME,                        /* Not settable, system_hashed_ansi_string                              */
     SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,            /* Settable,     scene_graph_node. Set in run-time.                     */
-    SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,       /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_RANGE,                       /* Settable,     curve_container. Point lights only.                    */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,             /* Settable,     scene_light_shadow_map_bias.                           */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES, /* Settable,     bool                                                   */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,        /* Settable,     scene_light_shadow_map_filtering.                      */
@@ -32,7 +34,23 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_TYPE,                        /* Not settable, scene_light_type                                       */
     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,             /* Settable,     bool                                                   */
 
-    /* NOTE: This property is set during run-time by ogl_scene_renderer and is NOT
+    /* Settable, scene_light_falloff */
+    SCENE_LIGHT_PROPERTY_FALLOFF,
+
+    /* Settable, curve_container.
+     *
+     * NOTE: Only used if SCENE_LIGHT_PROPERTY_FALLOFF is set at SCENE_LIGHT_FALLOFF_CUSTOM, in which case
+     *       attenuation is called as in:
+     *
+     *       final_att = 1 / (constant_att + linear_att * dist + quadratic_att * dist^2).
+     **/
+    SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION,
+    SCENE_LIGHT_PROPERTY_LINEAR_ATTENUATION,
+    SCENE_LIGHT_PROPERTY_QUADRATIC_ATTENUATION,
+
+    /* Settable, float[3]. Set in run-time.
+     *
+     * NOTE: This property is set during run-time by ogl_scene_renderer and is NOT
      *       serialized. It acts merely as a communication mean between the scene
      *       graph traversation layer and actual renderer.
      *
@@ -40,7 +58,7 @@ typedef enum scene_light_property
      * for a directional light will throw assertion failure. Getters will return
      * undefined content, if executed for incorrect light types.
      */
-    SCENE_LIGHT_PROPERTY_POSITION,              /* Settable,     float[3]. Set in run-time */
+    SCENE_LIGHT_PROPERTY_POSITION,
 
     /* Always last */
     SCENE_LIGHT_PROPERTY_COUNT
