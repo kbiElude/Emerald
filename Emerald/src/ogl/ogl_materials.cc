@@ -452,7 +452,9 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                         scene_light_falloff         current_light_falloff         = SCENE_LIGHT_FALLOFF_UNKNOWN;
                         scene_light_shadow_map_bias current_light_shadow_map_bias = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
 
-                        if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
+                        if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             &&
+                            uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
+                            uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
                         {
                             scene_light_get_property(current_light,
                                                      SCENE_LIGHT_PROPERTY_FALLOFF,

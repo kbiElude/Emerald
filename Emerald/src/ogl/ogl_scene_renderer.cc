@@ -1039,7 +1039,7 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                 ogl_scene_renderer_render_scene_graph( (ogl_scene_renderer) renderer_ptr,
                                                        sm_view_matrix,
                                                        sm_projection_matrix,
-                                                       NULL, /* camera */
+                                                       target_camera,
                                                        RENDER_MODE_SHADOW_MAP,
                                                        SHADOW_MAPPING_TYPE_DISABLED,
                                                        HELPER_VISUALIZATION_NONE,
