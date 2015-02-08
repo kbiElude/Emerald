@@ -30,6 +30,29 @@ typedef enum
     SCENE_CAMERA_TYPE_UNDEFINED
 } _scene_camera_type;
 
+/* Defines falloff behavior for point and spot lights. Ignored for
+ * other light types.
+ */
+typedef enum
+{
+    /* Falloff = 1 */
+    SCENE_LIGHT_FALLOFF_OFF,
+
+    /* Falloff = custom: 1 / (constant_att + linear_att * dist + quadratic_att * dist^2). */
+    SCENE_LIGHT_FALLOFF_CUSTOM,
+
+    /* Falloff = clamp(1 - (distance from the light) / (distance at which the intensity of the light falls to 0), 0, 1) */
+    SCENE_LIGHT_FALLOFF_LINEAR,
+
+    /* Falloff = (distance at which the light intensity equals the user's intensity setting) / (distance from the light) */
+    SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE,
+
+    /* Falloff = squared( (distance at which the light intensity equals the user's intensity setting) / (distance from the light) ) */
+    SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE,
+
+    SCENE_LIGHT_FALLOFF_UNKNOWN
+} scene_light_falloff;
+
 typedef enum
 {
     /* No bias at all */
@@ -49,6 +72,7 @@ typedef enum
     SCENE_LIGHT_TYPE_AMBIENT,
     SCENE_LIGHT_TYPE_DIRECTIONAL,
     SCENE_LIGHT_TYPE_POINT,
+    SCENE_LIGHT_TYPE_SPOT,
 
     SCENE_LIGHT_TYPE_UNKNOWN
 } scene_light_type;

@@ -214,6 +214,9 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
         case ITEM_PROPERTY_LIGHT_COLOR_G:            property_name = "Color.G";          break;
         case ITEM_PROPERTY_LIGHT_COLOR_B:            property_name = "Color.B";          break;
         case ITEM_PROPERTY_LIGHT_COLOR_INTENSITY:    property_name = "Intensity";        break;
+        case ITEM_PROPERTY_LIGHT_CONE_ANGLE:         property_name = "ConeAngle";        break;
+        case ITEM_PROPERTY_LIGHT_EDGE_ANGLE:         property_name = "EdgeAngle";        break;
+        case ITEM_PROPERTY_LIGHT_RANGE:              property_name = "Range";            break;
         case ITEM_PROPERTY_ROTATION_B:               property_name = "Rotation.B";       break;
         case ITEM_PROPERTY_ROTATION_H:               property_name = "Rotation.H";       break;
         case ITEM_PROPERTY_ROTATION_P:               property_name = "Rotation.P";       break;
@@ -348,6 +351,37 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Color Intensity"),
+                                                      SYSTEM_VARIANT_FLOAT);
+
+                break;
+            }
+
+            case ITEM_PROPERTY_LIGHT_CONE_ANGLE:
+            case ITEM_PROPERTY_LIGHT_EDGE_ANGLE:
+            {
+                double edge, radius;
+
+                light_info_ptr->coneAngles(item_id,
+                                           0.0,
+                                          &radius,
+                                          &edge);
+
+                new_value = (property == ITEM_PROPERTY_LIGHT_CONE_ANGLE) ? radius : edge;
+
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              (property == ITEM_PROPERTY_LIGHT_CONE_ANGLE) ? " Cone Angle" : " Edge Angle"),
+                                                      SYSTEM_VARIANT_FLOAT);
+
+                break;
+            }
+
+            case ITEM_PROPERTY_LIGHT_RANGE:
+            {
+                new_value = (float) light_info_ptr->range(item_id,
+                                                          0.0);
+
+                result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
+                                                                                                              " Range"),
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;

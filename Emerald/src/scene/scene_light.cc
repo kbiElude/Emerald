@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -22,15 +22,19 @@
 /* Private declarations */
 typedef struct
 {
-    curve_container                  constant_attenuation;
     curve_container                  color    [3];
     curve_container                  color_intensity;
+    curve_container                  cone_angle;
+    curve_container                  constant_attenuation;
     float                            direction[3];
+    curve_container                  edge_angle;
+    scene_light_falloff              falloff;
     scene_graph_node                 graph_owner_node;
     curve_container                  linear_attenuation;
     system_hashed_ansi_string        name;
     float                            position[3];
     curve_container                  quadratic_attenuation;
+    curve_container                  range;
     scene_light_shadow_map_bias      shadow_map_bias;           /* NOTE: This property affects the generated ogl_uber! */
     bool                             shadow_map_cull_front_faces;
     scene_light_shadow_map_filtering shadow_map_filtering;
@@ -48,6 +52,8 @@ typedef struct
 PRIVATE void _scene_light_init_default_attenuation_curves   (__in     __notnull _scene_light*          light_ptr);
 PRIVATE void _scene_light_init_default_color_curves         (__in     __notnull _scene_light*          light_ptr);
 PRIVATE void _scene_light_init_default_color_intensity_curve(__in     __notnull _scene_light*          light_ptr);
+PRIVATE void _scene_light_init_default_point_light_curves   (__in     __notnull _scene_light*          light_ptr);
+PRIVATE void _scene_light_init_default_spot_light_curves    (__in     __notnull _scene_light*          light_ptr);
 PRIVATE void _scene_light_init                              (__in     __notnull _scene_light*          light_ptr);
 PRIVATE bool _scene_light_load_curve                        (__in_opt           scene                  owner_scene,
                                                              __in     __notnull curve_container*       curve_ptr,
@@ -60,7 +66,7 @@ PRIVATE bool _scene_light_save_curve                        (__in_opt           
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(scene_light,
                                scene_light,
-                               _scene_light);
+                              _scene_light);
 
 
 /** TODO */
@@ -186,6 +192,63 @@ PRIVATE void _scene_light_init_default_color_intensity_curve(__in __notnull _sce
 }
 
 /** TODO */
+PRIVATE void _scene_light_init_default_point_light_curves(__in __notnull _scene_light* light_ptr)
+{
+    system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    /* Range */
+    ASSERT_DEBUG_SYNC(light_ptr->range == NULL,
+                      "Light edge angle curve already instantiated");
+
+    light_ptr->range = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                      " range"),
+                                              SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (temp_variant,
+                                      DEG_TO_RAD(2.5f) );
+    curve_container_set_default_value(light_ptr->range,
+                                      temp_variant);
+
+    /* Clean up */
+    system_variant_release(temp_variant);
+}
+
+/** TODO */
+PRIVATE void _scene_light_init_default_spot_light_curves(__in __notnull _scene_light* light_ptr)
+{
+    system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
+
+    /* Cone angle */
+    ASSERT_DEBUG_SYNC(light_ptr->cone_angle == NULL,
+                      "Light cone angle curve already instantiated");
+
+    light_ptr->cone_angle = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                           " cone angle"),
+                                                   SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (temp_variant,
+                                      DEG_TO_RAD(45.0f) );
+    curve_container_set_default_value(light_ptr->cone_angle,
+                                      temp_variant);
+
+    /* Edge angle */
+    ASSERT_DEBUG_SYNC(light_ptr->edge_angle == NULL,
+                      "Light edge angle curve already instantiated");
+
+    light_ptr->edge_angle = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                           " edge angle"),
+                                                   SYSTEM_VARIANT_FLOAT);
+
+    system_variant_set_float         (temp_variant,
+                                      DEG_TO_RAD(20.0f) );
+    curve_container_set_default_value(light_ptr->edge_angle,
+                                      temp_variant);
+
+    /* Clean up */
+    system_variant_release(temp_variant);
+}
+
+/** TODO */
 PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
 {
     /* Curves - set all to NULL */
@@ -194,9 +257,13 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
            sizeof(light_ptr->color) );
 
     light_ptr->color_intensity       = NULL;
+    light_ptr->cone_angle            = NULL;
     light_ptr->constant_attenuation  = NULL;
+    light_ptr->edge_angle            = NULL;
+    light_ptr->falloff               = SCENE_LIGHT_FALLOFF_LINEAR;
     light_ptr->linear_attenuation    = NULL;
     light_ptr->quadratic_attenuation = NULL;
+    light_ptr->range                 = NULL;
 
     light_ptr->shadow_map_bias             = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
     light_ptr->shadow_map_cull_front_faces = true;
@@ -209,8 +276,9 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
 
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_vp);
 
-    /* Direction: used by directional light */
-    if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
+    /* Direction: used by directional & spot lights */
+    if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+        light_ptr->type == SCENE_LIGHT_TYPE_SPOT)
     {
         memset(light_ptr->direction,
                0,
@@ -274,9 +342,12 @@ PRIVATE void _scene_light_release(void* data_ptr)
         light_ptr->color + 1,
         light_ptr->color + 2,
        &light_ptr->color_intensity,
+       &light_ptr->cone_angle,
        &light_ptr->constant_attenuation,
+       &light_ptr->edge_angle,
        &light_ptr->linear_attenuation,
        &light_ptr->quadratic_attenuation,
+       &light_ptr->range
     };
     const uint32_t n_containers = sizeof(containers) / sizeof(containers[0]);
 
@@ -360,7 +431,8 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (scene_light) new_scene_light;
@@ -386,7 +458,8 @@ PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull sys
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (scene_light) new_scene_light;
@@ -412,7 +485,35 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_ha
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+    }
+
+    return (scene_light) new_scene_light;
+}
+
+/* Please see header for specification */
+PUBLIC EMERALD_API scene_light scene_light_create_spot(__in __notnull system_hashed_ansi_string name)
+{
+    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+
+    ASSERT_DEBUG_SYNC(new_scene_light != NULL, "Out of memory");
+    if (new_scene_light != NULL)
+    {
+        memset(new_scene_light,
+               0,
+               sizeof(_scene_light) );
+
+        new_scene_light->name = name;
+        new_scene_light->type = SCENE_LIGHT_TYPE_SPOT;
+
+        _scene_light_init(new_scene_light);
+
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+                                                       _scene_light_release,
+                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (scene_light) new_scene_light;
@@ -455,6 +556,21 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_CONE_ANGLE:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_CONE_ANGLE property only available for spot lights");
+
+            if (light_ptr->cone_angle == NULL)
+            {
+                _scene_light_init_default_spot_light_curves(light_ptr);
+            }
+
+            *(curve_container*) out_result = light_ptr->cone_angle;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -472,12 +588,39 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
         case SCENE_LIGHT_PROPERTY_DIRECTION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL,
-                              "SCENE_LIGHT_PROPERTY_DIRECTION property only available for directional lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_DIRECTION property only available for directional & spot lights");
 
             memcpy(out_result,
                    light_ptr->direction,
                    sizeof(light_ptr->direction) );
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_EDGE_ANGLE:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_EDGE_ANGLE property only available for spot lights");
+
+            if (light_ptr->edge_angle == NULL)
+            {
+                _scene_light_init_default_spot_light_curves(light_ptr);
+            }
+
+            *(curve_container*) out_result = light_ptr->edge_angle;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_FALLOFF:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_FALLOFF property only available for point / spot lights");
+
+            *(scene_light_falloff*) out_result = light_ptr->falloff;
 
             break;
         }
@@ -513,8 +656,9 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
         case SCENE_LIGHT_PROPERTY_POSITION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point & spot lights");
 
             memcpy(out_result,
                    light_ptr->position,
@@ -534,6 +678,22 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             }
 
             *(curve_container*) out_result = light_ptr->quadratic_attenuation;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_RANGE:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_RANGE property only available for point & spot lights");
+
+            if (light_ptr->range == NULL)
+            {
+                _scene_light_init_default_point_light_curves(light_ptr);
+            }
+
+            *(curve_container*) out_result = light_ptr->range;
 
             break;
         }
@@ -649,6 +809,13 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
             break;
         }
 
+        case SCENE_LIGHT_TYPE_SPOT:
+        {
+            result_light = scene_light_create_spot(light_name);
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -682,18 +849,46 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                                                   sizeof(result_light_ptr->direction),
                                                   result_light_ptr->direction);
         }
-        else
-        if (light_type == SCENE_LIGHT_TYPE_POINT)
+
+        if (light_type == SCENE_LIGHT_TYPE_POINT ||
+            light_type == SCENE_LIGHT_TYPE_SPOT)
+        {
+            result &= system_file_serializer_read(serializer,
+                                                  sizeof(result_light_ptr->falloff),
+                                                 &result_light_ptr->falloff);
+
+            if (result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_CUSTOM)
+            {
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->constant_attenuation,
+                                                  serializer);
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->linear_attenuation,
+                                                  serializer);
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->quadratic_attenuation,
+                                                  serializer);
+            }
+            else
+            if (result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE        ||
+                result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE ||
+                result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_LINEAR)
+            {
+                result &= _scene_light_load_curve(owner_scene,
+                                                 &result_light_ptr->range,
+                                                  serializer);
+            }
+        }
+
+        if (light_type == SCENE_LIGHT_TYPE_SPOT)
         {
             result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->constant_attenuation,
+                                             &result_light_ptr->cone_angle,
                                               serializer);
             result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->linear_attenuation,
+                                             &result_light_ptr->edge_angle,
                                               serializer);
-            result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->quadratic_attenuation,
-                                              serializer);
+
         }
 
         if (!result)
@@ -751,17 +946,44 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
                                                sizeof(light_ptr->direction),
                                                light_ptr->direction);
     }
-    else
-    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT)
+
+    if (light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+        light_ptr->type == SCENE_LIGHT_TYPE_SPOT)
+    {
+        result &= system_file_serializer_write(serializer,
+                                               sizeof(light_ptr->falloff),
+                                              &light_ptr->falloff);
+
+        if (light_ptr->falloff == SCENE_LIGHT_FALLOFF_CUSTOM)
+        {
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->constant_attenuation,
+                                              serializer);
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->linear_attenuation,
+                                              serializer);
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->quadratic_attenuation,
+                                              serializer);
+        }
+        else
+        if (light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE        ||
+            light_ptr->falloff == SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE ||
+            light_ptr->falloff == SCENE_LIGHT_FALLOFF_LINEAR)
+        {
+            result &= _scene_light_save_curve(owner_scene,
+                                              light_ptr->range,
+                                              serializer);
+        }
+    }
+
+    if (light_ptr->type == SCENE_LIGHT_TYPE_SPOT)
     {
         result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->constant_attenuation,
+                                          light_ptr->cone_angle,
                                           serializer);
         result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->linear_attenuation,
-                                          serializer);
-        result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->quadratic_attenuation,
+                                          light_ptr->edge_angle,
                                           serializer);
     }
 
@@ -812,6 +1034,23 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_CONE_ANGLE:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_CONE_ANGLE property only settable for spot lights");
+
+            if (light_ptr->cone_angle != NULL)
+            {
+                curve_container_release(light_ptr->cone_angle);
+
+                light_ptr->cone_angle = NULL;
+            }
+
+            light_ptr->cone_angle = *(curve_container*) data;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_CONSTANT_ATTENUATION:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
@@ -829,17 +1068,39 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
+        case SCENE_LIGHT_PROPERTY_EDGE_ANGLE:
         {
-            light_ptr->shadow_map_cull_front_faces = *(bool*) data;
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_EDGE_ANGLE property only settable for spot lights");
+
+            if (light_ptr->edge_angle != NULL)
+            {
+                curve_container_release(light_ptr->edge_angle);
+
+                light_ptr->edge_angle = NULL;
+            }
+
+            light_ptr->edge_angle = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_FALLOFF:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_FALLOFF property only settable for point & spot lights");
+
+            light_ptr->falloff = *(scene_light_falloff*) data;
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_DIRECTION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL,
-                              "SCENE_LIGHT_PROPERTY_DIRECTION property only settable for directional lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_DIRECTION property only settable for directional & spot lights");
 
             memcpy(light_ptr->direction,
                    data,
@@ -874,8 +1135,9 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_POSITION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point & spot lights");
 
             for (unsigned int n_component = 0;
                               n_component < sizeof(light_ptr->position) / sizeof(light_ptr->position[0]);
@@ -902,6 +1164,31 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             }
 
             light_ptr->quadratic_attenuation = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_RANGE:
+        {
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_RANGE property only settable for point & spot lights");
+
+            if (light_ptr->range != NULL)
+            {
+                curve_container_release(light_ptr->range);
+
+                light_ptr->range = NULL;
+            }
+
+            light_ptr->range = *(curve_container*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
+        {
+            light_ptr->shadow_map_cull_front_faces = *(bool*) data;
 
             break;
         }

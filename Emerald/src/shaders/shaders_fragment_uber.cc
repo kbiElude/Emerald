@@ -73,30 +73,270 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_uber, shaders_fragment_uber, _sh
 
 /** TODO */
 PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in           shaders_fragment_uber_light_type         light_type,
+                                                                       __in           scene_light_falloff                      light_falloff,
                                                                        __in __notnull ogl_shader_constructor                   shader_constructor,
                                                                        __in           unsigned int                             n_item,
                                                                        __in __notnull shaders_fragment_uber_property_value*    properties,
                                                                        __in __notnull PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
                                                                        __in_opt       void*                                    user_arg,
-                                                                       __in_opt       system_hashed_ansi_string                light_visibility_var_name)
+                                                                       __in_opt       system_hashed_ansi_string                light_visibility_var_name,
+                                                                       __in           _uniform_block_id                        fs_props_ub_id)
 {
     /* If we should take attenuation into consideration, calculate it at this point. */
+    std::stringstream light_attenuation_var_name_sstream;
+    std::stringstream light_attenuations_var_name_sstream;
+    std::stringstream light_cone_angle_var_name_sstream;
+    std::stringstream light_direction_var_name_sstream;
+    std::stringstream light_distance_var_name_sstream;
+    std::stringstream light_edge_angle_var_name_sstream;
+    std::stringstream light_range_var_name_sstream;
+    std::stringstream light_spotlight_effect_var_name_sstream;
+    std::stringstream light_vector_norm_var_name_sstream;
     std::stringstream line;
+    bool              uses_attenuation      = false;
+    bool              uses_spotlight_effect = false;
+
+    light_attenuation_var_name_sstream      << "light"
+                                            << n_item
+                                            << "_attenuation";
+    light_attenuations_var_name_sstream     << "light"
+                                            << n_item
+                                            << "_attenuations";
+    light_cone_angle_var_name_sstream       << "light"
+                                            << n_item
+                                            << "_cone_angle";
+    light_direction_var_name_sstream        << "light"
+                                            << n_item
+                                            << "_direction";
+    light_distance_var_name_sstream         << "light"
+                                            << n_item
+                                            << "_distance";
+    light_edge_angle_var_name_sstream       << "light"
+                                            << n_item
+                                            << "_edge_angle";
+    light_range_var_name_sstream            << "light"
+                                            << n_item
+                                            << "_range";
+    light_spotlight_effect_var_name_sstream << "light"
+                                            << n_item
+                                            << "_spotlight_effect";
+    light_vector_norm_var_name_sstream      << "light"
+                                            << n_item
+                                            << "_vector_norm";
 
     line << "\n// Lambert: ambient+diffuse (light:[" << n_item << "])\n";
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
-        line << "float light"   << n_item << "_distance    = length(light" << n_item << "_vector);\n"
-                "float light"   << n_item << "_attenuation = "
-                "1.0f / (light" << n_item << "_attenuations.x + "
-                        "light" << n_item << "_attenuations.y * light" << n_item << "_distance + "
-                        "light" << n_item << "_attenuations.z * light" << n_item << "_distance * light" << n_item << "_distance);\n";
+        std::stringstream cone_edge_diff_sstream;
+
+        cone_edge_diff_sstream << "("
+                               << light_cone_angle_var_name_sstream.str()
+                               << " - "
+                               << light_edge_angle_var_name_sstream.str()
+                               << ")";
+
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          fs_props_ub_id,
+                                                          system_hashed_ansi_string_create(light_cone_angle_var_name_sstream.str().c_str() ),
+                                                          NULL /* out_variable_id */);
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          fs_props_ub_id,
+                                                          system_hashed_ansi_string_create(light_edge_angle_var_name_sstream.str().c_str() ),
+                                                          NULL /* out_variable_id */);
+
+        line << "float "
+             << light_spotlight_effect_var_name_sstream.str()
+             << " = 0.0;\n"
+             << "float "
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp = dot(-"
+             << light_direction_var_name_sstream.str()
+             << ", "
+             << light_vector_norm_var_name_sstream.str()
+             << ");\n"
+             << "float "
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos = acos("
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp);\n"
+             << "\n"
+             << "if ("
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos > " << cone_edge_diff_sstream.str() << " && " /* cone - edge */
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos < " << light_cone_angle_var_name_sstream.str() << ")" /* cone */
+             << light_spotlight_effect_var_name_sstream.str()
+             << " = smoothstep(1.0, 0.0, (light0_spotlight_effect_temp_acos - " << cone_edge_diff_sstream.str() << ") / " << light_edge_angle_var_name_sstream.str() << ");\n" /* temp - (cone - edge), edge */
+             << "else\n"
+                "if ("
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos < " << light_cone_angle_var_name_sstream.str() << ")  " /* cone */
+             << light_spotlight_effect_var_name_sstream.str()
+             << " = "
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp;\n";
+
+        uses_spotlight_effect = true;
+    }
+
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
+    {
+        line << "float "
+             << light_distance_var_name_sstream.str()
+             << " = length(light" << n_item << "_vector_non_norm);\n";
+
+        uses_attenuation = true;
+
+        switch (light_falloff)
+        {
+            case SCENE_LIGHT_FALLOFF_CUSTOM:
+            {
+                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                  VARIABLE_TYPE_UNIFORM,
+                                                                  LAYOUT_QUALIFIER_NONE,
+                                                                  TYPE_VEC3,
+                                                                  0, /* array_size */
+                                                                  fs_props_ub_id,
+                                                                  system_hashed_ansi_string_create(light_attenuations_var_name_sstream.str().c_str() ),
+                                                                  NULL /* out_variable_id */);
+
+                line << "float "
+                     << light_attenuation_var_name_sstream.str() << " = "
+                     << ((uses_spotlight_effect) ? light_spotlight_effect_var_name_sstream.str() : "1.0")
+                     << " / (light" << n_item << "_attenuations.x + "
+                            "light" << n_item << "_attenuations.y * " << light_distance_var_name_sstream.str() << " + "
+                            "light" << n_item << "_attenuations.z * " << light_distance_var_name_sstream.str() << " * " << light_distance_var_name_sstream.str() << ");\n";
+
+                break;
+            }
+
+            case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
+            {
+                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                  VARIABLE_TYPE_UNIFORM,
+                                                                  LAYOUT_QUALIFIER_NONE,
+                                                                  TYPE_FLOAT,
+                                                                  0, /* array_size */
+                                                                  fs_props_ub_id,
+                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                  NULL /* out_variable_id */);
+
+                line << "float "
+                     << light_attenuation_var_name_sstream.str() << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << " * ";
+                }
+
+                line << light_range_var_name_sstream.str()
+                     << " / "
+                     << light_distance_var_name_sstream.str()
+                     << ";\n";
+
+                 break;
+            }
+
+            case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE:
+            {
+                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                  VARIABLE_TYPE_UNIFORM,
+                                                                  LAYOUT_QUALIFIER_NONE,
+                                                                  TYPE_FLOAT,
+                                                                  0, /* array_size */
+                                                                  fs_props_ub_id,
+                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                  NULL /* out_variable_id */);
+
+                line << "float "
+                     << light_attenuation_var_name_sstream.str() << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << " * ";
+                }
+
+                line << light_range_var_name_sstream.str()
+                     << " / ("
+                     << light_distance_var_name_sstream.str()
+                     << " * "
+                     << light_distance_var_name_sstream.str()
+                     << ");\n";
+
+                 break;
+            }
+
+            case SCENE_LIGHT_FALLOFF_LINEAR:
+            {
+                ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                                  VARIABLE_TYPE_UNIFORM,
+                                                                  LAYOUT_QUALIFIER_NONE,
+                                                                  TYPE_FLOAT,
+                                                                  0, /* array_size */
+                                                                  fs_props_ub_id,
+                                                                  system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
+                                                                  NULL /* out_variable_id */);
+
+                line << "float "
+                     << light_attenuation_var_name_sstream.str()
+                     << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << " * ";
+                }
+
+                line << "clamp(1.0 - " << light_distance_var_name_sstream.str()
+                     << " / "
+                     << light_range_var_name_sstream.str()
+                     << ", 0.0, 1.0);\n";
+
+                 break;
+            }
+
+            case SCENE_LIGHT_FALLOFF_OFF:
+            {
+                line << "float "
+                     << light_attenuation_var_name_sstream.str()
+                     << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << ";\n";
+                }
+                else
+                {
+                    line << "1.0;\n";
+                }
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized light falloff requested");
+            }
+        } /* switch (light_falloff) */
     }
 
     /* Compute diffuse factor for non-ambient lights */
-    const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT ||
+    const bool is_luminosity_float_defined   = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT                 ||
                                                 properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT);
     const bool is_luminosity_texture_defined = (properties[SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE] == SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D);
 
@@ -108,6 +348,11 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
         line << "vec4("
              << system_hashed_ansi_string_get_buffer(light_visibility_var_name)
              << ") * ";
+    }
+
+    if (uses_attenuation)
+    {
+        line << "vec4(" << light_attenuation_var_name_sstream.str() << ") * ";
     }
 
     line << "(";
@@ -259,7 +504,7 @@ PRIVATE void _shaders_fragment_uber_add_phong_specular_factor(__in     __notnull
              << ") * ";
     }
     
-    line << "vec4(vec3(phong_specular(normal, light" << n_light << "_vector, light" << n_light << "_LdotN)), 0.0);\n";
+    line << "vec4(vec3(phong_specular(normal, light" << n_light << "_vector_norm, light" << n_light << "_LdotN)), 0.0);\n";
 
     ogl_shader_constructor_append_to_function_body(shader_constructor,
                                                    0, /* main() */
@@ -500,6 +745,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                                  __in                                  shaders_fragment_uber_light_type         light_type,
                                                                                  __in                                  bool                                     is_shadow_caster,
                                                                                  __in                                  scene_light_shadow_map_bias              sm_bias,
+                                                                                 __in                                  scene_light_falloff                      light_falloff,
                                                                                  __in      __notnull                   unsigned int                             n_light_properties,
                                                                                  __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
                                                                                  __in_opt __notnull                    PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -543,7 +789,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
         light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       ||
         light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL   ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT         ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         light_diffuse_name_sstream << "light" << n_items << "_diffuse";
 
@@ -558,7 +805,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         light_world_pos_name_sstream << "light" << n_items << "_world_pos";
 
@@ -573,7 +821,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         light_direction_name_sstream << "light" << n_items << "_direction";
 
@@ -587,21 +836,6 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                           NULL /* out_variable_id */);
     }
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
-    {
-        light_attenuations_name_sstream << "light" << n_items << "_attenuations";
-
-        ogl_shader_constructor_add_general_variable_to_ub(uber_ptr->shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_VEC3,
-                                                          0, /* array_size */
-                                                          uber_ptr->fragment_shader_properties_ub,
-                                                          system_hashed_ansi_string_create(light_attenuations_name_sstream.str().c_str() ),
-                                                          NULL /* out_variable_id */);
-    }
-
     /* Add light vector calculation */
     if (light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT)
     {
@@ -612,21 +846,32 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         {
             line << "vec3 light"
                  << n_items
-                 << "_vector = -normalize("
+                 << "_vector_non_norm = -"
                  << light_direction_name_sstream.str()
-                 << ");\n";
+                 << ";\n"
+                 << "vec3 light"
+                 << n_items
+                 << "_vector_norm = normalize(light"
+                 << n_items
+                 << "_vector_non_norm);\n";
         }
         else
         {
             ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT,
+                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT,
                               "Unrecognized light type");
 
             line << "vec3 light"
                  << n_items
-                 << "_vector = normalize("
+                 << "_vector_non_norm = "
                  << light_world_pos_name_sstream.str()
-                 << ".xyz - world_vertex);\n";
+                 << ".xyz - world_vertex;\n"
+                 << "vec3 light"
+                 << n_items
+                 << "_vector_norm = normalize(light"
+                 << n_items
+                 << "_vector_non_norm);\n";
         }
 
         ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
@@ -875,7 +1120,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 
         ldotn_sstream << "float light" << n_items << "_LdotN "
                       << "= dot("
-                      << "light" << n_items << "_vector"
+                      << "light" << n_items << "_vector_norm"
                       << ", normal);\n";
         ldotn_sstream << "float light"   << n_items << "_LdotN_clamped "
                       << "= clamp(light" << n_items << "_LdotN, 0.0, 1.0);\n";
@@ -903,14 +1148,17 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT:
         {
             _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(light_type,
+                                                                      light_falloff,
                                                                       uber_ptr->shader_constructor,
                                                                       n_items,
                                                                       new_light_item_data_ptr->properties,
                                                                       pCallbackProc,
                                                                       user_arg,
-                                                                      light_visibility_var_name_has);
+                                                                      light_visibility_var_name_has,
+                                                                      uber_ptr->fragment_shader_properties_ub);
 
             break;
         }
@@ -948,6 +1196,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT:
         {
             _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor,
                                                              n_items,
