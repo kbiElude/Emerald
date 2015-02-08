@@ -60,6 +60,10 @@ typedef struct _ogl_uber_fragment_shader_item
     bool  current_light_location_dirty;
     GLint current_light_location_ub_offset;
 
+    float current_light_range;
+    bool  current_light_range_dirty;
+    GLint current_light_range_ub_offset;
+
     ogl_texture current_light_shadow_map_texture;
     GLuint      current_light_shadow_map_texture_sampler_location;
 
@@ -70,6 +74,7 @@ typedef struct _ogl_uber_fragment_shader_item
         current_light_diffuse_ub_offset                   = -1;
         current_light_direction_ub_offset                 = -1;
         current_light_location_ub_offset                  = -1;
+        current_light_range_ub_offset                     = -1;
         current_light_shadow_map_texture_sampler_location = -1;
 
         current_light_shadow_map_texture = NULL;
@@ -79,6 +84,7 @@ typedef struct _ogl_uber_fragment_shader_item
         current_light_diffuse_dirty      = true;
         current_light_direction_dirty    = true;
         current_light_location_dirty     = true;
+        current_light_range_dirty        = true;
     }
 } _ogl_uber_fragment_shader_item;
 
@@ -1246,14 +1252,29 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_direction_uniform_ptr = NULL;
                 std::stringstream                     light_location_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_location_uniform_ptr = NULL;
+                std::stringstream                     light_range_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_range_uniform_ptr = NULL;
                 std::stringstream                     light_shadow_map_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_shadow_map_uniform_ptr = NULL;
 
-                light_attenuations_uniform_name_sstream << "light" << n_item << "_attenuations";
-                light_diffuse_uniform_name_sstream      << "light" << n_item << "_diffuse";
-                light_direction_uniform_name_sstream    << "light" << n_item << "_direction";
-                light_location_uniform_name_sstream     << "light" << n_item << "_world_pos";
-                light_shadow_map_uniform_name_sstream   << "light" << n_item << "_shadow_map";
+                light_attenuations_uniform_name_sstream << "light"
+                                                        << n_item
+                                                        << "_attenuations";
+                light_diffuse_uniform_name_sstream      << "light"
+                                                        << n_item
+                                                        << "_diffuse";
+                light_direction_uniform_name_sstream    << "light"
+                                                        << n_item
+                                                        << "_direction";
+                light_location_uniform_name_sstream     << "light"
+                                                        << n_item
+                                                        << "_world_pos";
+                light_range_uniform_name_sstream        << "light"
+                                                        << n_item
+                                                        << "_range";
+                light_shadow_map_uniform_name_sstream   << "light"
+                                                        << n_item
+                                                        << "_shadow_map";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create("ambient_color"),
@@ -1270,6 +1291,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
                                                &light_location_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_range_uniform_name_sstream.str().c_str()  ),
+                                               &light_range_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_shadow_map_uniform_name_sstream.str().c_str() ),
                                                &light_shadow_map_uniform_ptr);
@@ -1299,6 +1323,11 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                     item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
                 }
 
+                if (light_range_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_range_ub_offset = light_range_uniform_ptr->ub_offset;
+                }
+
                 if (light_shadow_map_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location = light_shadow_map_uniform_ptr->location;
@@ -1309,7 +1338,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_depth_vb_uniform_ptr = NULL;
                 shaders_vertex_uber_light             light_type                 = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
-                light_depth_vb_uniform_name_sstream << "light" << n_item << "_depth_vp";
+                light_depth_vb_uniform_name_sstream << "light"
+                                                    << n_item
+                                                    << "_depth_vp";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_depth_vb_uniform_name_sstream.str().c_str() ),
@@ -1576,6 +1607,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                                   "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION requested but the underlying shader does not use the property");
 
                 *((float**) result) = item_ptr->fragment_shader_item.current_light_location;
+
+                break;
+            }
+
+            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_range_ub_offset != -1,
+                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE requested but the underlying shader does not use the property");
+
+                *((float*) result) = item_ptr->fragment_shader_item.current_light_range;
 
                 break;
             }
@@ -2169,6 +2210,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_location_dirty = false;
                     }
 
+                    if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.current_light_range_dirty)
+                    {
+                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_range_ub_offset) = item_ptr->fragment_shader_item.current_light_range;
+
+                        has_modified_bo_data                                     = true;
+                        item_ptr->fragment_shader_item.current_light_range_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location != -1)
                     {
                         /* Bind the shadow map */
@@ -2439,6 +2489,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
+        case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
         {
@@ -2548,6 +2599,17 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                             item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_location_dirty = true;
+                        }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
+                    {
+                        if (item_ptr->fragment_shader_item.current_light_range != *(float*) data)
+                        {
+                            item_ptr->fragment_shader_item.current_light_range       = *(float*) data;
+                            item_ptr->fragment_shader_item.current_light_range_dirty = true;
                         }
 
                         break;

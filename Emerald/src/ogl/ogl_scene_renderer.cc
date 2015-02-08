@@ -1257,10 +1257,12 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
         curve_container     current_light_attenuation_curves[3];
         float               current_light_attenuation_floats[3];
         float               current_light_color_floats      [3];
-        scene_light_falloff current_light_falloff;
-        bool                current_light_shadow_caster         = false;
         float               current_light_direction_floats  [3];
         float               current_light_position_floats   [3];
+        curve_container     current_light_range_curve;
+        float               current_light_range_float;
+        scene_light_falloff current_light_falloff;
+        bool                current_light_shadow_caster         = false;
 
         scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
@@ -1365,17 +1367,30 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                                   dst_float_ptr);
                     } /* for (all curves) */
 
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
+                                                      current_light_attenuation_floats);
+
                     break;
                 } /* case SCENE_LIGHT_FALLOFF_CUSTOM: */
 
                 case SCENE_LIGHT_FALLOFF_LINEAR:
                 {
-                    /* Set the constant attenuation to the value that matches the requested behavior. */
-                    current_light_attenuation_floats[0] = 1.0f;
+                    scene_light_get_property (current_light,
+                                              SCENE_LIGHT_PROPERTY_RANGE,
+                                             &current_light_range_curve);
+                    curve_container_get_value(current_light_range_curve,
+                                              frame_time,
+                                              false, /* should_force */
+                                              temp_variant_float);
+                    system_variant_get_float (temp_variant_float,
+                                             &current_light_range_float);
 
-                    /* Set the linear and the quadratic attenuations to 0. */
-                    current_light_attenuation_floats[1] = 0.0f;
-                    current_light_attenuation_floats[2] = 0.0f;
+                    ogl_uber_set_shader_item_property(material_uber,
+                                                      n_light,
+                                                      OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,
+                                                     &current_light_range_float);
 
                     break;
                 } /* case SCENE_LIGHT_FALLOFF_LINEAR: */
@@ -1394,10 +1409,7 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                 }
             } /* switch (current_light_falloff) */
 
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
-                                              current_light_attenuation_floats);
+            
         }
         else
         if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
