@@ -85,9 +85,13 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
     /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream light_attenuation_var_name_sstream;
     std::stringstream light_attenuations_var_name_sstream;
+    std::stringstream light_cone_angle_var_name_sstream;
+    std::stringstream light_direction_var_name_sstream;
     std::stringstream light_distance_var_name_sstream;
+    std::stringstream light_edge_angle_var_name_sstream;
     std::stringstream light_range_var_name_sstream;
     std::stringstream light_spotlight_effect_var_name_sstream;
+    std::stringstream light_vector_norm_var_name_sstream;
     std::stringstream line;
     bool              uses_attenuation      = false;
     bool              uses_spotlight_effect = false;
@@ -98,23 +102,88 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
     light_attenuations_var_name_sstream     << "light"
                                             << n_item
                                             << "_attenuations";
+    light_cone_angle_var_name_sstream       << "light"
+                                            << n_item
+                                            << "_cone_angle";
+    light_direction_var_name_sstream        << "light"
+                                            << n_item
+                                            << "_direction";
     light_distance_var_name_sstream         << "light"
                                             << n_item
                                             << "_distance";
+    light_edge_angle_var_name_sstream       << "light"
+                                            << n_item
+                                            << "_edge_angle";
     light_range_var_name_sstream            << "light"
                                             << n_item
                                             << "_range";
     light_spotlight_effect_var_name_sstream << "light"
                                             << n_item
                                             << "_spotlight_effect";
+    light_vector_norm_var_name_sstream      << "light"
+                                            << n_item
+                                            << "_vector_norm";
 
     line << "\n// Lambert: ambient+diffuse (light:[" << n_item << "])\n";
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
+        std::stringstream cone_edge_diff_sstream;
+
+        cone_edge_diff_sstream << "("
+                               << light_cone_angle_var_name_sstream.str()
+                               << " - "
+                               << light_edge_angle_var_name_sstream.str()
+                               << ")";
+
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          fs_props_ub_id,
+                                                          system_hashed_ansi_string_create(light_cone_angle_var_name_sstream.str().c_str() ),
+                                                          NULL /* out_variable_id */);
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          fs_props_ub_id,
+                                                          system_hashed_ansi_string_create(light_edge_angle_var_name_sstream.str().c_str() ),
+                                                          NULL /* out_variable_id */);
+
         line << "float "
              << light_spotlight_effect_var_name_sstream.str()
-             << " = 1.0;\n";
+             << " = 0.0;\n"
+             << "float "
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp = dot(-"
+             << light_direction_var_name_sstream.str()
+             << ", "
+             << light_vector_norm_var_name_sstream.str()
+             << ");\n"
+             << "float "
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos = acos("
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp);\n"
+             << "\n"
+             << "if ("
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos > " << cone_edge_diff_sstream.str() << " && " /* cone - edge */
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos < " << light_cone_angle_var_name_sstream.str() << ")" /* cone */
+             << light_spotlight_effect_var_name_sstream.str()
+             << " = smoothstep(1.0, 0.0, (light0_spotlight_effect_temp_acos - " << cone_edge_diff_sstream.str() << ") / " << light_edge_angle_var_name_sstream.str() << ");\n" /* temp - (cone - edge), edge */
+             << "else\n"
+                "if ("
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp_acos < " << light_cone_angle_var_name_sstream.str() << ")  " /* cone */
+             << light_spotlight_effect_var_name_sstream.str()
+             << " = "
+             << light_spotlight_effect_var_name_sstream.str()
+             << "_temp;\n";
 
         uses_spotlight_effect = true;
     }
@@ -164,8 +233,15 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                   NULL /* out_variable_id */);
 
                 line << "float "
-                     << light_attenuation_var_name_sstream.str() << " = "
-                     << light_range_var_name_sstream.str()
+                     << light_attenuation_var_name_sstream.str() << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << " * ";
+                }
+
+                line << light_range_var_name_sstream.str()
                      << " / "
                      << light_distance_var_name_sstream.str()
                      << ";\n";
@@ -185,8 +261,15 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                   NULL /* out_variable_id */);
 
                 line << "float "
-                     << light_attenuation_var_name_sstream.str() << " = "
-                     << light_range_var_name_sstream.str()
+                     << light_attenuation_var_name_sstream.str() << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << " * ";
+                }
+
+                line << light_range_var_name_sstream.str()
                      << " / ("
                      << light_distance_var_name_sstream.str()
                      << " * "
@@ -207,8 +290,17 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                   system_hashed_ansi_string_create(light_range_var_name_sstream.str().c_str() ),
                                                                   NULL /* out_variable_id */);
 
-                line << "float "       << light_attenuation_var_name_sstream.str() << " = "
-                     << "clamp(1.0 - " << light_distance_var_name_sstream.str()
+                line << "float "
+                     << light_attenuation_var_name_sstream.str()
+                     << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << " * ";
+                }
+
+                line << "clamp(1.0 - " << light_distance_var_name_sstream.str()
                      << " / "
                      << light_range_var_name_sstream.str()
                      << ", 0.0, 1.0);\n";
@@ -218,8 +310,19 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
 
             case SCENE_LIGHT_FALLOFF_OFF:
             {
-                /* Disable attenuation */
-                uses_attenuation = false;
+                line << "float "
+                     << light_attenuation_var_name_sstream.str()
+                     << " = ";
+
+                if (uses_spotlight_effect)
+                {
+                    line << light_spotlight_effect_var_name_sstream.str()
+                         << ";\n";
+                }
+                else
+                {
+                    line << "1.0;\n";
+                }
 
                 break;
             }
@@ -718,7 +821,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         light_direction_name_sstream << "light" << n_items << "_direction";
 

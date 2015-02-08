@@ -1201,8 +1201,9 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
                                  final_light_position);
     }
 
-    /* Update directional vector for directional lights */
-    if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
+    /* Update directional vector for directional & spot lights */
+    if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+        light_type == SCENE_LIGHT_TYPE_SPOT)
     {
         /* The default light direction vector is <0, 0, -1>. Transform it against the current
          * model matrix to obtain final direction vector for the light
@@ -1252,7 +1253,11 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
         curve_container     current_light_attenuation_curves[3];
         float               current_light_attenuation_floats[3];
         float               current_light_color_floats      [3];
+        curve_container     current_light_cone_angle_curve;
+        float               current_light_cone_angle_float;
         float               current_light_direction_floats  [3];
+        curve_container     current_light_edge_angle_curve;
+        float               current_light_edge_angle_float;
         float               current_light_position_floats   [3];
         curve_container     current_light_range_curve;
         float               current_light_range_float;
@@ -1407,7 +1412,8 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
             } /* switch (current_light_falloff) */
         }
 
-        if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
+        if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+            current_light_type == SCENE_LIGHT_TYPE_SPOT)
         {
             scene_light_get_property         (current_light,
                                               SCENE_LIGHT_PROPERTY_DIRECTION,
@@ -1416,6 +1422,39 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
                                               current_light_direction_floats);
+        }
+
+        if (current_light_type == SCENE_LIGHT_TYPE_SPOT)
+        {
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_CONE_ANGLE,
+                                    &current_light_cone_angle_curve);
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_EDGE_ANGLE,
+                                    &current_light_edge_angle_curve);
+
+            curve_container_get_value(current_light_cone_angle_curve,
+                                      frame_time,
+                                      false, /* should_force */
+                                      temp_variant_float);
+            system_variant_get_float (temp_variant_float,
+                                     &current_light_cone_angle_float);
+
+            curve_container_get_value(current_light_edge_angle_curve,
+                                      frame_time,
+                                      false, /* should_force */
+                                      temp_variant_float);
+            system_variant_get_float (temp_variant_float,
+                                     &current_light_edge_angle_float);
+
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,
+                                             &current_light_cone_angle_float);
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,
+                                             &current_light_edge_angle_float);
         }
     } /* for (all lights) */
 }

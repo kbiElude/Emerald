@@ -276,8 +276,9 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
 
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_vp);
 
-    /* Direction: used by directional light */
-    if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL)
+    /* Direction: used by directional & spot lights */
+    if (light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+        light_ptr->type == SCENE_LIGHT_TYPE_SPOT)
     {
         memset(light_ptr->direction,
                0,
@@ -1097,8 +1098,9 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_DIRECTION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL,
-                              "SCENE_LIGHT_PROPERTY_DIRECTION property only settable for directional lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_DIRECTION property only settable for directional & spot lights");
 
             memcpy(light_ptr->direction,
                    data,
