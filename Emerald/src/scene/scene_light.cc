@@ -491,6 +491,33 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_ha
     return (scene_light) new_scene_light;
 }
 
+/* Please see header for specification */
+PUBLIC EMERALD_API scene_light scene_light_create_spot(__in __notnull system_hashed_ansi_string name)
+{
+    _scene_light* new_scene_light = new (std::nothrow) _scene_light;
+
+    ASSERT_DEBUG_SYNC(new_scene_light != NULL, "Out of memory");
+    if (new_scene_light != NULL)
+    {
+        memset(new_scene_light,
+               0,
+               sizeof(_scene_light) );
+
+        new_scene_light->name = name;
+        new_scene_light->type = SCENE_LIGHT_TYPE_SPOT;
+
+        _scene_light_init(new_scene_light);
+
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
+                                                       _scene_light_release,
+                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+    }
+
+    return (scene_light) new_scene_light;
+}
+
 /* Please see header for spec */
 PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light          light,
                                                  __in            scene_light_property property,
@@ -560,8 +587,9 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
         case SCENE_LIGHT_PROPERTY_DIRECTION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL,
-                              "SCENE_LIGHT_PROPERTY_DIRECTION property only available for directional lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_DIRECTION property only available for directional & spot lights");
 
             memcpy(out_result,
                    light_ptr->direction,
@@ -587,8 +615,9 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
         case SCENE_LIGHT_PROPERTY_FALLOFF:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_FALLOFF property only available for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_FALLOFF property only available for point / spot lights");
 
             *(scene_light_falloff*) out_result = light_ptr->falloff;
 
@@ -626,8 +655,9 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
         case SCENE_LIGHT_PROPERTY_POSITION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point & spot lights");
 
             memcpy(out_result,
                    light_ptr->position,
@@ -653,8 +683,9 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
         case SCENE_LIGHT_PROPERTY_RANGE:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_RANGE property only available for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_RANGE property only available for point & spot lights");
 
             if (light_ptr->range == NULL)
             {
@@ -773,6 +804,13 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
         case SCENE_LIGHT_TYPE_POINT:
         {
             result_light = scene_light_create_point(light_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_TYPE_SPOT:
+        {
+            result_light = scene_light_create_spot(light_name);
 
             break;
         }
@@ -1048,8 +1086,9 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_FALLOFF:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_FALLOFF property only settable for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_FALLOFF property only settable for point & spot lights");
 
             light_ptr->falloff = *(scene_light_falloff*) data;
 
@@ -1094,8 +1133,9 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_POSITION:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_POSITION property only available for point & spot lights");
 
             for (unsigned int n_component = 0;
                               n_component < sizeof(light_ptr->position) / sizeof(light_ptr->position[0]);
@@ -1128,8 +1168,9 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_RANGE:
         {
-            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT,
-                              "SCENE_LIGHT_PROPERTY_RANGE property only settable for point lights");
+            ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_POINT ||
+                              light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
+                              "SCENE_LIGHT_PROPERTY_RANGE property only settable for point & spot lights");
 
             if (light_ptr->range != NULL)
             {

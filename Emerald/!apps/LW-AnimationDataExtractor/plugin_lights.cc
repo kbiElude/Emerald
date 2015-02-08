@@ -393,6 +393,14 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
                 break;
             } /* case LWLIGHT_POINT: */
 
+            case LWLIGHT_SPOT:
+            {
+                light_type_emerald = SCENE_LIGHT_TYPE_SPOT;
+                new_light          = scene_light_create_spot(light_name_has);
+
+                break;
+            }
+
             default:
             {
                 ASSERT_ALWAYS_SYNC(false,

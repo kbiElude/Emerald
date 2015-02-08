@@ -84,6 +84,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull sys
 PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_hashed_ansi_string name);
 
 /** TODO */
+PUBLIC EMERALD_API scene_light scene_light_create_spot(__in __notnull system_hashed_ansi_string name);
+
+/** TODO */
 PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,
                                                  __in            scene_light_property,
                                                  __out __notnull void*);

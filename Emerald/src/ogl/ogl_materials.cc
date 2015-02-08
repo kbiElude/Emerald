@@ -406,6 +406,13 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                     break;
                                 }
 
+                                case SCENE_LIGHT_TYPE_SPOT:
+                                {
+                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT;
+
+                                    break;
+                                }
+
                                 default:
                                 {
                                     ASSERT_DEBUG_SYNC(false,
@@ -657,7 +664,8 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
             current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
                                                                    current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
             current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
-                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT) )
+                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT         &&
+                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT) )
         {
             /* Nope */
             result = false;

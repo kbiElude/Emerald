@@ -837,6 +837,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT:
         {
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,

@@ -87,30 +87,47 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
     std::stringstream light_attenuations_var_name_sstream;
     std::stringstream light_distance_var_name_sstream;
     std::stringstream light_range_var_name_sstream;
+    std::stringstream light_spotlight_effect_var_name_sstream;
     std::stringstream line;
-    bool              uses_attenuation = false;
+    bool              uses_attenuation      = false;
+    bool              uses_spotlight_effect = false;
 
-    light_attenuation_var_name_sstream  << "light"
-                                        << n_item
-                                        << "_attenuation";
-    light_attenuations_var_name_sstream << "light"
-                                        << n_item
-                                        << "_attenuations";
-    light_distance_var_name_sstream     << "light"
-                                        << n_item
-                                        << "_distance";
-    light_range_var_name_sstream        << "light"
-                                        << n_item
-                                        << "_range";
+    light_attenuation_var_name_sstream      << "light"
+                                            << n_item
+                                            << "_attenuation";
+    light_attenuations_var_name_sstream     << "light"
+                                            << n_item
+                                            << "_attenuations";
+    light_distance_var_name_sstream         << "light"
+                                            << n_item
+                                            << "_distance";
+    light_range_var_name_sstream            << "light"
+                                            << n_item
+                                            << "_range";
+    light_spotlight_effect_var_name_sstream << "light"
+                                            << n_item
+                                            << "_spotlight_effect";
 
     line << "\n// Lambert: ambient+diffuse (light:[" << n_item << "])\n";
 
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
+    {
+        line << "float "
+             << light_spotlight_effect_var_name_sstream.str()
+             << " = 1.0;\n";
+
+        uses_spotlight_effect = true;
+    }
+
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         line << "float "
              << light_distance_var_name_sstream.str()
              << " = length(light" << n_item << "_vector_non_norm);\n";
+
+        uses_attenuation = true;
 
         switch (light_falloff)
         {
@@ -125,10 +142,12 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                   system_hashed_ansi_string_create(light_attenuations_var_name_sstream.str().c_str() ),
                                                                   NULL /* out_variable_id */);
 
-                line << "float " << light_attenuation_var_name_sstream.str() << " = "
-                        "1.0f / (light" << n_item << "_attenuations.x + "
-                                "light" << n_item << "_attenuations.y * " << light_distance_var_name_sstream.str() << " + "
-                                "light" << n_item << "_attenuations.z * " << light_distance_var_name_sstream.str() << " * " << light_distance_var_name_sstream.str() << ");\n";
+                line << "float "
+                     << light_attenuation_var_name_sstream.str() << " = "
+                     << ((uses_spotlight_effect) ? light_spotlight_effect_var_name_sstream.str() : "1.0")
+                     << " / (light" << n_item << "_attenuations.x + "
+                            "light" << n_item << "_attenuations.y * " << light_distance_var_name_sstream.str() << " + "
+                            "light" << n_item << "_attenuations.z * " << light_distance_var_name_sstream.str() << " * " << light_distance_var_name_sstream.str() << ");\n";
 
                 break;
             }
@@ -197,14 +216,20 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                  break;
             }
 
+            case SCENE_LIGHT_FALLOFF_OFF:
+            {
+                /* Disable attenuation */
+                uses_attenuation = false;
+
+                break;
+            }
+
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized light falloff requested");
             }
         } /* switch (light_falloff) */
-
-        uses_attenuation = true;
     }
 
     /* Compute diffuse factor for non-ambient lights */
@@ -661,7 +686,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
         light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       ||
         light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL   ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT         ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         light_diffuse_name_sstream << "light" << n_items << "_diffuse";
 
@@ -676,7 +702,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     }
 
     if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT)
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
     {
         light_world_pos_name_sstream << "light" << n_items << "_world_pos";
 
@@ -727,7 +754,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         else
         {
             ASSERT_DEBUG_SYNC(light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT,
+                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+                              light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT,
                               "Unrecognized light type");
 
             line << "vec3 light"
@@ -1016,6 +1044,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT:
         {
             _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(light_type,
                                                                       light_falloff,
@@ -1063,6 +1092,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
+        case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT:
         {
             _shaders_fragment_uber_add_phong_specular_factor(uber_ptr->shader_constructor,
                                                              n_items,

@@ -1185,8 +1185,9 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
                              SCENE_LIGHT_PROPERTY_TYPE,
                             &light_type);
 
-    /* Update light position for point light */
-    if (light_type == SCENE_LIGHT_TYPE_POINT)
+    /* Update light position for point & spot light */
+    if (light_type == SCENE_LIGHT_TYPE_POINT ||
+        light_type == SCENE_LIGHT_TYPE_SPOT)
     {
         const float default_light_position[4] = {0, 0, 0, 1};
               float final_light_position  [4];
@@ -1220,12 +1221,6 @@ PRIVATE void _ogl_scene_renderer_update_light_properties(__in __notnull scene_li
         scene_light_set_property(light,
                                  SCENE_LIGHT_PROPERTY_DIRECTION,
                                  final_direction_vector);
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(light_type == SCENE_LIGHT_TYPE_AMBIENT ||
-                          light_type == SCENE_LIGHT_TYPE_POINT,
-                          "Unrecognized light type, expand.");
     }
 }
 
@@ -1319,7 +1314,8 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                               current_light_color_floats);
         }
 
-        if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+        if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
+            current_light_type == SCENE_LIGHT_TYPE_SPOT)
         {
             /* position curves */
             scene_light_get_property(current_light,
@@ -1409,10 +1405,8 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                       "Unrecognized light falloff type");
                 }
             } /* switch (current_light_falloff) */
-
-            
         }
-        else
+
         if (current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
         {
             scene_light_get_property         (current_light,
