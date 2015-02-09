@@ -24,7 +24,7 @@ typedef struct
 {
     curve_container                  color    [3];
     curve_container                  color_intensity;
-    curve_container                  cone_angle;
+    curve_container                  cone_angle_half;
     curve_container                  constant_attenuation;
     float                            direction[3];
     curve_container                  edge_angle;
@@ -219,16 +219,16 @@ PRIVATE void _scene_light_init_default_spot_light_curves(__in __notnull _scene_l
     system_variant temp_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     /* Cone angle */
-    ASSERT_DEBUG_SYNC(light_ptr->cone_angle == NULL,
-                      "Light cone angle curve already instantiated");
+    ASSERT_DEBUG_SYNC(light_ptr->cone_angle_half == NULL,
+                      "Light cone angle half curve already instantiated");
 
-    light_ptr->cone_angle = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
-                                                                                                           " cone angle"),
-                                                   SYSTEM_VARIANT_FLOAT);
+    light_ptr->cone_angle_half = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
+                                                                                                                " cone angle (half)"),
+                                                        SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (temp_variant,
-                                      DEG_TO_RAD(45.0f) );
-    curve_container_set_default_value(light_ptr->cone_angle,
+                                      DEG_TO_RAD(30.0f) );
+    curve_container_set_default_value(light_ptr->cone_angle_half,
                                       temp_variant);
 
     /* Edge angle */
@@ -257,7 +257,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
            sizeof(light_ptr->color) );
 
     light_ptr->color_intensity       = NULL;
-    light_ptr->cone_angle            = NULL;
+    light_ptr->cone_angle_half       = NULL;
     light_ptr->constant_attenuation  = NULL;
     light_ptr->edge_angle            = NULL;
     light_ptr->falloff               = SCENE_LIGHT_FALLOFF_LINEAR;
@@ -266,7 +266,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->range                 = NULL;
 
     light_ptr->shadow_map_bias             = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
-    light_ptr->shadow_map_cull_front_faces = true;
+    light_ptr->shadow_map_cull_front_faces = (light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering        = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat   = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
     light_ptr->shadow_map_size[0]          = DEFAULT_SHADOW_MAP_SIZE;
@@ -342,7 +342,7 @@ PRIVATE void _scene_light_release(void* data_ptr)
         light_ptr->color + 1,
         light_ptr->color + 2,
        &light_ptr->color_intensity,
-       &light_ptr->cone_angle,
+       &light_ptr->cone_angle_half,
        &light_ptr->constant_attenuation,
        &light_ptr->edge_angle,
        &light_ptr->linear_attenuation,
@@ -556,17 +556,17 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_CONE_ANGLE:
+        case SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
-                              "SCENE_LIGHT_PROPERTY_CONE_ANGLE property only available for spot lights");
+                              "SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF property only available for spot lights");
 
-            if (light_ptr->cone_angle == NULL)
+            if (light_ptr->cone_angle_half == NULL)
             {
                 _scene_light_init_default_spot_light_curves(light_ptr);
             }
 
-            *(curve_container*) out_result = light_ptr->cone_angle;
+            *(curve_container*) out_result = light_ptr->cone_angle_half;
 
             break;
         }
@@ -883,7 +883,7 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
         if (light_type == SCENE_LIGHT_TYPE_SPOT)
         {
             result &= _scene_light_load_curve(owner_scene,
-                                             &result_light_ptr->cone_angle,
+                                             &result_light_ptr->cone_angle_half,
                                               serializer);
             result &= _scene_light_load_curve(owner_scene,
                                              &result_light_ptr->edge_angle,
@@ -980,7 +980,7 @@ PUBLIC bool scene_light_save(__in __notnull system_file_serializer serializer,
     if (light_ptr->type == SCENE_LIGHT_TYPE_SPOT)
     {
         result &= _scene_light_save_curve(owner_scene,
-                                          light_ptr->cone_angle,
+                                          light_ptr->cone_angle_half,
                                           serializer);
         result &= _scene_light_save_curve(owner_scene,
                                           light_ptr->edge_angle,
@@ -1034,19 +1034,19 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_CONE_ANGLE:
+        case SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF:
         {
             ASSERT_DEBUG_SYNC(light_ptr->type == SCENE_LIGHT_TYPE_SPOT,
-                              "SCENE_LIGHT_PROPERTY_CONE_ANGLE property only settable for spot lights");
+                              "SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF property only settable for spot lights");
 
-            if (light_ptr->cone_angle != NULL)
+            if (light_ptr->cone_angle_half != NULL)
             {
-                curve_container_release(light_ptr->cone_angle);
+                curve_container_release(light_ptr->cone_angle_half);
 
-                light_ptr->cone_angle = NULL;
+                light_ptr->cone_angle_half = NULL;
             }
 
-            light_ptr->cone_angle = *(curve_container*) data;
+            light_ptr->cone_angle_half = *(curve_container*) data;
 
             break;
         }

@@ -998,14 +998,16 @@ PRIVATE void _ogl_scene_renderer_render_shadow_maps(__in __notnull ogl_scene_ren
                 switch (current_light_type)
                 {
                     case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                    case SCENE_LIGHT_TYPE_SPOT:
                     {
-                        ogl_shadow_mapping_get_matrices_for_directional_light(current_light,
-                                                                              renderer_ptr->current_camera,
-                                                                              frame_time,
-                                                                              renderer_ptr->current_camera_visible_world_aabb_min,
-                                                                              renderer_ptr->current_camera_visible_world_aabb_max,
-                                                                             &sm_view_matrix,
-                                                                             &sm_projection_matrix);
+                        ogl_shadow_mapping_get_matrices_for_light(shadow_mapping,
+                                                                  current_light,
+                                                                  renderer_ptr->current_camera,
+                                                                  frame_time,
+                                                                  renderer_ptr->current_camera_visible_world_aabb_min,
+                                                                  renderer_ptr->current_camera_visible_world_aabb_max,
+                                                                 &sm_view_matrix,
+                                                                 &sm_projection_matrix);
 
                         break;
                     }
@@ -1253,8 +1255,8 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
         curve_container     current_light_attenuation_curves[3];
         float               current_light_attenuation_floats[3];
         float               current_light_color_floats      [3];
-        curve_container     current_light_cone_angle_curve;
-        float               current_light_cone_angle_float;
+        curve_container     current_light_cone_angle_half_curve;
+        float               current_light_cone_angle_half_float;
         float               current_light_direction_floats  [3];
         curve_container     current_light_edge_angle_curve;
         float               current_light_edge_angle_float;
@@ -1427,18 +1429,18 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
         if (current_light_type == SCENE_LIGHT_TYPE_SPOT)
         {
             scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_CONE_ANGLE,
-                                    &current_light_cone_angle_curve);
+                                     SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF,
+                                    &current_light_cone_angle_half_curve);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_EDGE_ANGLE,
                                     &current_light_edge_angle_curve);
 
-            curve_container_get_value(current_light_cone_angle_curve,
+            curve_container_get_value(current_light_cone_angle_half_curve,
                                       frame_time,
                                       false, /* should_force */
                                       temp_variant_float);
             system_variant_get_float (temp_variant_float,
-                                     &current_light_cone_angle_float);
+                                     &current_light_cone_angle_half_float);
 
             curve_container_get_value(current_light_edge_angle_curve,
                                       frame_time,
@@ -1450,7 +1452,7 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,
-                                             &current_light_cone_angle_float);
+                                             &current_light_cone_angle_half_float);
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,

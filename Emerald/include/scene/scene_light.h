@@ -15,7 +15,7 @@ typedef enum scene_light_property
 {
     SCENE_LIGHT_PROPERTY_COLOR,                       /* Settable,     curve_container[3]                                     */
     SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,             /* Settable,     curve_container                                        */
-    SCENE_LIGHT_PROPERTY_CONE_ANGLE,                  /* Settable,     curve_container (radians).                             *
+    SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF,             /* Settable,     curve_container (radians).                             *
                                                        *                               Spot lights only.                      */
     SCENE_LIGHT_PROPERTY_EDGE_ANGLE,                  /* Settable,     curve_container (radians).                             *
                                                        *                               Spot lights only.                      */

@@ -1137,6 +1137,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                      n_items,
                                                      sm_bias,
                                                      uber_ptr->fragment_shader_properties_ub,
+                                                     light_type,
                                                     &light_visibility_var_name_has);
     }
 

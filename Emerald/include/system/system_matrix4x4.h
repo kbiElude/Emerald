@@ -55,6 +55,14 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
                                                                                           float z_far);
 
 /** TODO */
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix_custom(__in float left,
+                                                                                                 __in float right,
+                                                                                                 __in float bottom,
+                                                                                                 __in float top,
+                                                                                                 __in float z_near,
+                                                                                                 __in float z_far);
+
+/** TODO */
 PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(__in            __notnull system_matrix4x4                mvp,
                                                             __in                      system_matrix4x4_clipping_plane clipping_plane,
                                                             __out_ecount(4)           float*                          out_plane_coeffs);

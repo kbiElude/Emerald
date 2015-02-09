@@ -178,6 +178,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
 
+    /* D3DXMatrixPerspectiveFovRH() */
+#if 0
     ASSERT_DEBUG_SYNC(z_near > 0, "Near Z must be positive");
 
     float f = tan(pi / 2.0f - fov_y / 2.0f);
@@ -201,6 +203,65 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
     new_matrix_ptr->data[13] = 0;
     new_matrix_ptr->data[14] = -1;
     new_matrix_ptr->data[15] = 0;
+#else
+    float h = 1.0 / tan(fov_y / 2.0f);
+    float w = h / ar;
+
+    new_matrix_ptr->data[0 ] = w;
+    new_matrix_ptr->data[1 ] = 0;
+    new_matrix_ptr->data[2 ] = 0;
+    new_matrix_ptr->data[3 ] = 0;
+    new_matrix_ptr->data[4 ] = 0;
+    new_matrix_ptr->data[5 ] = h;
+    new_matrix_ptr->data[6 ] = 0;
+    new_matrix_ptr->data[7 ] = 0;
+    new_matrix_ptr->data[8 ] = 0;
+    new_matrix_ptr->data[9 ] = 0;
+    new_matrix_ptr->data[10] =          z_far / (z_near - z_far);
+    new_matrix_ptr->data[11] = z_near * z_far / (z_near - z_far);
+    new_matrix_ptr->data[12] = 0;
+    new_matrix_ptr->data[13] = 0;
+    new_matrix_ptr->data[14] = -1.0f;
+    new_matrix_ptr->data[15] = 0;
+#endif
+
+    new_matrix_ptr->is_data_dirty = true;
+
+    return new_matrix;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix_custom(__in float left,
+                                                                                                 __in float right,
+                                                                                                 __in float bottom,
+                                                                                                 __in float top,
+                                                                                                 __in float z_near,
+                                                                                                 __in float z_far)
+{
+    system_matrix4x4              new_matrix     = system_matrix4x4_create();
+    _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
+
+    ASSERT_DEBUG_SYNC(left   < right, "");
+    ASSERT_DEBUG_SYNC(bottom < top,   "");
+    ASSERT_DEBUG_SYNC(z_near < z_far, "");
+
+    /* D3DXMatrixPerspectiveOffCenterRH() */
+    new_matrix_ptr->data[0]       =  2.0f * z_near / (right - left);
+    new_matrix_ptr->data[1]       =  0.0f;
+    new_matrix_ptr->data[2]       =  (left + right) / (right - left);
+    new_matrix_ptr->data[3]       =  0.0f;
+    new_matrix_ptr->data[4]       =  0.0f;
+    new_matrix_ptr->data[5]       =  2.0f * z_near  / (top - bottom);
+    new_matrix_ptr->data[6]       =  (top + bottom) / (top - bottom);
+    new_matrix_ptr->data[7]       =  0.0f;
+    new_matrix_ptr->data[8]       =  0.0f;
+    new_matrix_ptr->data[9]       =  0.0f;
+    new_matrix_ptr->data[10]      =           z_far / (z_near - z_far);
+    new_matrix_ptr->data[11]      =  z_near * z_far / (z_near - z_far);
+    new_matrix_ptr->data[12]      =  0.0f;
+    new_matrix_ptr->data[13]      =  0.0f;
+    new_matrix_ptr->data[14]      = -1.0f;
+    new_matrix_ptr->data[15]      =  0.0f;
     new_matrix_ptr->is_data_dirty = true;
 
     return new_matrix;

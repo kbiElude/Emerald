@@ -9,16 +9,18 @@
 #include "ogl/ogl_types.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "scene/scene_types.h"
+#include "shaders/shaders_fragment_uber.h"
 
 DECLARE_HANDLE(ogl_shadow_mapping);
 
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor      shader_constructor_fs,
-                                                         __in            uint32_t                    n_light,
-                                                         __in            scene_light_shadow_map_bias sm_bias,
-                                                         __in            _uniform_block_id           ub_fs,
-                                                         __out __notnull system_hashed_ansi_string*  out_visibility_var_name);
+PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor           shader_constructor_fs,
+                                                         __in            uint32_t                         n_light,
+                                                         __in            scene_light_shadow_map_bias      sm_bias,
+                                                         __in            _uniform_block_id                ub_fs,
+                                                         __in            shaders_fragment_uber_light_type light_type,
+                                                         __out __notnull system_hashed_ansi_string*       out_visibility_var_name);
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader_constructor    shader_constructor_vs,
@@ -33,13 +35,14 @@ PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader
 PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in __notnull ogl_context context);
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_get_matrices_for_directional_light(__in            __notnull scene_light          light,
-                                                                  __in_ecount(3)  __notnull scene_camera         current_camera,
-                                                                  __in                      system_timeline_time time,
-                                                                  __in_ecount(3)  __notnull const float*         aabb_min_world,
-                                                                  __in_ecount(3)  __notnull const float*         aabb_max_world,
-                                                                  __out           __notnull system_matrix4x4*    out_view_matrix,
-                                                                  __out           __notnull system_matrix4x4*    out_projection_matrix);
+PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull ogl_shadow_mapping   shadow_mapping,
+                                                      __in            __notnull scene_light          light,
+                                                      __in_ecount(3)  __notnull scene_camera         current_camera,
+                                                      __in                      system_timeline_time time,
+                                                      __in_ecount(3)  __notnull const float*         aabb_min_world,
+                                                      __in_ecount(3)  __notnull const float*         aabb_max_world,
+                                                      __out           __notnull system_matrix4x4*    out_view_matrix,
+                                                      __out           __notnull system_matrix4x4*    out_projection_matrix);
 
 /** TODO. **/
 PUBLIC void ogl_shadow_mapping_release(__in __notnull ogl_shadow_mapping handler);
