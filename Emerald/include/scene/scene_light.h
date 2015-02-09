@@ -13,26 +13,31 @@ REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
 
 typedef enum scene_light_property
 {
-    SCENE_LIGHT_PROPERTY_COLOR,                       /* Settable,     curve_container[3]                                     */
-    SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,             /* Settable,     curve_container                                        */
-    SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF,             /* Settable,     curve_container (radians).                             *
-                                                       *                               Spot lights only.                      */
-    SCENE_LIGHT_PROPERTY_EDGE_ANGLE,                  /* Settable,     curve_container (radians).                             *
-                                                       *                               Spot lights only.                      */
-    SCENE_LIGHT_PROPERTY_DIRECTION,                   /* Settable,     float[3]. Set in run-time                              */
-    SCENE_LIGHT_PROPERTY_NAME,                        /* Not settable, system_hashed_ansi_string                              */
-    SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,            /* Settable,     scene_graph_node. Set in run-time.                     */
-    SCENE_LIGHT_PROPERTY_RANGE,                       /* Settable,     curve_container. Point lights only.                    */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,             /* Settable,     scene_light_shadow_map_bias.                           */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES, /* Settable,     bool                                                   */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,        /* Settable,     scene_light_shadow_map_filtering.                      */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,   /* Settable,     ogl_texture_internalformat                             */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,             /* Settable,     uint[2].                                               */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,          /* Settable,     ogl_texture. Set in run-time.                          */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,               /* Not settable, system_matrix4x4. Update by doing system_matrix4x4_*()
-                                                       *                                 calls on the exposed matrix.         */
-    SCENE_LIGHT_PROPERTY_TYPE,                        /* Not settable, scene_light_type                                       */
-    SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,             /* Settable,     bool                                                   */
+    SCENE_LIGHT_PROPERTY_COLOR,                          /* Settable,     curve_container[3]                                     */
+    SCENE_LIGHT_PROPERTY_COLOR_INTENSITY,                /* Settable,     curve_container                                        */
+    SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF,                /* Settable,     curve_container (radians).                             *
+                                                          *                               Spot lights only.                      */
+    SCENE_LIGHT_PROPERTY_EDGE_ANGLE,                     /* Settable,     curve_container (radians).                             *
+                                                          *                               Spot lights only.                      */
+    SCENE_LIGHT_PROPERTY_DIRECTION,                      /* Settable,     float[3]. Set in run-time                              */
+    SCENE_LIGHT_PROPERTY_NAME,                           /* Not settable, system_hashed_ansi_string                              */
+    SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,               /* Settable,     scene_graph_node. Set in run-time.                     */
+    SCENE_LIGHT_PROPERTY_RANGE,                          /* Settable,     curve_container. Point lights only.                    */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,                /* Settable,     scene_light_shadow_map_bias.                           */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,    /* Settable,     bool                                                   */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,           /* Settable,     scene_light_shadow_map_filtering.                      */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,      /* Settable,     ogl_texture_internalformat                             */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,                /* Settable,     uint[2].                                               */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,             /* Settable,     ogl_texture. Set in run-time.                          */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,                  /* Not settable, system_matrix4x4. Update by doing system_matrix4x4_*()
+                                                          *                                 calls on the exposed matrix.         */
+    SCENE_LIGHT_PROPERTY_TYPE,                           /* Not settable, scene_light_type                                       */
+    SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,                /* Settable,     bool                                                   */
+
+    /* Settable, float.
+     *
+     * Tweakable near-plane distance for spot light shadow mapping. */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE,
 
     /* Settable, scene_light_falloff */
     SCENE_LIGHT_PROPERTY_FALLOFF,

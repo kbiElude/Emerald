@@ -921,6 +921,11 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
              */
             float result_max[3];
             float result_min[3];
+            float spotlight_sm_near_plane;
+
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE,
+                                    &spotlight_sm_near_plane);
 
             _ogl_shadow_mapping_get_aabb_for_camera_frustum_and_scene_aabb(current_camera,
                                                                            time,
@@ -935,7 +940,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
 
             *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(cone_angle_half * 2.0f,
                                                                                            1.0f, /* ar - shadow maps are quads */
-                                                                                           0.1f, /* TODO: value that should be adjustable from scene_light! */
+                                                                                           spotlight_sm_near_plane,
                                                                                            max_len + min_len);
 
             break;
