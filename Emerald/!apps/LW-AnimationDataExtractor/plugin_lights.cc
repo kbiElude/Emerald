@@ -285,7 +285,7 @@ PRIVATE void _update_light_properties(__in __notnull scene_light               n
     if (new_light_type == SCENE_LIGHT_TYPE_SPOT)
     {
         scene_light_set_property(new_light,
-                                 SCENE_LIGHT_PROPERTY_CONE_ANGLE,
+                                 SCENE_LIGHT_PROPERTY_CONE_ANGLE_HALF,
                                 &new_light_cone_angle_curve);
         scene_light_set_property(new_light,
                                  SCENE_LIGHT_PROPERTY_EDGE_ANGLE,
