@@ -37,8 +37,9 @@ typedef struct
     curve_container                  range;
     scene_light_shadow_map_bias      shadow_map_bias;           /* NOTE: This property affects the generated ogl_uber! */
     bool                             shadow_map_cull_front_faces;
-    scene_light_shadow_map_filtering shadow_map_filtering;
+    scene_light_shadow_map_filtering shadow_map_filtering;      /* NOTE: This property affects the generated ogl_uber! */
     ogl_texture_internalformat       shadow_map_internalformat;
+    float                            shadow_map_pointlight_near_plane;
     system_matrix4x4                 shadow_map_projection;
     float                            shadow_map_spotlight_near_plane;
     unsigned int                     shadow_map_size[2];
@@ -268,18 +269,19 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->quadratic_attenuation = NULL;
     light_ptr->range                 = NULL;
 
-    light_ptr->shadow_map_bias                 = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
-    light_ptr->shadow_map_cull_front_faces     = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
-                                                  light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
-    light_ptr->shadow_map_filtering            = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
-    light_ptr->shadow_map_internalformat       = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
-    light_ptr->shadow_map_projection           = system_matrix4x4_create();
-    light_ptr->shadow_map_spotlight_near_plane = 0.1f;
-    light_ptr->shadow_map_size[0]              = DEFAULT_SHADOW_MAP_SIZE;
-    light_ptr->shadow_map_size[1]              = DEFAULT_SHADOW_MAP_SIZE;
-    light_ptr->shadow_map_texture              = NULL;
-    light_ptr->shadow_map_view                 = system_matrix4x4_create();
-    light_ptr->shadow_map_vp                   = system_matrix4x4_create();
+    light_ptr->shadow_map_bias                  = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
+    light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
+                                                   light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
+    light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
+    light_ptr->shadow_map_internalformat        = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
+    light_ptr->shadow_map_pointlight_near_plane = 0.1f;
+    light_ptr->shadow_map_projection            = system_matrix4x4_create();
+    light_ptr->shadow_map_spotlight_near_plane  = 0.1f;
+    light_ptr->shadow_map_size[0]               = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_size[1]               = DEFAULT_SHADOW_MAP_SIZE;
+    light_ptr->shadow_map_texture               = NULL;
+    light_ptr->shadow_map_view                  = system_matrix4x4_create();
+    light_ptr->shadow_map_vp                    = system_matrix4x4_create();
 
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_projection);
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_view);
@@ -745,6 +747,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
         {
             *(ogl_texture_internalformat*) out_result = light_ptr->shadow_map_internalformat;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE:
+        {
+            *(float*) out_result = light_ptr->shadow_map_pointlight_near_plane;
 
             break;
         }
@@ -1254,6 +1263,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
         {
             light_ptr->shadow_map_internalformat = *(ogl_texture_internalformat*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE:
+        {
+            light_ptr->shadow_map_pointlight_near_plane = *(float*) data;
 
             break;
         }

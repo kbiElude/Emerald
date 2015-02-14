@@ -40,6 +40,11 @@ typedef enum scene_light_property
 
     /* Settable, float.
      *
+     * Tweakable near-plane distance for point light shadow mapping. */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+
+    /* Settable, float.
+     *
      * Tweakable near-plane distance for spot light shadow mapping. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE,
 

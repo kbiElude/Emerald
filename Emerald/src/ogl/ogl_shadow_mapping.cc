@@ -1265,6 +1265,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
             }
             else
             {
+
                 /* TODO: We should technically be passing projection matrices on a per-face basis,
                  *       since max_len and min_len are very likely to differ between faces.
                  *       However, this would increase the amount of data passed to the GPU.
@@ -1273,10 +1274,16 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                  *       a) Use predefined min/max plane distances.
                  *       b) Expand ogl_uber & shaders_fragment_uber to take new data.
                  */
+                float pointlight_sm_near_plane;
+
+                scene_light_get_property(light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE,
+                                        &pointlight_sm_near_plane);
+
                 *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
                                                                                                1.0f, /* ar - shadow maps are quads */
-                                                                                               0.05f,
-                                                                                               0.05f + max_len + min_len);
+                                                                                               pointlight_sm_near_plane,
+                                                                                               pointlight_sm_near_plane + max_len + min_len);
             }
 
             break;
