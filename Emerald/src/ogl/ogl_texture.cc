@@ -1055,7 +1055,7 @@ PUBLIC EMERALD_API void ogl_texture_set_property(__in  __notnull ogl_texture    
         {
             /* Emerald only supports immutable textures. */
             ASSERT_DEBUG_SYNC(texture_ptr->internalformat == OGL_TEXTURE_INTERNALFORMAT_UNKNOWN ||
-                              texture_ptr->internalformat == *(ogl_texture_internalformat*) data,
+                              texture_ptr->internalformat == *(GLint*) data,
                               "Invalid setter call!");
 
             texture_ptr->internalformat = *(ogl_texture_internalformat*) data;

@@ -584,6 +584,7 @@ PRIVATE const char* _ogl_shader_constructor_get_type_string(__in _shader_variabl
         case TYPE_SAMPLERCUBE:            result = "samplerCube";            break;
         case TYPE_SAMPLERCUBEARRAY:       result = "samplerCubeArray";       break;
         case TYPE_SAMPLERCUBEARRAYSHADOW: result = "samplerCubeArrayShadow"; break;
+        case TYPE_SAMPLERCUBESHADOW:      result = "samplerCubeShadow";      break;
         case TYPE_UINT:                   result = "uint";                   break;
         case TYPE_USAMPLER1D:             result = "usampler1D";             break;
         case TYPE_USAMPLER1DARRAY:        result = "usampler1DArray";        break;

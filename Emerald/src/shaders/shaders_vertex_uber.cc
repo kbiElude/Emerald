@@ -283,9 +283,10 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__in __notnull shaders_vertex_uber       uber,
-                                                                             __in           shaders_vertex_uber_light light,
-                                                                             __in           bool                      is_shadow_caster)
+PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__in __notnull shaders_vertex_uber              uber,
+                                                                             __in           shaders_vertex_uber_light        light,
+                                                                             __in           shaders_fragment_uber_light_type light_type,
+                                                                             __in           bool                             is_shadow_caster)
 {
     _shaders_vertex_uber*       uber_ptr = (_shaders_vertex_uber*) uber;
     const unsigned int          n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
@@ -329,6 +330,7 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
     {
         ogl_shadow_mapping_adjust_vertex_uber_code(uber_ptr->shader_constructor,
                                                    n_items, /* n_light */
+                                                   light_type,
                                                    uber_ptr->vs_ub_id,
                                                    system_hashed_ansi_string_create("world_vertex_temp") );
     }

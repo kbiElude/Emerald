@@ -27,8 +27,12 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,    /* Settable,     bool                                                   */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,           /* Settable,     scene_light_shadow_map_filtering.                      */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,      /* Settable,     ogl_texture_internalformat                             */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION,          /* Not settable, system_matrix4x4. Update by doing system_matrix4x4_*()
+                                                          *                                 calls on the exposed matrix.         */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,                /* Settable,     uint[2].                                               */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,             /* Settable,     ogl_texture. Set in run-time.                          */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,                /* Not settable, system_matrix4x4. Update by doing system_matrix4x4_*()
+                                                          *                                 calls on the exposed matrix.         */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,                  /* Not settable, system_matrix4x4. Update by doing system_matrix4x4_*()
                                                           *                                 calls on the exposed matrix.         */
     SCENE_LIGHT_PROPERTY_TYPE,                           /* Not settable, scene_light_type                                       */

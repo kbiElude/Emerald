@@ -309,9 +309,39 @@ PUBLIC ogl_context_to_bindings_sync_bit ogl_context_to_bindings_get_ogl_context_
         case GL_TEXTURE_2D_MULTISAMPLE_ARRAY: result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_2D_MULTISAMPLE_ARRAY; break;
         case GL_TEXTURE_3D:                   result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_3D;                   break;
         case GL_TEXTURE_BUFFER:               result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_BUFFER;               break;
-        case GL_TEXTURE_CUBE_MAP:             result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_CUBE_MAP;             break;
-        case GL_TEXTURE_CUBE_MAP_ARRAY:       result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_CUBE_MAP_ARRAY;       break;
-        case GL_TEXTURE_RECTANGLE:            result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_RECTANGLE;            break;
+
+        case GL_TEXTURE_CUBE_MAP:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+        {
+            result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_CUBE_MAP;
+
+            break;
+        }
+
+        case GL_TEXTURE_CUBE_MAP_ARRAY:
+        {
+            /* NOTE: This will probably blow up, because the CM detailed texture targets
+             *       are currently associated with CM texture target, not the CMA one.
+             *       Investigate if needed.
+             */
+            ASSERT_DEBUG_SYNC(false,
+                              "Doh");
+
+            result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_CUBE_MAP_ARRAY;
+            break;
+        }
+
+        case GL_TEXTURE_RECTANGLE:
+        {
+            result = OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_TEXTURE_RECTANGLE;
+
+            break;
+        }
 
         default:
         {

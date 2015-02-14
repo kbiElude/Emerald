@@ -39,9 +39,11 @@ typedef struct
     bool                             shadow_map_cull_front_faces;
     scene_light_shadow_map_filtering shadow_map_filtering;
     ogl_texture_internalformat       shadow_map_internalformat;
+    system_matrix4x4                 shadow_map_projection;
     float                            shadow_map_spotlight_near_plane;
     unsigned int                     shadow_map_size[2];
     ogl_texture                      shadow_map_texture;
+    system_matrix4x4                 shadow_map_view;
     system_matrix4x4                 shadow_map_vp;
     scene_light_type                 type;
     bool                             uses_shadow_map;
@@ -267,15 +269,20 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->range                 = NULL;
 
     light_ptr->shadow_map_bias                 = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
-    light_ptr->shadow_map_cull_front_faces     = (light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
+    light_ptr->shadow_map_cull_front_faces     = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
+                                                  light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering            = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat       = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
+    light_ptr->shadow_map_projection           = system_matrix4x4_create();
     light_ptr->shadow_map_spotlight_near_plane = 0.1f;
     light_ptr->shadow_map_size[0]              = DEFAULT_SHADOW_MAP_SIZE;
     light_ptr->shadow_map_size[1]              = DEFAULT_SHADOW_MAP_SIZE;
     light_ptr->shadow_map_texture              = NULL;
+    light_ptr->shadow_map_view                 = system_matrix4x4_create();
     light_ptr->shadow_map_vp                   = system_matrix4x4_create();
 
+    system_matrix4x4_set_to_identity(light_ptr->shadow_map_projection);
+    system_matrix4x4_set_to_identity(light_ptr->shadow_map_view);
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_vp);
 
     /* Direction: used by directional & spot lights */
@@ -364,6 +371,20 @@ PRIVATE void _scene_light_release(void* data_ptr)
             *containers[n_container] = NULL;
         }
     } /* for (all curve containers) */
+
+    if (light_ptr->shadow_map_projection != NULL)
+    {
+        system_matrix4x4_release(light_ptr->shadow_map_projection);
+
+        light_ptr->shadow_map_projection = NULL;
+    }
+
+    if (light_ptr->shadow_map_view != NULL)
+    {
+        system_matrix4x4_release(light_ptr->shadow_map_view);
+
+        light_ptr->shadow_map_view = NULL;
+    }
 
     if (light_ptr->shadow_map_vp != NULL)
     {
@@ -728,6 +749,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION:
+        {
+            *(system_matrix4x4*) out_result = light_ptr->shadow_map_projection;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE:
         {
             memcpy(out_result,
@@ -747,6 +775,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
         {
             *(ogl_texture*) out_result = light_ptr->shadow_map_texture;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW:
+        {
+            *(system_matrix4x4*) out_result = light_ptr->shadow_map_view;
 
             break;
         }

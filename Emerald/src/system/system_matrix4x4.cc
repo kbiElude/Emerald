@@ -94,8 +94,8 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_e
     float                         up_vector       [3];
 
     /* Calculate direction vector */
-    system_math_vector_minus3    (camera_location,
-                                  look_at_point,
+    system_math_vector_minus3    (look_at_point,
+                                  camera_location,
                                   direction_vector);
     system_math_vector_normalize3(direction_vector,
                                   direction_vector);

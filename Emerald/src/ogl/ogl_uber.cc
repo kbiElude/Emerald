@@ -12,6 +12,7 @@
 #include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
+#include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
@@ -47,6 +48,10 @@ typedef struct _ogl_uber_fragment_shader_item
     bool  current_light_attenuations_dirty;
     GLint current_light_attenuations_ub_offset;
 
+    float current_light_camera_eye_to_light_eye[16];
+    bool  current_light_camera_eye_to_light_eye_dirty;
+    GLint current_light_camera_eye_to_light_eye_ub_offset;
+
     float current_light_cone_angle;           /* cone angle: 1/2 total light cone. used for spot lights */
     bool  current_light_cone_angle_dirty;
     GLint current_light_cone_angle_ub_offset;
@@ -68,9 +73,13 @@ typedef struct _ogl_uber_fragment_shader_item
     bool  current_light_location_dirty;
     GLint current_light_location_ub_offset;
 
-    float current_light_range;
-    bool  current_light_range_dirty;
-    GLint current_light_range_ub_offset;
+    float current_light_projection[16];
+    bool  current_light_projection_dirty;
+    GLint current_light_projection_ub_offset;
+
+    float            current_light_range;
+    bool             current_light_range_dirty;
+    GLint            current_light_range_ub_offset;
 
     ogl_texture current_light_shadow_map_texture;
     GLuint      current_light_shadow_map_texture_sampler_location;
@@ -79,24 +88,28 @@ typedef struct _ogl_uber_fragment_shader_item
     {
         ambient_color_ub_offset                           = -1;
         current_light_attenuations_ub_offset              = -1;
+        current_light_camera_eye_to_light_eye_ub_offset   = -1;
         current_light_cone_angle_ub_offset                = -1;
         current_light_diffuse_ub_offset                   = -1;
         current_light_direction_ub_offset                 = -1;
         current_light_edge_angle_ub_offset                = -1;
         current_light_location_ub_offset                  = -1;
+        current_light_projection_ub_offset                = -1;
         current_light_range_ub_offset                     = -1;
         current_light_shadow_map_texture_sampler_location = -1;
 
         current_light_shadow_map_texture = NULL;
 
-        ambient_color_dirty              = true;
-        current_light_attenuations_dirty = true;
-        current_light_cone_angle_dirty   = true;
-        current_light_diffuse_dirty      = true;
-        current_light_direction_dirty    = true;
-        current_light_edge_angle_dirty   = true;
-        current_light_location_dirty     = true;
-        current_light_range_dirty        = true;
+        ambient_color_dirty                         = true;
+        current_light_attenuations_dirty            = true;
+        current_light_camera_eye_to_light_eye_dirty = true;
+        current_light_cone_angle_dirty              = true;
+        current_light_diffuse_dirty                 = true;
+        current_light_direction_dirty               = true;
+        current_light_edge_angle_dirty              = true;
+        current_light_location_dirty                = true;
+        current_light_projection_dirty              = true;
+        current_light_range_dirty                   = true;
     }
 } _ogl_uber_fragment_shader_item;
 
@@ -862,6 +875,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                                                          uber);
             vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex,
                                                          SHADERS_VERTEX_UBER_LIGHT_NONE,
+                                                         light_type,
                                                          is_shadow_caster);
 
             break;
@@ -889,6 +903,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                                                          NULL  /* callback proc user arg - not used */);
             vs_item_id = shaders_vertex_uber_add_light  (uber_ptr->shader_vertex,
                                                          vs_light,
+                                                         light_type,
                                                          is_shadow_caster);
 
             break;
@@ -1259,6 +1274,8 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_ambient_color_uniform_ptr = NULL;
                 std::stringstream                     light_attenuations_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_attenuations_uniform_ptr = NULL;
+                std::stringstream                     light_camera_eye_to_light_eye_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_camera_eye_to_light_eye_uniform_ptr = NULL;
                 std::stringstream                     light_cone_angle_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_cone_angle_uniform_ptr = NULL;
                 std::stringstream                     light_diffuse_uniform_name_sstream;
@@ -1269,35 +1286,43 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_edge_angle_uniform_ptr = NULL;
                 std::stringstream                     light_location_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_location_uniform_ptr = NULL;
+                std::stringstream                     light_projection_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_projection_uniform_ptr = NULL;
                 std::stringstream                     light_range_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_range_uniform_ptr = NULL;
                 std::stringstream                     light_shadow_map_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_shadow_map_uniform_ptr = NULL;
 
-                light_attenuations_uniform_name_sstream << "light"
-                                                        << n_item
-                                                        << "_attenuations";
-                light_cone_angle_uniform_name_sstream   << "light"
-                                                        << n_item
-                                                        << "_cone_angle";
-                light_diffuse_uniform_name_sstream      << "light"
-                                                        << n_item
-                                                        << "_diffuse";
-                light_direction_uniform_name_sstream    << "light"
-                                                        << n_item
-                                                        << "_direction";
-                light_edge_angle_uniform_name_sstream   << "light"
-                                                        << n_item
-                                                        << "_edge_angle";
-                light_location_uniform_name_sstream     << "light"
-                                                        << n_item
-                                                        << "_world_pos";
-                light_range_uniform_name_sstream        << "light"
-                                                        << n_item
-                                                        << "_range";
-                light_shadow_map_uniform_name_sstream   << "light"
-                                                        << n_item
-                                                        << "_shadow_map";
+                light_attenuations_uniform_name_sstream            << "light"
+                                                                   << n_item
+                                                                   << "_attenuations";
+                light_camera_eye_to_light_eye_uniform_name_sstream << "light"
+                                                                   << n_item
+                                                                   << "_camera_eye_to_light_eye";
+                light_cone_angle_uniform_name_sstream              << "light"
+                                                                   << n_item
+                                                                   << "_cone_angle";
+                light_diffuse_uniform_name_sstream                 << "light"
+                                                                   << n_item
+                                                                   << "_diffuse";
+                light_direction_uniform_name_sstream               << "light"
+                                                                   << n_item
+                                                                   << "_direction";
+                light_edge_angle_uniform_name_sstream              << "light"
+                                                                   << n_item
+                                                                   << "_edge_angle";
+                light_location_uniform_name_sstream                << "light"
+                                                                   << n_item
+                                                                   << "_world_pos";
+                light_projection_uniform_name_sstream              << "light"
+                                                                   << n_item
+                                                                   << "_projection";
+                light_range_uniform_name_sstream                   << "light"
+                                                                   << n_item
+                                                                   << "_range";
+                light_shadow_map_uniform_name_sstream              << "light"
+                                                                   << n_item
+                                                                   << "_shadow_map";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create("ambient_color"),
@@ -1305,6 +1330,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_attenuations_uniform_name_sstream.str().c_str() ),
                                                &light_attenuations_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_camera_eye_to_light_eye_uniform_name_sstream.str().c_str() ),
+                                               &light_camera_eye_to_light_eye_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_cone_angle_uniform_name_sstream.str().c_str() ),
                                                &light_cone_angle_uniform_ptr);
@@ -1321,6 +1349,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                                                 system_hashed_ansi_string_create(light_location_uniform_name_sstream.str().c_str()  ),
                                                &light_location_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_projection_uniform_name_sstream.str().c_str() ),
+                                               &light_projection_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_range_uniform_name_sstream.str().c_str()  ),
                                                &light_range_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
@@ -1335,6 +1366,11 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 if (light_attenuations_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ptr->ub_offset;
+                }
+
+                if (light_camera_eye_to_light_eye_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset = light_camera_eye_to_light_eye_uniform_ptr->ub_offset;
                 }
 
                 if (light_cone_angle_uniform_ptr != NULL)
@@ -1360,6 +1396,11 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                 if (light_location_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
+                }
+
+                if (light_projection_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_projection_ub_offset = light_projection_uniform_ptr->ub_offset;
                 }
 
                 if (light_range_uniform_ptr != NULL)
@@ -2236,6 +2277,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_attenuations_dirty = false;
                     }
 
+                    if (item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty)
+                    {
+                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset,
+                               item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
+                               sizeof(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye) );
+
+                        has_modified_bo_data                                                       = true;
+                        item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_cone_angle_dirty)
                     {
@@ -2287,6 +2339,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_location_dirty = false;
                     }
 
+                    if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.current_light_projection_dirty)
+                    {
+                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_projection_ub_offset,
+                               item_ptr->fragment_shader_item.current_light_projection,
+                               sizeof(item_ptr->fragment_shader_item.current_light_projection) );
+
+                        has_modified_bo_data                                          = true;
+                        item_ptr->fragment_shader_item.current_light_projection_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_range_dirty)
                     {
@@ -2299,15 +2362,20 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location != -1)
                     {
                         /* Bind the shadow map */
-                        GLuint n_texture_unit = uber_ptr->n_texture_units_assigned++;
+                        GLuint n_texture_unit            = uber_ptr->n_texture_units_assigned++;
+                        GLenum shadow_map_texture_target = GL_NONE;
 
                         ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture != NULL,
                                           "No shadow map assigned to a light which casts shadows");
 
+                        ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture,
+                                                 OGL_TEXTURE_PROPERTY_TARGET,
+                                                 &shadow_map_texture_target);
+
                         entry_points->pGLBindSampler            (n_texture_unit,
                                                                  0);            /* TODO: use a sampler instead of SM texture state! */
                         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
-                                                                 GL_TEXTURE_2D,
+                                                                 shadow_map_texture_target,
                                                                  item_ptr->fragment_shader_item.current_light_shadow_map_texture);
                         entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
                                                                  item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location,
@@ -2563,11 +2631,13 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
     {
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
+        case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CAMERA_EYE_TO_LIGHT_EYE_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
+        case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
@@ -2618,6 +2688,22 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                                    sizeof(float) * 3);
 
                             item_ptr->fragment_shader_item.current_light_attenuations_dirty = true;
+                        }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CAMERA_EYE_TO_LIGHT_EYE_MATRIX:
+                    {
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
+                                   data,
+                                   sizeof(float) * 16) != 0)
+                        {
+                            memcpy(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
+                                   data,
+                                   sizeof(float) * 16);
+
+                            item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty = true;
                         }
 
                         break;
@@ -2700,6 +2786,22 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                             item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
                             item_ptr->fragment_shader_item.current_light_location_dirty = true;
+                        }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX:
+                    {
+                        if (memcmp(item_ptr->fragment_shader_item.current_light_projection,
+                                   data,
+                                   sizeof(float) * 16) != 0)
+                        {
+                            memcpy(item_ptr->fragment_shader_item.current_light_projection,
+                                   data,
+                                   sizeof(float) * 16);
+
+                            item_ptr->fragment_shader_item.current_light_projection_dirty = true;
                         }
 
                         break;

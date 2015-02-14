@@ -2179,6 +2179,15 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(__in __notnull ogl_c
     GLint                                                     mipmap_internalformat = GL_NONE;
     GLint                                                     mipmap_width          = 0;
 
+    /* NOTE: Map general cube-map texture target to one of the detailed cube-map
+     *       texture targets. This is safe since all CM faces must be of the same
+     *       resolution for the CM texture to be complete.
+     */
+    if (texture_target == GL_TEXTURE_CUBE_MAP)
+    {
+        texture_target = GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
+    }
+
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
@@ -2207,9 +2216,9 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_level_info(__in __notnull ogl_c
                                                       GL_TEXTURE_WIDTH,
                                                      &mipmap_width);
 
-    if (mipmap_depth  != 0 ||
-        mipmap_height != 0 ||
-        mipmap_width  != 0)
+    if ((mipmap_depth  != 0 && mipmap_depth != 1) ||
+         mipmap_height != 0                       ||
+         mipmap_width  != 0)
     {
         ogl_texture_set_mipmap_property(texture,
                                         level,
@@ -2248,7 +2257,9 @@ PRIVATE void _ogl_context_wrappers_update_mipmap_info(__in __notnull ogl_context
     /* Iterate through all allowed levels */
     unsigned int max_levels = (unsigned int) (log10( (double) limits->max_texture_size) / log10(2.0));
 
-    for (GLuint level = 0; level < max_levels; ++level)
+    for (GLuint level = 0;
+                level < max_levels;
+              ++level)
     {
         _ogl_context_wrappers_update_mipmap_level_info(context,
                                                        texture_target,

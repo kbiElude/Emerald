@@ -782,6 +782,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     std::stringstream         light_attenuations_name_sstream;
     std::stringstream         light_diffuse_name_sstream;
     std::stringstream         light_direction_name_sstream;
+    std::stringstream         light_vector_non_norm_name_sstream;
+    std::stringstream         light_vector_norm_name_sstream;
     system_hashed_ansi_string light_visibility_var_name_has = NULL;
     std::stringstream         light_world_pos_name_sstream;
 
@@ -841,19 +843,26 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         std::stringstream line;
 
+        light_vector_norm_name_sstream     << "light"
+                                           << n_items
+                                           << "_vector_norm";
+        light_vector_non_norm_name_sstream << "light"
+                                           << n_items
+                                           << "_vector_non_norm";
+
         if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
             light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
         {
-            line << "vec3 light"
-                 << n_items
-                 << "_vector_non_norm = -"
+            line << "vec3 "
+                 << light_vector_non_norm_name_sstream.str()
+                 << " = -"
                  << light_direction_name_sstream.str()
                  << ";\n"
-                 << "vec3 light"
-                 << n_items
-                 << "_vector_norm = normalize(light"
-                 << n_items
-                 << "_vector_non_norm);\n";
+                 << "vec3 "
+                 << light_vector_norm_name_sstream.str()
+                 << " = normalize("
+                 << light_vector_non_norm_name_sstream.str()
+                 << ");\n";
         }
         else
         {
@@ -862,16 +871,16 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                               light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT,
                               "Unrecognized light type");
 
-            line << "vec3 light"
-                 << n_items
-                 << "_vector_non_norm = "
+            line << "vec3 "
+                 << light_vector_non_norm_name_sstream.str()
+                 << " = "
                  << light_world_pos_name_sstream.str()
                  << ".xyz - world_vertex;\n"
-                 << "vec3 light"
-                 << n_items
-                 << "_vector_norm = normalize(light"
-                 << n_items
-                 << "_vector_non_norm);\n";
+                 << "vec3 "
+                 << light_vector_norm_name_sstream.str()
+                 << " = normalize("
+                 << light_vector_non_norm_name_sstream.str()
+                 << ");\n";
         }
 
         ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
@@ -1138,6 +1147,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                      sm_bias,
                                                      uber_ptr->fragment_shader_properties_ub,
                                                      light_type,
+                                                     system_hashed_ansi_string_create(light_vector_norm_name_sstream.str().c_str() ),
+                                                     system_hashed_ansi_string_create(light_vector_non_norm_name_sstream.str().c_str() ),
                                                     &light_visibility_var_name_has);
     }
 
