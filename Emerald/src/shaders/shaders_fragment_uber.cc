@@ -1147,6 +1147,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                      sm_bias,
                                                      uber_ptr->fragment_shader_properties_ub,
                                                      light_type,
+                                                     system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
                                                      system_hashed_ansi_string_create(light_vector_norm_name_sstream.str().c_str() ),
                                                      system_hashed_ansi_string_create(light_vector_non_norm_name_sstream.str().c_str() ),
                                                     &light_visibility_var_name_has);

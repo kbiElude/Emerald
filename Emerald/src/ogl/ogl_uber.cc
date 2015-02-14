@@ -2631,7 +2631,6 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
     {
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
-        case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CAMERA_EYE_TO_LIGHT_EYE_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
@@ -2688,22 +2687,6 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                                    sizeof(float) * 3);
 
                             item_ptr->fragment_shader_item.current_light_attenuations_dirty = true;
-                        }
-
-                        break;
-                    }
-
-                    case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CAMERA_EYE_TO_LIGHT_EYE_MATRIX:
-                    {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
-                                   data,
-                                   sizeof(float) * 16) != 0)
-                        {
-                            memcpy(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
-                                   data,
-                                   sizeof(float) * 16);
-
-                            item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty = true;
                         }
 
                         break;

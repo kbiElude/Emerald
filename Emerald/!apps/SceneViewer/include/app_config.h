@@ -16,7 +16,7 @@
 #define ENABLE_SM
 
 #ifdef ENABLE_SM
-    #define SHOW_SM_PREVIEW
+    //#define SHOW_SM_PREVIEW
 #endif
 
 #endif /* APP_CONFIG_H */

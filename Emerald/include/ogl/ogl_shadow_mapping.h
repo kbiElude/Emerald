@@ -33,6 +33,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                          __in            scene_light_shadow_map_bias      sm_bias,
                                                          __in            _uniform_block_id                ub_fs,
                                                          __in            shaders_fragment_uber_light_type light_type,
+                                                         __in            system_hashed_ansi_string        light_world_pos_var_name,
                                                          __in            system_hashed_ansi_string        light_vector_norm_var_name,
                                                          __in            system_hashed_ansi_string        light_vector_non_norm_var_name,
                                                          __out __notnull system_hashed_ansi_string*       out_visibility_var_name);

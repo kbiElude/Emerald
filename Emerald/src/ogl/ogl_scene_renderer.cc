@@ -1556,15 +1556,11 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
         {
             const float*     current_light_projection_matrix_data = NULL;
             system_matrix4x4 current_light_projection_matrix      = NULL;
-            system_matrix4x4 current_light_view_matrix            = NULL;
 
             /* Update ogl_uber with light's projection matrix */
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION,
                                     &current_light_projection_matrix);
-            scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
-                                    &current_light_view_matrix);
 
             current_light_projection_matrix_data = system_matrix4x4_get_row_major_data(current_light_projection_matrix);
 
@@ -1572,31 +1568,6 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX,
                                               current_light_projection_matrix_data);
-
-            /* Update ogl_uber with "camera eye -> light eye" matrix */
-            system_matrix4x4 current_camera_view_matrix_inverted               = system_matrix4x4_create();
-            system_matrix4x4 current_light_camera_eye_to_light_eye_matrix      = system_matrix4x4_create();
-            const float*     current_light_camera_eye_to_light_eye_matrix_data = NULL;
-
-            system_matrix4x4_set_from_matrix4x4(current_camera_view_matrix_inverted,
-                                                current_camera_view_matrix);
-            system_matrix4x4_invert            (current_camera_view_matrix_inverted);
-
-            system_matrix4x4_set_from_matrix4x4   (current_light_camera_eye_to_light_eye_matrix,
-                                                   current_light_view_matrix);
-            // NOT NEEDED.TODOTODOTODO
-            //system_matrix4x4_multiply_by_matrix4x4(current_light_camera_eye_to_light_eye_matrix,
-            //                                       current_camera_view_matrix_inverted);
-
-            current_light_camera_eye_to_light_eye_matrix_data = system_matrix4x4_get_row_major_data(current_light_camera_eye_to_light_eye_matrix);
-
-            ogl_uber_set_shader_item_property(material_uber,
-                                              n_light,
-                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CAMERA_EYE_TO_LIGHT_EYE_MATRIX,
-                                              current_light_camera_eye_to_light_eye_matrix_data);
-
-            system_matrix4x4_release(current_camera_view_matrix_inverted);
-            system_matrix4x4_release(current_light_camera_eye_to_light_eye_matrix);
         }
 
         if (current_light_type == SCENE_LIGHT_TYPE_SPOT)
@@ -1933,6 +1904,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
     if (render_mode == RENDER_MODE_FORWARD)
     {
+        entry_points->pGLEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
         entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
     }
 
@@ -2244,6 +2216,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     if (render_mode == RENDER_MODE_FORWARD)
     {
         entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
+        entry_points->pGLDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     }
 
     if (vp != NULL)

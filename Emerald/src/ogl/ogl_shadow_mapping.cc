@@ -522,13 +522,13 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                          __in            scene_light_shadow_map_bias      sm_bias,
                                                          __in            _uniform_block_id                ub_fs,
                                                          __in            shaders_fragment_uber_light_type light_type,
+                                                         __in            system_hashed_ansi_string        light_world_pos_var_name,
                                                          __in            system_hashed_ansi_string        light_vector_norm_var_name,
                                                          __in            system_hashed_ansi_string        light_vector_non_norm_var_name,
                                                          __out __notnull system_hashed_ansi_string*       out_visibility_var_name)
 {
     const bool        is_point_light                            = (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
                                                                    light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT);
-    std::stringstream camera_eye_to_light_eye_var_name_sstream;
     std::stringstream light_projection_matrix_var_name_sstream;
     std::stringstream light_shadow_coord_var_name_sstream;
 
@@ -564,32 +564,8 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     }
     else
     {
-        bool                      is_camera_eye_to_light_eye_var_added = false;
         bool                      is_light_projection_matrix_var_added = false;
-        system_hashed_ansi_string camera_eye_to_light_eye_var_name_has = NULL;
         system_hashed_ansi_string light_projection_matrix_var_name_has = NULL;
-
-        /* Add camera_eye_to_light_eye matrix uniform */
-        camera_eye_to_light_eye_var_name_sstream << "light"
-                                                  << n_light
-                                                  << "_camera_eye_to_light_eye";
-
-        camera_eye_to_light_eye_var_name_has = system_hashed_ansi_string_create                (camera_eye_to_light_eye_var_name_sstream.str().c_str() );
-        is_camera_eye_to_light_eye_var_added = ogl_shader_constructor_is_general_variable_in_ub(shader_constructor_fs,
-                                                                                                ub_fs,
-                                                                                                camera_eye_to_light_eye_var_name_has);
-
-        ASSERT_DEBUG_SYNC(!is_camera_eye_to_light_eye_var_added,
-                          "Camera eye->light eye matrix already added for light");
-
-        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor_fs,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_ROW_MAJOR,
-                                                          TYPE_MAT4,
-                                                          0,     /* array_size */
-                                                          ub_fs, /* uniform_block */
-                                                          camera_eye_to_light_eye_var_name_has,
-                                                          NULL); /* out_variable_id */
 
         /* Add light_projection matrix uniform */
         light_projection_matrix_var_name_sstream << "light"
@@ -645,13 +621,13 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     system_hashed_ansi_string code_snippet_has     = NULL;
     std::stringstream         code_snippet_sstream;
     std::stringstream         light_vertex_depth_window_var_name_sstream;
+    std::stringstream         light_vertex_var_name_sstream;
 
     if (is_point_light)
     {
         std::stringstream light_vertex_abs_var_name_sstream;
         std::stringstream light_vertex_abs_max_var_name_sstream;
         std::stringstream light_vertex_clip_var_name_sstream;
-        std::stringstream light_vertex_var_name_sstream;
 
         light_vertex_abs_var_name_sstream          << "light_"
                                                    << n_light
@@ -669,15 +645,16 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                    << n_light
                                                    << "_vertex";
 
+        /* 1. Move current fragment's world position relative to the light position.
+         *    The fragment is now in light space.
+         * 2. Figure out which cube map we should sample from.
+         * 3. Compute the depth of the fragment in light space.
+         */
         code_snippet_sstream << "vec4 "
                              << light_vertex_var_name_sstream.str()
-#if 1
-                             << " = vec4(world_vertex - light1_world_pos.xyz, 1.0);\n"
-#else
-                             << " = vec4(world_vertex, 1.0) * "
-                             << camera_eye_to_light_eye_var_name_sstream.str()
-                             << ";\n"
-#endif
+                             << " = vec4(world_vertex - "
+                             << system_hashed_ansi_string_get_buffer(light_world_pos_var_name)
+                             << ".xyz, 1.0);\n"
                                 "vec4 "
                              << light_vertex_abs_var_name_sstream.str()
                              << " = abs("
@@ -736,7 +713,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
             code_snippet_sstream << "texture("
                                  << shadow_map_sampler_var_name_sstream.str()
                                  << ", vec4("
-                                 << "normalize(light_1_vertex.xyz)"
+                                 << "normalize(" << light_vertex_var_name_sstream.str() << ".xyz)"
                                  << ", "
                                  << light_vertex_depth_window_var_name_sstream.str();
         } /* if (point light) */
@@ -1288,11 +1265,18 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
             }
             else
             {
+                /* TODO: We should technically be passing projection matrices on a per-face basis,
+                 *       since max_len and min_len are very likely to differ between faces.
+                 *       However, this would increase the amount of data passed to the GPU.
+                 *       If needed, please consider two solutions:
+                 *
+                 *       a) Use predefined min/max plane distances.
+                 *       b) Expand ogl_uber & shaders_fragment_uber to take new data.
+                 */
                 *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
                                                                                                1.0f, /* ar - shadow maps are quads */
-                                                                                               0.1f,
-                                                                                               30.0f);
-                                                                                               //max_len + min_len); TODO: projection matrix should be the same for all faces
+                                                                                               0.05f,
+                                                                                               0.05f + max_len + min_len);
             }
 
             break;
@@ -1434,7 +1418,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
             dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_MIN_FILTER,
-                                                      GL_NEAREST);
+                                                      GL_LINEAR);
             dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_COMPARE_FUNC,
@@ -1535,6 +1519,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                     &context_window_width,
                                     &context_window_height);
 
+        /* Restore cotnext-specific viewport */
         entry_points->pGLViewport(0, /* x */
                                   0, /* y */
                                   context_window_width,
