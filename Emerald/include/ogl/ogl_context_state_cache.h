@@ -22,6 +22,7 @@ enum ogl_context_state_cache_property
     OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,          /* settable, GLfloat[4] */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK,           /* settable, GLboolean[4] */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE,            /* settable, GLenum */
+    OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_FUNC,           /* settable, GLenum */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_DEPTH_MASK,           /* settable, GLboolean */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT,       /* settable, GLuint */
     OGL_CONTEXT_STATE_CACHE_PROPERTY_SCISSOR_BOX,          /* settable, GLint[4] */
@@ -35,12 +36,13 @@ enum ogl_context_state_cache_sync_bit
     STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_COLOR         = 1 << 0,
     STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    = 1 << 1,
     STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           = 1 << 2,
-    STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      = 1 << 3,
-    STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         = 1 << 4,
-    STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT        = 1 << 5,
-    STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT = 1 << 6,
-    STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            = 1 << 7,
-    STATE_CACHE_SYNC_BIT_BLENDING                   = 1 << 8,
+    STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          = 1 << 3,
+    STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      = 1 << 4,
+    STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         = 1 << 5,
+    STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT        = 1 << 6,
+    STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT = 1 << 7,
+    STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            = 1 << 8,
+    STATE_CACHE_SYNC_BIT_BLENDING                   = 1 << 9,
     STATE_CACHE_SYNC_BIT_ALL                        = 0xFFFFFFFF
 };
 

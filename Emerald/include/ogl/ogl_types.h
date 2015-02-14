@@ -1249,6 +1249,7 @@ typedef struct
     PFNGLCULLFACEPROC                        pGLCullFace;
     PFNGLDELETEBUFFERSPROC                   pGLDeleteBuffers;
     PFNGLDELETEVERTEXARRAYSPROC              pGLDeleteVertexArrays;
+    PFNGLDEPTHFUNCPROC                       pGLDepthFunc;
     PFNGLDEPTHMASKPROC                       pGLDepthMask;
     PFNGLDISABLEPROC                         pGLDisable;
     PFNGLDISABLEIPROC                        pGLDisablei;

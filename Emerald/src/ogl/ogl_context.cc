@@ -1553,7 +1553,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLDeleteTransformFeedbacks,            "glDeleteTransformFeedbacks"},
             {&context_ptr->entry_points_gl.pGLDeleteQueries,                       "glDeleteQueries"},
             {&context_ptr->entry_points_private.pGLDeleteVertexArrays,             "glDeleteVertexArrays"},
-            {&context_ptr->entry_points_gl.pGLDepthFunc,                           "glDepthFunc"},
+            {&context_ptr->entry_points_private.pGLDepthFunc,                      "glDepthFunc"},
             {&context_ptr->entry_points_private.pGLDepthMask,                      "glDepthMask"},
             {&context_ptr->entry_points_gl.pGLDepthRange,                          "glDepthRange"},
             {&context_ptr->entry_points_gl.pGLDetachShader,                        "glDetachShader"},
@@ -1861,6 +1861,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLCullFace                        = ogl_context_wrappers_glCullFace;
         context_ptr->entry_points_gl.pGLDeleteBuffers                   = ogl_context_wrappers_glDeleteBuffers;
         context_ptr->entry_points_gl.pGLDeleteVertexArrays              = ogl_context_wrappers_glDeleteVertexArrays;
+        context_ptr->entry_points_gl.pGLDepthFunc                       = ogl_context_wrappers_glDepthFunc;
         context_ptr->entry_points_gl.pGLDepthMask                       = ogl_context_wrappers_glDepthMask;
         context_ptr->entry_points_gl.pGLDisable                         = ogl_context_wrappers_glDisable;
         context_ptr->entry_points_gl.pGLDisablei                        = ogl_context_wrappers_glDisablei;

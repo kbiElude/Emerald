@@ -51,6 +51,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glColorMask(GLboolean red,
 PUBLIC void APIENTRY ogl_context_wrappers_glCullFace(GLenum mode);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDepthFunc(GLenum func);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDepthMask(GLboolean flag);
 
 /** TODO */
