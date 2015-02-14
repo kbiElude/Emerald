@@ -672,7 +672,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
         code_snippet_sstream << "vec4 "
                              << light_vertex_var_name_sstream.str()
 #if 1
-                             << " = vec4(world_vertex, 1.0);\n"
+                             << " = vec4(world_vertex - light1_world_pos.xyz, 1.0);\n"
 #else
                              << " = vec4(world_vertex, 1.0) * "
                              << camera_eye_to_light_eye_var_name_sstream.str()
@@ -1083,6 +1083,10 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                                      SCENE_LIGHT_PROPERTY_POSITION,
                                      light_position);
 
+            light_position[0] *= -1.0f;
+            light_position[1] *= -1.0f;
+            light_position[2] *= -1.0f;
+
             switch (light_target_face)
             {
                 case OGL_SHADOW_MAPPING_TARGET_FACE_NEGATIVE_X:
@@ -1287,7 +1291,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                 *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
                                                                                                1.0f, /* ar - shadow maps are quads */
                                                                                                0.1f,
-                                                                                               100.0f);
+                                                                                               30.0f);
                                                                                                //max_len + min_len); TODO: projection matrix should be the same for all faces
             }
 
