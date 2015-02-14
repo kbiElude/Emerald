@@ -38,23 +38,6 @@ typedef enum
 
 typedef enum
 {
-    /* No shadow mapping */
-    SHADOW_MAPPING_TYPE_DISABLED,
-
-    /* Plain shadow mapping.
-     *
-     * Support implemented for:
-     * a) Distant lights: yes
-     * b) Point lights:   no
-     * c) Spot lights:    no
-     *
-     */
-    SHADOW_MAPPING_TYPE_PLAIN
-
-} _ogl_scene_renderer_shadow_mapping_type;
-
-typedef enum
-{
     OGL_SCENE_RENDERER_PROPERTY_GRAPH,                     /*         property,                 value: scene_graph      */
     OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,             /* indexed property, key: mesh id // value: mesh             */
     OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,         /* indexed property, key: mesh id // value: system_matrix4x4 */
@@ -80,14 +63,14 @@ PUBLIC EMERALD_API void ogl_scene_renderer_get_property(__in  __notnull ogl_scen
  *
  *  TODO: state-ify render_mode / shadow_mapping_type / helper_visualization arguments..
  **/
-PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in           __notnull ogl_scene_renderer                             renderer,
-                                                                                     __in           __notnull system_matrix4x4                               view,
-                                                                                     __in           __notnull system_matrix4x4                               projection,
-                                                                                     __in           __notnull scene_camera                                   camera,
-                                                                                     __in                     const _ogl_scene_renderer_render_mode&         render_mode,
-                                                                                     __in                     const _ogl_scene_renderer_shadow_mapping_type& shadow_mapping_type,
-                                                                                     __in           __notnull _ogl_scene_renderer_helper_visualization       helper_visualization,
-                                                                                     __in                     system_timeline_time                           frame_time);
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in           __notnull ogl_scene_renderer                       renderer,
+                                                                                     __in           __notnull system_matrix4x4                         view,
+                                                                                     __in           __notnull system_matrix4x4                         projection,
+                                                                                     __in           __notnull scene_camera                             camera,
+                                                                                     __in                     const _ogl_scene_renderer_render_mode&   render_mode,
+                                                                                     __in                     bool                                     apply_shadow_mapping,
+                                                                                     __in           __notnull _ogl_scene_renderer_helper_visualization helper_visualization,
+                                                                                     __in                     system_timeline_time                     frame_time);
 
 /** TODO. **/
 PUBLIC EMERALD_API void ogl_scene_renderer_release(__in __notnull ogl_scene_renderer renderer);

@@ -227,14 +227,14 @@ PUBLIC void _render_scene(ogl_context          context,
                                           camera,
                                           RENDER_MODE_FORWARD,
 #ifdef ENABLE_SM
-                                          SHADOW_MAPPING_TYPE_PLAIN,
+                                          true,  /* apply_shadow_mapping */
 #else
-                                          SHADOW_MAPPING_TYPE_DISABLED,
+                                          false, /* apply_shadow_mapping */
 #endif
 #ifdef ENABLE_BB_VISUALIZATION
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
 #else
-                                          HELPER_VISUALIZATION_NONE,
+                                          HELPER_VISUALIZATION_LIGHTS,
 #endif
                                           frame_time
                                          );
