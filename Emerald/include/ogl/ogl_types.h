@@ -1246,6 +1246,7 @@ typedef struct
     PFNGLCOPYTEXSUBIMAGE1DPROC               pGLCopyTexSubImage1D;
     PFNGLCOPYTEXSUBIMAGE2DPROC               pGLCopyTexSubImage2D;
     PFNGLCOPYTEXSUBIMAGE3DPROC               pGLCopyTexSubImage3D;
+    PFNGLCULLFACEPROC                        pGLCullFace;
     PFNGLDELETEBUFFERSPROC                   pGLDeleteBuffers;
     PFNGLDELETEVERTEXARRAYSPROC              pGLDeleteVertexArrays;
     PFNGLDEPTHMASKPROC                       pGLDepthMask;

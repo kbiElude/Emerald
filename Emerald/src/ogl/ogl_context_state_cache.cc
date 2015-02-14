@@ -17,6 +17,10 @@ typedef struct _ogl_context_state_cache
 
     GLboolean active_color_mask_context[4];
     GLboolean active_color_mask_local  [4];
+
+    GLenum active_cull_face_context;
+    GLenum active_cull_face_local;
+
     GLboolean active_depth_mask_context;
     GLboolean active_depth_mask_local;
 
@@ -150,6 +154,13 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
             memcpy(out_result,
                    cache_ptr->active_color_mask_local,
                    sizeof(cache_ptr->active_color_mask_local) );
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE:
+        {
+            *(GLenum*) out_result = cache_ptr->active_cull_face_local;
 
             break;
         }
@@ -288,6 +299,10 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
            0,
            sizeof(cache_ptr->active_clear_color_local) );
 
+    /* Set default state: cull face */
+    cache_ptr->active_cull_face_context = GL_BACK;
+    cache_ptr->active_cull_face_local   = GL_BACK;
+
     /* Set default state: scissor box */
     entrypoints_private_ptr->pGLGetIntegerv(GL_SCISSOR_BOX,
                                             cache_ptr->active_scissor_box_context);
@@ -395,6 +410,13 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
             memcpy(cache_ptr->active_color_mask_local,
                    data,
                    sizeof(cache_ptr->active_color_mask_local) );
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_CULL_FACE:
+        {
+            cache_ptr->active_cull_face_local = *(GLenum*) data;
 
             break;
         }
@@ -556,6 +578,15 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
 
                 cache_ptr->active_depth_mask_context = cache_ptr->active_depth_mask_local;
             }
+        }
+
+        /* Cull face */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE                        &&
+            cache_ptr->active_cull_face_context != cache_ptr->active_cull_face_local)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLCullFace(cache_ptr->active_cull_face_local);
+
+            cache_ptr->active_cull_face_context = cache_ptr->active_cull_face_local;
         }
 
         /* Program object */

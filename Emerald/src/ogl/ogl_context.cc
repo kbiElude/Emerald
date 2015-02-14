@@ -1542,7 +1542,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLCreateProgram,                       "glCreateProgram"},
             {&context_ptr->entry_points_gl.pGLCreateShader,                        "glCreateShader"},
             {&context_ptr->entry_points_gl.pGLCreateShaderProgramv,                "glCreateShaderProgramv"},
-            {&context_ptr->entry_points_gl.pGLCullFace,                            "glCullFace"},
+            {&context_ptr->entry_points_private.pGLCullFace,                       "glCullFace"},
             {&context_ptr->entry_points_private.pGLDeleteBuffers,                  "glDeleteBuffers"},
             {&context_ptr->entry_points_gl.pGLDeleteFramebuffers,                  "glDeleteFramebuffers"},
             {&context_ptr->entry_points_gl.pGLDeleteProgram,                       "glDeleteProgram"},
@@ -1858,6 +1858,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLCopyTexSubImage1D               = ogl_context_wrappers_glCopyTexSubImage1D;
         context_ptr->entry_points_gl.pGLCopyTexSubImage2D               = ogl_context_wrappers_glCopyTexSubImage2D;
         context_ptr->entry_points_gl.pGLCopyTexSubImage3D               = ogl_context_wrappers_glCopyTexSubImage3D;
+        context_ptr->entry_points_gl.pGLCullFace                        = ogl_context_wrappers_glCullFace;
         context_ptr->entry_points_gl.pGLDeleteBuffers                   = ogl_context_wrappers_glDeleteBuffers;
         context_ptr->entry_points_gl.pGLDeleteVertexArrays              = ogl_context_wrappers_glDeleteVertexArrays;
         context_ptr->entry_points_gl.pGLDepthMask                       = ogl_context_wrappers_glDepthMask;
