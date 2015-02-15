@@ -5,24 +5,40 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_materials.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_textures.h"
+#include "ogl/ogl_uber.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "scene/scene_light.h"
+#include "scene/scene_mesh.h"
 #include "system/system_log.h"
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
+#include "system/system_resizable_vector.h"
+#include "system/system_resource_pool.h"
 #include "system/system_variant.h"
 #include "system/system_window.h"
 #include <string>
 #include <sstream>
 
+
+/** TODO */
+typedef struct
+{
+
+    mesh             mesh_instance;
+    system_matrix4x4 model_matrix;
+
+} _ogl_shadow_mapping_mesh_item;
 
 /** TODO */
 typedef struct _ogl_shadow_mapping
@@ -32,7 +48,25 @@ typedef struct _ogl_shadow_mapping
      */
     ogl_context context;
 
-    GLuint         fbo_id;             /* FBO used to render depth data to light-specific depth texture. */
+    /* FBO used to render depth data to light-specific depth texture. */
+    GLuint fbo_id;
+
+    /* Used during pre-processing phase, called for each ogl_scene_renderer_render_scene_graph()
+     * call with SM enabled.
+     *
+     * Holds meshes that should be rendered for the SM pass that follows.
+     */
+    system_resizable_vector meshes_to_render;
+
+    /* A resource pool which holds _ogl_shadow_mapping_mesh_item items.
+     *
+     * Used for storing meshes which are visible from the camera PoV -
+     * this is determined during pre-processing phase for each
+     * ogl_scene_renderer_render_scene_graph() call with SM enabled.
+     */
+    system_resource_pool mesh_item_pool;
+
+    /* A variant of FP type */
     system_variant temp_variant_float;
 
     /* Tells what ogl_texture is currently being used for SM rendering.
@@ -56,9 +90,39 @@ typedef struct _ogl_shadow_mapping
         current_sm_texture = NULL;
         fbo_id             = 0;
         is_enabled         = false;
-        temp_variant_float = system_variant_create(SYSTEM_VARIANT_FLOAT);
+        meshes_to_render   = system_resizable_vector_create(16,                                     /* capacity */
+                                                            sizeof(_ogl_shadow_mapping_mesh_item*),
+                                                            false);                                 /* should_be_thread_safe */
+        mesh_item_pool     = system_resource_pool_create   (sizeof(_ogl_shadow_mapping_mesh_item),
+                                                            64 ,                                    /* n_elements_to_preallocate */
+                                                            NULL,                                   /* init_fn */
+                                                            NULL);                                  /* deinit_fn */
+        temp_variant_float = system_variant_create         (SYSTEM_VARIANT_FLOAT);
     }
 
+    ~_ogl_shadow_mapping()
+    {
+        if (meshes_to_render != NULL)
+        {
+            system_resizable_vector_release(meshes_to_render);
+
+            meshes_to_render = NULL;
+        }
+
+        if (mesh_item_pool != NULL)
+        {
+            system_resource_pool_release(mesh_item_pool);
+
+            mesh_item_pool = NULL;
+        }
+
+        if (temp_variant_float != NULL)
+        {
+            system_variant_release(temp_variant_float);
+
+            temp_variant_float = NULL;
+        }
+    }
 } _ogl_shadow_mapping;
 
 /* Forward declarations */
@@ -496,6 +560,46 @@ PRIVATE void _ogl_shadow_mapping_release_renderer_callback(__in __notnull ogl_co
                                            &shadow_mapping_ptr->fbo_id);
 
         shadow_mapping_ptr->fbo_id = 0;
+    }
+}
+
+/** This method is called to calculate AABB of the visible part of the scene, as perceived by
+ *  active camera.
+ *
+ *  @param scene_mesh_instance TODO
+ *  @param renderer
+ *
+ **/
+PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(__notnull scene_mesh scene_mesh_instance,
+                                                                      __in      void*      renderer)
+{
+    mesh mesh_gpu                      = NULL;
+    mesh mesh_instantiation_parent_gpu = NULL;
+    bool mesh_is_shadow_caster         = false;
+
+    scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+                           &mesh_is_shadow_caster);
+
+    /* Only update visibility AABB for meshes that are shadow casters. */
+    if (mesh_is_shadow_caster)
+    {
+        scene_mesh_get_property(scene_mesh_instance,
+                                SCENE_MESH_PROPERTY_MESH,
+                               &mesh_gpu);
+
+        mesh_get_property(mesh_gpu,
+                          MESH_PROPERTY_INSTANTIATION_PARENT,
+                         &mesh_instantiation_parent_gpu);
+
+        if (mesh_instantiation_parent_gpu != NULL)
+        {
+            mesh_gpu = mesh_instantiation_parent_gpu;
+        }
+
+        /* Perform frustum culling. This is where the AABBs are also updated. */
+        ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
+                                                 mesh_gpu);
     }
 }
 
@@ -1297,17 +1401,91 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
     } /* switch (light_type) */
 }
 
+/** TODO */
+PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notnull scene_mesh scene_mesh_instance,
+                                                                     __in __notnull void*      renderer_raw)
+{
+    ogl_context          context                       = NULL;
+    mesh                 mesh_gpu                      = NULL;
+    mesh                 mesh_instantiation_parent_gpu = NULL;
+    bool                 mesh_is_shadow_caster         = false;
+    ogl_scene_renderer   renderer                      = (ogl_scene_renderer) renderer_raw;
+    _ogl_shadow_mapping* shadow_mapping_ptr            = NULL;
+
+    ogl_scene_renderer_get_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_CONTEXT,
+                                   &context);
+    ogl_context_get_property       (context,
+                                    OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
+                                   &shadow_mapping_ptr);
+    scene_mesh_get_property        (scene_mesh_instance,
+                                    SCENE_MESH_PROPERTY_IS_SHADOW_CASTER,
+                                   &mesh_is_shadow_caster);
+
+    if (!mesh_is_shadow_caster)
+    {
+        /* Do not render if not a shadow caster! */
+        goto end;
+    }
+
+    scene_mesh_get_property(scene_mesh_instance,
+                            SCENE_MESH_PROPERTY_MESH,
+                           &mesh_gpu);
+    mesh_get_property(mesh_gpu,
+                      MESH_PROPERTY_INSTANTIATION_PARENT,
+                     &mesh_instantiation_parent_gpu);
+
+    if (mesh_instantiation_parent_gpu == NULL)
+    {
+        mesh_instantiation_parent_gpu = mesh_gpu;
+    }
+
+    /* Perform frustum culling to make sure it actually makes sense to render
+     * this mesh.
+     */
+    if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
+                                                  mesh_instantiation_parent_gpu) )
+    {
+        goto end;
+    }
+
+    /* This is a visible mesh we should store. As opposed to the uber->mesh map we're
+     * using for forward rendering, in "no rasterization" mode there is only one uber
+     * that is used for the rendeirng process.
+     * However, if we were to re-use the same map as in the other modes, we'd need
+     * to clean it every ogl_scene_renderer_render_scene_graph() call which could
+     * affect performance. It would also disrupt the shadow mapping baking.
+     * Hence, for the "no rasterization mode", we use a renderer-level vector to store
+     * visible meshes. This will work, as long the "no rasterization mode" does not
+     * call graph rendeirng entry point from itself, which should never be the case.
+     */
+    _ogl_shadow_mapping_mesh_item* new_mesh_item                 = (_ogl_shadow_mapping_mesh_item*) system_resource_pool_get_from_pool(shadow_mapping_ptr->mesh_item_pool);
+    system_matrix4x4               renderer_current_model_matrix = NULL;
+
+    ASSERT_ALWAYS_SYNC(new_mesh_item != NULL,
+                       "Out of memory");
+
+    ogl_scene_renderer_get_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
+                                   &renderer_current_model_matrix);
+
+    new_mesh_item->mesh_instance = mesh_gpu;
+    new_mesh_item->model_matrix  = system_matrix4x4_create();
+
+    system_matrix4x4_set_from_matrix4x4(new_mesh_item->model_matrix,
+                                        renderer_current_model_matrix);
+
+    system_resizable_vector_push(shadow_mapping_ptr->meshes_to_render,
+                                 new_mesh_item);
+
+end:
+    ;
+}
+
 /** Please see header for spec */
 PUBLIC void ogl_shadow_mapping_release(__in __notnull __post_invalid ogl_shadow_mapping handler)
 {
     _ogl_shadow_mapping* handler_ptr = (_ogl_shadow_mapping*) handler;
-
-    if (handler_ptr->temp_variant_float != NULL)
-    {
-        system_variant_release(handler_ptr->temp_variant_float);
-
-        handler_ptr->temp_variant_float = NULL;
-    }
 
     ogl_context_request_callback_from_context_thread(handler_ptr->context,
                                                      _ogl_shadow_mapping_release_renderer_callback,
@@ -1315,6 +1493,352 @@ PUBLIC void ogl_shadow_mapping_release(__in __notnull __post_invalid ogl_shadow_
 
     delete handler_ptr;
     handler_ptr = NULL;
+}
+
+/** TODO */
+PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shadow_mapping   shadow_mapping,
+                                                        __in __notnull ogl_scene_renderer   renderer,
+                                                        __in __notnull scene                scene,
+                                                        __in           system_timeline_time frame_time)
+{
+    ogl_materials        materials          = NULL;
+    _ogl_shadow_mapping* shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
+
+    ogl_context_get_property(shadow_mapping_ptr->context,
+                             OGL_CONTEXT_PROPERTY_MATERIALS,
+                            &materials);
+
+    /* Retrieve the material and associated uber, which
+     * should be used for the rendering process. */
+    mesh_material sm_material      = ogl_materials_get_special_material(materials,
+                                                                        SPECIAL_MATERIAL_DUMMY);
+    ogl_uber      sm_material_uber = mesh_material_get_ogl_uber        (sm_material,
+                                                                        scene,
+                                                                        false); /* use_shadow_maps */
+
+    /* Configure the uber */
+    system_matrix4x4 vp = NULL;
+
+    ogl_scene_renderer_get_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_VP,
+                                   &vp);
+
+    ogl_uber_set_shader_general_property(sm_material_uber,
+                                         OGL_UBER_GENERAL_PROPERTY_VP,
+                                         vp);
+
+    /* Kick off the rendering */
+    const uint32_t n_meshes = system_resizable_vector_get_amount_of_elements(shadow_mapping_ptr->meshes_to_render);
+
+    ogl_uber_rendering_start(sm_material_uber);
+    {
+        for (uint32_t n_mesh = 0;
+                      n_mesh < n_meshes;
+                    ++n_mesh)
+        {
+            _ogl_shadow_mapping_mesh_item* item_ptr = NULL;
+
+            if (!system_resizable_vector_get_element_at(shadow_mapping_ptr->meshes_to_render,
+                                                        n_mesh,
+                                                       &item_ptr) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve a mesh descriptor at index [%d]",
+                                  n_mesh);
+
+                continue;
+            }
+
+            ogl_uber_rendering_render_mesh(item_ptr->mesh_instance,
+                                           item_ptr->model_matrix,
+                                           NULL,                    /* normal_matrix */
+                                           sm_material_uber,
+                                           NULL,                    /* material */
+                                           frame_time);
+        } /* for (all enqueued meshes) */
+    }
+    ogl_uber_rendering_stop(sm_material_uber);
+
+    /* Clean up */
+    _ogl_shadow_mapping_mesh_item* item_ptr = NULL;
+
+    while (system_resizable_vector_pop(shadow_mapping_ptr->meshes_to_render,
+                                      &item_ptr) )
+    {
+        if (item_ptr->model_matrix != NULL)
+        {
+            system_matrix4x4_release(item_ptr->model_matrix);
+        }
+
+        system_resource_pool_return_to_pool(shadow_mapping_ptr->mesh_item_pool,
+                                            (system_resource_pool_block) item_ptr);
+    }
+}
+
+/** TODO */
+PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapping   shadow_mapping,
+                                                  __in __notnull ogl_scene_renderer   renderer,
+                                                  __in __notnull scene                current_scene,
+                                                  __in __notnull scene_camera         target_camera,
+                                                  __in           system_timeline_time frame_time)
+{
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints    = NULL;
+    scene_graph                                               graph              = NULL;
+    uint32_t                                                  n_lights           = 0;
+    _ogl_shadow_mapping*                                      shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
+    ogl_textures                                              texture_pool       = NULL;
+
+    ogl_context_get_property(shadow_mapping_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entrypoints);
+    ogl_context_get_property(shadow_mapping_ptr->context,
+                             OGL_CONTEXT_PROPERTY_TEXTURES,
+                            &texture_pool);
+    scene_get_property      (current_scene,
+                             SCENE_PROPERTY_GRAPH,
+                            &graph);
+    scene_get_property      (current_scene,
+                             SCENE_PROPERTY_N_LIGHTS,
+                            &n_lights);
+
+    /* Before we can proceed, we need to know what the AABB (expressed in the world space)
+     * for the scene, as seen from the camera viewpoint, is. */
+    float current_aabb_max_setting[3];
+    float current_aabb_min_setting[3];
+
+    static const float default_aabb_max_setting[] =
+    {
+        DEFAULT_AABB_MAX_VALUE,
+        DEFAULT_AABB_MAX_VALUE,
+        DEFAULT_AABB_MAX_VALUE
+    };
+    static const float default_aabb_min_setting[] =
+    {
+        DEFAULT_AABB_MIN_VALUE,
+        DEFAULT_AABB_MIN_VALUE,
+        DEFAULT_AABB_MIN_VALUE
+    };
+
+    ogl_scene_renderer_set_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+                                    default_aabb_max_setting);
+    ogl_scene_renderer_set_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+                                    default_aabb_min_setting);
+
+    scene_graph_traverse(graph,
+                         ogl_scene_renderer_update_current_model_matrix,
+                         NULL, /* insert_camera_proc */
+                         ogl_scene_renderer_update_light_properties,
+                         _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass,
+                         renderer,
+                         frame_time);
+
+    /* Even if no meshes were found to be visible, we still need to clear the SM.
+     * Zero out visible AABB so that ogl_scene_renderer routines do not get confused
+     * later on. */
+    ogl_scene_renderer_get_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+                                    current_aabb_max_setting);
+    ogl_scene_renderer_get_property(renderer,
+                                    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+                                    current_aabb_min_setting);
+
+    if (current_aabb_max_setting[0] == DEFAULT_AABB_MAX_VALUE &&
+        current_aabb_max_setting[1] == DEFAULT_AABB_MAX_VALUE &&
+        current_aabb_max_setting[2] == DEFAULT_AABB_MAX_VALUE &&
+        current_aabb_min_setting[0] == DEFAULT_AABB_MIN_VALUE &&
+        current_aabb_min_setting[1] == DEFAULT_AABB_MIN_VALUE &&
+        current_aabb_min_setting[2] == DEFAULT_AABB_MIN_VALUE)
+    {
+        static const float default_aabb_zero_setting[] =
+        {
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        ogl_scene_renderer_set_property(renderer,
+                                        OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+                                        default_aabb_zero_setting);
+        ogl_scene_renderer_set_property(renderer,
+                                        OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+                                        default_aabb_zero_setting);
+    }
+
+    /* Iterate over all lights defined for the scene. Focus only on those,
+     * which act as shadow casters.. */
+    for (uint32_t n_light = 0;
+                  n_light < n_lights;
+                ++n_light)
+    {
+        scene_light      current_light                  = scene_get_light_by_index(current_scene,
+                                                                                   n_light);
+        bool             current_light_is_shadow_caster = false;
+        scene_light_type current_light_type             = SCENE_LIGHT_TYPE_UNKNOWN;
+
+        ASSERT_DEBUG_SYNC(current_light != NULL,
+                          "Scene light is NULL");
+
+        scene_light_get_property(current_light,
+                                 SCENE_LIGHT_PROPERTY_TYPE,
+                                &current_light_type);
+        scene_light_get_property(current_light,
+                                 SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                &current_light_is_shadow_caster);
+
+        if (current_light_is_shadow_caster)
+        {
+            /* For directional/spot lights, we only need a single iteration. However,
+             * for point lights, we currently need 6 iterations to render separate
+             * cube-map faces.
+             *
+             * This is expected to be made optional in the near future, where more than
+             * one rendering algorithm will be available for point lights. For now, we
+             * have to live with what we have :-)
+             */
+            const unsigned int n_sm_passes = (current_light_type == SCENE_LIGHT_TYPE_POINT) ? 6 : 1;
+
+            for (unsigned int n_sm_pass = 0;
+                              n_sm_pass < n_sm_passes;
+                            ++n_sm_pass)
+            {
+                /* Determine which face we should be rendering to right now. */
+                ogl_shadow_mapping_target_face current_target_face;
+
+                switch (n_sm_pass)
+                {
+                    case 0:
+                    {
+                        current_target_face = (current_light_type == SCENE_LIGHT_TYPE_POINT) ? OGL_SHADOW_MAPPING_TARGET_FACE_POSITIVE_X
+                                                                                             : OGL_SHADOW_MAPPING_TARGET_FACE_2D;
+
+                        break;
+                    }
+
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                    {
+                        /* Point light-specific cases */
+                        ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_POINT,
+                                          "Invalid light type detected");
+
+                        current_target_face = (ogl_shadow_mapping_target_face) (OGL_SHADOW_MAPPING_TARGET_FACE_POSITIVE_X + n_sm_pass);
+
+                        break;
+                    }
+
+                    default:
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Invalid SM pass index");
+                    }
+                } /* switch (n_sm_pass)*/
+
+                /* Configure the GL for depth map rendering */
+                system_matrix4x4 light_projection_matrix = NULL;
+                system_matrix4x4 light_view_matrix       = NULL;
+                system_matrix4x4 light_vp_matrix         = NULL;
+                system_matrix4x4 sm_projection_matrix    = NULL;
+                system_matrix4x4 sm_view_matrix          = NULL;
+
+                ogl_shadow_mapping_toggle(shadow_mapping,
+                                          current_light,
+                                          true,                 /* should_enable */
+                                          current_target_face);
+
+                if (current_aabb_min_setting[0] != current_aabb_max_setting[0] ||
+                    current_aabb_min_setting[1] != current_aabb_max_setting[1] ||
+                    current_aabb_min_setting[2] != current_aabb_max_setting[2])
+                {
+                    switch (current_light_type)
+                    {
+                        case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                        case SCENE_LIGHT_TYPE_POINT:
+                        case SCENE_LIGHT_TYPE_SPOT:
+                        {
+                            ogl_shadow_mapping_get_matrices_for_light(shadow_mapping,
+                                                                      current_light,
+                                                                      current_target_face,
+                                                                      target_camera,
+                                                                      frame_time,
+                                                                      current_aabb_min_setting,
+                                                                      current_aabb_max_setting,
+                                                                     &sm_view_matrix,
+                                                                     &sm_projection_matrix);
+
+                            break;
+                        }
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unsupported light encountered for enabled plain shadow mapping.");
+                        }
+                    } /* switch (current_light_type) */
+
+                    /* Update light's shadow VP matrix */
+                    ASSERT_DEBUG_SYNC(sm_view_matrix       != NULL &&
+                                      sm_projection_matrix != NULL,
+                                      "Projection/view matrix for shadow map rendering is NULL");
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION,
+                                            &light_projection_matrix);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
+                                            &light_view_matrix);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
+                                            &light_vp_matrix);
+
+                    system_matrix4x4_set_from_matrix4x4   (light_projection_matrix,
+                                                           sm_projection_matrix);
+                    system_matrix4x4_set_from_matrix4x4   (light_view_matrix,
+                                                           sm_view_matrix);
+
+                    system_matrix4x4_set_from_matrix4x4   (light_vp_matrix,
+                                                           sm_projection_matrix);
+                    system_matrix4x4_multiply_by_matrix4x4(light_vp_matrix,
+                                                           sm_view_matrix);
+
+                    /* NOTE: This call is recursive (this function was called by exactly the same function,
+                     *       but we're requesting no shadow maps this time AND the scene graph has already
+                     *       been traversed, so it should be fairly inexpensive and focus solely on drawing
+                     *       geometry.
+                     */
+                    ogl_scene_renderer_render_scene_graph(renderer,
+                                                          sm_view_matrix,
+                                                          sm_projection_matrix,
+                                                          target_camera,
+                                                          RENDER_MODE_SHADOW_MAP,
+                                                          false, /* apply_shadow_mapping */
+                                                          HELPER_VISUALIZATION_NONE,
+                                                          frame_time);
+               } /* if (it makes sense to render SM) */
+
+               /* Clean up */
+               if (sm_projection_matrix != NULL)
+               {
+                    system_matrix4x4_release(sm_projection_matrix);
+                    sm_projection_matrix = NULL;
+               }
+
+               if (sm_view_matrix != NULL)
+               {
+                    system_matrix4x4_release(sm_view_matrix);
+                    sm_view_matrix = NULL;
+               }
+            } /* for (all SM passes needed for the light) */
+
+            ogl_shadow_mapping_toggle(shadow_mapping,
+                                      current_light,
+                                      false); /* should_enable */
+        } /* if (current_light_is_shadow_caster) */
+    } /* for (all scene lights) */
 }
 
 /** Please see header for spec */

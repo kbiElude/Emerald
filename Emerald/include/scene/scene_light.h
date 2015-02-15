@@ -94,7 +94,9 @@ typedef enum scene_light_property
 
     /* Settable, ogl_texture.
      *
-     * Set in run-time.
+     * Set in run-time. Note that SM textures are taken from the texture pool
+     * and are returned as soon as the SM-enabled rendering process finishes.
+     *
      */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
 
