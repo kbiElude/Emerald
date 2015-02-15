@@ -157,7 +157,14 @@ typedef enum scene_light_property
 typedef enum
 {
     /* 6-pass cube-map-based omnidirectional SM implementation */
-    SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL
+    SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL,
+
+    /* 2-pass 2D texture-based omnidirectional SM implementation.
+     *
+     * This version DOES NOT use geometry shader + layered rendering approach.
+     */
+     SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID,
+
 } scene_light_shadow_map_pointlight_algorithm;
 
 typedef enum

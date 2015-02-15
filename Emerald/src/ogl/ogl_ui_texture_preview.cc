@@ -371,16 +371,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
 
     /* For depth textures, make sure the "depth texture comparison mode" is toggled off before
      * we proceed with sampling the mip-map */
+    GLenum texture_target = GL_ZERO;
+
+    ogl_texture_get_property(texture_preview_ptr->texture,
+                             OGL_TEXTURE_PROPERTY_TARGET,
+                            &texture_target);
+
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)
     {
         texture_preview_ptr->gl_pGLTextureParameteriEXT(texture_preview_ptr->texture,
-                                                        GL_TEXTURE_2D,
+                                                        texture_target,
                                                         GL_TEXTURE_COMPARE_MODE,
                                                         GL_NONE);
     }
     else
     {
-        texture_preview_ptr->pGLTexParameteri(GL_TEXTURE_2D,
+        texture_preview_ptr->pGLTexParameteri(texture_target,
                                               GL_TEXTURE_COMPARE_MODE,
                                               GL_NONE);
     }

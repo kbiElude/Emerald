@@ -361,16 +361,6 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
             break;
         }
 
-        case RENDER_MODE_SHADOW_MAP:
-        {
-            *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
-                                                                                             SPECIAL_MATERIAL_DUMMY),
-                                                          scene,
-                                                          false); /* use_shadow_maps */
-
-            break;
-        }
-
         case RENDER_MODE_NORMALS_ONLY:
         {
             *result_uber_ptr = mesh_material_get_ogl_uber(ogl_materials_get_special_material(context_materials,
@@ -393,6 +383,9 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
 
         default:
         {
+            /* This function should never be called for RENDER_MODE_SHADOW_MAP. SM-related tasks
+             * should be handed over to ogl_shadow_mapping.
+             */
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized render mode");
         }
@@ -1557,14 +1550,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 n_iteration_items = system_resizable_vector_get_amount_of_elements(uber_details_ptr->meshes);
             }
 
-            /* Update ogl_uber's camera location and vp properties */
-            if (camera_location != NULL)
-            {
-                ogl_uber_set_shader_general_property(material_uber,
-                                                     OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
-                                                     camera_location);
-            }
-
+            /* Update global properties of ogl_uber's vertex shader  */
+            ogl_uber_set_shader_general_property(material_uber,
+                                                 OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+                                                 camera_location);
             ogl_uber_set_shader_general_property(material_uber,
                                                  OGL_UBER_GENERAL_PROPERTY_VP,
                                                  vp);

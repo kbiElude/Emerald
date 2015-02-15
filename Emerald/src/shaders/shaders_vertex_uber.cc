@@ -1,9 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
+#include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
@@ -30,9 +31,10 @@ typedef struct _shaders_vertex_uber_item
 
 typedef struct
 {
-    bool                   dirty;
-    ogl_shader_constructor shader_constructor;
-    ogl_shader             vertex_shader;
+    bool                     dirty;
+    ogl_shader_constructor   shader_constructor;
+    ogl_shader               vertex_shader;
+    shaders_vertex_uber_type vs_type;
 
     /** Holds _shaders_vertex_uber_item* instances. */
     system_resizable_vector added_items;
@@ -43,7 +45,9 @@ typedef struct
 } _shaders_vertex_uber;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_uber, shaders_vertex_uber, _shaders_vertex_uber);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_uber,
+                               shaders_vertex_uber,
+                              _shaders_vertex_uber);
 
 
 /** TODO */
@@ -54,7 +58,9 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(__in __notnull ogl_shade
     /* Add UB variables */
     std::stringstream light_sh3_variable_name_sstream;
 
-    light_sh3_variable_name_sstream << "light" << n_light << "_sh3";
+    light_sh3_variable_name_sstream << "light"
+                                    << n_light
+                                    << "_sh3";
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
@@ -86,7 +92,9 @@ PRIVATE void _shaders_vertex_uber_add_sh3_light_support(__in __notnull ogl_shade
     /* Add output variables */
     std::stringstream light_mesh_ambient_diffuse_sh3_name_sstream;
 
-    light_mesh_ambient_diffuse_sh3_name_sstream << "light" << n_light << "_mesh_ambient_diffuse_sh3";
+    light_mesh_ambient_diffuse_sh3_name_sstream << "light"
+                                                << n_light
+                                                << "_mesh_ambient_diffuse_sh3";
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
@@ -123,7 +131,9 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(__in __notnull ogl_shade
     /* Add UB variables */
     std::stringstream light_sh3_variable_name_sstream;
 
-    light_sh3_variable_name_sstream << "light" << n_light << "_sh3";
+    light_sh3_variable_name_sstream << "light"
+                                    << n_light
+                                    << "_sh3";
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
@@ -155,7 +165,9 @@ PRIVATE void _shaders_vertex_uber_add_sh4_light_support(__in __notnull ogl_shade
     /* Add output variables */
     std::stringstream light_mesh_ambient_diffuse_sh4_name_sstream;
 
-    light_mesh_ambient_diffuse_sh4_name_sstream << "light" << n_light << "_mesh_ambient_diffuse_sh4";
+    light_mesh_ambient_diffuse_sh4_name_sstream << "light"
+                                                << n_light
+                                                << "_mesh_ambient_diffuse_sh4";
 
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
@@ -272,6 +284,7 @@ PUBLIC EMERALD_API void shaders_vertex_uber_add_passthrough_input_attribute(__in
                  << " = "
                  << system_hashed_ansi_string_get_buffer(in_attribute_name)
                  << ";\n";
+
     body_has = system_hashed_ansi_string_create(body_sstream.str().c_str() );
 
     ogl_shader_constructor_append_to_function_body(uber_ptr->shader_constructor,
@@ -291,6 +304,9 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
     _shaders_vertex_uber*       uber_ptr = (_shaders_vertex_uber*) uber;
     const unsigned int          n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
     shaders_vertex_uber_item_id result   = -1;
+
+    ASSERT_DEBUG_SYNC(uber_ptr->vs_type == SHADERS_VERTEX_UBER_TYPE_DEFAULT,
+                      "Light items cannot be added to an uber VS of non-default type.");
 
     switch (light)
     {
@@ -360,7 +376,8 @@ end:
 
 /** Please see header for specification */
 PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull ogl_context               context,
-                                                                  __in __notnull system_hashed_ansi_string name)
+                                                                  __in __notnull system_hashed_ansi_string name,
+                                                                  __in           shaders_vertex_uber_type  vs_type)
 {
     std::stringstream     body_stream;
     _shaders_vertex_uber* result_object = NULL;
@@ -380,39 +397,100 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
         goto end;
     }
 
-    /* Create VertexShaderProperties and assign two important variables to it */
+    /* Create VertexShaderProperties uniform block */
     _uniform_block_id ub_id = -1;
 
     ub_id = ogl_shader_constructor_add_uniform_block(shader_constructor,
                                                      LAYOUT_QUALIFIER_STD140,
                                                      system_hashed_ansi_string_create("VertexShaderProperties") );
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC4,
-                                                      0, /* array_size */
-                                                      ub_id,
-                                                      system_hashed_ansi_string_create("world_camera"),
-                                                      NULL /* out_variable_id */);
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_ROW_MAJOR,
-                                                      TYPE_MAT4,
-                                                      0, /* array_size */
-                                                      ub_id,
-                                                      system_hashed_ansi_string_create("vp"),
-                                                      NULL /* out_variable_id */);
+    if (vs_type == SHADERS_VERTEX_UBER_TYPE_DEFAULT)
+    {
+        /* Add world_camera member */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC4,
+                                                          0, /* array_size */
+                                                          ub_id,
+                                                          system_hashed_ansi_string_create("world_camera"),
+                                                          NULL /* out_variable_id */);
 
-    /* Proceed with input attributes */
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("object_normal"),
-                                                      NULL /* out_variable_id */);
+        /* Add object_normal input attribute */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("object_normal"),
+                                                          NULL /* out_variable_id */);
+
+        /* Add world_vertex output attribute */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("world_vertex"),
+                                                          NULL /* out_variable_id */);
+
+        /* Add out_vs_normal output attribute */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("out_vs_normal"),
+                                                          NULL /* out_variable_id */);
+
+        /* Add view_vector output attribute */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("view_vector"),
+                                                          NULL /* out_variable_id */);
+    }
+    else
+    if (vs_type == SHADERS_VERTEX_UBER_TYPE_DUAL_PARABOLOID_SM)
+    {
+        /* Add flip_z uniform */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          ub_id,
+                                                          system_hashed_ansi_string_create("flip_z"),
+                                                          NULL /* out_variable_id */);
+
+        /* Add near_plane uniform */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          ub_id,
+                                                          system_hashed_ansi_string_create("near_plane"),
+                                                          NULL /* out_variable_id */);
+
+        /* Add far_near_plane_diff uniform */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          ub_id,
+                                                          system_hashed_ansi_string_create("far_near_plane_diff"),
+                                                          NULL /* out_variable_id */);
+    }
+
+    /* Add object_vertex input attribute */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_INPUT_ATTRIBUTE,
                                                       LAYOUT_QUALIFIER_NONE,
@@ -422,33 +500,17 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                       system_hashed_ansi_string_create("object_vertex"),
                                                       NULL /* out_variable_id */);
 
-    /* Time for output attributes */
+    /* Add vp member */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
+                                                      VARIABLE_TYPE_UNIFORM,
+                                                      LAYOUT_QUALIFIER_ROW_MAJOR,
+                                                      TYPE_MAT4,
                                                       0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("world_vertex"),
-                                                      NULL /* out_variable_id */);
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("out_vs_normal"),
-                                                      NULL /* out_variable_id */);
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("view_vector"),
+                                                      ub_id,
+                                                      system_hashed_ansi_string_create("vp"),
                                                       NULL /* out_variable_id */);
 
-    /* Finally, uniforms */
+    /* Add global model uniform */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
                                                       LAYOUT_QUALIFIER_NONE, /* global UB, so we must use column-major ordering */
@@ -457,25 +519,64 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                       0, /* uniform_block */
                                                       system_hashed_ansi_string_create("model"),
                                                       NULL /* out_variable_id */);
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE, /* default UB - must use column-major ordering */
-                                                      TYPE_MAT4,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("normal_matrix"),
-                                                      NULL /* out_variable_id */);
+
+    /* Add global normal_matrix uniform */
+    if (vs_type == SHADERS_VERTEX_UBER_TYPE_DEFAULT)
+    {
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_UNIFORM,
+                                                          LAYOUT_QUALIFIER_NONE, /* default UB - must use column-major ordering */
+                                                          TYPE_MAT4,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("normal_matrix"),
+                                                          NULL /* out_variable_id */);
+    }
 
     /* Set general body */
-    ogl_shader_constructor_set_function_body(shader_constructor,
-                                             0, /* main() */
-                                             system_hashed_ansi_string_create("vec4 world_vertex_temp = model * vec4(object_vertex, 1.0);\n"
-                                                                              "\n"
-                                                                              "gl_Position   = vp * world_vertex_temp;\n"
-                                                                              "world_vertex  = world_vertex_temp.xyz;\n"
-                                                                              "out_vs_normal = normalize((normal_matrix * vec4(object_normal, 0.0) ).xyz);\n"
-                                                                              "view_vector   = normalize(world_camera.xyz - world_vertex.xyz);\n"
-                                                                              "\n"));
+    switch (vs_type)
+    {
+        case SHADERS_VERTEX_UBER_TYPE_DUAL_PARABOLOID_SM:
+        {
+            ogl_shader_constructor_set_function_body(shader_constructor,
+                                                     0, /* main() */
+                                                     system_hashed_ansi_string_create("vec4  world_vertex            = vp * model * vec4(object_vertex, 1.0);\n"
+                                                                                      "vec4  clip_vertex             = world_vertex / world_vertex.wwww;\n"
+                                                                                      "float light_to_vertex_vec_len = length(clip_vertex);\n"
+                                                                                      "\n"
+                                                                                      "clip_vertex.z *= flip_z;\n" /* front = 1; back = -1 */
+                                                                                      "clip_vertex   /= light_to_vertex_vec_len;\n"
+                                                                                      "\n"
+                                                                                      "clip_vertex.xy /= (clip_vertex.z + 1.0);\n"
+                                                                                      "clip_vertex.z   = float(light_to_vertex_vec_len - near_plane) / far_near_plane_diff * 2.0 - 1.0;\n"
+                                                                                      "clip_vertex.w   = 1.0;\n"
+                                                                                      "\n"
+                                                                                      "gl_Position = clip_vertex;\n") );
+
+            break;
+        }
+
+        case SHADERS_VERTEX_UBER_TYPE_DEFAULT:
+        {
+            ogl_shader_constructor_set_function_body(shader_constructor,
+                                                     0, /* main() */
+                                                     system_hashed_ansi_string_create("vec4 world_vertex_temp = model * vec4(object_vertex, 1.0);\n"
+                                                                                      "\n"
+                                                                                      "gl_Position   = vp * world_vertex_temp;\n"
+                                                                                      "world_vertex  = world_vertex_temp.xyz;\n"
+                                                                                      "out_vs_normal = normalize((normal_matrix * vec4(object_normal, 0.0) ).xyz);\n"
+                                                                                      "view_vector   = normalize(world_camera.xyz - world_vertex.xyz);\n"
+                                                                                      "\n"));
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized uber vertex shader type");
+        }
+    } /* switch (vs_type) */
 
     /* Create the shader */
     ogl_shader vertex_shader = ogl_shader_create(context,
@@ -505,7 +606,9 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     }
 
     /* Fill other fields */
-    memset(result_object, 0, sizeof(_shaders_vertex_uber) );
+    memset(result_object,
+           0,
+           sizeof(_shaders_vertex_uber) );
 
     result_object->added_items        = system_resizable_vector_create(4 /* capacity */,
                                                                        sizeof(_shaders_vertex_uber_item*) );
@@ -513,6 +616,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     result_object->shader_constructor = shader_constructor;
     result_object->vertex_shader      = vertex_shader;
     result_object->vs_ub_id           = ub_id;
+    result_object->vs_type            = vs_type;
 
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_vertex_uber_release,
@@ -601,6 +705,37 @@ PUBLIC EMERALD_API bool shaders_vertex_uber_get_light_type(__in  __notnull shade
     result          = true;
 
 end:
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC shaders_vertex_uber_type shaders_vertex_uber_get_vs_uber_type_for_vs_behavior(__in mesh_material_vs_behavior material_vs_behavior)
+{
+    shaders_vertex_uber_type result;
+
+    switch (material_vs_behavior)
+    {
+        case MESH_MATERIAL_VS_BEHAVIOR_DEFAULT:
+        {
+            result = SHADERS_VERTEX_UBER_TYPE_DEFAULT;
+
+            break;
+        }
+
+        case MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM:
+        {
+            result = SHADERS_VERTEX_UBER_TYPE_DUAL_PARABOLOID_SM;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized material_vs_behavior argument value");
+        }
+    } /* switch (material_vs_behavior) */
+
     return result;
 }
 

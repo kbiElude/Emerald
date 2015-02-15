@@ -40,13 +40,34 @@ typedef enum
 
 typedef enum
 {
-    MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,       /* not settable, system_callback_manager         */
-    MESH_MATERIAL_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string       */
-    MESH_MATERIAL_PROPERTY_SHADING,                /* settable,     mesh_material_shading           */
-    MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL,  /* not settable, scene_material                  */
-    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,            /* settable,     system_hashed_ansi_string       */
-    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE, /* settable,     float. Negative value indicates */
-                                                   /*               vertex smoothing is disabled.   */
+    /* not settable, system_callback_manager */
+    MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+
+    /* not settable, system_hashed_ansi_string */
+    MESH_MATERIAL_PROPERTY_NAME,
+
+    /* settable, mesh_material_shading */
+    MESH_MATERIAL_PROPERTY_SHADING,
+
+    /* not settable, scene_material */
+    MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL,
+
+    /* settable, system_hashed_ansi_string */
+    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,
+
+    /* settable, float.
+     *
+     * Negative value indicates vertex smoothing is disabled.
+     */
+    MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
+
+    /* settable, mesh_material_vs_behavior.
+     *
+     * Tells which vertex shader implementation should be used.
+     * Unless for specialized behavior, you'll be OK to go with
+     * the default setting.
+     */
+    MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
 
 } mesh_material_property;
 
@@ -113,6 +134,20 @@ typedef enum
     /* Always last */
     MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN
 } mesh_material_texture_filtering;
+
+typedef enum
+{
+    /* Outputs all data necessary to carry out shading in world space.
+     * Sets gl_Position to clip-space position of the input vertex.
+     */
+    MESH_MATERIAL_VS_BEHAVIOR_DEFAULT,
+
+    /* Sets gl_Position to clip-space position of the input vertex,
+     * adjusted for the dual paraboloid shadow mapping purposes.
+     */
+     MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM
+
+} mesh_material_vs_behavior;
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hashed_ansi_string name,

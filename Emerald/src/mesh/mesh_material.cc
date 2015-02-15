@@ -102,6 +102,7 @@ typedef struct _mesh_material
 
     system_hashed_ansi_string uv_map_name; /* NULL by default, needs to be manually set */
     float                     vertex_smoothing_angle;
+    mesh_material_vs_behavior vs_behavior;
 
     _mesh_material()
     {
@@ -116,6 +117,7 @@ typedef struct _mesh_material
         uber_sm                = NULL;
         uv_map_name            = NULL;
         vertex_smoothing_angle = 0.0f;
+        vs_behavior            = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
     }
 
     REFCOUNT_INSERT_VARIABLES
@@ -261,6 +263,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hash
         new_material->context          = context;
         new_material->name             = name;
         new_material->uv_map_name      = NULL;
+        new_material->vs_behavior      = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material,
                                                        _mesh_material_release,
@@ -300,6 +303,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
         new_material_ptr->shading     = src_material_ptr->shading;
         new_material_ptr->uber_non_sm = src_material_ptr->uber_non_sm;
         new_material_ptr->uber_sm     = src_material_ptr->uber_sm;
+        new_material_ptr->vs_behavior = src_material_ptr->vs_behavior;
 
         memcpy(new_material_ptr->shading_properties,
                src_material_ptr->shading_properties,
@@ -757,6 +761,13 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
             break;
         }
 
+        case MESH_MATERIAL_PROPERTY_VS_BEHAVIOR:
+        {
+            *(mesh_material_vs_behavior*) out_result = material_ptr->vs_behavior;
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -918,7 +929,23 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
         goto end;
     }
 
-    /* 2. Shading properties */
+    /* 2. VS behavior */
+    mesh_material_vs_behavior material_a_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+    mesh_material_vs_behavior material_b_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+
+    mesh_material_get_property(material_a,
+                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
+                              &material_a_vs_behavior);
+    mesh_material_get_property(material_b,
+                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
+                              &material_b_vs_behavior);
+
+    if (material_a_vs_behavior != material_b_vs_behavior)
+    {
+        goto end;
+    }
+
+    /* 3. Shading properties */
     for (unsigned int n_material_property = 0;
                       n_material_property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
                     ++n_material_property)
@@ -1014,8 +1041,8 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
     {
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
-            material_ptr->dirty   = true;
             material_ptr->shading = *(mesh_material_shading*) data;
+            material_ptr->dirty   = true;
 
             break;
         }
@@ -1035,6 +1062,14 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
             system_callback_manager_call_back(material_ptr->callback_manager,
                                               MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
                                               material);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_VS_BEHAVIOR:
+        {
+            material_ptr->vs_behavior = *(mesh_material_vs_behavior*) data;
+            material_ptr->dirty       = true;
 
             break;
         }

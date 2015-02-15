@@ -3553,14 +3553,15 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum      tar
 }
 
 /* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      target,
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      fb_target,
                                                                     GLenum      attachment,
                                                                     ogl_texture texture,
                                                                     GLint       level,
                                                                     GLint       layer)
 {
-    GLuint                  texture_id  = 0;
-    ogl_context_to_bindings to_bindings = NULL;
+    GLuint                  texture_id     = 0;
+    GLenum                  texture_target = GL_ZERO;
+    ogl_context_to_bindings to_bindings    = NULL;
 
     ogl_context_get_property(ogl_context_get_current_context(),
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
@@ -3568,11 +3569,14 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
+    ogl_texture_get_property(texture,
+                             OGL_TEXTURE_PROPERTY_TARGET,
+                            &texture_target);
 
     ogl_context_to_bindings_sync(to_bindings,
-                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
+                                 ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(texture_target) );
 
-    _private_entrypoints_ptr->pGLFramebufferTextureLayer(target,
+    _private_entrypoints_ptr->pGLFramebufferTextureLayer(fb_target,
                                                          attachment,
                                                          texture_id,
                                                          level,

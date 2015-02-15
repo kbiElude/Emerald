@@ -16,15 +16,24 @@ DECLARE_HANDLE(ogl_shadow_mapping);
 
 typedef enum
 {
+    /* directional / spot lights */
     OGL_SHADOW_MAPPING_TARGET_FACE_2D,
 
-    /* CM target face order msut not be changed */
+    /* DPSM point lights */
+    OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT,
+    OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR,
+
+    /* Cubical SM point lights
+     *
+     * CM target face order must not be changed */
     OGL_SHADOW_MAPPING_TARGET_FACE_POSITIVE_X,
     OGL_SHADOW_MAPPING_TARGET_FACE_NEGATIVE_X,
     OGL_SHADOW_MAPPING_TARGET_FACE_POSITIVE_Y,
     OGL_SHADOW_MAPPING_TARGET_FACE_NEGATIVE_Y,
     OGL_SHADOW_MAPPING_TARGET_FACE_POSITIVE_Z,
     OGL_SHADOW_MAPPING_TARGET_FACE_NEGATIVE_Z,
+
+    OGL_SHADOW_MAPPING_TARGET_FACE_UNKNOWN
 } ogl_shadow_mapping_target_face;
 
 /** TODO */

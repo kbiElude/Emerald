@@ -14,12 +14,23 @@ typedef enum
 {
     SPECIAL_MATERIAL_FIRST,
 
-    SPECIAL_MATERIAL_DUMMY    = SPECIAL_MATERIAL_FIRST,
+    /* Used for directional/point/spot light SM generation. */
+    SPECIAL_MATERIAL_DEPTH_CLIP = SPECIAL_MATERIAL_FIRST,
+
+    /* Used for dual paraboloid SM generation for point lights */
+    SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID,
+
+
+    /* Useful for debugging */
     SPECIAL_MATERIAL_NORMALS,
+
+    /* Useful for debugging */
     SPECIAL_MATERIAL_TEXCOORD,
 
     /* Always last */
-    SPECIAL_MATERIAL_COUNT
+    SPECIAL_MATERIAL_COUNT,
+    SPECIAL_MATERIAL_UNKNOWN = SPECIAL_MATERIAL_COUNT
+
 } _ogl_materials_special_material;
 
 /** TODO.
