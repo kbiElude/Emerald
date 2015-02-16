@@ -89,10 +89,9 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
 
 /** TODO */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber                         uber,
+                                                            __in_opt                              scene_light                      light_instance,
                                                             __in                                  shaders_fragment_uber_light_type light_type,
                                                             __in                                  bool                             is_shadow_caster,
-                                                            __in                                  scene_light_shadow_map_bias      shadow_map_bias,
-                                                            __in                                  scene_light_falloff              falloff,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values);
 

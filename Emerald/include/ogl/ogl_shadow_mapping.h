@@ -37,15 +37,14 @@ typedef enum
 } ogl_shadow_mapping_target_face;
 
 /** TODO */
-PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor           shader_constructor_fs,
-                                                         __in            uint32_t                         n_light,
-                                                         __in            scene_light_shadow_map_bias      sm_bias,
-                                                         __in            _uniform_block_id                ub_fs,
-                                                         __in            shaders_fragment_uber_light_type light_type,
-                                                         __in            system_hashed_ansi_string        light_world_pos_var_name,
-                                                         __in            system_hashed_ansi_string        light_vector_norm_var_name,
-                                                         __in            system_hashed_ansi_string        light_vector_non_norm_var_name,
-                                                         __out __notnull system_hashed_ansi_string*       out_visibility_var_name);
+PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor     shader_constructor_fs,
+                                                         __in            uint32_t                   n_light,
+                                                         __in __notnull  scene_light                light_instance,
+                                                         __in            _uniform_block_id          ub_fs,
+                                                         __in            system_hashed_ansi_string  light_world_pos_var_name,
+                                                         __in            system_hashed_ansi_string  light_vector_norm_var_name,
+                                                         __in            system_hashed_ansi_string  light_vector_non_norm_var_name,
+                                                         __out __notnull system_hashed_ansi_string* out_visibility_var_name);
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_adjust_vertex_uber_code(__in __notnull ogl_shader_constructor           shader_constructor_vs,

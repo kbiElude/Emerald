@@ -456,27 +456,10 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     /* Add the light item if not a NULL light */
                     if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
                     {
-                        scene_light_falloff         current_light_falloff         = SCENE_LIGHT_FALLOFF_UNKNOWN;
-                        scene_light_shadow_map_bias current_light_shadow_map_bias = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
-
-                        if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             &&
-                            uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
-                            uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
-                        {
-                            scene_light_get_property(current_light,
-                                                     SCENE_LIGHT_PROPERTY_FALLOFF,
-                                                    &current_light_falloff);
-                        }
-
-                        scene_light_get_property(current_light,
-                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
-                                                &current_light_shadow_map_bias);
-
                         ogl_uber_add_light_item(new_uber,
+                                                current_light,
                                                 uber_light_type,
                                                 uses_shadow_mapping,
-                                                current_light_shadow_map_bias,
-                                                current_light_falloff,
                                                 n_uber_fragment_property_value_pairs,
                                                 uber_fragment_property_value_pairs);
                     } /* if (uber_light_type != UBER_LIGHT_NONE) */

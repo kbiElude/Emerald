@@ -8,6 +8,7 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_shadow_mapping.h"
+#include "scene/scene_light.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -72,8 +73,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_uber, shaders_fragment_uber, _sh
 /* Internal variables */
 
 /** TODO */
-PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in           shaders_fragment_uber_light_type         light_type,
-                                                                       __in           scene_light_falloff                      light_falloff,
+PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in __notnull scene_light                              light_instance,
+                                                                       __in           shaders_fragment_uber_light_type         light_type,
                                                                        __in __notnull ogl_shader_constructor                   shader_constructor,
                                                                        __in           unsigned int                             n_item,
                                                                        __in __notnull shaders_fragment_uber_property_value*    properties,
@@ -82,6 +83,17 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                                                                        __in_opt       system_hashed_ansi_string                light_visibility_var_name,
                                                                        __in           _uniform_block_id                        fs_props_ub_id)
 {
+    scene_light_falloff light_falloff_type = SCENE_LIGHT_FALLOFF_UNKNOWN;
+
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
+    {
+        scene_light_get_property(light_instance,
+                                 SCENE_LIGHT_PROPERTY_FALLOFF,
+                                &light_falloff_type);
+    }
+
     /* If we should take attenuation into consideration, calculate it at this point. */
     std::stringstream light_attenuation_var_name_sstream;
     std::stringstream light_attenuations_var_name_sstream;
@@ -198,7 +210,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
 
         uses_attenuation = true;
 
-        switch (light_falloff)
+        switch (light_falloff_type)
         {
             case SCENE_LIGHT_FALLOFF_CUSTOM:
             {
@@ -332,7 +344,7 @@ PRIVATE void _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(__in     
                 ASSERT_DEBUG_SYNC(false,
                                   "Unrecognized light falloff requested");
             }
-        } /* switch (light_falloff) */
+        } /* switch (light_falloff_type) */
     }
 
     /* Compute diffuse factor for non-ambient lights */
@@ -743,9 +755,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
 /** Please see header for specification */
 PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light(__in     __notnull                    shaders_fragment_uber                    uber,
                                                                                  __in                                  shaders_fragment_uber_light_type         light_type,
+                                                                                 __in     __notnull                    scene_light                              light_instance,
                                                                                  __in                                  bool                                     is_shadow_caster,
-                                                                                 __in                                  scene_light_shadow_map_bias              sm_bias,
-                                                                                 __in                                  scene_light_falloff                      light_falloff,
                                                                                  __in      __notnull                   unsigned int                             n_light_properties,
                                                                                  __in_ecount_opt(n_light_properties*2) void*                                    light_property_values,
                                                                                  __in_opt __notnull                    PFNSHADERSFRAGMENTUBERPARENTCALLBACKPROC pCallbackProc,
@@ -1144,9 +1155,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
     {
         ogl_shadow_mapping_adjust_fragment_uber_code(uber_ptr->shader_constructor,
                                                      n_items,
-                                                     sm_bias,
+                                                     light_instance,
                                                      uber_ptr->fragment_shader_properties_ub,
-                                                     light_type,
                                                      system_hashed_ansi_string_create(light_world_pos_name_sstream.str().c_str() ),
                                                      system_hashed_ansi_string_create(light_vector_norm_name_sstream.str().c_str() ),
                                                      system_hashed_ansi_string_create(light_vector_non_norm_name_sstream.str().c_str() ),
@@ -1163,8 +1173,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT:
         case SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT:
         {
-            _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(light_type,
-                                                                      light_falloff,
+            _shaders_fragment_uber_add_lambert_ambient_diffuse_factor(light_instance,
+                                                                      light_type,
                                                                       uber_ptr->shader_constructor,
                                                                       n_items,
                                                                       new_light_item_data_ptr->properties,

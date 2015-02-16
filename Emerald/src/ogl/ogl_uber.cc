@@ -17,6 +17,7 @@
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
 #include "scene/scene_graph.h"
+#include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "shaders/shaders_fragment_uber.h"
 #include "shaders/shaders_vertex_uber.h"
@@ -851,10 +852,9 @@ end:
 
 /* Please see header for specification */
 PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull                        ogl_uber                         uber,
+                                                            __in_opt                              scene_light                      light_instance,
                                                             __in                                  shaders_fragment_uber_light_type light_type,
                                                             __in                                  bool                             is_shadow_caster,
-                                                            __in                                  scene_light_shadow_map_bias      shadow_map_bias,
-                                                            __in                                  scene_light_falloff              falloff,
                                                             __in __notnull                        unsigned int                     n_light_properties,
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values)
 {
@@ -877,9 +877,8 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         {
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,
+                                                         light_instance,
                                                          is_shadow_caster,
-                                                         shadow_map_bias,
-                                                         falloff,
                                                          n_light_properties,
                                                          light_property_values,
                                                          _ogl_uber_add_item_shaders_fragment_callback_handler,
@@ -905,9 +904,8 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
 
             fs_item_id = shaders_fragment_uber_add_light(uber_ptr->shader_fragment,
                                                          light_type,
+                                                         light_instance,
                                                          is_shadow_caster,
-                                                         shadow_map_bias,
-                                                         falloff,
                                                          n_light_properties,
                                                          light_property_values,
                                                          NULL, /* callback proc - not used */
@@ -935,9 +933,12 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
         goto end;
     }
 
+    scene_light_get_property(light_instance,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                            &new_item_ptr->shadow_map_bias);
+
     new_item_ptr->fs_item_id       = fs_item_id;
     new_item_ptr->is_shadow_caster = is_shadow_caster;
-    new_item_ptr->shadow_map_bias  = shadow_map_bias;
     new_item_ptr->type             = OGL_UBER_ITEM_LIGHT;
     new_item_ptr->vs_item_id       = vs_item_id;
     result                         = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);

@@ -771,18 +771,26 @@ PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(__notnull 
 
 
 /** Please see header for spec */
-PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor           shader_constructor_fs,
-                                                         __in            uint32_t                         n_light,
-                                                         __in            scene_light_shadow_map_bias      sm_bias,
-                                                         __in            _uniform_block_id                ub_fs,
-                                                         __in            shaders_fragment_uber_light_type light_type,
-                                                         __in            system_hashed_ansi_string        light_world_pos_var_name,
-                                                         __in            system_hashed_ansi_string        light_vector_norm_var_name,
-                                                         __in            system_hashed_ansi_string        light_vector_non_norm_var_name,
-                                                         __out __notnull system_hashed_ansi_string*       out_visibility_var_name)
+PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_shader_constructor     shader_constructor_fs,
+                                                         __in            uint32_t                   n_light,
+                                                         __in __notnull  scene_light                light_instance,
+                                                         __in            _uniform_block_id          ub_fs,
+                                                         __in            system_hashed_ansi_string  light_world_pos_var_name,
+                                                         __in            system_hashed_ansi_string  light_vector_norm_var_name,
+                                                         __in            system_hashed_ansi_string  light_vector_non_norm_var_name,
+                                                         __out __notnull system_hashed_ansi_string* out_visibility_var_name)
 {
-    const bool        is_point_light                            = (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
-                                                                   light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT);
+    scene_light_type            light_type;
+    scene_light_shadow_map_bias light_sm_bias;
+
+    scene_light_get_property(light_instance,
+                             SCENE_LIGHT_PROPERTY_TYPE,
+                            &light_type);
+    scene_light_get_property(light_instance,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                            &light_sm_bias);
+
+    const bool        is_point_light                            = (light_type == SCENE_LIGHT_TYPE_POINT);
     std::stringstream light_projection_matrix_var_name_sstream;
     std::stringstream light_shadow_coord_var_name_sstream;
 
@@ -946,8 +954,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                              << light_visibility_var_name_sstream.str()
                              << " = 0.1 + 0.9 * ";
 
-    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
-        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)
+    if (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL)
     {
         code_snippet_sstream << "textureLod("
                              << shadow_map_sampler_var_name_sstream.str()
@@ -986,7 +993,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
         }
     }
 
-    switch (sm_bias)
+    switch (light_sm_bias)
     {
         case SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE:
         {
@@ -1024,7 +1031,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized shadow map bias requested");
         }
-    } /* switch (sm_bias) */
+    } /* switch (light_sm_bias) */
 
     if (uses_textureprojlod)
     {
@@ -1736,7 +1743,7 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
     float            camera_far_near_plane_diff;
     float            camera_far_plane;
     float            camera_near_plane;
-    bool             uber_flip_z = (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR) ? -1.0f : 1.0f;
+    float            uber_flip_z = (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR) ? -1.0f : 1.0f;
     system_matrix4x4 vp          = NULL;
 
     ogl_scene_renderer_get_property(renderer,
