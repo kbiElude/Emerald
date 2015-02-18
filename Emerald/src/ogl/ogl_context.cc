@@ -2139,6 +2139,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->sampler_bindings                           = NULL;
                                     _result->state_cache                                = NULL;
                                     _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
+                                    _result->shadow_mapping                             = NULL;
                                     _result->texture_compression                        = NULL;
                                     _result->textures                                   = ogl_textures_create( (ogl_context) _result);
                                     _result->to_bindings                                = NULL;
