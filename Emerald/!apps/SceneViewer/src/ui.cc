@@ -188,7 +188,7 @@ PUBLIC void ui_init()
                                                      texture_preview_x1y1,
                                                      texture_preview_max_size,
                                                      NULL, /* texture */
-                                                     OGL_UI_TEXTURE_PREVIEW_TYPE_DEPTH);
+                                                     OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2DARRAY_DEPTH);
 #endif
 
     /* Register for call-backs */

@@ -52,6 +52,10 @@ typedef struct _ogl_shadow_mapping
      * instance, for which the SMs are to be rendered. */
     scene_camera current_camera;
 
+    /* Set by ogl_shadow_mapping_render_shadow_maps(). Stores scene_light
+     * instance, for which the SM is to be rendered. */
+    scene_light current_light;
+
     /* Set by ogl_shadow_mapping_render_shadow_maps(). Stores info about the
      * target face the meshes are rendered to. This is used by subsequent
      * call to ogl_shadow_mapping_render_shadow_map_meshes() */
@@ -97,6 +101,7 @@ typedef struct _ogl_shadow_mapping
     {
         context             = NULL;
         current_camera      = NULL;
+        current_light       = NULL;
         current_sm_texture  = NULL;
         current_target_face = OGL_SHADOW_MAPPING_TARGET_FACE_UNKNOWN;
         fbo_id              = 0;
@@ -278,6 +283,8 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
                                                                                __in            _uniform_block_id          ub_fs,
                                                                                __in  __notnull scene_light                light,
                                                                                __in            uint32_t                   n_light,
+                                                                               __out __notnull system_hashed_ansi_string* out_light_far_near_diff_var_name_has,
+                                                                               __out __notnull system_hashed_ansi_string* out_light_near_var_name_has,
                                                                                __out __notnull system_hashed_ansi_string* out_light_projection_matrix_var_name_has,
                                                                                __out __notnull system_hashed_ansi_string* out_light_view_matrix_var_name_has,
                                                                                __out __notnull system_hashed_ansi_string* out_shadow_map_sampler_var_name_has)
@@ -321,9 +328,25 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
 
         case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID:
         {
-            /* Add light_near uniform */
-
             /* Add light_far_near_diff uniform */
+            _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                         n_light,
+                                                         system_hashed_ansi_string_create("far_near_diff"),
+                                                         VARIABLE_TYPE_UNIFORM,
+                                                         LAYOUT_QUALIFIER_NONE,
+                                                         TYPE_FLOAT,
+                                                         ub_fs, /* uniform_block */
+                                                         out_light_far_near_diff_var_name_has);
+
+            /* Add light_near uniform */
+            _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                         n_light,
+                                                         system_hashed_ansi_string_create("near"),
+                                                         VARIABLE_TYPE_UNIFORM,
+                                                         LAYOUT_QUALIFIER_NONE,
+                                                         TYPE_FLOAT,
+                                                         ub_fs, /* uniform_block */
+                                                         out_light_near_var_name_has);
 
             /* Add light_view matrix uniform */
             _ogl_shadow_mapping_add_constructor_variable(constructor,
@@ -342,7 +365,7 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
                                                          VARIABLE_TYPE_UNIFORM,
                                                          LAYOUT_QUALIFIER_NONE,
                                                          TYPE_SAMPLER2DARRAYSHADOW,
-                                                         ub_fs, /* uniform_block */
+                                                         0, /* uniform_block */
                                                          out_shadow_map_sampler_var_name_has);
 
             break;
@@ -993,18 +1016,25 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                          __in            system_hashed_ansi_string  light_vector_non_norm_var_name,
                                                          __out __notnull system_hashed_ansi_string* out_visibility_var_name)
 {
-    scene_light_type            light_type;
-    scene_light_shadow_map_bias light_sm_bias;
+    scene_light_shadow_map_pointlight_algorithm light_sm_pointlight_algorithm;
+    scene_light_shadow_map_bias                 light_sm_bias;
+    scene_light_type                            light_type;
 
     scene_light_get_property(light_instance,
                              SCENE_LIGHT_PROPERTY_TYPE,
                             &light_type);
     scene_light_get_property(light_instance,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                            &light_sm_pointlight_algorithm);
+    scene_light_get_property(light_instance,
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
                             &light_sm_bias);
 
+
     const bool                is_directional_light                  = (light_type == SCENE_LIGHT_TYPE_DIRECTIONAL);
     const bool                is_point_light                        = (light_type == SCENE_LIGHT_TYPE_POINT);
+    system_hashed_ansi_string light_far_near_diff_var_name_has      = NULL;
+    system_hashed_ansi_string light_near_var_name_has               = NULL;
     system_hashed_ansi_string light_projection_matrix_var_name_has  = NULL;
     system_hashed_ansi_string light_view_matrix_var_name_has        = NULL;
     system_hashed_ansi_string light_shadow_coord_var_name_has       = NULL;
@@ -1025,6 +1055,8 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                                           ub_fs,
                                                                           light_instance,
                                                                           n_light,
+                                                                         &light_far_near_diff_var_name_has,
+                                                                         &light_near_var_name_has,
                                                                          &light_projection_matrix_var_name_has,
                                                                          &light_view_matrix_var_name_has,
                                                                          &light_shadow_map_sampler_var_name_has);
@@ -1033,64 +1065,141 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     /* Add helper calculations for point lights */
     system_hashed_ansi_string code_snippet_has     = NULL;
     std::stringstream         code_snippet_sstream;
+    std::stringstream         light_uv_var_name_sstream;
+    std::stringstream         light_vertex_depth_var_name_sstream;
     std::stringstream         light_vertex_depth_window_var_name_sstream;
     std::stringstream         light_vertex_var_name_sstream;
 
     if (is_point_light)
     {
-        std::stringstream light_vertex_abs_var_name_sstream;
-        std::stringstream light_vertex_abs_max_var_name_sstream;
-        std::stringstream light_vertex_clip_var_name_sstream;
+        switch (light_sm_pointlight_algorithm)
+        {
+            case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL:
+            {
+                std::stringstream light_vertex_abs_var_name_sstream;
+                std::stringstream light_vertex_abs_max_var_name_sstream;
+                std::stringstream light_vertex_clip_var_name_sstream;
 
-        light_vertex_abs_var_name_sstream          << "light_"
-                                                   << n_light
-                                                   << "_vertex_abs";
-        light_vertex_abs_max_var_name_sstream      << "light_"
-                                                   << n_light
-                                                   << "_vertex_abs_max";
-        light_vertex_clip_var_name_sstream         << "light_"
-                                                   << n_light
-                                                   << "_vertex_clip";
-        light_vertex_depth_window_var_name_sstream << "light_"
-                                                   << n_light
-                                                   << "_vertex_depth_window";
-        light_vertex_var_name_sstream              << "light_"
-                                                   << n_light
-                                                   << "_vertex";
+                light_vertex_abs_var_name_sstream          << "light_"
+                                                           << n_light
+                                                           << "_vertex_abs";
+                light_vertex_abs_max_var_name_sstream      << "light_"
+                                                           << n_light
+                                                           << "_vertex_abs_max";
+                light_vertex_clip_var_name_sstream         << "light_"
+                                                           << n_light
+                                                           << "_vertex_clip";
+                light_vertex_depth_window_var_name_sstream << "light_"
+                                                           << n_light
+                                                           << "_vertex_depth_window";
+                light_vertex_var_name_sstream              << "light_"
+                                                           << n_light
+                                                           << "_vertex";
 
-        /* 1. Move current fragment's world position relative to the light position.
-         *    The fragment is now in light space.
-         * 2. Figure out which cube map we should sample from.
-         * 3. Compute the depth of the fragment in light space.
-         */
-        code_snippet_sstream << "vec4 "
-                             << light_vertex_var_name_sstream.str()
-                             << " = vec4(world_vertex - "
-                             << system_hashed_ansi_string_get_buffer(light_world_pos_var_name)
-                             << ".xyz, 1.0);\n"
-                                "vec4 "
-                             << light_vertex_abs_var_name_sstream.str()
-                             << " = abs("
-                             << light_vertex_var_name_sstream.str()
-                             << ");\n"
-                             << "float "
-                             << light_vertex_abs_max_var_name_sstream.str()
-                             << " = -max(" << light_vertex_abs_var_name_sstream.str() << ".x, "
-                                    "max(" << light_vertex_abs_var_name_sstream.str() << ".y, "
-                                           << light_vertex_abs_var_name_sstream.str() << ".z) );\n"
-                             << "vec4 "
-                             << light_vertex_clip_var_name_sstream.str()
-                             << " = "
-                             << system_hashed_ansi_string_get_buffer(light_projection_matrix_var_name_has)
-                             << " * vec4(0.0, 0.0, " << light_vertex_abs_max_var_name_sstream.str() << ", 1.0);\n"
-                             << "float "
-                             << light_vertex_depth_window_var_name_sstream.str()
-                             << " = "
-                             << light_vertex_clip_var_name_sstream.str()
-                             << ".z / "
-                             << light_vertex_clip_var_name_sstream.str()
-                             << ".w * 0.5 + 0.5;\n";
-    }
+                /* 1. Move current fragment's world position relative to the light position.
+                 *    The fragment is now in light space.
+                 * 2. Figure out which cube map we should sample from.
+                 * 3. Compute the depth of the fragment in light space.
+                 */
+                code_snippet_sstream << "vec4 "
+                                     << light_vertex_var_name_sstream.str()
+                                     << " = vec4(world_vertex - "
+                                     << system_hashed_ansi_string_get_buffer(light_world_pos_var_name)
+                                     << ".xyz, 1.0);\n"
+                                        "vec4 "
+                                     << light_vertex_abs_var_name_sstream.str()
+                                     << " = abs("
+                                     << light_vertex_var_name_sstream.str()
+                                     << ");\n"
+                                     << "float "
+                                     << light_vertex_abs_max_var_name_sstream.str()
+                                     << " = -max(" << light_vertex_abs_var_name_sstream.str() << ".x, "
+                                            "max(" << light_vertex_abs_var_name_sstream.str() << ".y, "
+                                                   << light_vertex_abs_var_name_sstream.str() << ".z) );\n"
+                                     << "vec4 "
+                                     << light_vertex_clip_var_name_sstream.str()
+                                     << " = "
+                                     << system_hashed_ansi_string_get_buffer(light_projection_matrix_var_name_has)
+                                     << " * vec4(0.0, 0.0, " << light_vertex_abs_max_var_name_sstream.str() << ", 1.0);\n"
+                                     << "float "
+                                     << light_vertex_depth_window_var_name_sstream.str()
+                                     << " = "
+                                     << light_vertex_clip_var_name_sstream.str()
+                                     << ".z / "
+                                     << light_vertex_clip_var_name_sstream.str()
+                                     << ".w * 0.5 + 0.5;\n";
+
+                break;
+            }
+
+            case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID:
+            {
+                std::stringstream light_vertex_length_var_name_sstream;
+                std::stringstream light_vertex_z_abs_var_name_sstream;
+
+                light_uv_var_name_sstream            << "light_"
+                                                     << n_light
+                                                     << "_uv";
+                light_vertex_depth_var_name_sstream  << "light_"
+                                                     << n_light
+                                                     << "vertex_depth";
+                light_vertex_length_var_name_sstream << "light_"
+                                                     << n_light
+                                                     << "_vertex_length";
+                light_vertex_var_name_sstream        << "light_"
+                                                     << n_light
+                                                     << "_vertex";
+                light_vertex_z_abs_var_name_sstream  << "light_"
+                                                     << n_light
+                                                     << "_vertex_z_abs";
+
+                code_snippet_sstream 
+                                     /* Transform world space vertex into light space */
+                                     << "vec4 "
+                                     << light_vertex_var_name_sstream.str()
+                                     << " = "
+                                     << system_hashed_ansi_string_get_buffer(light_view_matrix_var_name_has)
+                                     << " * vec4(world_vertex, 1.0);\n"
+                                     /* Calculate the distance between light and the vertex */
+                                     << "float "
+                                     << light_vertex_length_var_name_sstream.str()
+                                     << " = length("
+                                     << light_vertex_var_name_sstream.str()
+                                     << ");\n"
+                                     /* Normalize the vector */
+                                     << light_vertex_var_name_sstream.str()
+                                     << " /= "
+                                     << light_vertex_length_var_name_sstream.str()
+                                     << ";\n"
+                                     /* Compute the depth value for the current fragment. */
+                                     << "float "
+                                     << light_vertex_z_abs_var_name_sstream.str()
+                                     << " = abs("
+                                     << light_vertex_var_name_sstream.str() << ".z);\n"
+                                     << "vec2 "
+                                     << light_uv_var_name_sstream.str()
+                                     << " = vec2("  << light_vertex_var_name_sstream.str() << ".x / (1.0 + " << light_vertex_z_abs_var_name_sstream.str() << ") * 0.5 + 0.5, "
+                                                    << light_vertex_var_name_sstream.str() << ".y / (1.0 + " << light_vertex_z_abs_var_name_sstream.str() << ") * 0.5 + 0.5);\n"
+                                     << "float "
+                                     << light_vertex_depth_var_name_sstream.str()
+                                     << " = ("
+                                     << light_vertex_length_var_name_sstream.str()
+                                     << " - "
+                                     << system_hashed_ansi_string_get_buffer(light_near_var_name_has)
+                                     << ") / "
+                                     << system_hashed_ansi_string_get_buffer(light_far_near_diff_var_name_has)
+                                     << " * 0.5 + 0.5;\n";
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized shadow map point light algorithm");
+            }
+        } /* switch (light_sm_pointlight_algorithm) */
+    } /* if (is_point_light) */
 
     /* Add bias calculation */
     system_hashed_ansi_string light_bias_var_name_has = NULL;
@@ -1131,14 +1240,55 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
         /* All other light use shadow maps constructed with perspective projection matrices */
         if (is_point_light)
         {
-            code_snippet_sstream << "texture("
-                                 << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
-                                 << ", vec4("
-                                 << "normalize(" << light_vertex_var_name_sstream.str() << ".xyz)"
-                                 << ", "
-                                 << light_vertex_depth_window_var_name_sstream.str()
-                                 << " - "
-                                 << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
+            scene_light_shadow_map_pointlight_algorithm sm_algorithm;
+
+            scene_light_get_property(light_instance,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                    &sm_algorithm);
+
+            switch (sm_algorithm)
+            {
+                case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL:
+                {
+                    code_snippet_sstream << "texture("
+                                         << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
+                                         << ", vec4("
+                                         << "normalize(" << light_vertex_var_name_sstream.str() << ".xyz)"
+                                         << ", "
+                                         << light_vertex_depth_window_var_name_sstream.str()
+                                         << " - "
+                                         << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
+
+                    break;
+                }
+
+                case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID:
+                {
+                    code_snippet_sstream << "texture("
+                                         << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
+                                         << ", "
+                                         << "vec4("
+                                         /* UV */
+                                         << light_uv_var_name_sstream.str()
+                                         << ", "
+                                         /* Which face should we sample from? */
+                                         << "("
+                                         << light_vertex_var_name_sstream.str() << ".z >= 0.0) ? 1.0 : 0.0, "
+                                         /* Fragment depth, as seen in light space */
+                                         << light_vertex_depth_var_name_sstream.str()
+                                         << " - "
+                                         /* Bias */
+                                         << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
+
+                    break;
+                }
+
+                default:
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized point light SM algorithm");
+                }
+            } /* switch (sm_algorithm) */
         } /* if (point light) */
         else
         {
@@ -1469,7 +1619,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                 case OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT:
                 {
                     up_direction  [1] =  1.0f;
-                    view_direction[0] = -1.0f;
+                    view_direction[2] = -1.0f;
 
                     break;
                 }
@@ -1477,7 +1627,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                 case OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR:
                 {
                     up_direction  [1] = 1.0f;
-                    view_direction[0] = 1.0f;
+                    view_direction[2] = 1.0f;
 
                     break;
                 }
@@ -1630,17 +1780,6 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
         }
 
         case SCENE_LIGHT_TYPE_POINT:
-        {
-            if (light_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
-                light_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
-            {
-                /* Do not calculate the projection matrix */
-                break;
-            }
-
-            /* NOTE: fall-through to the SCENE_LIGHT_TYPE_SPOT handler! */
-        }
-
         case SCENE_LIGHT_TYPE_SPOT:
         {
             /* Calculate min & max coordinates of an AABB that is an intersection of both
@@ -1651,6 +1790,10 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
              * geometry which should be taken into account when shading.
              * Far plane is a bit of a heuristical approach, again, but seems to work nicely
              * in a majority of the cases.
+             *
+             * NOTE: Projection matrix is NOT needed for point lights that use dual-paraboloid
+             *       shadow mapping. However, we need to set the far plane for this algorithm,
+             *       which means we still need to execute 90% of the code below.
              */
             float result_max[3];
             float result_min[3];
@@ -1692,7 +1835,6 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
             }
             else
             {
-
                 /* TODO: We should technically be passing projection matrices on a per-face basis,
                  *       since max_len and min_len are very likely to differ between faces.
                  *       However, this would increase the amount of data passed to the GPU.
@@ -1703,26 +1845,38 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                  */
                 float pointlight_sm_near_plane;
 
-#ifdef _DEBUG
-                static bool has_logged_warning = false;
-
-                if (!has_logged_warning)
-                {
-                    LOG_ERROR("NOTE: point light projection matrix calculation is potentially flaky."
-                              " See the comment attached to the source code if you're getting glitched shadows.");
-
-                    has_logged_warning = true;
-                }
-#endif
-
                 scene_light_get_property(light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_SPOTLIGHT_NEAR_PLANE,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
                                         &pointlight_sm_near_plane);
 
-                *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
-                                                                                               1.0f, /* ar - shadow maps are quads */
-                                                                                               pointlight_sm_near_plane,
-                                                                                               pointlight_sm_near_plane + max_len + min_len);
+                if (light_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
+                    light_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
+                {
+                    //const float light_far_plane = pointlight_sm_near_plane + max_len + min_len;
+                    const float light_far_plane = 50.0f;
+
+                    scene_light_set_property(light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                            &light_far_plane);
+                }
+                else
+                {
+#ifdef _DEBUG
+                    static bool has_logged_warning = false;
+
+                    if (!has_logged_warning)
+                    {
+                        LOG_ERROR("NOTE: point light projection matrix calculation is potentially flaky."
+                                  " See the comment attached to the source code if you're getting glitched shadows.");
+
+                        has_logged_warning = true;
+                    }
+#endif
+                     *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
+                                                                                                    1.0f, /* ar - shadow maps are quads */
+                                                                                                    pointlight_sm_near_plane,
+                                                                                                    pointlight_sm_near_plane + max_len + min_len);
+                }
             } /* if (light_type != SCENE_LIGHT_TYPE_SPOT) */
 
             break;
@@ -1863,36 +2017,60 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
                                                                         scene,
                                                                         false); /* use_shadow_maps */
 
-    /* Configure the uber */
-    float            camera_far_near_plane_diff;
-    float            camera_far_plane;
-    float            camera_near_plane;
-    float            uber_flip_z = (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR) ? -1.0f : 1.0f;
-    system_matrix4x4 vp          = NULL;
+    /* Configure the uber. Since we're rendering a shadow map, configure far & near planes
+     * relative to the light space.
+     */
+    scene_light_type light_type;
+
+    scene_light_get_property(shadow_mapping_ptr->current_light,
+                             SCENE_LIGHT_PROPERTY_TYPE,
+                            &light_type);
+
+    if (light_type == SCENE_LIGHT_TYPE_POINT)
+    {
+        scene_light_shadow_map_pointlight_algorithm sm_algorithm;
+
+        scene_light_get_property(shadow_mapping_ptr->current_light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                &sm_algorithm);
+
+        if (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID)
+        {
+            float light_far_near_plane_diff;
+            float light_far_plane;
+            float light_near_plane;
+
+            scene_light_get_property(shadow_mapping_ptr->current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                    &light_far_plane);
+            scene_light_get_property(shadow_mapping_ptr->current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+                                    &light_near_plane);
+
+            ASSERT_DEBUG_SYNC(light_far_plane >= light_near_plane,
+                              "Light clipping planes are incorrect");
+
+            light_far_near_plane_diff = light_far_plane - light_near_plane;
+
+            ASSERT_DEBUG_SYNC(light_far_near_plane_diff > 0.0f,
+                "(Light far plane distance - near plane distance) is invalid.");
+
+            ogl_uber_set_shader_general_property(sm_material_uber,
+                                                 OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
+                                                &light_far_near_plane_diff);
+            ogl_uber_set_shader_general_property(sm_material_uber,
+                                                 OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,
+                                                &light_near_plane);
+        } /* if (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID) */
+    }
+
+    /* Set VP */
+    system_matrix4x4 vp = NULL;
 
     ogl_scene_renderer_get_property(renderer,
                                     OGL_SCENE_RENDERER_PROPERTY_VP,
                                    &vp);
-    scene_camera_get_property      (shadow_mapping_ptr->current_camera,
-                                    SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
-                                    frame_time,
-                                   &camera_far_plane);
-    scene_camera_get_property      (shadow_mapping_ptr->current_camera,
-                                    SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
-                                    frame_time,
-                                   &camera_near_plane);
 
-    camera_far_near_plane_diff = camera_far_plane - camera_near_plane;
-
-    ogl_uber_set_shader_general_property(sm_material_uber,
-                                         OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
-                                        &camera_far_near_plane_diff);
-    ogl_uber_set_shader_general_property(sm_material_uber,
-                                         OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,
-                                        &camera_near_plane);
-    ogl_uber_set_shader_general_property(sm_material_uber,
-                                         OGL_UBER_GENERAL_PROPERTY_FLIP_Z,
-                                        &uber_flip_z);
     ogl_uber_set_shader_general_property(sm_material_uber,
                                          OGL_UBER_GENERAL_PROPERTY_VP,
                                          vp);
@@ -2160,6 +2338,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
                                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
                                             &light_vp_matrix);
 
+                    system_matrix4x4_set_from_matrix4x4(light_view_matrix,
+                                                        sm_view_matrix);
+
                     if (sm_projection_matrix != NULL)
                     {
                         scene_light_get_property(current_light,
@@ -2183,9 +2364,6 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
                                                             sm_view_matrix);
                     }
 
-                    system_matrix4x4_set_from_matrix4x4(light_view_matrix,
-                                                        sm_view_matrix);
-
                     /* NOTE: This call is recursive (this function is called by exactly the same function,
                      *       but we're requesting no shadow maps this time AND the scene graph has already
                      *       been traversed, so it should be fairly inexpensive and focus solely on drawing
@@ -2195,6 +2373,7 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
                      *       Since there's no way we could include additional info which would be rerouted to
                      *       that call-back, we store current target face in ogl_shadow_mapping instance.
                      */
+                    shadow_mapping_ptr->current_light       = current_light;
                     shadow_mapping_ptr->current_target_face = current_target_face;
 
                     ogl_scene_renderer_render_scene_graph(renderer,

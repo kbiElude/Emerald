@@ -568,9 +568,9 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                       n_light < n_uber_lights;
                     ++n_light)
     {
-        scene_light_shadow_map_bias      current_light_shadow_map_bias      = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
         scene_light_falloff              current_light_falloff              = SCENE_LIGHT_FALLOFF_UNKNOWN;
         bool                             current_light_is_shadow_caster     = false;
+        scene_light_shadow_map_bias      current_light_shadow_map_bias      = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
         scene_light_type                 current_light_type                 = SCENE_LIGHT_TYPE_UNKNOWN;
         scene_light_falloff              current_uber_item_falloff          = SCENE_LIGHT_FALLOFF_UNKNOWN;
         bool                             current_uber_item_is_shadow_caster = false;
@@ -623,12 +623,35 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
             scene_light_get_property         (current_light,
                                               SCENE_LIGHT_PROPERTY_FALLOFF,
                                              &current_light_falloff);
+
             ogl_uber_get_shader_item_property(uber,
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,
                                              &current_uber_item_falloff);
 
             if (current_light_falloff != current_uber_item_falloff)
+            {
+                /* Nope */
+                result = false;
+
+                goto end;
+            }
+        }
+
+        if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+        {
+            scene_light_shadow_map_pointlight_algorithm current_light_shadow_map_pointlight_algorithm     = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_UNKNOWN;
+            scene_light_shadow_map_pointlight_algorithm current_uber_item_shadow_map_pointlight_algorithm = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_UNKNOWN;
+
+            scene_light_get_property         (current_light,
+                                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                             &current_light_shadow_map_pointlight_algorithm);
+            ogl_uber_get_shader_item_property(uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                             &current_uber_item_shadow_map_pointlight_algorithm);
+
+            if (current_light_shadow_map_pointlight_algorithm != current_uber_item_shadow_map_pointlight_algorithm)
             {
                 /* Nope */
                 result = false;

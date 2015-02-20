@@ -459,16 +459,6 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     else
     if (vs_type == SHADERS_VERTEX_UBER_TYPE_DUAL_PARABOLOID_SM)
     {
-        /* Add flip_z uniform */
-        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                          VARIABLE_TYPE_UNIFORM,
-                                                          LAYOUT_QUALIFIER_NONE,
-                                                          TYPE_FLOAT,
-                                                          0, /* array_size */
-                                                          ub_id,
-                                                          system_hashed_ansi_string_create("flip_z"),
-                                                          NULL /* out_variable_id */);
-
         /* Add near_plane uniform */
         ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                           VARIABLE_TYPE_UNIFORM,
@@ -540,15 +530,16 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
         {
             ogl_shader_constructor_set_function_body(shader_constructor,
                                                      0, /* main() */
-                                                     system_hashed_ansi_string_create("vec4  world_vertex            = vp * model * vec4(object_vertex, 1.0);\n"
-                                                                                      "vec4  clip_vertex             = world_vertex / world_vertex.wwww;\n"
+                                                     system_hashed_ansi_string_create("vec4 world_vertex = vp * model * vec4(object_vertex, 1.0);\n"
+                                                     "world_vertex.z *= -1.0;\n"
+                                                                                      "vec4 clip_vertex  = world_vertex;\n"
+                                                                                      "\n"
                                                                                       "float light_to_vertex_vec_len = length(clip_vertex);\n"
                                                                                       "\n"
-                                                                                      "clip_vertex.z *= flip_z;\n" /* front = 1; back = -1 */
-                                                                                      "clip_vertex   /= light_to_vertex_vec_len;\n"
-                                                                                      "\n"
-                                                                                      "clip_vertex.xy /= (clip_vertex.z + 1.0);\n"
-                                                                                      "clip_vertex.z   = float(light_to_vertex_vec_len - near_plane) / far_near_plane_diff * 2.0 - 1.0;\n"
+                                                                                      "clip_vertex    /= vec4(light_to_vertex_vec_len);\n"
+                                                                                      "clip_vertex.xy /= vec2(clip_vertex.z + 1.0);\n"
+                                                                                      "clip_vertex.xy  = clip_vertex.xy;\n"
+                                                                                      "clip_vertex.z   = (light_to_vertex_vec_len - near_plane) / far_near_plane_diff * 2.0 - 1.0;\n"
                                                                                       "clip_vertex.w   = 1.0;\n"
                                                                                       "\n"
                                                                                       "gl_Position = clip_vertex;\n") );

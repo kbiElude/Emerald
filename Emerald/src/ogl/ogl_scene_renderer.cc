@@ -899,20 +899,38 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
 
         if (current_light_type == SCENE_LIGHT_TYPE_POINT)
         {
+            float            current_light_near_plane;
             const float*     current_light_projection_matrix_data = NULL;
             system_matrix4x4 current_light_projection_matrix      = NULL;
+            const float*     current_light_view_matrix_data       = NULL;
+            system_matrix4x4 current_light_view_matrix            = NULL;
 
-            /* Update ogl_uber with light's projection matrix */
+            /* Update ogl_uber with point light-specific data */
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+                                    &current_light_near_plane);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_PROJECTION,
                                     &current_light_projection_matrix);
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
+                                    &current_light_view_matrix);
 
             current_light_projection_matrix_data = system_matrix4x4_get_row_major_data(current_light_projection_matrix);
+            current_light_view_matrix_data       = system_matrix4x4_get_row_major_data(current_light_view_matrix);
 
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,
+                                             &current_light_near_plane);
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX,
                                               current_light_projection_matrix_data);
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
+                                              current_light_view_matrix_data);
         }
 
         if (current_light_type == SCENE_LIGHT_TYPE_SPOT)
@@ -1197,6 +1215,8 @@ PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_ren
     } /* for (all clipping planes) */
 
 end:
+    result = true; /* TODO TEMP TEMP TEMP TEMP TEMP AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
+
     /* All done */
     if (result)
     {

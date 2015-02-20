@@ -39,14 +39,14 @@ typedef enum scene_light_property
      */
     SCENE_LIGHT_PROPERTY_EDGE_ANGLE,
 
-    /* Not settable, system_hashed_ansi_string */
-    SCENE_LIGHT_PROPERTY_NAME,
-
     /* Settable, scene_graph_node.
      *
      * Set in run-time.
      */
     SCENE_LIGHT_PROPERTY_GRAPH_OWNER_NODE,
+
+    /* Not settable, system_hashed_ansi_string */
+    SCENE_LIGHT_PROPERTY_NAME,
 
     /* Settable, curve_container.
      *
@@ -119,6 +119,12 @@ typedef enum scene_light_property
     /* Settable, scene_light_shadow_map_pointlight_algorithm. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
 
+    /* Settable, float. Set in run-time by ogl_shadow_mapping during
+     * the shadow map baking phase (for dual paraboloid shadow mapping only).
+     * Info necessary to 
+     * . */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+
     /* Settable, float.
      *
      * Tweakable near-plane distance for point light shadow mapping. */
@@ -165,6 +171,7 @@ typedef enum
      */
      SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID,
 
+     SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_UNKNOWN
 } scene_light_shadow_map_pointlight_algorithm;
 
 typedef enum

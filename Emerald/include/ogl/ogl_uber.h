@@ -19,7 +19,6 @@ typedef enum
 {
     OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,     /* vec3  */
     OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF, /* float */
-    OGL_UBER_GENERAL_PROPERTY_FLIP_Z,              /* float */
     OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,          /* float */
     OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
     OGL_UBER_GENERAL_PROPERTY_VP,
@@ -56,16 +55,20 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,           /* settable, float[3].             used by directional & point lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,         /* settable, float[3].             used by directional lights         */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,        /* settable, float, radians.       used by spot lights.               */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,     /* settable, float,                used by point lights (>= 1 algo)   */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,          /* settable, float[3].             used by point lights               */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX, /* settable, float[16], row-major. used by point lights               */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,        /* settable, float,                used by point lights (>= 1 algo)   */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX, /* settable, float[16], row-major. used by point lights (>= 1 algo)   */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,             /* settable, float.                used by point & spot lights        */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,       /* settable, float[16], row-major. used by point lights (>= 1 algo)   */
 
     OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,      /* settable, float[16], row-major */
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
 
     OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,        /* not settable, scene_light_falloff */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP,
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS, /* not settable, scene_light_shadow_map_bias */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,                 /* not settable, scene_light_shadow_map_bias */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM, /* not settable, scene_light_shadow_map_pointlight_algorithm */
     OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
     OGL_UBER_ITEM_PROPERTY_TYPE,

@@ -40,6 +40,7 @@ typedef struct
     scene_light_shadow_map_filtering            shadow_map_filtering;             /* NOTE: This property affects the generated ogl_uber! */
     ogl_texture_internalformat                  shadow_map_internalformat;
     scene_light_shadow_map_pointlight_algorithm shadow_map_pointlight_algorithm;  /* NOTE: This property affects the generated ogl_uber! */
+    float                                       shadow_map_pointlight_far_plane;
     float                                       shadow_map_pointlight_near_plane;
     system_matrix4x4                            shadow_map_projection;
     float                                       shadow_map_spotlight_near_plane;
@@ -275,8 +276,9 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
                                                    light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat        = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
-    //light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
-    light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL;
+    light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
+    //light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL;
+    light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
     light_ptr->shadow_map_projection            = system_matrix4x4_create();
     light_ptr->shadow_map_spotlight_near_plane  = 0.1f;
@@ -757,6 +759,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM:
         {
             *(scene_light_shadow_map_pointlight_algorithm*) out_result = light_ptr->shadow_map_pointlight_algorithm;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE:
+        {
+            *(float*) out_result = light_ptr->shadow_map_pointlight_far_plane;
 
             break;
         }
@@ -1280,6 +1289,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM:
         {
             light_ptr->shadow_map_pointlight_algorithm = *(scene_light_shadow_map_pointlight_algorithm*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE:
+        {
+            light_ptr->shadow_map_pointlight_far_plane = *(float*) data;
 
             break;
         }

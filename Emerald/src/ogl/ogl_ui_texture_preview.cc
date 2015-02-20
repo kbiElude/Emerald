@@ -31,6 +31,7 @@ typedef struct
     GLenum  blend_function_src_alpha;
     GLenum  blend_function_src_rgb;
     bool    is_blending_enabled;
+    GLuint  layer_shown;
 
     float                       border_width[2];
     float                       max_size[2];
@@ -41,6 +42,7 @@ typedef struct
     system_hashed_ansi_string name;
     ogl_program               program;
     GLint                     program_border_width_uniform_location;
+    GLint                     program_layer_uniform_location;
     GLint                     program_texture_uniform_location;
     GLint                     program_x1y1x2y2_uniform_location;
     ogl_texture               texture;
@@ -64,6 +66,7 @@ typedef struct
     PFNGLDRAWARRAYSPROC                  pGLDrawArrays;
     PFNGLENABLEPROC                      pGLEnable;
     PFNGLGETTEXLEVELPARAMETERIVPROC      pGLGetTexLevelParameteriv;
+    PFNGLPROGRAMUNIFORM1FPROC            pGLProgramUniform1f;
     PFNGLPROGRAMUNIFORM2FVPROC           pGLProgramUniform2fv;
     PFNGLPROGRAMUNIFORM4FVPROC           pGLProgramUniform4fv;
     PFNGLTEXPARAMETERIPROC               pGLTexParameteri;
@@ -71,40 +74,47 @@ typedef struct
 } _ogl_ui_texture_preview;
 
 /** Internal variables */
-static const char* ui_texture_preview_renderer_alpha_body  = "result = vec4(textureLod(texture, uv, 0).aaa, 1.0);\n";
-static const char* ui_texture_preview_renderer_depth_body  = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0);\n";
-static const char* ui_texture_preview_renderer_red_body    = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0);\n";
-static const char* ui_texture_preview_renderer_rgb_body    = "result = vec4(textureLod(texture, uv, 0).xyz, 1.0);\n";
-static const char* ui_texture_preview_renderer_rgba_body   = "result = textureLod(texture, uv, 0);\n";
-static const char* ui_texture_preview_fragment_shader_body = "#version 330\n"
-                                                             "\n"
-                                                             "in      vec2      uv;\n"
-                                                             "out     vec4      result;\n"
-                                                             "uniform vec2      border_width;\n"
-                                                             "uniform sampler2D texture;\n"
-                                                             "\n"
-                                                             "void main()\n"
-                                                             "{\n"
-                                                             "    RENDER_RESULT;\n"
-                                                             "\n"
-                                                             /* Border? */
-                                                             "    if (uv.x < border_width[0]         ||\n"
-                                                             "        uv.x > (1.0 - border_width[0]) ||\n"
-                                                             "        uv.y < border_width[1]         ||\n"
-                                                             "        uv.y > (1.0 - border_width[1]) )\n"
-                                                             "    {\n"
-                                                             "        result = vec4(0.42f, 0.41f, 0.41f, 1.0);\n"
-                                                             "    }\n"
-                                                             "}\n";
+static const char* ui_texture_preview_renderer_sampler2d_alpha_body      = "result = vec4(textureLod(texture, uv, 0).aaa, 1.0);\n";
+static const char* ui_texture_preview_renderer_sampler2d_depth_body      = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0);\n";
+static const char* ui_texture_preview_renderer_sampler2d_red_body        = "result = vec4(textureLod(texture, uv, 0).xxx, 1.0);\n";
+static const char* ui_texture_preview_renderer_sampler2d_rgb_body        = "result = vec4(textureLod(texture, uv, 0).xyz, 1.0);\n";
+static const char* ui_texture_preview_renderer_sampler2d_rgba_body       = "result = textureLod(texture, uv, 0);\n";
+static const char* ui_texture_preview_renderer_sampler2darray_depth_body = "result = vec4(textureLod(texture, vec3(uv, layer), 0.0).xxx, 1.0);\n";
+static const char* ui_texture_preview_fragment_shader_body               = "#version 420\n"
+                                                                           "\n"
+                                                                           "in      vec2         uv;\n"
+                                                                           "out     vec4         result;\n"
+                                                                           "uniform vec2         border_width;\n"
+                                                                           "uniform SAMPLER_TYPE texture;\n"
+                                                                           "uniform float        layer;\n"
+                                                                           "\n"
+                                                                           "void main()\n"
+                                                                           "{\n"
+                                                                           "    RENDER_RESULT;\n"
+                                                                           "\n"
+                                                                           /* Border? */
+                                                                           "    if (uv.x < border_width[0]         ||\n"
+                                                                           "        uv.x > (1.0 - border_width[0]) ||\n"
+                                                                           "        uv.y < border_width[1]         ||\n"
+                                                                           "        uv.y > (1.0 - border_width[1]) )\n"
+                                                                           "    {\n"
+                                                                           "        result = vec4(0.42f, 0.41f, 0.41f, 1.0);\n"
+                                                                           "    }\n"
+                                                                           "}\n";
+
+static const char* ui_texture_preview_sampler2d_type      = "sampler2D";
+static const char* ui_texture_preview_sampler2darray_type = "sampler2DArray";
+
 
 /** TODO */
 PRIVATE const char* _ogl_ui_texture_preview_get_program_name(__in ogl_ui_texture_preview_type type)
 {
-    const char* result = (type == OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA) ? "UI texture preview [alpha]" :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_DEPTH) ? "UI texture preview [depth]" :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_RED)   ? "UI texture preview [red]"   :
-                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_RGB)   ? "UI texture preview [rgb]"   :
-                                                                       "UI texture preview [rgba]";
+    const char* result = (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA) ? "UI texture preview [sampler2d alpha]" :
+                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH) ? "UI texture preview [sampler2d depth]" :
+                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED)   ? "UI texture preview [sampler2d red]"   :
+                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB)   ? "UI texture preview [sampler2d rgb]"   :
+                         (type == OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA)  ? "UI texture preview [sampler2d rgba]"  :
+                                                                                 "UI texture preview [sampler2DArray depth]";
 
     return result;
 }
@@ -128,20 +138,83 @@ PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui         
                                                       system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)) );
 
     /* Set up FS body */
-    std::string fs_body            = ui_texture_preview_fragment_shader_body;
-    const char* render_result_body = (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA) ? ui_texture_preview_renderer_alpha_body :
-                                     (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_DEPTH) ? ui_texture_preview_renderer_depth_body :
-                                     (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_RED)   ? ui_texture_preview_renderer_red_body   :
-                                     (texture_preview_ptr->preview_type == OGL_UI_TEXTURE_PREVIEW_TYPE_RGB)   ? ui_texture_preview_renderer_rgb_body   :
-                                                                                                                ui_texture_preview_renderer_rgba_body;
-    const char* token              = "RENDER_RESULT";
-    std::size_t token_location     = std::string::npos;
+    std::string fs_body                      = ui_texture_preview_fragment_shader_body;
+    const char* render_result_body           = NULL;
+    const char* sampler_type_body            = NULL;
+    const char* token_render_result          = "RENDER_RESULT";
+    std::size_t token_render_result_location = std::string::npos;
+    const char* token_sampler_type           = "SAMPLER_TYPE";
+    std::size_t token_sampler_type_location  = std::string::npos;
 
-    while ( (token_location = fs_body.find(token) ) != std::string::npos)
+    switch (texture_preview_ptr->preview_type)
     {
-        fs_body.replace(token_location,
-                        strlen(token),
+        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_ALPHA:
+        {
+            render_result_body = ui_texture_preview_renderer_sampler2d_alpha_body;
+            sampler_type_body  = ui_texture_preview_sampler2d_type;
+
+            break;
+        }
+
+        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_DEPTH:
+        {
+            render_result_body = ui_texture_preview_renderer_sampler2d_depth_body;
+            sampler_type_body  = ui_texture_preview_sampler2d_type;
+
+            break;
+        }
+
+        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RED:
+        {
+            render_result_body = ui_texture_preview_renderer_sampler2d_red_body;
+            sampler_type_body  = ui_texture_preview_sampler2d_type;
+
+            break;
+        }
+
+        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGB:
+        {
+            render_result_body = ui_texture_preview_renderer_sampler2d_rgb_body;
+            sampler_type_body  = ui_texture_preview_sampler2d_type;
+
+            break;
+        }
+
+        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2D_RGBA:
+        {
+            render_result_body = ui_texture_preview_renderer_sampler2d_rgba_body;
+            sampler_type_body  = ui_texture_preview_sampler2d_type;
+
+            break;
+        }
+
+        case OGL_UI_TEXTURE_PREVIEW_TYPE_SAMPLER2DARRAY_DEPTH:
+        {
+            render_result_body = ui_texture_preview_renderer_sampler2darray_depth_body;
+            sampler_type_body  = ui_texture_preview_sampler2darray_type;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized texture preview type requested");
+        }
+    } /* switch (texture_preview_ptr->preview_type) */
+
+    while ( (token_render_result_location = fs_body.find(token_render_result) ) != std::string::npos)
+    {
+        fs_body.replace(token_render_result_location,
+                        strlen(token_render_result),
                         render_result_body);
+    }
+
+    while ( (token_sampler_type_location = fs_body.find(token_sampler_type) ) != std::string::npos)
+    {
+        fs_body.replace(token_sampler_type_location,
+                        strlen(token_sampler_type),
+                        sampler_type_body);
     }
 
     /* Set up shaders */
@@ -193,18 +266,23 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                 &window_height);
 
     /* Determine preview size */
-    float preview_height_ss = 0.0f;
-    float preview_width_ss  = 0.0f;
-    int   texture_height_px = 0;
-    float texture_height_ss = 0.0f;
-    float texture_h_ratio   = 0.0f;
-    int   texture_width_px  = 0;
-    float texture_width_ss  = 0.0f;
-    float texture_v_ratio   = 0.0f;
+    float  preview_height_ss = 0.0f;
+    float  preview_width_ss  = 0.0f;
+    int    texture_height_px = 0;
+    float  texture_height_ss = 0.0f;
+    float  texture_h_ratio   = 0.0f;
+    GLenum texture_target    = GL_NONE;
+    int    texture_width_px  = 0;
+    float  texture_width_ss  = 0.0f;
+    float  texture_v_ratio   = 0.0f;
+
+    ogl_texture_get_property(texture_preview_ptr->texture,
+                             OGL_TEXTURE_PROPERTY_TARGET,
+                            &texture_target);
 
     if (texture_preview_ptr->context_type == OGL_CONTEXT_TYPE_GL)
     {
-        texture_preview_ptr->gl_pGLBindTexture(GL_TEXTURE_2D,
+        texture_preview_ptr->gl_pGLBindTexture(texture_target,
                                                texture_preview_ptr->texture);
     }
     else
@@ -215,15 +293,15 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                  OGL_TEXTURE_PROPERTY_ID,
                                 &texture_id);
 
-        texture_preview_ptr->pGLBindTexture(GL_TEXTURE_2D,
+        texture_preview_ptr->pGLBindTexture(texture_target,
                                             texture_id);
     }
 
-    texture_preview_ptr->pGLGetTexLevelParameteriv(GL_TEXTURE_2D,
+    texture_preview_ptr->pGLGetTexLevelParameteriv(texture_target,
                                                    0,
                                                    GL_TEXTURE_HEIGHT,
                                                   &texture_height_px);
-    texture_preview_ptr->pGLGetTexLevelParameteriv(GL_TEXTURE_2D,
+    texture_preview_ptr->pGLGetTexLevelParameteriv(texture_target,
                                                    0,
                                                    GL_TEXTURE_WIDTH,
                                                   &texture_width_px);
@@ -287,12 +365,16 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform = NULL;
+    const ogl_program_uniform_descriptor* layer_uniform        = NULL;
     const ogl_program_uniform_descriptor* texture_uniform      = NULL;
     const ogl_program_uniform_descriptor* x1y1x2y2_uniform     = NULL;
 
     ogl_program_get_uniform_by_name(texture_preview_ptr->program,
                                     system_hashed_ansi_string_create("border_width"),
                                    &border_width_uniform);
+    ogl_program_get_uniform_by_name(texture_preview_ptr->program,
+                                    system_hashed_ansi_string_create("layer"),
+                                   &layer_uniform);
     ogl_program_get_uniform_by_name(texture_preview_ptr->program,
                                     system_hashed_ansi_string_create("texture"),
                                    &texture_uniform);
@@ -307,6 +389,15 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     else
     {
         texture_preview_ptr->program_border_width_uniform_location = -1;
+    }
+
+    if (layer_uniform != NULL)
+    {
+        texture_preview_ptr->program_layer_uniform_location = layer_uniform->location;
+    }
+    else
+    {
+        texture_preview_ptr->program_layer_uniform_location = -1;
     }
 
     texture_preview_ptr->program_texture_uniform_location  = texture_uniform->location;
@@ -402,6 +493,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
                                               texture_preview_ptr->program_x1y1x2y2_uniform_location,
                                               1,
                                               texture_preview_ptr->x1y1x2y2);
+    texture_preview_ptr->pGLProgramUniform1f (program_id,
+                                              texture_preview_ptr->program_layer_uniform_location,
+                                              (float) texture_preview_ptr->layer_shown);
 
     /* Configure blending.
      *
@@ -561,6 +655,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
 
         new_texture_preview->context             = ogl_ui_get_context(instance);
         new_texture_preview->context_type        = OGL_CONTEXT_TYPE_UNDEFINED;
+        new_texture_preview->layer_shown         = 0;
         new_texture_preview->name                = name;
         new_texture_preview->preview_type        = preview_type;
         new_texture_preview->text_renderer       = text_renderer;
@@ -614,6 +709,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->pGLDrawArrays              = entry_points->pGLDrawArrays;
             new_texture_preview->pGLEnable                  = entry_points->pGLEnable;
             new_texture_preview->pGLGetTexLevelParameteriv  = entry_points->pGLGetTexLevelParameteriv;
+            new_texture_preview->pGLProgramUniform1f        = entry_points->pGLProgramUniform1f;
             new_texture_preview->pGLProgramUniform2fv       = entry_points->pGLProgramUniform2fv;
             new_texture_preview->pGLProgramUniform4fv       = entry_points->pGLProgramUniform4fv;
             new_texture_preview->pGLTexParameteri           = entry_points->pGLTexParameteri;
@@ -647,6 +743,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->pGLDrawArrays              = entry_points->pGLDrawArrays;
             new_texture_preview->pGLEnable                  = entry_points->pGLEnable;
             new_texture_preview->pGLGetTexLevelParameteriv  = entry_points->pGLGetTexLevelParameteriv;
+            new_texture_preview->pGLProgramUniform1f        = entry_points->pGLProgramUniform1f;
             new_texture_preview->pGLProgramUniform2fv       = entry_points->pGLProgramUniform2fv;
             new_texture_preview->pGLProgramUniform4fv       = entry_points->pGLProgramUniform4fv;
             new_texture_preview->pGLTexParameteri           = entry_points->pGLTexParameteri;
@@ -742,6 +839,13 @@ PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*       textu
         case OGL_UI_TEXTURE_PREVIEW_PROPERTY_IS_BLENDING_ENABLED:
         {
             texture_preview_ptr->is_blending_enabled = *(bool*) data;
+
+            break;
+        }
+
+        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_LAYER_SHOWN:
+        {
+            texture_preview_ptr->layer_shown = *(GLuint*) data;
 
             break;
         }
