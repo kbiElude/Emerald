@@ -100,9 +100,10 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                                                             __in_ecount_opt(n_light_properties*2) void*                            light_property_values);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context               context,
-                                            __in __notnull system_hashed_ansi_string name,
-                                            __in           shaders_vertex_uber_type  vs_type);
+PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context                context,
+                                            __in __notnull system_hashed_ansi_string  name,
+                                            __in           shaders_fragment_uber_type fs_type,
+                                            __in           shaders_vertex_uber_type   vs_type);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull const ogl_uber             uber,

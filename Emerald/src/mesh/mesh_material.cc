@@ -100,6 +100,7 @@ typedef struct _mesh_material
     ogl_uber                  uber_non_sm; /*         uses shadow maps for per-light visibility calculation */
     ogl_uber                  uber_sm;     /* does not use shadow maps for per-light visibility calculation */
 
+    mesh_material_fs_behavior fs_behavior;
     system_hashed_ansi_string uv_map_name; /* NULL by default, needs to be manually set */
     float                     vertex_smoothing_angle;
     mesh_material_vs_behavior vs_behavior;
@@ -109,6 +110,7 @@ typedef struct _mesh_material
         callback_manager       = NULL;
         context                = NULL;
         dirty                  = true;
+        fs_behavior            = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
         name                   = NULL;
         owner_scene            = NULL;
         source_scene_material  = NULL;
@@ -723,6 +725,13 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
             break;
         }
 
+        case MESH_MATERIAL_PROPERTY_FS_BEHAVIOR:
+        {
+            *(mesh_material_fs_behavior*) out_result = material_ptr->fs_behavior;
+
+            break;
+        }
+
         case MESH_MATERIAL_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = material_ptr->name;
@@ -929,18 +938,27 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
         goto end;
     }
 
-    /* 2. VS behavior */
+    /* 2. FS & VS behavior */
+    mesh_material_fs_behavior material_a_fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
     mesh_material_vs_behavior material_a_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+    mesh_material_fs_behavior material_b_fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
     mesh_material_vs_behavior material_b_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
+    mesh_material_get_property(material_a,
+                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                              &material_a_fs_behavior);
     mesh_material_get_property(material_a,
                                MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
                               &material_a_vs_behavior);
     mesh_material_get_property(material_b,
+                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                              &material_b_fs_behavior);
+    mesh_material_get_property(material_b,
                                MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
                               &material_b_vs_behavior);
 
-    if (material_a_vs_behavior != material_b_vs_behavior)
+    if (material_a_fs_behavior != material_b_fs_behavior ||
+        material_a_vs_behavior != material_b_vs_behavior)
     {
         goto end;
     }
@@ -1039,6 +1057,14 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
     switch (property)
     {
+        case MESH_MATERIAL_PROPERTY_FS_BEHAVIOR:
+        {
+            material_ptr->fs_behavior = *(mesh_material_fs_behavior*) data;
+            material_ptr->dirty       = true;
+
+            break;
+        }
+
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
             material_ptr->shading = *(mesh_material_shading*) data;

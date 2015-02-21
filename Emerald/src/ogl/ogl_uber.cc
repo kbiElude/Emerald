@@ -1627,9 +1627,10 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context               context,
-                                            __in __notnull system_hashed_ansi_string name,
-                                            __in           shaders_vertex_uber_type  vs_type)
+PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context                context,
+                                            __in __notnull system_hashed_ansi_string  name,
+                                            __in           shaders_fragment_uber_type fs_type,
+                                            __in           shaders_vertex_uber_type   vs_type)
 {
     _ogl_uber_verify_context_type(context);
 
@@ -1657,7 +1658,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->name                              = name;
         result->n_texture_units_assigned          = 0;
         result->shader_fragment                   = shaders_fragment_uber_create(context,
-                                                                                 name);
+                                                                                 name,
+                                                                                 fs_type);
         result->shader_vertex                     = shaders_vertex_uber_create  (context,
                                                                                  name,
                                                                                  vs_type);

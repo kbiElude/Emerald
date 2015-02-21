@@ -201,10 +201,14 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     LOG_INFO("Performance warning: _ogl_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
+    mesh_material_fs_behavior fs_behavior      = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
     system_hashed_ansi_string material_name    = mesh_material_get_name(material);
     const char*               uber_name_suffix = use_shadow_maps ? " uber with SM" : " uber without SM";
     mesh_material_vs_behavior vs_behavior      = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
+    mesh_material_get_property(material,
+                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                              &fs_behavior);
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
                               &vs_behavior);
@@ -212,6 +216,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     ogl_uber                  new_uber         = ogl_uber_create       (context,
                                                                         system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(material_name),
                                                                                                                                 uber_name_suffix),
+                                                                        shaders_fragment_uber_get_fs_uber_type_for_fs_behavior (fs_behavior),
                                                                         shaders_vertex_uber_get_vs_uber_type_for_vs_behavior   (vs_behavior) );
 
     ASSERT_ALWAYS_SYNC(new_uber != NULL,
@@ -755,9 +760,11 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
 /** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
+    const mesh_material_fs_behavior fs_behavior_dpsm = MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM;
+    const mesh_material_vs_behavior vs_behavior_dpsm = MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM;
+
     const mesh_material_shading     shading_type_attribute_data                 = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
     const mesh_material_shading     shading_type_none                           = MESH_MATERIAL_SHADING_NONE;
-    const mesh_material_vs_behavior vs_behavior_dpsm                            = MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM;
           mesh_material             special_material_depth_clip                 = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
                                                                                                        materials_ptr->context);
           mesh_material             special_material_depth_dual_paraboloid_clip = mesh_material_create(system_hashed_ansi_string_create("Special material: depth dual paraboloid clip"),
@@ -767,10 +774,15 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
           mesh_material             special_material_texcoord                   = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
                                                                                                        materials_ptr->context);
 
+    /* Configure "depth clip preview" material */
     mesh_material_set_property(special_material_depth_clip,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type_none);
 
+    /* Configure DPSM material */
+    mesh_material_set_property(special_material_depth_dual_paraboloid_clip,
+                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                              &fs_behavior_dpsm);
     mesh_material_set_property(special_material_depth_dual_paraboloid_clip,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type_none);
@@ -778,6 +790,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
                               &vs_behavior_dpsm);
 
+    /* Configure "normal preview" material */
     mesh_material_set_property                                    (special_material_normal,
                                                                    MESH_MATERIAL_PROPERTY_SHADING,
                                                                   &shading_type_attribute_data);
@@ -785,6 +798,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
                                                                    MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL);
 
+    /* Configure "texcoord preview" material */
     mesh_material_set_property                                    (special_material_texcoord,
                                                                    MESH_MATERIAL_PROPERTY_SHADING,
                                                                   &shading_type_attribute_data);
@@ -792,6 +806,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
                                                                    MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD);
 
+    /* Store the materials */
     materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP]            = special_material_depth_clip;
     materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID] = special_material_depth_dual_paraboloid_clip;
     materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]               = special_material_normal;

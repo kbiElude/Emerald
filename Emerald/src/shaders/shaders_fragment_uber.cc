@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
@@ -1239,8 +1240,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __notnull ogl_context               context,
-                                                                      __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __notnull ogl_context                context,
+                                                                      __in __notnull system_hashed_ansi_string  name,
+                                                                      __in           shaders_fragment_uber_type fs_type)
 {
     _shaders_fragment_uber* result_object = NULL;
     shaders_fragment_uber   result_shader = NULL;
@@ -1274,54 +1276,77 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
         goto end;
     }
 
-    /* Add FragmentShaderProperties uniform block */
-    _uniform_block_id fragment_shader_properties_ub = ogl_shader_constructor_add_uniform_block(shader_constructor,
-                                                                                               LAYOUT_QUALIFIER_STD140,
-                                                                                               system_hashed_ansi_string_create("FragmentShaderProperties") );
+    /* Initialize shader contents */
+    _uniform_block_id fragment_shader_properties_ub = 0;
 
-    /* Add input attributes */
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("world_vertex"),
-                                                      NULL /* out_variable_id */);
+    if (fs_type == SHADERS_FRAGMENT_UBER_TYPE_DEFAULT)
+    {
+        /* Add FragmentShaderProperties uniform block */
+        fragment_shader_properties_ub = ogl_shader_constructor_add_uniform_block(shader_constructor,
+                                                                                 LAYOUT_QUALIFIER_STD140,
+                                                                                 system_hashed_ansi_string_create("FragmentShaderProperties") );
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("out_vs_normal"),
-                                                      NULL /* out_variable_id */);
+        /* Add input attributes */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("world_vertex"),
+                                                          NULL /* out_variable_id */);
 
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_INPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC3,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("view_vector"),
-                                                      NULL /* out_variable_id */);
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("out_vs_normal"),
+                                                          NULL /* out_variable_id */);
 
-    /* Add output attributes */
-    ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
-                                                      VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
-                                                      LAYOUT_QUALIFIER_NONE,
-                                                      TYPE_VEC4,
-                                                      0, /* array_size */
-                                                      0, /* uniform_block */
-                                                      system_hashed_ansi_string_create("result_fragment"),
-                                                      NULL /* out_variable_id */);
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC3,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("view_vector"),
+                                                          NULL /* out_variable_id */);
 
-    /* Set base shader body */
-    ogl_shader_constructor_set_function_body(shader_constructor,
-                                             0, /* function_id */
-                                             system_hashed_ansi_string_create("vec3 normal     = normalize(out_vs_normal);\n"
-                                                                              "result_fragment = vec4(0, 0, 0, 1);\n") );
+        /* Add output attributes */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_OUTPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_VEC4,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("result_fragment"),
+                                                          NULL /* out_variable_id */);
+
+        /* Set base shader body */
+        ogl_shader_constructor_set_function_body(shader_constructor,
+                                                 0, /* function_id */
+                                                 system_hashed_ansi_string_create("vec3 normal     = normalize(out_vs_normal);\n"
+                                                                                  "result_fragment = vec4(0, 0, 0, 1);\n") );
+    }
+    else
+    {
+        /* Add input attributes */
+        ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
+                                                          VARIABLE_TYPE_INPUT_ATTRIBUTE,
+                                                          LAYOUT_QUALIFIER_NONE,
+                                                          TYPE_FLOAT,
+                                                          0, /* array_size */
+                                                          0, /* uniform_block */
+                                                          system_hashed_ansi_string_create("clip_depth"),
+                                                          NULL /* out_variable_id */);
+
+        /* Set base shader body */
+        ogl_shader_constructor_set_function_body(shader_constructor,
+                                                 0, /* function_id */
+                                                 system_hashed_ansi_string_create("if (clip_depth < 0.0) discard;\n") );
+    }
 
     /* Attach body to the shader */
     if (!ogl_shader_set_body(shader,
@@ -1377,6 +1402,37 @@ end:
     }
 
     return NULL;
+}
+
+/** Please see header for specification */
+PUBLIC shaders_fragment_uber_type shaders_fragment_uber_get_fs_uber_type_for_fs_behavior(__in mesh_material_fs_behavior material_fs_behavior)
+{
+    shaders_fragment_uber_type result;
+
+    switch (material_fs_behavior)
+    {
+        case MESH_MATERIAL_FS_BEHAVIOR_DEFAULT:
+        {
+            result = SHADERS_FRAGMENT_UBER_TYPE_DEFAULT;
+
+            break;
+        }
+
+        case MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM:
+        {
+            result = SHADERS_FRAGMENT_UBER_TYPE_DUAL_PARABOLOID_SM;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized material_fs_behavior argument value");
+        }
+    } /* switch (material_fs_behavior) */
+
+    return result;
 }
 
 /** Please see header for specification */

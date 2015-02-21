@@ -32,6 +32,16 @@ typedef enum
 
 typedef enum
 {
+    /* The default FS behavior is unaffected. */
+    MESH_MATERIAL_FS_BEHAVIOR_DEFAULT,
+
+    /* Discards samples, whose clip_depth < 0. */
+     MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM
+
+} mesh_material_fs_behavior;
+
+typedef enum
+{
     MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL,
     MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD,
 
@@ -42,6 +52,14 @@ typedef enum
 {
     /* not settable, system_callback_manager */
     MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+
+    /* settable, mesh_material_fs_behavior.
+     *
+     * Tells which fragment shader implementation should be used.
+     * Unless for specialized behavior, you'll be OK to go with
+     * the default setting.
+     */
+    MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
 
     /* not settable, system_hashed_ansi_string */
     MESH_MATERIAL_PROPERTY_NAME,
