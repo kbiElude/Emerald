@@ -63,8 +63,8 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,             /* settable, float.                used by point & spot lights        */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,       /* settable, float[16], row-major. used by point lights (>= 1 algo)   */
 
-    OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,      /* settable, float[16], row-major */
-    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA, /* settable, _ogl_uber_light_sh_data */
+    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP, /* settable, float[16], row-major */
+    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA,  /* settable, _ogl_uber_light_sh_data */
 
     OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,        /* not settable, scene_light_falloff */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP,

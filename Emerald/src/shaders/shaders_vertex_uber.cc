@@ -561,7 +561,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                                                       "clip_vertex.xyz /= vec3(light_to_vertex_vec_len);\n"
                                                                                       "clip_depth       = clip_vertex.z;\n"
                                                                                       "clip_vertex.xy  /= vec2(clip_vertex.z + 1.0);\n"
-                                                                                      "clip_vertex.z    = (light_to_vertex_vec_len - near_plane) / far_near_plane_diff * 2.0 - 1.0;\n"
+                                                                                      "clip_vertex.z    = ((light_to_vertex_vec_len - near_plane) / far_near_plane_diff) * 2.0 - 1.0;\n"
                                                                                       "clip_vertex.w    = 1.0;\n"
                                                                                       "\n"
                                                                                       "gl_Position = clip_vertex;\n") );

@@ -2864,7 +2864,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
-        case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
+        case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
 
@@ -3048,13 +3048,6 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                         break;
                     }
 
-                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
-                    {
-                        item_ptr->fragment_shader_item.current_light_shadow_map_texture = *(ogl_texture*) data;
-
-                        break;
-                    }
-
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX:
                     {
                         if (memcmp(item_ptr->fragment_shader_item.current_light_view,
@@ -3071,7 +3064,14 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                         break;
                     }
 
-                    case OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP:
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
+                    {
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture = *(ogl_texture*) data;
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
                     {
                         if (memcmp(item_ptr->vertex_shader_item.current_light_depth_vp,
                                    data,

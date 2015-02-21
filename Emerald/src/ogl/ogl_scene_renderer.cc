@@ -746,23 +746,36 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
 
         if (current_light_shadow_caster)
         {
-            const float*     current_light_depth_vp_row_major = NULL;
-            system_matrix4x4 current_light_depth_vp           = NULL;
-            ogl_texture      current_light_shadow_map_texture = NULL;
+            system_matrix4x4 current_light_depth_view           = NULL;
+            const float*     current_light_depth_view_row_major = NULL;
+            const float*     current_light_depth_vp_row_major   = NULL;
+            system_matrix4x4 current_light_depth_vp             = NULL;
+            ogl_texture      current_light_shadow_map_texture   = NULL;
 
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
                                     &current_light_shadow_map_texture);
             scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
+                                    &current_light_depth_view);
+            scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
                                     &current_light_depth_vp);
+
+            /* Depth view matrix */
+            current_light_depth_view_row_major = system_matrix4x4_get_row_major_data(current_light_depth_view);
+
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
+                                              current_light_depth_view);
 
             /* Depth VP matrix */
             current_light_depth_vp_row_major = system_matrix4x4_get_row_major_data(current_light_depth_vp);
 
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
-                                              OGL_UBER_ITEM_PROPERTY_VERTEX_DEPTH_VP,
+                                              OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP,
                                               current_light_depth_vp_row_major);
 
             /* Shadow map */
@@ -899,13 +912,18 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
 
         if (current_light_type == SCENE_LIGHT_TYPE_POINT)
         {
+            float            current_light_far_plane;
             float            current_light_near_plane;
+            float            current_light_plane_diff;
             const float*     current_light_projection_matrix_data = NULL;
             system_matrix4x4 current_light_projection_matrix      = NULL;
             const float*     current_light_view_matrix_data       = NULL;
             system_matrix4x4 current_light_view_matrix            = NULL;
 
             /* Update ogl_uber with point light-specific data */
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                    &current_light_far_plane);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
                                     &current_light_near_plane);
@@ -916,9 +934,17 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VIEW,
                                     &current_light_view_matrix);
 
+            current_light_plane_diff = current_light_far_plane - current_light_near_plane;
+            ASSERT_DEBUG_SYNC(current_light_plane_diff >= 0.0f,
+                              "Something's wrong with far/near plane distance settings for one of the lights");
+
             current_light_projection_matrix_data = system_matrix4x4_get_row_major_data(current_light_projection_matrix);
             current_light_view_matrix_data       = system_matrix4x4_get_row_major_data(current_light_view_matrix);
 
+            ogl_uber_set_shader_item_property(material_uber,
+                                              n_light,
+                                              OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,
+                                             &current_light_plane_diff);
             ogl_uber_set_shader_item_property(material_uber,
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,

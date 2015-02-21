@@ -1168,9 +1168,9 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                      << ");\n"
                                      /* Normalize the vector */
                                      << light_vertex_var_name_sstream.str()
-                                     << " /= "
+                                     << " /= vec3("
                                      << light_vertex_length_var_name_sstream.str()
-                                     << ";\n"
+                                     << ");\n"
                                      /* Compute the depth value for the current fragment. */
                                      << "float "
                                      << light_vertex_z_abs_var_name_sstream.str()
@@ -1182,13 +1182,13 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                     << light_vertex_var_name_sstream.str() << ".y / (1.0 + " << light_vertex_z_abs_var_name_sstream.str() << ") * 0.5 + 0.5);\n"
                                      << "float "
                                      << light_vertex_depth_var_name_sstream.str()
-                                     << " = ("
+                                     << " =  (("
                                      << light_vertex_length_var_name_sstream.str()
                                      << " - "
                                      << system_hashed_ansi_string_get_buffer(light_near_var_name_has)
                                      << ") / "
                                      << system_hashed_ansi_string_get_buffer(light_far_near_diff_var_name_has)
-                                     << " * 0.5 + 0.5;\n";
+                                     << ");\n";
 
                 break;
             }
@@ -1610,6 +1610,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                                      SCENE_LIGHT_PROPERTY_POSITION,
                                      light_position);
 
+
             light_position[0] *= -1.0f;
             light_position[1] *= -1.0f;
             light_position[2] *= -1.0f;
@@ -1619,8 +1620,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                 case OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT:
                 case OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR:
                 {
-                    /* NOTE: "flip z" uniform handles the side flipping */
-                    up_direction  [1] = 1.0f;
+                    up_direction  [1] =  1.0f;
                     view_direction[2] = -1.0f;
 
                     break;
@@ -1693,6 +1693,7 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
             *out_view_matrix = system_matrix4x4_create_lookat_matrix(light_position,  /* eye_position */
                                                                      sm_lookat_world, /* lookat_point */
                                                                      up_direction);   /* up_vector */
+
             break;
         }
 
@@ -1841,7 +1842,6 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                     if (light_falloff != SCENE_LIGHT_FALLOFF_OFF)
                     {
                         /* If fall-off is defined, we can use light's range as far plane distance */
-                        float           light_near_plane  = 0.0001f; /* TODO: temp */
                         float           light_far_plane   = 0.0f;
                         curve_container light_range_curve = NULL;
 
@@ -1858,24 +1858,21 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                         scene_light_set_property(light,
                                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
                                                 &light_far_plane);
-                        scene_light_set_property(light,
-                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
-                                                &light_near_plane);
                     }
                     else
                     {
+                        float pointlight_sm_far_plane;
                         float pointlight_sm_near_plane;
 
                         scene_light_get_property(light,
                                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
                                                 &pointlight_sm_near_plane);
 
-                        //const float light_far_plane = pointlight_sm_near_plane + max_len + min_len;
-                        const float light_far_plane = 20.0f; /* TODO: temp */
+                        pointlight_sm_far_plane = pointlight_sm_near_plane + max_len + min_len;
 
                         scene_light_set_property(light,
                                                  SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
-                                                &light_far_plane);
+                                                &pointlight_sm_far_plane);
                     }
                 }
                 else
@@ -1899,16 +1896,23 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                         has_logged_warning = true;
                     }
 #endif
+                    float pointlight_sm_far_plane;
                     float pointlight_sm_near_plane;
 
                     scene_light_get_property(light,
                                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
                                             &pointlight_sm_near_plane);
 
+                    pointlight_sm_far_plane = pointlight_sm_near_plane + max_len + min_len;
+
+                    scene_light_set_property(light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                            &pointlight_sm_far_plane);
+
                      *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
                                                                                                     1.0f, /* ar - shadow maps are quads */
                                                                                                     pointlight_sm_near_plane,
-                                                                                                    pointlight_sm_near_plane + max_len + min_len);
+                                                                                                    pointlight_sm_far_plane);
                 }
             } /* if (light_type != SCENE_LIGHT_TYPE_SPOT) */
 
