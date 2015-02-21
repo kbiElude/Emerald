@@ -655,7 +655,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
 
         new_texture_preview->context             = ogl_ui_get_context(instance);
         new_texture_preview->context_type        = OGL_CONTEXT_TYPE_UNDEFINED;
-        new_texture_preview->layer_shown         = 0;
+        new_texture_preview->layer_shown         = 1;
         new_texture_preview->name                = name;
         new_texture_preview->preview_type        = preview_type;
         new_texture_preview->text_renderer       = text_renderer;

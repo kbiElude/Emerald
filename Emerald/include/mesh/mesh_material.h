@@ -144,6 +144,8 @@ typedef enum
 
     /* Sets gl_Position to clip-space position of the input vertex,
      * adjusted for the dual paraboloid shadow mapping purposes.
+     * Output clip_depth to FS, so that fragments outside the paraboloid
+     * can be discarded.
      */
      MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM
 

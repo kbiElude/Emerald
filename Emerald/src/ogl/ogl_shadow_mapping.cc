@@ -1155,11 +1155,11 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
 
                 code_snippet_sstream 
                                      /* Transform world space vertex into light space */
-                                     << "vec4 "
+                                     << "vec3 "
                                      << light_vertex_var_name_sstream.str()
-                                     << " = "
+                                     << " = ("
                                      << system_hashed_ansi_string_get_buffer(light_view_matrix_var_name_has)
-                                     << " * vec4(world_vertex, 1.0);\n"
+                                     << " * vec4(world_vertex, 1.0)).xyz;\n"
                                      /* Calculate the distance between light and the vertex */
                                      << "float "
                                      << light_vertex_length_var_name_sstream.str()
@@ -1273,7 +1273,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                          << ", "
                                          /* Which face should we sample from? */
                                          << "("
-                                         << light_vertex_var_name_sstream.str() << ".z >= 0.0) ? 1.0 : 0.0, "
+                                         << light_vertex_var_name_sstream.str() << ".z >= 0.0) ? 0.0 : 1.0, "
                                          /* Fragment depth, as seen in light space */
                                          << light_vertex_depth_var_name_sstream.str()
                                          << " - "
@@ -1617,17 +1617,11 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
             switch (light_target_face)
             {
                 case OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT:
-                {
-                    up_direction  [1] =  1.0f;
-                    view_direction[2] = -1.0f;
-
-                    break;
-                }
-
                 case OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR:
                 {
+                    /* NOTE: "flip z" uniform handles the side flipping */
                     up_direction  [1] = 1.0f;
-                    view_direction[2] = 1.0f;
+                    view_direction[2] = -1.0f;
 
                     break;
                 }
@@ -1835,32 +1829,65 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
             }
             else
             {
-                /* TODO: We should technically be passing projection matrices on a per-face basis,
-                 *       since max_len and min_len are very likely to differ between faces.
-                 *       However, this would increase the amount of data passed to the GPU.
-                 *       If needed, please consider two solutions:
-                 *
-                 *       a) Use predefined min/max plane distances.
-                 *       b) Expand ogl_uber & shaders_fragment_uber to take new data.
-                 */
-                float pointlight_sm_near_plane;
-
-                scene_light_get_property(light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
-                                        &pointlight_sm_near_plane);
-
                 if (light_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
                     light_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
                 {
-                    //const float light_far_plane = pointlight_sm_near_plane + max_len + min_len;
-                    const float light_far_plane = 50.0f;
+                    scene_light_falloff light_falloff = SCENE_LIGHT_FALLOFF_UNKNOWN;
 
-                    scene_light_set_property(light,
-                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
-                                            &light_far_plane);
+                    scene_light_get_property(light,
+                                             SCENE_LIGHT_PROPERTY_FALLOFF,
+                                            &light_falloff);
+
+                    if (light_falloff != SCENE_LIGHT_FALLOFF_OFF)
+                    {
+                        /* If fall-off is defined, we can use light's range as far plane distance */
+                        float           light_near_plane  = 0.0001f; /* TODO: temp */
+                        float           light_far_plane   = 0.0f;
+                        curve_container light_range_curve = NULL;
+
+                        scene_light_get_property (light,
+                                                  SCENE_LIGHT_PROPERTY_RANGE,
+                                                 &light_range_curve);
+                        curve_container_get_value(light_range_curve,
+                                                  time,
+                                                  false,
+                                                  shadow_mapping_ptr->temp_variant_float);
+                        system_variant_get_float (shadow_mapping_ptr->temp_variant_float,
+                                                 &light_far_plane);
+
+                        scene_light_set_property(light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                                &light_far_plane);
+                        scene_light_set_property(light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+                                                &light_near_plane);
+                    }
+                    else
+                    {
+                        float pointlight_sm_near_plane;
+
+                        scene_light_get_property(light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+                                                &pointlight_sm_near_plane);
+
+                        //const float light_far_plane = pointlight_sm_near_plane + max_len + min_len;
+                        const float light_far_plane = 20.0f; /* TODO: temp */
+
+                        scene_light_set_property(light,
+                                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_FAR_PLANE,
+                                                &light_far_plane);
+                    }
                 }
                 else
                 {
+                    /* TODO: We should technically be passing projection matrices on a per-face basis,
+                     *       since max_len and min_len are very likely to differ between faces.
+                     *       However, this would increase the amount of data passed to the GPU.
+                     *       If needed, please consider two solutions:
+                     *
+                     *       a) Use predefined min/max plane distances.
+                     *       b) Expand ogl_uber & shaders_fragment_uber to take new data.
+                     */
 #ifdef _DEBUG
                     static bool has_logged_warning = false;
 
@@ -1872,6 +1899,12 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                         has_logged_warning = true;
                     }
 #endif
+                    float pointlight_sm_near_plane;
+
+                    scene_light_get_property(light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_NEAR_PLANE,
+                                            &pointlight_sm_near_plane);
+
                      *out_projection_matrix = system_matrix4x4_create_perspective_projection_matrix(DEG_TO_RAD(90.0f),
                                                                                                     1.0f, /* ar - shadow maps are quads */
                                                                                                     pointlight_sm_near_plane,
@@ -2038,6 +2071,7 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
         {
             float light_far_near_plane_diff;
             float light_far_plane;
+            float light_flip_z = (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR) ? -1.0f : 1.0f;
             float light_near_plane;
 
             scene_light_get_property(shadow_mapping_ptr->current_light,
@@ -2058,6 +2092,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
             ogl_uber_set_shader_general_property(sm_material_uber,
                                                  OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
                                                 &light_far_near_plane_diff);
+            ogl_uber_set_shader_general_property(sm_material_uber,
+                                                 OGL_UBER_GENERAL_PROPERTY_FLIP_Z,
+                                                &light_flip_z);
             ogl_uber_set_shader_general_property(sm_material_uber,
                                                  OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,
                                                 &light_near_plane);

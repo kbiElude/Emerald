@@ -224,6 +224,7 @@ typedef struct
 
     /* These are stored in UBs so we need to store UB offsets instead of locations */
     uint32_t                     far_near_plane_diff_ub_offset;
+    uint32_t                     flip_z_ub_offset;
     uint32_t                     near_plane_ub_offset;
     uint32_t                     vp_ub_offset;
     uint32_t                     world_camera_ub_offset;
@@ -241,6 +242,8 @@ typedef struct
     bool                      current_camera_location_dirty;
     float                     current_far_near_plane_diff;
     bool                      current_far_near_plane_diff_dirty;
+    float                     current_flip_z;
+    bool                      current_flip_z_dirty;
     float                     current_near_plane;
     bool                      current_near_plane_dirty;
     system_matrix4x4          current_vp;
@@ -1005,6 +1008,7 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     uber_ptr->diffuse_material_sampler_uniform_location    = -1;
     uber_ptr->diffuse_material_vec4_uniform_location       = -1;
     uber_ptr->far_near_plane_diff_ub_offset                = -1;
+    uber_ptr->flip_z_ub_offset                             = -1;
     uber_ptr->glosiness_uniform_location                   = -1;
     uber_ptr->luminosity_material_sampler_uniform_location = -1;
     uber_ptr->luminosity_material_float_uniform_location   = -1;
@@ -1063,6 +1067,7 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     const ogl_program_uniform_descriptor* emission_material_sampler_uniform_descriptor   = NULL;
     const ogl_program_uniform_descriptor* emission_material_vec4_uniform_descriptor      = NULL;
     const ogl_program_uniform_descriptor* far_near_plane_diff_uniform_descriptor         = NULL;
+    const ogl_program_uniform_descriptor* flip_z_uniform_descriptor                      = NULL;
     const ogl_program_uniform_descriptor* glosiness_uniform_descriptor                   = NULL;
     const ogl_program_uniform_descriptor* luminosity_material_sampler_uniform_descriptor = NULL;
     const ogl_program_uniform_descriptor* luminosity_material_float_uniform_descriptor   = NULL;
@@ -1101,6 +1106,9 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("far_near_plane_diff"),
                                    &far_near_plane_diff_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("flip_z"),
+                                   &flip_z_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("glosiness"),
                                    &glosiness_uniform_descriptor);
@@ -1176,6 +1184,14 @@ PRIVATE void _ogl_uber_relink(__in __notnull ogl_uber uber)
                           "Far/near plane diff UB offset is -1");
 
         uber_ptr->far_near_plane_diff_ub_offset = far_near_plane_diff_uniform_descriptor->ub_offset;
+    }
+
+    if (flip_z_uniform_descriptor != NULL)
+    {
+        ASSERT_DEBUG_SYNC(flip_z_uniform_descriptor->ub_offset != -1,
+                          "Flip Z UB offset is -1");
+
+        uber_ptr->flip_z_ub_offset = flip_z_uniform_descriptor->ub_offset;
     }
 
     if (glosiness_uniform_descriptor != NULL)
@@ -1630,6 +1646,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->context                           = context;    /* DO NOT retain, or face circular dependencies! */
         result->current_camera_location_dirty     = true;
         result->current_far_near_plane_diff_dirty = true;
+        result->current_flip_z_dirty              = true;
         result->current_near_plane_dirty          = true;
         result->current_vp                        = system_matrix4x4_create();
         result->current_vp_dirty                  = true;
@@ -1651,6 +1668,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         result->diffuse_material_sampler_uniform_location    = -1;
         result->diffuse_material_vec4_uniform_location       = -1;
         result->far_near_plane_diff_ub_offset                = -1;
+        result->flip_z_ub_offset                             = -1;
         result->glosiness_uniform_location                   = -1;
         result->luminosity_material_sampler_uniform_location = -1;
         result->luminosity_material_float_uniform_location   = -1;
@@ -2562,6 +2580,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         uber_ptr->current_far_near_plane_diff_dirty = false;
     }
 
+    if (uber_ptr->flip_z_ub_offset != -1 &&
+        uber_ptr->current_flip_z_dirty)
+    {
+        *(float*) ((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->flip_z_ub_offset) = uber_ptr->current_flip_z;
+
+        has_modified_bo_data           = true;
+        uber_ptr->current_flip_z_dirty = false;
+    }
+
     if (uber_ptr->near_plane_ub_offset != -1 &&
         uber_ptr->current_near_plane_dirty)
     {
@@ -2762,6 +2789,17 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
             {
                 uber_ptr->current_far_near_plane_diff       = *(float*) data;
                 uber_ptr->current_far_near_plane_diff_dirty = true;
+            }
+
+            break;
+        }
+
+        case OGL_UBER_GENERAL_PROPERTY_FLIP_Z:
+        {
+            if (uber_ptr->current_flip_z != *(float*) data)
+            {
+                uber_ptr->current_flip_z       = *(float*) data;
+                uber_ptr->current_flip_z_dirty = true;
             }
 
             break;
