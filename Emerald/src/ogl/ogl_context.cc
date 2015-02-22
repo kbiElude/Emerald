@@ -71,6 +71,12 @@ typedef struct
     ogl_context_gl_limits_arb_framebuffer_no_attachments        limits_arb_framebuffer_no_attachments;
     ogl_context_gl_limits_arb_shader_storage_buffer_object      limits_arb_shader_storage_buffer_object;
 
+    /* WGL extensions */
+    bool wgl_swap_control_support;
+    bool wgl_swap_control_tear_support;
+
+    PFNWGLSWAPINTERVALEXTPROC pWGLSwapIntervalEXT;
+
     /* OpenGL ES context support: */
     ogl_context_es_entrypoints                    entry_points_es;
     ogl_context_es_entrypoints_ext_texture_buffer entry_points_es_ext_texture_buffer;
@@ -88,7 +94,6 @@ typedef struct
     bool gl_arb_texture_storage_multisample_support;
     bool gl_ext_direct_state_access_support;
 
-    GLenum                          active_texture_unit;
     ogl_context_bo_bindings         bo_bindings;
     ogl_materials                   materials;
     ogl_primitive_renderer          primitive_renderer;
@@ -113,7 +118,9 @@ struct func_ptr_table_entry
 __declspec(thread) ogl_context _current_context = NULL;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_context, ogl_context, _ogl_context);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_context,
+                               ogl_context,
+                              _ogl_context);
 
 /* Forward declarations */
 PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers              (__inout __notnull _ogl_context* context_ptr);
@@ -512,6 +519,28 @@ PRIVATE void _ogl_context_initialize_gl_arb_texture_storage_multisample_extensio
 PRIVATE void _ogl_context_initialize_gl_ext_direct_state_access_extension(__inout __notnull _ogl_context* context_ptr)
 {
     _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(context_ptr);
+}
+
+/** TODO */
+PRIVATE void _ogl_context_initialize_wgl_extensions(__inout __notnull _ogl_context* context_ptr)
+{
+    PFNWGLGETEXTENSIONSSTRINGEXTPROC pWGLGetExtensionsString = (PFNWGLGETEXTENSIONSSTRINGEXTPROC) ::wglGetProcAddress("wglGetExtensionsStringEXT");
+
+    if (pWGLGetExtensionsString != NULL)
+    {
+        const char* wgl_extensions = pWGLGetExtensionsString();
+
+        /* Is EXT_wgl_swap_control supported? */
+        context_ptr->wgl_swap_control_support = (strstr(wgl_extensions, "WGL_EXT_swap_control") != NULL);
+
+        if (context_ptr->wgl_swap_control_support)
+        {
+            context_ptr->pWGLSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC) ::wglGetProcAddress("wglSwapIntervalEXT");
+        }
+
+        /* Is EXT_WGL_swap_control_tear supported? */
+        context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions, "WGL_EXT_swap_control_tear") != NULL);
+    } /* if (pWGLGetExtensionsString != NULL) */
 }
 
 /** TODO */
@@ -2005,7 +2034,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
             if (system_pfd != NULL)
             {
                 /* Configure the device context handle to use the desired pixel format. */
-                int pixel_format_index = ::ChoosePixelFormat(window_dc, system_pfd);
+                int pixel_format_index = ::ChoosePixelFormat(window_dc,
+                                                             system_pfd);
 
                 if (pixel_format_index == 0)
                 {
@@ -2023,7 +2053,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                         /* Create a temporary WGL context that we will use to initialize WGL context for GL3.3 */
                         HGLRC temp_wgl_context = ::wglCreateContext(window_dc);
 
-                        ::wglMakeCurrent(window_dc, temp_wgl_context);
+                        ::wglMakeCurrent(window_dc,
+                                         temp_wgl_context);
 
                         /* Create WGL rendering context */
                         PFNWGLCREATECONTEXTATTRIBSARBPROC pWGLCreateContextAttribs = (PFNWGLCREATECONTEXTATTRIBSARBPROC) ::wglGetProcAddress("wglCreateContextAttribsARB");
@@ -2116,8 +2147,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                            0,
                                            sizeof(_result->limits) );
 
-                                    _result->active_texture_unit                        = GL_TEXTURE0;
-                                    _result->bo_bindings         = NULL;
+                                    _result->bo_bindings                                = NULL;
                                     _result->context_type                               = type;
                                     _result->device_context_handle                      = window_dc;
                                     _result->es_ext_texture_buffer_support              = false;
@@ -2129,6 +2159,11 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->gl_arb_program_interface_query_support     = false;
                                     _result->gl_arb_texture_buffer_object_rgb32_support = false;
                                     _result->gl_ext_direct_state_access_support         = false;
+
+                                    _result->wgl_swap_control_support                   = false;
+                                    _result->wgl_swap_control_tear_support              = false;
+                                    _result->pWGLSwapIntervalEXT                        = NULL;
+
                                     _result->primitive_renderer                         = NULL;
                                     _result->materials                                  = ogl_materials_create( (ogl_context) _result);
                                     _result->opengl32_dll_handle                        = NULL;
@@ -2152,6 +2187,9 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     ogl_pixel_format_descriptor_retain(in_pfd);
 
                                     result = (ogl_context) _result;
+
+                                    /* Initialize WGL extensions */
+                                    _ogl_context_initialize_wgl_extensions(_result);
 
                                     /* Associate DC with the WGL context and with current thread.*/
                                     ::wglMakeCurrent(NULL, NULL);
@@ -2791,15 +2829,22 @@ PUBLIC EMERALD_API bool ogl_context_set_multisampling(__in __notnull ogl_context
 PUBLIC bool ogl_context_set_vsync(__in __notnull ogl_context context,
                                   __in           bool        vsync_enabled)
 {
-    PFNWGLSWAPINTERVALEXTPROC pWGLSwapInterval = (PFNWGLSWAPINTERVALEXTPROC) ::wglGetProcAddress("wglSwapIntervalEXT");
-    BOOL                      result           = false;
+    _ogl_context* context_ptr = (_ogl_context*) context;
+    BOOL          result      = false;
 
-    ASSERT_ALWAYS_SYNC(pWGLSwapInterval != NULL, "Unable to set VSync - wglSwapIntervalEXT() unavailable. Update your drivers.");
-    if (pWGLSwapInterval != NULL)
+    ASSERT_ALWAYS_SYNC(context_ptr->wgl_swap_control_support,
+                       "WGL_EXT_swap_control extension not supported. Update your drivers.");
+
+    if (context_ptr->pWGLSwapIntervalEXT != NULL)
     {
-        result = pWGLSwapInterval(vsync_enabled ? 1 : 0);
+        int swap_interval = (context_ptr->wgl_swap_control_tear_support) ? -1 : /* use adaptive vsync  */
+                                                                            1;  /* force regular vsync */
 
-        ASSERT_DEBUG_SYNC(result == TRUE, "Failed to set VSync");
+        result = context_ptr->pWGLSwapIntervalEXT(vsync_enabled ? swap_interval
+                                                                : 0);
+
+        ASSERT_DEBUG_SYNC(result == TRUE,
+                          "Failed to set VSync");
     }
 
     return result == TRUE ? true : false;

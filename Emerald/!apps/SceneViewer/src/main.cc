@@ -314,7 +314,7 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                             system_hashed_ansi_string_create("Test window"),
                                                                             false,
                                                                             0,
-                                                                            false,
+                                                                            true, /* vsync_enabled */
                                                                             false,
                                                                             true);
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
