@@ -9,18 +9,18 @@
 #include "ogl/ogl_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
+#include "system/system_hash64.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include <sstream>
 
 /* Uncomment to enable GL error checks. */
 #define ENABLE_GL_ERROR_CHECKS
 
 /** Internal definitions */
-const char*    file_blob_prefix              = "temp_shader_blob_";
-const uint32_t file_blob_prefix_length       = strlen(file_blob_prefix);
-const char*    file_sourcecode_prefix        = "temp_shader_sourcecode_";
-const uint32_t file_sourcecode_prefix_length = strlen(file_sourcecode_prefix);
+const char*    file_blob_prefix       = "temp_shader_blob_";
+const char*    file_sourcecode_prefix = "temp_shader_sourcecode_";
 
 /** Internal type definitions */
 typedef struct
@@ -80,7 +80,8 @@ typedef struct _ogl_program_uniform_block_descriptor
     _ogl_program_uniform_block_descriptor()
     {
         block_data_size = 0;
-        members         = system_resizable_vector_create                    (4 /* capacity */, sizeof(ogl_program_uniform_descriptor*) );
+        members         = system_resizable_vector_create                    (4 /* capacity */,
+                                                                             sizeof(ogl_program_uniform_descriptor*) );
         name            = system_hashed_ansi_string_get_default_empty_string();
     }
 
@@ -96,7 +97,9 @@ typedef struct _ogl_program_uniform_block_descriptor
 } _ogl_program_uniform_block_descriptor;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_program, ogl_program, _ogl_program);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_program,
+                               ogl_program,
+                              _ogl_program);
 
 
 /** Internal variables */
@@ -135,7 +138,7 @@ PRIVATE void _ogl_program_attach_shader_callback(__in __notnull ogl_context cont
     #ifdef ENABLE_GL_ERROR_CHECKS
         bool is_successful = (in_data->program_ptr->pGLGetError() == GL_NO_ERROR);
 
-        ASSERT_DEBUG_SYNC(is_successful, 
+        ASSERT_DEBUG_SYNC(is_successful,
                          "Could not attach shader [%d] to program [%d]",
                          ogl_shader_get_id(in_data->shader),
                          in_data->program_ptr->id);
@@ -155,25 +158,34 @@ PRIVATE void _ogl_program_attach_shader_callback(__in __notnull ogl_context cont
 }
 
 /** TODO */
-PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context, void* in_arg)
+PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
+                                                         void*       in_arg)
 {
     _ogl_program* program_ptr = (_ogl_program*) in_arg;
 
     program_ptr->id                    = program_ptr->pGLCreateProgram();
-    program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER,     sizeof(ogl_program_attribute_descriptor*) );
-    program_ptr->active_uniform_blocks = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER, sizeof(_ogl_program_uniform_block_descriptor*) );
-    program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER,       sizeof(ogl_program_uniform_descriptor*) );
-    program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER,      sizeof(ogl_shader) );
+    program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER,
+                                                                        sizeof(ogl_program_attribute_descriptor*) );
+    program_ptr->active_uniform_blocks = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER,
+                                                                        sizeof(_ogl_program_uniform_block_descriptor*) );
+    program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER,
+                                                                        sizeof(ogl_program_uniform_descriptor*) );
+    program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER,
+                                                                        sizeof(ogl_shader) );
 
     #ifdef ENABLE_GL_ERROR_CHECKS
         ASSERT_DEBUG_SYNC (program_ptr->pGLGetError() == GL_NO_ERROR,
                            "Could not create program.");
     #endif
 
-    ASSERT_ALWAYS_SYNC(program_ptr->active_attributes     != NULL, "Out of memory while allocating active attributes resizable vector");
-    ASSERT_ALWAYS_SYNC(program_ptr->active_uniform_blocks != NULL, "Out of memory while allocating active uniform blocks resizable vector");
-    ASSERT_ALWAYS_SYNC(program_ptr->active_uniforms       != NULL, "Out of memory while allocating active uniforms resizable vector");
-    ASSERT_ALWAYS_SYNC(program_ptr->attached_shaders      != NULL, "Out of memory while allocating attached shaders resizable vector");
+    ASSERT_ALWAYS_SYNC(program_ptr->active_attributes != NULL,
+                       "Out of memory while allocating active attributes resizable vector");
+    ASSERT_ALWAYS_SYNC(program_ptr->active_uniform_blocks != NULL,
+                       "Out of memory while allocating active uniform blocks resizable vector");
+    ASSERT_ALWAYS_SYNC(program_ptr->active_uniforms != NULL,
+                       "Out of memory while allocating active uniforms resizable vector");
+    ASSERT_ALWAYS_SYNC(program_ptr->attached_shaders != NULL,
+                       "Out of memory while allocating attached shaders resizable vector");
 
     /* Let the impl know that we will be interested in extracting the blob */
     program_ptr->pGLProgramParameteri(program_ptr->id,
@@ -187,7 +199,8 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context, vo
 }
 
 /** TODO */
-PRIVATE void _ogl_program_detach_shader_callback(__in __notnull ogl_context context, void* in_arg)
+PRIVATE void _ogl_program_detach_shader_callback(__in __notnull ogl_context context,
+                                                                void*       in_arg)
 {
     _ogl_detach_shader_callback_argument* in_data = (_ogl_detach_shader_callback_argument*) in_arg;
 
@@ -198,7 +211,7 @@ PRIVATE void _ogl_program_detach_shader_callback(__in __notnull ogl_context cont
     #ifdef ENABLE_GL_ERROR_CHECKS
         bool is_successful = (in_data->program_ptr->pGLGetError() == GL_NO_ERROR);
 
-        ASSERT_DEBUG_SYNC(is_successful, 
+        ASSERT_DEBUG_SYNC(is_successful,
                          "Could not detach shader [%d] from program [%d]",
                          ogl_shader_get_id(in_data->shader),
                          in_data->program_ptr->id);
@@ -221,18 +234,21 @@ PRIVATE void _ogl_program_detach_shader_callback(__in __notnull ogl_context cont
 /** TODO */
 PRIVATE char*_ogl_program_get_binary_blob_file_name(__in __notnull _ogl_program* program_ptr)
 {
-    const uint32_t file_name_length = system_hashed_ansi_string_get_length(program_ptr->name);
-    char*          file_name        = new (std::nothrow) char[file_blob_prefix_length + file_name_length + 1];
+    /* Form the hash-based file name */
+    std::stringstream file_name_sstream;
+    std::string       file_name_string;
 
-    ASSERT_DEBUG_SYNC(file_name != NULL, "Could not allocate space for blob file name.");
-    if (file_name != NULL)
-    {
-        char* file_name_traveller = file_name;
+    file_name_sstream << file_blob_prefix
+                      << system_hashed_ansi_string_get_hash(program_ptr->name);
 
-        memcpy(file_name_traveller, file_blob_prefix,                                        file_blob_prefix_length); file_name_traveller += file_blob_prefix_length;
-        memcpy(file_name_traveller, system_hashed_ansi_string_get_buffer(program_ptr->name), file_name_length);        file_name_traveller += file_name_length;
-        *file_name_traveller = 0;
-    }
+    file_name_string  = file_name_sstream.str();
+
+    /* Form the result string */
+    char* file_name = new (std::nothrow) char[file_name_string.length() + 1];
+
+    memcpy(file_name,
+           file_name_string.c_str(),
+           file_name_string.length() + 1);
 
     return file_name;
 }
@@ -240,32 +256,28 @@ PRIVATE char*_ogl_program_get_binary_blob_file_name(__in __notnull _ogl_program*
 /** TODO */
 PRIVATE char*_ogl_program_get_source_code_file_name(__in __notnull _ogl_program* program_ptr)
 {
-    const uint32_t file_name_length = system_hashed_ansi_string_get_length(program_ptr->name);
-    char*          file_name        = new (std::nothrow) char[file_sourcecode_prefix_length + file_name_length + 1];
+    /* Form the hash-based file name */
+    std::stringstream file_name_sstream;
+    std::string       file_name_string;
 
-    ASSERT_DEBUG_SYNC(file_name != NULL, "Could not allocate space for blob file name.");
-    if (file_name != NULL)
-    {
-        char* file_name_traveller = file_name;
+    file_name_sstream << file_sourcecode_prefix
+                      << system_hashed_ansi_string_get_hash(program_ptr->name);
 
-        memcpy(file_name_traveller,
-               file_sourcecode_prefix,
-               file_sourcecode_prefix_length);
-        file_name_traveller += file_sourcecode_prefix_length;
+    file_name_string  = file_name_sstream.str();
 
-        memcpy(file_name_traveller,
-               system_hashed_ansi_string_get_buffer(program_ptr->name),
-               file_name_length);
-        file_name_traveller += file_name_length;
+    /* Form the result string */
+    char* file_name = new (std::nothrow) char[file_name_string.length() + 1];
 
-        *file_name_traveller = 0;
-    }
+    memcpy(file_name,
+           file_name_string.c_str(),
+           file_name_string.length() + 1);
 
     return file_name;
 }
 
 /** TODO */
-PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context, void* in_arg)
+PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
+                                                       void*       in_arg)
 {
     _ogl_program* program_ptr     = (_ogl_program*) in_arg;
     bool          has_used_binary = false;
@@ -273,7 +285,8 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context, void
     system_timeline_time start_time = system_time_now();
 
     /* If program binaries are supportd, see if we've got a blob file already stashed. If so, no need to link at this point */
-    has_used_binary = _ogl_program_load_binary_blob(context, program_ptr);
+    has_used_binary = _ogl_program_load_binary_blob(context,
+                                                    program_ptr);
 
     if (!has_used_binary)
     {
@@ -425,7 +438,8 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context, void
                     #endif
                 }
 
-                system_resizable_vector_push(program_ptr->active_attributes, new_attribute);
+                system_resizable_vector_push(program_ptr->active_attributes,
+                                             new_attribute);
             } /* for (GLint n_active_attribute = 0; n_active_attribute < n_active_attributes; ++n_active_attribute)*/
 
             /* Now for the uniforms */
@@ -472,7 +486,7 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context, void
                                           "Could not retrieve active uniform properties.");
                     #endif
 
-                    new_uniform->name     = system_hashed_ansi_string_create(uniform_name);
+                    new_uniform->name     = system_hashed_ansi_string_create  (uniform_name);
                     new_uniform->location = program_ptr->pGLGetUniformLocation(program_ptr->id,
                                                                                uniform_name);
 
@@ -646,13 +660,15 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context, void
     system_timeline_time end_time            = system_time_now();
     uint32_t             execution_time_msec = 0;
 
-    system_time_get_msec_for_timeline_time(end_time - start_time, &execution_time_msec);
+    system_time_get_msec_for_timeline_time(end_time - start_time,
+                                          &execution_time_msec);
 
     LOG_INFO("Linking time: %d ms", execution_time_msec);
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_load_binary_blob(__in __notnull ogl_context context, __in __notnull _ogl_program* program_ptr)
+PRIVATE bool _ogl_program_load_binary_blob(__in __notnull  ogl_context  context,
+                                           __in __notnull _ogl_program* program_ptr)
 {
     /* Form the name */
     char* file_name = _ogl_program_get_binary_blob_file_name(program_ptr);
@@ -661,7 +677,8 @@ PRIVATE bool _ogl_program_load_binary_blob(__in __notnull ogl_context context, _
     if (file_name != NULL)
     {
         /* Open the file for reading */
-        FILE* blob_file_handle = ::fopen(file_name, "rb");
+        FILE* blob_file_handle = ::fopen(file_name,
+                                         "rb");
 
         if (blob_file_handle != NULL)
         {
@@ -878,7 +895,8 @@ PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector acti
     while (system_resizable_vector_get_amount_of_elements(active_attributes) > 0)
     {
         ogl_program_attribute_descriptor* program_attribute_ptr = NULL;
-        bool                              result_get            = system_resizable_vector_pop(active_attributes, &program_attribute_ptr);
+        bool                              result_get            = system_resizable_vector_pop(active_attributes,
+                                                                                             &program_attribute_ptr);
 
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve program attribute pointer.");
@@ -908,16 +926,22 @@ PRIVATE void _ogl_program_release_callback(__in __notnull ogl_context context,
 PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_ptr,
                                            __in __notnull _ogl_program* program_ptr)
 {
-    /* Form the name first */
-    char* file_name = _ogl_program_get_binary_blob_file_name(program_ptr);
+    /* Program file names tend to be length and often exceed Windows ANSI API limits.
+     * Therefore, we use HAS' hash as actual blob file name, and store the actual
+     * program file name at the beginning of the source code file. (implemented elsewhere)
+     */
+    char* file_name_src = _ogl_program_get_binary_blob_file_name(program_ptr);
 
-    if (file_name != NULL)
+    if (file_name_src != NULL)
     {
         /* Open the file for writing */
-        FILE* blob_file_handle = ::fopen(file_name, "wb");
+        system_file_serializer blob_file_serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name_src) );
 
-        ASSERT_DEBUG_SYNC(blob_file_handle != NULL, "Could not open file [%s] for writing", file_name);
-        if (blob_file_handle != NULL)
+        ASSERT_DEBUG_SYNC(blob_file_serializer != NULL,
+                          "Could not open file [%s] for writing",
+                          file_name_src);
+
+        if (blob_file_serializer != NULL)
         {
             /* Retrieve the blob */
             GLint blob_length = 0;
@@ -925,6 +949,7 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
             program_ptr->pGLGetProgramiv(program_ptr->id,
                                          GL_PROGRAM_BINARY_LENGTH,
                                         &blob_length);
+
             ASSERT_DEBUG_SYNC(blob_length != 0,
                               "Program blob length is 0");
 
@@ -953,11 +978,9 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
                     /* We have the blob now. Proceed and write to the file */
                     unsigned int n_attached_shaders = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
 
-                    ASSERT_ALWAYS_SYNC(::fwrite(&n_attached_shaders,
-                                                sizeof(n_attached_shaders),
-                                                1,
-                                                blob_file_handle) == 1,
-                                       "Could not write header");
+                    system_file_serializer_write(blob_file_serializer,
+                                                 sizeof(n_attached_shaders),
+                                                &n_attached_shaders);
 
                     for (unsigned int n_shader = 0;
                                       n_shader < n_attached_shaders;
@@ -972,17 +995,20 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
 
                         shader_hash = system_hashed_ansi_string_get_hash(ogl_shader_get_body(shader) );
 
-                        ASSERT_ALWAYS_SYNC(::fwrite(&shader_hash,
-                                                    sizeof(shader_hash),
-                                                    1,
-                                                    blob_file_handle) == 1,
-                                            "Could not write %dth shader hash",
-                                            n_shader);
+                        system_file_serializer_write(blob_file_serializer,
+                                                     sizeof(shader_hash),
+                                                    &shader_hash);
                     }
 
-                    ASSERT_ALWAYS_SYNC(::fwrite(&blob_format, sizeof(blob_format), 1, blob_file_handle) == 1, "Could not write blob format");
-                    ASSERT_ALWAYS_SYNC(::fwrite(&blob_length, sizeof(blob_length), 1, blob_file_handle) == 1, "Could not write blob length");
-                    ASSERT_ALWAYS_SYNC(::fwrite(blob,         blob_length,         1, blob_file_handle) == 1, "Could not write program blob");
+                    system_file_serializer_write(blob_file_serializer,
+                                                 sizeof(blob_format),
+                                                &blob_format);
+                    system_file_serializer_write(blob_file_serializer,
+                                                 sizeof(blob_length),
+                                                &blob_length);
+                    system_file_serializer_write(blob_file_serializer,
+                                                 blob_length,
+                                                 blob);
 
                     /* Cool to release the blob now */
                     delete [] blob;
@@ -990,14 +1016,16 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
                 }
             }
 
-            /* Close the file */
-            ::fclose(blob_file_handle);
-        }
+            /* Release the seiralizer */
+            system_file_serializer_release(blob_file_serializer);
+
+            blob_file_serializer = NULL;
+        } /* if (blob_file_serializer != NULL) */
 
         /* Safe to release file name buffer now */
-        delete [] file_name;
-        file_name = NULL;
-    }
+        delete [] file_name_src;
+        file_name_src = NULL;
+    } /* if (file_name_src != NULL) */
 }
 
 /** TODO */
@@ -1007,6 +1035,24 @@ PRIVATE void _ogl_program_save_shader_sources(__in __notnull _ogl_program* progr
     const uint32_t         n_shaders  = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
     system_file_serializer serializer = system_file_serializer_create_for_writing     (system_hashed_ansi_string_create(file_name) );
 
+    /* Store full program name */
+    static const char* full_program_name = "Full program name: ";
+    static const char* newline           = "\n";
+
+    system_file_serializer_write(serializer,
+                                 strlen(full_program_name),
+                                 full_program_name);
+    system_file_serializer_write(serializer,
+                                 system_hashed_ansi_string_get_length(program_ptr->name),
+                                 system_hashed_ansi_string_get_buffer(program_ptr->name) );
+    system_file_serializer_write(serializer,
+                                 1, /* size */
+                                 newline);
+    system_file_serializer_write(serializer,
+                                 1, /* size */
+                                 newline);
+
+    /* Store shader info */
     for (uint32_t n_shader = 0;
                   n_shader < n_shaders;
                 ++n_shader)
@@ -1030,10 +1076,9 @@ PRIVATE void _ogl_program_save_shader_sources(__in __notnull _ogl_program* progr
         shader_type = ogl_shader_get_type(current_shader);
 
         /* Store information about the shader type */
-        const char* marker_pre        = "--- ";
-        const char* marker_post       = " ---\n";
-        const char* newline            = "\n";
-        const char* shader_type_string = NULL;
+        static const char* marker_pre        = "--- ";
+        static const char* marker_post       = " ---\n";
+        static const char* shader_type_string = NULL;
 
         switch (shader_type)
         {
@@ -1257,7 +1302,8 @@ PUBLIC EMERALD_API bool ogl_program_detach_shader(__in __notnull ogl_program pro
     if (program_ptr->id != 0)
     {
         /* Make sure the shader is attached to the program */
-        if (system_resizable_vector_find(program_ptr->attached_shaders, shader) != ITEM_NOT_FOUND)
+        if (system_resizable_vector_find(program_ptr->attached_shaders,
+                                         shader) != ITEM_NOT_FOUND)
         {
             _ogl_detach_shader_callback_argument callback_argument;
 
@@ -1333,7 +1379,9 @@ PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(__in  __notnull ogl_pr
     {
         unsigned int n_attributes = system_resizable_vector_get_amount_of_elements(program_ptr->active_attributes);
 
-        for (unsigned int n_attribute = 0; n_attribute < n_attributes; ++n_attribute)
+        for (unsigned int n_attribute = 0;
+                          n_attribute < n_attributes;
+                        ++n_attribute)
         {
             ogl_program_attribute_descriptor* descriptor = NULL;
 
@@ -1341,7 +1389,9 @@ PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(__in  __notnull ogl_pr
                                                             n_attribute,
                                                            &descriptor);
 
-            if (result && system_hashed_ansi_string_is_equal_to_hash_string(descriptor->name, name) )
+            if (result                                                             &&
+                system_hashed_ansi_string_is_equal_to_hash_string(descriptor->name,
+                                                                  name) )
             {
                 *out_attribute = descriptor;
                 result         = true;
@@ -1433,7 +1483,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
                                                             n_uniform,
                                                             &descriptor);
 
-            if (result && system_hashed_ansi_string_is_equal_to_hash_string(descriptor->name, name) )
+            if (result                                                              &&
+                system_hashed_ansi_string_is_equal_to_hash_string(descriptor->name,
+                                                                  name) )
             {
                 *out_uniform = descriptor;
                 result       = true;
@@ -1469,7 +1521,8 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_index(__in  __notnull ogl_
                                                    n_uniform_block,
                                                   &uniform_block_ptr) )
         {
-            if (system_hashed_ansi_string_is_equal_to_hash_string(name, uniform_block_ptr->name) )
+            if (system_hashed_ansi_string_is_equal_to_hash_string(name,
+                                                                  uniform_block_ptr->name) )
             {
                 *out_block_id = n_uniform_block;
 
@@ -1493,7 +1546,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_properties(__in      __not
     bool                                   result      = false;
     _ogl_program_uniform_block_descriptor* ub_ptr      = NULL;
 
-    if (system_resizable_vector_get_element_at(program_ptr->active_uniform_blocks, ub_id, &ub_ptr) )
+    if (system_resizable_vector_get_element_at(program_ptr->active_uniform_blocks,
+                                               ub_id,
+                                              &ub_ptr) )
     {
         if (out_block_data_size != NULL)
         {
@@ -1549,12 +1604,17 @@ PUBLIC EMERALD_API void ogl_program_set_tf_varyings(__in __notnull ogl_program  
 {
     _ogl_program* program_ptr = (_ogl_program*) program;
 
-    ASSERT_DEBUG_SYNC(n_varyings != 0,                                                        "Invalid n_varyings value");
-    ASSERT_DEBUG_SYNC(tf_mode    == GL_INTERLEAVED_ATTRIBS || tf_mode == GL_SEPARATE_ATTRIBS, "Invalid tf_mode value");
+    ASSERT_DEBUG_SYNC(n_varyings != 0,
+                      "Invalid n_varyings value");
+    ASSERT_DEBUG_SYNC(tf_mode == GL_INTERLEAVED_ATTRIBS ||
+                      tf_mode == GL_SEPARATE_ATTRIBS,
+                      "Invalid tf_mode value");
 
     if (program_ptr->tf_varyings != NULL)
     {
-        for (unsigned int n_varying = 0; n_varying < program_ptr->n_tf_varyings; ++n_varying)
+        for (unsigned int n_varying = 0;
+                          n_varying < program_ptr->n_tf_varyings;
+                        ++n_varying)
         {
             delete [] program_ptr->tf_varyings[n_varying];
 
@@ -1570,7 +1630,8 @@ PUBLIC EMERALD_API void ogl_program_set_tf_varyings(__in __notnull ogl_program  
     program_ptr->tf_mode     = tf_mode;
     program_ptr->tf_varyings = new (std::nothrow) GLchar*[n_varyings];
 
-    ASSERT_ALWAYS_SYNC(program_ptr->tf_varyings != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(program_ptr->tf_varyings != NULL,
+                       "Out of memory");
 
     if (program_ptr->tf_varyings != NULL)
     {
@@ -1582,9 +1643,13 @@ PUBLIC EMERALD_API void ogl_program_set_tf_varyings(__in __notnull ogl_program  
             const unsigned int varying_length = strlen( (const char*) varying_name) + 1;
 
             program_ptr->tf_varyings[n_varying] = new (std::nothrow) GLchar[varying_length];
-            ASSERT_ALWAYS_SYNC(program_ptr->tf_varyings[n_varying] != NULL, "Out of memory");
 
-            memcpy(program_ptr->tf_varyings[n_varying], varying_name, varying_length);
+            ASSERT_ALWAYS_SYNC(program_ptr->tf_varyings[n_varying] != NULL,
+                               "Out of memory");
+
+            memcpy(program_ptr->tf_varyings[n_varying],
+                   varying_name,
+                   varying_length);
         } /* for (all varyings) */
 
         program_ptr->n_tf_varyings = n_varyings;

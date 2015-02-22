@@ -1,11 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
+#include "ogl/ogl_shaders.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -148,6 +149,16 @@ PRIVATE void _ogl_shader_release(__in __notnull __deallocate(mem) void* shader)
     ogl_context_request_callback_from_context_thread(shader_ptr->context,
                                                      _ogl_shader_release_callback,
                                                      shader_ptr);
+
+    /* Finally, unregister the shader from the shaders manager. */
+    ogl_shaders shaders = NULL;
+
+    ogl_context_get_property(shader_ptr->context,
+                             OGL_CONTEXT_PROPERTY_SHADERS,
+                            &shaders);
+
+    ogl_shaders_unregister_shader(shaders,
+                                  (ogl_shader) shader_ptr);
 }
 
 /** Please see header for specification */
@@ -178,6 +189,20 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context      
                                                 __in           ogl_shader_type           shader_type,
                                                 __in __notnull system_hashed_ansi_string name)
 {
+    /* Sanity check: make sure the ogl_shader instance we're about to create has not already been created.
+     *               If you ever reach this point, please ensure shader instances are uniquely named. */
+    ogl_shaders shaders = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SHADERS,
+                            &shaders);
+
+    ASSERT_DEBUG_SYNC(ogl_shaders_get_shader_by_name(shaders,
+                                                     name) == NULL,
+                      "Shader [%s] is already registered!",
+                      system_hashed_ansi_string_get_buffer(name) );
+
+    /* Carry on and create a new shader instance */
     _ogl_shader* result = new (std::nothrow) _ogl_shader;
 
     if (result != NULL)
@@ -245,6 +270,10 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context      
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_shader_create_callback,
                                                          result);
+
+        /* Register the shader object */
+        ogl_shaders_register_shader(shaders,
+                                    (ogl_shader) result);
     }
 
     return (ogl_shader) result;

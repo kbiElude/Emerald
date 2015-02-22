@@ -181,8 +181,35 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in __notnull scene_material src_material,
                                                                           __in_opt       ogl_context    context);
 
-/** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnull mesh_material material);
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_fs_behavior_has(__in mesh_material_fs_behavior fs_behavior);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attachment_has(__in mesh_material_property_attachment attachment);
+
+/** TODO.
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(__in mesh_material_shading shading);
+
+/** TODO.
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_property_has(__in mesh_material_shading_property property);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_vs_behavior_has(__in mesh_material_vs_behavior vs_behavior);
 
 /** TODO.
  *

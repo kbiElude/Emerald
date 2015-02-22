@@ -7,6 +7,7 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
+#include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "scene/scene_light.h"
@@ -1244,21 +1245,42 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
                                                                       __in __notnull system_hashed_ansi_string  name,
                                                                       __in           shaders_fragment_uber_type fs_type)
 {
-    _shaders_fragment_uber* result_object = NULL;
-    shaders_fragment_uber   result_shader = NULL;
+    ogl_shader              embedded_shader = NULL;
+    _shaders_fragment_uber* result_object   = NULL;
+    shaders_fragment_uber   result_shader   = NULL;
 
-    /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context,
-                                          SHADER_TYPE_FRAGMENT,
-                                          system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                         " fragment uber"));
+    /* Create a new ogl_shader instance only if one is not already registered
+     * in context-wide shaders manager.
+     */
+    system_hashed_ansi_string ogl_shader_instance_name = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                 " fragment uber");
+    ogl_shaders               shaders                  = NULL;
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "Could not create a fragment shader.");
-    if (shader == NULL)
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_SHADERS,
+                            &shaders);
+
+    if ((embedded_shader = ogl_shaders_get_shader_by_name(shaders,
+                                                          ogl_shader_instance_name)) != NULL)
     {
-        LOG_ERROR("Could not create a fragment shader for uber shader object.");
+        ogl_shader_retain(embedded_shader);
+    }
+    else
+    {
+        /* Not a recognized shader name. Create one */
+        embedded_shader = ogl_shader_create(context,
+                                            SHADER_TYPE_FRAGMENT,
+                                            ogl_shader_instance_name);
 
-        goto end;
+        ASSERT_DEBUG_SYNC(embedded_shader != NULL,
+                          "Could not create a fragment shader.");
+
+        if (embedded_shader == NULL)
+        {
+            LOG_ERROR("Could not create a fragment shader for uber shader object.");
+
+            goto end;
+        }
     }
 
     /* Initialize the shader constructor */
@@ -1349,7 +1371,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
     }
 
     /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader,
+    if (!ogl_shader_set_body(embedded_shader,
                              ogl_shader_constructor_get_shader_body(shader_constructor) ))
     {
         LOG_ERROR("Could not set body of uber shader.");
@@ -1372,7 +1394,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
     result_object->added_items                   = system_resizable_vector_create(4 /* capacity */, sizeof(_shaders_fragment_uber_item*) );
     result_object->dirty                         = true;
     result_object->fragment_shader_properties_ub = fragment_shader_properties_ub;
-    result_object->shader                        = shader;
+    result_object->shader                        = embedded_shader;
     result_object->shader_constructor            = shader_constructor;
 
     ASSERT_ALWAYS_SYNC(result_object->added_items != NULL, "Out of memory");
@@ -1387,11 +1409,11 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
     return (shaders_fragment_uber) result_object;
 
 end:
-    if (shader != NULL)
+    if (embedded_shader != NULL)
     {
-        ogl_shader_release(shader);
+        ogl_shader_release(embedded_shader);
 
-        shader = NULL;
+        embedded_shader = NULL;
     }
 
     if (result_object != NULL)

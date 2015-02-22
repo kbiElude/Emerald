@@ -843,6 +843,232 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 }
 
 /* Please see header for spec */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(__in scene_light_falloff falloff)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* falloff_custom_name                   = "custom";
+    static const char* falloff_inversed_distance_name        = "inversed distance";
+    static const char* falloff_inversed_distance_square_name = "inversed distance squared";
+    static const char* falloff_linear_name                   = "linear";
+    static const char* falloff_off_name                      = "off";
+
+    switch (falloff)
+    {
+        case SCENE_LIGHT_FALLOFF_OFF:
+        {
+            result = system_hashed_ansi_string_create(falloff_off_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_FALLOFF_CUSTOM:
+        {
+            result = system_hashed_ansi_string_create(falloff_custom_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE:
+        {
+            result = system_hashed_ansi_string_create(falloff_inversed_distance_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_FALLOFF_INVERSED_DISTANCE_SQUARE:
+        {
+            result = system_hashed_ansi_string_create(falloff_inversed_distance_square_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_FALLOFF_LINEAR:
+        {
+            result = system_hashed_ansi_string_create(falloff_linear_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_falloff value.");
+        }
+    } /* switch (falloff) */
+
+    return result;
+}
+
+/* Please see header for spec */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_bias_has(__in scene_light_shadow_map_bias bias)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* bias_adaptive_fast_name = "adaptive bias (fast)";
+    static const char* bias_adaptive_name      = "adaptive bias";
+    static const char* bias_constant_name      = "constant bias";
+    static const char* bias_none_name          = "no bias";
+
+    switch (bias)
+    {
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE:
+        {
+            result = system_hashed_ansi_string_create(bias_adaptive_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE_FAST:
+        {
+            result = system_hashed_ansi_string_create(bias_adaptive_fast_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_CONSTANT:
+        {
+            result = system_hashed_ansi_string_create(bias_constant_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_BIAS_NONE:
+        {
+            result = system_hashed_ansi_string_create(bias_none_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_shadow_map_bias value.");
+        }
+    } /* switch (bias) */
+
+    return result;
+}
+
+/* Please see header for spec */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_filtering_has(__in scene_light_shadow_map_filtering filtering)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* filtering_pcf_name   = "pcf";
+    static const char* filtering_plain_name = "plain";
+
+    switch (filtering)
+    {
+        case SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF:
+        {
+            result = system_hashed_ansi_string_create(filtering_pcf_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_FILTERING_PLAIN:
+        {
+            result = system_hashed_ansi_string_create(filtering_plain_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_shadow_map_filtering value.");
+        }
+    } /* switch (filtering) */
+
+    return result;
+}
+
+/* Please see header for spec */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(__in scene_light_shadow_map_pointlight_algorithm algorithm)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* algorithm_cubical_name         = "cubical";
+    static const char* algorithm_dual_paraboloid_name = "dual paraboloid";
+
+    switch (algorithm)
+    {
+        case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL:
+        {
+            result = system_hashed_ansi_string_create(algorithm_cubical_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID:
+        {
+            result = system_hashed_ansi_string_create(algorithm_dual_paraboloid_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_shadow_map_pointlight_algorithm value.");
+        }
+    } /* switch (algorithm) */
+
+    return result;
+}
+
+/* Please see header for spec */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(__in scene_light_type light_type)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* light_ambient_name     = "ambient";
+    static const char* light_directional_name = "directional";
+    static const char* light_point_name       = "point";
+    static const char* light_spot_name        = "spot";
+
+    switch (light_type)
+    {
+        case SCENE_LIGHT_TYPE_AMBIENT:
+       {
+           result = system_hashed_ansi_string_create(light_ambient_name);
+
+           break;
+       }
+
+        case SCENE_LIGHT_TYPE_DIRECTIONAL:
+        {
+            result = system_hashed_ansi_string_create(light_directional_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_TYPE_POINT:
+        {
+            result = system_hashed_ansi_string_create(light_point_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_TYPE_SPOT:
+        {
+            result = system_hashed_ansi_string_create(light_spot_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_type value.");
+        }
+    } /* switch (light_type) */
+
+    return result;
+}
+
+/* Please see header for spec */
 PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serializer,
                                     __in_opt       scene                  owner_scene)
 {

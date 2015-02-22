@@ -16,7 +16,6 @@
 #include "system/system_thread_pool.h"
 #include "system/system_variant.h"
 
-
 /** Internal type definitions */
 typedef struct 
 {

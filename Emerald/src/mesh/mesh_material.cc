@@ -655,9 +655,261 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string mesh_material_get_name(__in __notnull mesh_material material)
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_fs_behavior_has(__in mesh_material_fs_behavior fs_behavior)
 {
-    return ((_mesh_material*) material)->name;
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* behavior_default_name            = "default";
+    static const char* behavior_dual_paraboloid_sm_name = "dual paraboloid SM";
+
+    switch (fs_behavior)
+    {
+        case MESH_MATERIAL_FS_BEHAVIOR_DEFAULT:
+        {
+            result = system_hashed_ansi_string_create(behavior_default_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM:
+        {
+            result = system_hashed_ansi_string_create(behavior_dual_paraboloid_sm_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_fs_behavior value.");
+        }
+    } /* switch (fs_behavior) */
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attachment_has(__in mesh_material_property_attachment attachment)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* attachment_curve_container_float_name    = "curve container float";
+    static const char* attachment_curve_container_vec3_name     = "curve container vec3";
+    static const char* attachment_float_name                    = "float";
+    static const char* attachment_input_fragment_attribute_name = "input fragment attribute";
+    static const char* attachment_none_name                     = "none";
+    static const char* attachment_texture_name                  = "texture";
+    static const char* attachment_vec4_name                     = "vec4";
+
+    switch (attachment)
+    {
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+        {
+            result = system_hashed_ansi_string_create(attachment_curve_container_float_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+        {
+            result = system_hashed_ansi_string_create(attachment_curve_container_vec3_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+        {
+            result = system_hashed_ansi_string_create(attachment_float_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE:
+        {
+            result = system_hashed_ansi_string_create(attachment_input_fragment_attribute_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE:
+        {
+            result = system_hashed_ansi_string_create(attachment_none_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+        {
+            result = system_hashed_ansi_string_create(attachment_texture_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+        {
+            result = system_hashed_ansi_string_create(attachment_vec4_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_property_attachment value.");
+        }
+    } /* switch (attachment) */
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(__in mesh_material_shading shading)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* shading_input_fragment_attribute_name = "input fragment attribute";
+    static const char* shading_lambert_name                  = "lambert";
+    static const char* shading_none_name                     = "no shading";
+    static const char* shading_phong_name                    = "phong";
+
+    switch (shading)
+    {
+        case MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE:
+        {
+            result = system_hashed_ansi_string_create(shading_input_fragment_attribute_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_LAMBERT:
+        {
+            result = system_hashed_ansi_string_create(shading_lambert_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_NONE:
+        {
+            result = system_hashed_ansi_string_create(shading_none_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_PHONG:
+        {
+            result = system_hashed_ansi_string_create(shading_phong_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_shading value.");
+        }
+    } /* switch (shading) */
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_property_has(__in mesh_material_shading_property property)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* property_ambient_name         = "ambient";
+    static const char* property_diffuse_name         = "diffuse";
+    static const char* property_input_attribute_name = "input attribute";
+    static const char* property_luminosity_name      = "luminosity";
+    static const char* property_shininess_name       = "shininess";
+    static const char* property_specular_name        = "specular";
+
+    switch (property)
+    {
+        case MESH_MATERIAL_SHADING_PROPERTY_AMBIENT:
+        {
+            result = system_hashed_ansi_string_create(property_ambient_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE:
+        {
+            result = system_hashed_ansi_string_create(property_diffuse_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE:
+        {
+            result = system_hashed_ansi_string_create(property_input_attribute_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY:
+        {
+            result = system_hashed_ansi_string_create(property_luminosity_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_PROPERTY_SHININESS:
+        {
+            result = system_hashed_ansi_string_create(property_shininess_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_SHADING_PROPERTY_SPECULAR:
+        {
+            result = system_hashed_ansi_string_create(property_specular_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_shading_property value.");
+        }
+    } /* switch (property) */
+
+    return result;
+}
+
+/* Please see header for specification */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_vs_behavior_has(__in mesh_material_vs_behavior vs_behavior)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* behavior_default_name            = "default";
+    static const char* behavior_dual_paraboloid_sm_name = "dual paraboloid SM";
+
+    switch (vs_behavior)
+    {
+        case MESH_MATERIAL_VS_BEHAVIOR_DEFAULT:
+        {
+            result = system_hashed_ansi_string_create(behavior_default_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM:
+        {
+            result = system_hashed_ansi_string_create(behavior_dual_paraboloid_sm_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_vs_behavior value.");
+        }
+    } /* switch (vs_behavior) */
+
+    return result;
 }
 
 /* Please see header for specification */

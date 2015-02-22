@@ -201,6 +201,36 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,
                                                  __in            scene_light_property,
                                                  __out __notnull void*);
 
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(__in scene_light_falloff falloff);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_bias_has(__in scene_light_shadow_map_bias bias);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_filtering_has(__in scene_light_shadow_map_filtering filtering);
+
+/** TODO.
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(__in scene_light_shadow_map_pointlight_algorithm algorithm);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(__in scene_light_type light_type);
+
 /** TODO.
  *
  *  NOTE: This function is for internal use only.

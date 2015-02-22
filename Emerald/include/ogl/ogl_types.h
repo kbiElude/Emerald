@@ -1701,6 +1701,7 @@ typedef unsigned int ogl_program_uniform_block_id;
 
 /** Shader handle & various related types from shaders module. */
 DECLARE_HANDLE(ogl_shader);
+DECLARE_HANDLE(ogl_shaders);
 DECLARE_HANDLE(ogl_shader_constructor);
 DECLARE_HANDLE(ogl_uber);
 DECLARE_HANDLE(shaders_fragment_convolution3x3);

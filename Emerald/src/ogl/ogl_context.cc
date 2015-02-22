@@ -16,6 +16,7 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_samplers.h"
+#include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_textures.h"
 #include "system/system_assertions.h"
@@ -99,6 +100,7 @@ typedef struct
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_samplers                    samplers;
+    ogl_shaders                     shaders;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
     ogl_context_texture_compression texture_compression;
@@ -2174,6 +2176,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->sampler_bindings                           = NULL;
                                     _result->state_cache                                = NULL;
                                     _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
+                                    _result->shaders                                    = ogl_shaders_create();
                                     _result->shadow_mapping                             = NULL;
                                     _result->texture_compression                        = NULL;
                                     _result->textures                                   = ogl_textures_create( (ogl_context) _result);
@@ -2595,6 +2598,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_SHADERS:
+        {
+            *(ogl_shaders*) out_result = context_ptr->shaders;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_SHADOW_MAPPING:
         {
             *(ogl_shadow_mapping*) out_result = context_ptr->shadow_mapping;
@@ -2761,6 +2771,13 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
         ogl_samplers_release(context_ptr->samplers);
 
         context_ptr->samplers = NULL;
+    }
+
+    if (context_ptr->shaders != NULL)
+    {
+        ogl_shaders_release(context_ptr->shaders);
+
+        context_ptr->shaders = NULL;
     }
 
     if (context_ptr->textures != NULL)

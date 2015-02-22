@@ -960,6 +960,15 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
                             &new_item_ptr->shadow_map_pointlight_algorithm);
 
+    if (light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT   ||
+        light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)
+    {
+        scene_light_get_property(light_instance,
+                                 SCENE_LIGHT_PROPERTY_FALLOFF,
+                                &new_item_ptr->falloff);
+    }
+
     new_item_ptr->fs_item_id       = fs_item_id;
     new_item_ptr->is_shadow_caster = is_shadow_caster;
     new_item_ptr->type             = OGL_UBER_ITEM_LIGHT;

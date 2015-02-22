@@ -15,6 +15,8 @@
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include <sstream>
+
 
 /* Private type definitions */
 typedef struct _ogl_materials_mesh_material_setting
@@ -180,14 +182,21 @@ typedef struct _ogl_materials
 
 
 /* Forward declarations */
-PRIVATE ogl_uber _ogl_materials_bake_uber             (__in      __notnull ogl_materials                      materials,
-                                                       __in      __notnull mesh_material                      material,
-                                                       __in      __notnull scene                              scene);
-PRIVATE void     _ogl_materials_get_forced_setting    (__in      __notnull ogl_materials                      materials,
-                                                       __in                mesh_material_shading_property,
-                                                       __out_opt __notnull mesh_material_property_attachment* out_attachment,
-                                                       __out_opt __notnull void**                             out_attachment_data);
-PRIVATE void     _ogl_materials_init_special_materials(__in      __notnull _ogl_materials*                    materials_ptr);
+PRIVATE ogl_uber                  _ogl_materials_bake_uber             (__in      __notnull ogl_materials                      materials,
+                                                                        __in      __notnull mesh_material                      material,
+                                                                        __in      __notnull scene                              scene,
+                                                                        __in                bool                               use_shadow_maps);
+PRIVATE bool                      _ogl_materials_does_uber_match_scene (__in      __notnull ogl_uber                           uber,
+                                                                        __in      __notnull scene                              scene);
+PRIVATE void                      _ogl_materials_get_forced_setting    (__in      __notnull ogl_materials                      materials,
+                                                                        __in                mesh_material_shading_property,
+                                                                        __out_opt __notnull mesh_material_property_attachment* out_attachment,
+                                                                        __out_opt __notnull void**                             out_attachment_data);
+PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name         (__in __notnull      mesh_material                      material,
+                                                                        __in __notnull      scene                              scene,
+                                                                        __in                bool                               use_shadow_maps);
+PRIVATE void                      _ogl_materials_init_special_materials(__in __notnull      _ogl_materials*                    materials_ptr);
+
 
 /** TODO */
 PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials,
@@ -201,10 +210,11 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     LOG_INFO("Performance warning: _ogl_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
-    mesh_material_fs_behavior fs_behavior      = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
-    system_hashed_ansi_string material_name    = mesh_material_get_name(material);
-    const char*               uber_name_suffix = use_shadow_maps ? " uber with SM" : " uber without SM";
-    mesh_material_vs_behavior vs_behavior      = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+    mesh_material_fs_behavior fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
+    mesh_material_vs_behavior vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+    system_hashed_ansi_string uber_name   = _ogl_materials_get_uber_name(material,
+                                                                         scene,
+                                                                         use_shadow_maps);
 
     mesh_material_get_property(material,
                                MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
@@ -213,11 +223,10 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
                               &vs_behavior);
 
-    ogl_uber                  new_uber         = ogl_uber_create       (context,
-                                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(material_name),
-                                                                                                                                uber_name_suffix),
-                                                                        shaders_fragment_uber_get_fs_uber_type_for_fs_behavior (fs_behavior),
-                                                                        shaders_vertex_uber_get_vs_uber_type_for_vs_behavior   (vs_behavior) );
+    ogl_uber new_uber = ogl_uber_create(context,
+                                        uber_name,
+                                        shaders_fragment_uber_get_fs_uber_type_for_fs_behavior(fs_behavior),
+                                        shaders_vertex_uber_get_vs_uber_type_for_vs_behavior  (vs_behavior) );
 
     ASSERT_ALWAYS_SYNC(new_uber != NULL,
                        "Could not spawn an uber instance");
@@ -535,8 +544,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     return (ogl_uber) new_uber;
 }
 
-/** TODO.
- **/
+/** TODO. **/
 PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                                   __in __notnull scene    scene)
 {
@@ -758,6 +766,198 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
 }
 
 /** TODO */
+PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull mesh_material material,
+                                                               __in __notnull scene         scene,
+                                                               __in           bool          use_shadow_maps)
+{
+    system_hashed_ansi_string material_name = NULL;
+    std::stringstream         name_sstream;
+    std::string               name_string;
+
+    mesh_material_get_property(material,
+                               MESH_MATERIAL_PROPERTY_NAME,
+                              &material_name);
+
+    /* Prefix */
+    name_sstream << "\n"
+                 << "Material name:["
+                 << system_hashed_ansi_string_get_buffer(material_name)
+                 << "]\n";
+
+    /* Shading */
+    mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+
+    mesh_material_get_property(material,
+                               MESH_MATERIAL_PROPERTY_SHADING,
+                              &material_shading);
+
+    name_sstream << "Shading:["
+                 << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_shading_has(material_shading) )
+                 << "]\n\n";
+
+    /* Iterate over all shading properties, whose attachments are not MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE */
+    name_sstream << "Mesh material shading properties:\n>>\n";
+
+    for (mesh_material_shading_property current_property  = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
+                                        current_property != MESH_MATERIAL_SHADING_PROPERTY_COUNT;
+                                ++(int&)current_property)
+    {
+        mesh_material_property_attachment property_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                   current_property);
+
+        if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
+        {
+            system_hashed_ansi_string current_attachment_has = mesh_material_get_mesh_material_property_attachment_has(property_attachment);
+            system_hashed_ansi_string current_property_has   = mesh_material_get_mesh_material_shading_property_has   (current_property);
+
+            name_sstream << "Property ["
+                         << system_hashed_ansi_string_get_buffer(current_property_has)
+                         << "] uses an attachment of type ["
+                         << system_hashed_ansi_string_get_buffer(current_attachment_has)
+                         << "]\n";
+        } /* if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE) */
+    } /* for (all shading properties) */
+
+    name_sstream << "<<\n\n";
+
+    /* FS & VS behavior */
+    mesh_material_fs_behavior material_fs_behavior;
+    system_hashed_ansi_string material_fs_behavior_has = NULL;
+    mesh_material_vs_behavior material_vs_behavior;
+    system_hashed_ansi_string material_vs_behavior_has = NULL;
+
+    mesh_material_get_property(material,
+                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                              &material_fs_behavior);
+    mesh_material_get_property(material,
+                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
+                              &material_vs_behavior);
+
+    material_fs_behavior_has = mesh_material_get_mesh_material_fs_behavior_has(material_fs_behavior);
+    material_vs_behavior_has = mesh_material_get_mesh_material_vs_behavior_has(material_vs_behavior);
+
+    name_sstream << "FS behavior:["
+                 << system_hashed_ansi_string_get_buffer(material_fs_behavior_has)
+                 << "]\nVS behavior:["
+                 << system_hashed_ansi_string_get_buffer(material_vs_behavior_has)
+                 << "]\n\n";
+
+    if (material_shading != MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE &&
+        material_shading != MESH_MATERIAL_SHADING_NONE)
+    {
+        /* Light configuration */
+        unsigned int n_lights = 0;
+
+        scene_get_property(scene,
+                           SCENE_PROPERTY_N_LIGHTS,
+                          &n_lights);
+
+        name_sstream << "Lights:["
+                     << n_lights
+                     << "]:\n>>\n";
+
+        for (unsigned int n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+        {
+            scene_light               current_light           = scene_get_light_by_index(scene,
+                                                                                         n_light);
+            bool                      current_light_is_caster = false;
+            scene_light_type          current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
+            system_hashed_ansi_string current_light_type_has  = NULL;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                    &current_light_is_caster);
+
+            current_light_type_has = scene_light_get_scene_light_type_has(current_light_type);
+
+            name_sstream << "Light ["
+                         << n_light
+                         << "] (type:["
+                         << system_hashed_ansi_string_get_buffer(current_light_type_has)
+                         << "]):\n";
+
+            /* If this light is a caster, include SM-specific info */
+            if (current_light_is_caster)
+            {
+                scene_light_shadow_map_bias      shadow_map_bias          = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
+                system_hashed_ansi_string        shadow_map_bias_has      = NULL;
+                scene_light_shadow_map_filtering shadow_map_filtering     = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+                system_hashed_ansi_string        shadow_map_filtering_has = NULL;
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                                        &shadow_map_bias);
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
+                                        &shadow_map_filtering);
+
+                shadow_map_bias_has      = scene_light_get_scene_light_shadow_map_bias_has     (shadow_map_bias);
+                shadow_map_filtering_has = scene_light_get_scene_light_shadow_map_filtering_has(shadow_map_filtering);
+
+                name_sstream << "Shadow caster: bias:["
+                             << system_hashed_ansi_string_get_buffer(shadow_map_bias_has)
+                             << "] filtering:["
+                             << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
+                             << "]\n";
+            } /* if (current_light_is_caster) */
+
+            /* If this is a point or a spot light, include falloff setting */
+            if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
+                current_light_type == SCENE_LIGHT_TYPE_SPOT)
+            {
+                scene_light_falloff       current_light_falloff     = SCENE_LIGHT_FALLOFF_UNKNOWN;
+                system_hashed_ansi_string current_light_falloff_has = NULL;
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_FALLOFF,
+                                        &current_light_falloff);
+
+                current_light_falloff_has = scene_light_get_scene_light_falloff_has(current_light_falloff);
+
+                name_sstream << "Light falloff:["
+                             << system_hashed_ansi_string_get_buffer(current_light_falloff_has)
+                             << "]\n";
+            }
+
+            /* If this is a point light, also query the SM algorithm */
+            if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+            {
+                scene_light_shadow_map_pointlight_algorithm sm_algorithm;
+                system_hashed_ansi_string                   sm_algorithm_has;
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                        &sm_algorithm);
+
+                sm_algorithm_has = scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(sm_algorithm);
+
+                name_sstream << "SM pointlight algorithm:["
+                             << system_hashed_ansi_string_get_buffer(sm_algorithm_has)
+                             << "]\n";
+            }
+
+            name_sstream << "\n";
+        } /* for (all lights) */
+    } /* if (lambert or phong shading is used) */
+
+    /* SM global setting */
+    name_sstream << "<<\n"
+                 << "\n"
+                 << "Global SM setting:["
+                 << ((use_shadow_maps) ? "ON" : "OFF")
+                 << "]\n";
+
+    name_string = name_sstream.str();
+
+    return system_hashed_ansi_string_create(name_string.c_str() );
+}
+
+/** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
     const mesh_material_fs_behavior fs_behavior_dpsm = MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM;
@@ -929,12 +1129,18 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
 
             if (new_uber_descriptor != NULL)
             {
-                const char* src_material_name = system_hashed_ansi_string_get_buffer(mesh_material_get_name(material) );
-                const char* name_suffix       = (use_shadow_maps) ? " copy with SM" : " copy without SM";
+                const char*               name_suffix           = (use_shadow_maps) ? " copy with SM" : " copy without SM";
+                const char*               src_material_name     = NULL;
+                system_hashed_ansi_string src_material_name_has = NULL;
 
-                new_uber_descriptor->material        = mesh_material_create_copy(system_hashed_ansi_string_create_by_merging_two_strings(src_material_name,
-                                                                                                                                         name_suffix),
-                                                                                 material);
+                mesh_material_get_property(material,
+                                           MESH_MATERIAL_PROPERTY_NAME,
+                                          &src_material_name_has);
+
+                src_material_name                    = system_hashed_ansi_string_get_buffer(src_material_name_has);
+                new_uber_descriptor->material        = mesh_material_create_copy           (system_hashed_ansi_string_create_by_merging_two_strings(src_material_name,
+                                                                                                                                                    name_suffix),
+                                                                                            material);
                 new_uber_descriptor->uber            = new_uber;
                 new_uber_descriptor->use_shadow_maps = use_shadow_maps;
                 result                               = new_uber;
