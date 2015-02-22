@@ -2290,6 +2290,13 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
         ogl_scene_renderer_set_property(renderer,
                                         OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
                                         default_aabb_zero_setting);
+
+        memcpy(current_aabb_max_setting,
+               default_aabb_zero_setting,
+               sizeof(current_aabb_max_setting) );
+        memcpy(current_aabb_min_setting,
+               default_aabb_zero_setting,
+               sizeof(current_aabb_max_setting) );
     }
 
     /* Iterate over all lights defined for the scene. Focus only on those,
