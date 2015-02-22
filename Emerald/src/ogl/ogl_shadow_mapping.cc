@@ -985,7 +985,9 @@ PRIVATE void _ogl_shadow_mapping_process_mesh_for_shadow_map_pre_pass(__notnull 
 
         /* Perform frustum culling. This is where the AABBs are also updated. */
         ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
-                                                 mesh_gpu);
+                                                 mesh_gpu,
+                                                 OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
+                                                 NULL);
     }
 }
 
@@ -1968,11 +1970,43 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notn
 
     /* Perform frustum culling to make sure it actually makes sense to render
      * this mesh.
+     *
+     * NOTE: For point lights which use DPSM shadow mapping, we need to use
+     *       a different culling behavior, since the projection is performed
+     *       in VS for that specific technique.
      */
-    if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
-                                                  mesh_instantiation_parent_gpu) )
+    if (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
+        shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
     {
-        goto end;
+        /* This is a DPSM shadow map generation pass */
+        float culling_behavior_data[6];
+
+        scene_light_get_property(shadow_mapping_ptr->current_light,
+                                 SCENE_LIGHT_PROPERTY_POSITION,
+                                 culling_behavior_data);
+
+        culling_behavior_data[3] = 0.0f;
+        culling_behavior_data[4] = 0.0f;
+        culling_behavior_data[5] = (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT) ? 1.0f : -1.0f;
+
+        if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
+                                                      mesh_instantiation_parent_gpu,
+                                                      OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA,
+                                                      culling_behavior_data) )
+        {
+            goto end;
+        }
+    }
+    else
+    {
+        /* Not a DPSM shadow map generation pass */
+        if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
+                                                      mesh_instantiation_parent_gpu,
+                                                      OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
+                                                      NULL) ) /* behavior_data */
+        {
+            goto end;
+        }
     }
 
     /* This is a visible mesh we should store. As opposed to the uber->mesh map we're

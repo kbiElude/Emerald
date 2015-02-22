@@ -15,6 +15,30 @@
 
 typedef enum
 {
+    /* Passes all objects that are located in front of the current camera.
+     *
+     * behavior_data parameter: [0]..[2]: world-space location of the camera
+     *                          [3]..[5]: normalized view direction vector.
+     *
+     * This behavior is required for DPSM shadow map generation passes, where
+     * there is no projection matrix available (the projection is done directly
+     * in VS)
+     */
+    OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA,
+
+    /* Extracts clipping planes from current projection matrix and checks
+     * if the pointed mesh intersects or is fully embedded within the frustum.
+     *
+     * behavior_data parameter: ignored
+     *
+     * Recommended culling behavior, as of now.
+     */
+    OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
+
+    OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_UNKNOWN
+} _ogl_scene_renderer_frustum_culling_behavior;
+typedef enum
+{
     HELPER_VISUALIZATION_NONE           = 0,
     HELPER_VISUALIZATION_BOUNDING_BOXES = 1 << 0,
     HELPER_VISUALIZATION_FRUSTUMS       = 1 << 3,
@@ -57,22 +81,28 @@ typedef enum
 
 /** TODO.
  *
- *  Implementation based on http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
+ *  OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES behavior implementation
+ *  is based on http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
  *  and http://gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf.
  *
  *  This function also adjusts ogl_scene_renderer's max & min AABB coordinates.
  *
- *  @param renderer TODO
- *  @param mesh_gpu TODO
+ *  @param renderer      TODO
+ *  @param mesh_gpu      TODO
+ *  @param behavior      TODO
+ *  @param behavior_data Additional behavior-specific argument. Please see documentation of
+ *                       _ogl_scene_renderer_frustum_culling_behavior for more details.
  *
  *  @return true if the mesh is inside OR intersects the frustum, false otherwise.
  *
- *          Note: if "true" is returned, OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX and
- *                OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN properties of ogl_scene_renderer
- *                are also adjusted.
+ *  Note: if "true" is returned, OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX and
+ *        OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN properties of @param renderer
+ *        are also adjusted.
  */
-PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_renderer renderer,
-                                                    __in __notnull mesh               mesh_gpu);
+PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_renderer                           renderer,
+                                                    __in __notnull mesh                                         mesh_gpu,
+                                                    __in           _ogl_scene_renderer_frustum_culling_behavior behavior,
+                                                    __in_opt       const void*                                  behavior_data);
 
 /** TODO. **/
 PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull ogl_context context,

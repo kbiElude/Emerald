@@ -483,7 +483,9 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
      *       of our interest.
      */
     if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
-                                                  mesh_instantiation_parent_gpu) )
+                                                  mesh_instantiation_parent_gpu,
+                                                  OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES,
+                                                  NULL) ) /* behavior_data */
     {
         goto end;
     }
@@ -1075,10 +1077,13 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_renderer renderer,
-                                                    __in __notnull mesh               mesh_gpu)
+PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_renderer                           renderer,
+                                                    __in __notnull mesh                                         mesh_gpu,
+                                                    __in           _ogl_scene_renderer_frustum_culling_behavior behavior,
+                                                    __in __notnull const void*                                  behavior_data)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) renderer;
+    bool                 result       = true;
 
     /* Retrieve AABB for the mesh */
     const float* aabb_max_ptr = NULL;
@@ -1096,46 +1101,6 @@ PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_ren
                       aabb_max_ptr[1] != aabb_min_ptr[1] &&
                       aabb_max_ptr[2] != aabb_min_ptr[2],
                       "Sanity checks failed");
-
-    /* Retrieve clipping planes from the VP. This gives us world clipping planes in world space. */
-    float world_clipping_plane_bottom[4];
-    float world_clipping_plane_front [4];
-    float world_clipping_plane_left  [4];
-    float world_clipping_plane_near  [4];
-    float world_clipping_plane_right [4];
-    float world_clipping_plane_top   [4];
-
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_BOTTOM,
-                                        world_clipping_plane_bottom);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_FAR,
-                                        world_clipping_plane_front);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_LEFT,
-                                        world_clipping_plane_left);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_NEAR,
-                                        world_clipping_plane_near);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_RIGHT,
-                                        world_clipping_plane_right);
-    system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
-                                        SYSTEM_MATRIX4X4_CLIPPING_PLANE_TOP,
-                                        world_clipping_plane_top);
-
-    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_bottom,
-                                                  world_clipping_plane_bottom);
-    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_front,
-                                                  world_clipping_plane_front);
-    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_left,
-                                                  world_clipping_plane_left);
-    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_near,
-                                                  world_clipping_plane_near);
-    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_right,
-                                                  world_clipping_plane_right);
-    system_math_vector_normalize4_use_vec3_length(world_clipping_plane_top,
-                                                  world_clipping_plane_top);
 
     /* Prepare an array holding OBB of the model's AABB transformed into clip space. */
     /* Transform the model-space AABB to world-space */
@@ -1177,71 +1142,180 @@ PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_ren
         }
     }
 
-    /* Iterate over all clipping planes.. */
-    const float* clipping_planes[] =
+    /* Execute requested culling behavior */
+    switch (behavior)
     {
-        world_clipping_plane_bottom,
-        world_clipping_plane_front,
-        world_clipping_plane_left,
-        world_clipping_plane_near,
-        world_clipping_plane_right,
-        world_clipping_plane_top
-    };
-    const uint32_t n_clipping_planes = sizeof(clipping_planes) / sizeof(clipping_planes[0]);
-    bool           result            = true;
-
-    for (uint32_t n_clipping_plane = 0;
-                  n_clipping_plane < n_clipping_planes;
-                ++n_clipping_plane)
-    {
-        const float* clipping_plane  = clipping_planes[n_clipping_plane];
-        unsigned int counter_inside  = 0;
-        unsigned int counter_outside = 0;
-
-        /* Compute plane normal */
-        float clipping_plane_normal[4] =
+        case OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA:
         {
-            clipping_plane[0],
-            clipping_plane[1],
-            clipping_plane[2],
-            clipping_plane[3]
-        };
+            const float* camera_location_world_vec3 = ((const float*) behavior_data);
+            const float* camera_view_direction_vec3 = ((const float*) behavior_data) + 3;
 
-        for (uint32_t n_vertex = 0;
-                      n_vertex < 8 && (counter_inside == 0 || counter_outside == 0);
-                    ++n_vertex)
-        {
-            /* Is the vertex inside? */
-            float distance = clipping_plane_normal[3] + ((world_aabb_vertices[n_vertex][0] * clipping_plane_normal[0]) +
-                                                         (world_aabb_vertices[n_vertex][1] * clipping_plane_normal[1]) +
-                                                         (world_aabb_vertices[n_vertex][2] * clipping_plane_normal[2]) );
-
-            if (distance < 0)
-            {
-                counter_outside++;
-            }
-            else
-            {
-                counter_inside++;
-            }
-        } /* for (all bbox vertices) */
-
-        if (counter_inside == 0)
-        {
-            /* BBox is outside, no need to render */
+            /* Is any of the mesh's AABB vertices in front of the camera? */
             result = false;
 
-            goto end;
-        }
-        else
-        if (counter_outside > 0)
+            for (uint32_t n_aabb_vertex = 0;
+                          n_aabb_vertex < 8 && !result;
+                        ++n_aabb_vertex)
+            {
+                      float camera_to_vertex     [3];
+                      float camera_to_vertex_norm[3];
+                      float dot_product;
+                const float world_vertex[3] =
+                {
+                    (n_aabb_vertex & 1) ? world_aabb_max[0] : world_aabb_min[0],
+                    (n_aabb_vertex & 2) ? world_aabb_max[1] : world_aabb_min[1],
+                    (n_aabb_vertex & 4) ? world_aabb_max[2] : world_aabb_min[2],
+                };
+
+                system_math_vector_minus3    (world_vertex,
+                                              camera_location_world_vec3,
+                                              camera_to_vertex);
+                system_math_vector_normalize3(camera_to_vertex,
+                                              camera_to_vertex_norm);
+
+                /*            V
+                 *            ^
+                 *            |------
+                 *            | angle\
+                 *270' --------------------- 90'
+                 *             \
+                 *              \
+                 *               v V'
+                 *
+                 * Basic linear algebra fact:            A.B = |A| |B| cos(angle).
+                 * Since |A| = 1 and |B|, this gives us: A.B = cos(angle)
+                 *
+                 * To determine if V' is pointing in the same direction as V,
+                 * we need to check if angle is between <0', 90'> or <270', 360'>.
+                 * This requirement is met if cos(angle) >= 0.
+                 */
+                dot_product = system_math_vector_dot3(camera_view_direction_vec3,
+                                                      camera_to_vertex_norm);
+
+                if (dot_product >= 0.0f)
+                {
+                    result = true;
+                }
+            } /* for (all AABB vertices) */
+
+            break;
+        } /* case OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA: */
+
+        case OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES:
         {
-            /* Intersection, need to keep iterating */
+            /* Retrieve clipping planes from the VP. This gives us world clipping planes in world space. */
+            float world_clipping_plane_bottom[4];
+            float world_clipping_plane_front [4];
+            float world_clipping_plane_left  [4];
+            float world_clipping_plane_near  [4];
+            float world_clipping_plane_right [4];
+            float world_clipping_plane_top   [4];
+
+            system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                                SYSTEM_MATRIX4X4_CLIPPING_PLANE_BOTTOM,
+                                                world_clipping_plane_bottom);
+            system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                                SYSTEM_MATRIX4X4_CLIPPING_PLANE_FAR,
+                                                world_clipping_plane_front);
+            system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                                SYSTEM_MATRIX4X4_CLIPPING_PLANE_LEFT,
+                                                world_clipping_plane_left);
+            system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                                SYSTEM_MATRIX4X4_CLIPPING_PLANE_NEAR,
+                                                world_clipping_plane_near);
+            system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                                SYSTEM_MATRIX4X4_CLIPPING_PLANE_RIGHT,
+                                                world_clipping_plane_right);
+            system_matrix4x4_get_clipping_plane(renderer_ptr->current_vp,
+                                                SYSTEM_MATRIX4X4_CLIPPING_PLANE_TOP,
+                                                world_clipping_plane_top);
+
+            system_math_vector_normalize4_use_vec3_length(world_clipping_plane_bottom,
+                                                          world_clipping_plane_bottom);
+            system_math_vector_normalize4_use_vec3_length(world_clipping_plane_front,
+                                                          world_clipping_plane_front);
+            system_math_vector_normalize4_use_vec3_length(world_clipping_plane_left,
+                                                          world_clipping_plane_left);
+            system_math_vector_normalize4_use_vec3_length(world_clipping_plane_near,
+                                                          world_clipping_plane_near);
+            system_math_vector_normalize4_use_vec3_length(world_clipping_plane_right,
+                                                          world_clipping_plane_right);
+            system_math_vector_normalize4_use_vec3_length(world_clipping_plane_top,
+                                                          world_clipping_plane_top);
+
+            /* Iterate over all clipping planes.. */
+            const float* clipping_planes[] =
+            {
+                world_clipping_plane_bottom,
+                world_clipping_plane_front,
+                world_clipping_plane_left,
+                world_clipping_plane_near,
+                world_clipping_plane_right,
+                world_clipping_plane_top
+            };
+            const uint32_t n_clipping_planes = sizeof(clipping_planes) / sizeof(clipping_planes[0]);
+
+            for (uint32_t n_clipping_plane = 0;
+                          n_clipping_plane < n_clipping_planes;
+                        ++n_clipping_plane)
+            {
+                const float* clipping_plane  = clipping_planes[n_clipping_plane];
+                unsigned int counter_inside  = 0;
+                unsigned int counter_outside = 0;
+
+                /* Compute plane normal */
+                float clipping_plane_normal[4] =
+                {
+                    clipping_plane[0],
+                    clipping_plane[1],
+                    clipping_plane[2],
+                    clipping_plane[3]
+                };
+
+                for (uint32_t n_vertex = 0;
+                              n_vertex < 8 && (counter_inside == 0 || counter_outside == 0);
+                            ++n_vertex)
+                {
+                    /* Is the vertex inside? */
+                    float distance = clipping_plane_normal[3] + ((world_aabb_vertices[n_vertex][0] * clipping_plane_normal[0]) +
+                                                                 (world_aabb_vertices[n_vertex][1] * clipping_plane_normal[1]) +
+                                                                 (world_aabb_vertices[n_vertex][2] * clipping_plane_normal[2]) );
+
+                    if (distance < 0)
+                    {
+                        counter_outside++;
+                    }
+                    else
+                    {
+                        counter_inside++;
+                    }
+                } /* for (all bbox vertices) */
+
+                if (counter_inside == 0)
+                {
+                    /* BBox is outside, no need to render */
+                    result = false;
+
+                    goto end;
+                }
+                else
+                if (counter_outside > 0)
+                {
+                    /* Intersection, need to keep iterating */
+                }
+            } /* for (all clipping planes) */
+
+            break;
+        } /* case OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES: */
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized frustum culling behavior requested");
         }
-    } /* for (all clipping planes) */
+    } /* switch (behavior) */
 
 end:
-    result = true; /* TODO TEMP TEMP TEMP TEMP TEMP AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
 
     /* All done */
     if (result)
