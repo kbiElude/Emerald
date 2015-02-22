@@ -1198,6 +1198,11 @@ PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_ren
                 }
             } /* for (all AABB vertices) */
 
+            if (result)
+            {
+                /* TODO: Only take the mesh into account if it is within point light range */
+            }
+
             break;
         } /* case OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_PASS_OBJECTS_IN_FRONT_OF_CAMERA: */
 
