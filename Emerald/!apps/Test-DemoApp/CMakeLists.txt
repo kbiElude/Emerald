@@ -25,6 +25,7 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
   LIST(APPEND ${SourcesVar} ${PrecompiledSource})
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
+
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 INCLUDE_DIRECTORIES("${Test-DemoApp_BINARY_DIR}")
 INCLUDE_DIRECTORIES("${Test-DemoApp_BINARY_DIR}/include")
@@ -40,6 +41,12 @@ ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTest-DemoAppSources)
 ADD_EXECUTABLE(Test-DemoApp WIN32 ${AllTest-DemoAppSources} ${GeneralIncludes})
 SET_TARGET_PROPERTIES(Test-DemoApp PROPERTIES LINK_FLAGS "/MANIFEST:NO")
 
+# Also copy blob files to the binary directory
+ADD_CUSTOM_COMMAND(TARGET Test-DemoApp
+                   PRE_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
+                   ${Test-DemoApp_BINARY_DIR}/blob $<TARGET_FILE_DIR:Test-DemoApp>)
+
+# Other blabbery ..
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 
 SOURCE_GROUP ("General includes" FILES ${GeneralIncludes})
