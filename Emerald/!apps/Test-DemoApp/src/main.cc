@@ -93,7 +93,10 @@ PUBLIC void _render_scene(ogl_context          context,
                                                                        new_znear,
                                                                        new_zfar);
 
-    /* Proceed with frame rendering */
+    /* Proceed with frame rendering.
+     *
+     * First, traverse the scene graph to compute node transformation matrices.
+     */
     scene_graph scene_renderer_graph = NULL;
 
     ogl_scene_renderer_get_property(state_get_scene_renderer(),
@@ -120,17 +123,14 @@ PUBLIC void _render_scene(ogl_context          context,
                                   SCENE_GRAPH_NODE_PROPERTY_TRANSFORMATION_MATRIX,
                                  &scene_camera_transformation_matrix);
 
-    /* Extract camera location.
-     *
-     * For the view matrix, we need to take the inverse of the transformation matrix.
-     **/
+    /* Configure view matrix, using the selected camera's transformation matrix */
     system_matrix4x4 view = system_matrix4x4_create();
 
     system_matrix4x4_set_from_matrix4x4 (view,
                                          scene_camera_transformation_matrix);
     system_matrix4x4_invert             (view);
 
-    /* Traverse the scene graph */
+    /* Render the scene graph */
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
     ogl_context_get_property(_context,
@@ -179,9 +179,9 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                             window_x1y1x2y2,
                                                                             system_hashed_ansi_string_create("Test window"),
                                                                             false,
-                                                                            0,
-                                                                            true, /* vsync_enabled */
-                                                                            false,
+                                                                            4,    /* n_multisampling_samples */
+                                                                            true, /* vsync_enabled           */
+                                                                            true, /* multisampling_supported */
                                                                             true);
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             60,
