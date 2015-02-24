@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_RENDERING_HANDLER_H
@@ -8,7 +8,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler, ogl_rendering_handler)
+REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
+                             ogl_rendering_handler)
 
 
 /** TODO */

@@ -439,7 +439,7 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
 
     final_material_name = system_hashed_ansi_string_create_by_merging_strings(n_final_material_name_parts,
                                                                               final_material_name_parts);
-    result_material      = scene_material_create                             (final_material_name);
+    result_material     = scene_material_create                              (final_material_name);
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "Could not instantiate a scene_material object");

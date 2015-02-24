@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -58,7 +58,9 @@ typedef struct
 } _ogl_rendering_handler;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler, ogl_rendering_handler, _ogl_rendering_handler);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_rendering_handler,
+                               ogl_rendering_handler,
+                              _ogl_rendering_handler);
 
 /** Internal variables */
 
@@ -91,10 +93,13 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         ogl_context_type   context_type   = OGL_CONTEXT_TYPE_UNDEFINED;
         PFNGLFINISHPROC    pGLFinish      = NULL;
         bool               should_live    = true;
-        const system_event wait_events[]  = {rendering_handler->shutdown_request_event,
-                                             rendering_handler->callback_request_event,
-                                             rendering_handler->unbind_context_request_event,
-                                             rendering_handler->playback_in_progress_event};
+        const system_event wait_events[]  =
+        {
+            rendering_handler->shutdown_request_event,
+            rendering_handler->callback_request_event,
+            rendering_handler->unbind_context_request_event,
+            rendering_handler->playback_in_progress_event
+        };
 
         ogl_context_get_property(rendering_handler->context,
                                  OGL_CONTEXT_PROPERTY_TYPE,
@@ -138,7 +143,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                  OGL_CONTEXT_PROPERTY_WINDOW,
                                 &context_window);
 
-        system_window_get_dimensions(context_window, &context_window_width, &context_window_height);
+        system_window_get_dimensions(context_window,
+                                    &context_window_width,
+                                    &context_window_height);
 
         /* Bind the thread to GL */
         ogl_context_bind_to_current_thread(rendering_handler->context);
@@ -171,7 +178,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
             system_event_set(rendering_handler->playback_waiting_event);
             {
-                event_set = system_event_wait_multiple_infinite(wait_events, 4, false);
+                event_set = system_event_wait_multiple_infinite(wait_events,
+                                                                4,
+                                                                false);
             }
             system_event_reset(rendering_handler->playback_waiting_event);
 
@@ -184,7 +193,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             if (event_set == 1)
             {
                 /* Call-back requested */
-                rendering_handler->pfn_callback_proc(rendering_handler->context, rendering_handler->callback_request_user_arg);
+                rendering_handler->pfn_callback_proc(rendering_handler->context,
+                                                     rendering_handler->callback_request_user_arg);
 
                 /* Reset callback data */
                 rendering_handler->callback_request_user_arg = NULL;
@@ -239,7 +249,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                     frame_index++;
                                 }
 
-                                new_frame_time = rendering_handler->playback_start_time + frame_index * HZ_PER_SEC / (1000 / rendering_handler->fps) /* s */;
+                                new_frame_time = rendering_handler->playback_start_time +
+                                                 frame_index * HZ_PER_SEC / (1000 / rendering_handler->fps) /* s */;
 
                                 break;
                             }
@@ -254,7 +265,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             default:
                             {
-                                LOG_FATAL("Unrecognized rendering handler policy [%d]", rendering_handler->policy);
+                                LOG_FATAL("Unrecognized rendering handler policy [%d]",
+                                          rendering_handler->policy);
                             }
                         }
 
@@ -284,13 +296,16 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             int                  window_width               = 0;
                             int                  window_height              = 0;
 
-                            system_window_get_dimensions          (context_window,       &window_width, &window_height);
-                            system_time_get_msec_for_timeline_time(rendering_time_delta, &rendering_time_msec);
+                            system_window_get_dimensions          (context_window,
+                                                                  &window_width,
+                                                                  &window_height);
+                            system_time_get_msec_for_timeline_time(rendering_time_delta,
+                                                                  &rendering_time_msec);
 
                             sprintf_s(rendering_time_buffer,
                                       sizeof(rendering_time_buffer),
                                       "Rendering time: %.4fs (%d FPS)",
-                                      float(rendering_time_msec) / 1000.0f, 
+                                      float(rendering_time_msec) / 1000.0f,
                                       int(1000.0f / (rendering_time_msec != 0 ? rendering_time_msec : 1) ) );
 
                             ogl_text_set(rendering_handler->text_renderer,
@@ -316,7 +331,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         if (rendering_handler->policy == RENDERING_HANDLER_POLICY_FPS)
                         {
                             /* Let's wait until it's time to do the swap */
-                            system_timeline_time expected_swap_time = rendering_handler->playback_start_time + frame_index * HZ_PER_SEC / rendering_handler->fps;
+                            system_timeline_time expected_swap_time = rendering_handler->playback_start_time +
+                                                                      frame_index * HZ_PER_SEC / rendering_handler->fps;
                             system_timeline_time now_time           = system_time_now();
 
                             if (now_time < expected_swap_time)
@@ -324,9 +340,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 /* Go back to the queue */
                                 uint32_t wait_time = 0;
 
-                                system_time_get_msec_for_timeline_time(expected_swap_time - now_time, &wait_time);
-                                ::Sleep(wait_time);
+                                system_time_get_msec_for_timeline_time(expected_swap_time - now_time,
+                                                                      &wait_time);
 
+                                ::Sleep(wait_time);
                             }
 
                             /* Okay, let's roll */
@@ -360,7 +377,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         /* Let any waiters know that we're done */
         system_event_set(rendering_handler->shutdown_request_ack_event);
 
-        LOG_INFO("Rendering handler thread [%x] ending", system_threads_get_thread_id() );
+        LOG_INFO("Rendering handler thread [%x] ending",
+                 system_threads_get_thread_id() );
     }
 }
 
@@ -409,57 +427,89 @@ PUBLIC EMERALD_API void ogl_rendering_handler_unlock_bound_context(__in __notnul
 }
 
 /** TODO */
-PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull system_hashed_ansi_string name, ogl_rendering_handler_policy policy, __in uint32_t desired_fps, __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback, void* user_arg)
+PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull system_hashed_ansi_string               name,
+                                                                                 ogl_rendering_handler_policy            policy,
+                                                                  __in           uint32_t                                desired_fps,
+                                                                  __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                 void*                                   user_arg)
 {
     _ogl_rendering_handler* new_handler = new (std::nothrow) _ogl_rendering_handler;
 
-    ASSERT_ALWAYS_SYNC(new_handler != NULL, "Out of memory while allocating memroy for rendering handler.");
+    ASSERT_ALWAYS_SYNC(new_handler != NULL,
+                       "Out of memory while allocating memroy for rendering handler.");
+
     if (new_handler != NULL)
     {
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_handler,
                                                        _ogl_rendering_handler_release,
-                                                       OBJECT_TYPE_OGL_RENDERING_HANDLER, 
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Rendering Handlers\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       OBJECT_TYPE_OGL_RENDERING_HANDLER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Rendering Handlers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
 
-        new_handler->bind_context_request_event       = system_event_create(false, false);
-        new_handler->bind_context_request_ack_event   = system_event_create(false, false);
-        new_handler->callback_request_ack_event       = system_event_create(false, false);
-        new_handler->callback_request_event           = system_event_create(false, false);
+        new_handler->bind_context_request_event       = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
+        new_handler->bind_context_request_ack_event   = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
+        new_handler->callback_request_ack_event       = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
+        new_handler->callback_request_event           = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
         new_handler->callback_request_cs              = system_critical_section_create();
         new_handler->callback_request_user_arg        = NULL;
         new_handler->context                          = NULL;
-        new_handler->context_set_event                = system_event_create(true, false);
+        new_handler->context_set_event                = system_event_create(true,   /* manual_reset */
+                                                                            false); /* start_state  */
         new_handler->fps                              = desired_fps;
         new_handler->fps_counter_status               = false;
         new_handler->n_frames_rendered                = 0;
-        new_handler->playback_in_progress_event       = system_event_create(true, false);
+        new_handler->playback_in_progress_event       = system_event_create(true,   /* manual_reset */
+                                                                            false); /* start_state  */
         new_handler->playback_start_time              = 0;
         new_handler->playback_status                  = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-        new_handler->playback_waiting_event           = system_event_create(false, false);
+        new_handler->playback_waiting_event           = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
         new_handler->pfn_callback_proc                = NULL;
         new_handler->pfn_rendering_callback           = pfn_rendering_callback;
         new_handler->policy                           = policy;
         new_handler->rendering_callback_user_arg      = user_arg;
         new_handler->rendering_cs                     = system_critical_section_create();
-        new_handler->shutdown_request_event           = system_event_create(true, false);
-        new_handler->shutdown_request_ack_event       = system_event_create(true, false);
-        new_handler->unbind_context_request_event     = system_event_create(false, false);
-        new_handler->unbind_context_request_ack_event = system_event_create(false, false);
+        new_handler->shutdown_request_event           = system_event_create(true,   /* manual_reset */
+                                                                            false); /* start_state  */
+        new_handler->shutdown_request_ack_event       = system_event_create(true,   /* manual_reset */
+                                                                            false); /* start_state  */
+        new_handler->unbind_context_request_event     = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
+        new_handler->unbind_context_request_ack_event = system_event_create(false,  /* manual_reset */
+                                                                            false); /* start_state  */
 
-        ASSERT_ALWAYS_SYNC(new_handler->bind_context_request_event       != NULL, "Could not create 'bind context request' event");
-        ASSERT_ALWAYS_SYNC(new_handler->bind_context_request_ack_event   != NULL, "Could not create 'bind context request ack' event");
-        ASSERT_ALWAYS_SYNC(new_handler->callback_request_ack_event       != NULL, "Could not create 'callback request ack' event");
-        ASSERT_ALWAYS_SYNC(new_handler->callback_request_event           != NULL, "Could not create 'callback request' event");
-        ASSERT_ALWAYS_SYNC(new_handler->callback_request_cs              != NULL, "Could not create 'callback request' cs");
-        ASSERT_ALWAYS_SYNC(new_handler->context_set_event                != NULL, "Could not create 'context set' event");
-        ASSERT_ALWAYS_SYNC(new_handler->playback_in_progress_event       != NULL, "Could not create 'playback in progress' event");
-        ASSERT_ALWAYS_SYNC(new_handler->playback_waiting_event           != NULL, "Could not create 'playback waiting' event");
-        ASSERT_ALWAYS_SYNC(new_handler->shutdown_request_event           != NULL, "Could not create 'shutdown requested' event");
-        ASSERT_ALWAYS_SYNC(new_handler->shutdown_request_ack_event       != NULL, "Could not create 'shutdown request ack' event");
-        ASSERT_ALWAYS_SYNC(new_handler->unbind_context_request_event     != NULL, "Could not create 'unbind context request' event");
-        ASSERT_ALWAYS_SYNC(new_handler->unbind_context_request_ack_event != NULL, "Could not create 'unbind context request ack' event");
+        ASSERT_ALWAYS_SYNC(new_handler->bind_context_request_event != NULL,
+                           "Could not create 'bind context request' event");
+        ASSERT_ALWAYS_SYNC(new_handler->bind_context_request_ack_event != NULL,
+                          "Could not create 'bind context request ack' event");
+        ASSERT_ALWAYS_SYNC(new_handler->callback_request_ack_event != NULL,
+                           "Could not create 'callback request ack' event");
+        ASSERT_ALWAYS_SYNC(new_handler->callback_request_event != NULL,
+                           "Could not create 'callback request' event");
+        ASSERT_ALWAYS_SYNC(new_handler->callback_request_cs != NULL,
+                           "Could not create 'callback request' cs");
+        ASSERT_ALWAYS_SYNC(new_handler->context_set_event != NULL,
+                           "Could not create 'context set' event");
+        ASSERT_ALWAYS_SYNC(new_handler->playback_in_progress_event != NULL,
+                           "Could not create 'playback in progress' event");
+        ASSERT_ALWAYS_SYNC(new_handler->playback_waiting_event != NULL,
+                           "Could not create 'playback waiting' event");
+        ASSERT_ALWAYS_SYNC(new_handler->shutdown_request_event != NULL,
+                           "Could not create 'shutdown requested' event");
+        ASSERT_ALWAYS_SYNC(new_handler->shutdown_request_ack_event != NULL,
+                           "Could not create 'shutdown request ack' event");
+        ASSERT_ALWAYS_SYNC(new_handler->unbind_context_request_event != NULL,
+                           "Could not create 'unbind context request' event");
+        ASSERT_ALWAYS_SYNC(new_handler->unbind_context_request_ack_event != NULL,
+                           "Could not create 'unbind context request ack' event");
 
-        system_threads_spawn(_ogl_rendering_handler_thread_entrypoint, new_handler, NULL);
+        system_threads_spawn(_ogl_rendering_handler_thread_entrypoint,
+                             new_handler,
+                             NULL);
     }
 
     return (ogl_rendering_handler) new_handler;
@@ -471,19 +521,34 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_fps_p
                                                                                       __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
                                                                                                      void*                                   user_arg)
 {
-    return ogl_rendering_handler_create_shared(name, RENDERING_HANDLER_POLICY_FPS, desired_fps, pfn_rendering_callback, user_arg);
+    return ogl_rendering_handler_create_shared(name,
+                                               RENDERING_HANDLER_POLICY_FPS,
+                                               desired_fps,
+                                               pfn_rendering_callback,
+                                               user_arg);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_performance_policy(__in __notnull system_hashed_ansi_string name, __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback, void* user_arg)
+PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_performance_policy(__in __notnull system_hashed_ansi_string               name,
+                                                                                                  __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                                                 void*                                   user_arg)
 {
-    return ogl_rendering_handler_create_shared(name, RENDERING_HANDLER_POLICY_MAX_PERFORMANCE, 0, pfn_rendering_callback, user_arg);
+    return ogl_rendering_handler_create_shared(name,
+                                               RENDERING_HANDLER_POLICY_MAX_PERFORMANCE,
+                                               0, /* desired_fps */
+                                               pfn_rendering_callback, user_arg);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(__in __notnull system_hashed_ansi_string name, __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback, void* user_arg)
+PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(__in __notnull system_hashed_ansi_string               name,
+                                                                                                     __in __notnull PFNOGLRENDERINGHANDLERRENDERINGCALLBACK pfn_rendering_callback,
+                                                                                                                    void*                                   user_arg)
 {
-    return ogl_rendering_handler_create_shared(name, RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST, 0, pfn_rendering_callback, user_arg);
+    return ogl_rendering_handler_create_shared(name,
+                                               RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST,
+                                               0, /* desired_fps */
+                                               pfn_rendering_callback,
+                                               user_arg);
 }
 
 /** Please see header for specification */
@@ -507,15 +572,18 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler rendering_handler, system_timeline_time start_time)
+PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler rendering_handler,
+                                                                  system_timeline_time  start_time)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != NULL, "Cannot play - the handler is not bound to any window.");
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != NULL,
+                      "Cannot play - the handler is not bound to any window.");
+
     if (rendering_handler_ptr->context != NULL)
     {
-        if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED || 
+        if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED ||
             rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_PAUSED)
         {
             system_critical_section_enter(rendering_handler_ptr->rendering_cs);
@@ -592,7 +660,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void ogl_rendering_handler_set_fps_counter_visibility(__in __notnull ogl_rendering_handler rendering_handler, __in bool fps_counter_status)
+PUBLIC EMERALD_API void ogl_rendering_handler_set_fps_counter_visibility(__in __notnull ogl_rendering_handler rendering_handler,
+                                                                         __in           bool                  fps_counter_status)
 {
     ((_ogl_rendering_handler*)rendering_handler)->fps_counter_status = fps_counter_status;
 }
@@ -603,7 +672,9 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != NULL, "Cannot play - the handler is not bound to any window.");
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context != NULL,
+                      "Cannot play - the handler is not bound to any window.");
+
     if (rendering_handler_ptr->context != NULL)
     {
         ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
@@ -630,20 +701,23 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_
 }
 
 /** Please see header for specification */
-PUBLIC bool _ogl_rendering_handler_on_bound_to_context(__in __notnull ogl_rendering_handler rendering_handler, __in __notnull ogl_context context)
+PUBLIC bool _ogl_rendering_handler_on_bound_to_context(__in __notnull ogl_rendering_handler rendering_handler,
+                                                       __in __notnull ogl_context           context)
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
     bool                    result                = false;
 
-    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context == NULL, "Rendering handler is already bound to a context! A rendering handler cannot be bound to more than one context at a time. ");
+    ASSERT_DEBUG_SYNC(rendering_handler_ptr->context == NULL,
+                      "Rendering handler is already bound to a context! A rendering handler cannot be bound to more than one context at a time. ");
+
     if (rendering_handler_ptr->context == NULL)
     {
         rendering_handler_ptr->context = context;
         result                         = true;
-        
+
         ogl_context_retain(context);
         system_event_set  (rendering_handler_ptr->context_set_event);
     }
-    
+
     return result;
 }
