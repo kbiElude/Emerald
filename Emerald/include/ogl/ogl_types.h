@@ -1696,6 +1696,7 @@ typedef enum
 
 /** Program handle */
 DECLARE_HANDLE(ogl_program);
+DECLARE_HANDLE(ogl_programs);
 
 typedef unsigned int ogl_program_uniform_block_id;
 

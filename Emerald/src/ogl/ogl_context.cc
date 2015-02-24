@@ -14,6 +14,7 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_primitive_renderer.h"
+#include "ogl/ogl_programs.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shaders.h"
@@ -97,6 +98,7 @@ typedef struct
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_materials                   materials;
+    ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_samplers                    samplers;
@@ -2173,6 +2175,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _result->multisampling_supported_sample             = NULL;
                                     _result->n_multisampling_supported_sample           = 0;
                                     _result->pfd                                        = in_pfd;
+                                    _result->programs                                   = ogl_programs_create();
                                     _result->sampler_bindings                           = NULL;
                                     _result->state_cache                                = NULL;
                                     _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
@@ -2584,6 +2587,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_PROGRAMS:
+        {
+            *(ogl_programs*) out_result = context_ptr->programs;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS:
         {
             *((ogl_context_sampler_bindings*) out_result) = context_ptr->sampler_bindings;
@@ -2764,6 +2774,13 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
         ogl_materials_release(context_ptr->materials);
 
         context_ptr->materials = NULL;
+    }
+
+    if (context_ptr->programs != NULL)
+    {
+        ogl_programs_release(context_ptr->programs);
+
+        context_ptr->programs = NULL;
     }
 
     if (context_ptr->samplers != NULL)
