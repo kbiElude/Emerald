@@ -961,8 +961,19 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
         goto end_error;
     }
 
-    /* Spawn the scene */
-    result_scene = scene_create(context, scene_name);
+    /* Spawn the scene.
+     *
+     * NOTE: Scene name is in majority of the cases useless, so switch to
+     *       the file name.
+     */
+    system_hashed_ansi_string scene_file_name = NULL;
+
+    system_file_serializer_get_property(serializer,
+                                        SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
+                                       &scene_file_name);
+
+    result_scene = scene_create(context,
+                                scene_file_name);
 
     if (result_scene == NULL)
     {

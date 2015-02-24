@@ -1118,7 +1118,11 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
 
             /* Is the blob cached? */
             system_file_serializer serializer      = system_file_serializer_create_for_reading(blob_name);
-            const void*            serializer_data = system_file_serializer_get_raw_storage   (serializer);
+            const void*            serializer_data = NULL;
+            
+            system_file_serializer_get_property(serializer,
+                                                SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                               &serializer_data);
 
             if (serializer_data != NULL)
             {
@@ -1151,9 +1155,16 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
                                     ++n_layer)
                     {
                         /* Read the layer data */
-                        system_file_serializer_read(serializer, sizeof(n_serialized_normals), &n_serialized_normals);
+                        unsigned int serializer_current_offset = 0;
 
-                        serialized_normals = (const unsigned char*) serializer_data + system_file_serializer_get_current_offset(serializer);
+                        system_file_serializer_read        (serializer,
+                                                            sizeof(n_serialized_normals),
+                                                           &n_serialized_normals);
+                        system_file_serializer_get_property(serializer,
+                                                            SYSTEM_FILE_SERIALIZER_PROPERTY_CURRENT_OFFSET,
+                                                           &serializer_current_offset);
+
+                        serialized_normals = (const unsigned char*) serializer_data + serializer_current_offset;
 
                         /* Carry on and add the layer data */
                         mesh_add_layer_data_stream(result,
@@ -1162,7 +1173,9 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
                                                    n_serialized_normals,
                                                    serialized_normals);
 
-                        system_file_serializer_read(serializer, n_serialized_normals * sizeof(float) * 3, NULL);
+                        system_file_serializer_read(serializer,
+                                                    n_serialized_normals * sizeof(float) * 3,
+                                                    NULL);
                     }
 
                     /* Reading complete! */

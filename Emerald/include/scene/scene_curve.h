@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2013)
+ * Emerald (kbi/elude @2013-2015)
  *
  */
 #ifndef SCENE_CURVE_H

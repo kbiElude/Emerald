@@ -226,40 +226,77 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writ
 }
 
 /** Please see header file for specification */
-PUBLIC EMERALD_API uint32_t system_file_serializer_get_current_offset(__in __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull system_file_serializer          serializer,
+                                                            __in            system_file_serializer_property property,
+                                                            __out __notnull void*                           out_data)
 {
     _system_file_serializer_descriptor* serializer_ptr = (_system_file_serializer_descriptor*) serializer;
 
-    return serializer_ptr->current_index;
-}
-
-
-/** Please see header file for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_serializer_get_file_name(__in __notnull system_file_serializer serializer)
-{
-    return ((_system_file_serializer_descriptor*) serializer)->file_name;
-}
-
-/** Please see header file for spec */
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_serializer_get_file_path(__in __notnull const system_file_serializer serializer)
-{
-    const _system_file_serializer_descriptor* serializer_ptr = (const _system_file_serializer_descriptor*) serializer;
-
-    ASSERT_DEBUG_SYNC(serializer_ptr->for_reading,
-                      "File path information is only available for serializers instantiated for reading");
-
-    if (serializer_ptr->for_reading)
+    switch (property)
     {
-        system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
-    }
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_CURRENT_OFFSET:
+        {
+            *(uint32_t*) out_data = serializer_ptr->current_index;
 
-    return serializer_ptr->file_path;
-}
+            break;
+        }
 
-/** Please see header file for specification */
-PUBLIC EMERALD_API size_t system_file_serializer_get_size(__in __notnull system_file_serializer serializer)
-{
-    return ((_system_file_serializer_descriptor*) serializer)->file_size;
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME:
+        {
+            *(system_hashed_ansi_string*) out_data = serializer_ptr->file_name;
+
+            break;
+        }
+
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH:
+        {
+            ASSERT_DEBUG_SYNC(serializer_ptr->for_reading,
+                              "SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH property is only available for serializers instantiated for reading");
+
+            if (serializer_ptr->for_reading)
+            {
+                LOG_ERROR("Performance hit: waiting for the read op to finish.");
+
+                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+            }
+
+            *(system_hashed_ansi_string*) out_data = serializer_ptr->file_path;
+            break;
+        }
+
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE:
+        {
+            ASSERT_DEBUG_SYNC(serializer_ptr->for_reading,
+                              "SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE property is only available for serializers instantiated for reading");
+
+            if (serializer_ptr->for_reading)
+            {
+                LOG_ERROR("Performance hit: waiting for the read op to finish.");
+
+                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false, "Serializer was not created for reading purposes");
+            }
+
+            *(char**) out_data = serializer_ptr->contents;
+            break;
+        }
+
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_SIZE:
+        {
+            *(uint32_t*) out_data = serializer_ptr->file_size;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized system_file_serializer_property value.");
+        }
+    } /* switch (property) */
 }
 
 /** Please see header file for specification */
@@ -293,26 +330,6 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
     return result;
 }
 
-/* Please see header for specification */
-PUBLIC const void* system_file_serializer_get_raw_storage(__in __notnull system_file_serializer serializer)
-{
-    _system_file_serializer_descriptor* descriptor = (_system_file_serializer_descriptor*) serializer;
-    const void*                         result     = NULL;
-
-    if (descriptor->for_reading)
-    {
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
-
-        result = descriptor->contents;
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(false, "Serializer was not created for reading purposes");
-    }
-
-    return result;
-}
-
 /* Please see header file for specification */
 PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notnull system_file_serializer serializer,
                                                                     __out __notnull curve_container*       result_container)
@@ -341,7 +358,25 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     /* Instantiate the curve */
     if (*result_container == NULL)
     {
-        *result_container = curve_container_create(curve_name,
+        system_hashed_ansi_string final_curve_name     = NULL;
+        const char*               limiter              = "\\";
+        system_hashed_ansi_string serializer_file_name = NULL;
+
+        system_file_serializer_get_property(serializer,
+                                            SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
+                                           &serializer_file_name);
+
+        const char* final_curve_name_parts[] =
+        {
+            system_hashed_ansi_string_get_buffer(serializer_file_name),
+            limiter,
+            system_hashed_ansi_string_get_buffer(curve_name)
+        };
+        const uint32_t n_final_curve_name_parts = sizeof(final_curve_name_parts) / sizeof(final_curve_name_parts[0]);
+
+
+        *result_container = curve_container_create(system_hashed_ansi_string_create_by_merging_strings(n_final_curve_name_parts,
+                                                                                                       final_curve_name_parts),
                                                    variant_type);
 
         if (*result_container == NULL)

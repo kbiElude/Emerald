@@ -417,8 +417,29 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
         goto end;
     }
 
-    /* Spawn the instance */
-    result_material = scene_material_create(name);
+    /* Spawn the instance.
+     *
+     * Combine the material name with scene name to avoid collisions. */
+    system_hashed_ansi_string final_material_name = NULL;
+    const char*               limiter             = "\\";
+    system_hashed_ansi_string scene_name          = NULL;
+
+    scene_get_property(owner_scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
+    const char* final_material_name_parts[] =
+    {
+        system_hashed_ansi_string_get_buffer(scene_name),
+        limiter,
+        system_hashed_ansi_string_get_buffer(name)
+    };
+    const uint32_t n_final_material_name_parts = sizeof(final_material_name_parts) / sizeof(final_material_name_parts[0]);
+
+
+    final_material_name = system_hashed_ansi_string_create_by_merging_strings(n_final_material_name_parts,
+                                                                              final_material_name_parts);
+    result_material      = scene_material_create                             (final_material_name);
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "Could not instantiate a scene_material object");

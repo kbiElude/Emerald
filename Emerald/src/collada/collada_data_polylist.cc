@@ -246,7 +246,11 @@ next_input:
          *       leading the async read to effectively lock up.
          */
         system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name, false);
-        const void*            blob_data       = system_file_serializer_get_raw_storage(blob_serializer);
+        const void*            blob_data       = NULL;
+
+        system_file_serializer_get_property(blob_serializer,
+                                            SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                           &blob_data);
 
         if (blob_data != NULL)
         {

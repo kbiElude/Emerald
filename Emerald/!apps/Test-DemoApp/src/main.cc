@@ -60,9 +60,10 @@ PUBLIC void _render_scene(ogl_context          context,
                           system_timeline_time time,
                           void*                not_used)
 {
+    const unsigned int          n_scene    = 0;
     static system_timeline_time start_time = system_time_now();
            system_timeline_time frame_time = (system_time_now() - start_time) %
-                                             state_get_animation_duration_time();
+                                             state_get_animation_duration_time(n_scene);
 
     /* Update projection matrix */
     scene_camera     camera                 = NULL;
@@ -73,7 +74,7 @@ PUBLIC void _render_scene(ogl_context          context,
     system_matrix4x4 projection             = system_matrix4x4_create();
     float            yfov_value;
 
-    camera = scene_get_camera_by_index(state_get_scene(),
+    camera = scene_get_camera_by_index(state_get_scene(n_scene),
                                        0);
 
     scene_camera_get_property(camera,
@@ -99,7 +100,7 @@ PUBLIC void _render_scene(ogl_context          context,
      */
     scene_graph scene_renderer_graph = NULL;
 
-    ogl_scene_renderer_get_property(state_get_scene_renderer(),
+    ogl_scene_renderer_get_property(state_get_scene_renderer(n_scene),
                                     OGL_SCENE_RENDERER_PROPERTY_GRAPH,
                                    &scene_renderer_graph);
 
@@ -137,7 +138,7 @@ PUBLIC void _render_scene(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ogl_scene_renderer_render_scene_graph(state_get_scene_renderer(),
+    ogl_scene_renderer_render_scene_graph(state_get_scene_renderer(n_scene),
                                           view,
                                           projection,
                                           camera,
@@ -200,19 +201,8 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         _rendering_rbm_callback_handler,
                                         NULL);
 
-    /* Let the user select the scene file */
-    system_hashed_ansi_string scene_filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
-                                                                                         system_hashed_ansi_string_create("*.scene"),
-                                                                                         system_hashed_ansi_string_create("Emerald Scene files"),
-                                                                                         system_hashed_ansi_string_create("Select Emerald Scene file") );
-
-    if (scene_filename == NULL)
-    {
-        goto end;
-    }
-
-    /* Initialize various states required to run the demo */
-    state_init(scene_filename);
+    /* Initialize data required to run the demo */
+    state_init();
 
     /* Set up UI */
     ui_init();

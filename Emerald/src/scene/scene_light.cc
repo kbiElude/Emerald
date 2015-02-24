@@ -1083,32 +1083,53 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                                                             sizeof(light_type),
                                                            &light_type);
 
+    /* Combine scene name with the light name in order to avoid collisions */
+    const char*               limiter    = "\\";
+    system_hashed_ansi_string scene_name = NULL;
+
+    scene_get_property(owner_scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
+
+    system_hashed_ansi_string final_light_name         = NULL;
+    const char*               final_light_name_parts[] =
+    {
+        system_hashed_ansi_string_get_buffer(scene_name),
+        limiter,
+        system_hashed_ansi_string_get_buffer(light_name)
+    };
+    const uint32_t n_final_light_name_parts = sizeof(final_light_name_parts) / sizeof(final_light_name_parts[0]);
+
+    final_light_name = system_hashed_ansi_string_create_by_merging_strings(n_final_light_name_parts,
+                                                                           final_light_name_parts);
+
     switch (light_type)
     {
         case SCENE_LIGHT_TYPE_AMBIENT:
         {
-            result_light = scene_light_create_ambient(light_name);
+            result_light = scene_light_create_ambient(final_light_name);
 
             break;
         }
 
         case SCENE_LIGHT_TYPE_DIRECTIONAL:
         {
-            result_light = scene_light_create_directional(light_name);
+            result_light = scene_light_create_directional(final_light_name);
 
             break;
         }
 
         case SCENE_LIGHT_TYPE_POINT:
         {
-            result_light = scene_light_create_point(light_name);
+            result_light = scene_light_create_point(final_light_name);
 
             break;
         }
 
         case SCENE_LIGHT_TYPE_SPOT:
         {
-            result_light = scene_light_create_spot(light_name);
+            result_light = scene_light_create_spot(final_light_name);
 
             break;
         }
