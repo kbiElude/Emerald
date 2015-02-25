@@ -188,11 +188,10 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                             60,
                                                                             _rendering_handler,
                                                                             NULL);
-    context_result           = system_window_get_context                   (_window,
-                                                                           &_context);
 
-    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
-
+    system_window_get_property         (_window,
+                                        SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                                       &_context);
     system_window_set_rendering_handler(_window,
                                         window_rendering_handler);
     system_window_add_callback_func    (_window,

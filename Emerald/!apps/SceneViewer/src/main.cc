@@ -301,7 +301,6 @@ void _rendering_rbm_callback_handler(system_window           window,
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
-    bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_size    [2]       = {WINDOW_WIDTH, WINDOW_HEIGHT};
     int                   window_x1y1x2y2[4]       = {0};
@@ -321,10 +320,10 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                             60,
                                                                             _rendering_handler,
                                                                             NULL);
-    context_result           = system_window_get_context                   (_window,
-                                                                           &_context);
 
-    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &_context);
 
     system_window_set_rendering_handler(_window,
                                         window_rendering_handler);

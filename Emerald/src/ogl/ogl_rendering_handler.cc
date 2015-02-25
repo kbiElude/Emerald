@@ -131,10 +131,10 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         }
 
         /* Retrieve context's DC which we will need for buffer swaps */
-        HDC           context_dc            = NULL;
-        system_window context_window        = NULL;
-        int           context_window_width  = 0;
-        int           context_window_height = 0;
+        HDC                       context_dc            = NULL;
+        system_window             context_window        = NULL;
+        system_hashed_ansi_string context_window_name   = NULL;
+        int                       context_window_size[2];
 
         ogl_context_get_property(rendering_handler->context,
                                  OGL_CONTEXT_PROPERTY_DC,
@@ -143,9 +143,12 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                  OGL_CONTEXT_PROPERTY_WINDOW,
                                 &context_window);
 
-        system_window_get_dimensions(context_window,
-                                    &context_window_width,
-                                    &context_window_height);
+        system_window_get_property(context_window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   context_window_size);
+        system_window_get_property(context_window,
+                                   SYSTEM_WINDOW_PROPERTY_NAME,
+                                  &context_window_name);
 
         /* Bind the thread to GL */
         ogl_context_bind_to_current_thread(rendering_handler->context);
@@ -154,11 +157,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         const float  text_default_size = 0.75f;
         static float text_color[3]     = {1.0f, 1.0f, 1.0f};
 
-        rendering_handler->text_renderer = ogl_text_create(system_window_get_name(context_window),
+        rendering_handler->text_renderer = ogl_text_create(context_window_name,
                                                            rendering_handler->context,
                                                            system_resources_get_meiryo_font_table(),
-                                                           context_window_width,
-                                                           context_window_height);
+                                                           context_window_size[0],
+                                                           context_window_size[1]);
 
         ogl_text_set_text_string_property(rendering_handler->text_renderer,
                                           TEXT_STRING_ID_DEFAULT,
@@ -293,12 +296,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             uint32_t             rendering_time_msec        = 0;
                             int                  rendering_time_pos[2]      = {0};
                             int                  rendering_time_text_height = 0;
-                            int                  window_width               = 0;
-                            int                  window_height              = 0;
+                            int                  window_size[2];
 
-                            system_window_get_dimensions          (context_window,
-                                                                  &window_width,
-                                                                  &window_height);
+                            system_window_get_property            (context_window,
+                                                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                                                   window_size);
                             system_time_get_msec_for_timeline_time(rendering_time_delta,
                                                                   &rendering_time_msec);
 
@@ -317,7 +319,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                                               rendering_handler->text_string_id,
                                                              &rendering_time_text_height);
 
-                            rendering_time_pos[1] = window_height - rendering_time_text_height;
+                            rendering_time_pos[1] = window_size[1] - rendering_time_text_height;
 
                             ogl_text_set_text_string_property(rendering_handler->text_renderer,
                                                               rendering_handler->text_string_id,
@@ -552,15 +554,41 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_rende
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler_playback_status ogl_rendering_handler_get_playback_status(__in __notnull ogl_rendering_handler rendering_handler)
+PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_rendering_handler          rendering_handler,
+                                                           __in            ogl_rendering_handler_property property,
+                                                           __out __notnull void*                          out_result)
 {
-    return ((_ogl_rendering_handler*)rendering_handler)->playback_status;
-}
+    _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
-/** Please see header for specification */
-PUBLIC EMERALD_API ogl_rendering_handler_policy ogl_rendering_handler_get_policy(__in __notnull ogl_rendering_handler rendering_handler)
-{
-    return ((_ogl_rendering_handler*)rendering_handler)->policy;
+    switch (property)
+    {
+        case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS:
+        {
+            *(ogl_rendering_handler_playback_status*) out_result = rendering_handler_ptr->playback_status;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_POLICY:
+        {
+            *(ogl_rendering_handler_policy*) out_result = rendering_handler_ptr->policy;
+
+            break;
+        }
+
+        case OGL_RENDERING_HANDLER_PROPERTY_TEXT_RENDERER:
+        {
+            *(ogl_text*) out_result = rendering_handler_ptr->text_renderer;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ogl_rendering_handler_property value.");
+        }
+    } /* switch (property) */
 }
 
 /** Please see header for specification */

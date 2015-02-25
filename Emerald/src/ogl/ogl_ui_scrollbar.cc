@@ -168,16 +168,14 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
     _ogl_ui_scrollbar* scrollbar_ptr   = (_ogl_ui_scrollbar*) scrollbar;
     const GLuint       program_id      = ogl_program_get_id(scrollbar_ptr->program_slider);
     system_window      window          = NULL;
-    int                window_height   = 0;
-    int                window_width    = 0;
+    int                window_size[2]  = {0};
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
-
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    ogl_context_get_property  (context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform = NULL;
@@ -524,12 +522,11 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                      new_scrollbar->text_index,
                      system_hashed_ansi_string_get_buffer(name) );
 
-        int           text_height   = 0;
-        int           text_xy[2]    = {0};
-        int           text_width    = 0;
-        system_window window        = NULL;
-        int           window_height = 0;
-        int           window_width  = 0;
+        int           text_height    = 0;
+        int           text_xy[2]     = {0};
+        int           text_width     = 0;
+        system_window window         = NULL;
+        int           window_size[2] = {0};
 
         ogl_text_get_text_string_property(new_scrollbar->text_renderer,
                                           OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
@@ -540,18 +537,16 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                           new_scrollbar->text_index,
                                          &text_width);
 
-        ogl_context_get_property(new_scrollbar->context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
-                                &window);
+        ogl_context_get_property  (new_scrollbar->context,
+                                   OGL_CONTEXT_PROPERTY_WINDOW,
+                                  &window);
+        system_window_get_property(window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
-
-        system_window_get_dimensions(window,
-                                    &window_width,
-                                    &window_height);
-
-        text_xy[0]                         = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(text_width)  / window_width)  * 0.5f) * (float) window_width);
-        text_xy[1]                         = (int) ((x2y2[1] - (float(text_height) / window_height) ) * (float) window_height);
-        new_scrollbar->slider_x1y1x2y2[3] -= float(text_height + TEXT_SCROLLBAR_SEPARATION_PX) / window_height;
+        text_xy[0]                         = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(text_width)  / window_size[0])  * 0.5f) * (float) window_size[0]);
+        text_xy[1]                         = (int) ((x2y2[1] - (float(text_height) / window_size[1]) ) * (float) window_size[1]);
+        new_scrollbar->slider_x1y1x2y2[3] -= float(text_height + TEXT_SCROLLBAR_SEPARATION_PX) / window_size[1];
 
         ASSERT_DEBUG_SYNC(new_scrollbar->slider_x1y1x2y2[1] < new_scrollbar->slider_x1y1x2y2[3],
                           "Scrollbar has illegal height");
@@ -566,14 +561,14 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                           text_xy);
 
         /* Calculate slider sizes */
-        new_scrollbar->slider_border_width       [0] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[2] - new_scrollbar->slider_x1y1x2y2[0]) * window_width);
-        new_scrollbar->slider_border_width       [1] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[3] - new_scrollbar->slider_x1y1x2y2[1]) * window_height);
+        new_scrollbar->slider_border_width       [0] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[2] - new_scrollbar->slider_x1y1x2y2[0]) * window_size[0]);
+        new_scrollbar->slider_border_width       [1] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[3] - new_scrollbar->slider_x1y1x2y2[1]) * window_size[1]);
         new_scrollbar->slider_handle_border_width[0] = 1.0f / (float)(SLIDER_SIZE_PX);
         new_scrollbar->slider_handle_border_width[1] = 1.0f / (float)(SLIDER_SIZE_PX);
 
         /* Calculate slider handle size */
-        new_scrollbar->slider_handle_size[0] = float(SLIDER_SIZE_PX) / float(window_width);
-        new_scrollbar->slider_handle_size[1] = float(SLIDER_SIZE_PX) / float(window_height);
+        new_scrollbar->slider_handle_size[0] = float(SLIDER_SIZE_PX) / float(window_size[0]);
+        new_scrollbar->slider_handle_size[1] = float(SLIDER_SIZE_PX) / float(window_size[1]);
 
         /* Update slider handle position */
         _ogl_ui_scrollbar_update_slider_handle_position(new_scrollbar);
@@ -601,7 +596,8 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
 }
 
 /** TODO */
-PUBLIC bool ogl_ui_scrollbar_is_over(void* internal_instance, const float* xy)
+PUBLIC bool ogl_ui_scrollbar_is_over(void*        internal_instance,
+                                     const float* xy)
 {
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
     float              inversed_y = 1.0f - xy[1];
@@ -637,7 +633,8 @@ PUBLIC bool ogl_ui_scrollbar_is_over(void* internal_instance, const float* xy)
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_lbm_down(void* internal_instance, const float* xy)
+PUBLIC void ogl_ui_scrollbar_on_lbm_down(void*        internal_instance,
+                                         const float* xy)
 {
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
     float              inversed_y    = 1.0f - xy[1];
@@ -653,7 +650,8 @@ PUBLIC void ogl_ui_scrollbar_on_lbm_down(void* internal_instance, const float* x
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_lbm_up(void* internal_instance, const float* xy)
+PUBLIC void ogl_ui_scrollbar_on_lbm_up(void*        internal_instance,
+                                       const float* xy)
 {
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
 
@@ -662,7 +660,8 @@ PUBLIC void ogl_ui_scrollbar_on_lbm_up(void* internal_instance, const float* xy)
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_on_mouse_move(void* internal_instance, const float* xy)
+PUBLIC void ogl_ui_scrollbar_on_mouse_move(void*        internal_instance,
+                                           const float* xy)
 {
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) internal_instance;
     float              x_clicked     = xy[0];
@@ -683,8 +682,10 @@ PUBLIC void ogl_ui_scrollbar_on_mouse_move(void* internal_instance, const float*
         /* Set the value */
         float max_value, min_value, new_value;
 
-        system_variant_get_float(scrollbar_ptr->max_value_variant, &max_value);
-        system_variant_get_float(scrollbar_ptr->min_value_variant, &min_value);
+        system_variant_get_float(scrollbar_ptr->max_value_variant,
+                                &max_value);
+        system_variant_get_float(scrollbar_ptr->min_value_variant,
+                                &min_value);
 
         new_value = min_value                                                               +
                     (x_clicked - scrollbar_ptr->slider_x1y1x2y2[0])                         /

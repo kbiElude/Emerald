@@ -1460,7 +1460,11 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
     /* If there is a rendering handler and it is active, stop it before we continue */
     if (window_ptr->rendering_handler != NULL)
     {
-        ogl_rendering_handler_playback_status playback_status = ogl_rendering_handler_get_playback_status(window_ptr->rendering_handler);
+        ogl_rendering_handler_playback_status playback_status;
+
+        ogl_rendering_handler_get_property(window_ptr->rendering_handler,
+                                           OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                          &playback_status);
 
         if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
         {
@@ -1888,96 +1892,90 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
     }
 }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_handle(__in  __notnull system_window         window,
-                                                 __out __notnull system_window_handle* out_window_handle)
+/* Please see header for spec */
+PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window          window,
+                                                   __in            system_window_property property,
+                                                   __out __notnull void*                  out_result)
 {
     _system_window* window_ptr = (_system_window*) window;
 
-    ASSERT_DEBUG_SYNC(window_ptr->system_handle != 0,
-                      "System handle is NULL.");
-
-    *out_window_handle = window_ptr->system_handle;
-
-    return true;
-}
-
-/** TODO */
-PUBLIC EMERALD_API bool system_window_get_position(__in  __notnull system_window window,
-                                                   __out __notnull int*          out_x,
-                                                   __out __notnull int*          out_y)
-{
-    bool            result     = false;
-    _system_window* window_ptr = (_system_window*) window;
-
-    ASSERT_DEBUG_SYNC(window_ptr->system_handle != 0,
-                      "System handle is NULL.");
-
-    if (window_ptr->system_handle != 0)
+    switch (property)
     {
-        RECT window_rect;
-
-        if (::GetWindowRect(window_ptr->system_handle,
-                           &window_rect) == TRUE)
+        case SYSTEM_WINDOW_PROPERTY_DC:
         {
-            *out_x = window_rect.left;
-            *out_y = window_rect.top;
-            result = true;
+            ASSERT_DEBUG_SYNC(window_ptr->system_dc != 0,
+                              "System DC is NULL.");
+
+            *(system_window_dc*) out_result = window_ptr->system_dc;
+
+            break;
         }
-    }
 
-    return result;
-}
+        case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
+        {
+            ((int*) out_result)[0] = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
+            ((int*) out_result)[1] = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
 
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_rendering_handler(__in  __notnull system_window          window,
-                                                            __out __notnull ogl_rendering_handler* out_rendering_handler)
-{
-    *out_rendering_handler = ((_system_window*) window)->rendering_handler;
+            break;
+        }
 
-    return true;
-}
+        case SYSTEM_WINDOW_PROPERTY_HANDLE:
+        {
+            ASSERT_DEBUG_SYNC(window_ptr->system_handle != 0,
+                              "System handle is NULL.");
 
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_dc(__in  __notnull system_window     window,
-                                             __out __notnull system_window_dc* out_window_dc)
-{
-    _system_window* window_ptr = (_system_window*) window;
+            *(system_window_handle*) out_result = window_ptr->system_handle;
 
-    ASSERT_DEBUG_SYNC(window_ptr->system_dc != 0,
-                      "System DC is NULL.");
+            break;
+        }
 
-    *out_window_dc = window_ptr->system_dc;
+        case SYSTEM_WINDOW_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result = window_ptr->title;
 
-    return true;
-}
+            break;
+        }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_dimensions(__in            __notnull system_window window,
-                                                     __out_ecount(1) __notnull int*          out_width,
-                                                     __out_ecount(1) __notnull int*          out_height)
-{
-    _system_window* window_ptr = (_system_window*) window;
+        case SYSTEM_WINDOW_PROPERTY_POSITION:
+        {
+            ASSERT_DEBUG_SYNC(window_ptr->system_handle != 0,
+                              "System handle is NULL.");
 
-    *out_width  = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
-    *out_height = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
+            if (window_ptr->system_handle != 0)
+            {
+                RECT window_rect;
 
-    return true;
-}
+                if (::GetWindowRect(window_ptr->system_handle,
+                                   &window_rect) == TRUE)
+                {
+                    ((int*) out_result)[0] = window_rect.left;
+                    ((int*) out_result)[1] = window_rect.top;
+                }
+            }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_window_get_name(__in __notnull system_window window)
-{
-    return ((_system_window*)window)->title;
-}
+            break;
+        }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_get_context(__in  __notnull system_window window,
-                                                  __out __notnull ogl_context*  out_context)
-{
-    *out_context = ((_system_window*)window)->system_ogl_context;
+        case SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT:
+        {
+            *(ogl_context*) out_result = window_ptr->system_ogl_context;
 
-    return (*out_context != NULL);
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
+        {
+            *(ogl_rendering_handler*) out_result = window_ptr->rendering_handler;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized system_window_property value.");
+        }
+    } /* switch (property) */
 }
 
 /** Please see header for specification */

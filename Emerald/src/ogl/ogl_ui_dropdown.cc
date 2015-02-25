@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -506,21 +506,19 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
                                               0.51f, 10.0f  / 255.0f * 0.35f, 14.0f  / 255.0f * 0.35f, 10.0f  / 255.0f * 0.35f,
                                               1.0f,  10.0f  / 255.0f * 0.35f, 8.0f   / 255.0f * 0.35f, 9.0f   / 255.0f * 0.35f};
     system_window     window               = NULL;
-    int               window_height        = 0;
-    int               window_width         = 0;
+    int               window_size[2]       = {0};
 
-    ogl_context_get_property(dropdown_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
+    ogl_context_get_property  (dropdown_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
-
-    border_width_bg[0] =  1.0f / (float)((dropdown_ptr->drop_x1y2x2y1[2] - dropdown_ptr->drop_x1y2x2y1[0]) * window_width);
-    border_width_bg[1] = -1.0f / (float)((dropdown_ptr->drop_x1y2x2y1[3] - dropdown_ptr->drop_x1y2x2y1[1]) * window_height);
-    border_width   [0] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [2] - dropdown_ptr->x1y1x2y2     [0]) * window_width);
-    border_width   [1] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1]) * window_height);
+    border_width_bg[0] =  1.0f / (float)((dropdown_ptr->drop_x1y2x2y1[2] - dropdown_ptr->drop_x1y2x2y1[0]) * window_size[0]);
+    border_width_bg[1] = -1.0f / (float)((dropdown_ptr->drop_x1y2x2y1[3] - dropdown_ptr->drop_x1y2x2y1[1]) * window_size[1]);
+    border_width   [0] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [2] - dropdown_ptr->x1y1x2y2     [0]) * window_size[0]);
+    border_width   [1] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1]) * window_size[1]);
 
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform      = NULL;
@@ -626,10 +624,10 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     dropdown_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 
     /* Slider X1 & X2 */
-    const float droparea_button_start_u = dropdown_ptr->drop_x1y2x2y1[2] - float(BUTTON_WIDTH_PX) / float(window_width);
+    const float droparea_button_start_u = dropdown_ptr->drop_x1y2x2y1[2] - float(BUTTON_WIDTH_PX) / float(window_size[0]);
 
-    dropdown_ptr->slider_x1x2[0] = droparea_button_start_u + (BUTTON_WIDTH_PX - float(SLIDER_WIDTH_PX)) / float(window_width) * 0.5f;
-    dropdown_ptr->slider_x1x2[1] = dropdown_ptr->slider_x1x2[0] + float(SLIDER_WIDTH_PX) / float(window_width);
+    dropdown_ptr->slider_x1x2[0] = droparea_button_start_u      + (BUTTON_WIDTH_PX - float(SLIDER_WIDTH_PX)) / float(window_size[0]) * 0.5f;
+    dropdown_ptr->slider_x1x2[1] = dropdown_ptr->slider_x1x2[0] + float(SLIDER_WIDTH_PX)                     / float(window_size[0]);
 }
 
 /* TODO */
@@ -637,16 +635,14 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_drop
 {
     system_window  context_window = NULL;
     const uint32_t n_entries      = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
-    int            window_height  = 0;
-    int            window_width   = 0;
+    int            window_size[2] = {0};
 
-    ogl_context_get_property(dropdown_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &context_window);
-
-    system_window_get_dimensions(context_window,
-                                &window_width,
-                                &window_height);
+    ogl_context_get_property  (dropdown_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &context_window);
+    system_window_get_property(context_window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     for (uint32_t n_entry = 0;
                   n_entry < n_entries - 1; /* exclude bar string */
@@ -658,12 +654,12 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_drop
                                                    n_entry,
                                                   &entry_ptr) )
         {
-            const float slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] + float(SLIDER_Y_SEPARATOR_PX) / window_height);
+            const float slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] + float(SLIDER_Y_SEPARATOR_PX) / window_size[1]);
 
             int new_xy[] =
             {
                 entry_ptr->base_x,
-                entry_ptr->base_y + int((dropdown_ptr->slider_delta_y + dropdown_ptr->slider_delta_y_base) / slider_height_ss * (n_entries * dropdown_ptr->separator_delta_y * window_height))
+                entry_ptr->base_y + int((dropdown_ptr->slider_delta_y + dropdown_ptr->slider_delta_y_base) / slider_height_ss * (n_entries * dropdown_ptr->separator_delta_y * window_size[1]))
             };
 
             entry_ptr->text_y = new_xy[1];
@@ -680,11 +676,10 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_drop
 PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdown* dropdown_ptr,
                                                    __in           bool              only_update_selected_entry)
 {
-    const unsigned int n_strings     = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
-    system_window      window        = NULL;
-    int                window_height = 0;
-    int                window_width  = 0;
-    const float        x1y1[2]       =
+    const unsigned int n_strings      = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
+    system_window      window         = NULL;
+    int                window_size[2] = {0};
+    const float        x1y1[2]        =
     {
                dropdown_ptr->x1y1x2y2[0],
         1.0f - dropdown_ptr->x1y1x2y2[3]
@@ -695,18 +690,17 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdo
         1.0f - dropdown_ptr->x1y1x2y2[1]
     };
 
-    ogl_context_get_property(dropdown_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
+    ogl_context_get_property  (dropdown_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
-
-    const GLint scissor_box[] = {(GLint) ( dropdown_ptr->drop_x1y2x2y1[0]  * window_width),
-                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[3]) * window_height),
-                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[2] - dropdown_ptr->drop_x1y2x2y1[0]) * window_width),
-                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * window_height)};
+    const GLint scissor_box[] = {(GLint) ( dropdown_ptr->drop_x1y2x2y1[0]  * window_size[0]),
+                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[3]) * window_size[1]),
+                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[2] - dropdown_ptr->drop_x1y2x2y1[0]) * window_size[0]),
+                                 (GLint) ((dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * window_size[1])};
 
     for (uint32_t n_entry = 0;
                   n_entry < n_strings;
@@ -763,8 +757,8 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdo
                     delta_y = 0;
                 }
 
-                text_xy[0] = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(BUTTON_WIDTH_PX + text_width) / window_width)  * 0.5f) * (float) window_width);
-                text_xy[1] = (int) ((x2y2[1] - (x2y2[1] - x1y1[1] - float(text_height) / window_height) * 0.5f + delta_y)        * (float) window_height);
+                text_xy[0] = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(BUTTON_WIDTH_PX + text_width) / window_size[0])  * 0.5f) * (float) window_size[0]);
+                text_xy[1] = (int) ((x2y2[1] - (x2y2[1] - x1y1[1] - float(text_height) / window_size[1]) * 0.5f + delta_y)         * (float) window_size[1]);
 
                 entry_ptr->base_x = text_xy[0];
                 entry_ptr->base_y = text_xy[1];
@@ -849,17 +843,15 @@ PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dro
 PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_dropdown* dropdown_ptr,
                                               __in_ecount(2) __notnull const float*      x1y1)
 {
-    system_window window        = NULL;
-    int           window_height = 0;
-    int           window_width  = 0;
+    system_window window         = NULL;
+    int           window_size[2] = {0};
 
-    ogl_context_get_property(dropdown_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
-
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    ogl_context_get_property  (dropdown_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     /* Retrieve maximum width & height needed to render the text strings.
      * We will use this data to compute x2y2 */
@@ -904,8 +896,8 @@ PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_d
 
     const float x2y2[2] =
     {
-        x1y1[0] + float(text_max_width + BUTTON_WIDTH_PX) / window_width,
-        x1y1[1] + float(text_max_height)                  / window_height
+        x1y1[0] + float(text_max_width + BUTTON_WIDTH_PX) / window_size[0],
+        x1y1[1] + float(text_max_height)                  / window_size[1]
     };
 
     /* Calculate various vectors needed for rendering */
@@ -913,17 +905,17 @@ PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_d
     dropdown_ptr->slider_delta_y      = 0;
     dropdown_ptr->slider_delta_y_base = 0;
     dropdown_ptr->slider_height       = float(MAX_N_ENTRIES_VISIBLE) / float(n_strings);
-    dropdown_ptr->slider_separator_y  = float(SLIDER_Y_SEPARATOR_PX) / window_height;
+    dropdown_ptr->slider_separator_y  = float(SLIDER_Y_SEPARATOR_PX) / window_size[1];
     dropdown_ptr->x1y1x2y2[0]         =     x1y1[0];
     dropdown_ptr->x1y1x2y2[1]         = 1 - x2y2[1];
     dropdown_ptr->x1y1x2y2[2]         =     x2y2[0];
     dropdown_ptr->x1y1x2y2[3]         = 1 - x1y1[1];
-    dropdown_ptr->button_x1y1x2y2[0]  = dropdown_ptr->x1y1x2y2[2] - float(BUTTON_WIDTH_PX) / window_width;
+    dropdown_ptr->button_x1y1x2y2[0]  = dropdown_ptr->x1y1x2y2[2] - float(BUTTON_WIDTH_PX) / window_size[0];
     dropdown_ptr->button_x1y1x2y2[1]  = dropdown_ptr->x1y1x2y2[1];
     dropdown_ptr->button_x1y1x2y2[2]  = dropdown_ptr->x1y1x2y2[2];
     dropdown_ptr->button_x1y1x2y2[3]  = dropdown_ptr->x1y1x2y2[3];
     dropdown_ptr->drop_x1y2x2y1[0]    = dropdown_ptr->x1y1x2y2[0];
-    dropdown_ptr->drop_x1y2x2y1[1]    = dropdown_ptr->x1y1x2y2[1] + 1.0f / window_height;
+    dropdown_ptr->drop_x1y2x2y1[1]    = dropdown_ptr->x1y1x2y2[1] + 1.0f / window_size[1];
     dropdown_ptr->drop_x1y2x2y1[2]    = dropdown_ptr->x1y1x2y2[2];
     dropdown_ptr->drop_x1y2x2y1[3]    = dropdown_ptr->drop_x1y2x2y1[1] - float((MAX_N_ENTRIES_VISIBLE) * dropdown_ptr->separator_delta_y);
 
@@ -943,10 +935,10 @@ PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_d
              int text_xy[2]  = {0};
        const int x1y1_ss[2]  =
     {
-        int(x1y1[0] * float(window_width) ),
-        int(x1y1[1] * float(window_height))
+        int(x1y1[0] * float(window_size[0]) ),
+        int(x1y1[1] * float(window_size[1]))
     };
-       const int y2_ss = int(x2y2[1] * float(window_height));
+       const int y2_ss = int(x2y2[1] * float(window_size[1]));
 
     if (dropdown_ptr->label_string_id == -1)
     {
@@ -978,14 +970,14 @@ PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_d
                                       OGL_TEXT_STRING_PROPERTY_POSITION_PX,
                                       text_xy);
 
-    dropdown_ptr->label_x1y1[0] = float(text_xy[0]) / float(window_width);
-    dropdown_ptr->label_x1y1[1] = 1.0f - float(text_xy[1]) / float(window_height);
+    dropdown_ptr->label_x1y1[0] = float(text_xy[0]) / float(window_size[0]);
+    dropdown_ptr->label_x1y1[1] = 1.0f - float(text_xy[1]) / float(window_size[1]);
 
     /* Set up coordinates of the dimmed background underneath the label */
     text_xy[0] -= LABEL_X_SEPARATOR_PX * 2;
 
-    dropdown_ptr->label_bg_x1y1x2y2[0] =        float(text_xy[0])               / float(window_width);
-    dropdown_ptr->label_bg_x1y1x2y2[1] = 1.0f - float(y2_ss) / float(window_height);
+    dropdown_ptr->label_bg_x1y1x2y2[0] =        float(text_xy[0])               / float(window_size[0]);
+    dropdown_ptr->label_bg_x1y1x2y2[1] = 1.0f - float(y2_ss) / float(window_size[1]);
     dropdown_ptr->label_bg_x1y1x2y2[2] = x1y1[0];
     dropdown_ptr->label_bg_x1y1x2y2[3] = 1.0f - x1y1[1];
 }
@@ -1036,14 +1028,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     _ogl_ui_dropdown*    dropdown_ptr = (_ogl_ui_dropdown*) internal_instance;
     system_timeline_time time_now     = system_time_now();
     system_window        window       = NULL;
-    int                  window_wh[2];
+    int                  window_size[2];
 
-    ogl_context_get_property    (dropdown_ptr->context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
-                                &window);
-    system_window_get_dimensions(window,
-                                 window_wh + 0,
-                                 window_wh + 1);
+    ogl_context_get_property  (dropdown_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     if (!dropdown_ptr->visible)
     {
@@ -1195,7 +1187,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                 {
                     -1.0f + 2.0f * dropdown_ptr->drop_x1y2x2y1[0],
                     -1.0f + 2.0f * dropdown_ptr->button_x1y1x2y2[0],
-                    (1.0f - entry_ptr->text_y / float(window_wh[1]))
+                    (1.0f - entry_ptr->text_y / float(window_size[1]))
                 };
 
                 if (x1_x2_y[2] >= dropdown_ptr->drop_x1y2x2y1[3] &&
@@ -1253,7 +1245,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     dropdown_ptr->pGLEnable(GL_BLEND);
     {
         dropdown_ptr->pGLUseProgram(program_label_bg_id);
-        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                    0,
+                                    4);
     }
     dropdown_ptr->pGLDisable(GL_BLEND);
 }
@@ -1342,10 +1336,13 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
     if (new_dropdown != NULL)
     {
         /* Initialize fields */
-        memset(new_dropdown, 0, sizeof(_ogl_ui_dropdown) );
+        memset(new_dropdown,
+               0,
+               sizeof(_ogl_ui_dropdown) );
 
         new_dropdown->context             = ogl_ui_get_context(instance);
-        new_dropdown->entries             = system_resizable_vector_create(4, /* capacity */ sizeof(_ogl_ui_dropdown_entry*) );
+        new_dropdown->entries             = system_resizable_vector_create(4, /* capacity */
+                                                                           sizeof(_ogl_ui_dropdown_entry*) );
         new_dropdown->fire_proc_user_arg  = fire_proc_user_arg;
         new_dropdown->is_button_lbm       = false;
         new_dropdown->is_droparea_lbm     = false;
@@ -1409,17 +1406,15 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
         }
 
         /* Initialize entries */
-        system_window window        = NULL;
-        int           window_height = 0;
-        int           window_width  = 0;
+        system_window window         = NULL;
+        int           window_size[2] = {0};
 
-        ogl_context_get_property(new_dropdown->context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
-                                &window);
-
-        system_window_get_dimensions(window,
-                                    &window_width,
-                                    &window_height);
+        ogl_context_get_property  (new_dropdown->context,
+                                   OGL_CONTEXT_PROPERTY_WINDOW,
+                                  &window);
+        system_window_get_property(window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
         for (uint32_t n_entry = 0;
                       n_entry < n_strings + 1 /* currently selected entry */;
@@ -1462,17 +1457,24 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
          *       Unfortunately, the required vector values have not been calculated yet,
          *       so we will need to redo this call after these become available.
          */
-        _ogl_ui_dropdown_update_entry_strings(new_dropdown, false);
+        _ogl_ui_dropdown_update_entry_strings(new_dropdown,
+                                              false);
 
         /* Update sub-control sizes */
-        _ogl_ui_dropdown_update_position(new_dropdown, x1y1);
+        _ogl_ui_dropdown_update_position(new_dropdown,
+                                         x1y1);
 
         /* Retrieve the rendering program */
-        new_dropdown->program           = ogl_ui_get_registered_program(instance, ui_dropdown_program_name);
-        new_dropdown->program_bg        = ogl_ui_get_registered_program(instance, ui_dropdown_bg_program_name);
-        new_dropdown->program_label_bg  = ogl_ui_get_registered_program(instance, ui_dropdown_label_bg_program_name);
-        new_dropdown->program_separator = ogl_ui_get_registered_program(instance, ui_dropdown_separator_program_name);
-        new_dropdown->program_slider    = ogl_ui_get_registered_program(instance, ui_dropdown_slider_program_name);
+        new_dropdown->program           = ogl_ui_get_registered_program(instance,
+                                                                        ui_dropdown_program_name);
+        new_dropdown->program_bg        = ogl_ui_get_registered_program(instance,
+                                                                        ui_dropdown_bg_program_name);
+        new_dropdown->program_label_bg  = ogl_ui_get_registered_program(instance,
+                                                                        ui_dropdown_label_bg_program_name);
+        new_dropdown->program_separator = ogl_ui_get_registered_program(instance,
+                                                                        ui_dropdown_separator_program_name);
+        new_dropdown->program_slider    = ogl_ui_get_registered_program(instance,
+                                                                        ui_dropdown_slider_program_name);
 
         if (new_dropdown->program           == NULL ||
             new_dropdown->program_bg        == NULL ||

@@ -251,19 +251,17 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
     const GLuint             program_id          = ogl_program_get_id(texture_preview_ptr->program);
     system_window            window              = NULL;
-    int                      window_height       = 0;
-    int                      window_width        = 0;
+    int                      window_size[2]      = {0};
 
     ASSERT_DEBUG_SYNC(!texture_preview_ptr->texture_initialized,
                       "TO already initialized");
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
-
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    ogl_context_get_property  (context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     /* Determine preview size */
     float  preview_height_ss = 0.0f;
@@ -310,9 +308,9 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                        "Input texture is undefined!");
 
     texture_h_ratio   = float(texture_width_px)  / float(texture_height_px);
-    texture_height_ss = float(texture_height_px) / float(window_height);
+    texture_height_ss = float(texture_height_px) / float(window_size[1]);
     texture_v_ratio   = float(texture_height_px) / float(texture_width_px);
-    texture_width_ss  = float(texture_width_px)  / float(window_width);
+    texture_width_ss  = float(texture_width_px)  / float(window_size[0]);
 
     if (texture_preview_ptr->max_size[0] > texture_preview_ptr->max_size[1])
     {
@@ -330,8 +328,8 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
     texture_preview_ptr->x1y1x2y2[2] = texture_preview_ptr->x1y1x2y2[0] + preview_width_ss;
     texture_preview_ptr->x1y1x2y2[3] = texture_preview_ptr->x1y1x2y2[1] - preview_height_ss;
 
-    texture_preview_ptr->border_width[0] = 1.0f / (float)(preview_width_ss  * window_width  + 1);
-    texture_preview_ptr->border_width[1] = 1.0f / (float)(preview_height_ss * window_height + 1);
+    texture_preview_ptr->border_width[0] = 1.0f / (float)(preview_width_ss  * window_size[0] + 1);
+    texture_preview_ptr->border_width[1] = 1.0f / (float)(preview_height_ss * window_size[1] + 1);
 
     /* Configure the text to be shown below the preview */
     ogl_text_set(texture_preview_ptr->text_renderer,
@@ -351,8 +349,8 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                       texture_preview_ptr->text_index,
                                      &text_width);
 
-    text_xy[0] = (int) ((texture_preview_ptr->x1y1x2y2[0] + (texture_preview_ptr->x1y1x2y2[2] - texture_preview_ptr->x1y1x2y2[0] - float(text_width)  / window_width) * 0.5f) * (float) window_width);
-    text_xy[1] = (int) ((1.0f - (texture_preview_ptr->x1y1x2y2[3] - float(text_height) / window_height)) * (float) window_height);
+    text_xy[0] = (int) ((texture_preview_ptr->x1y1x2y2[0] + (texture_preview_ptr->x1y1x2y2[2] - texture_preview_ptr->x1y1x2y2[0] - float(text_width)  / window_size[0]) * 0.5f) * (float) window_size[0]);
+    text_xy[1] = (int) ((1.0f - (texture_preview_ptr->x1y1x2y2[3] - float(text_height) / window_size[1])) * (float) window_size[1]);
 
     ogl_text_set_text_string_property(texture_preview_ptr->text_renderer,
                                       texture_preview_ptr->text_index,

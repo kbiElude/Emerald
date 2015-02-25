@@ -11,6 +11,13 @@
 REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
                              ogl_rendering_handler)
 
+typedef enum
+{
+    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS, /* not settable, ogl_rendering_handler_playback_status */
+    OGL_RENDERING_HANDLER_PROPERTY_POLICY,          /* not settable, ogl_rendering_handler_policy */
+    OGL_RENDERING_HANDLER_PROPERTY_TEXT_RENDERER,   /* not settable, ogl_text */
+
+} ogl_rendering_handler_property;
 
 /** TODO */
 PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_render_per_request_policy(__in __notnull system_hashed_ansi_string,
@@ -29,13 +36,15 @@ PUBLIC EMERALD_API ogl_rendering_handler ogl_rendering_handler_create_with_max_p
                                                                                                   __in           void*);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_rendering_handler_playback_status ogl_rendering_handler_get_playback_status(__in __notnull ogl_rendering_handler);
-
-/** TODO */
-PUBLIC EMERALD_API ogl_rendering_handler_policy ogl_rendering_handler_get_policy(__in __notnull ogl_rendering_handler);
+PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_rendering_handler          rendering_handler,
+                                                           __in            ogl_rendering_handler_property property,
+                                                           __out __notnull void*                          out_result);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_is_current_thread_rendering_thread(__in __notnull ogl_rendering_handler);
+
+/** TODO. Blocks rendering handler - _ogl_rendering_handler_unlock_bound_context() call must follow! */
+PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(__in __notnull ogl_rendering_handler);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_play(__in __notnull ogl_rendering_handler,
@@ -53,9 +62,6 @@ PUBLIC EMERALD_API void ogl_rendering_handler_set_fps_counter_visibility(__in __
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_handler);
-
-/** TODO. Blocks rendering handler - _ogl_rendering_handler_unlock_bound_context() call must follow! */
-PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(__in __notnull ogl_rendering_handler);
 
 /** TODO */
 PUBLIC bool _ogl_rendering_handler_on_bound_to_context(__in __notnull ogl_rendering_handler,

@@ -8,6 +8,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
 #include "system/system_assertions.h"
@@ -221,18 +222,22 @@ PRIVATE void _ogl_pipeline_init_pipeline(__in __notnull _ogl_pipeline*          
                                          __in __notnull system_hashed_ansi_string name)
 {
     /* Retrieve output dimensions before continuing */
-    system_window      context_window        = NULL;
-    int                context_window_height = 0;
-    int                context_window_width  = 0;
-    gfx_bfg_font_table font_table            = system_resources_get_meiryo_font_table();
+    system_window         context_window        = NULL;
+    gfx_bfg_font_table    font_table            = system_resources_get_meiryo_font_table();
+    ogl_rendering_handler rendering_handler     = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_WINDOW,
                             &context_window);
 
-    system_window_get_dimensions(context_window,
-                                &context_window_width,
-                                &context_window_height);
+    system_window_get_property(context_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
+
+    ogl_rendering_handler_get_property(rendering_handler,
+                                       OGL_RENDERING_HANDLER_PROPERTY_TEXT_RENDERER,
+                                      &pipeline_ptr->text_renderer);
+    ogl_text_retain                   (pipeline_ptr->text_renderer);
 
     /* Initialize */
     pipeline_ptr->context                         = context;
@@ -240,12 +245,6 @@ PRIVATE void _ogl_pipeline_init_pipeline(__in __notnull _ogl_pipeline*          
     pipeline_ptr->should_overlay_performance_info = should_overlay_performance_info;
     pipeline_ptr->stages                          = system_resizable_vector_create(DEFAULT_STAGES_CAPACITY,
                                                                                    sizeof(_ogl_pipeline_stage*) );
-    pipeline_ptr->text_renderer                   = ogl_text_create               (system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(pipeline_ptr->name),
-                                                                                                                                           " text renderer"),
-                                                                                   context,
-                                                                                   font_table,
-                                                                                   context_window_width,
-                                                                                   context_window_height);
     pipeline_ptr->ui                              = ogl_ui_create                 (pipeline_ptr->text_renderer,
                                                                                    system_hashed_ansi_string_create("Pipeline UI") );
     pipeline_ptr->text_y_delta                    = (uint32_t) (gfx_bfg_font_table_get_maximum_character_height(font_table) * TEXT_SCALE);
