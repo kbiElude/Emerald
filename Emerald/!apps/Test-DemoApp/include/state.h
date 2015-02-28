@@ -10,19 +10,16 @@
 PUBLIC void state_deinit();
 
 /** TODO */
-PUBLIC system_timeline_time state_get_animation_duration_time(unsigned int n_scene);
+PUBLIC void state_get_current_frame_properties(__out __notnull scene*                out_current_scene,
+                                               __out __notnull scene_camera*         out_current_scene_camera,
+                                               __out __notnull ogl_scene_renderer*   out_current_renderer,
+                                               __out           system_timeline_time* out_current_frame_time);
 
 /** TODO */
 PUBLIC ogl_pipeline state_get_pipeline();
 
 /** TODO */
 PUBLIC uint32_t state_get_pipeline_stage_id();
-
-/** TODO */
-PUBLIC scene state_get_scene(unsigned int n_scene);
-
-/** TODO */
-PUBLIC ogl_scene_renderer state_get_scene_renderer(unsigned int n_scene);
 
 /** TODO */
 PUBLIC void state_init();

@@ -60,32 +60,31 @@ PUBLIC void _render_scene(ogl_context          context,
                           system_timeline_time time,
                           void*                not_used)
 {
-    const unsigned int          n_scene    = 0;
-    static system_timeline_time start_time = system_time_now();
-           system_timeline_time frame_time = (system_time_now() - start_time) %
-                                             state_get_animation_duration_time(n_scene);
+    scene_camera         current_camera   = NULL;
+    ogl_scene_renderer   current_renderer = NULL;
+    scene                current_scene    = NULL;
+    system_timeline_time frame_time       = 0;
+
+    state_get_current_frame_properties(&current_scene,
+                                       &current_camera,
+                                       &current_renderer,
+                                       &frame_time);
 
     /* Update projection matrix */
-    scene_camera     camera                 = NULL;
-    bool             camera_is_flyby_active = false;
-    float            new_zfar               = CAMERA_SETTING_Z_FAR;
-    float            new_znear              = 1.0f;
-    bool             new_visibility         = false;
-    system_matrix4x4 projection             = system_matrix4x4_create();
+    float            new_zfar   = CAMERA_SETTING_Z_FAR;
+    float            new_znear  = 0.1f;
+    system_matrix4x4 projection = system_matrix4x4_create();
     float            yfov_value;
 
-    camera = scene_get_camera_by_index(state_get_scene(n_scene),
-                                       0);
-
-    scene_camera_get_property(camera,
+    scene_camera_get_property(current_camera,
                               SCENE_CAMERA_PROPERTY_VERTICAL_FOV_FROM_ZOOM_FACTOR,
                               time,
                               &yfov_value);
 
-    scene_camera_set_property(camera,
+    scene_camera_set_property(current_camera,
                               SCENE_CAMERA_PROPERTY_FAR_PLANE_DISTANCE,
                              &new_zfar);
-    scene_camera_set_property(camera,
+    scene_camera_set_property(current_camera,
                               SCENE_CAMERA_PROPERTY_NEAR_PLANE_DISTANCE,
                              &new_znear);
 
@@ -100,7 +99,7 @@ PUBLIC void _render_scene(ogl_context          context,
      */
     scene_graph scene_renderer_graph = NULL;
 
-    ogl_scene_renderer_get_property(state_get_scene_renderer(n_scene),
+    ogl_scene_renderer_get_property(current_renderer,
                                     OGL_SCENE_RENDERER_PROPERTY_GRAPH,
                                    &scene_renderer_graph);
 
@@ -115,7 +114,7 @@ PUBLIC void _render_scene(ogl_context          context,
     scene_graph_node scene_camera_node                  = NULL;
     system_matrix4x4 scene_camera_transformation_matrix = NULL;
 
-    scene_camera_get_property(camera,
+    scene_camera_get_property(current_camera,
                               SCENE_CAMERA_PROPERTY_OWNER_GRAPH_NODE,
                               0, /* time - irrelevant for the owner graph node */
                              &scene_camera_node);
@@ -138,10 +137,10 @@ PUBLIC void _render_scene(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ogl_scene_renderer_render_scene_graph(state_get_scene_renderer(n_scene),
+    ogl_scene_renderer_render_scene_graph(current_renderer,
                                           view,
                                           projection,
-                                          camera,
+                                          current_camera,
                                           RENDER_MODE_FORWARD,
                                           true,  /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_NONE,
@@ -215,7 +214,6 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);
 
-end:
     ui_deinit   ();
     state_deinit();
 

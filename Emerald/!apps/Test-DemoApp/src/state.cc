@@ -18,16 +18,14 @@
 typedef struct _scene_descriptor
 {
     system_timeline_time duration;
-    float                duration_float;
     ogl_scene_renderer   renderer;
     scene                this_scene;
 
     _scene_descriptor()
     {
-        duration       = 0;
-        duration_float = 0.0f;
-        renderer       = NULL;
-        this_scene     = NULL;
+        duration   = 0;
+        renderer   = NULL;
+        this_scene = NULL;
     }
 
     ~_scene_descriptor()
@@ -41,25 +39,27 @@ typedef struct _scene_descriptor
 } _scene_descriptor;
 
 /* Array of scene filenames to use for the demo */
-const char* scene_filenames[] =
+const char* _scene_filenames[] =
 {
     "blob/scene1/test",
     "blob/scene2/test",
     "blob/scene3/test"
 };
-const unsigned int n_scene_filenames = sizeof(scene_filenames) / sizeof(scene_filenames[0]);
+const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
+                                        sizeof(_scene_filenames[0]);
 
 /* Other stuff */
-ogl_pipeline         _pipeline                 = NULL;
-uint32_t             _pipeline_stage_id        = -1;
-_scene_descriptor    _scenes[n_scene_filenames];
-
+ogl_pipeline         _pipeline            = NULL;
+uint32_t             _pipeline_stage_id   = -1;
+system_timeline_time _playback_start_time = 0;
+_scene_descriptor    _scenes                [_n_scene_filenames];
+system_timeline_time _scenes_duration_summed[_n_scene_filenames] = {0};
 
 /** Please see header for spec */
 PUBLIC void state_deinit()
 {
     for (unsigned int n_scene = 0;
-                      n_scene < n_scene_filenames;
+                      n_scene < _n_scene_filenames;
                     ++n_scene)
     {
         if (_scenes[n_scene].renderer != NULL)
@@ -86,12 +86,61 @@ PUBLIC void state_deinit()
 }
 
 /** Please see header for spec */
-PUBLIC system_timeline_time state_get_animation_duration_time(unsigned int n_scene)
+PUBLIC void state_get_current_frame_properties(__out __notnull scene*                out_current_scene,
+                                               __out __notnull scene_camera*         out_current_scene_camera,
+                                               __out __notnull ogl_scene_renderer*   out_current_renderer,
+                                               __out           system_timeline_time* out_current_frame_time)
 {
-    ASSERT_DEBUG_SYNC(n_scene < n_scene_filenames,
-                      "Invalid scene index");
+    system_timeline_time current_time        = 0;
+    unsigned int         n_times_scene_shown = 0;
+    static bool          is_first_call       = true;
 
-    return _scenes[n_scene].duration;
+    if (is_first_call)
+    {
+        _playback_start_time = system_time_now();
+        is_first_call        = false;
+    }
+    else
+    {
+        current_time = system_time_now() - _playback_start_time;
+    }
+
+    n_times_scene_shown = current_time / _scenes_duration_summed[_n_scene_filenames - 1];
+    current_time        = current_time % _scenes_duration_summed[_n_scene_filenames - 1];
+
+    /* Which scene should be playing right now? */
+    for (unsigned int n_scene = 0;
+                      n_scene < _n_scene_filenames;
+                    ++n_scene)
+    {
+        if (_scenes_duration_summed[n_scene] > current_time)
+        {
+            system_timeline_time prev_scene_summed_time = 0;
+
+            if (n_scene > 0)
+            {
+                prev_scene_summed_time = _scenes_duration_summed[n_scene - 1];
+            }
+
+            *out_current_frame_time = current_time - prev_scene_summed_time;
+            *out_current_renderer   = _scenes[n_scene].renderer;
+            *out_current_scene      = _scenes[n_scene].this_scene;
+
+            /* Also determine which camera we should be using */
+            unsigned int n_current_camera = 0;
+            unsigned int n_scene_cameras  = 0;
+
+            scene_get_property(*out_current_scene,
+                               SCENE_PROPERTY_N_CAMERAS,
+                              &n_scene_cameras);
+
+            n_current_camera          = n_times_scene_shown % n_scene_cameras;
+            *out_current_scene_camera = scene_get_camera_by_index(*out_current_scene,
+                                                                   n_current_camera);
+
+            break;
+        }
+    }
 }
 
 /** Please see header for spec */
@@ -107,37 +156,20 @@ PUBLIC uint32_t state_get_pipeline_stage_id()
 }
 
 /** Please see header for spec */
-PUBLIC scene state_get_scene(unsigned int n_scene)
-{
-    ASSERT_DEBUG_SYNC(n_scene < n_scene_filenames,
-                      "Invalid scene index");
-
-    return _scenes[n_scene].this_scene;
-}
-
-/** Please see header for spec */
-PUBLIC ogl_scene_renderer state_get_scene_renderer(unsigned int n_scene)
-{
-    ASSERT_DEBUG_SYNC(n_scene < n_scene_filenames,
-                      "Invalid scene index");
-
-    return _scenes[n_scene].renderer;
-}
-
-/** Please see header for spec */
 PUBLIC void state_init()
 {
     const float camera_start_position[3] = {0, 0, 0};
 
     /* Load the scenes */
-    system_timeline_time loading_time_start = system_time_now();
+    system_timeline_time loading_time_start    = system_time_now();
+    system_timeline_time scene_duration_summed = 0;
 
     for (unsigned int n_scene = 0;
-                      n_scene < n_scene_filenames;
+                      n_scene < _n_scene_filenames;
                     ++n_scene)
     {
         _scenes[n_scene].this_scene = scene_load(_context,
-                                                 system_hashed_ansi_string_create(scene_filenames[n_scene]) );
+                                                 system_hashed_ansi_string_create(_scene_filenames[n_scene]) );
 
         /* Determine animation duration */
         float                animation_duration_float = 0.0f;
@@ -149,12 +181,9 @@ PUBLIC void state_init()
 
         _scenes[n_scene].duration = system_time_get_timeline_time_for_msec( uint32_t(animation_duration_float * 1000.0f) );
 
-        /* Determine the animation duration. */
-        scene_get_property(_scenes[n_scene].this_scene,
-                           SCENE_PROPERTY_MAX_ANIMATION_DURATION,
-                          &_scenes[n_scene].duration_float);
-
-        _scenes[n_scene].duration = system_time_get_timeline_time_for_msec( uint32_t(_scenes[n_scene].duration_float * 1000.0f) );
+        /* Update the summed duration array */
+        _scenes_duration_summed[n_scene] = scene_duration_summed + _scenes[n_scene].duration;
+        scene_duration_summed            = _scenes_duration_summed[n_scene];
 
         /* Initialize scene renderers */
         _scenes[n_scene].renderer = ogl_scene_renderer_create(_context,
@@ -167,9 +196,9 @@ PUBLIC void state_init()
     system_time_get_msec_for_timeline_time(loading_time_end - loading_time_start,
                                           &loading_time_msec);
 
-    LOG_INFO("Scene loading time: %d.%4f s",
-                   loading_time_msec / 1000,
-             float(loading_time_msec % 1000) / 1000.0f);
+    LOG_INFO("Scene loading time: %d.%d s",
+             loading_time_msec / 1000,
+             loading_time_msec % 1000);
 
     /* Construct the pipeline object */
     _pipeline = ogl_pipeline_create(_context,
