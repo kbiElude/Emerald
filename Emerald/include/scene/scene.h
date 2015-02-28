@@ -26,6 +26,7 @@ enum scene_property
     SCENE_PROPERTY_N_LIGHTS,               /* not settable, uint32_t */
     SCENE_PROPERTY_N_MATERIALS,            /* not settable, uint32_t */
     SCENE_PROPERTY_N_MESH_INSTANCES,       /* not settable, uint32_t */
+    SCENE_PROPERTY_N_UNIQUE_MESHES,        /* not settable, uint32_t */
     SCENE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
 
     SCENE_PROPERTY_SHADOW_MAPPING_ENABLED, /*     settable, bool. Set in run-time.
@@ -128,6 +129,10 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
 /** TODO */
 PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene                     instance,
                                                            __in __notnull system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(__in __notnull scene        scene,
+                                                       __in           unsigned int index);
 
 /** TODO */
 PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context,

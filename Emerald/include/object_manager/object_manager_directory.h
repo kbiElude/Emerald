@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * object_manager_directory is an object which can encapsulate:
  *
@@ -35,7 +35,8 @@ PUBLIC object_manager_directory object_manager_directory_create(__in __notnull s
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC bool object_manager_directory_create_directory_structure(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC bool object_manager_directory_create_directory_structure(__in __notnull object_manager_directory,
+                                                                               system_hashed_ansi_string);
 
 /** Removes a sub-directory, located in a directory passed in the first argument. If the sub-directory contains any items,
  *  these items are also going to be removed.
@@ -47,7 +48,8 @@ PUBLIC bool object_manager_directory_create_directory_structure(__in __notnull o
  *
  *  @return true if successful, false otherwise.
  * */
-PUBLIC EMERALD_API bool object_manager_directory_delete_directory(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC EMERALD_API bool object_manager_directory_delete_directory(__in __notnull object_manager_directory,
+                                                                                 system_hashed_ansi_string);
 
 /** Removes an item from a given path, relative to directory passed in the first argument.
  *
@@ -56,7 +58,8 @@ PUBLIC EMERALD_API bool object_manager_directory_delete_directory(__in __notnull
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool object_manager_directory_delete_item(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC EMERALD_API bool object_manager_directory_delete_item(__in __notnull object_manager_directory,
+                                                                            system_hashed_ansi_string);
 
 /** Extracts item name and path parts from a registry path. 
  *
@@ -66,7 +69,9 @@ PUBLIC EMERALD_API bool object_manager_directory_delete_item(__in __notnull obje
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool object_manager_directory_extract_item_name_and_path(__in __notnull system_hashed_ansi_string registration_path, __out system_hashed_ansi_string* out_item_path, __out system_hashed_ansi_string* out_item_name);
+PUBLIC EMERALD_API bool object_manager_directory_extract_item_name_and_path(__in __notnull system_hashed_ansi_string  registration_path,
+                                                                            __out          system_hashed_ansi_string* out_item_path,
+                                                                            __out          system_hashed_ansi_string* out_item_name);
 
 /** Retrieves raw pointer to an object described by a name located relative to @param object_manager_directory directory.
  *
@@ -75,10 +80,12 @@ PUBLIC EMERALD_API bool object_manager_directory_extract_item_name_and_path(__in
  *
  *  @return object_manager_item instance if successful, NULL otherwise.
  **/
-PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item(__in __notnull object_manager_directory,
+                                                                                         system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item_recursive(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item_recursive(__in __notnull object_manager_directory,
+                                                                                                   system_hashed_ansi_string);
 
 /** Retrieves object_manager_directory object for a sub-directory, located in @param object_manager_directory user-provided directory.
  *
@@ -89,7 +96,8 @@ PUBLIC EMERALD_API object_manager_item object_manager_directory_find_item_recurs
  *
  *  @return object_manager_directory instance if successful, NULL otherwise.
  **/
-PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory(__in __notnull object_manager_directory,
+                                                                                                      system_hashed_ansi_string);
 
 /** Retrieves object_manager_directory object for a sub-directory, located in @param object_manager_directory user-provided directory.
  *
@@ -100,7 +108,8 @@ PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdir
  *
  *  @return object_manager_directory instance if successful, NULL otherwise.
  **/
-PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory_recursive(__in __notnull object_manager_directory, system_hashed_ansi_string);
+PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdirectory_recursive(__in __notnull object_manager_directory,
+                                                                                                                system_hashed_ansi_string);
 
 /** Retrieves a summed amount of directories and items stored in a given directory.
  *
@@ -133,7 +142,8 @@ PUBLIC EMERALD_API system_hashed_ansi_string object_manager_directory_get_name(o
  *
  *  @return object_manager_directory Sub-directory object, if found. NULL otherwise
  */
-PUBLIC EMERALD_API object_manager_directory object_manager_directory_get_subdirectory_at(__in __notnull object_manager_directory, uint32_t);
+PUBLIC EMERALD_API object_manager_directory object_manager_directory_get_subdirectory_at(__in __notnull object_manager_directory,
+                                                                                                        uint32_t);
 
 /** Retrieves sub-item at given index.
  *
@@ -143,7 +153,9 @@ PUBLIC EMERALD_API object_manager_directory object_manager_directory_get_subdire
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool object_manager_directory_get_subitem_at(__in __notnull object_manager_directory, uint32_t index, __out __notnull object_manager_item* out_item);
+PUBLIC EMERALD_API bool object_manager_directory_get_subitem_at(__in  __notnull object_manager_directory,
+                                                                                uint32_t                 index,
+                                                                __out __notnull object_manager_item*     out_item);
 
 /** Inserts a new item in @param object_manager_directory directory object.
  *
@@ -152,7 +164,8 @@ PUBLIC EMERALD_API bool object_manager_directory_get_subitem_at(__in __notnull o
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool object_manager_directory_insert_item(__in __notnull object_manager_directory directory, object_manager_item item);
+PUBLIC EMERALD_API bool object_manager_directory_insert_item(__in __notnull object_manager_directory directory,
+                                                                            object_manager_item      item);
 
 /** Inserts a new sub-directory in @param object_manager_directory directory object.
  *
@@ -161,7 +174,8 @@ PUBLIC EMERALD_API bool object_manager_directory_insert_item(__in __notnull obje
  *
  *  @return true if successful, false otherwise.
  **/
-PUBLIC EMERALD_API bool object_manager_directory_insert_subdirectory(__in __notnull object_manager_directory, object_manager_directory);
+PUBLIC EMERALD_API bool object_manager_directory_insert_subdirectory(__in __notnull object_manager_directory,
+                                                                                    object_manager_directory);
 
 /** Release a directory object instance. The object should not be accessed after calling the function.
  *

@@ -575,10 +575,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
         /* Store the data */
         if (renderer_ptr->current_helper_visualization != 0)
         {
-            /* TODO: There is a known bug which causes multiple items to be stored
-             *       in mesh_id_map if the mesh is described by multiple materials.
-             *       FIX WHEN NEEDED.
-             */
             _ogl_scene_renderer_mesh_id_data* new_entry = (_ogl_scene_renderer_mesh_id_data*) system_resource_pool_get_from_pool(renderer_ptr->mesh_id_data_pool);
 
             new_entry->mesh_instance = new_mesh_item->mesh_instance;
@@ -996,6 +992,78 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
     } /* for (all lights) */
 }
 
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_scene_renderer renderer)
+{
+    ogl_materials        context_materials = NULL;
+    _ogl_scene_renderer* renderer_ptr      = (_ogl_scene_renderer*) renderer;
+
+    ogl_context_get_property(renderer_ptr->context,
+                             OGL_CONTEXT_PROPERTY_MATERIALS,
+                            &context_materials);
+
+    /* At the time of writing, the only thing we need to bake is ogl_uber instances, which are
+     * specific to materials used by meshes. */
+    unsigned int n_meshes = 0;
+
+    scene_get_property(renderer_ptr->scene,
+                       SCENE_PROPERTY_N_UNIQUE_MESHES,
+                      &n_meshes);
+
+    ASSERT_DEBUG_SYNC(n_meshes > 0,
+                      "No unique meshes found for ogl_scene_renderer's scene.");
+
+    for (unsigned int n_mesh = 0;
+                      n_mesh < n_meshes;
+                    ++n_mesh)
+    {
+        mesh                    current_mesh           = scene_get_unique_mesh_by_index(renderer_ptr->scene,
+                                                                                        n_mesh);
+        system_resizable_vector current_mesh_materials = NULL;
+
+        ASSERT_DEBUG_SYNC(current_mesh != NULL,
+                          "Could not retrieve mesh instance");
+
+        mesh_get_property(current_mesh,
+                          MESH_PROPERTY_MATERIALS,
+                         &current_mesh_materials);
+
+        ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
+                          "Could not retrieve material vector for current mesh instance");
+
+        /* Iterate over all materials defined for the current mesh */
+        unsigned int n_mesh_materials = system_resizable_vector_get_amount_of_elements(current_mesh_materials);
+
+        ASSERT_DEBUG_SYNC(n_mesh_materials > 0,
+                          "No mesh_material instances assigned ot a mesh!");
+
+        for (unsigned int n_mesh_material = 0;
+                          n_mesh_material < n_mesh_materials;
+                        ++n_mesh_material)
+        {
+            mesh_material current_mesh_material = NULL;
+
+            system_resizable_vector_get_element_at(current_mesh_materials,
+                                                   n_mesh_material,
+                                                  &current_mesh_material);
+
+            ASSERT_DEBUG_SYNC(current_mesh_material != NULL,
+                              "mesh_material instance is NULL");
+
+            /* Ensure there's an ogl_uber instance prepared for both SM and non-SM cases */
+            ogl_uber uber_w_sm  = mesh_material_get_ogl_uber(current_mesh_material,
+                                                             renderer_ptr->scene,
+                                                             false); /* use_shadow_maps */
+            ogl_uber uber_wo_sm = mesh_material_get_ogl_uber(current_mesh_material,
+                                                             renderer_ptr->scene,
+                                                             true); /* use_shadow_maps */
+
+            ogl_uber_link(uber_w_sm);
+            ogl_uber_link(uber_wo_sm);
+        } /* for (all mesh materials) */
+    } /* for (all GPU meshes) */
+}
 
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull ogl_context context,
