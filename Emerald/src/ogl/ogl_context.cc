@@ -19,6 +19,7 @@
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
+#include "ogl/ogl_text.h"
 #include "ogl/ogl_textures.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
@@ -27,6 +28,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_randomizer.h"
+#include "system/system_resources.h"
 #include "system/system_window.h"
 #include <string>
 
@@ -105,6 +107,7 @@ typedef struct
     ogl_shaders                     shaders;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
+    ogl_text                        text_renderer;
     ogl_context_texture_compression texture_compression;
     ogl_textures                    textures;
     ogl_context_to_bindings         to_bindings;
@@ -258,6 +261,13 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
         ogl_context_state_cache_release(context_ptr->state_cache);
 
         context_ptr->state_cache = NULL;
+    }
+
+    if (context_ptr->text_renderer != NULL)
+    {
+        ogl_text_release(context_ptr->text_renderer);
+
+        context_ptr->text_renderer = NULL;
     }
 
     if (context_ptr->texture_compression != NULL)
@@ -1545,7 +1555,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribIOffsetEXT = ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT;
 }
 
-
 /** TODO */
 PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(__inout __notnull _ogl_context* context_ptr)
 {
@@ -2332,6 +2341,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
                             _result->shaders                                    = ogl_shaders_create();
                             _result->shadow_mapping                             = NULL;
+                            _result->text_renderer                              = NULL;
                             _result->texture_compression                        = NULL;
                             _result->textures                                   = ogl_textures_create( (ogl_context) _result);
                             _result->to_bindings                                = NULL;
@@ -2517,7 +2527,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
                             /* Set context-specific vsync setting */
-                            ogl_context_set_vsync( (ogl_context) _result, vsync_enabled);
+                            ogl_context_set_vsync( (ogl_context) _result,
+                                                  vsync_enabled);
 
                             /* Update gfx_image alternative file getter provider so that it can
                              * search for compressed textures supported by this rendering context.
@@ -2822,6 +2833,50 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS:
         {
             *((bool*) out_result) = context_ptr->gl_ext_direct_state_access_support;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_TEXT_RENDERER:
+        {
+            /* Set up a text renderer.
+             *
+             * NOTE: Instantiation of the renderer is deferred because of the fact that
+             *       ogl_* modules called by the constructor require an active rendering
+             *       handler.
+             */
+            if (context_ptr->text_renderer == NULL)
+            {
+                const  float              text_default_size = 0.75f;
+                static float              text_color[3]     = {1.0f, 1.0f, 1.0f};
+                system_hashed_ansi_string window_name       = NULL;
+                int                       window_size[2];
+
+
+                system_window_get_property(context_ptr->window,
+                                           SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                           window_size);
+                system_window_get_property(context_ptr->window,
+                                           SYSTEM_WINDOW_PROPERTY_NAME,
+                                          &window_name);
+
+                context_ptr->text_renderer = ogl_text_create(window_name,
+                                                             (ogl_context) context_ptr,
+                                                             system_resources_get_meiryo_font_table(),
+                                                             window_size[0],
+                                                             window_size[1]);
+
+                ogl_text_set_text_string_property(context_ptr->text_renderer,
+                                                  TEXT_STRING_ID_DEFAULT,
+                                                  OGL_TEXT_STRING_PROPERTY_SCALE,
+                                                 &text_default_size);
+                ogl_text_set_text_string_property(context_ptr->text_renderer,
+                                                  TEXT_STRING_ID_DEFAULT,
+                                                  OGL_TEXT_STRING_PROPERTY_COLOR,
+                                                  text_color);
+            }
+
+            *((ogl_text*) out_result) = context_ptr->text_renderer;
 
             break;
         }

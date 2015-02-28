@@ -15,7 +15,6 @@ typedef enum
 {
     OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS, /* not settable, ogl_rendering_handler_playback_status */
     OGL_RENDERING_HANDLER_PROPERTY_POLICY,          /* not settable, ogl_rendering_handler_policy */
-    OGL_RENDERING_HANDLER_PROPERTY_TEXT_RENDERER,   /* not settable, ogl_text */
 
 } ogl_rendering_handler_property;
 

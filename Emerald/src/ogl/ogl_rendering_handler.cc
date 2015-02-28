@@ -12,7 +12,6 @@
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
-#include "system/system_resources.h"
 #include "system/system_threads.h"
 #include "system/system_time.h"
 #include "system/system_window.h"
@@ -29,7 +28,6 @@ typedef struct
     system_timeline_time                  playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
     ogl_rendering_handler_policy          policy;
-    ogl_text                              text_renderer;
     ogl_text_string_id                    text_string_id;
     system_thread_id                      thread_id;
 
@@ -81,7 +79,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
     {
         rendering_handler->thread_id = system_threads_get_thread_id();
 
-        LOG_INFO("Rendering handler thread [%x] started", rendering_handler->thread_id );
+        LOG_INFO("Rendering handler thread [%x] started",
+                 rendering_handler->thread_id );
 
         /* Wait until the handler is bound to a context */
         system_event_wait_single_infinite(rendering_handler->context_set_event);
@@ -134,18 +133,13 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         HDC                       context_dc            = NULL;
         system_window             context_window        = NULL;
         system_hashed_ansi_string context_window_name   = NULL;
-        int                       context_window_size[2];
 
-        ogl_context_get_property(rendering_handler->context,
-                                 OGL_CONTEXT_PROPERTY_DC,
-                                &context_dc);
-        ogl_context_get_property(rendering_handler->context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
-                                &context_window);
-
-        system_window_get_property(context_window,
-                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                   context_window_size);
+        ogl_context_get_property  (rendering_handler->context,
+                                   OGL_CONTEXT_PROPERTY_DC,
+                                  &context_dc);
+        ogl_context_get_property  (rendering_handler->context,
+                                   OGL_CONTEXT_PROPERTY_WINDOW,
+                                  &context_window);
         system_window_get_property(context_window,
                                    SYSTEM_WINDOW_PROPERTY_NAME,
                                   &context_window_name);
@@ -153,26 +147,14 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         /* Bind the thread to GL */
         ogl_context_bind_to_current_thread(rendering_handler->context);
 
-        /* Initialize rendering handler's text renderer */
-        const float  text_default_size = 0.75f;
-        static float text_color[3]     = {1.0f, 1.0f, 1.0f};
+        /* Create a new text string which we will use to show performance info */
+        ogl_text text_renderer = NULL;
 
-        rendering_handler->text_renderer = ogl_text_create(context_window_name,
-                                                           rendering_handler->context,
-                                                           system_resources_get_meiryo_font_table(),
-                                                           context_window_size[0],
-                                                           context_window_size[1]);
+        ogl_context_get_property(rendering_handler->context,
+                                 OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                                &text_renderer);
 
-        ogl_text_set_text_string_property(rendering_handler->text_renderer,
-                                          TEXT_STRING_ID_DEFAULT,
-                                          OGL_TEXT_STRING_PROPERTY_SCALE,
-                                         &text_default_size);
-        ogl_text_set_text_string_property(rendering_handler->text_renderer,
-                                          TEXT_STRING_ID_DEFAULT,
-                                          OGL_TEXT_STRING_PROPERTY_COLOR,
-                                          text_color);
-
-        rendering_handler->text_string_id = ogl_text_add_string(rendering_handler->text_renderer);
+        rendering_handler->text_string_id = ogl_text_add_string(text_renderer);
 
         /* On with the loop */
         while (should_live)
@@ -310,24 +292,24 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                       float(rendering_time_msec) / 1000.0f,
                                       int(1000.0f / (rendering_time_msec != 0 ? rendering_time_msec : 1) ) );
 
-                            ogl_text_set(rendering_handler->text_renderer,
+                            ogl_text_set(text_renderer,
                                          rendering_handler->text_string_id,
                                          rendering_time_buffer);
 
-                            ogl_text_get_text_string_property(rendering_handler->text_renderer,
+                            ogl_text_get_text_string_property(text_renderer,
                                                               OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
                                                               rendering_handler->text_string_id,
                                                              &rendering_time_text_height);
 
                             rendering_time_pos[1] = window_size[1] - rendering_time_text_height;
 
-                            ogl_text_set_text_string_property(rendering_handler->text_renderer,
+                            ogl_text_set_text_string_property(text_renderer,
                                                               rendering_handler->text_string_id,
                                                               OGL_TEXT_STRING_PROPERTY_POSITION_PX,
                                                               rendering_time_pos);
 
                             ogl_text_draw(rendering_handler->context,
-                                          rendering_handler->text_renderer);
+                                          text_renderer);
                         }
 
                         if (rendering_handler->policy == RENDERING_HANDLER_POLICY_FPS)
@@ -366,9 +348,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                 system_critical_section_leave(rendering_handler->rendering_cs);
             }
         }
-
-        /* Release text renderer */
-        ogl_text_release(rendering_handler->text_renderer);
 
         /* Set the 'playback waiting' event in case there's a stop/play() operation outstanding */
         system_event_set(rendering_handler->playback_waiting_event);
@@ -572,13 +551,6 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_r
         case OGL_RENDERING_HANDLER_PROPERTY_POLICY:
         {
             *(ogl_rendering_handler_policy*) out_result = rendering_handler_ptr->policy;
-
-            break;
-        }
-
-        case OGL_RENDERING_HANDLER_PROPERTY_TEXT_RENDERER:
-        {
-            *(ogl_text*) out_result = rendering_handler_ptr->text_renderer;
 
             break;
         }

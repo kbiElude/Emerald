@@ -234,10 +234,10 @@ PRIVATE void _ogl_pipeline_init_pipeline(__in __notnull _ogl_pipeline*          
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &rendering_handler);
 
-    ogl_rendering_handler_get_property(rendering_handler,
-                                       OGL_RENDERING_HANDLER_PROPERTY_TEXT_RENDERER,
-                                      &pipeline_ptr->text_renderer);
-    ogl_text_retain                   (pipeline_ptr->text_renderer);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                            &pipeline_ptr->text_renderer);
+    ogl_text_retain         (pipeline_ptr->text_renderer);
 
     /* Initialize */
     pipeline_ptr->context                         = context;

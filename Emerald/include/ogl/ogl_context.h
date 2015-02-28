@@ -63,6 +63,7 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT,     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_TEXTURE_STORAGE_MULTISAMPLE,      /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS,              /* not settable, bool */
+    OGL_CONTEXT_PROPERTY_TEXT_RENDERER,                                   /* not settable, ogl_text_renderer. */
     OGL_CONTEXT_PROPERTY_TEXTURE_COMPRESSION,                             /* not settable, ogl_context_texture_compression */
     OGL_CONTEXT_PROPERTY_TEXTURES,                                        /* not settable, ogl_textures */
     OGL_CONTEXT_PROPERTY_TO_BINDINGS,                                     /* not settable, ogl_context_to_bindings */
