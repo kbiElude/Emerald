@@ -1258,55 +1258,6 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                           "Could not load scene materials");
     }
 
-    /* Create mesh materials out of the scene materials we've loaded. */
-    for (uint32_t n_scene_material = 0;
-                  n_scene_material < n_scene_materials;
-                ++n_scene_material)
-    {
-        scene_material current_scene_material = NULL;
-        mesh_material  new_mesh_material      = NULL;
-
-        current_scene_material = scene_get_material_by_index             (result_scene,
-                                                                          n_scene_material);
-        new_mesh_material      = mesh_material_create_from_scene_material(current_scene_material,
-                                                                          context);
-
-        ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
-                          "Could not create a mesh_material out of a scene_material");
-        if (new_mesh_material == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-        else
-        {
-            unsigned int new_mesh_material_id = 0;
-
-            if (!system_hash64map_get(scene_material_to_material_id_map,
-                                      (system_hash64) current_scene_material,
-                                     &new_mesh_material_id))
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not map a scene_material instance onto a ID");
-            }
-
-            system_hash64map_insert(material_id_to_mesh_material_map,
-                                    (system_hash64) new_mesh_material_id,
-                                    new_mesh_material,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-    } /* for (all scene materials defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not create mesh materials");
-
-        goto end_error;
-    }
-
     /* Load textures */
     for (unsigned int n_scene_texture = 0;
                       n_scene_texture < n_scene_textures;
@@ -1355,6 +1306,55 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not load scene textures");
+
+        goto end_error;
+    }
+
+    /* Create mesh materials out of the scene materials we've loaded. */
+    for (uint32_t n_scene_material = 0;
+                  n_scene_material < n_scene_materials;
+                ++n_scene_material)
+    {
+        scene_material current_scene_material = NULL;
+        mesh_material  new_mesh_material      = NULL;
+
+        current_scene_material = scene_get_material_by_index             (result_scene,
+                                                                          n_scene_material);
+        new_mesh_material      = mesh_material_create_from_scene_material(current_scene_material,
+                                                                          context);
+
+        ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
+                          "Could not create a mesh_material out of a scene_material");
+        if (new_mesh_material == NULL)
+        {
+            result = false;
+
+            goto end_error;
+        }
+        else
+        {
+            unsigned int new_mesh_material_id = 0;
+
+            if (!system_hash64map_get(scene_material_to_material_id_map,
+                                      (system_hash64) current_scene_material,
+                                     &new_mesh_material_id))
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not map a scene_material instance onto a ID");
+            }
+
+            system_hash64map_insert(material_id_to_mesh_material_map,
+                                    (system_hash64) new_mesh_material_id,
+                                    new_mesh_material,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+    } /* for (all scene materials defined for the scene) */
+
+    if (!result)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not create mesh materials");
 
         goto end_error;
     }
