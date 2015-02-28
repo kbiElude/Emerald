@@ -643,6 +643,15 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(__in __notnull ogl_s
 /** TODO */
 PRIVATE void _ogl_scene_renderer_update_frustum_preview_assigned_cameras(__in __notnull _ogl_scene_renderer* renderer_ptr)
 {
+    /* This function may be called via a call-back. Make sure the frustum preview handler is instantiated
+     * before carrying on.
+     */
+    if (renderer_ptr->frustum_preview == NULL)
+    {
+        renderer_ptr->frustum_preview = ogl_scene_renderer_frustum_preview_create(renderer_ptr->context,
+                                                                                  renderer_ptr->scene);
+    }
+
     /* Prepare a buffer that can hold up to the number of cameras added to the scene */
     scene_camera* assigned_cameras   = NULL;
     uint32_t      n_assigned_cameras = 0;
@@ -1076,18 +1085,12 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
 
     if (scene_renderer_ptr != NULL)
     {
-        scene_renderer_ptr->bbox_preview     = ogl_scene_renderer_bbox_preview_create(context,
-                                                                                      scene,
-                                                                                      (ogl_scene_renderer) scene_renderer_ptr);
+        scene_renderer_ptr->bbox_preview     = NULL;    /* can be instantiated at draw time */
         scene_renderer_ptr->context          = context;
-        scene_renderer_ptr->frustum_preview  = ogl_scene_renderer_frustum_preview_create(context,
-                                                                                         scene);
-        scene_renderer_ptr->lights_preview   = ogl_scene_renderer_lights_preview_create (context,
-                                                                                         scene);
+        scene_renderer_ptr->frustum_preview  = NULL;    /* can be instantiated at draw time */
+        scene_renderer_ptr->lights_preview   = NULL;    /* can be instantiated at draw time */
         scene_renderer_ptr->material_manager = NULL;
-        scene_renderer_ptr->normals_preview  = ogl_scene_renderer_normals_preview_create(context,
-                                                                                         scene,
-                                                                                         (ogl_scene_renderer) scene_renderer_ptr);
+        scene_renderer_ptr->normals_preview  = NULL;    /* can be instantiated at draw time */
         scene_renderer_ptr->scene            = scene;
 
         scene_retain(scene);
@@ -1127,9 +1130,6 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
                                                             _ogl_scene_renderer_on_camera_show_frustum_setting_changed,
                                                             scene_renderer_ptr);
         } /* for (all scene cameras) */
-
-        /* Assign existing cameras to the call-back */
-        _ogl_scene_renderer_update_frustum_preview_assigned_cameras(scene_renderer_ptr);
 
         /* Since ogl_scene_renderer caches ogl_uber instances, given current scene configuration,
          * we need to register for various scene call-backs in order to ensure these instances
@@ -1776,8 +1776,16 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
             ogl_uber_rendering_stop(material_uber);
 
             /* Any helper visualization, handle it at this point */
-            if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES && n_iteration_items > 0)
+            if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES &&
+                n_iteration_items > 0)
             {
+                if (renderer_ptr->bbox_preview == NULL)
+                {
+                    renderer_ptr->bbox_preview = ogl_scene_renderer_bbox_preview_create(renderer_ptr->context,
+                                                                                        renderer_ptr->scene,
+                                                                                        (ogl_scene_renderer) renderer_ptr);
+                } /* if (renderer_ptr->bbox_preview == NULL) */
+
                 ogl_scene_renderer_bbox_preview_start(renderer_ptr->bbox_preview,
                                                       vp);
                 {
@@ -1800,6 +1808,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
             if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0)
             {
+                if (renderer_ptr->normals_preview == NULL)
+                {
+                    renderer_ptr->normals_preview = ogl_scene_renderer_normals_preview_create(renderer_ptr->context,
+                                                                                              renderer_ptr->scene,
+                                                                                              (ogl_scene_renderer) renderer_ptr);
+                } /* if (renderer_ptr->normals_preview == NULL) */
+
                 ogl_scene_renderer_normals_preview_start(renderer_ptr->normals_preview,
                                                          vp);
                 {
@@ -1843,6 +1858,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
         if (helper_visualization & HELPER_VISUALIZATION_FRUSTUMS)
         {
+            if (renderer_ptr->frustum_preview == NULL)
+            {
+                renderer_ptr->frustum_preview = ogl_scene_renderer_frustum_preview_create(renderer_ptr->context,
+                                                                                          renderer_ptr->scene);
+
+                /* Assign existing cameras to the call-back */
+                _ogl_scene_renderer_update_frustum_preview_assigned_cameras(renderer_ptr);
+            } /* if (renderer_ptr->frustum_preview == NULL) */
+
             ogl_scene_renderer_frustum_preview_render(renderer_ptr->frustum_preview,
                                                       frame_time,
                                                       vp);
@@ -1850,6 +1874,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
 
         if (helper_visualization & HELPER_VISUALIZATION_LIGHTS)
         {
+            if (renderer_ptr->lights_preview == NULL)
+            {
+                renderer_ptr->lights_preview = ogl_scene_renderer_lights_preview_create(renderer_ptr->context,
+                                                                                        renderer_ptr->scene);
+            } /* if (renderer_ptr->lights_preview == NULL) */
+
             ogl_scene_renderer_lights_preview_start(renderer_ptr->lights_preview);
             {
                 for (unsigned int n_light = 0;

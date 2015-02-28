@@ -1098,11 +1098,6 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
                                                    n_material,
                                                   &uber_ptr) )
         {
-            if (n_material == 3)
-            {
-                int a = 1; a++;
-            }
-
             bool do_materials_match        = mesh_material_is_a_match_to_mesh_material             (uber_ptr->material,
                                                                                                     material);
             bool does_material_match_scene = (scene == NULL                                                          ||
