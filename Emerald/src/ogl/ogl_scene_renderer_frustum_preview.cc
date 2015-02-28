@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_programs.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
 #include "ogl/ogl_shader.h"
@@ -124,6 +125,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
     unsigned int            data_bo_size;
     ogl_program             po;
     GLint                   po_vp_location;
+    scene                   scene;
     ogl_text                text_renderer;  /* TODO: use a global text renderer */
     GLuint                  vao_id;
 
@@ -149,6 +151,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_count_array               = NULL;
         mdebv_indices_array             = NULL;
         po_vp_location                  = -1;
+        scene                           = NULL;
         text_renderer                   = NULL;
         vao_id                          = 0;
 
@@ -294,6 +297,28 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    /* Create text renderer instance name */
+    const char*               limiter    = "/";
+    system_hashed_ansi_string scene_name = NULL;
+
+    scene_get_property(preview_ptr->scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
+
+    const char* final_renderer_name_parts[] =
+    {
+        system_hashed_ansi_string_get_buffer(scene_name),
+        limiter,
+        "frustum preview text renderer"
+    };
+    const uint32_t n_final_renderer_name_parts = sizeof(final_renderer_name_parts) /
+                                                 sizeof(final_renderer_name_parts[0]);
+
+
+    system_hashed_ansi_string final_renderer_name = system_hashed_ansi_string_create_by_merging_strings(n_final_renderer_name_parts,
+                                                                                                        final_renderer_name_parts);
+
     /* Initialize the text renderer */
     const float text_color[4] = {1, 0, 0, 1};
     const float text_scale    = 0.5f;
@@ -302,7 +327,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     entry_points->pGLGetIntegerv(GL_VIEWPORT,
                                  viewport);
 
-    preview_ptr->text_renderer = ogl_text_create(system_hashed_ansi_string_create("Frustum preview text renderer"),
+    preview_ptr->text_renderer = ogl_text_create(final_renderer_name,
                                                  context,
                                                  system_resources_get_meiryo_font_table(),
                                                  viewport[2],
@@ -338,43 +363,64 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                              0,        /* stride */
                                              (const GLvoid*) BO_DATA_VERTEX_DATA_OFFSET);
 
-    /* Set up the PO */
-    ogl_shader fs = ogl_shader_create(context,
-                                      SHADER_TYPE_FRAGMENT,
-                                      system_hashed_ansi_string_create("Frustum preview renderer FS") );
-    ogl_shader vs = ogl_shader_create(context,
-                                      SHADER_TYPE_VERTEX,
-                                      system_hashed_ansi_string_create("Frustum preview renderer VS") );
+    /* Is the PO already registered? */
+    static const char*  po_name  = "Frustum preview renderer program";
+           ogl_programs programs = NULL;
 
-    preview_ptr->po = ogl_program_create(context,
-                                         system_hashed_ansi_string_create("Frustum preview renderer program") );
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_PROGRAMS,
+                            &programs);
 
-    if (!ogl_shader_set_body(fs,
-                             system_hashed_ansi_string_create(po_fs)) ||
-        !ogl_shader_set_body(vs,
-                             system_hashed_ansi_string_create(po_vs)) )
+    preview_ptr->po = ogl_programs_get_program_by_name(programs,
+                                                       system_hashed_ansi_string_create(po_name));
+
+    if (preview_ptr->po != NULL)
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "ogl_shader_set_body() call(s) failed.");
+        ogl_program_retain(preview_ptr->po);
     }
-
-    if (!ogl_program_attach_shader(preview_ptr->po,
-                                   fs)              ||
-        !ogl_program_attach_shader(preview_ptr->po,
-                                   vs) )
+    else
     {
-        ASSERT_DEBUG_SYNC(false,
-                          "ogl_program_attach_shader() call(s) failed.");
-    }
+        /* Set up the PO */
+        ogl_shader fs = NULL;
+        ogl_shader vs = NULL;
 
-    if (!ogl_program_link(preview_ptr->po) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "ogl_program_link() failed.");
-    }
+        fs = ogl_shader_create(context,
+                               SHADER_TYPE_FRAGMENT,
+                               system_hashed_ansi_string_create("Frustum preview renderer FS") );
+        vs = ogl_shader_create(context,
+                               SHADER_TYPE_VERTEX,
+                               system_hashed_ansi_string_create("Frustum preview renderer VS") );
 
-    ogl_shader_release(fs);
-    ogl_shader_release(vs);
+        preview_ptr->po = ogl_program_create(context,
+                                             system_hashed_ansi_string_create(po_name) );
+
+        if (!ogl_shader_set_body(fs,
+                                 system_hashed_ansi_string_create(po_fs)) ||
+            !ogl_shader_set_body(vs,
+                                 system_hashed_ansi_string_create(po_vs)) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "ogl_shader_set_body() call(s) failed.");
+        }
+
+        if (!ogl_program_attach_shader(preview_ptr->po,
+                                       fs)              ||
+            !ogl_program_attach_shader(preview_ptr->po,
+                                       vs) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "ogl_program_attach_shader() call(s) failed.");
+        }
+
+        if (!ogl_program_link(preview_ptr->po) )
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "ogl_program_link() failed.");
+        }
+
+        ogl_shader_release(fs);
+        ogl_shader_release(vs);
+    }
 
     /* Retrieve PO uniform locations */
     const ogl_program_uniform_descriptor* po_vp_descriptor = NULL;
@@ -702,7 +748,8 @@ PUBLIC void ogl_scene_renderer_frustum_preview_assign_cameras(__in __notnull ogl
 }
 
 /** Please see header for spec */
-PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(__in __notnull ogl_context context)
+PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_create(__in __notnull ogl_context context,
+                                                                                    __in __notnull scene       scene)
 {
     _ogl_scene_renderer_frustum_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_frustum_preview;
 
@@ -711,11 +758,12 @@ PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_cre
 
     if (new_instance != NULL)
     {
+        new_instance->context = context;
+        new_instance->scene   = scene;
+
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback,
                                                          new_instance);
-
-        new_instance->context = context;
     } /* if (new_instance != NULL) */
 
     return (ogl_scene_renderer_frustum_preview) new_instance;

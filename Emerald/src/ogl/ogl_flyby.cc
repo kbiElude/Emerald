@@ -302,7 +302,8 @@ PUBLIC EMERALD_API void ogl_flyby_activate(__in           __notnull ogl_context 
 
             if (new_entry != NULL)
             {
-                new_entry->fake_scene_camera = scene_camera_create(system_hashed_ansi_string_create("Fake flyby scene_camera") );
+                new_entry->fake_scene_camera = scene_camera_create(system_hashed_ansi_string_create("Fake flyby scene_camera"),
+                                                                   NULL /* scene_name */);
                 new_entry->is_lbm_down       = false;
                 new_entry->key_bits          = (_key_bits) 0;
                 new_entry->movement_delta    = DEFAULT_MOVEMENT_DELTA;

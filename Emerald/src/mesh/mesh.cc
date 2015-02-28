@@ -3360,16 +3360,20 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                                                   __in __notnull system_hash64map       mesh_name_to_mesh_map)
 {
     /* Read header */
-    char header[16] = {0};
-    mesh result     = NULL;
+    char                      header[16]           = {0};
+    mesh                      result               = NULL;
+    system_hashed_ansi_string serializer_file_name = NULL;
 
-    system_file_serializer_read(serializer,
-                               strlen(header_magic),
-                               header);
+    system_file_serializer_get_property(serializer,
+                                        SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
+                                       &serializer_file_name);
+    system_file_serializer_read        (serializer,
+                                        strlen(header_magic),
+                                        header);
 
     ASSERT_ALWAYS_SYNC(strcmp(header, header_magic) == 0,
                        "Mesh [%s] is corrupt.",
-                       system_hashed_ansi_string_get_buffer(system_file_serializer_get_file_name(serializer) ) );
+                       system_hashed_ansi_string_get_buffer(serializer_file_name) );
 
     if (strcmp(header, header_magic) != 0)
     {
@@ -3387,7 +3391,7 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
                                                   &is_instantiated);
 
     result = mesh_create(flags,
-                     mesh_name);
+                         mesh_name);
 
     ASSERT_DEBUG_SYNC(result != NULL, "Could not create mesh.");
     if (result == NULL)

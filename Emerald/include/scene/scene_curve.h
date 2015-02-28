@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2013)
+ * Emerald (kbi/elude @2013-2015)
  *
  */
 #ifndef SCENE_CURVE_H
@@ -27,7 +27,8 @@ PUBLIC EMERALD_API void scene_curve_get(__in  __notnull   scene_curve,
                                           __out __notnull void*);
 
 /** TODO */
-PUBLIC EMERALD_API scene_curve scene_curve_load(__in __notnull system_file_serializer);
+PUBLIC EMERALD_API scene_curve scene_curve_load(__in     __notnull system_file_serializer    serializer,
+                                                __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
 PUBLIC EMERALD_API bool scene_curve_save(__in __notnull system_file_serializer,

@@ -86,7 +86,9 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
                        "Could not query envelope properties");
 
     /* Create the container */
-    result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(object_name, curve_name),
+    result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(object_name,
+                                                                                                  curve_name),
+                                          NULL,
                                           SYSTEM_VARIANT_FLOAT);
 
     ASSERT_DEBUG_SYNC(result_curve != NULL,

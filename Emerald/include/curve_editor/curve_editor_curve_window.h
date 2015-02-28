@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef CURVE_EDITOR_CURVE_WINDOW_H
@@ -43,8 +43,10 @@ PUBLIC void curve_editor_curve_window_set_property(__in __notnull curve_editor_c
 
 /** TODO. Called back with 2 floats <start, end x> */
 PUBLIC void curve_editor_curve_window_create_static_segment_handler(void*);
+
 /** TODO. Called back with 2 floats <start, end x>*/
 PUBLIC void curve_editor_curve_window_create_lerp_segment_handler(void*);
+
 /** TODO. Called back with 2 floats <start, end x> */
 PUBLIC void curve_editor_curve_window_create_tcb_segment_handler(void*);
 

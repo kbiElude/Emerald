@@ -124,25 +124,33 @@ PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_h
     }
 
     /* Load in the contents */
-    size_t               file_size          = system_file_serializer_get_size(serializer);
-    const unsigned char* data               = NULL;
-    unsigned int         data_total_n_bytes = 0;
+    size_t               file_size              = 0;
+    const unsigned char* data                   = NULL;
+    unsigned int         data_total_n_bytes     = 0;
+    const unsigned char* serializer_raw_storage = NULL;
+
+    system_file_serializer_get_property(serializer,
+                                        SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                       &serializer_raw_storage);
+    system_file_serializer_get_property(serializer,
+                                        SYSTEM_FILE_SERIALIZER_PROPERTY_SIZE,
+                                       &file_size);
 
     for (unsigned int n_mipmap = 0;
                       n_mipmap < header.n_mipmaps;
                     ++n_mipmap)
     {
-        data = (const unsigned char*) system_file_serializer_get_raw_storage(serializer)                                       +
-                                      sizeof(ogl_context_texture_compression_compressed_blob_header)                           +
-                                      sizeof(ogl_context_texture_compression_compressed_blob_mipmap_header) * header.n_mipmaps +
-                                      data_total_n_bytes;
+        data = serializer_raw_storage                                                                   +
+               sizeof(ogl_context_texture_compression_compressed_blob_header)                           +
+               sizeof(ogl_context_texture_compression_compressed_blob_mipmap_header) * header.n_mipmaps +
+               data_total_n_bytes;
 
         const ogl_context_texture_compression_compressed_blob_mipmap_header* mipmap_header_ptr;
 
         mipmap_header_ptr = (const ogl_context_texture_compression_compressed_blob_mipmap_header*)
-                             ((const unsigned char*) system_file_serializer_get_raw_storage(serializer)                               +
-                                                     sizeof(ogl_context_texture_compression_compressed_blob_header)                   +
-                                                     sizeof(ogl_context_texture_compression_compressed_blob_mipmap_header) * n_mipmap);
+                             (serializer_raw_storage                                                           +
+                              sizeof(ogl_context_texture_compression_compressed_blob_header)                   +
+                              sizeof(ogl_context_texture_compression_compressed_blob_mipmap_header) * n_mipmap);
 
         gfx_image_add_mipmap(result,
                              mipmap_header_ptr->width,

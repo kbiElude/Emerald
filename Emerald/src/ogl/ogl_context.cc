@@ -14,6 +14,7 @@
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_primitive_renderer.h"
+#include "ogl/ogl_programs.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shaders.h"
@@ -97,6 +98,7 @@ typedef struct
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_materials                   materials;
+    ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
     ogl_samplers                    samplers;
@@ -149,10 +151,12 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
 
     /* Identify location where the extension starts */
     const char* decompressed_filename_ptr          = system_hashed_ansi_string_get_buffer(decompressed_filename);
-    const char* decompressed_filename_last_dot_ptr = strrchr(decompressed_filename_ptr, '.');
+    const char* decompressed_filename_last_dot_ptr = strrchr                             (decompressed_filename_ptr,
+                                                                                          '.');
 
     ASSERT_DEBUG_SYNC(decompressed_filename_last_dot_ptr != NULL,
                       "Input file name does not use any extension");
+
     if (decompressed_filename_last_dot_ptr == NULL)
     {
         goto end;
@@ -183,7 +187,8 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
         std::string               result_filename;
         system_hashed_ansi_string result_filename_has;
 
-        result_filename      = std::string(decompressed_filename_ptr, decompressed_filename_last_dot_ptr - decompressed_filename_ptr + 1);
+        result_filename      = std::string                         (decompressed_filename_ptr,
+                                                                    decompressed_filename_last_dot_ptr - decompressed_filename_ptr + 1);
         result_filename     += system_hashed_ansi_string_get_buffer(extension);
         result_filename_has  = system_hashed_ansi_string_create    (result_filename.c_str() );
 
@@ -293,24 +298,37 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
 }
 
 /** TODO */
-PRIVATE bool _ogl_set_pixel_format_multisampling(_ogl_context* context_ptr, uint32_t n_samples)
+PRIVATE bool _ogl_set_pixel_format_multisampling(_ogl_context* context_ptr,
+                                                 uint32_t      n_samples)
 {
     bool result = false;
 
     PFNWGLCHOOSEPIXELFORMATARBPROC pWGLChoosePixelFormatARB = (PFNWGLCHOOSEPIXELFORMATARBPROC) ::wglGetProcAddress("wglChoosePixelFormatARB");
 
-    ASSERT_ALWAYS_SYNC(pWGLChoosePixelFormatARB != NULL, "wglChoosePixelFormat() unavailable - please update your WGL implementation.");
+    ASSERT_ALWAYS_SYNC(pWGLChoosePixelFormatARB != NULL,
+                       "wglChoosePixelFormat() unavailable - please update your WGL implementation.");
+
     if (pWGLChoosePixelFormatARB != NULL)
     {
         int  alpha_bits  = 0;
         int  depth_bits  = 0;
         int  rgb_bits[3] = {0, 0, 0};
 
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS,   context_ptr->pfd, rgb_bits);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS, context_ptr->pfd, rgb_bits + 1);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS,  context_ptr->pfd, rgb_bits + 2);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS, context_ptr->pfd, &alpha_bits);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS,              context_ptr->pfd, &depth_bits);
+        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS,
+                                        context_ptr->pfd,
+                                        rgb_bits);
+        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS,
+                                        context_ptr->pfd,
+                                        rgb_bits + 1);
+        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS,
+                                        context_ptr->pfd,
+                                        rgb_bits + 2);
+        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS,
+                                        context_ptr->pfd,
+                                       &alpha_bits);
+        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS,
+                                        context_ptr->pfd,
+                                       &depth_bits);
 
         int   attributes[]       = {WGL_DRAW_TO_WINDOW_ARB,           GL_TRUE,
                                     WGL_SUPPORT_OPENGL_ARB,           GL_TRUE,
@@ -340,7 +358,13 @@ PRIVATE bool _ogl_set_pixel_format_multisampling(_ogl_context* context_ptr, uint
 }
 
 /** TODO */
-PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum source,GLenum type,GLuint id,GLenum severity,GLsizei length,const GLchar *message,GLvoid *userParam)
+PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        source,
+                                                             GLenum        type,
+                                                             GLuint        id,
+                                                             GLenum        severity,
+                                                             GLsizei       length,
+                                                             const GLchar* message,
+                                                             GLvoid*       userParam)
 {
     static char local_message[4096];
 
@@ -361,7 +385,9 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum source,GLenu
 
         Happens in Cammuxer so disabling.
     */
-    if (id != 131185 && id != 131204 && id != 131154)
+    if (id != 131185 &&
+        id != 131204 &&
+        id != 131154)
     {
         /* This function is called back from within driver layer! Do not issue GL commands from here! */
         _ogl_context* context_ptr   = (_ogl_context*) userParam;
@@ -407,7 +433,8 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum source,GLenu
                   severity_name,
                   message);
 
-        LOG_INFO("%s", local_message);
+        LOG_INFO("%s",
+                 local_message);
 
         ASSERT_DEBUG_SYNC(type != GL_DEBUG_TYPE_ERROR_ARB,
                           "GL error detected");
@@ -421,12 +448,15 @@ PRIVATE bool _ogl_context_get_function_pointers(__in                   __notnull
 {
     bool result = true;
 
-    for (uint32_t n_entry = 0; n_entry < n_entries; ++n_entry)
+    for (uint32_t n_entry = 0;
+                  n_entry < n_entries;
+                ++n_entry)
     {
         GLvoid** ptr_to_update = (GLvoid**) entries[n_entry].func_ptr;
         GLchar*  func_name     = (GLchar*)  entries[n_entry].func_name;
 
-        *ptr_to_update = ::GetProcAddress(context_ptr->opengl32_dll_handle, func_name);
+        *ptr_to_update = ::GetProcAddress(context_ptr->opengl32_dll_handle,
+                                          func_name);
 
         if (*ptr_to_update == NULL)
         {
@@ -533,7 +563,8 @@ PRIVATE void _ogl_context_initialize_wgl_extensions(__inout __notnull _ogl_conte
         const char* wgl_extensions = pWGLGetExtensionsString();
 
         /* Is EXT_wgl_swap_control supported? */
-        context_ptr->wgl_swap_control_support = (strstr(wgl_extensions, "WGL_EXT_swap_control") != NULL);
+        context_ptr->wgl_swap_control_support = (strstr(wgl_extensions,
+                                                        "WGL_EXT_swap_control") != NULL);
 
         if (context_ptr->wgl_swap_control_support)
         {
@@ -541,14 +572,17 @@ PRIVATE void _ogl_context_initialize_wgl_extensions(__inout __notnull _ogl_conte
         }
 
         /* Is EXT_WGL_swap_control_tear supported? */
-        context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions, "WGL_EXT_swap_control_tear") != NULL);
+        context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions,
+                                                             "WGL_EXT_swap_control_tear") != NULL);
     } /* if (pWGLGetExtensionsString != NULL) */
 }
 
 /** TODO */
 PRIVATE void _ogl_context_retrieve_ES_function_pointers(__in __notnull _ogl_context* context_ptr)
 {
-    ASSERT_DEBUG_SYNC(context_ptr->opengl32_dll_handle == NULL, "OpenGL32.dll already loaded.");
+    ASSERT_DEBUG_SYNC(context_ptr->opengl32_dll_handle == NULL,
+                      "OpenGL32.dll already loaded.");
+
     context_ptr->opengl32_dll_handle = ::LoadLibraryA("opengl32.dll");
 
     if (context_ptr->opengl32_dll_handle != NULL)
@@ -891,7 +925,9 @@ PRIVATE void _ogl_context_retrieve_multisampling_support_info(__inout __notnull 
 
     context_ptr->n_multisampling_supported_sample = 0;
 
-    for (int n_iteration = 0; n_iteration < 2; ++n_iteration)
+    for (int n_iteration = 0;
+             n_iteration < 2;
+           ++n_iteration)
     {
         if (n_iteration == 1)
         {
@@ -899,12 +935,16 @@ PRIVATE void _ogl_context_retrieve_multisampling_support_info(__inout __notnull 
              * information on supported "amount of samples" setting for given context. */
             context_ptr->multisampling_supported_sample = new uint32_t[context_ptr->n_multisampling_supported_sample];
 
-            ASSERT_ALWAYS_SYNC(context_ptr->multisampling_supported_sample != NULL, "Out of memory while allocating \"multisampling supported sample\" array.");
+            ASSERT_ALWAYS_SYNC(context_ptr->multisampling_supported_sample != NULL,
+                               "Out of memory while allocating \"multisampling supported sample\" array.");
         }
 
-        for (int n_samples = 0; n_samples < context_ptr->limits.max_color_texture_samples; ++n_samples)
+        for (int n_samples = 0;
+                 n_samples < context_ptr->limits.max_color_texture_samples;
+               ++n_samples)
         {
-            bool status = _ogl_set_pixel_format_multisampling(context_ptr, n_samples);
+            bool status = _ogl_set_pixel_format_multisampling(context_ptr,
+                                                              n_samples);
 
             if (status)
             {
@@ -967,11 +1007,16 @@ PRIVATE void _ogl_context_retrieve_GL_info(__inout __notnull _ogl_context* conte
 
     if (context_ptr->info.extensions != NULL)
     {
-        for (int n_extension = 0; n_extension < context_ptr->limits.num_extensions; ++n_extension)
+        for (int n_extension = 0;
+                 n_extension < context_ptr->limits.num_extensions;
+               ++n_extension)
         {
-            context_ptr->info.extensions[n_extension] = pGLGetStringi(GL_EXTENSIONS, n_extension);
+            context_ptr->info.extensions[n_extension] = pGLGetStringi(GL_EXTENSIONS,
+                                                                      n_extension);
 
-            LOG_INFO("%s", context_ptr->info.extensions[n_extension]);
+            LOG_INFO("%s",
+                     context_ptr->info.extensions[n_extension]);
+
             ASSERT_ALWAYS_SYNC(context_ptr->info.extensions[n_extension] != NULL,
                                "GL reports %d extensions supported but %dth extension name is NULL!",
                                context_ptr->limits.num_extensions,
@@ -993,79 +1038,152 @@ PRIVATE void _ogl_context_retrieve_GL_limits(__inout __notnull _ogl_context* con
         /* NOTE: This function uses private entry-points, because at the time of the call,
          *       the entry-points have not been initialized yet
          */
-        context_ptr->entry_points_private.pGLGetFloatv  (GL_ALIASED_LINE_WIDTH_RANGE,                       context_ptr->limits.aliased_line_width_range);
-        context_ptr->entry_points_private.pGLGetFloatv  (GL_SMOOTH_LINE_WIDTH_RANGE,                        context_ptr->limits.smooth_line_width_range);
-        context_ptr->entry_points_private.pGLGetFloatv  (GL_LINE_WIDTH_GRANULARITY,                        &context_ptr->limits.line_width_granularity);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAJOR_VERSION,                                 &context_ptr->limits.major_version);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_3D_TEXTURE_SIZE,                           &context_ptr->limits.max_3d_texture_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS,                      &context_ptr->limits.max_array_texture_layers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS,            &context_ptr->limits.max_atomic_counter_buffer_bindings);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE,                &context_ptr->limits.max_atomic_counter_buffer_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES,                     &context_ptr->limits.max_color_texture_samples);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS,           &context_ptr->limits.max_combined_atomic_counter_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_ATOMIC_COUNTERS,                  &context_ptr->limits.max_combined_atomic_counters);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS,      &context_ptr->limits.max_combined_fragment_uniform_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_IMAGE_UNITS_AND_FRAGMENT_OUTPUTS, &context_ptr->limits.max_combined_image_units_and_fragment_outputs);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS,              &context_ptr->limits.max_combined_texture_image_units);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS,        &context_ptr->limits.max_combined_vertex_uniform_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_GEOMETRY_UNIFORM_COMPONENTS,      &context_ptr->limits.max_combined_geometry_uniform_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_UNIFORM_BLOCKS,                   &context_ptr->limits.max_combined_uniform_blocks);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE,                     &context_ptr->limits.max_cube_map_texture_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_DEPTH_TEXTURE_SAMPLES,                     &context_ptr->limits.max_depth_texture_samples);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_DRAW_BUFFERS,                              &context_ptr->limits.max_draw_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ELEMENTS_INDICES,                          &context_ptr->limits.max_elements_indices);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ELEMENTS_VERTICES,                         &context_ptr->limits.max_elements_vertices);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS,           &context_ptr->limits.max_fragment_atomic_counter_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_ATOMIC_COUNTERS,                  &context_ptr->limits.max_fragment_atomic_counters);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS,               &context_ptr->limits.max_fragment_uniform_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_BLOCKS,                   &context_ptr->limits.max_fragment_uniform_blocks);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_INPUT_COMPONENTS,                 &context_ptr->limits.max_fragment_input_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS,           &context_ptr->limits.max_geometry_atomic_counter_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_ATOMIC_COUNTERS,                  &context_ptr->limits.max_geometry_atomic_counters);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_INPUT_COMPONENTS,                 &context_ptr->limits.max_geometry_input_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES,                  &context_ptr->limits.max_geometry_output_vertices);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS,              &context_ptr->limits.max_geometry_texture_image_units);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_UNIFORM_BLOCKS,                   &context_ptr->limits.max_geometry_uniform_blocks);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_UNIFORM_COMPONENTS,               &context_ptr->limits.max_geometry_uniform_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_IMAGE_SAMPLES,                             &context_ptr->limits.max_image_samples);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_IMAGE_UNITS,                               &context_ptr->limits.max_image_units);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_INTEGER_SAMPLES,                           &context_ptr->limits.max_integer_samples);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MIN_PROGRAM_TEXEL_OFFSET,                      &context_ptr->limits.min_program_texel_offset);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_PROGRAM_TEXEL_OFFSET,                      &context_ptr->limits.max_program_texel_offset);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE,                    &context_ptr->limits.max_rectangle_texture_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_RENDERBUFFER_SIZE,                         &context_ptr->limits.max_renderbuffer_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SAMPLE_MASK_WORDS,                         &context_ptr->limits.max_sample_mask_words);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SERVER_WAIT_TIMEOUT,                       &context_ptr->limits.max_server_wait_timeout);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,            &context_ptr->limits.max_shader_storage_buffer_bindings);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS,       &context_ptr->limits.max_tess_control_atomic_counter_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS,              &context_ptr->limits.max_tess_control_atomic_counters);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS,    &context_ptr->limits.max_tess_evaluation_atomic_counter_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS,           &context_ptr->limits.max_tess_evaluation_atomic_counters);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE,                       &context_ptr->limits.max_texture_buffer_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS,                       &context_ptr->limits.max_texture_image_units);
-        context_ptr->entry_points_private.pGLGetFloatv  (GL_MAX_TEXTURE_LOD_BIAS,                          &context_ptr->limits.max_texture_lod_bias);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TEXTURE_SIZE,                              &context_ptr->limits.max_texture_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_BUFFERS,                &context_ptr->limits.max_transform_feedback_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS, &context_ptr->limits.max_transform_feedback_interleaved_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS,    &context_ptr->limits.max_transform_feedback_separate_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE,                        &context_ptr->limits.max_uniform_block_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS,                   &context_ptr->limits.max_uniform_buffer_bindings);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE,                        &context_ptr->limits.max_uniform_block_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS,             &context_ptr->limits.max_vertex_atomic_counter_buffers);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATOMIC_COUNTERS,                    &context_ptr->limits.max_vertex_atomic_counters);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATTRIBS,                            &context_ptr->limits.max_vertex_attribs);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_OUTPUT_COMPONENTS,                  &context_ptr->limits.max_vertex_output_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS,                &context_ptr->limits.max_vertex_texture_image_units);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_UNIFORM_BLOCKS,                     &context_ptr->limits.max_vertex_uniform_blocks);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,                 &context_ptr->limits.max_vertex_uniform_components);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_MINOR_VERSION,                                 &context_ptr->limits.minor_version);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS,                &context_ptr->limits.num_compressed_texture_formats);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_EXTENSIONS,                                &context_ptr->limits.num_extensions);
-        context_ptr->entry_points_private.pGLGetFloatv  (GL_POINT_FADE_THRESHOLD_SIZE,                     &context_ptr->limits.point_fade_threshold_size);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_POINT_SIZE_RANGE,                               context_ptr->limits.point_size_range);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_SUBPIXEL_BITS,                                 &context_ptr->limits.subpixel_bits);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT,               &context_ptr->limits.texture_buffer_offset_alignment);
-        context_ptr->entry_points_private.pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,               &context_ptr->limits.uniform_buffer_offset_alignment);
+        context_ptr->entry_points_private.pGLGetFloatv  (GL_ALIASED_LINE_WIDTH_RANGE,
+                                                         context_ptr->limits.aliased_line_width_range);
+        context_ptr->entry_points_private.pGLGetFloatv  (GL_SMOOTH_LINE_WIDTH_RANGE,
+                                                         context_ptr->limits.smooth_line_width_range);
+        context_ptr->entry_points_private.pGLGetFloatv  (GL_LINE_WIDTH_GRANULARITY,
+                                                        &context_ptr->limits.line_width_granularity);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAJOR_VERSION,
+                                                        &context_ptr->limits.major_version);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_3D_TEXTURE_SIZE,
+                                                        &context_ptr->limits.max_3d_texture_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS,
+                                                        &context_ptr->limits.max_array_texture_layers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS,
+                                                        &context_ptr->limits.max_atomic_counter_buffer_bindings);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ATOMIC_COUNTER_BUFFER_SIZE,
+                                                        &context_ptr->limits.max_atomic_counter_buffer_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES,
+                                                        &context_ptr->limits.max_color_texture_samples);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS,
+                                                        &context_ptr->limits.max_combined_atomic_counter_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_ATOMIC_COUNTERS,
+                                                        &context_ptr->limits.max_combined_atomic_counters);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS,
+                                                        &context_ptr->limits.max_combined_fragment_uniform_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_IMAGE_UNITS_AND_FRAGMENT_OUTPUTS,
+                                                        &context_ptr->limits.max_combined_image_units_and_fragment_outputs);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS,
+                                                        &context_ptr->limits.max_combined_texture_image_units);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS,
+                                                        &context_ptr->limits.max_combined_vertex_uniform_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_GEOMETRY_UNIFORM_COMPONENTS,
+                                                        &context_ptr->limits.max_combined_geometry_uniform_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_UNIFORM_BLOCKS,
+                                                        &context_ptr->limits.max_combined_uniform_blocks);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE,
+                                                        &context_ptr->limits.max_cube_map_texture_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_DEPTH_TEXTURE_SAMPLES,
+                                                        &context_ptr->limits.max_depth_texture_samples);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_DRAW_BUFFERS,
+                                                        &context_ptr->limits.max_draw_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ELEMENTS_INDICES,
+                                                        &context_ptr->limits.max_elements_indices);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_ELEMENTS_VERTICES,
+                                                        &context_ptr->limits.max_elements_vertices);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS,
+                                                        &context_ptr->limits.max_fragment_atomic_counter_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_ATOMIC_COUNTERS,
+                                                        &context_ptr->limits.max_fragment_atomic_counters);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS,
+                                                        &context_ptr->limits.max_fragment_uniform_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_BLOCKS,
+                                                        &context_ptr->limits.max_fragment_uniform_blocks);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_INPUT_COMPONENTS,
+                                                        &context_ptr->limits.max_fragment_input_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_ATOMIC_COUNTER_BUFFERS,
+                                                        &context_ptr->limits.max_geometry_atomic_counter_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_ATOMIC_COUNTERS,
+                                                        &context_ptr->limits.max_geometry_atomic_counters);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_INPUT_COMPONENTS,
+                                                        &context_ptr->limits.max_geometry_input_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_OUTPUT_VERTICES,
+                                                        &context_ptr->limits.max_geometry_output_vertices);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_TEXTURE_IMAGE_UNITS,
+                                                        &context_ptr->limits.max_geometry_texture_image_units);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_UNIFORM_BLOCKS,
+                                                        &context_ptr->limits.max_geometry_uniform_blocks);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_UNIFORM_COMPONENTS,
+                                                        &context_ptr->limits.max_geometry_uniform_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_IMAGE_SAMPLES,
+                                                        &context_ptr->limits.max_image_samples);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_IMAGE_UNITS,
+                                                        &context_ptr->limits.max_image_units);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_INTEGER_SAMPLES,
+                                                        &context_ptr->limits.max_integer_samples);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MIN_PROGRAM_TEXEL_OFFSET,
+                                                        &context_ptr->limits.min_program_texel_offset);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_PROGRAM_TEXEL_OFFSET,
+                                                        &context_ptr->limits.max_program_texel_offset);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE,
+                                                        &context_ptr->limits.max_rectangle_texture_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_RENDERBUFFER_SIZE,
+                                                        &context_ptr->limits.max_renderbuffer_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SAMPLE_MASK_WORDS,
+                                                        &context_ptr->limits.max_sample_mask_words);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SERVER_WAIT_TIMEOUT,
+                                                        &context_ptr->limits.max_server_wait_timeout);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,
+                                                        &context_ptr->limits.max_shader_storage_buffer_bindings);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_ATOMIC_COUNTER_BUFFERS,
+                                                        &context_ptr->limits.max_tess_control_atomic_counter_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_ATOMIC_COUNTERS,
+                                                        &context_ptr->limits.max_tess_control_atomic_counters);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_ATOMIC_COUNTER_BUFFERS,
+                                                        &context_ptr->limits.max_tess_evaluation_atomic_counter_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_ATOMIC_COUNTERS,
+                                                        &context_ptr->limits.max_tess_evaluation_atomic_counters);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TEXTURE_BUFFER_SIZE,
+                                                        &context_ptr->limits.max_texture_buffer_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS,
+                                                        &context_ptr->limits.max_texture_image_units);
+        context_ptr->entry_points_private.pGLGetFloatv  (GL_MAX_TEXTURE_LOD_BIAS,
+                                                        &context_ptr->limits.max_texture_lod_bias);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TEXTURE_SIZE,
+                                                        &context_ptr->limits.max_texture_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_BUFFERS,
+                                                        &context_ptr->limits.max_transform_feedback_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS,
+                                                        &context_ptr->limits.max_transform_feedback_interleaved_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS,
+                                                        &context_ptr->limits.max_transform_feedback_separate_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE,
+                                                        &context_ptr->limits.max_uniform_block_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_UNIFORM_BUFFER_BINDINGS,
+                                                        &context_ptr->limits.max_uniform_buffer_bindings);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE,
+                                                        &context_ptr->limits.max_uniform_block_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATOMIC_COUNTER_BUFFERS,
+                                                        &context_ptr->limits.max_vertex_atomic_counter_buffers);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATOMIC_COUNTERS,
+                                                        &context_ptr->limits.max_vertex_atomic_counters);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_ATTRIBS,
+                                                        &context_ptr->limits.max_vertex_attribs);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_OUTPUT_COMPONENTS,
+                                                        &context_ptr->limits.max_vertex_output_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS,
+                                                        &context_ptr->limits.max_vertex_texture_image_units);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_UNIFORM_BLOCKS,
+                                                        &context_ptr->limits.max_vertex_uniform_blocks);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
+                                                        &context_ptr->limits.max_vertex_uniform_components);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_MINOR_VERSION,
+                                                        &context_ptr->limits.minor_version);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS,
+                                                        &context_ptr->limits.num_compressed_texture_formats);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_EXTENSIONS,
+                                                        &context_ptr->limits.num_extensions);
+        context_ptr->entry_points_private.pGLGetFloatv  (GL_POINT_FADE_THRESHOLD_SIZE,
+                                                        &context_ptr->limits.point_fade_threshold_size);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_POINT_SIZE_RANGE,
+                                                        context_ptr->limits.point_size_range);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_SUBPIXEL_BITS,
+                                                        &context_ptr->limits.subpixel_bits);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT,
+                                                        &context_ptr->limits.texture_buffer_offset_alignment);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
+                                                        &context_ptr->limits.uniform_buffer_offset_alignment);
 
         /* Retrieve "program binary" limits */
         context_ptr->limits.num_program_binary_formats = 0;
@@ -1078,18 +1196,21 @@ PRIVATE void _ogl_context_retrieve_GL_limits(__inout __notnull _ogl_context* con
 
         ASSERT_DEBUG_SYNC(error_code == GL_NO_ERROR,
                           "Could not retrieve GL_NUM_PROGRAM_BINARY_FORMATS");
+
         if (error_code == GL_NO_ERROR)
         {
             context_ptr->limits.program_binary_formats = new (std::nothrow) GLint[context_ptr->limits.num_program_binary_formats];
 
             ASSERT_ALWAYS_SYNC(context_ptr->limits.program_binary_formats != NULL,
                                "Could not allocate space for supported program binary formats array");
+
             if (context_ptr->limits.program_binary_formats != NULL)
             {
                 context_ptr->entry_points_private.pGLGetIntegerv(GL_PROGRAM_BINARY_FORMATS,
                                                                  context_ptr->limits.program_binary_formats);
 
                 error_code = context_ptr->entry_points_gl.pGLGetError();
+
                 ASSERT_DEBUG_SYNC(error_code == GL_NO_ERROR,
                                   "Could not retrieve GL_PROGRAM_BINARY_FORMATS");
             }
@@ -1141,17 +1262,28 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_compute_shader_limits(__inout __notnul
     ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_COMPUTE_UNIFORM_COMPONENTS, &context_ptr->limits_arb_compute_shader.max_combined_compute_uniform_components);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS,      &context_ptr->limits_arb_compute_shader.max_compute_atomic_counter_buffers);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_ATOMIC_COUNTERS,             &context_ptr->limits_arb_compute_shader.max_compute_atomic_counters);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_IMAGE_UNIFORMS,              &context_ptr->limits_arb_compute_shader.max_compute_image_uniforms);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE,          &context_ptr->limits_arb_compute_shader.max_compute_shared_memory_size);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS,         &context_ptr->limits_arb_compute_shader.max_compute_texture_image_units);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_UNIFORM_BLOCKS,              &context_ptr->limits_arb_compute_shader.max_compute_uniform_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_UNIFORM_COMPONENTS,          &context_ptr->limits_arb_compute_shader.max_compute_uniform_components);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS,      &context_ptr->limits_arb_compute_shader.max_compute_work_group_invocations);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_COMPUTE_UNIFORM_COMPONENTS,
+                                                    &context_ptr->limits_arb_compute_shader.max_combined_compute_uniform_components);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_ATOMIC_COUNTER_BUFFERS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_atomic_counter_buffers);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_ATOMIC_COUNTERS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_atomic_counters);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_IMAGE_UNIFORMS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_image_uniforms);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_SHARED_MEMORY_SIZE,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_shared_memory_size);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_TEXTURE_IMAGE_UNITS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_texture_image_units);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_UNIFORM_BLOCKS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_uniform_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_UNIFORM_COMPONENTS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_uniform_components);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS,
+                                                    &context_ptr->limits_arb_compute_shader.max_compute_work_group_invocations);
 
-    for (int index = 0; index < 3 /* x, y, z */; ++index)
+    for (int index = 0;
+             index < 3 /* x, y, z */;
+           ++index)
     {
         context_ptr->entry_points_private.pGLGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT,
                                                            index,
@@ -1215,10 +1347,14 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_framebuffer_no_attachments_limits(__in
     ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_HEIGHT,  &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_height);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_LAYERS,  &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_layers);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_SAMPLES, &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_samples);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_WIDTH,   &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_width);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_HEIGHT,
+                                                    &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_height);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_LAYERS,
+                                                    &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_layers);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_SAMPLES,
+                                                    &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_samples);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAMEBUFFER_WIDTH,
+                                                    &context_ptr->limits_arb_framebuffer_no_attachments.max_framebuffer_width);
 
     ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
                       "Could not retrieve at least one ARB_framebuffer_no_attachments limit");
@@ -1489,16 +1625,26 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_limits(__
     ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
                       "GL-specific function called for a non-GL context");
 
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS,        &context_ptr->limits_arb_shader_storage_buffer_object.max_combined_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS,         &context_ptr->limits_arb_shader_storage_buffer_object.max_compute_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS,        &context_ptr->limits_arb_shader_storage_buffer_object.max_fragment_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS,        &context_ptr->limits_arb_shader_storage_buffer_object.max_geometry_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE,             &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_block_size);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,        &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_buffer_bindings);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS,    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_control_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS, &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_evaluation_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS,          &context_ptr->limits_arb_shader_storage_buffer_object.max_vertex_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,    &context_ptr->limits_arb_shader_storage_buffer_object.shader_storage_buffer_offset_alignment);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_combined_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_compute_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_fragment_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_geometry_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_block_size);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_buffer_bindings);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_control_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_evaluation_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_vertex_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.shader_storage_buffer_offset_alignment);
 
     ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
                       "Could not retrieve at least one ARB_shader_storage_buffer_object limit");
@@ -1989,7 +2135,8 @@ PUBLIC void ogl_context_bind_to_current_thread(__in __notnull ogl_context contex
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ::wglMakeCurrent(context_ptr->device_context_handle, context_ptr->wgl_rendering_context);
+    ::wglMakeCurrent(context_ptr->device_context_handle,
+                     context_ptr->wgl_rendering_context);
 
     _current_context = context;
     ogl_context_wrappers_set_private_functions( (context_ptr != NULL) ? &context_ptr->entry_points_private : NULL);
@@ -2022,385 +2169,389 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                      __in           ogl_context                 share_context,
                                                                      __in           bool                        allow_multisampling)
 {
-    system_window_handle window_handle = NULL;
     ogl_context          result        = NULL;
+    system_window_dc     window_dc     = NULL;
+    system_window_handle window_handle = NULL;
 
-    if (system_window_get_handle(window, &window_handle) )
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DC,
+                              &window_dc);
+
+
+    const PIXELFORMATDESCRIPTOR* system_pfd = _ogl_pixel_format_descriptor_get_descriptor(in_pfd);
+
+    if (system_pfd != NULL)
     {
-        system_window_dc window_dc = NULL;
+        /* Configure the device context handle to use the desired pixel format. */
+        int pixel_format_index = ::ChoosePixelFormat(window_dc,
+                                                     system_pfd);
 
-        if (system_window_get_dc(window, &window_dc) )
+        if (pixel_format_index == 0)
         {
-            const PIXELFORMATDESCRIPTOR* system_pfd = _ogl_pixel_format_descriptor_get_descriptor(in_pfd);
-
-            if (system_pfd != NULL)
+            LOG_FATAL("Requested pixel format is unavailable on the running platform!");
+        }
+        else
+        {
+            /* Set the pixel format. */
+            if (!::SetPixelFormat(window_dc,
+                                  pixel_format_index,
+                                  system_pfd) )
             {
-                /* Configure the device context handle to use the desired pixel format. */
-                int pixel_format_index = ::ChoosePixelFormat(window_dc,
-                                                             system_pfd);
+                LOG_FATAL("Could not set pixel format.");
+            }
+            else
+            {
+                /* Create a temporary WGL context that we will use to initialize WGL context for GL3.3 */
+                HGLRC temp_wgl_context = ::wglCreateContext(window_dc);
 
-                if (pixel_format_index == 0)
+                ::wglMakeCurrent(window_dc,
+                                 temp_wgl_context);
+
+                /* Create WGL rendering context */
+                PFNWGLCREATECONTEXTATTRIBSARBPROC pWGLCreateContextAttribs = (PFNWGLCREATECONTEXTATTRIBSARBPROC) ::wglGetProcAddress("wglCreateContextAttribsARB");
+
+                /* Okay, let's check the func ptr */
+                if (pWGLCreateContextAttribs == NULL)
                 {
-                    LOG_FATAL("Requested pixel format is unavailable on the running platform!");
+                    LOG_FATAL("OpenGL 4.2 is unavailable - could not obtain func ptr to wglCreateContextAttribsARB! Update your drivers.");
                 }
                 else
                 {
-                    /* Set the pixel format. */
-                    if (!::SetPixelFormat(window_dc, pixel_format_index, system_pfd) )
+                    /* If context we are to share objects with is not NULL, lock corresponding renderer thread before continuing.
+                     * Otherwise GL impl could potentially forbid the context creation (happens on NViDiA drivers) */
+                    system_window         share_context_window            = NULL;
+                    ogl_rendering_handler share_context_rendering_handler = NULL;
+
+                    if (share_context != NULL)
                     {
-                        LOG_FATAL("Could not set pixel format.");
+                        share_context_window = ((_ogl_context*)share_context)->window;
+
+                        system_window_get_property(share_context_window,
+                                                   SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                                  &share_context_rendering_handler);
+
+                        ogl_rendering_handler_lock_bound_context(share_context_rendering_handler);
+                    }
+
+                    /* Okay, try creating the context */
+                    int context_major_version      = 4;
+                    int context_minor_version      = 2;
+                    int context_profile_mask_key   = 0;
+                    int context_profile_mask_value = 0;
+
+                    if (type == OGL_CONTEXT_TYPE_ES)
+                    {
+                        context_major_version      = 3;
+                        context_minor_version      = 1;
+                        context_profile_mask_key   = WGL_CONTEXT_PROFILE_MASK_ARB;
+                        context_profile_mask_value = WGL_CONTEXT_ES2_PROFILE_BIT_EXT;
                     }
                     else
                     {
-                        /* Create a temporary WGL context that we will use to initialize WGL context for GL3.3 */
-                        HGLRC temp_wgl_context = ::wglCreateContext(window_dc);
+                        ASSERT_DEBUG_SYNC(type == OGL_CONTEXT_TYPE_GL,
+                                          "Unrecognized context type requested");
+                    }
 
-                        ::wglMakeCurrent(window_dc,
-                                         temp_wgl_context);
+                    const int wgl_attrib_list[]     = {WGL_CONTEXT_MAJOR_VERSION_ARB, context_major_version,
+                                                       WGL_CONTEXT_MINOR_VERSION_ARB, context_minor_version,
+                                                       WGL_CONTEXT_FLAGS_ARB,
+                    #ifdef _DEBUG
+                                                                                      WGL_CONTEXT_DEBUG_BIT_ARB,
+                    #else
+                                                                                      0,
+                    #endif
+                                                      WGL_CONTEXT_FLAGS_ARB,          WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+                                                      context_profile_mask_key,       context_profile_mask_value,
+                                                      0
+                                                      };
+                    HGLRC     wgl_rendering_context = pWGLCreateContextAttribs(window_dc,
+                                                                               (share_context != NULL ? ((_ogl_context*)share_context)->wgl_rendering_context : NULL),
+                                                                               wgl_attrib_list);
 
-                        /* Create WGL rendering context */
-                        PFNWGLCREATECONTEXTATTRIBSARBPROC pWGLCreateContextAttribs = (PFNWGLCREATECONTEXTATTRIBSARBPROC) ::wglGetProcAddress("wglCreateContextAttribsARB");
+                    /* Sharing? Unlock corresponding renderer thread */
+                    if (share_context != NULL)
+                    {
+                        ogl_rendering_handler_unlock_bound_context(share_context_rendering_handler);
+                    }
 
-                        /* Okay, let's check the func ptr */
-                        if (pWGLCreateContextAttribs == NULL)
+                    if (wgl_rendering_context == NULL)
+                    {
+                        LOG_FATAL("Could not create WGL rendering context. [GetLastError():%d]", ::GetLastError() );
+                    }
+                    else
+                    {
+                        /* Cool. Create the ogl_context instance. */
+                        _ogl_context* _result = new (std::nothrow) _ogl_context;
+
+                        ASSERT_ALWAYS_SYNC(_result != NULL,
+                                           "Out of memory when creating ogl_context instance.");
+
+                        if (_result != NULL)
                         {
-                            LOG_FATAL("OpenGL 4.2 is unavailable - could not obtain func ptr to wglCreateContextAttribsARB! Update your drivers.");
-                        }
-                        else
-                        {
-                            /* If context we are to share objects with is not NULL, lock corresponding renderer thread before continuing.
-                             * Otherwise GL impl could potentially forbid the context creation (happens on NViDiA drivers) */
-                            system_window         share_context_window            = NULL;
-                            ogl_rendering_handler share_context_rendering_handler = NULL;
+                            REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(_result,
+                                                                           _ogl_context_release,
+                                                                           OBJECT_TYPE_OGL_CONTEXT,
+                                                                           system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
+                                                                                                                                   system_hashed_ansi_string_get_buffer(name) )
+                                                                           );
 
-                            if (share_context != NULL)
-                            {
-                                share_context_window = ((_ogl_context*)share_context)->window;
+                            memset(&_result->limits,
+                                   0,
+                                   sizeof(_result->limits) );
 
-                                if (!system_window_get_rendering_handler(share_context_window, &share_context_rendering_handler) )
-                                {
-                                    ASSERT_DEBUG_SYNC(false, "Could not retrieve rendering handler for shared context's window.");
-                                }
+                            _result->bo_bindings                                = NULL;
+                            _result->context_type                               = type;
+                            _result->device_context_handle                      = window_dc;
+                            _result->es_ext_texture_buffer_support              = false;
+                            _result->gl_arb_buffer_storage_support              = false;
+                            _result->gl_arb_compute_shader_support              = false;
+                            _result->gl_arb_debug_output_support                = false;
+                            _result->gl_arb_framebuffer_no_attachments_support  = false;
+                            _result->gl_arb_multi_bind_support                  = false;
+                            _result->gl_arb_program_interface_query_support     = false;
+                            _result->gl_arb_texture_buffer_object_rgb32_support = false;
+                            _result->gl_ext_direct_state_access_support         = false;
 
-                                ogl_rendering_handler_lock_bound_context(share_context_rendering_handler);
-                            }
+                            _result->wgl_swap_control_support                   = false;
+                            _result->wgl_swap_control_tear_support              = false;
+                            _result->pWGLSwapIntervalEXT                        = NULL;
 
-                            /* Okay, try creating the context */
-                            int context_major_version      = 4;
-                            int context_minor_version      = 2;
-                            int context_profile_mask_key   = 0;
-                            int context_profile_mask_value = 0;
+                            _result->primitive_renderer                         = NULL;
+                            _result->materials                                  = ogl_materials_create( (ogl_context) _result);
+                            _result->opengl32_dll_handle                        = NULL;
+                            _result->multisampling_samples                      = 0;
+                            _result->multisampling_supported_sample             = NULL;
+                            _result->n_multisampling_supported_sample           = 0;
+                            _result->pfd                                        = in_pfd;
+                            _result->programs                                   = ogl_programs_create();
+                            _result->sampler_bindings                           = NULL;
+                            _result->state_cache                                = NULL;
+                            _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
+                            _result->shaders                                    = ogl_shaders_create();
+                            _result->shadow_mapping                             = NULL;
+                            _result->texture_compression                        = NULL;
+                            _result->textures                                   = ogl_textures_create( (ogl_context) _result);
+                            _result->to_bindings                                = NULL;
+                            _result->vao_no_vaas_id                             = 0;
+                            _result->vsync_enabled                              = vsync_enabled;
+                            _result->wgl_rendering_context                      = wgl_rendering_context;
+                            _result->window                                     = window;
+                            _result->window_handle                              = window_handle;
 
+                            ogl_pixel_format_descriptor_retain(in_pfd);
+
+                            result = (ogl_context) _result;
+
+                            /* Initialize WGL extensions */
+                            _ogl_context_initialize_wgl_extensions(_result);
+
+                            /* Associate DC with the WGL context and with current thread.*/
+                            ::wglMakeCurrent(NULL,
+                                             NULL);
+                            ::wglMakeCurrent(window_dc,
+                                             wgl_rendering_context);
+
+                            /* OpenGL ES support is supposed to be low-level. For OpenGL, we use additional tools like
+                             * state caching to improve rendering efficiency.
+                             */
                             if (type == OGL_CONTEXT_TYPE_ES)
                             {
-                                context_major_version      = 3;
-                                context_minor_version      = 1;
-                                context_profile_mask_key   = WGL_CONTEXT_PROFILE_MASK_ARB;
-                                context_profile_mask_value = WGL_CONTEXT_ES2_PROFILE_BIT_EXT;
+                                _ogl_context_retrieve_ES_function_pointers(_result);
+
+                                /* Retrieve GL context info */
+                                _ogl_context_retrieve_GL_info(_result);
+
+                                /* If GL_EXT_texture_buffer is supported, initialize func pointers */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_EXT_texture_buffer") ))
+                                {
+                                    _ogl_context_initialize_es_ext_texture_buffer_extension(_result);
+                                }
                             }
                             else
                             {
                                 ASSERT_DEBUG_SYNC(type == OGL_CONTEXT_TYPE_GL,
-                                                  "Unrecognized context type requested");
-                            }
+                                                  "Unrecognized context type");
 
-                            const int wgl_attrib_list[]     = {WGL_CONTEXT_MAJOR_VERSION_ARB, context_major_version,
-                                                               WGL_CONTEXT_MINOR_VERSION_ARB, context_minor_version,
-                                                               WGL_CONTEXT_FLAGS_ARB,
-                            #ifdef _DEBUG
-                                                                                              WGL_CONTEXT_DEBUG_BIT_ARB,
-                            #else
-                                                                                              0,
-                            #endif
-                                                              WGL_CONTEXT_FLAGS_ARB,          WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-                                                              context_profile_mask_key,       context_profile_mask_value,
-                                                              0
-                                                              };
-                            HGLRC     wgl_rendering_context = pWGLCreateContextAttribs(window_dc,
-                                                                                       (share_context != NULL ? ((_ogl_context*)share_context)->wgl_rendering_context : NULL),
-                                                                                       wgl_attrib_list);
+                                /* Retrieve function pointers for the context */
+                                _ogl_context_retrieve_GL_function_pointers(_result);
 
-                            /* Sharing? Unlock corresponding renderer thread */
-                            if (share_context != NULL)
-                            {
-                                ogl_rendering_handler_unlock_bound_context(share_context_rendering_handler);
-                            }
+                                /* Initialize state caching mechanisms */
+                                _result->bo_bindings         = ogl_context_bo_bindings_create        ( (ogl_context) _result);
+                                _result->sampler_bindings    = ogl_context_sampler_bindings_create   ( (ogl_context) _result);
+                                _result->state_cache         = ogl_context_state_cache_create        ( (ogl_context) _result);
+                                _result->texture_compression = ogl_context_texture_compression_create( (ogl_context) _result);
+                                _result->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) _result);
 
-                            if (wgl_rendering_context == NULL)
-                            {
-                                LOG_FATAL("Could not create WGL rendering context. [GetLastError():%d]", ::GetLastError() );
-                            }
-                            else
-                            {
-                                /* Cool. Create the ogl_context instance. */
-                                _ogl_context* _result = new (std::nothrow) _ogl_context;
+                                /* Retrieve GL context limitations */
+                                _ogl_context_retrieve_GL_limits(_result);
 
-                                ASSERT_ALWAYS_SYNC(_result != NULL, "Out of memory when creating ogl_context instance.");
-                                if (_result != NULL)
+                                /* Retrieve GL context info */
+                                _ogl_context_retrieve_GL_info(_result);
+
+                                /* If GL_ARB_bufffer_storage is supported, initialize func pointers */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_buffer_storage") ))
                                 {
-                                    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(_result,
-                                                                                   _ogl_context_release,
-                                                                                   OBJECT_TYPE_OGL_CONTEXT,
-                                                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
-                                                                                                                                           system_hashed_ansi_string_get_buffer(name) )
-                                                                                   );
-
-                                    memset(&_result->limits,
-                                           0,
-                                           sizeof(_result->limits) );
-
-                                    _result->bo_bindings                                = NULL;
-                                    _result->context_type                               = type;
-                                    _result->device_context_handle                      = window_dc;
-                                    _result->es_ext_texture_buffer_support              = false;
-                                    _result->gl_arb_buffer_storage_support              = false;
-                                    _result->gl_arb_compute_shader_support              = false;
-                                    _result->gl_arb_debug_output_support                = false;
-                                    _result->gl_arb_framebuffer_no_attachments_support  = false;
-                                    _result->gl_arb_multi_bind_support                  = false;
-                                    _result->gl_arb_program_interface_query_support     = false;
-                                    _result->gl_arb_texture_buffer_object_rgb32_support = false;
-                                    _result->gl_ext_direct_state_access_support         = false;
-
-                                    _result->wgl_swap_control_support                   = false;
-                                    _result->wgl_swap_control_tear_support              = false;
-                                    _result->pWGLSwapIntervalEXT                        = NULL;
-
-                                    _result->primitive_renderer                         = NULL;
-                                    _result->materials                                  = ogl_materials_create( (ogl_context) _result);
-                                    _result->opengl32_dll_handle                        = NULL;
-                                    _result->multisampling_samples                      = 0;
-                                    _result->multisampling_supported_sample             = NULL;
-                                    _result->n_multisampling_supported_sample           = 0;
-                                    _result->pfd                                        = in_pfd;
-                                    _result->sampler_bindings                           = NULL;
-                                    _result->state_cache                                = NULL;
-                                    _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
-                                    _result->shaders                                    = ogl_shaders_create();
-                                    _result->shadow_mapping                             = NULL;
-                                    _result->texture_compression                        = NULL;
-                                    _result->textures                                   = ogl_textures_create( (ogl_context) _result);
-                                    _result->to_bindings                                = NULL;
-                                    _result->vao_no_vaas_id                             = 0;
-                                    _result->vsync_enabled                              = vsync_enabled;
-                                    _result->wgl_rendering_context                      = wgl_rendering_context;
-                                    _result->window                                     = window;
-                                    _result->window_handle                              = window_handle;
-
-                                    ogl_pixel_format_descriptor_retain(in_pfd);
-
-                                    result = (ogl_context) _result;
-
-                                    /* Initialize WGL extensions */
-                                    _ogl_context_initialize_wgl_extensions(_result);
-
-                                    /* Associate DC with the WGL context and with current thread.*/
-                                    ::wglMakeCurrent(NULL, NULL);
-                                    ::wglMakeCurrent(window_dc, wgl_rendering_context);
-
-                                    /* OpenGL ES support is supposed to be low-level. For OpenGL, we use additional tools like
-                                     * state caching to improve rendering efficiency.
-                                     */
-                                    if (type == OGL_CONTEXT_TYPE_ES)
-                                    {
-                                        _ogl_context_retrieve_ES_function_pointers(_result);
-
-                                        /* Retrieve GL context info */
-                                        _ogl_context_retrieve_GL_info(_result);
-
-                                        /* If GL_EXT_texture_buffer is supported, initialize func pointers */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_EXT_texture_buffer") ))
-                                        {
-                                            _ogl_context_initialize_es_ext_texture_buffer_extension(_result);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        ASSERT_DEBUG_SYNC(type == OGL_CONTEXT_TYPE_GL,
-                                                          "Unrecognized context type");
-
-                                        /* Retrieve function pointers for the context */
-                                        _ogl_context_retrieve_GL_function_pointers(_result);
-
-                                        /* Initialize state caching mechanisms */
-                                        _result->bo_bindings         = ogl_context_bo_bindings_create        ( (ogl_context) _result);
-                                        _result->sampler_bindings    = ogl_context_sampler_bindings_create   ( (ogl_context) _result);
-                                        _result->state_cache         = ogl_context_state_cache_create        ( (ogl_context) _result);
-                                        _result->texture_compression = ogl_context_texture_compression_create( (ogl_context) _result);
-                                        _result->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) _result);
-
-                                        /* Retrieve GL context limitations */
-                                        _ogl_context_retrieve_GL_limits(_result);
-
-                                        /* Retrieve GL context info */
-                                        _ogl_context_retrieve_GL_info(_result);
-
-                                        /* If GL_ARB_bufffer_storage is supported, initialize func pointers */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_buffer_storage") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_buffer_storage_extension(_result);
-                                        }
-
-                                        /* If GL_ARB_compute_shader is supported, initialize func pointers and info variables */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_compute_shader") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_compute_shader_extension(_result);
-                                        }
-
-                                        /* If GL_ARB_framebuffer_no_attachments is supported, initialize func pointers and info variables */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_framebuffer_no_attachments") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_framebuffer_no_attachments_extension(_result);
-                                        }
-
-                                        /* If GL_ARB_multi_bind is supported, initialize func pointers */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_multi_bind") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_multi_bind_extension(_result);
-                                        }
-
-                                        /* If GL_ARB_program_interface_query is supported, initialize func pointers */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_program_interface_query") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_program_interface_query_extension(_result);
-                                        }
-
-                                        /* If GL_ARB_shader_storage_buffer_object is supported, initialize func pointers and info variables */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_shader_storage_buffer_object") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_shader_storage_buffer_object_extension(_result);
-                                        }
-
-                                        /* If GL_ARB_texture_storage_multisample is supported, initialize func pointers */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_texture_storage_multisample") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_texture_storage_multisample_extension(_result);
-                                        }
-
-                                        /* Try to initialize texture buffer object RGB32 extension */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_texture_buffer_object_rgb32") ))
-                                        {
-                                            _result->gl_arb_texture_buffer_object_rgb32_support = true;
-                                        }
-                                        else
-                                        {
-                                            LOG_ERROR("GL_ARB_texture_buffer_object_rgb32 extension is not supported - demo will crash if 3-banded SH is used.");
-                                        }
-
-                                        /* Try to initialize DSA func ptrs */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_EXT_direct_state_access") ))
-                                        {
-                                            _ogl_context_initialize_gl_ext_direct_state_access_extension(_result);
-                                        }
-                                        else
-                                        {
-                                            ASSERT_ALWAYS_SYNC(false, "Direct State Access OpenGL extension is unavailable - the demo is very likely to crash");
-                                        }
-
-                                        /* Try to initialize debug output func ptrs */
-                                        if (ogl_context_is_extension_supported(result,
-                                                                               system_hashed_ansi_string_create("GL_ARB_debug_output") ))
-                                        {
-                                            _ogl_context_initialize_gl_arb_debug_output_extension(_result);
-
-                                            #ifdef _DEBUG
-                                            {
-                                                /* Debug build! Go ahead and regitser for callbacks */
-                                                _result->entry_points_gl_arb_debug_output.pGLDebugMessageCallbackARB(_ogl_context_debug_message_gl_callback,
-                                                                                                                     _result);
-                                                _result->entry_points_gl_arb_debug_output.pGLDebugMessageControlARB (GL_DONT_CARE,
-                                                                                                                     GL_DONT_CARE,
-                                                                                                                     GL_DONT_CARE,
-                                                                                                                     0,
-                                                                                                                     NULL,
-                                                                                                                     true);
-
-                                                _result->entry_points_private.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-
-                                                ASSERT_DEBUG_SYNC(_result->entry_points_gl.pGLGetError() == GL_NO_ERROR,
-                                                                  "Could not set up OpenGL debug output callbacks!");
-                                            }
-                                            #endif
-                                        }
-
-                                        /* Retrieve context-specific multi-sampling support info */
-                                        if (allow_multisampling)
-                                        {
-                                            _ogl_context_retrieve_multisampling_support_info(_result);
-                                        }
-
-                                        /* Set up cache storage */
-                                        ogl_context_bo_bindings_init        (_result->bo_bindings,
-                                                                            &_result->entry_points_private);
-                                        ogl_context_sampler_bindings_init   (_result->sampler_bindings,
-                                                                            &_result->entry_points_private);
-                                        ogl_context_state_cache_init        (_result->state_cache,
-                                                                            &_result->entry_points_private);
-                                        ogl_context_texture_compression_init(_result->texture_compression,
-                                                                            &_result->entry_points_private);
-                                        ogl_context_to_bindings_init        (_result->to_bindings,
-                                                                            &_result->entry_points_private);
-
-                                        /* Initialize shadow mapping handler */
-                                        _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
-
-                                        /* Set up the zero-VAA VAO */
-                                        _result->entry_points_gl.pGLGenVertexArrays(1,
-                                                                                   &_result->vao_no_vaas_id);
-
-                                    } /* if (type == OGL_CONTEXT_TYPE_GL) */
-
-                                    /* Set context-specific vsync setting */
-                                    ogl_context_set_vsync( (ogl_context) _result, vsync_enabled);
-
-                                    /* Update gfx_image alternative file getter provider so that it can
-                                     * search for compressed textures supported by this rendering context.
-                                     */
-                                    gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_FUNC_PTR,
-                                                                  _ogl_context_get_compressed_filename);
-                                    gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_USER_ARG,
-                                                                  _result);
-
-                                    /* Log GPU info */
-                                    LOG_INFO("Renderer:                 [%s]\n"
-                                             "Shading language version: [%s]\n"
-                                             "Vendor:                   [%s]\n"
-                                             "Version:                  [%s]\n",
-                                             _result->info.renderer,
-                                             _result->info.shading_language_version,
-                                             _result->info.vendor,
-                                             _result->info.version);
+                                    _ogl_context_initialize_gl_arb_buffer_storage_extension(_result);
                                 }
-                            }
+
+                                /* If GL_ARB_compute_shader is supported, initialize func pointers and info variables */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_compute_shader") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_compute_shader_extension(_result);
+                                }
+
+                                /* If GL_ARB_framebuffer_no_attachments is supported, initialize func pointers and info variables */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_framebuffer_no_attachments") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_framebuffer_no_attachments_extension(_result);
+                                }
+
+                                /* If GL_ARB_multi_bind is supported, initialize func pointers */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_multi_bind") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_multi_bind_extension(_result);
+                                }
+
+                                /* If GL_ARB_program_interface_query is supported, initialize func pointers */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_program_interface_query") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_program_interface_query_extension(_result);
+                                }
+
+                                /* If GL_ARB_shader_storage_buffer_object is supported, initialize func pointers and info variables */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_shader_storage_buffer_object") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_shader_storage_buffer_object_extension(_result);
+                                }
+
+                                /* If GL_ARB_texture_storage_multisample is supported, initialize func pointers */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_texture_storage_multisample") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_texture_storage_multisample_extension(_result);
+                                }
+
+                                /* Try to initialize texture buffer object RGB32 extension */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_texture_buffer_object_rgb32") ))
+                                {
+                                    _result->gl_arb_texture_buffer_object_rgb32_support = true;
+                                }
+                                else
+                                {
+                                    LOG_ERROR("GL_ARB_texture_buffer_object_rgb32 extension is not supported - demo will crash if 3-banded SH is used.");
+                                }
+
+                                /* Try to initialize DSA func ptrs */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_EXT_direct_state_access") ))
+                                {
+                                    _ogl_context_initialize_gl_ext_direct_state_access_extension(_result);
+                                }
+                                else
+                                {
+                                    ASSERT_ALWAYS_SYNC(false, "Direct State Access OpenGL extension is unavailable - the demo is very likely to crash");
+                                }
+
+                                /* Try to initialize debug output func ptrs */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_debug_output") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_debug_output_extension(_result);
+
+                                    #ifdef _DEBUG
+                                    {
+                                        /* Debug build! Go ahead and regitser for callbacks */
+                                        _result->entry_points_gl_arb_debug_output.pGLDebugMessageCallbackARB(_ogl_context_debug_message_gl_callback,
+                                                                                                             _result);
+                                        _result->entry_points_gl_arb_debug_output.pGLDebugMessageControlARB (GL_DONT_CARE,
+                                                                                                             GL_DONT_CARE,
+                                                                                                             GL_DONT_CARE,
+                                                                                                             0,
+                                                                                                             NULL,
+                                                                                                             true);
+
+                                        _result->entry_points_private.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+                                        ASSERT_DEBUG_SYNC(_result->entry_points_gl.pGLGetError() == GL_NO_ERROR,
+                                                          "Could not set up OpenGL debug output callbacks!");
+                                    }
+                                    #endif
+                                }
+
+                                /* Retrieve context-specific multi-sampling support info */
+                                if (allow_multisampling)
+                                {
+                                    _ogl_context_retrieve_multisampling_support_info(_result);
+                                }
+
+                                /* Set up cache storage */
+                                ogl_context_bo_bindings_init        (_result->bo_bindings,
+                                                                    &_result->entry_points_private);
+                                ogl_context_sampler_bindings_init   (_result->sampler_bindings,
+                                                                    &_result->entry_points_private);
+                                ogl_context_state_cache_init        (_result->state_cache,
+                                                                    &_result->entry_points_private);
+                                ogl_context_texture_compression_init(_result->texture_compression,
+                                                                    &_result->entry_points_private);
+                                ogl_context_to_bindings_init        (_result->to_bindings,
+                                                                    &_result->entry_points_private);
+
+                                /* Initialize shadow mapping handler */
+                                _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
+
+                                /* Set up the zero-VAA VAO */
+                                _result->entry_points_gl.pGLGenVertexArrays(1,
+                                                                           &_result->vao_no_vaas_id);
+
+                            } /* if (type == OGL_CONTEXT_TYPE_GL) */
+
+                            /* Set context-specific vsync setting */
+                            ogl_context_set_vsync( (ogl_context) _result, vsync_enabled);
+
+                            /* Update gfx_image alternative file getter provider so that it can
+                             * search for compressed textures supported by this rendering context.
+                             */
+                            gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_FUNC_PTR,
+                                                          _ogl_context_get_compressed_filename);
+                            gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_USER_ARG,
+                                                          _result);
+
+                            /* Log GPU info */
+                            LOG_INFO("Renderer:                 [%s]\n"
+                                     "Shading language version: [%s]\n"
+                                     "Vendor:                   [%s]\n"
+                                     "Version:                  [%s]\n",
+                                     _result->info.renderer,
+                                     _result->info.shading_language_version,
+                                     _result->info.vendor,
+                                     _result->info.version);
                         }
-
-                        /* Unbind the thread from the context. It is to be picked up by rendering thread */
-                        ::wglMakeCurrent(NULL, NULL);
-
-                        /* Release the temporary context now. */
-                        ::wglDeleteContext(temp_wgl_context);
                     }
                 }
-            }
-            else
-            {
-                LOG_FATAL("Could not retrieve filled pixel format descriptor.");
+
+                /* Unbind the thread from the context. It is to be picked up by rendering thread */
+                ::wglMakeCurrent(NULL,
+                                 NULL);
+
+                /* Release the temporary context now. */
+                ::wglDeleteContext(temp_wgl_context);
             }
         }
     }
     else
     {
-        LOG_FATAL("Could not retrieve system window handle.");
+        LOG_FATAL("Could not retrieve filled pixel format descriptor.");
     }
 
     return result;
@@ -2584,6 +2735,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_PROGRAMS:
+        {
+            *(ogl_programs*) out_result = context_ptr->programs;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS:
         {
             *((ogl_context_sampler_bindings*) out_result) = context_ptr->sampler_bindings;
@@ -2741,9 +2899,12 @@ PUBLIC EMERALD_API bool ogl_context_is_extension_supported(__in __notnull ogl_co
     _ogl_context* context_ptr = (_ogl_context*) context;
     bool          result      = false;
 
-    for (int32_t n_extension = 0; n_extension < context_ptr->limits.num_extensions; ++n_extension)
+    for (int32_t n_extension = 0;
+                 n_extension < context_ptr->limits.num_extensions;
+               ++n_extension)
     {
-        if (system_hashed_ansi_string_is_equal_to_raw_string(extension_name, (const char*) context_ptr->info.extensions[n_extension]) )
+        if (system_hashed_ansi_string_is_equal_to_raw_string(extension_name,
+                                                             (const char*) context_ptr->info.extensions[n_extension]) )
         {
             result = true;
 
@@ -2764,6 +2925,13 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
         ogl_materials_release(context_ptr->materials);
 
         context_ptr->materials = NULL;
+    }
+
+    if (context_ptr->programs != NULL)
+    {
+        ogl_programs_release(context_ptr->programs);
+
+        context_ptr->programs = NULL;
     }
 
     if (context_ptr->samplers != NULL)
@@ -2800,23 +2968,19 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __
     _ogl_context*         context_ptr       = (_ogl_context*) context;
     ogl_rendering_handler rendering_handler = NULL;
 
-    result = system_window_get_rendering_handler(context_ptr->window,
-                                                &rendering_handler);
+    system_window_get_property(context_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
-    ASSERT_DEBUG_SYNC(result && rendering_handler != NULL,
+    ASSERT_DEBUG_SYNC(rendering_handler != NULL,
                       "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
 
-    if (result &&
-        rendering_handler != NULL)
+    if (rendering_handler != NULL)
     {
         result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
                                                                             pfn_callback,
                                                                             user_arg,
                                                                             block_until_available);
-    }
-    else
-    {
-        result = false;
     }
 
     return result;

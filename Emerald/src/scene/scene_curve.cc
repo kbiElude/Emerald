@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -25,7 +25,9 @@ typedef struct
 } _scene_curve;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(scene_curve, scene_curve, _scene_curve);
+REFCOUNT_INSERT_IMPLEMENTATION(scene_curve,
+                               scene_curve,
+                              _scene_curve);
 
 /** TODO */
 PRIVATE void _scene_curve_init(__in __notnull _scene_curve*             data_ptr,
@@ -54,15 +56,21 @@ PUBLIC EMERALD_API scene_curve scene_curve_create(__in __notnull system_hashed_a
 {
     _scene_curve* new_scene_curve = new (std::nothrow) _scene_curve;
 
-    ASSERT_DEBUG_SYNC(new_scene_curve != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_curve != NULL,
+                      "Out of memory");
+
     if (new_scene_curve != NULL)
     {
-        _scene_curve_init(new_scene_curve, name, id, instance);
+        _scene_curve_init(new_scene_curve,
+                          name,
+                          id,
+                          instance);
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_curve, 
-                                                       _scene_curve_release, 
-                                                       OBJECT_TYPE_SCENE_CURVE, 
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Curves\\", system_hashed_ansi_string_get_buffer(name)) );
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_curve,
+                                                       _scene_curve_release,
+                                                       OBJECT_TYPE_SCENE_CURVE,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Curves\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (scene_curve) new_scene_curve;
@@ -93,34 +101,65 @@ PUBLIC EMERALD_API void scene_curve_get(__in  __notnull scene_curve          ins
 
         default:
         {
-            ASSERT_ALWAYS_SYNC(false, "Unrecognized scene curve property [%d]", property);
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized scene curve property [%d]",
+                               property);
         }
     } /* switch */
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_curve scene_curve_load(__in __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API scene_curve scene_curve_load(__in     __notnull system_file_serializer    serializer,
+                                                __in_opt           system_hashed_ansi_string object_manager_path)
 {
     system_hashed_ansi_string name     = NULL;
     scene_curve               result   = NULL;
     scene_curve_id            id       = -1;
     curve_container           instance = NULL;
 
-    if (!system_file_serializer_read_hashed_ansi_string(serializer,             &name)     ||
-        !system_file_serializer_read                   (serializer, sizeof(id), &id)       ||
-        !system_file_serializer_read_curve_container   (serializer,             &instance))
+    if (!system_file_serializer_read_hashed_ansi_string(serializer,
+                                                       &name)                ||
+        !system_file_serializer_read                   (serializer,
+                                                        sizeof(id),
+                                                       &id)                  ||
+        !system_file_serializer_read_curve_container   (serializer,
+                                                        object_manager_path,
+                                                       &instance))
     {
-        ASSERT_DEBUG_SYNC(false, "Could not load curve properties");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not load curve properties");
 
         goto end_with_error;
     }
     else
     {
-        result = scene_curve_create(name, id, instance);
+        /* In order to avoid collisions in environments where multiple scenes are loaded,
+         * we embed the scene's name in the curve's name */
+        system_hashed_ansi_string file_name  = NULL;
+        system_hashed_ansi_string final_name = NULL;
+        const char*               limiter    = "\\";
+
+        system_file_serializer_get_property(serializer,
+                                            SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
+                                           &file_name);
+
+        const char* file_name_parts[] =
+        {
+            system_hashed_ansi_string_get_buffer(file_name),
+            limiter,
+            system_hashed_ansi_string_get_buffer(name)
+        };
+        const unsigned int n_file_name_parts = sizeof(file_name_parts) / sizeof(file_name_parts[0]);
+
+        result = scene_curve_create(system_hashed_ansi_string_create_by_merging_strings(n_file_name_parts,
+                                                                                        file_name_parts),
+                                    id,
+                                    instance);
 
         if (result == NULL)
         {
-            ASSERT_DEBUG_SYNC(false, "Could not create curve instance");
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not create curve instance");
 
             goto end_with_error;
         }
@@ -146,15 +185,20 @@ PUBLIC EMERALD_API bool scene_curve_save(__in __notnull system_file_serializer s
     
     if (curve_ptr != NULL)
     {
-        if (system_file_serializer_write_hashed_ansi_string(serializer,                                  curve_ptr->name)               &&
-            system_file_serializer_write                   (serializer, sizeof(curve_ptr->property_id), &curve_ptr->property_id)        &&
-            system_file_serializer_write_curve_container   (serializer,                                  curve_ptr->property_instance))
+        if (system_file_serializer_write_hashed_ansi_string(serializer,
+                                                            curve_ptr->name)                &&
+            system_file_serializer_write                   (serializer,
+                                                            sizeof(curve_ptr->property_id),
+                                                           &curve_ptr->property_id)         &&
+            system_file_serializer_write_curve_container   (serializer,
+                                                            curve_ptr->property_instance))
         {
             result = true;
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not save curve");
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not save curve");
         }
     }
 

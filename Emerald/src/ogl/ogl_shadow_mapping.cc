@@ -2750,9 +2750,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
     } /* if (should_enable) */
     else
     {
-        system_window context_window        = NULL;
-        int32_t       context_window_height = 0;
-        int32_t       context_window_width  = 0;
+        system_window context_window         = NULL;
+        int32_t       context_window_size[2] = {0};
 
         entry_points->pGLColorMask(GL_TRUE,
                                    GL_TRUE,
@@ -2767,15 +2766,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         ogl_context_get_property    (handler_ptr->context,
                                      OGL_CONTEXT_PROPERTY_WINDOW,
                                     &context_window);
-        system_window_get_dimensions(context_window,
-                                    &context_window_width,
-                                    &context_window_height);
+        system_window_get_property  (context_window,
+                                     SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                     context_window_size);
 
         /* Restore cotnext-specific viewport */
         entry_points->pGLViewport(0, /* x */
                                   0, /* y */
-                                  context_window_width,
-                                  context_window_height);
+                                  context_window_size[0],
+                                  context_window_size[1]);
 
         /* Unbind the SM FBO */
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,

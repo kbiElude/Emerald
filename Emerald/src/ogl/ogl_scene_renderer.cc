@@ -1012,7 +1012,8 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
                                                                                       scene,
                                                                                       (ogl_scene_renderer) scene_renderer_ptr);
         scene_renderer_ptr->context          = context;
-        scene_renderer_ptr->frustum_preview  = ogl_scene_renderer_frustum_preview_create(context);
+        scene_renderer_ptr->frustum_preview  = ogl_scene_renderer_frustum_preview_create(context,
+                                                                                         scene);
         scene_renderer_ptr->lights_preview   = ogl_scene_renderer_lights_preview_create (context,
                                                                                          scene);
         scene_renderer_ptr->material_manager = NULL;

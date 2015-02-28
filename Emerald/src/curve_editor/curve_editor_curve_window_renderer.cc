@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -527,12 +527,15 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
     float                                current_x      = descriptor_ptr->x1;
     float                                max_x          = descriptor_ptr->x1 + descriptor_ptr->x_width;
     system_timeline_time                 max_time       = system_time_get_timeline_time_for_msec(uint32_t(max_x * 1000.0f) );
-    
+
     system_window_handle window_handle;
     RECT                 window_rect;
 
-    system_window_get_handle(descriptor_ptr->window, &window_handle);
-    ::GetWindowRect         (window_handle,          &window_rect);
+    system_window_get_property(descriptor_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &window_rect);
 
     float mouse_x = LERP_FROM_A_B_TO_C_D(descriptor_ptr->mouse_x,
                                          0,
@@ -578,7 +581,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
                 /* No segments left! */
                 next_x = max_x;
             }
-            
+
             /* If the distance is larger than 0, we need to draw a static curve preview for the default value */
             system_timeline_time next_segment_start_time;
             uint32_t             next_segment_start_msec = 0;
@@ -617,7 +620,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
                                                                              true,
                                                                              descriptor_ptr->float_variant);
 
-                    system_variant_get_float(descriptor_ptr->float_variant, &curve_value);
+                    system_variant_get_float(descriptor_ptr->float_variant,
+                                            &curve_value);
 
                     _curve_editor_curve_window_renderer_draw_curve_static_px(context,
                                                                              entry_points,
@@ -633,8 +637,9 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
 
                 if (x_time <= max_time)
                 {
-                    /* Draw the segment. */ 
-                    system_time_get_msec_for_timeline_time(next_segment_end_time, &next_segment_end_msec);
+                    /* Draw the segment. */
+                    system_time_get_msec_for_timeline_time(next_segment_end_time,
+                                                          &next_segment_end_msec);
 
                     /* Retrieve x for start & end times of the segment */
                     uint32_t segment_start_msec;
@@ -642,16 +647,34 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve(ogl_context         
                     uint32_t segment_end_msec;
                     float    segment_end_x;
 
-                    system_time_get_msec_for_timeline_time(next_segment_start_time, &segment_start_msec);
-                    system_time_get_msec_for_timeline_time(next_segment_end_time,   &segment_end_msec);
+                    system_time_get_msec_for_timeline_time(next_segment_start_time,
+                                                          &segment_start_msec);
+                    system_time_get_msec_for_timeline_time(next_segment_end_time,
+                                                          &segment_end_msec);
 
                     segment_start_x = float(segment_start_msec) / 1000.0f;
                     segment_end_x   = float(segment_end_msec)   / 1000.0f;
 
-                    float segment_start_x_px     = LERP_FROM_A_B_TO_C_D(segment_start_x, descriptor_ptr->x1, (descriptor_ptr->x1 + descriptor_ptr->x_width), -1, 1);
-                    float segment_end_x_px       = LERP_FROM_A_B_TO_C_D(segment_end_x,   descriptor_ptr->x1, (descriptor_ptr->x1 + descriptor_ptr->x_width), -1, 1);
-                    float x_time_px              = LERP_FROM_A_B_TO_C_D(mouse_x,         descriptor_ptr->x1, (descriptor_ptr->x1 + descriptor_ptr->x_width), -1, 1);
-                    float y_time_px              = LERP_FROM_A_B_TO_C_D(mouse_y,         descriptor_ptr->y1, (descriptor_ptr->y1 + descriptor_ptr->y_height),-1, 1);
+                    float segment_start_x_px     = LERP_FROM_A_B_TO_C_D(segment_start_x,
+                                                                        descriptor_ptr->x1,
+                                                                        (descriptor_ptr->x1 + descriptor_ptr->x_width),
+                                                                       -1,
+                                                                        1);
+                    float segment_end_x_px       = LERP_FROM_A_B_TO_C_D(segment_end_x,
+                                                                        descriptor_ptr->x1,
+                                                                        (descriptor_ptr->x1 + descriptor_ptr->x_width),
+                                                                       -1,
+                                                                        1);
+                    float x_time_px              = LERP_FROM_A_B_TO_C_D(mouse_x,
+                                                                        descriptor_ptr->x1,
+                                                                        (descriptor_ptr->x1 + descriptor_ptr->x_width),
+                                                                       -1,
+                                                                        1);
+                    float y_time_px              = LERP_FROM_A_B_TO_C_D(mouse_y,
+                                                                        descriptor_ptr->y1,
+                                                                        (descriptor_ptr->y1 + descriptor_ptr->y_height),
+                                                                       -1,
+                                                                        1);
 
                     switch (next_segment_type)
                     {
@@ -798,9 +821,12 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ogl_conte
     int                  text_position[2];
     system_window_handle window_handle;
     RECT                 window_rect;
-    
-    system_window_get_handle(descriptor_ptr->window, &window_handle);
-    ::GetWindowRect         (window_handle,          &window_rect);
+
+    system_window_get_property(descriptor_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &window_rect);
 
     segment_start_x_ss = (int) LERP_FROM_A_B_TO_C_D(start_ss, -1, 1, 0, window_rect.right - window_rect.left);
     text_position[0]   = segment_start_x_ss;
@@ -959,7 +985,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment(ogl_con
                                                            segment_end_ss);
 
     /* Draw the background */
-    if (cursor_x_ss >= segment_start_ss && cursor_x_ss <= segment_end_ss)
+    if (cursor_x_ss >= segment_start_ss &&
+        cursor_x_ss <= segment_end_ss)
     {
         /* Highlight */
         bg_color[3] = 0.45f;
@@ -984,8 +1011,11 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_segment(ogl_con
     HWND window_handle;
     RECT window_rect;
 
-    system_window_get_handle(descriptor_ptr->window, &window_handle);
-    ::GetWindowRect         (window_handle,          &window_rect);
+    system_window_get_property(descriptor_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &window_rect);
 
     float node_width_half_ss  = LERP_FROM_A_B_TO_C_D(NODE_SIZE_PX, 0, (window_rect.right  - window_rect.left), 0, 2) / 2.0f;
     float node_height_half_ss = LERP_FROM_A_B_TO_C_D(NODE_SIZE_PX, 0, (window_rect.bottom - window_rect.top),  0, 2) / 2.0f;
@@ -1200,7 +1230,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment(ogl_c
                                                              segment_end_ss);
 
     /* Draw the background */
-    if (cursor_x_ss >= segment_start_ss && cursor_x_ss <= segment_end_ss)
+    if (cursor_x_ss >= segment_start_ss &&
+        cursor_x_ss <= segment_end_ss)
     {
         /* Highlight */
         bg_color[3] = 0.45f;
@@ -1225,8 +1256,11 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_segment(ogl_c
     HWND window_handle;
     RECT window_rect;
 
-    system_window_get_handle(descriptor_ptr->window, &window_handle);
-    ::GetWindowRect         (window_handle,          &window_rect);
+    system_window_get_property(descriptor_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &window_rect);
 
     float node_width_half_ss  = LERP_FROM_A_B_TO_C_D(NODE_SIZE_PX,
                                                      0,
@@ -1292,11 +1326,14 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                                               n_strings_used_ptr);
 
     /* Retrieve window properties */
-    HWND          window_handle;
-    RECT          window_rect;
+    HWND window_handle;
+    RECT window_rect;
 
-    system_window_get_handle(descriptor_ptr->window, &window_handle);
-    ::GetWindowRect         (window_handle,          &window_rect);
+    system_window_get_property(descriptor_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &window_rect);
 
     /* Before we move to drawing curve preview, make sure necessary data is already stored in VRAM */
     if (!system_hash64map_contains(descriptor_ptr->tcb_segments,
@@ -1558,19 +1595,28 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                                      0,
                                                      2) / 2.0f;
 
-    for (uint32_t n_node = 0; n_node < n_nodes; ++n_node)
+    for (uint32_t n_node = 0;
+                  n_node < n_nodes;
+                ++n_node)
     {
         curve_segment_node_id node_id;
         system_timeline_time  node_time;
 
-        if (curve_segment_get_node_in_order(segment, n_node,  &node_id)                                  &&
-            curve_segment_get_node         (segment, node_id, &node_time, descriptor_ptr->float_variant) )
+        if (curve_segment_get_node_in_order(segment,
+                                            n_node,
+                                           &node_id)                                  &&
+            curve_segment_get_node         (segment,
+                                            node_id,
+                                           &node_time,
+                                            descriptor_ptr->float_variant) )
         {
             uint32_t node_time_msec;
             float    node_value;
 
-            system_time_get_msec_for_timeline_time(node_time,                     &node_time_msec);
-            system_variant_get_float              (descriptor_ptr->float_variant, &node_value);
+            system_time_get_msec_for_timeline_time(node_time,
+                                                  &node_time_msec);
+            system_variant_get_float              (descriptor_ptr->float_variant,
+                                                  &node_value);
 
             float node_x_ss    = LERP_FROM_A_B_TO_C_D(node_time_msec,
                                                       descriptor_ptr->x1 * 1000.0f,
@@ -1586,7 +1632,10 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
             float node_x_end   = node_x_ss + node_width_half_ss;
             float node_y_start = node_y_ss - node_height_half_ss;
             float node_y_end   = node_y_ss + node_height_half_ss;
-            bool  is_node_lit  = (cursor_x_ss >= node_x_start && cursor_x_ss <= node_x_end && cursor_y_ss >= node_y_start && cursor_y_ss <= node_y_end);
+            bool  is_node_lit  = (cursor_x_ss >= node_x_start &&
+                                  cursor_x_ss <= node_x_end   &&
+                                  cursor_y_ss >= node_y_start &&
+                                  cursor_y_ss <= node_y_end);
 
             if (is_node_lit)
             {
@@ -1618,11 +1667,14 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
     /* We need to create a new context as rendering handler needs to be bound on a 1:1 basis. All contexts share namespaces
      * so we're on the safe side.
      **/
-    const char* string_table[] = {"Curve window renderer for ",
-                                  system_hashed_ansi_string_get_buffer(descriptor->name)
-                                 };
+    const char* string_table[] =
+    {
+        "Curve window renderer for ",
+        system_hashed_ansi_string_get_buffer(descriptor->name)
+    };
 
-    system_hashed_ansi_string full_name = system_hashed_ansi_string_create_by_merging_strings(2, string_table);
+    system_hashed_ansi_string full_name = system_hashed_ansi_string_create_by_merging_strings(2,
+                                                                                              string_table);
 
     descriptor->window = system_window_create_by_replacing_window(full_name,
                                                                   OGL_CONTEXT_TYPE_GL,
@@ -1674,18 +1726,23 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
     /* Hide the window we use for retrieving dimensions */
     RECT window_rect = {0};
 
-    ::GetClientRect(descriptor->view_window_handle, &window_rect);
-    ::ShowWindow   (descriptor->view_window_handle, SW_HIDE);
+    ::GetClientRect(descriptor->view_window_handle,
+                   &window_rect);
+    ::ShowWindow   (descriptor->view_window_handle,
+                    SW_HIDE);
 
     /* Create text renderer */
     float text_color[] = {1, 1, 1, 1};
     float text_scale   = 0.4f;
 
-    system_window_get_context(descriptor->window, &descriptor->context);
+    system_window_get_property(descriptor->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &descriptor->context);
 
     string_table[0] = "Curve window renderer text renderer for ";
 
-    descriptor->text_renderer = ogl_text_create(system_hashed_ansi_string_create_by_merging_strings(2, string_table),
+    descriptor->text_renderer = ogl_text_create(system_hashed_ansi_string_create_by_merging_strings(2,
+                                                                                                    string_table),
                                                 descriptor->context,
                                                 system_resources_get_meiryo_font_table(),
                                                 window_rect.right  - window_rect.left,
@@ -1718,7 +1775,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
     }
 
     /* Render one frame */
-    ogl_rendering_handler_play(descriptor->rendering_handler, 0);
+    ogl_rendering_handler_play(descriptor->rendering_handler,
+                               0);
 
     /* That's it */
     result = true;
@@ -1764,7 +1822,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
 }
 
 /** TODO */
-PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context context, void* not_used)
+PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context context,
+                                                              void*       not_used)
 {
     ASSERT_DEBUG_SYNC(_globals == NULL,
                       "Globals not null - reinitialization to take place!");
@@ -1861,7 +1920,9 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
                           "Could not attach static color vertex shader to static color program of curve window renderer.");
 
         result = ogl_program_link(_globals->static_color_program);
-        ASSERT_DEBUG_SYNC(result, "Could not link static color program for curve window renderer.");
+
+        ASSERT_DEBUG_SYNC(result,
+                          "Could not link static color program for curve window renderer.");
 
         /* Retrieve static color program's attribute & uniform locations */
         const ogl_program_uniform_descriptor* in_color_uniform_descriptor = NULL;
@@ -1891,7 +1952,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         _globals->curvebackground_program = curve_editor_program_curvebackground_create(context,
                                                                                         system_hashed_ansi_string_create("Global Curve Background") );
 
-        ASSERT_DEBUG_SYNC(_globals->curvebackground_program != NULL, "Could not create curve background program.");
+        ASSERT_DEBUG_SYNC(_globals->curvebackground_program != NULL,
+                          "Could not create curve background program.");
 
         _globals->curvebackground_colors_location    = curve_editor_program_curvebackground_get_colors_uniform_location   (_globals->curvebackground_program);
         _globals->curvebackground_positions_location = curve_editor_program_curvebackground_get_positions_uniform_location(_globals->curvebackground_program);
@@ -1901,7 +1963,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         _globals->static_curve_program = curve_editor_program_static_create(context,
                                                                             system_hashed_ansi_string_create("Global Curve Static") );
 
-        ASSERT_DEBUG_SYNC(_globals->static_curve_program != NULL, "Could not create static curve program.");
+        ASSERT_DEBUG_SYNC(_globals->static_curve_program != NULL,
+                          "Could not create static curve program.");
 
         _globals->static_curve_pos1_location = curve_editor_program_static_get_pos1_uniform_location(_globals->static_curve_program);
         _globals->static_curve_pos2_location = curve_editor_program_static_get_pos2_uniform_location(_globals->static_curve_program);
@@ -1910,7 +1973,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         _globals->lerp_curve_program = curve_editor_program_lerp_create(context,
                                                                         system_hashed_ansi_string_create("Global Curve LERP") );
 
-        ASSERT_DEBUG_SYNC(_globals->lerp_curve_program != NULL, "Could not create lerp curve program.");
+        ASSERT_DEBUG_SYNC(_globals->lerp_curve_program != NULL,
+                          "Could not create lerp curve program.");
 
         _globals->lerp_curve_pos1_location = curve_editor_program_lerp_get_pos1_uniform_location(_globals->lerp_curve_program);
         _globals->lerp_curve_pos2_location = curve_editor_program_lerp_get_pos2_uniform_location(_globals->lerp_curve_program);
@@ -1919,7 +1983,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         _globals->tcb_curve_program = curve_editor_program_tcb_create(context,
                                                                       system_hashed_ansi_string_create("Global Curve TCB") );
 
-        ASSERT_DEBUG_SYNC(_globals->tcb_curve_program != NULL, "Could not create tcb curve program.");
+        ASSERT_DEBUG_SYNC(_globals->tcb_curve_program != NULL,
+                          "Could not create tcb curve program.");
 
         _globals->tcb_curve_delta_time_location   = curve_editor_program_tcb_get_delta_time_uniform_location  (_globals->tcb_curve_program);
         _globals->tcb_curve_delta_x_location      = curve_editor_program_tcb_get_delta_x_uniform_location     (_globals->tcb_curve_program);
@@ -1949,7 +2014,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         system_time_get_msec_for_timeline_time(end_time - start_time,
                                               &execution_time_msec);
 
-        LOG_INFO("Time to initialize curve window renderer: %d ms", execution_time_msec);
+        LOG_INFO("Time to initialize curve window renderer: %d ms",
+                 execution_time_msec);
 
         /* Mark initialization as done */
         _is_globals_initialized = true;
@@ -1965,7 +2031,9 @@ PRIVATE void _curve_editor_curve_window_renderer_init_tcb_segment_rendering(ogl_
 {
     _tcb_segment_rendering* new_descriptor = new (std::nothrow) _tcb_segment_rendering;
 
-    ASSERT_DEBUG_SYNC(new_descriptor != NULL, "Could not allocate space for _tcb_segment_rendering");
+    ASSERT_DEBUG_SYNC(new_descriptor != NULL,
+                      "Could not allocate space for _tcb_segment_rendering");
+
     if (new_descriptor != NULL)
     {
         entry_points->pGLGenBuffers(1,
@@ -2019,10 +2087,11 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_down(system_wind
     _curve_editor_curve_window_renderer* renderer_ptr = (_curve_editor_curve_window_renderer*) renderer;
     HWND                                 window_handle;
 
-    system_window_get_handle(renderer_ptr->window,
-                            &window_handle);
-    ::GetWindowRect         (window_handle,
-                            &renderer_ptr->quadselector_window_rect);
+    system_window_get_property(renderer_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &renderer_ptr->quadselector_window_rect);
 
     renderer_ptr->is_left_button_down           = true;
     renderer_ptr->left_button_click_location[0] = x;
@@ -2115,7 +2184,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_down(system_wind
     }
 
     /* Redraw just in case */
-    ogl_rendering_handler_play(renderer_ptr->rendering_handler, 0);
+    ogl_rendering_handler_play(renderer_ptr->rendering_handler,
+                               0);
 
     /* Enable capturing */
     ::SetCapture(window_handle);
@@ -2179,8 +2249,9 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_up(system_window
         system_context_menu  context_menu         = system_context_menu_create(system_hashed_ansi_string_create("Segment type chooser") );
         system_window_handle system_window_handle = NULL;
 
-        system_window_get_handle(window_handle,
-                                &system_window_handle);
+        system_window_get_property(window_handle,
+                                   SYSTEM_WINDOW_PROPERTY_HANDLE,
+                                  &system_window_handle);
 
         system_context_menu_append_item(context_menu,
                                         system_hashed_ansi_string_create("Static segment"),
@@ -2216,8 +2287,11 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_up(system_window
         HWND window;
         RECT window_rect;
 
-        system_window_get_handle(renderer_ptr->window, &window);
-        ::GetWindowRect         (window,               &window_rect);
+        system_window_get_property(renderer_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_HANDLE,
+                                  &window);
+        ::GetWindowRect           (window,
+                                  &window_rect);
 
         curve_segment_id     clicked_segment_id = -1;
         float                clicked_time_msec  = LERP_FROM_A_B_TO_C_D                  (x,
@@ -2319,10 +2393,11 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_right_button_up(system_windo
     HWND window_system_handle;
     RECT window_rect;
 
-    system_window_get_handle(renderer_ptr->window,
-                            &window_system_handle);
-    ::GetWindowRect         (window_system_handle,
-                            &window_rect);
+    system_window_get_property(renderer_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_system_handle);
+    ::GetWindowRect           (window_system_handle,
+                              &window_rect);
 
     float                hover_time_s             = LERP_FROM_A_B_TO_C_D                  ((x - window_rect.left),
                                                                                            0,
@@ -2346,8 +2421,9 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_right_button_up(system_windo
         system_context_menu  context_menu         = system_context_menu_create(system_hashed_ansi_string_create("Node options chooser") );
         system_window_handle system_window_handle = NULL;
 
-        system_window_get_handle(window_handle,
-                                &system_window_handle);
+        system_window_get_property(window_handle,
+                                   SYSTEM_WINDOW_PROPERTY_HANDLE,
+                                  &system_window_handle);
 
         if (renderer_ptr->selected_node_id != -1)
         {
@@ -2394,22 +2470,23 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
         !renderer_ptr->segmentmove_mode_active  &&
         !renderer_ptr->segmentresize_mode_active)
     {
-        int width_pixels  = 0;
-        int height_pixels = 0;
+        int size_pixels[2] = {0};
 
-        system_window_get_dimensions(window, &width_pixels, &height_pixels);
+        system_window_get_property(renderer_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   size_pixels);
 
         /* Scrolling .. */
         LONG  dx_pixels =  LONG(renderer_ptr->left_button_click_location[0]) - x;
         LONG  dy_pixels =  LONG(renderer_ptr->left_button_click_location[1]) - y;
         float dx_units  =  LERP_FROM_A_B_TO_C_D(dx_pixels,
                                                 0,
-                                                width_pixels,
+                                                size_pixels[0],
                                                 0,
                                                 renderer_ptr->x_width);
         float dy_units  = -LERP_FROM_A_B_TO_C_D(dy_pixels,
                                                 0,
-                                                height_pixels,
+                                                size_pixels[1],
                                                 0,
                                                 renderer_ptr->y_height);
 
@@ -2421,8 +2498,11 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_mouse_move(system_window    
     HWND window_handle;
     RECT window_rect;
 
-    system_window_get_handle(window,        &window_handle);
-    ::GetWindowRect         (window_handle, &window_rect);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
+    ::GetWindowRect           (window_handle,
+                              &window_rect);
 
     renderer_ptr->mouse_x = x - window_rect.left;
     renderer_ptr->mouse_y = y - window_rect.top;
@@ -2833,8 +2913,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
     _curve_editor_curve_window_renderer* descriptor_ptr      = (_curve_editor_curve_window_renderer*) descriptor;
     const ogl_context_gl_entrypoints*    entry_points        = NULL;
     int                                  n_text_strings_used = 0;
-    int                                  window_height       = 0;
-    int                                  window_width        = 0;
+    int                                  window_size[2]      = {0};
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -2857,13 +2936,15 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
     entry_points->pGLBindVertexArray(vao_id);
     {
         /* Retrieve window dimensions */
-        system_window_get_dimensions(descriptor_ptr->window,
-                                    &window_width,
-                                    &window_height);
+        system_window_get_property(descriptor_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
         /* Draw background */
         entry_points->pGLUseProgram(ogl_program_get_id(_globals->bg_program) );
-        entry_points->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                    0,
+                                    4);
 
         /* Draw axes */
         float axis_x    = LERP_FROM_A_B_TO_C_D(0,
@@ -2875,7 +2956,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                               -1,
                                                1,
                                                0,
-                                               window_width);
+                                               window_size[0]);
         float axis_y    = LERP_FROM_A_B_TO_C_D(0,
                                                descriptor_ptr->y1,
                                                (descriptor_ptr->y1 + descriptor_ptr->y_height),
@@ -2885,7 +2966,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                               -1,
                                                1,
                                                0,
-                                               window_height);
+                                               window_size[1]);
 
         const float horizontal_a[4]     = {-1,       axis_y, 0, 1};
         const float horizontal_b[4]     = { 1,       axis_y, 0, 1};
@@ -2894,8 +2975,9 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         const float identity_matrix[16] = {1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
         const float color[4]            = COLOR_AXES;
 
-        entry_points->pGLBlendFunc(GL_SRC_ALPHA, GL_DST_ALPHA);
-        entry_points->pGLEnable(GL_BLEND);
+        entry_points->pGLBlendFunc(GL_SRC_ALPHA,
+                                   GL_DST_ALPHA);
+        entry_points->pGLEnable   (GL_BLEND);
         {
             GLuint program_id = ogl_program_get_id(_globals->static_color_program);
 
@@ -2943,7 +3025,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         /* Calculate separator width */
         horizontal_separator_width = LERP_FROM_A_B_TO_C_D(WIDTH_SEPARATOR_PX,
                                                           0,
-                                                          window_width,
+                                                          window_size[0],
                                                           0,
                                                           descriptor_ptr->x_width);
 
@@ -2952,26 +3034,26 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                                                  descriptor_ptr->x1,
                                                                  (descriptor_ptr->x1 + descriptor_ptr->x_width),
                                                                  0,
-                                                                 window_width);
+                                                                 window_size[0]);
         int   origin_y_px           = (int) LERP_FROM_A_B_TO_C_D(0,
                                                                  descriptor_ptr->y1,
                                                                  (descriptor_ptr->y1 + descriptor_ptr->y_height),
                                                                  0,
-                                                                 window_height);
+                                                                 window_size[1]);
 
-        int   n_separators_per_view = int(float(window_width) / float(WIDTH_SEPARATOR_PX) );
+        int   n_separators_per_view = int(float(window_size[0]) / float(WIDTH_SEPARATOR_PX) );
         int   separator_y_px_1      = (int) axis_y_px - int(LENGTH_SEPARATORS_PX >> 1);
         int   separator_y_px_2      = (int) axis_y_px + int(LENGTH_SEPARATORS_PX >> 1);
         int   separator_x_px        = n_separators_per_view * WIDTH_SEPARATOR_PX + origin_x_px % WIDTH_SEPARATOR_PX;
 
         float separator_y1_ss       = LERP_FROM_A_B_TO_C_D(separator_y_px_1,
                                                            0,
-                                                           window_height,
+                                                           window_size[1],
                                                           -1,
                                                           1);
         float separator_y2_ss       = LERP_FROM_A_B_TO_C_D(separator_y_px_2,
                                                            0,
-                                                           window_height,
+                                                           window_size[1],
                                                           -1,
                                                           1);
 
@@ -2981,7 +3063,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                  n_separator <= n_separators_per_view;
                ++n_separator)
         {
-            if (separator_x_px >= 0 && separator_x_px <= window_width)
+            if (separator_x_px >= 0 && separator_x_px <= window_size[0])
             {
                 const GLuint program_id = ogl_program_get_id(_globals->static_color_program);
 
@@ -2989,7 +3071,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
 
                 float separator_x_ss  = LERP_FROM_A_B_TO_C_D(separator_x_px,
                                                              0,
-                                                             window_width - WIDTH_SEPARATORS,
+                                                             window_size[0] - WIDTH_SEPARATORS,
                                                             -1,
                                                              1);
                 float a[4]            = {separator_x_ss, separator_y1_ss, 0, 1};
@@ -3011,11 +3093,14 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                 char  buffer[32];
                 float value = LERP_FROM_A_B_TO_C_D(separator_x_px,
                                                    0,
-                                                   window_width,
+                                                   window_size[0],
                                                    descriptor_ptr->x1,
                                                    (descriptor_ptr->x1 + descriptor_ptr->x_width) );
 
-                sprintf_s(buffer, 32, "%8.2f", value);
+                sprintf_s(buffer,
+                          32,
+                          "%8.2f",
+                          value);
 
                 ogl_text_set(descriptor_ptr->text_renderer,
                              n_text_strings_used,
@@ -3036,7 +3121,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
 
                 int text_x          = separator_x_px - text_width / 2;
                 int text_position[] = {text_x,
-                                       window_height - separator_y_px_1 + (LENGTH_SEPARATORS_PX >> 1) + TEXT_SEPARATOR_DISTANCE_PX};
+                                       window_size[1] - separator_y_px_1 + (LENGTH_SEPARATORS_PX >> 1) + TEXT_SEPARATOR_DISTANCE_PX};
 
                 if (n_text_strings_used < descriptor_ptr->n_text_strings)
                 {
@@ -3053,19 +3138,19 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         }
 
         /* And for the vertical ones */
-        n_separators_per_view = int(float(window_height) / float (WIDTH_SEPARATOR_PX) );
+        n_separators_per_view = int(float(window_size[1]) / float (WIDTH_SEPARATOR_PX) );
         
-        int   bottom_separator_index = int(window_height / HEIGHT_SEPARATORS_PX);
+        int   bottom_separator_index = int(window_size[1] / HEIGHT_SEPARATORS_PX);
         int   separator_x_px_1       = (int) axis_x_px - int(LENGTH_SEPARATORS_PX >> 1);
         int   separator_x_px_2       = (int) axis_x_px + int(LENGTH_SEPARATORS_PX >> 1);
         float separator_x1_ss        = LERP_FROM_A_B_TO_C_D(separator_x_px_1,
                                                             0,
-                                                            window_width,
+                                                            window_size[0],
                                                            -1,
                                                             1);
         float separator_x2_ss        = LERP_FROM_A_B_TO_C_D(separator_x_px_2,
                                                             0,
-                                                            window_width,
+                                                            window_size[0],
                                                            -1,
                                                             1);
 
@@ -3079,7 +3164,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
 
             float bottom_y_ss  = LERP_FROM_A_B_TO_C_D(bottom_y_px,
                                                       0,
-                                                      window_height - WIDTH_SEPARATORS,
+                                                      window_size[1] - WIDTH_SEPARATORS,
                                                      -1,
                                                       1);
             float a[4]         = {separator_x1_ss, bottom_y_ss, 0, 1};
@@ -3103,11 +3188,14 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                 char  buffer[32];
                 float value = LERP_FROM_A_B_TO_C_D(bottom_y_px + HEIGHT_SEPARATORS_PX,
                                                    0,
-                                                   window_height,
+                                                   window_size[1],
                                                    descriptor_ptr->y1,
                                                    (descriptor_ptr->y1 + descriptor_ptr->y_height) );
 
-                sprintf_s(buffer, 32, "%8.2f", value);
+                sprintf_s(buffer,
+                          32,
+                          "%8.2f",
+                          value);
 
                 ogl_text_set(descriptor_ptr->text_renderer,
                              n_text_strings_used,
@@ -3127,7 +3215,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                                  &text_width);
 
                 int text_x          = separator_x_px_2 - TEXT_SEPARATOR_DISTANCE_PX;
-                int text_y          = window_height - bottom_y_px + text_height / 4;
+                int text_y          = window_size[1] - bottom_y_px + text_height / 4;
                 int text_position[] = {text_x, text_y};
 
                 ogl_text_set_text_string_property(descriptor_ptr->text_renderer,
@@ -3145,11 +3233,11 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         int                       text_position[2] = {0};
         float                     x_value          = LERP_FROM_A_B_TO_C_D(descriptor_ptr->mouse_x,
                                                                           0,
-                                                                          window_width,
+                                                                          window_size[0],
                                                                           descriptor_ptr->x1,
                                                                           (descriptor_ptr->x1 + descriptor_ptr->x_width) );
         float                     y_value          = LERP_FROM_A_B_TO_C_D(descriptor_ptr->mouse_y,
-                                                                          window_height,
+                                                                          window_size[1],
                                                                           0,
                                                                           descriptor_ptr->y1,
                                                                           (descriptor_ptr->y1 + descriptor_ptr->y_height));
@@ -3205,12 +3293,15 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         {
             uint32_t n_missing_strings = n_text_strings_used - descriptor_ptr->n_text_strings;
 
-            for (uint32_t n = 0; n < n_missing_strings; ++n)
+            for (uint32_t n = 0;
+                          n < n_missing_strings;
+                        ++n)
             {
                 ogl_text_add_string(descriptor_ptr->text_renderer);
             } /* for (uint32_t n = 0; n < n_missing_strings; ++n) */
 
-            LOG_FATAL("Added [%d] text strings to text renderer instance", n_missing_strings);
+            LOG_FATAL("Added [%d] text strings to text renderer instance",
+                      n_missing_strings);
 
             descriptor_ptr->n_text_strings = n_text_strings_used;
         }
@@ -3249,8 +3340,9 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
             positions[8]  = x2;
             positions[12] = x1;
 
-            entry_points->pGLBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            entry_points->pGLEnable(GL_BLEND);
+            entry_points->pGLBlendFunc(GL_SRC_ALPHA,
+                                       GL_ONE_MINUS_SRC_ALPHA);
+            entry_points->pGLEnable   (GL_BLEND);
             {
                 entry_points->pGLUseProgram       (_globals->quadselector_program_id);
                 entry_points->pGLProgramUniform1f (_globals->quadselector_program_id,
@@ -3276,7 +3368,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
             float positions [16] = {0, -1, 0, 1, 0, -1, 0, 1,  0, 1, 0, 1,  0, 1, 0, 1};
             float mouse_x        = LERP_FROM_A_B_TO_C_D(descriptor_ptr->mouse_x,
                                                         0,
-                                                        window_width,
+                                                        window_size[0],
                                                        -1,
                                                        1);
             float mouse_y        = LERP_FROM_A_B_TO_C_D(descriptor_ptr->mouse_y_value,
@@ -3284,10 +3376,10 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                                         descriptor_ptr->y1 + descriptor_ptr->y_height,
                                                        -1,
                                                         1);
-            float x1             = mouse_x - float(VALUE_PREVIEW_WIDTH_HALF)  / window_width;
-            float x2             = mouse_x + float(VALUE_PREVIEW_WIDTH_HALF)  / window_width;
-            float y1             = mouse_y - float(VALUE_PREVIEW_HEIGHT_HALF) / window_height;
-            float y2             = mouse_y + float(VALUE_PREVIEW_HEIGHT_HALF) / window_height;
+            float x1             = mouse_x - float(VALUE_PREVIEW_WIDTH_HALF)  / window_size[0];
+            float x2             = mouse_x + float(VALUE_PREVIEW_WIDTH_HALF)  / window_size[0];
+            float y1             = mouse_y - float(VALUE_PREVIEW_HEIGHT_HALF) / window_size[1];
+            float y2             = mouse_y + float(VALUE_PREVIEW_HEIGHT_HALF) / window_size[1];
 
             positions[0]  = x1;
             positions[1]  = y2;
@@ -3327,14 +3419,17 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
                                                                 const ogl_context_gl_entrypoints*          entry_points)
 {
     float* storage = new (std::nothrow) float[8 * n];
-    
-    ASSERT_ALWAYS_SYNC(storage != NULL, "Could not allocate memory for TCB UBO update operation.");
+
+    ASSERT_ALWAYS_SYNC(storage != NULL,
+                       "Could not allocate memory for TCB UBO update operation.");
     if (storage != NULL)
     {
         /* Fill RAM representation */
         system_variant variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
-        for (uint32_t index = start_index; index < start_index + n; index++)
+        for (uint32_t index = start_index;
+                      index < start_index + n;
+                      index++)
         {
             float                 node_bias;
             float                 node_continuity;
@@ -3344,20 +3439,39 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
             uint32_t              node_time_msec;
             float                 node_value;
 
-            curve_segment_get_node_by_index(segment, index,   &node_id);
-            curve_segment_get_node         (segment, node_id, &node_time, variant);
-            system_variant_get_float       (variant, &node_value);
+            curve_segment_get_node_by_index(segment,
+                                            index,
+                                           &node_id);
+            curve_segment_get_node         (segment,
+                                            node_id,
+                                           &node_time,
+                                            variant);
+            system_variant_get_float       (variant,
+                                           &node_value);
 
-            curve_segment_get_node_property(segment, node_id, CURVE_SEGMENT_NODE_PROPERTY_BIAS, variant);
-            system_variant_get_float       (variant, &node_bias);
+            curve_segment_get_node_property(segment,
+                                            node_id,
+                                            CURVE_SEGMENT_NODE_PROPERTY_BIAS,
+                                            variant);
+            system_variant_get_float       (variant,
+                                           &node_bias);
 
-            curve_segment_get_node_property(segment, node_id, CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY, variant);
-            system_variant_get_float       (variant, &node_continuity);
+            curve_segment_get_node_property(segment,
+                                            node_id,
+                                            CURVE_SEGMENT_NODE_PROPERTY_CONTINUITY,
+                                            variant);
+            system_variant_get_float       (variant,
+                                           &node_continuity);
 
-            curve_segment_get_node_property(segment, node_id, CURVE_SEGMENT_NODE_PROPERTY_TENSION, variant);
-            system_variant_get_float       (variant, &node_tension);
+            curve_segment_get_node_property(segment,
+                                            node_id,
+                                            CURVE_SEGMENT_NODE_PROPERTY_TENSION,
+                                            variant);
+            system_variant_get_float       (variant,
+                                           &node_tension);
 
-            system_time_get_msec_for_timeline_time(node_time, &node_time_msec);
+            system_time_get_msec_for_timeline_time(node_time,
+                                                  &node_time_msec);
 
             storage[8*(index - start_index)    ] = node_bias;
             storage[8*(index - start_index) + 1] = node_continuity;
@@ -3373,7 +3487,8 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
         /* Blit to VRAM */
         if (!is_ubo_initialized)
         {
-            ASSERT_DEBUG_SYNC(start_index == 0, "Start index != 0 when reinitializing UBO contents.");
+            ASSERT_DEBUG_SYNC(start_index == 0,
+                              "Start index != 0 when reinitializing UBO contents.");
 
             entry_points->pGLBindBuffer(GL_ARRAY_BUFFER,
                                         ubo_id);
@@ -3391,7 +3506,8 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
                                            8 * n * sizeof(float), storage);
         }
 
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR, "Error when updating TCB UBO");
+        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
+                          "Error when updating TCB UBO");
 
         /* Free storage */
         delete [] storage;

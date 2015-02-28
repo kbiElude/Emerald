@@ -32,16 +32,26 @@
 #define N_START_CONTROLS     (4)
 
 /** Internal types */
-typedef void (*PFNOGLUIDEINITPROCPTR)        (      void* internal_instance);
-typedef void (*PFNOGLUIDRAWPROCPTR)          (      void* internal_instance);
-typedef void (*PFNOGLUIGETPROPERTYPROCPTR)   (const void* internal_instance, int          property_value, void* out_result);
-typedef void (*PFNOGLUIHOVERPROCPTR)         (      void* internal_instance, const float* xy_screen_norm);
-typedef bool (*PFNOGLUIISOVERPROCPTR)        (      void* internal_instance, const float* xy);
-typedef void (*PFNOGLUIONLBMDOWNPROCPTR)     (      void* internal_instance, const float* xy);
-typedef void (*PFNOGLUIONLBMUPPROCPTR)       (      void* internal_instance, const float* xy);
-typedef void (*PFNOGLUIONMOUSEMOVEPROCPTR)   (      void* internal_instance, const float* xy);
-typedef void (*PFNOGLUIONMOUSEWHEELPROCPTR)  (      void* internal_instance, float        wheel_delta);
-typedef void (*PFNOGLUISETPROPERTYPROCPTR)   (      void* internal_instance, int          property_value, const void* data);
+typedef void (*PFNOGLUIDEINITPROCPTR)        (      void*  internal_instance);
+typedef void (*PFNOGLUIDRAWPROCPTR)          (      void*  internal_instance);
+typedef void (*PFNOGLUIGETPROPERTYPROCPTR)   (const void*  internal_instance,
+                                                    int    property_value,
+                                                    void*  out_result);
+typedef void (*PFNOGLUIHOVERPROCPTR)         (      void*  internal_instance,
+                                              const float* xy_screen_norm);
+typedef bool (*PFNOGLUIISOVERPROCPTR)        (      void*  internal_instance,
+                                              const float* xy);
+typedef void (*PFNOGLUIONLBMDOWNPROCPTR)     (      void*  internal_instance,
+                                              const float* xy);
+typedef void (*PFNOGLUIONLBMUPPROCPTR)       (      void*  internal_instance,
+                                              const float* xy);
+typedef void (*PFNOGLUIONMOUSEMOVEPROCPTR)   (      void*  internal_instance,
+                                              const float* xy);
+typedef void (*PFNOGLUIONMOUSEWHEELPROCPTR)  (      void*  internal_instance,
+                                              float        wheel_delta);
+typedef void (*PFNOGLUISETPROPERTYPROCPTR)   (      void*  internal_instance,
+                                              int          property_value,
+                                              const void*  data);
 
 typedef struct _ogl_ui_callback
 {
@@ -141,7 +151,9 @@ PRIVATE void* _ogl_ui_get_internal_control_ptr(__in __notnull                   
 PRIVATE void  _ogl_ui_release                 (__in __notnull __deallocate(mem) void*);
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_ui, ogl_ui, _ogl_ui);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_ui,
+                               ogl_ui,
+                              _ogl_ui);
 
 /** TODO */
 PRIVATE void _ogl_ui_control_deinit(__in __notnull _ogl_ui_control* ui_control_ptr)
@@ -284,7 +296,9 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
 
                 result = system_hash64map_remove(ui_ptr->registered_ui_control_callbacks,
                                                  ui_callback_hash);
-                ASSERT_ALWAYS_SYNC(result, "Could not remove UI callback descriptor");
+
+                ASSERT_ALWAYS_SYNC(result,
+                                   "Could not remove UI callback descriptor");
             }
         }
 
@@ -311,7 +325,8 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
                 result = system_hash64map_remove(ui_ptr->registered_ui_control_programs,
                                                  ui_control_program_name_hash);
 
-                ASSERT_ALWAYS_SYNC(result, "Could not remove UI control descriptor");
+                ASSERT_ALWAYS_SYNC(result,
+                                   "Could not remove UI control descriptor");
             } /* if (system_hash64map_get_element_at(ui_ptr->registered_ui_control_programs, 0, &ui_control_ptr, &ui_control_name_hash) ) */
         }
 
@@ -456,23 +471,21 @@ PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
 
     if (!ui_ptr->current_lbm_status)
     {
-        float click_xy[2]   = {0};
-        int   window_height = 0;
-        int   window_width  = 0;
-        int   window_x      = 0;
-        int   window_y      = 0;
+        float click_xy       [2] = {0};
+        int   window_position[2] = {0};
+        int   window_size    [2] = {0};
 
-        system_window_get_dimensions(ui_ptr->window,
-                                    &window_width,
-                                    &window_height);
-        system_window_get_position  (ui_ptr->window,
-                                    &window_x,
-                                    &window_y);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_POSITION,
+                                   window_position);
 
-        click_xy[0] = float(x - window_x) / float(window_width);
-        click_xy[1] = float(y - window_y) / float(window_height);
+        click_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+        click_xy[1] = float(y - window_position[1]) / float(window_size[1]);
 
-        /* Iterate through controls and see if any is in the area. If so, notify of the event 
+        /* Iterate through controls and see if any is in the area. If so, notify of the event
          *
          * NOTE: This has got nothing to do with rendering - the handler will NOT be called from a rendering thread.
          */
@@ -518,23 +531,21 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
 
     if (ui_ptr->current_lbm_status)
     {
-        float click_xy[2]   = {0};
-        int   window_height = 0;
-        int   window_width  = 0;
-        int   window_x      = 0;
-        int   window_y      = 0;
+        float click_xy       [2] = {0};
+        int   window_position[2] = {0};
+        int   window_size    [2] = {0};
 
-        system_window_get_dimensions(ui_ptr->window,
-                                    &window_width,
-                                    &window_height);
-        system_window_get_position  (ui_ptr->window,
-                                    &window_x,
-                                    &window_y);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_POSITION,
+                                   window_position);
 
         system_critical_section_enter(ui_ptr->rendering_cs);
         {
-            click_xy[0] = float(x - window_x) / float(window_width);
-            click_xy[1] = float(y - window_y) / float(window_height);
+            click_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+            click_xy[1] = float(y - window_position[1]) / float(window_size[1]);
         }
         system_critical_section_leave(ui_ptr->rendering_cs);
 
@@ -577,23 +588,21 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
                                             system_window_vk_status vk_status,
                                             void*                   ui_instance)
 {
-    int      window_height = 0;
-    int      window_width  = 0;
-    int      window_x      = 0;
-    int      window_y      = 0;
-    _ogl_ui* ui_ptr        = (_ogl_ui*) ui_instance;
+    int      window_position[2] = {0};
+    int      window_size    [2] = {0};
+    _ogl_ui* ui_ptr             = (_ogl_ui*) ui_instance;
 
-    system_window_get_dimensions(ui_ptr->window,
-                                &window_width,
-                                &window_height);
-    system_window_get_position  (ui_ptr->window,
-                                &window_x,
-                                &window_y);
+    system_window_get_property(ui_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
+    system_window_get_property(ui_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_POSITION,
+                               window_position);
 
     system_critical_section_enter(ui_ptr->rendering_cs);
     {
-        ui_ptr->current_mouse_xy[0] = float(x - window_x) / float(window_width);
-        ui_ptr->current_mouse_xy[1] = float(y - window_y) / float(window_height);
+        ui_ptr->current_mouse_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+        ui_ptr->current_mouse_xy[1] = float(y - window_position[1]) / float(window_size[1]);
     }
     system_critical_section_leave(ui_ptr->rendering_cs);
 
@@ -643,24 +652,22 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
                                              system_window_vk_status vk_status,
                                              void*                   ui_instance)
 {
-    bool     handled       = false;
-    int      window_height = 0;
-    int      window_width  = 0;
-    int      window_x      = 0;
-    int      window_y      = 0;
-    _ogl_ui* ui_ptr        = (_ogl_ui*) ui_instance;
+    bool     handled            = false;
+    int      window_position[2] = {0};
+    int      window_size    [2] = {0};
+    _ogl_ui* ui_ptr             = (_ogl_ui*) ui_instance;
 
-    system_window_get_dimensions(ui_ptr->window,
-                                &window_width,
-                                &window_height);
-    system_window_get_position  (ui_ptr->window,
-                                &window_x,
-                                &window_y);
+    system_window_get_property(ui_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
+    system_window_get_property(ui_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_POSITION,
+                               window_position);
 
     system_critical_section_enter(ui_ptr->rendering_cs);
     {
-        ui_ptr->current_mouse_xy[0] = float(x - window_x) / float(window_width);
-        ui_ptr->current_mouse_xy[1] = float(y - window_y) / float(window_height);
+        ui_ptr->current_mouse_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+        ui_ptr->current_mouse_xy[1] = float(y - window_position[1]) / float(window_size[1]);
     }
     system_critical_section_leave(ui_ptr->rendering_cs);
 
@@ -717,15 +724,16 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   o
                        "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
-        void* new_internal  = NULL;
-        int   window_height = 0;
-        int   window_width  = 0;
-        float x2y2[2]       = {0};
+        void* new_internal   = NULL;
+        int   window_size[2] = {0};
+        float x2y2       [2] = {0};
 
-        system_window_get_dimensions(ui_ptr->window, &window_width, &window_height);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
-        x2y2[0]      = x1y1[0] + 100.0f / window_width;
-        x2y2[1]      = x1y1[1] + 20.0f  / window_height;
+        x2y2[0]      = x1y1[0] + 100.0f / window_size[0];
+        x2y2[1]      = x1y1[1] + 20.0f  / window_size[1];
         new_internal = ogl_ui_button_init(ui_instance,
                                           ui_ptr->text_renderer,
                                           name,
@@ -776,17 +784,16 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
 
     if (new_ui_control_ptr != NULL)
     {
-        void* new_internal  = NULL;
-        int   window_height = 0;
-        int   window_width  = 0;
-        float x2y2[2]       = {0};
+        void* new_internal   = NULL;
+        int   window_size[2] = {0};
+        float x2y2       [2] = {0};
 
-        system_window_get_dimensions(ui_ptr->window,
-                                    &window_width,
-                                    &window_height);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
-        x2y2[0]      = x1y1[0] + 100.0f / window_width;
-        x2y2[1]      = x1y1[1] + 20.0f  / window_height;
+        x2y2[0]      = x1y1[0] + 100.0f / window_size[0];
+        x2y2[1]      = x1y1[1] + 20.0f  / window_size[1];
         new_internal = ogl_ui_checkbox_init(ui_instance,
                                             ui_ptr->text_renderer,
                                             name,
@@ -795,7 +802,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
                                             fire_user_arg,
                                             default_status);
 
-        memset(new_ui_control_ptr, 0, sizeof(_ogl_ui_control) );
+        memset(new_ui_control_ptr,
+               0,
+               sizeof(_ogl_ui_control) );
 
         new_ui_control_ptr->internal                    = new_internal;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_checkbox_deinit;
@@ -837,14 +846,13 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
                        "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
-        void* new_internal  = NULL;
-        int   window_height = 0;
-        int   window_width  = 0;
-        float x2y2[2]       = {0};
+        void* new_internal   = NULL;
+        int   window_size[2] = {0};
+        float x2y2       [2] = {0};
 
-        system_window_get_dimensions(ui_ptr->window,
-                                     &window_width,
-                                     &window_height);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
         new_internal = ogl_ui_dropdown_init(ui_instance,
                                             ui_ptr->text_renderer,
@@ -990,17 +998,16 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
                        "Out of memory");
     if (new_ui_control_ptr != NULL)
     {
-        void* new_internal  = NULL;
-        int   window_height = 0;
-        int   window_width  = 0;
-        float x2y2[2]       = {0};
+        void* new_internal   = NULL;
+        int   window_size[2] = {0};
+        float x2y2       [2] = {0};
 
-        system_window_get_dimensions(ui_ptr->window,
-                                    &window_width,
-                                    &window_height);
+        system_window_get_property(ui_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   window_size);
 
-        x2y2[0] = x1y1[0] + 100.0f / window_width;
-        x2y2[1] = x1y1[1] + 36.0f  / window_height;
+        x2y2[0] = x1y1[0] + 100.0f / window_size[0];
+        x2y2[1] = x1y1[1] + 36.0f  / window_size[1];
 
         new_internal = ogl_ui_scrollbar_init(ui_instance,
                                              ui_ptr->text_renderer,

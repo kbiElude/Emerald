@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -89,26 +89,37 @@ PRIVATE void _ogl_ui_button_init_program(__in __notnull ogl_ui          ui,
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("UI button fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create(context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("UI button vertex shader") );
+    ogl_shader  fragment_shader = ogl_shader_create (context,
+                                                     SHADER_TYPE_FRAGMENT,
+                                                     system_hashed_ansi_string_create("UI button fragment shader") );
+    ogl_shader  vertex_shader   = ogl_shader_create (context,
+                                                     SHADER_TYPE_VERTEX,
+                                                     system_hashed_ansi_string_create("UI button vertex shader") );
 
-    button_ptr->program = ogl_program_create(context, system_hashed_ansi_string_create("UI button program") );
+    button_ptr->program = ogl_program_create(context,
+                                             system_hashed_ansi_string_create("UI button program") );
 
     /* Set up shaders */
-    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create(ui_button_fragment_shader_body) );
-    ogl_shader_set_body(vertex_shader,   system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
+    ogl_shader_set_body(fragment_shader,
+                        system_hashed_ansi_string_create(ui_button_fragment_shader_body) );
+    ogl_shader_set_body(vertex_shader,
+                        system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
 
     ogl_shader_compile(fragment_shader);
     ogl_shader_compile(vertex_shader);
 
     /* Set up program object */
-    ogl_program_attach_shader(button_ptr->program, fragment_shader);
-    ogl_program_attach_shader(button_ptr->program, vertex_shader);
+    ogl_program_attach_shader(button_ptr->program,
+                              fragment_shader);
+    ogl_program_attach_shader(button_ptr->program,
+                              vertex_shader);
 
     ogl_program_link(button_ptr->program);
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui, ui_button_program_name, button_ptr->program);
+    ogl_ui_register_program(ui,
+                            ui_button_program_name,
+                            button_ptr->program);
 
     /* Release shaders we will no longer need */
     ogl_shader_release(fragment_shader);
@@ -118,23 +129,17 @@ PRIVATE void _ogl_ui_button_init_program(__in __notnull ogl_ui          ui,
 /** TODO */
 PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* button)
 {
-    _ogl_ui_button* button_ptr      = (_ogl_ui_button*) button;
-    const GLuint    program_id      = ogl_program_get_id(button_ptr->program);
-    const GLfloat   stop_data[]     = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
-                                       0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
-                                       0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
-                                       1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
-    system_window   window          = NULL;
-    int             window_height   = 0;
-    int             window_width    = 0;
+    _ogl_ui_button* button_ptr  = (_ogl_ui_button*) button;
+    const GLuint    program_id  = ogl_program_get_id(button_ptr->program);
+    const GLfloat   stop_data[] = {0,     174.0f / 255.0f * 0.5f, 188.0f / 255.0f * 0.5f, 191.0f / 255.0f * 0.5f,
+                                   0.5f,  110.0f / 255.0f * 0.5f, 119.0f / 255.0f * 0.5f, 116.0f / 255.0f * 0.5f,
+                                   0.51f, 10.0f  / 255.0f * 0.5f, 14.0f  / 255.0f * 0.5f, 10.0f  / 255.0f * 0.5f,
+                                   1.0f,  10.0f  / 255.0f * 0.5f, 8.0f   / 255.0f * 0.5f, 9.0f   / 255.0f * 0.5f};
+    system_window   window      = NULL;
 
-    ogl_context_get_property(button_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
-
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    ogl_context_get_property  (button_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
 
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform = NULL;
@@ -142,10 +147,18 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
     const ogl_program_uniform_descriptor* stop_data_uniform    = NULL;
     const ogl_program_uniform_descriptor* x1y1x2y2_uniform     = NULL;
 
-    ogl_program_get_uniform_by_name(button_ptr->program, system_hashed_ansi_string_create("border_width"), &border_width_uniform);
-    ogl_program_get_uniform_by_name(button_ptr->program, system_hashed_ansi_string_create("brightness"),   &brightness_uniform);
-    ogl_program_get_uniform_by_name(button_ptr->program, system_hashed_ansi_string_create("stop_data[0]"), &stop_data_uniform);
-    ogl_program_get_uniform_by_name(button_ptr->program, system_hashed_ansi_string_create("x1y1x2y2"),     &x1y1x2y2_uniform);
+    ogl_program_get_uniform_by_name(button_ptr->program,
+                                    system_hashed_ansi_string_create("border_width"),
+                                   &border_width_uniform);
+    ogl_program_get_uniform_by_name(button_ptr->program,
+                                    system_hashed_ansi_string_create("brightness"),
+                                   &brightness_uniform);
+    ogl_program_get_uniform_by_name(button_ptr->program,
+                                    system_hashed_ansi_string_create("stop_data[0]"),
+                                   &stop_data_uniform);
+    ogl_program_get_uniform_by_name(button_ptr->program,
+                                    system_hashed_ansi_string_create("x1y1x2y2"),
+                                   &x1y1x2y2_uniform);
 
     button_ptr->program_border_width_uniform_location = border_width_uniform->location;
     button_ptr->program_brightness_uniform_location   = brightness_uniform->location;
@@ -168,8 +181,7 @@ PRIVATE void _ogl_ui_button_update_text_location(__in __notnull _ogl_ui_button* 
     int           text_xy[2]    = {0};
     int           text_width    = 0;
     system_window window        = NULL;
-    int           window_height = 0;
-    int           window_width  = 0;
+    int           window_size[2];
     const float   x1y1[2]       =
     {
         button_ptr->x1y1x2y2[0],
@@ -190,16 +202,15 @@ PRIVATE void _ogl_ui_button_update_text_location(__in __notnull _ogl_ui_button* 
                                       button_ptr->text_index,
                                      &text_width);
 
-    ogl_context_get_property(button_ptr->context,
-                             OGL_CONTEXT_PROPERTY_WINDOW,
-                            &window);
+    ogl_context_get_property  (button_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
-
-    text_xy[0] = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(text_width)  / window_width)  * 0.5f) * (float) window_width);
-    text_xy[1] = (int) ((x2y2[1] - (x2y2[1] - x1y1[1] - float(text_height) / window_height) * 0.5f) * (float) window_height);
+    text_xy[0] = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(text_width)  / window_size[0]) * 0.5f) * (float) window_size[0]);
+    text_xy[1] = (int) ((x2y2[1] - (x2y2[1] - x1y1[1] - float(text_height) / window_size[1]) * 0.5f) * (float) window_size[1]);
 
     ogl_text_set_text_string_property(button_ptr->text_renderer,
                                       button_ptr->text_index,
@@ -215,7 +226,9 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
 
     ogl_context_release(ui_button_ptr->context);
     ogl_program_release(ui_button_ptr->program);
-    ogl_text_set       (ui_button_ptr->text_renderer, ui_button_ptr->text_index, "");
+    ogl_text_set       (ui_button_ptr->text_renderer,
+                        ui_button_ptr->text_index,
+                        "");
 
     delete internal_instance;
 }
@@ -228,18 +241,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
 
     /* Update brightness if necessary */
     float brightness = button_ptr->current_gpu_brightness_level;
-    
+
     if (button_ptr->is_hovering)
     {
         /* Are we transiting? */
         system_timeline_time transition_start = button_ptr->start_hovering_time;
         system_timeline_time transition_end   = button_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
 
-        if (time_now >= transition_start && time_now <= transition_end)
+        if (time_now >= transition_start &&
+            time_now <= transition_end)
         {
-            float dt = float(time_now - transition_start) / float(NONFOCUSED_TO_FOCUSED_TRANSITION_TIME);
+            float dt = float(time_now - transition_start) /
+                       float(NONFOCUSED_TO_FOCUSED_TRANSITION_TIME);
 
-            brightness = button_ptr->start_hovering_brightness + dt * (FOCUSED_BRIGHTNESS - NONFOCUSED_BRIGHTNESS);
+            brightness = button_ptr->start_hovering_brightness +
+                         dt * (FOCUSED_BRIGHTNESS - NONFOCUSED_BRIGHTNESS);
 
             /* Clamp from above */
             if (brightness > FOCUSED_BRIGHTNESS)
@@ -257,13 +273,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     {
         /* Are we transiting? */
         system_timeline_time transition_start = button_ptr->start_hovering_time;
-        system_timeline_time transition_end   = button_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
+        system_timeline_time transition_end   = button_ptr->start_hovering_time +
+                                                FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
 
-        if (time_now >= transition_start && time_now <= transition_end)
+        if (time_now >= transition_start &&
+            time_now <= transition_end)
         {
-            float dt = float(time_now - transition_start) / float(FOCUSED_TO_NONFOCUSED_TRANSITION_TIME);
+            float dt = float(time_now - transition_start) /
+                       float(FOCUSED_TO_NONFOCUSED_TRANSITION_TIME);
 
-            brightness = button_ptr->start_hovering_brightness + dt * (NONFOCUSED_BRIGHTNESS - FOCUSED_BRIGHTNESS);
+            brightness = button_ptr->start_hovering_brightness +
+                         dt * (NONFOCUSED_BRIGHTNESS - FOCUSED_BRIGHTNESS);
 
             /* Clamp from below */
             if (brightness < NONFOCUSED_BRIGHTNESS)
@@ -281,7 +301,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     /* Update uniforms */
     GLuint program_id = ogl_program_get_id(button_ptr->program);
 
-    if (button_ptr->current_gpu_brightness_level != brightness || button_ptr->force_gpu_brightness_update)
+    if (button_ptr->current_gpu_brightness_level != brightness ||
+        button_ptr->force_gpu_brightness_update)
     {
         button_ptr->current_gpu_brightness_level = brightness;
         button_ptr->force_gpu_brightness_update  = false;
@@ -299,18 +320,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     {
         float         border_width[2] = {0};
         system_window window          = NULL;
-        int           window_height;
-        int           window_width;
+        int           window_size[2];
 
         ogl_context_get_property    (button_ptr->context,
                                      OGL_CONTEXT_PROPERTY_WINDOW,
                                     &window);
-        system_window_get_dimensions(window,
-                                    &window_width,
-                                    &window_height);
+        system_window_get_property  (window,
+                                     SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                     window_size);
 
-        border_width[0] = 1.0f / (float)((button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0]) * (window_width) );
-        border_width[1] = 1.0f / (float)((button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1]) * (window_height));
+        border_width[0] = 1.0f / (float)((button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0]) * (window_size[0]) );
+        border_width[1] = 1.0f / (float)((button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1]) * (window_size[1]));
 
         button_ptr->pGLProgramUniform2fv(program_id,
                                          button_ptr->program_border_width_uniform_location,
@@ -322,7 +342,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
 
     /* Draw */
     button_ptr->pGLUseProgram(ogl_program_get_id(button_ptr->program) );
-    button_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    button_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                              0,
+                              4);
 }
 
 /** Please see header for specification */
@@ -367,11 +389,15 @@ PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui               
 {
     _ogl_ui_button* new_button = new (std::nothrow) _ogl_ui_button;
 
-    ASSERT_ALWAYS_SYNC(new_button != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_button != NULL,
+                       "Out of memory");
+
     if (new_button != NULL)
     {
         /* Initialize fields */
-        memset(new_button, 0, sizeof(_ogl_ui_button) );
+        memset(new_button,
+               0,
+               sizeof(_ogl_ui_button) );
 
         new_button->should_update_border_width = true;
         new_button->x1y1x2y2[0]                =     x1y1[0];
@@ -439,13 +465,16 @@ PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui               
                                           _ui_button_text_color);
 
         /* Retrieve the rendering program */
-        new_button->program = ogl_ui_get_registered_program(instance, ui_button_program_name);
+        new_button->program = ogl_ui_get_registered_program(instance,
+                                                            ui_button_program_name);
 
         if (new_button->program == NULL)
         {
-            _ogl_ui_button_init_program(instance, new_button);
+            _ogl_ui_button_init_program(instance,
+                                        new_button);
 
-            ASSERT_DEBUG_SYNC(new_button->program != NULL, "Could not initialize button UI program");
+            ASSERT_DEBUG_SYNC(new_button->program != NULL,
+                              "Could not initialize button UI program");
         } /* if (new_button->program == NULL) */
 
         /* Set up predefined values */
@@ -510,7 +539,8 @@ PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy)
     button_ptr->is_lbm_on                   = false;
     button_ptr->force_gpu_brightness_update = true;
 
-    if (ogl_ui_button_is_over(internal_instance, xy) && button_ptr->pfn_fire_proc_ptr != NULL)
+    if (ogl_ui_button_is_over(internal_instance, xy) &&
+        button_ptr->pfn_fire_proc_ptr != NULL)
     {
         system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
                                                                                                          (PFNSYSTEMTHREADPOOLCALLBACKPROC) button_ptr->pfn_fire_proc_ptr,
@@ -534,13 +564,15 @@ PUBLIC void ogl_ui_button_set_property(__in  __notnull void*       button,
             float dx = button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0];
             float dy = button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1];
 
-            memcpy(button_ptr->x1y1x2y2, data, sizeof(float) * 2);
+            memcpy(button_ptr->x1y1x2y2,
+                   data,
+                   sizeof(float) * 2);
 
-            button_ptr->x1y1x2y2[2]                = button_ptr->x1y1x2y2[0] + dx;
-            button_ptr->x1y1x2y2[3]                = button_ptr->x1y1x2y2[1] + dy;
+            button_ptr->x1y1x2y2[2] = button_ptr->x1y1x2y2[0] + dx;
+            button_ptr->x1y1x2y2[3] = button_ptr->x1y1x2y2[1] + dy;
 
-            button_ptr->x1y1x2y2[1]                = 1.0f - button_ptr->x1y1x2y2[1];
-            button_ptr->x1y1x2y2[3]                = 1.0f - button_ptr->x1y1x2y2[3];
+            button_ptr->x1y1x2y2[1] = 1.0f - button_ptr->x1y1x2y2[1];
+            button_ptr->x1y1x2y2[3] = 1.0f - button_ptr->x1y1x2y2[3];
 
             button_ptr->should_update_border_width = true;
 
@@ -551,7 +583,9 @@ PUBLIC void ogl_ui_button_set_property(__in  __notnull void*       button,
 
         case OGL_UI_BUTTON_PROPERTY_X1Y1X2Y2:
         {
-            memcpy(button_ptr->x1y1x2y2, data, sizeof(float) * 4);
+            memcpy(button_ptr->x1y1x2y2,
+                   data,
+                   sizeof(float) * 4);
 
             button_ptr->x1y1x2y2[1]                = 1.0f - button_ptr->x1y1x2y2[1];
             button_ptr->x1y1x2y2[3]                = 1.0f - button_ptr->x1y1x2y2[3];

@@ -21,8 +21,9 @@ REFCOUNT_INSERT_DECLARATIONS(scene_texture, scene_texture)
 /** TODO.
  *
  *  NOTE: Texture ID is configured exclusively by scene instance which owns the texture. */
-PUBLIC EMERALD_API scene_texture scene_texture_create(__in __notnull system_hashed_ansi_string name,
-                                                      __in __notnull system_hashed_ansi_string filename);
+PUBLIC EMERALD_API scene_texture scene_texture_create(__in     __notnull system_hashed_ansi_string name,
+                                                      __in_opt           system_hashed_ansi_string object_manager_path,
+                                                      __in     __notnull system_hashed_ansi_string filename);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture          instance,
@@ -30,8 +31,9 @@ PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture         
                                           __out __notnull void*                  result);
 
 /** TODO */
-PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnull system_file_serializer serializer,
-                                                                    __in __notnull ogl_context            context);
+PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in     __notnull system_file_serializer    serializer,
+                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
+                                                                    __in     __notnull ogl_context               context);
 
 /** TODO.
  *

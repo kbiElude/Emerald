@@ -1,6 +1,6 @@
 /**
  *
- *  Emerald (kbi/elude @2012)
+ *  Emerald (kbi/elude @2012-2015)
  *
  *  @brief File serializer is an efficient file proxy object. For:
  *
@@ -14,6 +14,29 @@
 #include "curve/curve_types.h"
 #include "system/system_types.h"
 
+
+typedef enum
+{
+    /* not settable, uint32_t */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_CURRENT_OFFSET,
+
+    /* not settable, system_hashed_ansi_string */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
+
+    /* not settable, system_hashed_ansi_string */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH,
+
+    /* not settable, system_hashed_ansi_string */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH_AND_NAME,
+
+    /* not settable, const char*. Internal usage only. */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+
+    /* not settable, size_t */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_SIZE,
+
+    SYSTEM_FILE_SERIALIZER_PROPERTY_UNKNOWN
+} system_file_serializer_property;
 
 /** Creates a file serializer instance for reading a file.
  *
@@ -33,36 +56,9 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(__in __notnull system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC EMERALD_API uint32_t system_file_serializer_get_current_offset(__in __notnull system_file_serializer);
-
-/** Retrieves file name used for serializing operation.
- *
- *  @param system_file_serializer Serializer to retrieve the name for.
- *
- *  @return Name of the serialized file.
- */
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_serializer_get_file_name(__in __notnull system_file_serializer);
-
-/** TODO.
- *
- *  Only supported for file serializers initialized for reading mode.
- **/
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_serializer_get_file_path(__in __notnull const system_file_serializer);
-
-/** Returns a pointer to internal storage of the serializer. This is for internal usage only.
- *
- */
-PUBLIC const void* system_file_serializer_get_raw_storage(__in __notnull system_file_serializer serializer);
-
-/** Retrieves size of a file read by the serializer OR amount of bytes scheduled for writing.
- *
- *  This function should not be used for a serializer that was initialized for writing.
- *
- *  @param system_file_serializer Serializer to use.
- *
- *  @return Size of the file.
- */
-PUBLIC EMERALD_API size_t system_file_serializer_get_size(__in __notnull system_file_serializer);
+PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull system_file_serializer          serializer,
+                                                            __in            system_file_serializer_property property,
+                                                            __out __notnull void*                           out_data);
 
 /** Copies @param uint32_t bytes to user-provided location and moves the reading pointer, so that next read request will
  *  retrieve bytes following the read sequence.
@@ -81,8 +77,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
                                                     __deref_out_bcount_full_opt(n_bytes) void*);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notnull system_file_serializer,
-                                                                    __out __notnull curve_container*);
+PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __notnull system_file_serializer,
+                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
+                                                                    __out    __notnull curve_container*);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __notnull system_file_serializer,

@@ -364,10 +364,13 @@ PUBLIC void FillSceneGraphData(__in __notnull scene in_scene)
     /* Initialize helper objects */
     system_variant  float_variant   = system_variant_create (SYSTEM_VARIANT_FLOAT);
     curve_container minus_one_curve = curve_container_create(system_hashed_ansi_string_create("Minus one curve"),
+                                                             NULL, /* object_manager_path */
                                                              SYSTEM_VARIANT_FLOAT);
     curve_container one_curve       = curve_container_create(system_hashed_ansi_string_create("One curve"),
+                                                             NULL, /* object_manager_path */
                                                              SYSTEM_VARIANT_FLOAT);
     curve_container zero_curve      = curve_container_create(system_hashed_ansi_string_create("Zero curve"),
+                                                             NULL, /* object_manager_path */
                                                              SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (float_variant,   -1.0f);

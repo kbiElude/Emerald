@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -100,26 +100,37 @@ PRIVATE void _ogl_ui_checkbox_init_program(__in __notnull ogl_ui            ui,
 {
     /* Create all objects */
     ogl_context context         = ogl_ui_get_context(ui);
-    ogl_shader  fragment_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("UI checkbox fragment shader") );
-    ogl_shader  vertex_shader   = ogl_shader_create(context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("UI checkbox vertex shader") );
+    ogl_shader  fragment_shader = ogl_shader_create (context,
+                                                     SHADER_TYPE_FRAGMENT,
+                                                     system_hashed_ansi_string_create("UI checkbox fragment shader") );
+    ogl_shader  vertex_shader   = ogl_shader_create (context,
+                                                     SHADER_TYPE_VERTEX,
+                                                     system_hashed_ansi_string_create("UI checkbox vertex shader") );
 
-    checkbox_ptr->program = ogl_program_create(context, system_hashed_ansi_string_create("UI checkbox program") );
+    checkbox_ptr->program = ogl_program_create(context,
+                                               system_hashed_ansi_string_create("UI checkbox program") );
 
     /* Set up shaders */
-    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create(ui_checkbox_fragment_shader_body) );
-    ogl_shader_set_body(vertex_shader,   system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
+    ogl_shader_set_body(fragment_shader,
+                        system_hashed_ansi_string_create(ui_checkbox_fragment_shader_body) );
+    ogl_shader_set_body(vertex_shader,
+                        system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
 
     ogl_shader_compile(fragment_shader);
     ogl_shader_compile(vertex_shader);
 
     /* Set up program object */
-    ogl_program_attach_shader(checkbox_ptr->program, fragment_shader);
-    ogl_program_attach_shader(checkbox_ptr->program, vertex_shader);
+    ogl_program_attach_shader(checkbox_ptr->program,
+                              fragment_shader);
+    ogl_program_attach_shader(checkbox_ptr->program,
+                              vertex_shader);
 
     ogl_program_link(checkbox_ptr->program);
 
     /* Register the prgoram with UI so following button instances will reuse the program */
-    ogl_ui_register_program(ui, ui_checkbox_program_name, checkbox_ptr->program);
+    ogl_ui_register_program(ui,
+                            ui_checkbox_program_name,
+                            checkbox_ptr->program);
 
     /* Release shaders we will no longer need */
     ogl_shader_release(fragment_shader);
@@ -127,23 +138,25 @@ PRIVATE void _ogl_ui_checkbox_init_program(__in __notnull ogl_ui            ui,
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context, void* checkbox)
+PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
+                                                     void*       checkbox)
 {
     float                             border_width[2] = {0};
     _ogl_ui_checkbox*                 checkbox_ptr    = (_ogl_ui_checkbox*) checkbox;
     const GLuint                      program_id      = ogl_program_get_id(checkbox_ptr->program);
     system_window                     window          = NULL;
-    int                               window_height   = 0;
-    int                               window_width    = 0;
+    int                               window_size[2]  = {0};
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_WINDOW,
                             &window);
 
-    system_window_get_dimensions(window, &window_width, &window_height);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
-    border_width[0] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[2] - checkbox_ptr->x1y1x2y2[0]) * window_width);
-    border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_height);
+    border_width[0] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[2] - checkbox_ptr->x1y1x2y2[0]) * window_size[0]);
+    border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform    = NULL;
@@ -151,10 +164,18 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context, void* 
     const ogl_program_uniform_descriptor* text_brightness_uniform = NULL;
     const ogl_program_uniform_descriptor* x1y1x2y2_uniform        = NULL;
 
-    ogl_program_get_uniform_by_name(checkbox_ptr->program, system_hashed_ansi_string_create("border_width"),    &border_width_uniform);
-    ogl_program_get_uniform_by_name(checkbox_ptr->program, system_hashed_ansi_string_create("brightness"),      &brightness_uniform);
-    ogl_program_get_uniform_by_name(checkbox_ptr->program, system_hashed_ansi_string_create("text_brightness"), &text_brightness_uniform);
-    ogl_program_get_uniform_by_name(checkbox_ptr->program, system_hashed_ansi_string_create("x1y1x2y2"),        &x1y1x2y2_uniform);
+    ogl_program_get_uniform_by_name(checkbox_ptr->program,
+                                    system_hashed_ansi_string_create("border_width"),
+                                   &border_width_uniform);
+    ogl_program_get_uniform_by_name(checkbox_ptr->program,
+                                    system_hashed_ansi_string_create("brightness"),
+                                   &brightness_uniform);
+    ogl_program_get_uniform_by_name(checkbox_ptr->program,
+                                    system_hashed_ansi_string_create("text_brightness"),
+                                   &text_brightness_uniform);
+    ogl_program_get_uniform_by_name(checkbox_ptr->program,
+                                    system_hashed_ansi_string_create("x1y1x2y2"),
+                                   &x1y1x2y2_uniform);
 
     checkbox_ptr->program_border_width_uniform_location    = border_width_uniform->location;
     checkbox_ptr->program_brightness_uniform_location      = brightness_uniform->location;
@@ -162,8 +183,13 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context, void* 
     checkbox_ptr->program_x1y1x2y2_uniform_location        = x1y1x2y2_uniform->location;
 
     /* Set them up */
-    checkbox_ptr->pGLProgramUniform2fv(program_id, border_width_uniform->location,    sizeof(border_width) / sizeof(float) / 2, border_width);
-    checkbox_ptr->pGLProgramUniform1f (program_id, text_brightness_uniform->location, NONFOCUSED_BRIGHTNESS);
+    checkbox_ptr->pGLProgramUniform2fv(program_id,
+                                       border_width_uniform->location,
+                                       sizeof(border_width) / sizeof(float) / 2,
+                                       border_width);
+    checkbox_ptr->pGLProgramUniform1f (program_id,
+                                       text_brightness_uniform->location,
+                                       NONFOCUSED_BRIGHTNESS);
 
     checkbox_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 }
@@ -171,14 +197,21 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context, void* 
 /** TODO */
 PRIVATE void _ogl_ui_checkbox_update_text_location(__in __notnull _ogl_ui_checkbox* checkbox_ptr)
 {
-    int           text_height   = 0;
-    int           text_xy[2]    = {0};
-    int           text_width    = 0;
-    system_window window        = NULL;
-    int           window_height = 0;
-    int           window_width  = 0;
-    const float   x1y1[]        = {checkbox_ptr->x1y1x2y2[0], 1.0f - checkbox_ptr->x1y1x2y2[1]};
-    const float   x2y2[]        = {checkbox_ptr->x1y1x2y2[2], 1.0f - checkbox_ptr->x1y1x2y2[3]};
+    int           text_height    = 0;
+    int           text_xy[2]     = {0};
+    int           text_width     = 0;
+    system_window window         = NULL;
+    int           window_size[2] = {0};
+    const float   x1y1[]         =
+    {
+        checkbox_ptr->x1y1x2y2[0],
+        1.0f - checkbox_ptr->x1y1x2y2[1]
+    };
+    const float   x2y2[]         =
+    {
+        checkbox_ptr->x1y1x2y2[2],
+        1.0f - checkbox_ptr->x1y1x2y2[3]
+    };
 
     ogl_text_get_text_string_property(checkbox_ptr->text_renderer,
                                       OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
@@ -193,12 +226,12 @@ PRIVATE void _ogl_ui_checkbox_update_text_location(__in __notnull _ogl_ui_checkb
                              OGL_CONTEXT_PROPERTY_WINDOW,
                             &window);
 
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
-    text_xy[0] = (int) ((x1y1[0] + (x2y2[0] + float(CHECKBOX_WIDTH_PX) / window_width  - x1y1[0] - float(text_width)  / window_width)  * 0.5f) * (float) window_width);
-    text_xy[1] = (int) ((x2y2[1] - (x2y2[1] +                                          - x1y1[1] - float(text_height) / window_height) * 0.5f) * (float) window_height);
+    text_xy[0] = (int) ((x1y1[0] + (x2y2[0] + float(CHECKBOX_WIDTH_PX) / window_size[0] - x1y1[0] - float(text_width)  / window_size[0]) * 0.5f) * (float) window_size[0]);
+    text_xy[1] = (int) ((x2y2[1] - (x2y2[1] +                                           - x1y1[1] - float(text_height) / window_size[1]) * 0.5f) * (float) window_size[1]);
 
     ogl_text_set_text_string_property(checkbox_ptr->text_renderer,
                                       checkbox_ptr->text_index,
@@ -209,11 +242,10 @@ PRIVATE void _ogl_ui_checkbox_update_text_location(__in __notnull _ogl_ui_checkb
 /** TODO */
 PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(__in __notnull _ogl_ui_checkbox* checkbox_ptr)
 {
-    int           text_height   = 0;
-    int           text_width    = 0;
+    int           text_height    = 0;
+    int           text_width     = 0;
     system_window window;
-    int           window_width  = 0;
-    int           window_height = 0;
+    int           window_size[2] = {0};
 
     ogl_text_get_text_string_property(checkbox_ptr->text_renderer,
                                       OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
@@ -224,17 +256,17 @@ PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(__in __notnull _ogl_ui_checkbox* c
                                       checkbox_ptr->text_index,
                                      &text_width);
 
-    ogl_context_get_property    (checkbox_ptr->context,
-                                 OGL_CONTEXT_PROPERTY_WINDOW,
-                                &window);
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    ogl_context_get_property   (checkbox_ptr->context,
+                                OGL_CONTEXT_PROPERTY_WINDOW,
+                               &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     checkbox_ptr->x1y1x2y2[0] = checkbox_ptr->base_x1y1[0];
     checkbox_ptr->x1y1x2y2[1] = checkbox_ptr->base_x1y1[1];
-    checkbox_ptr->x1y1x2y2[2] = checkbox_ptr->base_x1y1[0] + float(text_width  + 2 * BORDER_WIDTH_PX + CHECKBOX_WIDTH_PX + TEXT_DELTA_PX) / float(window_width);
-    checkbox_ptr->x1y1x2y2[3] = checkbox_ptr->base_x1y1[1] + float(max(text_height, CHECKBOX_WIDTH_PX)                                    / float(window_height) );
+    checkbox_ptr->x1y1x2y2[2] = checkbox_ptr->base_x1y1[0] + float(text_width  + 2 * BORDER_WIDTH_PX + CHECKBOX_WIDTH_PX + TEXT_DELTA_PX) / float(window_size[0]);
+    checkbox_ptr->x1y1x2y2[3] = checkbox_ptr->base_x1y1[1] + float(max(text_height, CHECKBOX_WIDTH_PX)                                    / float(window_size[1]) );
 }
 
 /** Please see header for specification */
@@ -244,7 +276,9 @@ PUBLIC void ogl_ui_checkbox_deinit(void* internal_instance)
 
     ogl_context_release(ui_checkbox_ptr->context);
     ogl_program_release(ui_checkbox_ptr->program);
-    ogl_text_set       (ui_checkbox_ptr->text_renderer, ui_checkbox_ptr->text_index, "");
+    ogl_text_set       (ui_checkbox_ptr->text_renderer,
+                        ui_checkbox_ptr->text_index,
+                        "");
 
     delete internal_instance;
 }
@@ -262,13 +296,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
     {
         /* Are we transiting? */
         system_timeline_time transition_start = checkbox_ptr->start_hovering_time;
-        system_timeline_time transition_end   = checkbox_ptr->start_hovering_time + NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
+        system_timeline_time transition_end   = checkbox_ptr->start_hovering_time +
+                                                NONFOCUSED_TO_FOCUSED_TRANSITION_TIME;
 
-        if (time_now >= transition_start && time_now <= transition_end)
+        if (time_now >= transition_start &&
+            time_now <= transition_end)
         {
-            float dt = float(time_now - transition_start) / float(NONFOCUSED_TO_FOCUSED_TRANSITION_TIME);
+            float dt = float(time_now - transition_start) /
+                       float(NONFOCUSED_TO_FOCUSED_TRANSITION_TIME);
 
-            brightness = checkbox_ptr->start_hovering_brightness + dt * (FOCUSED_BRIGHTNESS - NONFOCUSED_BRIGHTNESS);
+            brightness = checkbox_ptr->start_hovering_brightness +
+                         dt * (FOCUSED_BRIGHTNESS - NONFOCUSED_BRIGHTNESS);
 
             /* Clamp from above */
             if (brightness > FOCUSED_BRIGHTNESS)
@@ -286,13 +324,17 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
     {
         /* Are we transiting? */
         system_timeline_time transition_start = checkbox_ptr->start_hovering_time;
-        system_timeline_time transition_end   = checkbox_ptr->start_hovering_time + FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
+        system_timeline_time transition_end   = checkbox_ptr->start_hovering_time +
+                                                FOCUSED_TO_NONFOCUSED_TRANSITION_TIME;
 
-        if (time_now >= transition_start && time_now <= transition_end)
+        if (time_now >= transition_start &&
+            time_now <= transition_end)
         {
-            float dt = float(time_now - transition_start) / float(FOCUSED_TO_NONFOCUSED_TRANSITION_TIME);
+            float dt = float(time_now - transition_start) /
+                       float(FOCUSED_TO_NONFOCUSED_TRANSITION_TIME);
 
-            brightness = checkbox_ptr->start_hovering_brightness + dt * (NONFOCUSED_BRIGHTNESS - FOCUSED_BRIGHTNESS);
+            brightness = checkbox_ptr->start_hovering_brightness +
+                         dt * (NONFOCUSED_BRIGHTNESS - FOCUSED_BRIGHTNESS);
 
             /* Clamp from below */
             if (brightness < NONFOCUSED_BRIGHTNESS)
@@ -310,19 +352,26 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
     /* Update uniforms */
     GLuint program_id = ogl_program_get_id(checkbox_ptr->program);
 
-    if (checkbox_ptr->current_gpu_brightness_level != brightness || checkbox_ptr->force_gpu_brightness_update)
+    if (checkbox_ptr->current_gpu_brightness_level != brightness ||
+        checkbox_ptr->force_gpu_brightness_update)
     {
         checkbox_ptr->current_gpu_brightness_level = brightness;
         checkbox_ptr->force_gpu_brightness_update  = false;
     }
 
-    checkbox_ptr->pGLProgramUniform1f (program_id, checkbox_ptr->program_brightness_uniform_location, brightness * (checkbox_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1) 
-                                                                                                                 * (checkbox_ptr->status    ? CHECK_BRIGHTNESS_MODIFIER : 1));
-    checkbox_ptr->pGLProgramUniform4fv(program_id, checkbox_ptr->program_x1y1x2y2_uniform_location, sizeof(checkbox_ptr->x1y1x2y2) / sizeof(float) / 4, checkbox_ptr->x1y1x2y2);
+    checkbox_ptr->pGLProgramUniform1f (program_id,
+                                       checkbox_ptr->program_brightness_uniform_location,
+                                       brightness * (checkbox_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1) * (checkbox_ptr->status ? CHECK_BRIGHTNESS_MODIFIER : 1));
+    checkbox_ptr->pGLProgramUniform4fv(program_id,
+                                       checkbox_ptr->program_x1y1x2y2_uniform_location,
+                                       sizeof(checkbox_ptr->x1y1x2y2) / sizeof(float) / 4,
+                                       checkbox_ptr->x1y1x2y2);
 
     /* Draw */
     checkbox_ptr->pGLUseProgram(ogl_program_get_id(checkbox_ptr->program) );
-    checkbox_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    checkbox_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                0,
+                                4);
 }
 
 /** Please see header for specification */
@@ -360,11 +409,15 @@ PUBLIC void* ogl_ui_checkbox_init(__in           __notnull   ogl_ui             
 {
     _ogl_ui_checkbox* new_checkbox = new (std::nothrow) _ogl_ui_checkbox;
 
-    ASSERT_ALWAYS_SYNC(new_checkbox != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_checkbox != NULL,
+                       "Out of memory");
+
     if (new_checkbox != NULL)
     {
         /* Initialize fields */
-        memset(new_checkbox, 0, sizeof(_ogl_ui_checkbox) );
+        memset(new_checkbox,
+               0,
+               sizeof(_ogl_ui_checkbox) );
 
         new_checkbox->base_x1y1[0] = x1y1[0];
         new_checkbox->base_x1y1[1] = x1y1[1];
@@ -431,13 +484,16 @@ PUBLIC void* ogl_ui_checkbox_init(__in           __notnull   ogl_ui             
                                           _ui_checkbox_text_color);
 
         /* Retrieve the rendering program */
-        new_checkbox->program = ogl_ui_get_registered_program(instance, ui_checkbox_program_name);
+        new_checkbox->program = ogl_ui_get_registered_program(instance,
+                                                              ui_checkbox_program_name);
 
         if (new_checkbox->program == NULL)
         {
-            _ogl_ui_checkbox_init_program(instance, new_checkbox);
+            _ogl_ui_checkbox_init_program(instance,
+                                          new_checkbox);
 
-            ASSERT_DEBUG_SYNC(new_checkbox->program != NULL, "Could not initialize checkbox UI program");
+            ASSERT_DEBUG_SYNC(new_checkbox->program != NULL,
+                              "Could not initialize checkbox UI program");
         } /* if (new_button->program == NULL) */
 
         /* Set up predefined values */
@@ -450,10 +506,11 @@ PUBLIC void* ogl_ui_checkbox_init(__in           __notnull   ogl_ui             
 }
 
 /** Please see header for specification */
-PUBLIC bool ogl_ui_checkbox_is_over(void* internal_instance, const float* xy)
+PUBLIC bool ogl_ui_checkbox_is_over(void*        internal_instance,
+                                    const float* xy)
 {
     _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
-    float             inversed_y = 1.0f - xy[1];
+    float             inversed_y   = 1.0f - xy[1];
 
     if (xy[0]      >= checkbox_ptr->x1y1x2y2[0] && xy[0]      <= checkbox_ptr->x1y1x2y2[2] &&
         inversed_y >= checkbox_ptr->x1y1x2y2[1] && inversed_y <= checkbox_ptr->x1y1x2y2[3])
@@ -481,7 +538,8 @@ PUBLIC bool ogl_ui_checkbox_is_over(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_on_lbm_down(void* internal_instance, const float* xy)
+PUBLIC void ogl_ui_checkbox_on_lbm_down(void*        internal_instance,
+                                        const float* xy)
 {
     _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
     float             inversed_y   = 1.0f - xy[1];
@@ -495,13 +553,15 @@ PUBLIC void ogl_ui_checkbox_on_lbm_down(void* internal_instance, const float* xy
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_on_lbm_up(void* internal_instance, const float* xy)
+PUBLIC void ogl_ui_checkbox_on_lbm_up(void*        internal_instance,
+                                      const float* xy)
 {
     _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) internal_instance;
 
     checkbox_ptr->is_lbm_on = false;
 
-    if (ogl_ui_checkbox_is_over(internal_instance, xy) )
+    if (ogl_ui_checkbox_is_over(internal_instance,
+                                xy) )
     {
         if (checkbox_ptr->pfn_fire_proc_ptr != NULL)
         {

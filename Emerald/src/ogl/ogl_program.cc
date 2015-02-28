@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
@@ -816,6 +817,15 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
 {
     _ogl_program* program_ptr = (_ogl_program*) program;
 
+    /* Unregister the PO from the registry */
+    ogl_programs programs = NULL;
+
+    ogl_context_get_property       (program_ptr->context,
+                                    OGL_CONTEXT_PROPERTY_PROGRAMS,
+                                   &programs);
+    ogl_programs_unregister_program(programs,
+                                    (ogl_program) program);
+
     /* Do releasing stuff in GL context first */
     ogl_context_request_callback_from_context_thread(program_ptr->context,
                                                      _ogl_program_release_callback,
@@ -1284,6 +1294,18 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_program_create_callback,
                                                          result);
+
+        /* Register the program object. This will give us a nifty assertion failure
+         * if the caller attempts to register a PO under an already taken name.
+         */
+        ogl_programs context_programs = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_PROGRAMS,
+                                &context_programs);
+
+        ogl_programs_register_program(context_programs,
+                                      (ogl_program) result);
     }
 
     return (ogl_program) result;

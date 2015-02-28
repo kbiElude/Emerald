@@ -55,6 +55,9 @@
 
     #include "object_manager/object_manager_general.h"
 
+    #define GET_OBJECT_PATH(object_name, object_type, scene_name) \
+        object_manager_get_object_path(object_name, object_type, scene_name)
+
     #define REGISTER_REFCOUNTED_OBJECT(object_type, ptr, path) \
         _object_manager_register_refcounted_object(ptr, path, __FILE__, __LINE__, object_type);
 
@@ -62,8 +65,9 @@
         _object_manager_unregister_refcounted_object(path);
 #else
 
-    #define REGISTER_REFCOUNTED_OBJECT(object_type, ptr, path)
-    #define UNREGISTER_REFCOUNTED_OBJECT(path)
+    #define GET_OBJECT_PATH             (a, b, c)
+    #define REGISTER_REFCOUNTED_OBJECT  (a, b, c)
+    #define UNREGISTER_REFCOUNTED_OBJECT(a)
 
 #endif /* INCLUDE_OBJECT_MANAGER */
 

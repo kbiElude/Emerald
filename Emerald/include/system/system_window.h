@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_WINDOW_H
@@ -18,6 +18,18 @@ typedef enum
     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_LOW
 } system_window_callback_func_priority;
+
+typedef enum
+{
+    SYSTEM_WINDOW_PROPERTY_DC,                /* not settable, system_window_dc */
+    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,        /* not settable, int[2] */
+    SYSTEM_WINDOW_PROPERTY_HANDLE,            /* not settable, system_window_handle */
+    SYSTEM_WINDOW_PROPERTY_NAME,              /* not settable, system_hashed_ansi_string */
+    SYSTEM_WINDOW_PROPERTY_POSITION,          /* not settable, int[2] */
+    SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT, /* not settable, ogl_context */
+    SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER, /* not settable, ogl_rendering_handler */
+} system_window_property;
+
 
 /** TODO */
 PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_window,
@@ -63,14 +75,6 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
                                                            __in __notnull void*,
                                                            __in __notnull void* /* user arg */);
 
-/** TODO */
-PUBLIC EMERALD_API bool system_window_get_context(__in  __notnull system_window,
-                                                  __out __notnull ogl_context*);
-
-/** TODO */
-PUBLIC EMERALD_API bool system_window_get_dc(__in  __notnull system_window,
-                                             __out __notnull system_window_dc*);
-
 /** Retrieves coordinates that can be passed to system_window_create_not_fullscreen() in order
  *  to position the window in the center of primary monitor.
  *
@@ -83,24 +87,9 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
                                                                                        __out_ecount(4) __notnull int*       result_dimensions);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_get_dimensions(__in            __notnull system_window,
-                                                     __out_ecount(1) __notnull int* /* width */,
-                                                     __out_ecount(1) __notnull int* /* height */);
-/** TODO */
-PUBLIC EMERALD_API bool system_window_get_handle(__in  __notnull system_window, 
-                                                 __out __notnull system_window_handle*);
-
-/** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string system_window_get_name(__in __notnull system_window);
-
-/** TODO */
-PUBLIC EMERALD_API bool system_window_get_position(__in  __notnull system_window,
-                                                   __out __notnull int* /* x */,
-                                                   __out __notnull int* /* y */);
-
-/** TODO. Takes ownership of the rendering handler! */
-PUBLIC EMERALD_API bool system_window_get_rendering_handler(__in  __notnull system_window,
-                                                            __out __notnull ogl_rendering_handler*);
+PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window          window,
+                                                   __in            system_window_property property,
+                                                   __out __notnull void*                  out_result);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_window_set_cursor_visibility(__in __notnull system_window,

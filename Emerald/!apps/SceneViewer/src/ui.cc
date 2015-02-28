@@ -43,8 +43,9 @@ PRIVATE void _callback_on_dropdown_switch(ogl_ui_control control,
 {
     ogl_rendering_handler rendering_handler = NULL;
 
-    system_window_get_rendering_handler(_window,
-                                       &rendering_handler);
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
     ogl_rendering_handler_lock_bound_context(rendering_handler);
     {
@@ -125,19 +126,18 @@ PUBLIC void ui_init()
 {
     const float  active_camera_dropdown_x1y1[2] = {0.7f, 0.1f};
     const float  text_default_size              = 0.5f;
-    int          window_height                  = 0;
-    int          window_width                   = 0;
+    int          window_size[2]                 = {0};
 
     /* Initialize components required to power UI */
-    system_window_get_dimensions(_window,
-                                &window_width,
-                                &window_height);
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
                                      _context,
                                      system_resources_get_meiryo_font_table(),
-                                     window_width,
-                                     window_height);
+                                     window_size[0],
+                                     window_size[1]);
 
     ogl_text_set_text_string_property(_text_renderer,
                                       TEXT_STRING_ID_DEFAULT,

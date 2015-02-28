@@ -171,7 +171,8 @@ typedef enum
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hashed_ansi_string name,
-                                                      __in __notnull ogl_context               context);
+                                                      __in __notnull ogl_context               context,
+                                                      __in_opt       system_hashed_ansi_string object_manager_path);
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system_hashed_ansi_string name,

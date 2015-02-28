@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -84,7 +84,9 @@ static const char* postprocessing_blur_poisson_fragment_shader_body_main ="void 
                                                                           "}\n";
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_poisson, postprocessing_blur_poisson, _postprocessing_blur_poisson);
+REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_blur_poisson,
+                               postprocessing_blur_poisson,
+                              _postprocessing_blur_poisson);
 
 /* Forward declarations */
 #ifdef _DEBUG
@@ -102,31 +104,46 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
     ogl_shader                    fragment_shader = NULL;
     shaders_vertex_fullscreen     vertex_shader   = NULL;
 
-    const char*                   fragment_shader_body_parts[] = {postprocessing_blur_poisson_fragment_shader_body_preambule,
-                                                                  postprocessing_blur_poisson_tap_data_body,
-                                                                  postprocessing_blur_poisson_fragment_shader_body_declarations,
-                                                                  postprocessing_blur_poisson_fragment_shader_body_main,
-                                                                  (poisson_ptr->bluriness_source == POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_UNIFORM)     ? postprocessing_blur_poisson_uniform_blur_strength_body            :
-                                                                  (poisson_ptr->bluriness_source == POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_INPUT_ALPHA) ? postprocessing_blur_poisson_source_input_alpha_blur_strength_body :
-                                                                  "?!"};
-    const uint32_t                fragment_shader_n_body_parts = sizeof(fragment_shader_body_parts) / sizeof(fragment_shader_body_parts[0]);
+    const char* fragment_shader_body_parts[] =
+    {
+        postprocessing_blur_poisson_fragment_shader_body_preambule,
+        postprocessing_blur_poisson_tap_data_body,
+        postprocessing_blur_poisson_fragment_shader_body_declarations,
+        postprocessing_blur_poisson_fragment_shader_body_main,
+        (poisson_ptr->bluriness_source == POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_UNIFORM)     ? postprocessing_blur_poisson_uniform_blur_strength_body            :
+        (poisson_ptr->bluriness_source == POSTPROCESSING_BLUR_POISSON_BLUR_BLURRINESS_SOURCE_INPUT_ALPHA) ? postprocessing_blur_poisson_source_input_alpha_blur_strength_body :
+                                                                                                            "?!"
+    };
+    const uint32_t fragment_shader_n_body_parts = sizeof(fragment_shader_body_parts) / sizeof(fragment_shader_body_parts[0]);
 
-    fragment_shader      = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson fragment shader ", 
-                                                                                                                                    system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
-    vertex_shader        = shaders_vertex_fullscreen_create(poisson_ptr->context, true, poisson_ptr->name);
-    poisson_ptr->program = ogl_program_create              (poisson_ptr->context, system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
-                                                                                                                                          system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
 
-    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create_by_merging_strings(fragment_shader_n_body_parts, fragment_shader_body_parts) );
-    ogl_program_attach_shader(poisson_ptr->program, fragment_shader);
-    ogl_program_attach_shader(poisson_ptr->program, shaders_vertex_fullscreen_get_shader(vertex_shader) );
+    fragment_shader      = ogl_shader_create               (context,
+                                                            SHADER_TYPE_FRAGMENT,
+                                                            system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson fragment shader ", 
+                                                                                                                    system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
+    vertex_shader        = shaders_vertex_fullscreen_create(poisson_ptr->context,
+                                                            true,
+                                                            poisson_ptr->name);
+    poisson_ptr->program = ogl_program_create              (poisson_ptr->context,
+                                                            system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
+                                                                                                                    system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
+
+    ogl_shader_set_body      (fragment_shader,
+                              system_hashed_ansi_string_create_by_merging_strings(fragment_shader_n_body_parts,
+                                                                                  fragment_shader_body_parts) );
+    ogl_program_attach_shader(poisson_ptr->program,
+                              fragment_shader);
+    ogl_program_attach_shader(poisson_ptr->program,
+                              shaders_vertex_fullscreen_get_shader(vertex_shader) );
 
     ogl_program_link(poisson_ptr->program);
 
     /* Retrieve attribute & uniform locations */
     const ogl_program_uniform_descriptor* blur_strength_uniform = NULL;
 
-    ogl_program_get_uniform_by_name(poisson_ptr->program, system_hashed_ansi_string_create("blur_strength"), &blur_strength_uniform);
+    ogl_program_get_uniform_by_name(poisson_ptr->program,
+                                    system_hashed_ansi_string_create("blur_strength"),
+                                   &blur_strength_uniform);
 
     poisson_ptr->blur_strength_uniform_location = blur_strength_uniform->location;
 
@@ -137,7 +154,8 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
-    entrypoints->pGLGenFramebuffers(1, &poisson_ptr->fbo_id);
+    entrypoints->pGLGenFramebuffers(1,
+                                   &poisson_ptr->fbo_id);
 
     /* Release shaders */
     ogl_shader_release               (fragment_shader);
@@ -170,7 +188,7 @@ PRIVATE void _postprocessing_blur_poisson_release(__in __notnull __deallocate(me
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(__in __notnull ogl_context                                       context, 
+PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_create(__in __notnull ogl_context                                       context,
                                                                                   __in __notnull system_hashed_ansi_string                         name,
                                                                                   __in           postprocessing_blur_poisson_blur_bluriness_source bluriness_source,
                                                                                   __in           const char*                                       custom_shader_code)
@@ -180,7 +198,9 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
     /* Instantiate the object */
     _postprocessing_blur_poisson* result_object = new (std::nothrow) _postprocessing_blur_poisson;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory");
@@ -188,7 +208,9 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
         goto end;
     }
 
-    memset(result_object, 0, sizeof(_postprocessing_blur_poisson) );
+    memset(result_object,
+           0,
+           sizeof(_postprocessing_blur_poisson) );
 
     result_object->bluriness_source   = bluriness_source;
     result_object->context            = context;
@@ -199,10 +221,11 @@ PUBLIC EMERALD_API postprocessing_blur_poisson postprocessing_blur_poisson_creat
                                                      _postprocessing_blur_poisson_init_renderer_callback,
                                                      result_object);
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _postprocessing_blur_poisson_release,
                                                    OBJECT_TYPE_POSTPROCESSING_BLUR_POISSON,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Post-processing Blur Poisson\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Post-processing Blur Poisson\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (postprocessing_blur_poisson) result_object;
@@ -230,8 +253,7 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
     unsigned int                                              texture_height  = 0;
     unsigned int                                              texture_width   = 0;
     system_window                                             window          = NULL;
-    int                                                       window_height   = 0;
-    int                                                       window_width    = 0;
+    int                                                       window_size[2]  = {0};
 
     ogl_context_get_property(poisson_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -243,15 +265,22 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
                              OGL_CONTEXT_PROPERTY_WINDOW,
                             &window);
 
-    system_window_get_dimensions(window,
-                                &window_width,
-                                &window_height);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
-    entrypoints->pGLBindFramebuffer     (GL_FRAMEBUFFER, poisson_ptr->fbo_id);
-    entrypoints->pGLFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, result_texture, 0);
+    entrypoints->pGLBindFramebuffer     (GL_FRAMEBUFFER,
+                                         poisson_ptr->fbo_id);
+    entrypoints->pGLFramebufferTexture2D(GL_FRAMEBUFFER,
+                                         GL_COLOR_ATTACHMENT0,
+                                         GL_TEXTURE_2D,
+                                         result_texture,
+                                         0);
 
     entrypoints->pGLUseProgram             (ogl_program_get_id(poisson_ptr->program) );
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_2D, input_texture);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                            GL_TEXTURE_2D,
+                                            input_texture);
 
     if (poisson_ptr->gpu_blur_strength_value != blur_strength)
     {
@@ -271,9 +300,17 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_width);
 
-    entrypoints->pGLViewport  (0, 0, texture_width, texture_height);
-    entrypoints->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    entrypoints->pGLViewport  (0, 0, window_width, window_height);
+    entrypoints->pGLViewport  (0,
+                               0,
+                               texture_width,
+                               texture_height);
+    entrypoints->pGLDrawArrays(GL_TRIANGLE_FAN,
+                               0,
+                               4);
+    entrypoints->pGLViewport  (0,
+                               0,
+                               window_size[0],
+                               window_size[1]);
 }
 
 /* Please see header for specification */

@@ -637,8 +637,12 @@ PRIVATE void _collada_data_init(__in __notnull _collada_data*            collada
     collada_ptr->use_cache_binary_blobs_mode = should_generate_cache_blobs;
 
     /* Read in and parse COLLADA XML file */
-    system_file_serializer serializer      =               system_file_serializer_create_for_reading(filename);
-    const char*            serialized_data = (const char*) system_file_serializer_get_raw_storage   (serializer);
+    system_file_serializer serializer      = system_file_serializer_create_for_reading(filename);
+    const char*            serialized_data = NULL;
+
+    system_file_serializer_get_property(serializer,
+                                        SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                       &serialized_data);
 
     if (serialized_data != NULL)
     {
@@ -1577,17 +1581,31 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                 {
                     /* Is the blob available already? */
                     system_file_serializer serializer      = system_file_serializer_create_for_reading(blob_file_name, false);
-                    const void*            serializer_data = system_file_serializer_get_raw_storage   (serializer);
+                    const void*            serializer_data = NULL;
+
+                    system_file_serializer_get_property(serializer,
+                                                        SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                                       &serializer_data);
 
                     if (serializer_data != NULL)
                     {
-                        const void*      blob_data         = NULL;
-                        _mesh_index_type index_type        = MESH_INDEX_TYPE_UNKNOWN;
-                        uint32_t         n_blob_data_bytes = 0;
+                        const void*      blob_data                 = NULL;
+                        _mesh_index_type index_type                = MESH_INDEX_TYPE_UNKNOWN;
+                        uint32_t         n_blob_data_bytes         = 0;
+                        uint32_t         serializer_current_offset = 0;
+                        const char*      serializer_raw_storage    = NULL;
 
                         system_file_serializer_read(serializer, sizeof(index_type),        &index_type);
                         system_file_serializer_read(serializer, sizeof(n_blob_data_bytes), &n_blob_data_bytes);
-                        blob_data = (const char*) system_file_serializer_get_raw_storage(serializer) + system_file_serializer_get_current_offset(serializer);
+
+                        system_file_serializer_get_property(serializer,
+                                                            SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                                           &serializer_raw_storage);
+                        system_file_serializer_get_property(serializer,
+                                                            SYSTEM_FILE_SERIALIZER_PROPERTY_CURRENT_OFFSET,
+                                                            &serializer_current_offset);
+
+                        blob_data = serializer_raw_storage + serializer_current_offset;
 
                         mesh_set_single_indexed_representation(result,
                                                                index_type,

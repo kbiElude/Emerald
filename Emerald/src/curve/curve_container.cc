@@ -529,8 +529,9 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(__in __notnull  curve_co
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in system_hashed_ansi_string name,
-                                                                    __in system_variant_type       data_type)
+PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in     system_hashed_ansi_string name,
+                                                                    __in_opt system_hashed_ansi_string scene_name,
+                                                                    __in     system_variant_type       data_type)
 {
     _curve_container* new_container = new (std::nothrow) _curve_container;
 
@@ -550,8 +551,9 @@ PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in system_
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_container,
                                                    _curve_container_release,
                                                    OBJECT_TYPE_CURVE_CONTAINER,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Curves\\",
-                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
+                                                   GET_OBJECT_PATH(name,
+                                                                   OBJECT_TYPE_CURVE_CONTAINER,
+                                                                   scene_name) );
 
     system_callback_manager_call_back(system_callback_manager_get(),
                                       CALLBACK_ID_CURVE_CONTAINER_ADDED,

@@ -49,6 +49,7 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_LIMITS_ARB_FRAMEBUFFER_NO_ATTACHMENTS,           /* not settable, ogl_context_limits_arb_framebuffer_no_attachments* */
     OGL_CONTEXT_PROPERTY_LIMITS_ARB_SHADER_STORAGE_BUFFER_OBJECT,         /* not settable, ogl_context_limits_arb_shader_storage_buffer_object* */
     OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,                              /* not settable, ogl_primitive_renderer */
+    OGL_CONTEXT_PROPERTY_PROGRAMS,                                        /* not settable, ogl_programs */
     OGL_CONTEXT_PROPERTY_MATERIALS,                                       /* not settable, ogl_materials */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,                                /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLERS,                                        /* not settable, ogl_samplers */

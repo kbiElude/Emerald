@@ -380,7 +380,8 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
             case LWLIGHT_DISTANT:
             {
                 light_type_emerald = SCENE_LIGHT_TYPE_DIRECTIONAL;
-                new_light          = scene_light_create_directional(light_name_has);
+                new_light          = scene_light_create_directional(light_name_has,
+                                                                    NULL); /* object_manager_path */
 
                 break;
             } /* case LWLIGHT_DISTANT: */
@@ -388,7 +389,8 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
             case LWLIGHT_POINT:
             {
                 light_type_emerald = SCENE_LIGHT_TYPE_POINT;
-                new_light          = scene_light_create_point(light_name_has);
+                new_light          = scene_light_create_point(light_name_has,
+                                                              NULL); /* object_manager_path */
 
                 break;
             } /* case LWLIGHT_POINT: */
@@ -396,7 +398,8 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
             case LWLIGHT_SPOT:
             {
                 light_type_emerald = SCENE_LIGHT_TYPE_SPOT;
-                new_light          = scene_light_create_spot(light_name_has);
+                new_light          = scene_light_create_spot(light_name_has,
+                                                             NULL); /* object_manager_path */
 
                 break;
             }
@@ -443,7 +446,8 @@ volatile void ExtractLightDataWorkerThreadEntryPoint(__in __notnull void* in_sce
 
     system_hashed_ansi_string ambient_light_name_has = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(scene_name),
                                                                                                                                  " ambient light");
-    scene_light               ambient_light          = scene_light_create_ambient(ambient_light_name_has);
+    scene_light               ambient_light          = scene_light_create_ambient(ambient_light_name_has,
+                                                                                  NULL); /* object_manager_path */
 
     _update_light_properties(ambient_light,
                              SCENE_LIGHT_TYPE_AMBIENT,
