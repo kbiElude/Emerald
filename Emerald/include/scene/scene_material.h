@@ -39,6 +39,7 @@ enum scene_material_property
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_FILE_NAME,      /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER,     /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER,     /*     settable, scene_material_texture_filtering */
+    SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH,           /* not settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,              /*     settable, curve_container                  */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,  /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER, /*     settable, scene_material_texture_filtering */
@@ -51,7 +52,8 @@ enum scene_material_property
 };
 
 /** TODO */
-PUBLIC EMERALD_API scene_material scene_material_create(__in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull system_hashed_ansi_string name,
+                                                        __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_material,
@@ -63,8 +65,9 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer serializer,
-                                          __in_opt       scene                  owner_scene);
+PUBLIC scene_material scene_material_load(__in __notnull system_file_serializer    serializer,
+                                          __in_opt       scene                     owner_scene,
+                                          __in_opt       system_hashed_ansi_string object_manager_path);
 
 /** TODO.
  *

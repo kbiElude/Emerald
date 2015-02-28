@@ -56,7 +56,9 @@ PUBLIC EMERALD_API scene_curve scene_curve_create(__in __notnull system_hashed_a
 {
     _scene_curve* new_scene_curve = new (std::nothrow) _scene_curve;
 
-    ASSERT_DEBUG_SYNC(new_scene_curve != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_curve != NULL,
+                      "Out of memory");
+
     if (new_scene_curve != NULL)
     {
         _scene_curve_init(new_scene_curve,
@@ -107,7 +109,8 @@ PUBLIC EMERALD_API void scene_curve_get(__in  __notnull scene_curve          ins
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_curve scene_curve_load(__in __notnull system_file_serializer serializer)
+PUBLIC EMERALD_API scene_curve scene_curve_load(__in     __notnull system_file_serializer    serializer,
+                                                __in_opt           system_hashed_ansi_string object_manager_path)
 {
     system_hashed_ansi_string name     = NULL;
     scene_curve               result   = NULL;
@@ -115,11 +118,12 @@ PUBLIC EMERALD_API scene_curve scene_curve_load(__in __notnull system_file_seria
     curve_container           instance = NULL;
 
     if (!system_file_serializer_read_hashed_ansi_string(serializer,
-                                                       &name)       ||
+                                                       &name)                ||
         !system_file_serializer_read                   (serializer,
                                                         sizeof(id),
-                                                       &id)         ||
+                                                       &id)                  ||
         !system_file_serializer_read_curve_container   (serializer,
+                                                        object_manager_path,
                                                        &instance))
     {
         ASSERT_DEBUG_SYNC(false,

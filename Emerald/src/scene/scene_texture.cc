@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -26,7 +26,9 @@ typedef struct
 } _scene_texture;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(scene_texture, scene_texture, _scene_texture);
+REFCOUNT_INSERT_IMPLEMENTATION(scene_texture,
+                               scene_texture,
+                              _scene_texture);
 
 /** TODO */
 PRIVATE void _scene_texture_init(__in __notnull _scene_texture*           data_ptr,
@@ -53,20 +55,27 @@ PRIVATE void _scene_texture_release(void* data_ptr)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_texture_create(__in __notnull system_hashed_ansi_string name,
-                                                      __in __notnull system_hashed_ansi_string filename)
+PUBLIC EMERALD_API scene_texture scene_texture_create(__in     __notnull system_hashed_ansi_string name,
+                                                      __in_opt           system_hashed_ansi_string object_manager_path,
+                                                      __in     __notnull system_hashed_ansi_string filename)
 {
     _scene_texture* new_scene_texture = new (std::nothrow) _scene_texture;
 
-    ASSERT_DEBUG_SYNC(new_scene_texture != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_texture != NULL,
+                      "Out of memory");
+
     if (new_scene_texture != NULL)
     {
-        _scene_texture_init(new_scene_texture, name, filename);
+        _scene_texture_init(new_scene_texture,
+                            name,
+                            filename);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_texture,
                                                        _scene_texture_release,
                                                        OBJECT_TYPE_SCENE_TEXTURE,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Textures\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_TEXTURE,
+                                                                       object_manager_path) );
     }
 
     return (scene_texture) new_scene_texture;
@@ -110,8 +119,9 @@ PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture         
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnull system_file_serializer serializer,
-                                                                    __in __notnull ogl_context            context)
+PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnull system_file_serializer    serializer,
+                                                                    __in_opt       system_hashed_ansi_string object_manager_path,
+                                                                    __in __notnull ogl_context               context)
 {
     ogl_textures              context_textures = NULL;
     system_hashed_ansi_string filename         = NULL;
@@ -119,13 +129,21 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnu
     scene_texture             result           = 0;
     bool                      uses_mipmaps     = false;
 
-    if (system_file_serializer_read_hashed_ansi_string(serializer, &name)                             &&
-        system_file_serializer_read_hashed_ansi_string(serializer, &filename)                         &&
-        system_file_serializer_read                   (serializer, sizeof(uses_mipmaps), &uses_mipmaps) )
+    if (system_file_serializer_read_hashed_ansi_string(serializer,
+                                                      &name)                  &&
+        system_file_serializer_read_hashed_ansi_string(serializer,
+                                                      &filename)              &&
+        system_file_serializer_read                   (serializer,
+                                                       sizeof(uses_mipmaps),
+                                                      &uses_mipmaps) )
     {
-        result = scene_texture_create(name, filename);
+        result = scene_texture_create(name,
+                                      object_manager_path,
+                                      filename);
 
-        ASSERT_ALWAYS_SYNC(result != NULL, "Could not create scene texture instance");
+        ASSERT_ALWAYS_SYNC(result != NULL,
+                          "Could not create scene texture instance");
+
         if (result != NULL)
         {
             /* Check with ogl_textures if the filename is recognized. If so, we need not create
@@ -230,15 +248,21 @@ PUBLIC bool scene_texture_save(__in __notnull system_file_serializer serializer,
 
         uses_mipmaps = (n_texture_mipmaps > 1);
 
-        if (system_file_serializer_write_hashed_ansi_string(serializer, texture_ptr->name)                         &&
-            system_file_serializer_write_hashed_ansi_string(serializer, texture_ptr->filename)                     &&
-            system_file_serializer_write                   (serializer, sizeof(uses_mipmaps),    &uses_mipmaps) )
+        if (system_file_serializer_write_hashed_ansi_string(serializer,
+                                                            texture_ptr->name)     &&
+            system_file_serializer_write_hashed_ansi_string(serializer,
+                                                            texture_ptr->filename) &&
+            system_file_serializer_write                   (serializer,
+                                                            sizeof(uses_mipmaps),
+                                                           &uses_mipmaps) )
         {
             result = true;
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not save texture [%s]", system_hashed_ansi_string_get_buffer(texture_ptr->name) );
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not save texture [%s]",
+                              system_hashed_ansi_string_get_buffer(texture_ptr->name) );
         }
     }
 
@@ -289,7 +313,9 @@ PUBLIC EMERALD_API void scene_texture_set(__in __notnull scene_texture          
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized texture property [%d]", property);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized texture property [%d]",
+                              property);
         }
     }
 }

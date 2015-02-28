@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * Object manager has been implemented for two reasons:
  *
@@ -41,6 +41,11 @@ PUBLIC void _object_manager_init();
 PUBLIC EMERALD_API object_manager_directory object_manager_get_directory(system_hashed_ansi_string);
 
 /** TODO */
+PUBLIC system_hashed_ansi_string object_manager_get_object_path(__in     __notnull system_hashed_ansi_string  object_name,
+                                                                __in               object_manager_object_type object_type,
+                                                                __in_opt           system_hashed_ansi_string  scene_name);
+
+/** TODO */
 PUBLIC EMERALD_API object_manager_directory object_manager_get_root_directory();
 
 /** Registers a reference-counted object in the registry. This function can ONLY be called from within the engine,
@@ -52,7 +57,11 @@ PUBLIC EMERALD_API object_manager_directory object_manager_get_root_directory();
  *  @param int                        Line, at which the object was created.
  *  @param object_manager_object_type Type of the created object.
  */
-PUBLIC void _object_manager_register_refcounted_object(void* ptr, system_hashed_ansi_string hierarchy_path, const char* source_code_file_name, int source_code_file_line, object_manager_object_type object_type);
+PUBLIC void _object_manager_register_refcounted_object(void*                      ptr,
+                                                       system_hashed_ansi_string  hierarchy_path,
+                                                       const char*                source_code_file_name,
+                                                       int                        source_code_file_line,
+                                                       object_manager_object_type object_type);
 
 /** Unregisters a reference-counted object from the registry. This function can ONLY be called from within the engine,
  *  hence not exported.

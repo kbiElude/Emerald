@@ -388,23 +388,24 @@ typedef struct _scene_graph_node
 
 typedef struct _scene_graph
 {
-    system_dag              dag;
-    bool                    dirty;
-    system_timeline_time    dirty_time;
-    system_timeline_time    last_compute_time;
-    system_resizable_vector nodes;
-    scene                   owner_scene;
-    _scene_graph_node*      root_node_ptr;
+    system_dag                dag;
+    bool                      dirty;
+    system_timeline_time      dirty_time;
+    system_timeline_time      last_compute_time;
+    system_resizable_vector   nodes;
+    system_hashed_ansi_string object_manager_path;
+    scene                     owner_scene;
+    _scene_graph_node*        root_node_ptr;
 
-    scene_graph_node        node_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
+    scene_graph_node          node_by_tag[SCENE_GRAPH_NODE_TAG_COUNT];
 
-    system_critical_section node_compute_cs;
-    system_resizable_vector node_compute_vector;
+    system_critical_section   node_compute_cs;
+    system_resizable_vector   node_compute_vector;
 
-    system_resizable_vector sorted_nodes; /* filled by compute() */
-    system_read_write_mutex sorted_nodes_rw_mutex;
+    system_resizable_vector   sorted_nodes; /* filled by compute() */
+    system_read_write_mutex   sorted_nodes_rw_mutex;
 
-    system_critical_section compute_lock_cs;
+    system_critical_section   compute_lock_cs;
 
     _scene_graph()
     {
@@ -416,6 +417,7 @@ typedef struct _scene_graph
         node_compute_cs       = system_critical_section_create();
         node_compute_vector   = NULL;
         nodes                 = NULL;
+        object_manager_path   = NULL;
         root_node_ptr         = NULL;
         sorted_nodes          = NULL;
         sorted_nodes_rw_mutex = NULL;
@@ -872,9 +874,10 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _scene_graph_load_curve(__in_opt           scene                  owner_scene,
-                                     __in     __notnull curve_container*       curve_ptr,
-                                     __in     __notnull system_file_serializer serializer)
+PRIVATE bool _scene_graph_load_curve(__in_opt           scene                     owner_scene,
+                                     __in_opt           system_hashed_ansi_string object_manager_path,
+                                     __in     __notnull curve_container*          curve_ptr,
+                                     __in     __notnull system_file_serializer    serializer)
 {
     bool result = true;
 
@@ -901,6 +904,7 @@ PRIVATE bool _scene_graph_load_curve(__in_opt           scene                  o
     else
     {
         result &= system_file_serializer_read_curve_container(serializer,
+                                                              object_manager_path,
                                                               curve_ptr);
     }
 
@@ -1253,6 +1257,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_rotation_dynamic(__i
                     ++n)
     {
         if (!_scene_graph_load_curve(owner_scene,
+                                     graph_ptr->object_manager_path,
                                      serialized_curves + n,
                                      serializer) )
         {
@@ -1326,6 +1331,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_scale_dynamic(__in _
                     ++n)
     {
         if (!_scene_graph_load_curve(owner_scene,
+                                     graph_ptr->object_manager_path,
                                      serialized_curves + n,
                                      serializer) )
         {
@@ -1396,6 +1402,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_dynamic(
                     ++n)
     {
         if (!_scene_graph_load_curve    (owner_scene,
+                                         graph_ptr->object_manager_path,
                                          serialized_curves + n,
                                          serializer)                     ||
             !system_file_serializer_read(serializer,
@@ -2249,7 +2256,8 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene owner_scene)
+PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene                     owner_scene,
+                                                  __in_opt       system_hashed_ansi_string object_manager_path)
 {
     _scene_graph* new_graph = new (std::nothrow) _scene_graph;
 
@@ -2267,6 +2275,7 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene owner_sce
     new_graph->dag                   = system_dag_create             ();
     new_graph->nodes                 = system_resizable_vector_create(4 /* capacity */,
                                                                       sizeof(_scene_graph_node*) );
+    new_graph->object_manager_path   = object_manager_path;
     new_graph->owner_scene           = owner_scene;
     new_graph->sorted_nodes          = system_resizable_vector_create(4 /* capacity */,
                                                                       sizeof(_scene_graph_node*) );
@@ -2573,13 +2582,15 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_root_node(__in __notnull sce
 }
 
 /* Please see header for specification */
-PUBLIC scene_graph scene_graph_load(__in __notnull scene                   owner_scene,
-                                    __in __notnull system_file_serializer  serializer,
-                                    __in __notnull system_resizable_vector serialized_scene_cameras,
-                                    __in __notnull system_resizable_vector serialized_scene_lights,
-                                    __in __notnull system_resizable_vector serialized_scene_mesh_instances)
+PUBLIC scene_graph scene_graph_load(__in __notnull scene                     owner_scene,
+                                    __in __notnull system_file_serializer    serializer,
+                                    __in __notnull system_resizable_vector   serialized_scene_cameras,
+                                    __in __notnull system_resizable_vector   serialized_scene_lights,
+                                    __in __notnull system_resizable_vector   serialized_scene_mesh_instances,
+                                    __in_opt       system_hashed_ansi_string object_manager_path)
 {
-    scene_graph result = scene_graph_create(owner_scene);
+    scene_graph result = scene_graph_create(owner_scene,
+                                            object_manager_path);
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "Could not create a scene graph instance");

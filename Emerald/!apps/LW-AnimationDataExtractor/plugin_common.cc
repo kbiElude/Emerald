@@ -271,6 +271,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " F Stop"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -283,6 +284,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Focal Distance"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -305,6 +307,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
                                                                                                               ((property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_R) ? " Ambient Color R" :
                                                                                                                (property == ITEM_PROPERTY_LIGHT_AMBIENT_COLOR_G) ? " Ambient Color G" :
                                                                                                                                                                    " Ambient Color B")),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -316,6 +319,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Ambient Intensity"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -339,6 +343,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
                                                                                                               ((property == ITEM_PROPERTY_LIGHT_COLOR_R) ? " Color R" :
                                                                                                                (property == ITEM_PROPERTY_LIGHT_COLOR_G) ? " Color G" :
                                                                                                                                                            " Color B")),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -351,6 +356,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Color Intensity"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -370,6 +376,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               (property == ITEM_PROPERTY_LIGHT_CONE_ANGLE) ? " Cone Angle" : " Edge Angle"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -382,6 +389,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Range"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -402,7 +410,8 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
                                                                                                               ((property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_R) ? " Color R" :
                                                                                                                (property == ITEM_PROPERTY_SURFACE_AMBIENT_COLOR_G) ? " Color G" :
                                                                                                                                                                      " Color B")),
-                                                       SYSTEM_VARIANT_FLOAT);
+                                                      NULL, /* object_manager_path */
+                                                      SYSTEM_VARIANT_FLOAT);
 
                 break;
             }
@@ -414,6 +423,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Glosiness"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -426,6 +436,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Luminosity"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -438,6 +449,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Reflection Ratio"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;
@@ -450,6 +462,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Specular Ratio"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
             }
 
@@ -460,6 +473,7 @@ PUBLIC void GetCurveContainerForProperty(__in                system_hashed_ansi_
 
                 result_curve = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(object_name),
                                                                                                               " Zoom Factor"),
+                                                      NULL, /* object_manager_path */
                                                       SYSTEM_VARIANT_FLOAT);
 
                 break;

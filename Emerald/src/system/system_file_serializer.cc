@@ -264,6 +264,24 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             break;
         }
 
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH_AND_NAME:
+        {
+            system_hashed_ansi_string file_name = NULL;
+            system_hashed_ansi_string file_path = NULL;
+
+            system_file_serializer_get_property(serializer,
+                                                SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
+                                               &file_name);
+            system_file_serializer_get_property(serializer,
+                                                SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH,
+                                               &file_path);
+
+            *(system_hashed_ansi_string*) out_data = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(file_path),
+                                                                                                             system_hashed_ansi_string_get_buffer(file_name) );
+
+            break;
+        }
+
         case SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE:
         {
             ASSERT_DEBUG_SYNC(serializer_ptr->for_reading,
@@ -331,8 +349,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
 }
 
 /* Please see header file for specification */
-PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notnull system_file_serializer serializer,
-                                                                    __out __notnull curve_container*       result_container)
+PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __notnull system_file_serializer    serializer,
+                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
+                                                                    __out    __notnull curve_container*          result_container)
 {
     system_hashed_ansi_string curve_name    = NULL;
     bool                      result        = false;
@@ -358,25 +377,10 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notn
     /* Instantiate the curve */
     if (*result_container == NULL)
     {
-        system_hashed_ansi_string final_curve_name     = NULL;
-        const char*               limiter              = "\\";
-        system_hashed_ansi_string serializer_file_name = NULL;
-
-        system_file_serializer_get_property(serializer,
-                                            SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
-                                           &serializer_file_name);
-
-        const char* final_curve_name_parts[] =
-        {
-            system_hashed_ansi_string_get_buffer(serializer_file_name),
-            limiter,
-            system_hashed_ansi_string_get_buffer(curve_name)
-        };
-        const uint32_t n_final_curve_name_parts = sizeof(final_curve_name_parts) / sizeof(final_curve_name_parts[0]);
-
-
-        *result_container = curve_container_create(system_hashed_ansi_string_create_by_merging_strings(n_final_curve_name_parts,
-                                                                                                       final_curve_name_parts),
+        *result_container = curve_container_create(curve_name,
+                                                   GET_OBJECT_PATH(curve_name,
+                                                                   OBJECT_TYPE_CURVE_CONTAINER,
+                                                                   object_manager_path),
                                                    variant_type);
 
         if (*result_container == NULL)

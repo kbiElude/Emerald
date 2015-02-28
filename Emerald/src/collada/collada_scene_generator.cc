@@ -120,6 +120,7 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
     /* Spawn the new container */
     result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(value_id),
                                                                                             " curve container"),
+                                    NULL,                  /* object_manager_path */
                                     SYSTEM_VARIANT_FLOAT); /* n_dimension */
 
     /* If this is a static value, things are simple */
@@ -305,7 +306,8 @@ PRIVATE void _collada_scene_generator_create_scene_graph(__in __notnull collada_
                                                          __in __notnull scene              result_scene,
                                                          __in __notnull ogl_context        context)
 {
-    scene_graph scene_graph = scene_graph_create(result_scene);
+    scene_graph scene_graph = scene_graph_create(result_scene,
+                                                 NULL); /* object_manager_path */
 
     ASSERT_DEBUG_SYNC(scene_graph != NULL, "Could not create a scene graph instance");
     if (scene_graph == NULL)
@@ -597,6 +599,7 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
 
             /* Spawn scene_texture instance */
             scene_texture result_texture = scene_texture_create(name,
+                                                                NULL, /* scene_name */
                                                                 image_file_name_with_path);
 
             if (result_texture == NULL)
@@ -825,7 +828,8 @@ PRIVATE void _collada_scene_generator_process_camera_instance_node_item(__in __n
     ASSERT_DEBUG_SYNC(instance_name  != NULL, "Camera instance name is NULL");
 
     /* TODO: For now we assume the properties are static. */
-    scene_camera new_camera_instance = scene_camera_create(instance_name);
+    scene_camera new_camera_instance = scene_camera_create(instance_name,
+                                                           NULL /* scene_name */);
 
     /* Set camera instance properties */
     _scene_camera_type        camera_type  = SCENE_CAMERA_TYPE_PERSPECTIVE;
@@ -988,7 +992,8 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
     {
         case COLLADA_DATA_LIGHT_TYPE_DIRECTIONAL:
         {
-            new_light = scene_light_create_directional(instance_name);
+            new_light = scene_light_create_directional(instance_name,
+                                                       NULL); /* scene_name */
 
             scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_COLOR,
@@ -1010,7 +1015,8 @@ PRIVATE void _collada_scene_generator_process_light_instance_node_item(__in __no
 
         case COLLADA_DATA_LIGHT_TYPE_POINT:
         {
-            new_light = scene_light_create_point(instance_name);
+            new_light = scene_light_create_point(instance_name,
+                                                 NULL); /* scene_name */
 
             scene_light_get_property(new_light,
                                      SCENE_LIGHT_PROPERTY_COLOR,

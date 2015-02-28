@@ -32,10 +32,10 @@ typedef struct _scene_descriptor
 
     ~_scene_descriptor()
     {
-        ASSERT_DEBUG_SYNC(renderer != NULL,
+        ASSERT_DEBUG_SYNC(renderer == NULL,
                           "ogl_scene_renderer not deinitialized but _scene_descriptor instance about to be deallocated");
 
-        ASSERT_DEBUG_SYNC(this_scene != NULL,
+        ASSERT_DEBUG_SYNC(this_scene == NULL,
                           "scene not deinitialized but _scene_descriptor instance about to be deallocated");
     }
 } _scene_descriptor;

@@ -92,6 +92,7 @@ typedef struct _mesh_material
     ogl_context               context;
     bool                      dirty;
     system_hashed_ansi_string name;
+    system_hashed_ansi_string object_manager_path;
     scene                     owner_scene;
     mesh_material_shading     shading;
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
@@ -112,6 +113,7 @@ typedef struct _mesh_material
         dirty                  = true;
         fs_behavior            = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
         name                   = NULL;
+        object_manager_path    = NULL;
         owner_scene            = NULL;
         source_scene_material  = NULL;
         temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
@@ -127,7 +129,9 @@ typedef struct _mesh_material
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(mesh_material, mesh_material, _mesh_material);
+REFCOUNT_INSERT_IMPLEMENTATION(mesh_material,
+                               mesh_material,
+                              _mesh_material);
 
 
 /** TODO */
@@ -245,8 +249,9 @@ PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(__i
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hashed_ansi_string name,
-                                                      __in __notnull ogl_context               context)
+PUBLIC EMERALD_API mesh_material mesh_material_create(__in     __notnull system_hashed_ansi_string name,
+                                                      __in     __notnull ogl_context               context,
+                                                      __in_opt           system_hashed_ansi_string object_manager_path)
 {
     _mesh_material* new_material = new (std::nothrow) _mesh_material;
 
@@ -261,17 +266,19 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hash
         ASSERT_DEBUG_SYNC(name != NULL,
                           "Name is NULL");
 
-        new_material->callback_manager = system_callback_manager_create( (_callback_id) MESH_MATERIAL_CALLBACK_ID_COUNT);
-        new_material->context          = context;
-        new_material->name             = name;
-        new_material->uv_map_name      = NULL;
-        new_material->vs_behavior      = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+        new_material->callback_manager    = system_callback_manager_create( (_callback_id) MESH_MATERIAL_CALLBACK_ID_COUNT);
+        new_material->context             = context;
+        new_material->name                = name;
+        new_material->object_manager_path = object_manager_path;
+        new_material->uv_map_name         = NULL;
+        new_material->vs_behavior         = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material,
                                                        _mesh_material_release,
                                                        OBJECT_TYPE_MESH_MATERIAL,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Mesh Materials\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_MESH_MATERIAL,
+                                                                       object_manager_path) );
     }
 
     return (mesh_material) new_material;
@@ -292,20 +299,14 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 
     if (new_material_ptr != NULL)
     {
-        const char* name_strings[] =
-        {
-            "\\Mesh Materials\\",
-            system_hashed_ansi_string_get_buffer(name),
-        };
-        unsigned int n_name_strings = sizeof(name_strings) / sizeof(name_strings[0]);
-
         /* Copy relevant fields */
-        new_material_ptr->dirty       = src_material_ptr->dirty;
-        new_material_ptr->name        = src_material_ptr->name;
-        new_material_ptr->shading     = src_material_ptr->shading;
-        new_material_ptr->uber_non_sm = src_material_ptr->uber_non_sm;
-        new_material_ptr->uber_sm     = src_material_ptr->uber_sm;
-        new_material_ptr->vs_behavior = src_material_ptr->vs_behavior;
+        new_material_ptr->dirty               = src_material_ptr->dirty;
+        new_material_ptr->name                = src_material_ptr->name;
+        new_material_ptr->object_manager_path = src_material_ptr->object_manager_path;
+        new_material_ptr->shading             = src_material_ptr->shading;
+        new_material_ptr->uber_non_sm         = src_material_ptr->uber_non_sm;
+        new_material_ptr->uber_sm             = src_material_ptr->uber_sm;
+        new_material_ptr->vs_behavior         = src_material_ptr->vs_behavior;
 
         memcpy(new_material_ptr->shading_properties,
                src_material_ptr->shading_properties,
@@ -341,8 +342,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material_ptr,
                                                        _mesh_material_release,
                                                        OBJECT_TYPE_MESH_MATERIAL,
-                                                       system_hashed_ansi_string_create_by_merging_strings(n_name_strings,
-                                                                                                           name_strings) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_MESH_MATERIAL,
+                                                                       src_material_ptr->object_manager_path) );
     }
 
     return (mesh_material) new_material_ptr;
@@ -353,16 +355,21 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                                                           __in_opt           ogl_context    context)
 {
     /* Create a new mesh_material instance */
-    ogl_textures              context_textures  = NULL;
-    mesh_material             result_material   = NULL;
-    system_hashed_ansi_string src_material_name = NULL;
+    ogl_textures              context_textures                 = NULL;
+    system_hashed_ansi_string src_material_object_manager_path = NULL;
+    mesh_material             result_material                  = NULL;
+    system_hashed_ansi_string src_material_name                = NULL;
 
     scene_material_get_property(src_material,
                                 SCENE_MATERIAL_PROPERTY_NAME,
                                &src_material_name);
+    scene_material_get_property(src_material,
+                                SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH,
+                               &src_material_object_manager_path);
 
     result_material = mesh_material_create(src_material_name,
-                                           context);
+                                           context,
+                                           src_material_object_manager_path);
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "mesh_material_create() failed.");

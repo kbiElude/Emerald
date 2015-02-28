@@ -54,8 +54,9 @@ PRIVATE void _scene_mesh_release(void* data_ptr)
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in __notnull system_hashed_ansi_string name,
-                                                __in           mesh                      geometry)
+PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in     __notnull system_hashed_ansi_string name,
+                                                __in_opt           system_hashed_ansi_string object_manager_path,
+                                                __in               mesh                      geometry)
 {
     _scene_mesh* new_scene_mesh = new (std::nothrow) _scene_mesh;
 
@@ -69,8 +70,9 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in __notnull system_hashed_ans
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_mesh,
                                                        _scene_mesh_release,
                                                        OBJECT_TYPE_SCENE_MESH,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Mesh Instances\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_MESH,
+                                                                       object_manager_path) );
     }
 
     return (scene_mesh) new_scene_mesh;
@@ -129,8 +131,9 @@ PUBLIC EMERALD_API void scene_mesh_get_property(__in  __notnull scene_mesh      
 }
 
 /* Please see header for spec */
-PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer serializer,
-                                  __in __notnull system_hash64map       id_to_gpu_mesh_map)
+PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    serializer,
+                                  __in_opt       system_hashed_ansi_string object_manager_path,
+                                  __in __notnull system_hash64map          id_to_gpu_mesh_map)
 {
     system_hashed_ansi_string name                           = NULL;
     uint32_t                  mesh_map_id                    = -1;
@@ -173,6 +176,7 @@ PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer serializ
 
     /* Spawn the instance */
     result_mesh = scene_mesh_create(name,
+                                    object_manager_path,
                                     mesh_gpu);
 
     ASSERT_DEBUG_SYNC(result_mesh != NULL, "Could not spawn GPU mesh instance");

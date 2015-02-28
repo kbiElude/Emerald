@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -31,6 +31,7 @@ typedef struct
     system_hashed_ansi_string        normal_texture_file_name;
     scene_material_texture_filtering normal_texture_mag_filter;
     scene_material_texture_filtering normal_texture_min_filter;
+    system_hashed_ansi_string        object_manager_path;
     curve_container                  reflection_ratio;
     system_hashed_ansi_string        reflection_texture_file_name;
     scene_material_texture_filtering reflection_texture_mag_filter;
@@ -45,38 +46,50 @@ typedef struct
 } _scene_material;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(scene_material, scene_material, _scene_material);
+REFCOUNT_INSERT_IMPLEMENTATION(scene_material,
+                               scene_material,
+                              _scene_material);
+
 
 /** TODO */
 PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_ptr,
-                                  __in __notnull system_hashed_ansi_string name)
+                                  __in __notnull system_hashed_ansi_string name,
+                                  __in __notnull system_hashed_ansi_string object_manager_path)
 {
     memset(data_ptr,
            0,
            sizeof(_scene_material) );
 
-    data_ptr->color[0]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Color R [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
-    data_ptr->color[1]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Color G [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
-    data_ptr->color[2]         = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Color B [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
-    data_ptr->glosiness        = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Glosiness [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
-    data_ptr->luminance        = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Luminance [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
-    data_ptr->name             = name;
-    data_ptr->reflection_ratio = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Reflection Ratio [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
-    data_ptr->specular_ratio   = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                " Specular Ratio [default]"),
-                                                        SYSTEM_VARIANT_FLOAT);
+    data_ptr->color[0]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Color R [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
+    data_ptr->color[1]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Color G [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
+    data_ptr->color[2]            = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Color B [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
+    data_ptr->glosiness           = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Glosiness [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
+    data_ptr->luminance           = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Luminance [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
+    data_ptr->name                = name;
+    data_ptr->object_manager_path = object_manager_path;
+    data_ptr->reflection_ratio    = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Reflection Ratio [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
+    data_ptr->specular_ratio      = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                   " Specular Ratio [default]"),
+                                                           object_manager_path,
+                                                           SYSTEM_VARIANT_FLOAT);
 
     data_ptr->color_texture_mag_filter      = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR;
     data_ptr->color_texture_min_filter      = SCENE_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR;
@@ -91,9 +104,10 @@ PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_
 }
 
 /** TODO */
-PRIVATE bool _scene_material_load_curve(__in_opt           scene                  owner_scene,
-                                        __in     __notnull curve_container*       curve_ptr,
-                                        __in     __notnull system_file_serializer serializer)
+PRIVATE bool _scene_material_load_curve(__in_opt           scene                     owner_scene,
+                                        __in_opt           system_hashed_ansi_string object_manager_path,
+                                        __in     __notnull curve_container*          curve_ptr,
+                                        __in     __notnull system_file_serializer    serializer)
 {
     bool result = true;
 
@@ -120,6 +134,7 @@ PRIVATE bool _scene_material_load_curve(__in_opt           scene                
     else
     {
         result &= system_file_serializer_read_curve_container(serializer,
+                                                              object_manager_path,
                                                               curve_ptr);
     }
 
@@ -208,7 +223,8 @@ PRIVATE bool _scene_material_save_curve(__in_opt           scene                
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_material scene_material_create(__in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull system_hashed_ansi_string name,
+                                                        __in_opt           system_hashed_ansi_string object_manager_path)
 {
     _scene_material* new_scene_material = new (std::nothrow) _scene_material;
 
@@ -217,13 +233,15 @@ PUBLIC EMERALD_API scene_material scene_material_create(__in __notnull system_ha
     if (new_scene_material != NULL)
     {
         _scene_material_init(new_scene_material,
-                             name);
+                             name,
+                             object_manager_path);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_material,
                                                        _scene_material_release,
                                                        OBJECT_TYPE_SCENE_MATERIAL,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Materials\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_MATERIAL,
+                                                                       object_manager_path) );
     }
 
     return (scene_material) new_scene_material;
@@ -329,6 +347,13 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
             break;
         }
 
+        case SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH:
+        {
+            *(system_hashed_ansi_string*) out_result = material_ptr->object_manager_path;
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO:
         {
             *(curve_container*) out_result = material_ptr->reflection_ratio;
@@ -401,8 +426,9 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
 }
 
 /* Please see header for spec */
-PUBLIC scene_material scene_material_load(__in     __notnull system_file_serializer serializer,
-                                          __in_opt           scene                  owner_scene)
+PUBLIC scene_material scene_material_load(__in     __notnull system_file_serializer    serializer,
+                                          __in_opt           scene                     owner_scene,
+                                          __in_opt           system_hashed_ansi_string object_manager_path)
 {
     system_hashed_ansi_string name           = NULL;
     bool                      result         = true;
@@ -417,29 +443,9 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
         goto end;
     }
 
-    /* Spawn the instance.
-     *
-     * Combine the material name with scene name to avoid collisions. */
-    system_hashed_ansi_string final_material_name = NULL;
-    const char*               limiter             = "\\";
-    system_hashed_ansi_string scene_name          = NULL;
-
-    scene_get_property(owner_scene,
-                       SCENE_PROPERTY_NAME,
-                      &scene_name);
-
-    const char* final_material_name_parts[] =
-    {
-        system_hashed_ansi_string_get_buffer(scene_name),
-        limiter,
-        system_hashed_ansi_string_get_buffer(name)
-    };
-    const uint32_t n_final_material_name_parts = sizeof(final_material_name_parts) / sizeof(final_material_name_parts[0]);
-
-
-    final_material_name = system_hashed_ansi_string_create_by_merging_strings(n_final_material_name_parts,
-                                                                              final_material_name_parts);
-    result_material     = scene_material_create                              (final_material_name);
+    /* Spawn the instance.  */
+    result_material = scene_material_create(name,
+                                            object_manager_path);
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "Could not instantiate a scene_material object");
@@ -453,20 +459,25 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
     _scene_material* result_material_ptr = (_scene_material*) result_material;
 
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                              result_material_ptr->color + 0,
                                                              serializer);
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                              result_material_ptr->color + 1,
                                                              serializer);
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                              result_material_ptr->color + 2,
                                                              serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->color_texture_file_name);
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                             &result_material_ptr->glosiness,
                                                              serializer);
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                             &result_material_ptr->luminance,
                                                              serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
@@ -474,6 +485,7 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
                                                             &result_material_ptr->normal_texture_file_name);
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                             &result_material_ptr->reflection_ratio,
                                                              serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
@@ -482,6 +494,7 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
                                                              sizeof(result_material_ptr->smoothing_angle),
                                                             &result_material_ptr->smoothing_angle);
     result &= _scene_material_load_curve                    (owner_scene,
+                                                             result_material_ptr->object_manager_path,
                                                             &result_material_ptr->specular_ratio,
                                                              serializer);
     result &= system_file_serializer_read_hashed_ansi_string(serializer,

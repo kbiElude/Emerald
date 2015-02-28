@@ -107,12 +107,14 @@ PUBLIC EMERALD_API bool curve_container_add_tcb_segment(__in __notnull  curve_co
  *  cannot be changed later.
  *
  *  @param system_hashed_ansi_string Name of the curve.
- *  @param system_variant_type       Type to use for curve segments.
+ *  @param object_manager_path       TODO
+ *  @param data_type                 TODO
  *
  *  @return Returns a new curve container.
  */
-PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in system_hashed_ansi_string,
-                                                                    __in system_variant_type);
+PUBLIC EMERALD_API __notnull curve_container curve_container_create(__in     system_hashed_ansi_string name,
+                                                                    __in_opt system_hashed_ansi_string object_manager_path,
+                                                                    __in     system_variant_type       data_type);
 
 /** Deletes an existing node from a curve segment.
  *

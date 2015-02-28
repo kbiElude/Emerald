@@ -463,7 +463,7 @@ PUBLIC EMERALD_API bool object_manager_directory_insert_item(__in __notnull obje
             LOG_ERROR("Directory [%s] already contains item [%s]",
                       system_hashed_ansi_string_get_buffer(directory_ptr->name),
                       system_hashed_ansi_string_get_buffer(item_name) );
-            
+
             /* ASSERT_DEBUG_SYNC(false, ""); */
         }
     }

@@ -187,7 +187,8 @@ PRIVATE ogl_uber                  _ogl_materials_bake_uber             (__in    
                                                                         __in      __notnull scene                              scene,
                                                                         __in                bool                               use_shadow_maps);
 PRIVATE bool                      _ogl_materials_does_uber_match_scene (__in      __notnull ogl_uber                           uber,
-                                                                        __in      __notnull scene                              scene);
+                                                                        __in      __notnull scene                              scene,
+                                                                        __in                bool                               use_shadow_maps);
 PRIVATE void                      _ogl_materials_get_forced_setting    (__in      __notnull ogl_materials                      materials,
                                                                         __in                mesh_material_shading_property,
                                                                         __out_opt __notnull mesh_material_property_attachment* out_attachment,
@@ -546,24 +547,21 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
 
 /** TODO. **/
 PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
-                                                  __in __notnull scene    scene)
+                                                  __in __notnull scene    scene,
+                                                  __in           bool     use_shadow_mapping)
 {
     bool result = true;
 
     /* The purpose of this function is to make sure that uber we're fed implements shading
      * for exactly the same light configuration as defined in scene.
      */
-    scene_light  current_light                = NULL;
-    unsigned int n_scene_lights               = 0;
-    unsigned int n_uber_lights                = 0;
-    bool         scene_shadow_mapping_enabled = false;
+    scene_light  current_light  = NULL;
+    unsigned int n_scene_lights = 0;
+    unsigned int n_uber_lights  = 0;
 
     scene_get_property                  (scene,
                                          SCENE_PROPERTY_N_LIGHTS,
                                         &n_scene_lights);
-    scene_get_property                  (scene,
-                                         SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
-                                        &scene_shadow_mapping_enabled);
     ogl_uber_get_shader_general_property(uber,
                                          OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
                                         &n_uber_lights);
@@ -626,8 +624,8 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                           OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
                                          &current_uber_item_is_shadow_caster);
 
-        current_light_is_shadow_caster     &= scene_shadow_mapping_enabled;
-        current_uber_item_is_shadow_caster &= scene_shadow_mapping_enabled;
+        current_light_is_shadow_caster     &= use_shadow_mapping;
+        current_uber_item_is_shadow_caster &= use_shadow_mapping;
 
         /* Carry on with other light stuff */
         if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
@@ -966,13 +964,17 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
     const mesh_material_shading     shading_type_attribute_data                 = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
     const mesh_material_shading     shading_type_none                           = MESH_MATERIAL_SHADING_NONE;
           mesh_material             special_material_depth_clip                 = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
-                                                                                                       materials_ptr->context);
+                                                                                                       materials_ptr->context,
+                                                                                                       NULL); /* object_manager_path */
           mesh_material             special_material_depth_dual_paraboloid_clip = mesh_material_create(system_hashed_ansi_string_create("Special material: depth dual paraboloid clip"),
-                                                                                                       materials_ptr->context);
+                                                                                                       materials_ptr->context,
+                                                                                                       NULL); /* object_manager_path */
           mesh_material             special_material_normal                     = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
-                                                                                                       materials_ptr->context);
+                                                                                                       materials_ptr->context,
+                                                                                                       NULL); /* object_manager_path */
           mesh_material             special_material_texcoord                   = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
-                                                                                                       materials_ptr->context);
+                                                                                                       materials_ptr->context,
+                                                                                                       NULL); /* object_manager_path */
 
     /* Configure "depth clip preview" material */
     mesh_material_set_property(special_material_depth_clip,
@@ -1089,7 +1091,8 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
                                                                                                     material);
             bool does_material_match_scene = (scene == NULL                                                          ||
                                               scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
-                                                                                                    scene) );
+                                                                                                    scene,
+                                                                                                    use_shadow_maps) );
             bool does_sm_setting_match     = (uber_ptr->use_shadow_maps == use_shadow_maps);
 
             if ( do_materials_match       &&

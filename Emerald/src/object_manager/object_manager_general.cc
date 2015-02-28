@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -169,31 +169,42 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
 
     if (n_subdirectories != 0)
     {
-        system_resizable_vector subdirectories = system_resizable_vector_create(n_subdirectories, sizeof(object_manager_directory) );
+        system_resizable_vector subdirectories = system_resizable_vector_create(n_subdirectories,
+                                                                                sizeof(object_manager_directory) );
 
         /* Cache subdirectory names */
-        for (uint32_t n = 0; n < n_subdirectories; ++n)
+        for (uint32_t n = 0;
+                      n < n_subdirectories;
+                    ++n)
         {
-            object_manager_directory subdirectory = object_manager_directory_get_subdirectory_at(directory, n);
+            object_manager_directory subdirectory = object_manager_directory_get_subdirectory_at(directory,
+                                                                                                 n);
 
-            ASSERT_DEBUG_SYNC(subdirectory != NULL, "Subdirectory cannot be null.");
-            system_resizable_vector_push(subdirectories, subdirectory);
+            ASSERT_DEBUG_SYNC(subdirectory != NULL,
+                              "Subdirectory cannot be null.");
+
+            system_resizable_vector_push(subdirectories,
+                                         subdirectory);
         }
 
         /* Iterate through cached subdirectory names and recursively call the function */
         while (system_resizable_vector_get_amount_of_elements(subdirectories) != 0)
         {
             object_manager_directory subdirectory = NULL;
-            bool                     result       = system_resizable_vector_pop(subdirectories, &subdirectory);
+            bool                     result       = system_resizable_vector_pop(subdirectories,
+                                                                               &subdirectory);
 
-            ASSERT_DEBUG_SYNC(result, "Could not pop subdirectory from internal cache.");
+            ASSERT_DEBUG_SYNC(result,
+                              "Could not pop subdirectory from internal cache.");
+
             if (result)
             {
                 _object_manager_delete_empty_subdirectories(subdirectory);
 
                 if (object_manager_directory_get_amount_of_children_for_directory(subdirectory) == 0)
                 {
-                    object_manager_directory_delete_directory(directory, object_manager_directory_get_name(subdirectory) );
+                    object_manager_directory_delete_directory(directory,
+                                                              object_manager_directory_get_name(subdirectory) );
                 }
             }
         }
@@ -207,10 +218,13 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
 PUBLIC void _object_manager_deinit()
 {
     /* If default directories are still there, remove them if they contain no elements */
-    for (object_manager_object_type object_type = OBJECT_TYPE_FIRST; object_type != OBJECT_TYPE_LAST; ((int&)object_type)++)
+    for (object_manager_object_type object_type  = OBJECT_TYPE_FIRST;
+                                    object_type != OBJECT_TYPE_LAST;
+                             ((int&)object_type)++)
     {
         system_hashed_ansi_string subdirectory_name = object_manager_convert_object_manager_object_type_to_hashed_ansi_string(object_type);
-        object_manager_directory  subdirectory      = object_manager_directory_find_subdirectory(_root, subdirectory_name);
+        object_manager_directory  subdirectory      = object_manager_directory_find_subdirectory                             (_root,
+                                                                                                                              subdirectory_name);
 
         if (subdirectory != NULL)
         {
@@ -218,9 +232,10 @@ PUBLIC void _object_manager_deinit()
 
             if (object_manager_directory_get_amount_of_children_for_directory(subdirectory) == 0)
             {
-                if (!object_manager_directory_delete_directory(_root, subdirectory_name) )
+                if (!object_manager_directory_delete_directory(_root,
+                                                               subdirectory_name) )
                 {
-                    LOG_ERROR("Could not delete subdirectory [%s] while deinitializing object manager", 
+                    LOG_ERROR("Could not delete subdirectory [%s] while deinitializing object manager",
                               system_hashed_ansi_string_get_buffer(subdirectory_name)
                              );
                 }
@@ -241,7 +256,8 @@ PUBLIC void _object_manager_deinit()
 
     if (n_elements != 0)
     {
-        LOG_ERROR("Resource leak detected upon exiting! %d elements are still there!", n_elements);
+        LOG_ERROR("Resource leak detected upon exiting! %d elements are still there!",
+                  n_elements);
     }
 
     /* Now we're cool to release the storage */
@@ -260,6 +276,56 @@ PUBLIC EMERALD_API object_manager_directory object_manager_get_directory(system_
 }
 
 /** Please see header for specification */
+PUBLIC system_hashed_ansi_string object_manager_get_object_path(__in     __notnull system_hashed_ansi_string  object_name,
+                                                                __in               object_manager_object_type object_type,
+                                                                __in_opt           system_hashed_ansi_string  scene_name)
+{
+    /* Come up with a path which also includes owner scene's name.
+     * This helps us avoid naming collisions.
+     */
+    system_hashed_ansi_string object_type_has = object_manager_convert_object_manager_object_type_to_hashed_ansi_string(object_type);
+    system_hashed_ansi_string result          = NULL;
+
+    if (scene_name != NULL)
+    {
+        static const char* limiter        = "\\";
+               const char* scene_name_raw = system_hashed_ansi_string_get_buffer(scene_name);
+
+        const char* final_object_name_parts[] =
+        {
+            limiter,
+            system_hashed_ansi_string_get_buffer(object_type_has),
+            limiter,
+            scene_name_raw,
+            limiter,
+            system_hashed_ansi_string_get_buffer(object_name)
+        };
+        const uint32_t n_final_object_name_parts = sizeof(final_object_name_parts) / sizeof(final_object_name_parts[0]);
+
+        result = system_hashed_ansi_string_create_by_merging_strings(n_final_object_name_parts,
+                                                                       final_object_name_parts);
+    }
+    else
+    {
+        static const char* limiter = "\\";
+
+        const char* final_object_name_parts[] =
+        {
+            limiter,
+            system_hashed_ansi_string_get_buffer(object_type_has),
+            limiter,
+            system_hashed_ansi_string_get_buffer(object_name)
+        };
+        const uint32_t n_final_object_name_parts = sizeof(final_object_name_parts) / sizeof(final_object_name_parts[0]);
+
+        result = system_hashed_ansi_string_create_by_merging_strings(n_final_object_name_parts,
+                                                                       final_object_name_parts);
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API object_manager_directory object_manager_get_root_directory()
 {
     return _root;
@@ -270,39 +336,58 @@ PUBLIC void _object_manager_init()
 {
     _root = object_manager_directory_create(system_hashed_ansi_string_create("") );
 
-    for (object_manager_object_type object_type = OBJECT_TYPE_FIRST; object_type != OBJECT_TYPE_LAST; ((int&)object_type)++)
+    for (object_manager_object_type object_type  = OBJECT_TYPE_FIRST;
+                                    object_type != OBJECT_TYPE_LAST;
+                             ((int&)object_type)++)
     {
         system_hashed_ansi_string subdirectory_name = object_manager_convert_object_manager_object_type_to_hashed_ansi_string(object_type);
-        object_manager_directory  subdirectory      = object_manager_directory_create(subdirectory_name);
+        object_manager_directory  subdirectory      = object_manager_directory_create                                        (subdirectory_name);
 
-        if (!object_manager_directory_insert_subdirectory(_root, subdirectory) )
+        if (!object_manager_directory_insert_subdirectory(_root,
+                                                          subdirectory) )
         {
-            LOG_ERROR("Could not insert directory [%s] into root", system_hashed_ansi_string_get_buffer(subdirectory_name) );
+            LOG_ERROR("Could not insert directory [%s] into root",
+                      system_hashed_ansi_string_get_buffer(subdirectory_name) );
         }
     }
 }
 
 /** Please see header for specification */
-PUBLIC void _object_manager_register_refcounted_object(void* ptr, system_hashed_ansi_string item_registration_path, const char* source_code_file_name, int source_code_file_line, object_manager_object_type object_type)
+PUBLIC void _object_manager_register_refcounted_object(void*                      ptr,
+                                                       system_hashed_ansi_string  item_registration_path,
+                                                       const char*                source_code_file_name,
+                                                       int                        source_code_file_line,
+                                                       object_manager_object_type object_type)
 {
     system_hashed_ansi_string item_name         = NULL;
     system_hashed_ansi_string item_path         = NULL;
-    bool                      extraction_result = object_manager_directory_extract_item_name_and_path(item_registration_path, &item_path, &item_name);
+    bool                      extraction_result = object_manager_directory_extract_item_name_and_path(item_registration_path,
+                                                                                                     &item_path,
+                                                                                                     &item_name);
 
-    ASSERT_DEBUG_SYNC(extraction_result, "Invalid registration path for an object! [%s]", system_hashed_ansi_string_get_buffer(item_registration_path) );
+    ASSERT_DEBUG_SYNC(extraction_result,
+                      "Invalid registration path for an object! [%s]",
+                      system_hashed_ansi_string_get_buffer(item_registration_path) );
+
     if (extraction_result)
     {
-        object_manager_directory parent_directory = object_manager_directory_find_subdirectory(_root, item_path);
+        object_manager_directory parent_directory = object_manager_directory_find_subdirectory(_root,
+                                                                                               item_path);
 
         /* If the directory we are to register the item at is unavailable, create it */
         if (parent_directory == NULL)
         {
-            object_manager_directory_create_directory_structure(_root, item_path);
+            object_manager_directory_create_directory_structure(_root,
+                                                                item_path);
 
-            parent_directory = object_manager_directory_find_subdirectory_recursive(_root, item_path);
+            parent_directory = object_manager_directory_find_subdirectory_recursive(_root,
+                                                                                    item_path);
         }
 
-        ASSERT_DEBUG_SYNC(parent_directory != NULL, "Could not find parent directory for an object! [%s]", system_hashed_ansi_string_get_buffer(item_registration_path) );
+        ASSERT_DEBUG_SYNC(parent_directory != NULL,
+                          "Could not find parent directory for an object! [%s]",
+                          system_hashed_ansi_string_get_buffer(item_registration_path) );
+
         if (parent_directory != NULL)
         {
             /* Instantiate item descriptor */
@@ -312,11 +397,15 @@ PUBLIC void _object_manager_register_refcounted_object(void* ptr, system_hashed_
                                                                   object_type,
                                                                   ptr);
 
-            ASSERT_DEBUG_SYNC(item != NULL, "Could not create item of type [%d]", object_type);
+            ASSERT_DEBUG_SYNC(item != NULL,
+                              "Could not create item of type [%d]",
+                              object_type);
+
             if (item != NULL)
             {
                 /* Try to insert the item into storage */
-                bool insert_result = object_manager_directory_insert_item(parent_directory, item);
+                bool insert_result = object_manager_directory_insert_item(parent_directory,
+                                                                          item);
 
                 if (!insert_result)
                 {
@@ -338,41 +427,58 @@ PUBLIC void _object_manager_unregister_refcounted_object(system_hashed_ansi_stri
     system_hashed_ansi_string item_name = NULL;
     system_hashed_ansi_string item_path = NULL;
 
-    if (object_manager_directory_extract_item_name_and_path(item_registration_path, &item_path, &item_name) )
+    if (object_manager_directory_extract_item_name_and_path(item_registration_path,
+                                                           &item_path,
+                                                           &item_name) )
     {
         const char* item_path_ptr = system_hashed_ansi_string_get_buffer(item_path);
 
-        system_hashed_ansi_string item_registration_path_modified = system_hashed_ansi_string_create(item_path_ptr);
-        object_manager_directory  item_directory                  = object_manager_directory_find_subdirectory_recursive(_root, item_registration_path_modified);
+        system_hashed_ansi_string item_registration_path_modified = system_hashed_ansi_string_create                    (item_path_ptr);
+        object_manager_directory  item_directory                  = object_manager_directory_find_subdirectory_recursive(_root,
+                                                                                                                         item_registration_path_modified);
 
         if (item_directory != NULL)
         {
-            object_manager_item item = object_manager_directory_find_item(item_directory, item_name);
+            object_manager_item item = object_manager_directory_find_item(item_directory,
+                                                                          item_name);
 
             if (item != NULL)
             {
                 /* Before releasing, remove the object from the storage */
-                if (!object_manager_directory_delete_item(item_directory, item_name) )
+                if (!object_manager_directory_delete_item(item_directory,
+                                                          item_name) )
                 {
-                    LOG_ERROR        ("Could not remove item [%s] from registry, will release it anyway.", system_hashed_ansi_string_get_buffer(item_registration_path) );
-                    ASSERT_DEBUG_SYNC(false, "");
+                    LOG_ERROR        ("Could not remove item [%s] from registry, will release it anyway.",
+                                      system_hashed_ansi_string_get_buffer(item_registration_path) );
+
+                    ASSERT_DEBUG_SYNC(false,
+                                      "");
                 }
             }
             else
             {
-                LOG_ERROR        ("Even though item at [%s] was found, it corresponds to NULL which is WRONG", system_hashed_ansi_string_get_buffer(item_registration_path) );
-                ASSERT_DEBUG_SYNC(false, "");
+                LOG_ERROR        ("Even though item at [%s] was found, it corresponds to NULL which is WRONG",
+                                  system_hashed_ansi_string_get_buffer(item_registration_path) );
+
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
             }
         }
         else
         {
-            LOG_ERROR        ("Could not find item at [%s] for unregistration!", system_hashed_ansi_string_get_buffer(item_registration_path) );
-            ASSERT_DEBUG_SYNC(false, "");
+            LOG_ERROR        ("Could not find item at [%s] for unregistration!",
+                              system_hashed_ansi_string_get_buffer(item_registration_path) );
+
+            ASSERT_DEBUG_SYNC(false,
+                              "");
         }
     }
     else
     {
-        LOG_ERROR        ("Could not extract item/path for registration path [%s]", system_hashed_ansi_string_get_buffer(item_registration_path) );
-        ASSERT_DEBUG_SYNC(false, "");
+        LOG_ERROR        ("Could not extract item/path for registration path [%s]",
+                          system_hashed_ansi_string_get_buffer(item_registration_path) );
+
+        ASSERT_DEBUG_SYNC(false,
+                          "");
     }
 }

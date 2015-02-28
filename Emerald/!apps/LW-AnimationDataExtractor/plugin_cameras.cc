@@ -85,7 +85,8 @@ volatile void ExtractCameraDataWorkerThreadEntryPoint(__in __notnull void* in_sc
                              pivot);
 
         /* Instantiate a new camera */
-        scene_camera new_camera = scene_camera_create(camera_name_has);
+        scene_camera new_camera = scene_camera_create(camera_name_has,
+                                                      NULL /* scene_camera */);
 
         ASSERT_ALWAYS_SYNC(new_camera != NULL,
                            "scene_camera_create() failed.");

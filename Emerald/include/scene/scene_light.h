@@ -185,16 +185,20 @@ typedef enum
 } scene_light_shadow_map_filtering;
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in     __notnull system_hashed_ansi_string name,
+                                                          __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API scene_light scene_light_create_directional(__in     __notnull system_hashed_ansi_string name,
+                                                              __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API scene_light scene_light_create_point(__in     __notnull system_hashed_ansi_string name,
+                                                        __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene_light scene_light_create_spot(__in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API scene_light scene_light_create_spot(__in     __notnull system_hashed_ansi_string name,
+                                                       __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,
@@ -236,8 +240,9 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(__in scene
  *  NOTE: This function is for internal use only.
  *
  */
-PUBLIC scene_light scene_light_load(__in     __notnull system_file_serializer serializer,
-                                    __in_opt           scene                  owner_scene);
+PUBLIC scene_light scene_light_load(__in     __notnull system_file_serializer    serializer,
+                                    __in_opt           scene                     owner_scene,
+                                    __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO.
  *

@@ -26,6 +26,9 @@ typedef enum
     /* not settable, system_hashed_ansi_string */
     SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH,
 
+    /* not settable, system_hashed_ansi_string */
+    SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH_AND_NAME,
+
     /* not settable, const char*. Internal usage only. */
     SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
 
@@ -74,8 +77,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
                                                     __deref_out_bcount_full_opt(n_bytes) void*);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in  __notnull system_file_serializer,
-                                                                    __out __notnull curve_container*);
+PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __notnull system_file_serializer,
+                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
+                                                                    __out    __notnull curve_container*);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_file_serializer_read_hashed_ansi_string(__in  __notnull system_file_serializer,

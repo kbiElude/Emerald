@@ -718,7 +718,8 @@ PRIVATE mesh_material _collada_mesh_generator_get_geometry_material(__in __notnu
 
         /* Create a mesh_material instance out of the effect */
         result_mesh_material = mesh_material_create(material_symbol_name,
-                                                    context);
+                                                    context,
+                                                    NULL); /* object_manager_path */
 
         mesh_material_set_property(result_mesh_material,
                                    MESH_MATERIAL_PROPERTY_UV_MAP_NAME,

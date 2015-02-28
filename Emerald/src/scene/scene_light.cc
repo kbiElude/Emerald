@@ -32,6 +32,7 @@ typedef struct
     scene_graph_node                            graph_owner_node;
     curve_container                             linear_attenuation;
     system_hashed_ansi_string                   name;
+    system_hashed_ansi_string                   object_manager_path;
     float                                       position[3];
     curve_container                             quadratic_attenuation;
     curve_container                             range;
@@ -55,19 +56,20 @@ typedef struct
 } _scene_light;
 
 /* Forward declarations */
-PRIVATE void _scene_light_init_default_attenuation_curves   (__in     __notnull _scene_light*          light_ptr);
-PRIVATE void _scene_light_init_default_color_curves         (__in     __notnull _scene_light*          light_ptr);
-PRIVATE void _scene_light_init_default_color_intensity_curve(__in     __notnull _scene_light*          light_ptr);
-PRIVATE void _scene_light_init_default_point_light_curves   (__in     __notnull _scene_light*          light_ptr);
-PRIVATE void _scene_light_init_default_spot_light_curves    (__in     __notnull _scene_light*          light_ptr);
-PRIVATE void _scene_light_init                              (__in     __notnull _scene_light*          light_ptr);
-PRIVATE bool _scene_light_load_curve                        (__in_opt           scene                  owner_scene,
-                                                             __in     __notnull curve_container*       curve_ptr,
-                                                             __in     __notnull system_file_serializer serializer);
-PRIVATE void _scene_light_release                           (                   void*                  data_ptr);
-PRIVATE bool _scene_light_save_curve                        (__in_opt           scene                  owner_scene,
-                                                             __in     __notnull curve_container        in_curve,
-                                                             __in     __notnull system_file_serializer serializer);
+PRIVATE void _scene_light_init_default_attenuation_curves   (__in     __notnull _scene_light*             light_ptr);
+PRIVATE void _scene_light_init_default_color_curves         (__in     __notnull _scene_light*             light_ptr);
+PRIVATE void _scene_light_init_default_color_intensity_curve(__in     __notnull _scene_light*             light_ptr);
+PRIVATE void _scene_light_init_default_point_light_curves   (__in     __notnull _scene_light*             light_ptr);
+PRIVATE void _scene_light_init_default_spot_light_curves    (__in     __notnull _scene_light*             light_ptr);
+PRIVATE void _scene_light_init                              (__in     __notnull _scene_light*             light_ptr);
+PRIVATE bool _scene_light_load_curve                        (__in_opt           scene                     owner_scene,
+                                                             __in_opt           system_hashed_ansi_string object_manager_path,
+                                                             __in     __notnull curve_container*          curve_ptr,
+                                                             __in     __notnull system_file_serializer    serializer);
+PRIVATE void _scene_light_release                           (                   void*                     data_ptr);
+PRIVATE bool _scene_light_save_curve                        (__in_opt           scene                     owner_scene,
+                                                             __in     __notnull curve_container           in_curve,
+                                                             __in     __notnull system_file_serializer    serializer);
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(scene_light,
@@ -91,6 +93,7 @@ PRIVATE void _scene_light_init_default_attenuation_curves(__in __notnull _scene_
 
         light_ptr->constant_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                          " constant attenuation"),
+                                                                 light_ptr->object_manager_path,
                                                                  SYSTEM_VARIANT_FLOAT);
 
         system_variant_set_float         (temp_variant,
@@ -110,6 +113,7 @@ PRIVATE void _scene_light_init_default_attenuation_curves(__in __notnull _scene_
 
         light_ptr->linear_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                        " linear attenuation"),
+                                                                 light_ptr->object_manager_path,
                                                                  SYSTEM_VARIANT_FLOAT);
 
         system_variant_set_float         (temp_variant,
@@ -129,7 +133,8 @@ PRIVATE void _scene_light_init_default_attenuation_curves(__in __notnull _scene_
 
         light_ptr->quadratic_attenuation = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                           " quadratic attenuation"),
-                                                                 SYSTEM_VARIANT_FLOAT);
+                                                                  light_ptr->object_manager_path,
+                                                                  SYSTEM_VARIANT_FLOAT);
 
         system_variant_set_float         (temp_variant,
                                           0.0f);
@@ -165,6 +170,7 @@ PRIVATE void _scene_light_init_default_color_curves(__in __notnull _scene_light*
                                            << n_component;
 
         light_ptr->color[n_component] = curve_container_create(system_hashed_ansi_string_create(color_component_curve_name_sstream.str().c_str() ),
+                                                               light_ptr->object_manager_path,
                                                                SYSTEM_VARIANT_FLOAT);
 
         system_variant_set_float         (temp_variant,
@@ -187,6 +193,7 @@ PRIVATE void _scene_light_init_default_color_intensity_curve(__in __notnull _sce
 
     light_ptr->color_intensity = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                 " color intensity"),
+                                                        light_ptr->object_manager_path,
                                                         SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (temp_variant,
@@ -208,6 +215,7 @@ PRIVATE void _scene_light_init_default_point_light_curves(__in __notnull _scene_
 
     light_ptr->range = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                       " range"),
+                                              light_ptr->object_manager_path,
                                               SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (temp_variant,
@@ -230,6 +238,7 @@ PRIVATE void _scene_light_init_default_spot_light_curves(__in __notnull _scene_l
 
     light_ptr->cone_angle_half = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                                 " cone angle (half)"),
+                                                        light_ptr->object_manager_path,
                                                         SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (temp_variant,
@@ -243,6 +252,7 @@ PRIVATE void _scene_light_init_default_spot_light_curves(__in __notnull _scene_l
 
     light_ptr->edge_angle = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(light_ptr->name),
                                                                                                            " edge angle"),
+                                                   light_ptr->object_manager_path,
                                                    SYSTEM_VARIANT_FLOAT);
 
     system_variant_set_float         (temp_variant,
@@ -312,9 +322,10 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
 }
 
 /** TODO */
-PRIVATE bool _scene_light_load_curve(__in_opt           scene                  owner_scene,
-                                     __in     __notnull curve_container*       curve_ptr,
-                                     __in     __notnull system_file_serializer serializer)
+PRIVATE bool _scene_light_load_curve(__in_opt           scene                     owner_scene,
+                                     __in_opt           system_hashed_ansi_string object_manager_path,
+                                     __in     __notnull curve_container*          curve_ptr,
+                                     __in     __notnull system_file_serializer    serializer)
 {
     bool result = true;
 
@@ -341,6 +352,7 @@ PRIVATE bool _scene_light_load_curve(__in_opt           scene                  o
     else
     {
         result &= system_file_serializer_read_curve_container(serializer,
+                                                              object_manager_path,
                                                               curve_ptr);
     }
 
@@ -436,7 +448,8 @@ PRIVATE bool _scene_light_save_curve(__in_opt           scene                  o
 
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in     __notnull system_hashed_ansi_string name,
+                                                          __in_opt           system_hashed_ansi_string object_manager_path)
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
@@ -449,8 +462,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name = name;
-        new_scene_light->type = SCENE_LIGHT_TYPE_AMBIENT;
+        new_scene_light->name                = name;
+        new_scene_light->object_manager_path = object_manager_path;
+        new_scene_light->type                = SCENE_LIGHT_TYPE_AMBIENT;
 
         _scene_light_init(new_scene_light);
 
@@ -460,15 +474,17 @@ PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in __notnull system_
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                                       object_manager_path) );
     }
 
     return (scene_light) new_scene_light;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_light scene_light_create_directional(__in     __notnull system_hashed_ansi_string name,
+                                                              __in_opt           system_hashed_ansi_string object_manager_path)
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
@@ -479,23 +495,26 @@ PUBLIC EMERALD_API scene_light scene_light_create_directional(__in __notnull sys
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name = name;
-        new_scene_light->type = SCENE_LIGHT_TYPE_DIRECTIONAL;
+        new_scene_light->name                = name;
+        new_scene_light->object_manager_path = object_manager_path;
+        new_scene_light->type                = SCENE_LIGHT_TYPE_DIRECTIONAL;
 
         _scene_light_init(new_scene_light);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                                       object_manager_path) );
     }
 
     return (scene_light) new_scene_light;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_light scene_light_create_point(__in     __notnull system_hashed_ansi_string name,
+                                                        __in_opt           system_hashed_ansi_string object_manager_path)
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
@@ -506,23 +525,26 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(__in __notnull system_ha
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name = name;
-        new_scene_light->type = SCENE_LIGHT_TYPE_POINT;
+        new_scene_light->name                = name;
+        new_scene_light->object_manager_path = object_manager_path;
+        new_scene_light->type                = SCENE_LIGHT_TYPE_POINT;
 
         _scene_light_init(new_scene_light);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                                       object_manager_path) );
     }
 
     return (scene_light) new_scene_light;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_light scene_light_create_spot(__in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API scene_light scene_light_create_spot(__in     __notnull system_hashed_ansi_string name,
+                                                       __in_opt           system_hashed_ansi_string object_manager_path)
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
@@ -533,16 +555,18 @@ PUBLIC EMERALD_API scene_light scene_light_create_spot(__in __notnull system_has
                0,
                sizeof(_scene_light) );
 
-        new_scene_light->name = name;
-        new_scene_light->type = SCENE_LIGHT_TYPE_SPOT;
+        new_scene_light->name                = name;
+        new_scene_light->object_manager_path = object_manager_path;
+        new_scene_light->type                = SCENE_LIGHT_TYPE_SPOT;
 
         _scene_light_init(new_scene_light);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_light,
                                                        _scene_light_release,
                                                        OBJECT_TYPE_SCENE_LIGHT,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Scene Lights\\",
-                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+                                                       GET_OBJECT_PATH(name,
+                                                                       OBJECT_TYPE_SCENE_LIGHT,
+                                                                       object_manager_path) );
     }
 
     return (scene_light) new_scene_light;
@@ -1069,8 +1093,9 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_type_has(__in scene
 }
 
 /* Please see header for spec */
-PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serializer,
-                                    __in_opt       scene                  owner_scene)
+PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer    serializer,
+                                    __in_opt       scene                     owner_scene,
+                                    __in_opt       system_hashed_ansi_string object_manager_path)
 {
     system_hashed_ansi_string light_name   = NULL;
     scene_light_type          light_type   = SCENE_LIGHT_TYPE_UNKNOWN;
@@ -1083,53 +1108,36 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                                                             sizeof(light_type),
                                                            &light_type);
 
-    /* Combine scene name with the light name in order to avoid collisions */
-    const char*               limiter    = "\\";
-    system_hashed_ansi_string scene_name = NULL;
-
-    scene_get_property(owner_scene,
-                       SCENE_PROPERTY_NAME,
-                      &scene_name);
-
-
-    system_hashed_ansi_string final_light_name         = NULL;
-    const char*               final_light_name_parts[] =
-    {
-        system_hashed_ansi_string_get_buffer(scene_name),
-        limiter,
-        system_hashed_ansi_string_get_buffer(light_name)
-    };
-    const uint32_t n_final_light_name_parts = sizeof(final_light_name_parts) / sizeof(final_light_name_parts[0]);
-
-    final_light_name = system_hashed_ansi_string_create_by_merging_strings(n_final_light_name_parts,
-                                                                           final_light_name_parts);
-
     switch (light_type)
     {
         case SCENE_LIGHT_TYPE_AMBIENT:
         {
-            result_light = scene_light_create_ambient(final_light_name);
+            result_light = scene_light_create_ambient(light_name,
+                                                      object_manager_path);
 
             break;
         }
 
         case SCENE_LIGHT_TYPE_DIRECTIONAL:
         {
-            result_light = scene_light_create_directional(final_light_name);
+            result_light = scene_light_create_directional(light_name,
+                                                          object_manager_path);
 
             break;
         }
 
         case SCENE_LIGHT_TYPE_POINT:
         {
-            result_light = scene_light_create_point(final_light_name);
+            result_light = scene_light_create_point(light_name,
+                                                    object_manager_path);
 
             break;
         }
 
         case SCENE_LIGHT_TYPE_SPOT:
         {
-            result_light = scene_light_create_spot(final_light_name);
+            result_light = scene_light_create_spot(light_name,
+                                                   object_manager_path);
 
             break;
         }
@@ -1153,11 +1161,13 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                     ++n_color_component)
         {
             result &= _scene_light_load_curve(owner_scene,
+                                              result_light_ptr->object_manager_path,
                                               result_light_ptr->color + n_color_component,
                                               serializer);
         }
 
         result &= _scene_light_load_curve(owner_scene,
+                                          result_light_ptr->object_manager_path,
                                          &result_light_ptr->color_intensity,
                                           serializer);
 
@@ -1178,12 +1188,15 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
             if (result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_CUSTOM)
             {
                 result &= _scene_light_load_curve(owner_scene,
+                                                  result_light_ptr->object_manager_path,
                                                  &result_light_ptr->constant_attenuation,
                                                   serializer);
                 result &= _scene_light_load_curve(owner_scene,
+                                                  result_light_ptr->object_manager_path,
                                                  &result_light_ptr->linear_attenuation,
                                                   serializer);
                 result &= _scene_light_load_curve(owner_scene,
+                                                  result_light_ptr->object_manager_path,
                                                  &result_light_ptr->quadratic_attenuation,
                                                   serializer);
             }
@@ -1193,6 +1206,7 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
                 result_light_ptr->falloff == SCENE_LIGHT_FALLOFF_LINEAR)
             {
                 result &= _scene_light_load_curve(owner_scene,
+                                                 result_light_ptr->object_manager_path,
                                                  &result_light_ptr->range,
                                                   serializer);
             }
@@ -1201,9 +1215,11 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer serial
         if (light_type == SCENE_LIGHT_TYPE_SPOT)
         {
             result &= _scene_light_load_curve(owner_scene,
+                                              result_light_ptr->object_manager_path,
                                              &result_light_ptr->cone_angle_half,
                                               serializer);
             result &= _scene_light_load_curve(owner_scene,
+                                              result_light_ptr->object_manager_path,
                                              &result_light_ptr->edge_angle,
                                               serializer);
 

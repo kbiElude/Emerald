@@ -343,11 +343,19 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene            
                                                 __in __notnull mesh                      mesh_data,
                                                 __in __notnull system_hashed_ansi_string name)
 {
-    bool           result           = true;
-    _scene*        scene_ptr        = (_scene*) scene;
-    scene_mesh     new_instance     = scene_mesh_create                             (name,
-                                                                                     mesh_data); /* retains */
-    const uint32_t n_mesh_instances = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
+    scene_mesh                new_instance     = NULL;
+    bool                      result           = true;
+    system_hashed_ansi_string scene_name       = NULL;
+    _scene*                   scene_ptr        = (_scene*) scene;
+    const uint32_t            n_mesh_instances = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
+
+    scene_get_property(scene,
+                       SCENE_PROPERTY_NAME,
+                      &scene_name);
+
+    new_instance = scene_mesh_create(name,
+                                     scene_name,
+                                     mesh_data); /* retains */
 
     scene_mesh_set_property(new_instance,
                             SCENE_MESH_PROPERTY_ID,
@@ -405,7 +413,8 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
                                                                            sizeof(void*) );
         new_scene->curves_map             = system_hash64map_create       (sizeof(scene_curve) );
         new_scene->fps                    = 0;
-        new_scene->graph                  = scene_graph_create( (scene) new_scene);
+        new_scene->graph                  = scene_graph_create( (scene) new_scene,
+                                                                name);
         new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
                                                                            sizeof(void*) );
         new_scene->materials              = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
@@ -990,7 +999,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                   n_scene_curve < n_scene_curves;
                 ++n_scene_curve)
     {
-        scene_curve new_curve = scene_curve_load(serializer);
+        scene_curve new_curve = scene_curve_load(serializer,
+                                                 scene_file_name);
 
         ASSERT_DEBUG_SYNC(new_curve != NULL,
                           "Could not load curve data");
@@ -1024,7 +1034,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     {
         scene_camera new_camera = scene_camera_load(context,
                                                     serializer,
-                                                    result_scene);
+                                                    result_scene,
+                                                    scene_file_name);
 
         ASSERT_DEBUG_SYNC(new_camera != NULL,
                           "Cannot spawn new camera instance");
@@ -1059,7 +1070,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                 ++n_scene_light)
     {
         scene_light new_light = scene_light_load(serializer,
-                                                 result_scene);
+                                                 result_scene,
+                                                 scene_file_name);
 
         ASSERT_DEBUG_SYNC(new_light != NULL,
                           "Could not load light data");
@@ -1095,7 +1107,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                 ++n_scene_material)
     {
         scene_material new_material    = scene_material_load(serializer,
-                                                             result_scene);
+                                                             result_scene,
+                                                             scene_file_name);
         unsigned int   new_material_id = -1;
 
         ASSERT_DEBUG_SYNC(new_material != NULL,
@@ -1200,6 +1213,7 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                     ++n_scene_texture)
     {
         scene_texture new_texture = scene_texture_load_with_serializer(serializer,
+                                                                       scene_name,
                                                                        context);
 
         ASSERT_DEBUG_SYNC(new_texture != NULL,
@@ -1310,6 +1324,7 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                 ++n_mesh_instance)
     {
         scene_mesh new_mesh_instance = scene_mesh_load(serializer,
+                                                       scene_name,
                                                        mesh_id_to_mesh_map);
 
         ASSERT_DEBUG_SYNC(new_mesh_instance != NULL,
@@ -1351,7 +1366,8 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
                                              serializer,
                                              serialized_scene_cameras,
                                              serialized_scene_lights,
-                                             serialized_scene_mesh_instances);
+                                             serialized_scene_mesh_instances,
+                                             scene_file_name);
 
     ASSERT_DEBUG_SYNC(new_graph != NULL,
                       "Could not load scene graph");
