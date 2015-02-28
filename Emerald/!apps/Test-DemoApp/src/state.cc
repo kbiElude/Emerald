@@ -8,6 +8,7 @@
 #include "ogl/ogl_scene_renderer.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
+#include "scene/scene_multiloader.h"
 #include "scene/scene_graph.h"
 #include "system/system_log.h"
 #include "app_config.h"
@@ -38,15 +39,17 @@ typedef struct _scene_descriptor
     }
 } _scene_descriptor;
 
+
 /* Array of scene filenames to use for the demo */
-const char* _scene_filenames[] =
+system_hashed_ansi_string _scene_filenames[] =
 {
-    "blob/scene1/test",
-    "blob/scene2/test",
-    "blob/scene3/test"
+    system_hashed_ansi_string_create("blob/scene1/test"),
+    system_hashed_ansi_string_create("blob/scene2/test"),
+    system_hashed_ansi_string_create("blob/scene3/test")
 };
 const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
                                         sizeof(_scene_filenames[0]);
+
 
 /* Other stuff */
 ogl_pipeline         _pipeline            = NULL;
@@ -161,15 +164,25 @@ PUBLIC void state_init()
     const float camera_start_position[3] = {0, 0, 0};
 
     /* Load the scenes */
+    scene_multiloader    loader                = scene_multiloader_create(_context,
+                                                                          _n_scene_filenames,
+                                                                          _scene_filenames);
+    system_timeline_time loading_time_end      = 0;
+    uint32_t             loading_time_msec     = 0;
     system_timeline_time loading_time_start    = system_time_now();
     system_timeline_time scene_duration_summed = 0;
+
+    scene_multiloader_load_async         (loader);
+    scene_multiloader_wait_until_finished(loader);
 
     for (unsigned int n_scene = 0;
                       n_scene < _n_scene_filenames;
                     ++n_scene)
     {
-        _scenes[n_scene].this_scene = scene_load(_context,
-                                                 system_hashed_ansi_string_create(_scene_filenames[n_scene]) );
+        scene_multiloader_get_loaded_scene(loader,
+                                           n_scene,
+                                          &_scenes[n_scene].this_scene);
+        scene_retain                      (_scenes[n_scene].this_scene);
 
         /* Determine animation duration */
         float                animation_duration_float = 0.0f;
@@ -193,8 +206,10 @@ PUBLIC void state_init()
         ogl_scene_renderer_bake_gpu_assets(_scenes[n_scene].renderer);
     }
 
-    system_timeline_time loading_time_end  = system_time_now();
-    uint32_t             loading_time_msec = 0;
+    scene_multiloader_release(loader);
+
+    /* How much time has the loading taken? */
+    loading_time_end = system_time_now();
 
     system_time_get_msec_for_timeline_time(loading_time_end - loading_time_start,
                                           &loading_time_msec);

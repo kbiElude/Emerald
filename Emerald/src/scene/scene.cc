@@ -1012,7 +1012,7 @@ end:
 PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context            context,
                                                     __in __notnull system_file_serializer serializer)
 {
-    system_hash64map        material_id_to_scene_material_map = system_hash64map_create       (sizeof(scene_material) );
+    system_hash64map        material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material) );
     system_hash64map        material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*) );
     system_hash64map        mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*) );
     bool                    result                            = true;
@@ -1030,6 +1030,7 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
     float                     scene_animation_duration = 0.0f;
     unsigned int              scene_fps                = 0;
     system_hashed_ansi_string scene_name               = NULL;
+    uint32_t                  n_meshes                 = 0;
     uint32_t                  n_scene_cameras          = 0;
     uint32_t                  n_scene_curves           = 0;
     uint32_t                  n_scene_lights           = 0;
@@ -1360,7 +1361,6 @@ PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context  
 
     /* Load meshes */
     system_hash64map mesh_name_to_mesh_map = system_hash64map_create(sizeof(mesh) );
-    uint32_t         n_meshes              = 0;
 
     result &= system_file_serializer_read(serializer,
                                           sizeof(n_meshes),
@@ -1511,7 +1511,7 @@ end:
         /* All mesh instances can be released, since they should've been
          * retained by scene_mesh_load().
          */
-        const uint32_t n_meshes = system_hash64map_get_amount_of_elements(mesh_id_to_mesh_map);
+        n_meshes = system_hash64map_get_amount_of_elements(mesh_id_to_mesh_map);
 
         for (uint32_t n_mesh = 0;
                       n_mesh < n_meshes;

@@ -55,7 +55,7 @@ PUBLIC EMERALD_API void system_event_wait_single_infinite(__in __notnull system_
 {
     DWORD result = ::WaitForSingleObject( (HANDLE) event,
                                           INFINITE);
-    
+
     ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
                       "WaitForSingleObject() failed.");
 
