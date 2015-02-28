@@ -555,13 +555,17 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
     /* The purpose of this function is to make sure that uber we're fed implements shading
      * for exactly the same light configuration as defined in scene.
      */
-    scene_light  current_light  = NULL;
-    unsigned int n_scene_lights = 0;
-    unsigned int n_uber_lights  = 0;
+    scene_light  current_light    = NULL;
+    unsigned int n_scene_lights   = 0;
+    unsigned int n_uber_lights    = 0;
+    bool         scene_sm_enabled = false;
 
     scene_get_property                  (scene,
                                          SCENE_PROPERTY_N_LIGHTS,
                                         &n_scene_lights);
+    scene_get_property                  (scene,
+                                         SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                                        &scene_sm_enabled);
     ogl_uber_get_shader_general_property(uber,
                                          OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
                                         &n_uber_lights);
@@ -624,8 +628,7 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                           OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
                                          &current_uber_item_is_shadow_caster);
 
-        current_light_is_shadow_caster     &= use_shadow_mapping;
-        current_uber_item_is_shadow_caster &= use_shadow_mapping;
+        current_light_is_shadow_caster &= (use_shadow_mapping && scene_sm_enabled);
 
         /* Carry on with other light stuff */
         if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
@@ -685,6 +688,14 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                           current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
                           current_light_type == SCENE_LIGHT_TYPE_POINT,
                           "TODO: Unsupported light type, expand.");
+
+        ASSERT_DEBUG_SYNC(current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             ||
+                          current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL ||
+                          current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       ||
+                          current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL   ||
+                          current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT         ||
+                          current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT,
+                          "Unrecognized uber item light type.");
 
         if (current_light_type == SCENE_LIGHT_TYPE_AMBIENT     &&  current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             ||
             current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL &&
@@ -1087,6 +1098,11 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
                                                    n_material,
                                                   &uber_ptr) )
         {
+            if (n_material == 3)
+            {
+                int a = 1; a++;
+            }
+
             bool do_materials_match        = mesh_material_is_a_match_to_mesh_material             (uber_ptr->material,
                                                                                                     material);
             bool does_material_match_scene = (scene == NULL                                                          ||

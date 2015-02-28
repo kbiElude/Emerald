@@ -188,6 +188,9 @@ PUBLIC void state_init()
         /* Initialize scene renderers */
         _scenes[n_scene].renderer = ogl_scene_renderer_create(_context,
                                                               _scenes[n_scene].this_scene);
+
+        /* Initialize ogl_uber instances */
+        ogl_scene_renderer_bake_gpu_assets(_scenes[n_scene].renderer);
     }
 
     system_timeline_time loading_time_end  = system_time_now();

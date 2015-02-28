@@ -81,6 +81,13 @@ typedef enum
 
 /** TODO.
  *
+ *  Bakes in advance all GPU assets required to render a given scene.
+ *
+ */
+PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_scene_renderer renderer);
+
+/** TODO.
+ *
  *  OGL_SCENE_RENDERER_FRUSTUM_CULLING_BEHAVIOR_USE_CAMERA_CLIPPING_PLANES behavior implementation
  *  is based on http://www.lighthouse3d.com/tutorials/view-frustum-culling/geometric-approach-testing-boxes-ii/
  *  and http://gamedevs.org/uploads/fast-extraction-viewing-frustum-planes-from-world-view-projection-matrix.pdf.
