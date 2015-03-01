@@ -614,8 +614,6 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
 
                     if (texture == NULL)
                     {
-                        LOG_INFO("Performance warning: About to call ogl_texture_create() in a scene_multiloader path!");
-
                         texture = ogl_texture_create(context,
                                                      config.texture_filename,
                                                      config.texture_filename);

@@ -9,6 +9,7 @@
 #include "curve/curve_container.h"
 #include "scene/scene.h"
 #include "scene/scene_material.h"
+#include "scene/scene_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
@@ -24,6 +25,7 @@
 PRIVATE system_event            job_done_event                   = NULL;
 PRIVATE system_resizable_vector materials_vector                 = NULL;
 PRIVATE system_hash64map        surface_id_to_scene_material_map = NULL;
+PRIVATE system_resizable_vector texture_filenames_vector         = NULL;
 
 
 /** TODO */
@@ -36,6 +38,8 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
     materials_vector                 = system_resizable_vector_create(4, /* capacity */
                                                                       sizeof(scene_material) );
     surface_id_to_scene_material_map = system_hash64map_create       (sizeof(scene_material) );
+    texture_filenames_vector         = system_resizable_vector_create(4, /* capacity */
+                                                                      sizeof(system_hashed_ansi_string) );
 
     /* Iterate over all surfaces.
      *
@@ -189,6 +193,14 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                         const char* image_file_name = image_list_ptr->filename(image_id, 0 /* frame */);
 
                         *current_texture.out_texture_file_name_ptr = system_hashed_ansi_string_create(image_file_name);
+
+                        /* Also stash the filename if not already stored in the filename vector. */
+                        if (system_resizable_vector_find(texture_filenames_vector,
+                                                        *current_texture.out_texture_file_name_ptr) == ITEM_NOT_FOUND)
+                        {
+                            system_resizable_vector_push(texture_filenames_vector,
+                                                        *current_texture.out_texture_file_name_ptr);
+                        }
                     } /* if (image_id != 0) */
                     else
                     {
@@ -299,6 +311,40 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
         surface_id = surface_funcs_ptr->next(surface_id);
     } /* while (surface_id != 0) */
 
+    /* Now, scene_multiloader can optimize the texture loading process by loading scene textures
+     * in parallel, using multiple threads at a time. Material loading process, on the other hand,
+     * is single-threaded.
+     *
+     * To leverage the architecture, we also create a scene texture for each file name we came up
+     * with while preparing materials for the scene.
+     */
+    const uint32_t n_texture_filenames = system_resizable_vector_get_amount_of_elements(texture_filenames_vector);
+
+    for (uint32_t n_texture_filename = 0;
+                  n_texture_filename < n_texture_filenames;
+                ++n_texture_filename)
+    {
+        system_hashed_ansi_string texture_filename = NULL;
+
+        system_resizable_vector_get_element_at(texture_filenames_vector,
+                                               n_texture_filename,
+                                              &texture_filename);
+
+        ASSERT_DEBUG_SYNC(texture_filename != NULL,
+                          "Texture filename is NULL");
+
+        /* Spawn a new scene_texture instance */
+        scene_texture new_texture = scene_texture_create(texture_filename,
+                                                         NULL, /* object_manager_path */
+                                                         texture_filename);
+
+        ASSERT_DEBUG_SYNC(new_texture != NULL,
+                          "scene_texture_create() returned a NULL scene_texture instance.");
+
+        scene_add_texture(in_scene,
+                          new_texture);
+    } /* for (all texture filenames) */
+
     SetActivityDescription("Inactive");
 
     system_event_set(job_done_event);
@@ -328,6 +374,13 @@ PUBLIC void DeinitMaterialData()
         system_hash64map_release(surface_id_to_scene_material_map);
 
         surface_id_to_scene_material_map = NULL;
+    }
+
+    if (texture_filenames_vector != NULL)
+    {
+        system_resizable_vector_release(texture_filenames_vector);
+
+        texture_filenames_vector = NULL;
     }
 }
 
