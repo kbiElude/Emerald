@@ -24,17 +24,18 @@ typedef enum _ogl_texture_mipmap_property
 
 typedef enum _ogl_texture_property
 {
-    OGL_TEXTURE_PROPERTY_DIMENSIONALITY,         /* not settable, ogl_texture_dimensionality */
-    OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS, /* not settable, bool */
-    OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND,         /* settable,     bool; tells if the texture object has been bound at least once.
-                                                  *                     necessary for the state caching layer to work correctly. */
-    OGL_TEXTURE_PROPERTY_ID,                     /* not settable, GLuint */
-    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,         /* not settable, GLint */
-    OGL_TEXTURE_PROPERTY_NAME,                   /* not settable, system_hashed_ansi_string */
-    OGL_TEXTURE_PROPERTY_N_MIPMAPS,              /* not settable, unsigned int */
-    OGL_TEXTURE_PROPERTY_N_SAMPLES,              /* not settable, unsigned int */
-    OGL_TEXTURE_PROPERTY_SRC_FILENAME,           /* not settable, system_hashed_ansi_string */
-    OGL_TEXTURE_PROPERTY_TARGET,                 /* not settable, GLenum */
+    OGL_TEXTURE_PROPERTY_DIMENSIONALITY,            /* not settable, ogl_texture_dimensionality */
+    OGL_TEXTURE_PROPERTY_FIXED_SAMPLE_LOCATIONS,    /* not settable, bool */
+    OGL_TEXTURE_PROPERTY_HAS_BEEN_BOUND,            /* settable,     bool; tells if the texture object has been bound at least once.
+                                                     *                     necessary for the state caching layer to work correctly. */
+    OGL_TEXTURE_PROPERTY_HAS_HAD_MIPMAPS_GENERATED, /* not settable, bool; toggled on by ogl_texture_generate_mipmaps() call. */
+    OGL_TEXTURE_PROPERTY_ID,                        /* not settable, GLuint */
+    OGL_TEXTURE_PROPERTY_INTERNALFORMAT,            /* not settable, GLint */
+    OGL_TEXTURE_PROPERTY_NAME,                      /* not settable, system_hashed_ansi_string */
+    OGL_TEXTURE_PROPERTY_N_MIPMAPS,                 /* not settable, unsigned int */
+    OGL_TEXTURE_PROPERTY_N_SAMPLES,                 /* not settable, unsigned int */
+    OGL_TEXTURE_PROPERTY_SRC_FILENAME,              /* not settable, system_hashed_ansi_string */
+    OGL_TEXTURE_PROPERTY_TARGET,                    /* not settable, GLenum */
 
     /* Always last */
     OGL_TEXTURE_PROPERTY_COUNT

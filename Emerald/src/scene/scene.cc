@@ -16,6 +16,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_material.h"
 #include "scene/scene_mesh.h"
+#include "scene/scene_multiloader.h"
 #include "scene/scene_texture.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
@@ -910,6 +911,20 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API scene_texture scene_get_texture_by_index(__in __notnull scene        scene,
+                                                            __in           unsigned int index)
+{
+    scene_texture result    = NULL;
+    _scene*       scene_ptr = (_scene*) scene;
+
+    system_resizable_vector_get_element_at(scene_ptr->textures,
+                                           index,
+                                          &result);
+
+    return result;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene                     instance,
                                                            __in __notnull system_hashed_ansi_string name)
 {
@@ -988,23 +1003,24 @@ PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(__in __notnull scene     
 PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context               context,
                                     __in __notnull system_hashed_ansi_string full_file_name_with_path)
 {
-    scene                  result     = NULL;
-    system_file_serializer serializer = system_file_serializer_create_for_reading(full_file_name_with_path);
+    /* Use multi-loader to load the scene */
+    scene_multiloader loader = NULL;
+    scene             result = NULL;
 
-    if (serializer == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not load scene [%s]",
-                           system_hashed_ansi_string_get_buffer(full_file_name_with_path) );
+    loader = scene_multiloader_create_from_filenames(context,
+                                                     1, /* n_scenes */
+                                                    &full_file_name_with_path);
 
-        goto end;
-    }
+    scene_multiloader_load_async         (loader);
+    scene_multiloader_wait_until_finished(loader);
 
-    result = scene_load_with_serializer(context,
-                                        serializer);
+    scene_multiloader_get_loaded_scene(loader,
+                                       0, /* n_scene */
+                                      &result);
 
-    system_file_serializer_release(serializer);
-end:
+    scene_retain             (result);
+    scene_multiloader_release(loader);
+
     return result;
 }
 
@@ -1012,648 +1028,25 @@ end:
 PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context            context,
                                                     __in __notnull system_file_serializer serializer)
 {
-    system_hash64map        material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material) );
-    system_hash64map        material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*) );
-    system_hash64map        mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*) );
-    bool                    result                            = true;
-    scene                   result_scene                      = NULL;
-    system_resizable_vector serialized_scene_cameras          = system_resizable_vector_create(4 /* capacity */,
-                                                                                               sizeof(void*) );
-    system_resizable_vector serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */,
-                                                                                               sizeof(void*) );
-    system_resizable_vector serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */,
-                                                                                               sizeof(void*) );
-    system_hash64map        scene_material_to_material_id_map = system_hash64map_create       (sizeof(unsigned int) );
-    system_hash64map        texture_id_to_ogl_texture_map     = system_hash64map_create       (sizeof(void*) );
+    /* Use multi-loader to load the scene */
+    scene_multiloader loader = NULL;
+    scene             result = NULL;
 
-    /* Read basic stuff */
-    float                     scene_animation_duration = 0.0f;
-    unsigned int              scene_fps                = 0;
-    system_hashed_ansi_string scene_name               = NULL;
-    uint32_t                  n_meshes                 = 0;
-    uint32_t                  n_scene_cameras          = 0;
-    uint32_t                  n_scene_curves           = 0;
-    uint32_t                  n_scene_lights           = 0;
-    uint32_t                  n_scene_materials        = 0;
-    uint32_t                  n_scene_mesh_instances   = 0;
-    uint32_t                  n_scene_textures         = 0;
+    loader = scene_multiloader_create_from_system_file_serializers(context,
+                                                                   1, /* n_scenes */
+                                                                  &serializer);
 
-    result &= system_file_serializer_read_hashed_ansi_string(serializer,
-                                                            &scene_name);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(scene_fps),
-                                                            &scene_fps);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(scene_animation_duration),
-                                                            &scene_animation_duration);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_cameras),
-                                                            &n_scene_cameras);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_curves),
-                                                            &n_scene_curves);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_lights),
-                                                            &n_scene_lights);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_materials),
-                                                            &n_scene_materials);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_mesh_instances),
-                                                            &n_scene_mesh_instances);
-    result &= system_file_serializer_read                   (serializer,
-                                                             sizeof(n_scene_textures),
-                                                            &n_scene_textures);
+    scene_multiloader_load_async         (loader);
+    scene_multiloader_wait_until_finished(loader);
 
-    if (!result)
-    {
-        goto end_error;
-    }
+    scene_multiloader_get_loaded_scene(loader,
+                                       0, /* n_scene */
+                                      &result);
 
-    /* Spawn the scene.
-     *
-     * NOTE: Scene name is in majority of the cases useless, so switch to
-     *       the file name.
-     */
-    system_hashed_ansi_string scene_file_name = NULL;
+    scene_retain             (result);
+    scene_multiloader_release(loader);
 
-    system_file_serializer_get_property(serializer,
-                                        SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
-                                       &scene_file_name);
-
-    result_scene = scene_create(context,
-                                scene_file_name);
-
-    if (result_scene == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not spawn result scene");
-
-        result = false;
-
-        goto end_error;
-    }
-
-    /* Load curves */
-    for (uint32_t n_scene_curve = 0;
-                  n_scene_curve < n_scene_curves;
-                ++n_scene_curve)
-    {
-        scene_curve new_curve = scene_curve_load(serializer,
-                                                 scene_file_name);
-
-        ASSERT_DEBUG_SYNC(new_curve != NULL,
-                          "Could not load curve data");
-
-        if (new_curve == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        result &= scene_add_curve(result_scene,
-                                  new_curve);
-
-        scene_curve_release(new_curve);
-        new_curve = NULL;
-    } /* for (all curves defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene curves");
-
-        goto end_error;
-    }
-
-    /* Load cameras */
-    for (uint32_t n_scene_camera = 0;
-                  n_scene_camera < n_scene_cameras;
-                ++n_scene_camera)
-    {
-        scene_camera new_camera = scene_camera_load(context,
-                                                    serializer,
-                                                    result_scene,
-                                                    scene_file_name);
-
-        ASSERT_DEBUG_SYNC(new_camera != NULL,
-                          "Cannot spawn new camera instance");
-        if (new_camera == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        result &= scene_add_camera(result_scene,
-                                   new_camera);
-
-        if (result)
-        {
-            system_resizable_vector_push(serialized_scene_cameras,
-                                         new_camera);
-        }
-    } /* for (all cameras defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Error adding cameras");
-
-        goto end_error;
-    }
-
-    /* Load scene lights */
-    for (uint32_t n_scene_light = 0;
-                  n_scene_light < n_scene_lights;
-                ++n_scene_light)
-    {
-        scene_light new_light = scene_light_load(serializer,
-                                                 result_scene,
-                                                 scene_file_name);
-
-        ASSERT_DEBUG_SYNC(new_light != NULL,
-                          "Could not load light data");
-
-        if (new_light == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        result &= scene_add_light(result_scene,
-                                  new_light);
-
-        if (result)
-        {
-            system_resizable_vector_push(serialized_scene_lights,
-                                         new_light);
-        }
-    } /* for (all lights defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene lights");
-
-        goto end_error;
-    }
-
-    /* Load scene materials */
-    for (uint32_t n_scene_material = 0;
-                  n_scene_material < n_scene_materials;
-                ++n_scene_material)
-    {
-        scene_material new_material    = scene_material_load(serializer,
-                                                             result_scene,
-                                                             scene_file_name);
-        unsigned int   new_material_id = -1;
-
-        ASSERT_DEBUG_SYNC(new_material != NULL,
-                          "Could not load material data");
-
-        if (new_material == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        /* Load the serialization ID for the material */
-        system_file_serializer_read(serializer,
-                                    sizeof(new_material_id),
-                                   &new_material_id);
-
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(material_id_to_scene_material_map,
-                                                     (system_hash64) new_material_id),
-                          "Material ID is already recognized");
-
-        system_hash64map_insert(material_id_to_scene_material_map,
-                                (system_hash64) new_material_id,
-                                new_material,
-                                NULL,  /* on_remove_callback */
-                                NULL); /* on_remove_callback_user_arg */
-        system_hash64map_insert(scene_material_to_material_id_map,
-                                (system_hash64) new_material,
-                                (void*)         new_material_id,
-                                NULL,  /* on_remove_callback */
-                                NULL); /* on_remove_callback_user_arg */
-
-        /* Attach the material to the scene */
-        result &= scene_add_material(result_scene,
-                                     new_material);
-
-        if (result)
-        {
-            /* scene_add_material() retained the material - release it now */
-            scene_material_release(new_material);
-        }
-    } /* for (all scene materials) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene materials");
-    }
-
-    /* Load textures */
-    for (unsigned int n_scene_texture = 0;
-                      n_scene_texture < n_scene_textures;
-                    ++n_scene_texture)
-    {
-        scene_texture new_texture = scene_texture_load_with_serializer(serializer,
-                                                                       scene_name,
-                                                                       context);
-
-        ASSERT_DEBUG_SYNC(new_texture != NULL,
-                          "Could not load scene texture");
-
-        if (new_texture == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        result &= scene_add_texture(result_scene,
-                                    new_texture);
-
-        /* Map the serialized texture ID to the ogl_texture instance, if necessary */
-        unsigned int texture_gl_id    = 0;
-        ogl_texture  texture_instance = NULL;
-
-        scene_texture_get       (new_texture,
-                                 SCENE_TEXTURE_PROPERTY_OGL_TEXTURE,
-                                &texture_instance);
-        ogl_texture_get_property(texture_instance,
-                                 OGL_TEXTURE_PROPERTY_ID,
-                                &texture_gl_id);
-
-        if (!system_hash64map_contains(texture_id_to_ogl_texture_map,
-                                       texture_gl_id) )
-        {
-            system_hash64map_insert(texture_id_to_ogl_texture_map,
-                                    (system_hash64) texture_gl_id,
-                                    texture_instance,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-    } /* for (all textures defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene textures");
-
-        goto end_error;
-    }
-
-    /* Create mesh materials out of the scene materials we've loaded. */
-    for (uint32_t n_scene_material = 0;
-                  n_scene_material < n_scene_materials;
-                ++n_scene_material)
-    {
-        scene_material current_scene_material = NULL;
-        mesh_material  new_mesh_material      = NULL;
-
-        current_scene_material = scene_get_material_by_index             (result_scene,
-                                                                          n_scene_material);
-        new_mesh_material      = mesh_material_create_from_scene_material(current_scene_material,
-                                                                          context);
-
-        ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
-                          "Could not create a mesh_material out of a scene_material");
-        if (new_mesh_material == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-        else
-        {
-            unsigned int new_mesh_material_id = 0;
-
-            if (!system_hash64map_get(scene_material_to_material_id_map,
-                                      (system_hash64) current_scene_material,
-                                     &new_mesh_material_id))
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not map a scene_material instance onto a ID");
-            }
-
-            system_hash64map_insert(material_id_to_mesh_material_map,
-                                    (system_hash64) new_mesh_material_id,
-                                    new_mesh_material,
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
-        }
-    } /* for (all scene materials defined for the scene) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not create mesh materials");
-
-        goto end_error;
-    }
-
-    /* Load meshes */
-    system_hash64map mesh_name_to_mesh_map = system_hash64map_create(sizeof(mesh) );
-
-    result &= system_file_serializer_read(serializer,
-                                          sizeof(n_meshes),
-                                         &n_meshes);
-
-    for (unsigned int n_mesh = 0;
-                      n_mesh < n_meshes;
-                    ++n_mesh)
-    {
-        mesh                      mesh_gpu     = NULL;
-        unsigned int              mesh_gpu_id  = 0;
-        system_hashed_ansi_string mesh_gpu_name = NULL;
-
-        result &= system_file_serializer_read(serializer,
-                                              sizeof(mesh_gpu_id),
-                                             &mesh_gpu_id);
-
-        mesh_gpu = mesh_load_with_serializer(context,
-                                             0, /* flags */
-                                             serializer,
-                                             material_id_to_mesh_material_map,
-                                             mesh_name_to_mesh_map);
-
-        ASSERT_DEBUG_SYNC(mesh_gpu != NULL,
-                          "Could not load mesh data");
-        if (mesh_gpu == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        mesh_get_property(mesh_gpu,
-                          MESH_PROPERTY_NAME,
-                         &mesh_gpu_name);
-
-        /* Store the mesh in internal map that we'll need to use to initialize
-         * mesh instances.
-         */
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(mesh_id_to_mesh_map,
-                                                     (system_hash64) mesh_gpu_id),
-                          "Unique mesh is not unique!");
-
-        system_hash64map_insert(mesh_id_to_mesh_map,
-                                (system_hash64) mesh_gpu_id,
-                                mesh_gpu,
-                                NULL,  /* on_remove_callback */
-                                NULL); /* on_remove_callback_user_arg */
-
-        system_hash64map_insert(mesh_name_to_mesh_map,
-                                system_hashed_ansi_string_get_hash(mesh_gpu_name),
-                                mesh_gpu,
-                                NULL,  /* on_remove_callback */
-                                NULL); /* on_remove_callback_user_arg */
-    } /* for (all unique meshes) */
-
-    /* Load mesh instances */
-    for (uint32_t n_mesh_instance = 0;
-                  n_mesh_instance < n_scene_mesh_instances;
-                ++n_mesh_instance)
-    {
-        scene_mesh new_mesh_instance = scene_mesh_load(serializer,
-                                                       scene_name,
-                                                       mesh_id_to_mesh_map);
-
-        ASSERT_DEBUG_SYNC(new_mesh_instance != NULL,
-                          "Could not load mesh instance");
-
-        if (new_mesh_instance == NULL)
-        {
-            result = false;
-
-            goto end_error;
-        }
-
-        result &= scene_add_mesh_instance_defined(result_scene,
-                                                  new_mesh_instance);
-
-        if (result)
-        {
-            uint32_t mesh_id = 0;
-
-            scene_mesh_get_property(new_mesh_instance,
-                                    SCENE_MESH_PROPERTY_ID,
-                                   &mesh_id);
-
-            system_resizable_vector_push(serialized_scene_mesh_instances,
-                                         new_mesh_instance);
-        }
-    } /* for (all mesh instances) */
-
-    if (!result)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Could not load scene mesh instances");
-
-        goto end_error;
-    }
-
-    /* Load the scene graph */
-    scene_graph new_graph = scene_graph_load(result_scene,
-                                             serializer,
-                                             serialized_scene_cameras,
-                                             serialized_scene_lights,
-                                             serialized_scene_mesh_instances,
-                                             scene_file_name);
-
-    ASSERT_DEBUG_SYNC(new_graph != NULL,
-                      "Could not load scene graph");
-    if (new_graph == NULL)
-    {
-        result = false;
-
-        goto end_error;
-    }
-
-    /* Set other scene properties */
-    scene_set_property(result_scene,
-                       SCENE_PROPERTY_FPS,
-                      &scene_fps);
-    scene_set_property(result_scene,
-                       SCENE_PROPERTY_MAX_ANIMATION_DURATION,
-                      &scene_animation_duration);
-
-    /* All done */
-    goto end;
-
-end_error:
-    ASSERT_DEBUG_SYNC(false, "Could not load scene file.");
-
-end:
-    if (material_id_to_mesh_material_map != NULL)
-    {
-        system_hash64map_release(material_id_to_mesh_material_map);
-
-        material_id_to_mesh_material_map = NULL;
-    }
-
-    if (material_id_to_scene_material_map != NULL)
-    {
-        system_hash64map_release(material_id_to_scene_material_map);
-
-        material_id_to_scene_material_map = NULL;
-    }
-
-    if (mesh_id_to_mesh_map != NULL)
-    {
-        /* All mesh instances can be released, since they should've been
-         * retained by scene_mesh_load().
-         */
-        n_meshes = system_hash64map_get_amount_of_elements(mesh_id_to_mesh_map);
-
-        for (uint32_t n_mesh = 0;
-                      n_mesh < n_meshes;
-                    ++n_mesh)
-        {
-            mesh current_mesh = NULL;
-
-            if (system_hash64map_get_element_at(mesh_id_to_mesh_map,
-                                                n_mesh,
-                                               &current_mesh,
-                                                NULL) ) /* outHash */
-            {
-                mesh_release(current_mesh);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve mesh instance at index [%d]",
-                                  n_mesh);
-            }
-        } /* for (all meshes) */
-
-        system_hash64map_release(mesh_id_to_mesh_map);
-
-        mesh_id_to_mesh_map = NULL;
-    }
-
-    if (mesh_name_to_mesh_map != NULL)
-    {
-        system_hash64map_release(mesh_name_to_mesh_map);
-
-        mesh_name_to_mesh_map = NULL;
-    }
-
-    if (scene_material_to_material_id_map != NULL)
-    {
-        system_hash64map_release(scene_material_to_material_id_map);
-
-        scene_material_to_material_id_map = NULL;
-    }
-
-    if (serialized_scene_cameras != NULL)
-    {
-        /* All camera instances can be released, since they should've been
-         * retained by scene_camera_load().
-         */
-        const uint32_t n_cameras = system_resizable_vector_get_amount_of_elements(serialized_scene_cameras);
-
-        for (uint32_t n_camera = 0;
-                      n_camera < n_cameras;
-                    ++n_camera)
-        {
-            scene_camera current_camera = NULL;
-
-            if (system_resizable_vector_get_element_at(serialized_scene_cameras,
-                                                       n_camera,
-                                                      &current_camera) )
-            {
-                scene_camera_release(current_camera);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scene_camera instance at index [%d]",
-                                  n_camera);
-            }
-        } /* for (all cameras) */
-
-        system_resizable_vector_release(serialized_scene_cameras);
-        serialized_scene_cameras = NULL;
-    }
-
-    if (serialized_scene_lights != NULL)
-    {
-        /* All light instances can be released, since they should've been
-         * retained by scene_light_load().
-         */
-        const uint32_t n_lights = system_resizable_vector_get_amount_of_elements(serialized_scene_lights);
-
-        for (uint32_t n_light = 0;
-                      n_light < n_lights;
-                    ++n_light)
-        {
-            scene_light current_light = NULL;
-
-            if (system_resizable_vector_get_element_at(serialized_scene_lights,
-                                                       n_light,
-                                                      &current_light) )
-            {
-                scene_light_release(current_light);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scene_light instance at index [%d]",
-                                  n_light);
-            }
-        } /* for (all lights) */
-
-        system_resizable_vector_release(serialized_scene_lights);
-        serialized_scene_lights = NULL;
-    }
-
-    if (serialized_scene_mesh_instances != NULL)
-    {
-        /* All light instances can be released, since they should've been
-         * retained by scene_light_load().
-         */
-        const uint32_t n_scene_meshes = system_resizable_vector_get_amount_of_elements(serialized_scene_mesh_instances);
-
-        for (uint32_t n_scene_mesh = 0;
-                      n_scene_mesh < n_scene_meshes;
-                    ++n_scene_mesh)
-        {
-            scene_mesh current_mesh_instance = NULL;
-
-            if (system_resizable_vector_get_element_at(serialized_scene_mesh_instances,
-                                                       n_scene_mesh,
-                                                      &current_mesh_instance) )
-            {
-                scene_mesh_release(current_mesh_instance);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scene_mesh instance at index [%d]",
-                                  n_scene_mesh);
-            }
-        } /* for (all scene mesh instances) */
-
-        system_resizable_vector_release(serialized_scene_mesh_instances);
-        serialized_scene_mesh_instances = NULL;
-    }
-
-    if (texture_id_to_ogl_texture_map != NULL)
-    {
-        system_hash64map_release(texture_id_to_ogl_texture_map);
-
-        texture_id_to_ogl_texture_map = NULL;
-    }
-
-    return result_scene;
+    return result;
 }
 
 /* Please see header for specification */

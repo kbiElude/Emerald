@@ -164,9 +164,9 @@ PUBLIC void state_init()
     const float camera_start_position[3] = {0, 0, 0};
 
     /* Load the scenes */
-    scene_multiloader    loader                = scene_multiloader_create(_context,
-                                                                          _n_scene_filenames,
-                                                                          _scene_filenames);
+    scene_multiloader    loader                = scene_multiloader_create_from_filenames(_context,
+                                                                                         _n_scene_filenames,
+                                                                                         _scene_filenames);
     system_timeline_time loading_time_end      = 0;
     uint32_t             loading_time_msec     = 0;
     system_timeline_time loading_time_start    = system_time_now();

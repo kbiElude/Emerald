@@ -119,9 +119,11 @@ PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture         
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnull system_file_serializer    serializer,
-                                                                    __in_opt       system_hashed_ansi_string object_manager_path,
-                                                                    __in __notnull ogl_context               context)
+PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnull system_file_serializer      serializer,
+                                                                    __in_opt       system_hashed_ansi_string   object_manager_path,
+                                                                    __in __notnull ogl_context                 context,
+                                                                    __in_opt       PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
+                                                                    __in_opt       void*                       callback_user_data)
 {
     ogl_textures              context_textures = NULL;
     system_hashed_ansi_string filename         = NULL;
@@ -159,54 +161,68 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnu
             if ( (gl_texture = ogl_textures_get_texture_by_filename(context_textures,
                                                                     filename) ) == NULL)
             {
-                /* Try to initialize the ogl_texture instance */
-                gfx_image image = NULL;
-
-                LOG_INFO("Creating a gfx_image instance for file [%s]",
-                         system_hashed_ansi_string_get_buffer(filename) );
-
-                image = gfx_image_create_from_file(name,
-                                                   filename,
-                                                   true); /* use_alternative_filename_getter */
-
-                if (image == NULL)
+                if (pGLSetOGLTextureBacking_callback != NULL)
                 {
-                    LOG_FATAL("Could not load texture data from file [%s]",
-                              system_hashed_ansi_string_get_buffer(filename) );
+                    /* Let the caller take care of setting up the ogl_texture instance
+                     * behind this scene_texture.
+                     */
+                    pGLSetOGLTextureBacking_callback(result,
+                                                     filename,
+                                                     name,
+                                                     uses_mipmaps,
+                                                     callback_user_data);
+                } /* if (pGLSpawnOGLTextureBacking_callback != NULL) */
+                else
+                {
+                    /* Try to initialize the ogl_texture instance */
+                    gfx_image image = NULL;
 
-                    goto end_error;
+                    LOG_INFO("Creating a gfx_image instance for file [%s]",
+                             system_hashed_ansi_string_get_buffer(filename) );
+
+                    image = gfx_image_create_from_file(name,
+                                                       filename,
+                                                       true); /* use_alternative_filename_getter */
+
+                    if (image == NULL)
+                    {
+                        LOG_FATAL("Could not load texture data from file [%s]",
+                                  system_hashed_ansi_string_get_buffer(filename) );
+
+                        goto end_error;
+                    }
+
+                    gl_texture = ogl_texture_create_from_gfx_image(context,
+                                                                   image,
+                                                                   name);
+
+                    if (gl_texture == NULL)
+                    {
+                        ASSERT_ALWAYS_SYNC(false,
+                                           "Could not create ogl_texture [%s] from file [%s]",
+                                           system_hashed_ansi_string_get_buffer(name),
+                                           system_hashed_ansi_string_get_buffer(filename) );
+
+                        goto end_error;
+                    } /* if (result_ogl_texture == NULL) */
+
+                    /* Generate mipmaps if necessary */
+                    if (uses_mipmaps)
+                    {
+                        ogl_texture_generate_mipmaps(gl_texture);
+                    }
+
+                    /* Release gfx_image instance */
+                    gfx_image_release(image);
+
+                    image = NULL;
+
+                    /* Associate the ogl_texture instance with the scene texture */
+                    scene_texture_set(result,
+                                      SCENE_TEXTURE_PROPERTY_OGL_TEXTURE,
+                                     &gl_texture);
                 }
-
-                gl_texture = ogl_texture_create_from_gfx_image(context,
-                                                               image,
-                                                               name);
-
-                if (gl_texture == NULL)
-                {
-                    ASSERT_ALWAYS_SYNC(false,
-                                       "Could not create ogl_texture [%s] from file [%s]",
-                                       system_hashed_ansi_string_get_buffer(name),
-                                       system_hashed_ansi_string_get_buffer(filename) );
-
-                    goto end_error;
-                } /* if (result_ogl_texture == NULL) */
-
-                /* Generate mipmaps if necessary */
-                if (uses_mipmaps)
-                {
-                    ogl_texture_generate_mipmaps(gl_texture);
-                }
-
-                /* Release gfx_image instance */
-                gfx_image_release(image);
-
-                image = NULL;
-            }
-
-            /* Associate the ogl_texture instance with the scene texture */
-            scene_texture_set(result,
-                              SCENE_TEXTURE_PROPERTY_OGL_TEXTURE,
-                             &gl_texture);
+            } /* if (no corresponding GL texture is already available) */
         }
     }
     else

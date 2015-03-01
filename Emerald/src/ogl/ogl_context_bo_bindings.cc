@@ -706,7 +706,9 @@ PUBLIC void ogl_context_bo_bindings_set_binding(__in __notnull ogl_context_bo_bi
 
     ASSERT_DEBUG_SYNC(binding_target < BINDING_TARGET_COUNT,
                       "Invalid binding target requested");
-    if (binding_target < BINDING_TARGET_COUNT)
+
+    if (binding_target  < BINDING_TARGET_COUNT                 &&
+        binding_target != BINDING_TARGET_ELEMENT_ARRAY_BUFFER) /* do not cache IB BP binding! this is a VAO state! */
     {
         bindings_ptr->bindings_general_local[binding_target].bo_id = bo_id;
     } /* if (binding_target != BINDING_TARGET_UNKNOWN) */

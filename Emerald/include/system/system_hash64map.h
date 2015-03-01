@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_HASH64MAP_H
@@ -29,7 +29,8 @@ PUBLIC EMERALD_API system_hash64map system_hash64map_create(__in size_t element_
  *
  *  @return True if the item was found, false otherwise.
  */
-PUBLIC EMERALD_API bool	system_hash64map_contains(__in system_hash64map, __in system_hash64);
+PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map,
+                                                  __in system_hash64);
 
 /** Retrieves an item identified by user-provided hash from user-provided hash-map.
  *
@@ -72,7 +73,8 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in                  sy
  *
  *  @return true if equal, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map, __in system_hash64map);
+PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map,
+                                                  __in system_hash64map);
 
 /** Inserts a new element into a 64-bit hash-map.
  *
@@ -90,6 +92,10 @@ PUBLIC EMERALD_API bool system_hash64map_insert(__in                 system_hash
                                                 __in     __maybenull PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC,
                                                 __in     __maybenull _system_hash64map_on_remove_callback_argument);
 
+/** TODO */
+PUBLIC EMERALD_API void system_hash64map_lock(__in system_hash64map                    map,
+                                              __in system_read_write_mutex_access_type lock_type);
+
 /** Removes an element from the 64-bit hash-map.
  *
  *  @param system_hash64map 64-bit hash-map to operate on.
@@ -97,12 +103,17 @@ PUBLIC EMERALD_API bool system_hash64map_insert(__in                 system_hash
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool	system_hash64map_remove(__in system_hash64map, __in system_hash64);
+PUBLIC EMERALD_API bool system_hash64map_remove(__in system_hash64map,
+                                                __in system_hash64);
 
 /** Release a 64-bit hash-map. Do not use the object after calling this function.
  *
  *  @param system_hash64map 64-bit hash-map to release.
  */
-PUBLIC EMERALD_API void	system_hash64map_release(__in __deallocate(mem) system_hash64map);
+PUBLIC EMERALD_API void system_hash64map_release(__in __deallocate(mem) system_hash64map);
+
+/** TODO */
+PUBLIC EMERALD_API void system_hash64map_unlock(__in system_hash64map                    map,
+                                                __in system_read_write_mutex_access_type lock_type);
 
 #endif /* SYSTEM_HASH64MAP_H */

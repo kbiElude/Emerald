@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SCENE_TEXTURE_H
@@ -15,7 +15,15 @@ typedef enum
     SCENE_TEXTURE_PROPERTY_OGL_TEXTURE
 } scene_texture_property;
 
-REFCOUNT_INSERT_DECLARATIONS(scene_texture, scene_texture)
+typedef void (*PFNSETOGLTEXTUREBACKINGPROC)(scene_texture             texture,
+                                            system_hashed_ansi_string file_name,
+                                            system_hashed_ansi_string texture_name,
+                                            bool                      uses_mipmaps,
+                                            void*                     callback_user_data);
+
+
+REFCOUNT_INSERT_DECLARATIONS(scene_texture,
+                             scene_texture)
 
 
 /** TODO.
@@ -31,9 +39,11 @@ PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture         
                                           __out __notnull void*                  result);
 
 /** TODO */
-PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in     __notnull system_file_serializer    serializer,
-                                                                    __in_opt           system_hashed_ansi_string object_manager_path,
-                                                                    __in     __notnull ogl_context               context);
+PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in     __notnull system_file_serializer      serializer,
+                                                                    __in_opt           system_hashed_ansi_string   object_manager_path,
+                                                                    __in     __notnull ogl_context                 context,
+                                                                    __in_opt           PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
+                                                                    __in_opt           void*                       callback_user_data = NULL);
 
 /** TODO.
  *

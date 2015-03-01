@@ -311,6 +311,8 @@ typedef enum
     ACCESS_READ,    /* Read access only  - allows multiple threads to read from the object */
     ACCESS_WRITE    /* Write access only - allows only one thread to access the object at a time */
 } system_read_write_mutex_access_type;
+/**************************** BARRIERS ***********************************/
+DECLARE_HANDLE(system_barrier);
 /************************ CRITICAL SECTION *******************************/
 /** Represents a single critical section object */
 DECLARE_HANDLE(system_critical_section);

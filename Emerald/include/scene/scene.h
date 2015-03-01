@@ -127,6 +127,10 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
                                            __out __notnull void*          out_result);
 
 /** TODO */
+PUBLIC EMERALD_API scene_texture scene_get_texture_by_index(__in __notnull scene        scene,
+                                                            __in           unsigned int index);
+
+/** TODO */
 PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene                     instance,
                                                            __in __notnull system_hashed_ansi_string name);
 
