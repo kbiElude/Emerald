@@ -116,9 +116,9 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
     data->data_ptr->context = context;
 
     /* TODO */
-    data->data_ptr->yxy_texture = ogl_texture_create(context,
-                                                     system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
-                                                     system_hashed_ansi_string_get_buffer(data->name) ));
+    data->data_ptr->yxy_texture = ogl_texture_create_empty(context,
+                                                           system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
+                                                           system_hashed_ansi_string_get_buffer(data->name) ));
 
     entry_points->pGLBindTexture(GL_TEXTURE_2D,
                                  data->data_ptr->yxy_texture);
@@ -151,9 +151,9 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
     /* TODO */
     if (data->data_ptr->use_crude_downsampled_lum_average_calculation)
     {
-        data->data_ptr->downsampled_yxy_texture = ogl_texture_create(context,
-                                                                     system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
-                                                                                                                             system_hashed_ansi_string_get_buffer(data->name) ));
+        data->data_ptr->downsampled_yxy_texture = ogl_texture_create_empty(context,
+                                                                           system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [downsampled YXY texture] ",
+                                                                                                                                   system_hashed_ansi_string_get_buffer(data->name) ));
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                        data->data_ptr->downsampled_yxy_texture);

@@ -176,6 +176,13 @@ PRIVATE void _scene_material_release(void* data_ptr)
         material_ptr->glosiness = NULL;
     }
 
+    if (material_ptr->luminance != NULL)
+    {
+        curve_container_release(material_ptr->luminance);
+
+        material_ptr->luminance = NULL;
+    }
+
     if (material_ptr->reflection_ratio != NULL)
     {
         curve_container_release(material_ptr->reflection_ratio);

@@ -258,9 +258,6 @@ PRIVATE void _ogl_text_release(void* text)
 
         text_ptr->strings = NULL;
     }
-
-    /* Release the context. */
-    ogl_context_release(text_ptr->owner_context);
 }
 
 /** TODO */
@@ -295,9 +292,9 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
     if (text_ptr->data_buffer_to == NULL)
     {
         /* Generate texture buffer we will use to map the texture object onto the data buffer object*/
-        text_ptr->data_buffer_to = ogl_texture_create(context,
-                                                      system_hashed_ansi_string_create_by_merging_two_strings("System text renderer ",
-                                                                                                              system_hashed_ansi_string_get_buffer(text_ptr->name) ));
+        text_ptr->data_buffer_to = ogl_texture_create_empty(context,
+                                                            system_hashed_ansi_string_create_by_merging_two_strings("System text renderer ",
+                                                                                                                    system_hashed_ansi_string_get_buffer(text_ptr->name) ));
 
         ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
                           "Could not create a texture object for texture buffer.");
@@ -602,9 +599,9 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(__in __notnul
         /* Create the descriptor */
         _font_table_descriptor descriptor;
 
-        descriptor.to = ogl_texture_create(context,
-                                           system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
-                                                                                                   system_hashed_ansi_string_get_buffer(text_ptr->name) ));
+        descriptor.to = ogl_texture_create_empty(context,
+                                                 system_hashed_ansi_string_create_by_merging_two_strings("Text renderer ",
+                                                                                                         system_hashed_ansi_string_get_buffer(text_ptr->name) ));
 
         if (context_type == OGL_CONTEXT_TYPE_ES)
         {
@@ -1086,8 +1083,6 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
                                                              _ogl_text_create_font_table_to_callback_from_renderer,
                                                              result);
         }
-
-        ogl_context_retain(context);
 
         /* We need a call-back, now */
         ogl_context_request_callback_from_context_thread(context,

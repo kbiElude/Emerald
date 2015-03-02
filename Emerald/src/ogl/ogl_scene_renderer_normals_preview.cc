@@ -302,6 +302,13 @@ PUBLIC void ogl_scene_renderer_normals_preview_release(__in __notnull __post_inv
 {
     _ogl_scene_renderer_normals_preview* preview_ptr = (_ogl_scene_renderer_normals_preview*) preview;
 
+    if (preview_ptr->preview_program != NULL)
+    {
+        ogl_program_release(preview_ptr->preview_program);
+
+        preview_ptr->preview_program = NULL;
+    }
+
     if (preview_ptr->scene != NULL)
     {
         scene_release(preview_ptr->scene);

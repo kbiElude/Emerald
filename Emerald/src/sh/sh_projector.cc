@@ -256,9 +256,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_convert_rgbXrgbX_to_rrggbb(__i
         ASSERT_DEBUG_SYNC(projector_ptr->components >= SH_COMPONENTS_RGB,
                           "RGB/RGBA SH components case only implemented");
 
-        projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo = ogl_texture_create(projector_ptr->context,
-                                                                             system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [RGBRGB->RRGGBBxx converter] ",
-                                                                                                                                     system_hashed_ansi_string_get_buffer(projector_ptr->name) ));
+        projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo = ogl_texture_create_empty(projector_ptr->context,
+                                                                                   system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [RGBRGB->RRGGBBxx converter] ",
+                                                                                                                                           system_hashed_ansi_string_get_buffer(projector_ptr->name) ));
 
         dsa_entry_points->pGLTextureBufferRangeEXT(projector_ptr->rgbrgb_to_rrggbbXX_converter.tbo,
                                                    GL_TEXTURE_BUFFER,
@@ -522,9 +522,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
                                             NULL,
                                             GL_DYNAMIC_COPY);
 
-    data->pre_rotation_data_cache_tbo = ogl_texture_create(context,
-                                                           system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [pre-rotation data cache TBO] ",
-                                                                                                                   system_hashed_ansi_string_get_buffer(data->name) ));
+    data->pre_rotation_data_cache_tbo = ogl_texture_create_empty(context,
+                                                                 system_hashed_ansi_string_create_by_merging_two_strings("SH Projector [pre-rotation data cache TBO] ",
+                                                                                                                         system_hashed_ansi_string_get_buffer(data->name) ));
 
     dsa_entry_points->pGLTextureBufferRangeEXT(data->pre_rotation_data_cache_tbo,
                                                GL_TEXTURE_BUFFER_EXT,

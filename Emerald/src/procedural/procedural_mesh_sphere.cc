@@ -214,8 +214,9 @@ PRIVATE void _procedural_mesh_sphere_get_arrays_tbo_renderer_callback(ogl_contex
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    ptr->arrays_tbo = ogl_texture_create(context, system_hashed_ansi_string_create_by_merging_two_strings("Procedural mesh sphere texture ",
-                                                                                                          system_hashed_ansi_string_get_buffer(ptr->name) ));
+    ptr->arrays_tbo = ogl_texture_create_empty(context,
+                                               system_hashed_ansi_string_create_by_merging_two_strings("Procedural mesh sphere texture ",
+                                                                                                       system_hashed_ansi_string_get_buffer(ptr->name) ));
 
     dsa_entry_points->pGLTextureBufferEXT(ptr->arrays_tbo,
                                           GL_TEXTURE_BUFFER,

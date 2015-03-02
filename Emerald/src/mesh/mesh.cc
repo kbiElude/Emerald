@@ -629,9 +629,9 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
             mesh_ptr->gl_tbo = NULL;
         }
 
-        mesh_ptr->gl_tbo = ogl_texture_create(context,
-                                              system_hashed_ansi_string_create_by_merging_two_strings("Mesh ",
-                                                                                                      system_hashed_ansi_string_get_buffer(mesh_ptr->name) ));
+        mesh_ptr->gl_tbo = ogl_texture_create_empty(context,
+                                                    system_hashed_ansi_string_create_by_merging_two_strings("Mesh ",
+                                                                                                            system_hashed_ansi_string_get_buffer(mesh_ptr->name) ));
 
         dsa_entry_points->pGLTextureBufferEXT(mesh_ptr->gl_tbo,
                                               GL_TEXTURE_BUFFER,

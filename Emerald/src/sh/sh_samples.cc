@@ -301,15 +301,15 @@ PRIVATE void _sh_samples_create_callback(__in __notnull ogl_context context, voi
                        data->n_samples);
 
     /* Create texture buffer */
-    data->sh_coeffs_tbo = ogl_texture_create(data->context,
-                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                     " SH coeffs TBO") );
-    data->theta_phi_tbo = ogl_texture_create(data->context,
-                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                     " SH theta/phi TBO") );
-    data->unit_vec_tbo  = ogl_texture_create(data->context,
-                                             system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
-                                                                                                     " SH unit vec TBO") );
+    data->sh_coeffs_tbo = ogl_texture_create_empty(data->context,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                           " SH coeffs TBO") );
+    data->theta_phi_tbo = ogl_texture_create_empty(data->context,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                           " SH theta/phi TBO") );
+    data->unit_vec_tbo  = ogl_texture_create_empty(data->context,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(data->name),
+                                                                                                           " SH unit vec TBO") );
 
     dsa_entry_points->pGLTextureBufferEXT(data->sh_coeffs_tbo,
                                           GL_TEXTURE_BUFFER,

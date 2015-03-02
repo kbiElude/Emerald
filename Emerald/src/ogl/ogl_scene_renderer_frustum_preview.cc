@@ -150,6 +150,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_basevertex_array          = NULL;
         mdebv_count_array               = NULL;
         mdebv_indices_array             = NULL;
+        po                              = NULL;
         po_vp_location                  = -1;
         scene                           = NULL;
         text_renderer                   = NULL;
@@ -202,6 +203,13 @@ typedef struct _ogl_scene_renderer_frustum_preview
             delete [] mdebv_indices_array;
 
             mdebv_indices_array = NULL;
+        }
+
+        if (po != NULL)
+        {
+            ogl_program_release(po);
+
+            po = NULL;
         }
 
         if (text_renderer != NULL)

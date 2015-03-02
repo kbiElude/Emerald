@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_TEXTURE_H
@@ -42,9 +42,13 @@ typedef enum _ogl_texture_property
 } ogl_texture_property;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_texture_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name,
-                                                  __in __notnull system_hashed_ansi_string src_filename = NULL);
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_empty(__in __notnull ogl_context               context,
+                                                        __in __notnull system_hashed_ansi_string name);
+
+/** TODO */
+PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_file_name(__in __notnull ogl_context               context,
+                                                                 __in __notnull system_hashed_ansi_string name,
+                                                                 __in __notnull system_hashed_ansi_string src_filename);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull ogl_context               context,

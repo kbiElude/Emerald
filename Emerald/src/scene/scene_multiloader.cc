@@ -107,7 +107,8 @@ typedef struct _scene_multiloader
     system_resizable_vector  scenes;   /* _scene_multiloader_scene* */
     _scene_multiloader_state state;
 
-    system_resizable_vector  enqueued_gfx_image_load_ops; /* _scene_multiloader_deferred_gfx_image_load_op* */
+    system_resizable_vector  enqueued_gfx_image_load_ops;      /* _scene_multiloader_deferred_gfx_image_load_op* */
+    system_resizable_vector  enqueued_image_file_names_vector; /* system_hashed_ansi_string */
     system_hash64map         image_filename_to_gfx_image_map;
 
      explicit _scene_multiloader(__in __notnull ogl_context  in_context,
@@ -179,6 +180,9 @@ _scene_multiloader::_scene_multiloader(__in __notnull ogl_context  in_context,
     enqueued_gfx_image_load_ops           = system_resizable_vector_create(4,     /* capacity */
                                                                            sizeof(_scene_multiloader_deferred_gfx_image_load_op*),
                                                                            true);  /* should_be_thread_safe */
+    enqueued_image_file_names_vector      = system_resizable_vector_create(4,      /* capacity */
+                                                                           sizeof(system_hashed_ansi_string),
+                                                                           true); /* should_be_thread_safe */
     free_serializers_at_release_time      = in_free_serializers_at_release_time;
     image_filename_to_gfx_image_map       = system_hash64map_create       (4,     /* capacity */
                                                                            true); /* should_be_thread_safe */
@@ -227,6 +231,13 @@ _scene_multiloader::~_scene_multiloader()
 
         cs = NULL;
     } /* if (cs != NULL) */
+
+    if (enqueued_image_file_names_vector != NULL)
+    {
+        system_resizable_vector_release(enqueued_image_file_names_vector);
+
+        enqueued_image_file_names_vector = NULL;
+    }
 
     if (image_filename_to_gfx_image_map != NULL)
     {
@@ -350,7 +361,7 @@ PRIVATE void _scene_multiloader_load_scene_internal_create_gfx_images_loaded_bar
     ASSERT_DEBUG_SYNC(loader_ptr->barrier_all_scene_gfx_images_loaded == NULL,
                       "'gfx images' barrier already created!");
 
-    loader_ptr->barrier_all_scene_gfx_images_loaded = system_barrier_create(system_hash64map_get_amount_of_elements(loader_ptr->image_filename_to_gfx_image_map) );
+    loader_ptr->barrier_all_scene_gfx_images_loaded = system_barrier_create(system_resizable_vector_get_amount_of_elements(loader_ptr->enqueued_image_file_names_vector) );
 }
 
 /** TODO */
@@ -363,20 +374,15 @@ PRIVATE void _scene_multiloader_load_scene_internal_enqueue_gfx_filenames(scene_
     _scene_multiloader_scene* scene_ptr = (_scene_multiloader_scene*) callback_user_data;
 
     /* Enqueue the image load op only if the filename has not already been pushed */
-    system_hash64map_lock(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
-                          ACCESS_WRITE);
+    system_resizable_vector_lock(scene_ptr->loader_ptr->enqueued_image_file_names_vector,
+                                 ACCESS_WRITE);
     {
-        if (!system_hash64map_get(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
-                                  (system_hash64) file_name,
-                                  NULL) )
+        if (system_resizable_vector_find(scene_ptr->loader_ptr->enqueued_image_file_names_vector,
+                                          file_name) == ITEM_NOT_FOUND)
         {
-            /* Insert a dummy element for the time being. We will set the actual gfx_image
-             * later on during loading time */
-            system_hash64map_insert(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
-                                    (system_hash64) file_name,
-                                    NULL,  /* element */
-                                    NULL,  /* on_remove_callback */
-                                    NULL); /* on_remove_callback_user_arg */
+            /* Enqueue the filename. This will be used later on to fill the image_filename_to_gfx_image_map vector. */
+            system_resizable_vector_push(scene_ptr->loader_ptr->enqueued_image_file_names_vector,
+                                         file_name);
 
             /* Spawn a load op for the file.
              *
@@ -390,8 +396,8 @@ PRIVATE void _scene_multiloader_load_scene_internal_enqueue_gfx_filenames(scene_
                                          op_ptr);
         }
     }
-    system_hash64map_unlock(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
-                            ACCESS_WRITE);
+    system_resizable_vector_unlock(scene_ptr->loader_ptr->enqueued_image_file_names_vector,
+                                   ACCESS_WRITE);
 
     /* Set up a descriptor which will later tell which ogl_texture backing needs to be
      * assigned to which scene_texture instance.
@@ -550,6 +556,9 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_camera_data(__in __notnu
         {
             system_resizable_vector_push(serialized_scene_cameras,
                                          new_camera);
+
+            /* Camera is now owned by the scene */
+            scene_camera_release(new_camera);
         }
     } /* for (all cameras defined for the scene) */
 
@@ -625,6 +634,9 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_light_data(__in __notnul
         {
             system_resizable_vector_push(serialized_scene_lights,
                                          new_light);
+
+            /* Light is now owned by the scene */
+            scene_light_release(new_light);
         }
     } /* for (all lights defined for the scene) */
 
@@ -803,6 +815,9 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_instances_data(__in
 
             system_resizable_vector_push(serialized_scene_mesh_instances,
                                          new_mesh_instance);
+
+            /* Mesh instance is now owned by the scene */
+            scene_mesh_release(new_mesh_instance);
         }
     } /* for (all mesh instances) */
 
@@ -854,6 +869,8 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notn
 
         result &= scene_add_texture(scene_ptr->result_scene,
                                     new_texture);
+
+        scene_texture_release(new_texture); /* texture now owned by the scene */
     }
 
     /* Wait for all threads to reach this point.
@@ -911,7 +928,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notn
             system_hash64map_get_element_at(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
                                             n_entry,
                                            &gfx_image_instance,
-                                           &gfx_image_filename_hash); /* system_hash64* */
+                                           &gfx_image_filename_hash);
 
             ASSERT_DEBUG_SYNC(gfx_image_instance != NULL,
                               "gfx_image_instance instance is NULL");
@@ -923,9 +940,6 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notn
 
             ASSERT_DEBUG_SYNC(gfx_image_texture != NULL,
                               "ogl_texture_create_from_gfx_image() call failed.");
-
-            ogl_textures_add_texture(context_textures,
-                                     gfx_image_texture);
         } /* for (all map entries) */
     }
     system_critical_section_leave(scene_ptr->loader_ptr->cs);
@@ -1033,22 +1047,6 @@ volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint(s
     }
     else
     {
-#ifdef _DEBUG
-        if (system_hash64map_contains(op_ptr->loader_ptr->image_filename_to_gfx_image_map,
-                                      (system_hash64) op_ptr->filename))
-        {
-            gfx_image file_image = NULL;
-
-            system_hash64map_get(op_ptr->loader_ptr->image_filename_to_gfx_image_map,
-                                 (system_hash64) op_ptr->filename,
-                                &file_image);
-
-            ASSERT_DEBUG_SYNC(file_image == NULL,
-                              "gfx_image already initialized for file [%s]",
-                              system_hashed_ansi_string_get_buffer(op_ptr->filename) );
-        }
-#endif
-
         /* Store the result image.
          *
          * The hash-map is in MT-safe mode, so no worries about multiple threads accessing
@@ -1061,15 +1059,15 @@ volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint(s
                                 NULL); /* on_remove_callback_user_arg */
     }
 
-    /* Release the op descriptor */
-    delete op_ptr;
-    op_ptr = NULL;
-
     /* Signal the gfx_image barrier to indicate this specific image has been loaded. */
     system_barrier_signal(op_ptr->loader_ptr->barrier_all_scene_gfx_images_loaded,
                           false, /* wait_until_signalled */
                           NULL,  /* about_to_signal_callback_proc */
                           NULL); /* about_to_signal_callback_proc_user_arg */
+
+    /* Release the op descriptor */
+    delete op_ptr;
+    op_ptr = NULL;
 }
 
 /** TODO */
@@ -1310,6 +1308,24 @@ end_error:
 end:
     if (material_id_to_mesh_material_map != NULL)
     {
+        const uint32_t n_mesh_materials = system_hash64map_get_amount_of_elements(material_id_to_mesh_material_map);
+
+        for (uint32_t n_mesh_material = 0;
+                      n_mesh_material < n_mesh_materials;
+                    ++n_mesh_material)
+        {
+            mesh_material material    = NULL;
+            system_hash64 material_id = 0;
+
+            system_hash64map_get_element_at(material_id_to_mesh_material_map,
+                                            n_mesh_material,
+                                           &material,
+                                           &material_id);
+
+            mesh_material_release(material);
+            material = NULL;
+        } /* for all (mesh materials) */
+
         system_hash64map_release(material_id_to_mesh_material_map);
 
         material_id_to_mesh_material_map = NULL;
@@ -1371,94 +1387,28 @@ end:
 
     if (serialized_scene_cameras != NULL)
     {
-        /* All camera instances can be released, since they should've been
-         * retained by scene_camera_load().
-         */
-        const uint32_t n_cameras = system_resizable_vector_get_amount_of_elements(serialized_scene_cameras);
-
-        for (uint32_t n_camera = 0;
-                      n_camera < n_cameras;
-                    ++n_camera)
-        {
-            scene_camera current_camera = NULL;
-
-            if (system_resizable_vector_get_element_at(serialized_scene_cameras,
-                                                       n_camera,
-                                                      &current_camera) )
-            {
-                scene_camera_release(current_camera);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scene_camera instance at index [%d]",
-                                  n_camera);
-            }
-        } /* for (all cameras) */
-
+        /* All camera instances have already been released by this point, so
+         * do not release them again.*/
         system_resizable_vector_release(serialized_scene_cameras);
+
         serialized_scene_cameras = NULL;
     }
 
     if (serialized_scene_lights != NULL)
     {
-        /* All light instances can be released, since they should've been
-         * retained by scene_light_load().
-         */
-        const uint32_t n_lights = system_resizable_vector_get_amount_of_elements(serialized_scene_lights);
-
-        for (uint32_t n_light = 0;
-                      n_light < n_lights;
-                    ++n_light)
-        {
-            scene_light current_light = NULL;
-
-            if (system_resizable_vector_get_element_at(serialized_scene_lights,
-                                                       n_light,
-                                                      &current_light) )
-            {
-                scene_light_release(current_light);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scene_light instance at index [%d]",
-                                  n_light);
-            }
-        } /* for (all lights) */
-
+        /* All light instances have already been released by this point, so
+         * do not release them again. */
         system_resizable_vector_release(serialized_scene_lights);
+
         serialized_scene_lights = NULL;
     }
 
     if (serialized_scene_mesh_instances != NULL)
     {
-        /* All light instances can be released, since they should've been
-         * retained by scene_light_load().
-         */
-        const uint32_t n_scene_meshes = system_resizable_vector_get_amount_of_elements(serialized_scene_mesh_instances);
-
-        for (uint32_t n_scene_mesh = 0;
-                      n_scene_mesh < n_scene_meshes;
-                    ++n_scene_mesh)
-        {
-            scene_mesh current_mesh_instance = NULL;
-
-            if (system_resizable_vector_get_element_at(serialized_scene_mesh_instances,
-                                                       n_scene_mesh,
-                                                      &current_mesh_instance) )
-            {
-                scene_mesh_release(current_mesh_instance);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve scene_mesh instance at index [%d]",
-                                  n_scene_mesh);
-            }
-        } /* for (all scene mesh instances) */
-
+        /* All mesh instances have already been released by this point, so
+         * do not release them again. */
         system_resizable_vector_release(serialized_scene_mesh_instances);
+
         serialized_scene_mesh_instances = NULL;
     }
 

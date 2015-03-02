@@ -413,6 +413,13 @@ PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(__in __n
 
         preview_ptr->data_bo_id = 0;
     }
+
+    if (preview_ptr->preview_program != NULL)
+    {
+        ogl_program_release(preview_ptr->preview_program);
+
+        preview_ptr->preview_program = NULL;
+    }
 }
 
 /** Please see header for spec */

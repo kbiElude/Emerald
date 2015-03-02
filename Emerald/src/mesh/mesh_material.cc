@@ -614,9 +614,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
 
                     if (texture == NULL)
                     {
-                        texture = ogl_texture_create(context,
-                                                     config.texture_filename,
-                                                     config.texture_filename);
+                        texture = ogl_texture_create_from_file_name(context,
+                                                                    config.texture_filename,
+                                                                    config.texture_filename);
                     }
 
                     ASSERT_ALWAYS_SYNC(texture != NULL,
