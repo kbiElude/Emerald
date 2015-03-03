@@ -415,6 +415,11 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
     }
 
     /* Bind the BO as a data source for the indexed draw calls */
+    ASSERT_ALWAYS_SYNC(vao_ptr->vao_id != 0,
+                       "VAO is 0");
+    ASSERT_ALWAYS_SYNC(mesh_bo_id != 0,
+                      "Mesh BO ID is 0");
+
     entrypoints->pGLBindVertexArray(vao_ptr->vao_id);
     entrypoints->pGLBindBuffer     (GL_ELEMENT_ARRAY_BUFFER,
                                     mesh_bo_id);

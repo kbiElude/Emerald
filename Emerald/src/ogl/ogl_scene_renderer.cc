@@ -436,7 +436,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
     mesh                    mesh_instantiation_parent_gpu = NULL;
     uint32_t                mesh_id                       = -1;
     system_resizable_vector mesh_materials                = NULL;
-    bool                    mesh_needs_gl_update          = false;
     ogl_uber                mesh_uber                     = NULL;
     unsigned int            n_mesh_materials              = 0;
 
@@ -456,17 +455,6 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
     mesh_get_property(mesh_instantiation_parent_gpu,
                       MESH_PROPERTY_MATERIALS,
                      &mesh_materials);
-    mesh_get_property(mesh_instantiation_parent_gpu,
-                      MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
-                     &mesh_needs_gl_update);
-
-    if (mesh_needs_gl_update)
-    {
-        LOG_ERROR("Performance warning: executing deferred mesh_fill_gl_buffers() call.");
-
-        mesh_fill_gl_buffers(mesh_instantiation_parent_gpu,
-                             ogl_context_get_current_context() );
-    }
 
     scene_mesh_get_property(scene_mesh_instance,
                             SCENE_MESH_PROPERTY_ID,

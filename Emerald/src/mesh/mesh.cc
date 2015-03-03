@@ -3088,7 +3088,14 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_GL_BO_ID:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized, "Cannot query GL BO id - GL storage not initialized");
+            if (!mesh_ptr->gl_storage_initialized)
+            {
+                mesh_fill_gl_buffers(instance,
+                                     ogl_context_get_current_context() );
+            }
+
+            ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,
+                              "Cannot query GL BO id - GL storage not initialized");
 
             *((GLuint*)result) = mesh_ptr->gl_bo_id;
             break;
@@ -3103,7 +3110,8 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_GL_PROCESSED_DATA:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data != NULL, "Requested GL processed data is NULL");
+            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data != NULL,
+                              "Requested GL processed data is NULL");
 
             *((void**) result) = mesh_ptr->gl_processed_data;
             break;
@@ -3111,7 +3119,8 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_GL_PROCESSED_DATA_SIZE:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data != NULL, "Requested GL processed data size, but the data buffer is NULL");
+            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data != NULL,
+                              "Requested GL processed data size, but the data buffer is NULL");
 
             *((uint32_t*) result) = mesh_ptr->gl_processed_data_size;
             break;
