@@ -38,7 +38,7 @@ typedef enum
     SYSTEM_FILE_SERIALIZER_PROPERTY_UNKNOWN
 } system_file_serializer_property;
 
-/** Creates a file serializer instance for reading a file.
+/** Creates a file serializer instance for reading an uncompressed file.
  *
  *  @param system_hashed_ansi_string File name (with path, if necessary)
  *

@@ -217,9 +217,13 @@ DECLARE_HANDLE(system_event);
 /******************** FILE ENUMERATOR ************************************/
 /** An instance of a file enumerator */
 DECLARE_HANDLE(system_file_enumerator);
+/*********************** FILE PACKER *************************************/
+DECLARE_HANDLE(system_file_packer);
 /******************** FILE SERIALIZER ************************************/
 /* An instance of a file serializer */
 DECLARE_HANDLE(system_file_serializer);
+/********************* FILE UNPACKER *************************************/
+DECLARE_HANDLE(system_file_unpacker);
 /*********************** 4X4 MATRIX **************************************/
 /* An instance of 4x4 matrix object */
 DECLARE_HANDLE(system_matrix4x4);
