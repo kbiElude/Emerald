@@ -24,6 +24,7 @@
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
 #include "system/system_file_serializer.h"
+#include "system/system_global.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -1142,6 +1143,26 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
 
         goto end_error;
     }
+
+    /* Extract the path to the scene file and add it to the global asset path storage.
+     * This is used later on by gfx_image loader to locate the assets, if they are not
+     * available under the scene-specified locations (which is usually the case when
+     * loading blobs on a different computer, than the one that was used to export the
+     * scene).
+     */
+    const char* scene_file_name_raw            = system_hashed_ansi_string_get_buffer(scene_file_name);
+    const char* scene_file_name_last_slash_ptr = strrchr(scene_file_name_raw, '/');
+
+    if (scene_file_name_last_slash_ptr != NULL)
+    {
+        system_hashed_ansi_string scene_file_path;
+
+        scene_file_path = system_hashed_ansi_string_create_substring(scene_file_name_raw,
+                                                                     0,                                                     /* start_offset */
+                                                                     scene_file_name_last_slash_ptr - scene_file_name_raw); /* length */
+
+        system_global_add_asset_path(scene_file_path);
+    } /* if (scene_file_name_last_slash_ptr != NULL) */
 
     /* Load curves.
      *

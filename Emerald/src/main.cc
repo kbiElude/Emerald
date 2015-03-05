@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -9,6 +9,7 @@
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
+#include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
@@ -70,6 +71,7 @@ void main_init()
     system_callback_manager_init  ();
     system_capabilities_init      ();
     system_hashed_ansi_string_init();
+    system_global_init            ();
 
     _system_time_init();
     _system_assertions_init();
