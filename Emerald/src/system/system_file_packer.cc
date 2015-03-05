@@ -18,7 +18,7 @@
  *    result file.
  *
  */
-#define INTERNAL_BUFFER_SIZE (16 * 1024768)
+#define INTERNAL_BUFFER_SIZE (4 * 1024768)
 
 
 typedef struct _system_file_packer_file
@@ -347,7 +347,8 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
                 zlib_stream.next_out  = (Bytef*) packer_ptr->buffer_packed;
 
                 deflate_result = deflate(&zlib_stream,
-                                         ((n_remaining_bytes_to_read - n_bytes_to_read) == 0) ? Z_FINISH : Z_NO_FLUSH);
+                                         (((n_remaining_bytes_to_read - n_bytes_to_read) == 0) &&
+                                           (n_current_file                               == (n_files_to_pack - 1) )) ? Z_FINISH : Z_NO_FLUSH);
 
                 ASSERT_DEBUG_SYNC(deflate_result != Z_STREAM_ERROR,
                                   "deflate() failed.");
@@ -368,6 +369,7 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
             n_bytes_available_for_writing  = INTERNAL_BUFFER_SIZE;
             n_bytes_read                  += n_bytes_to_read;
             unpacked_buffer_traveller_ptr  = packer_ptr->buffer_unpacked;
+            zlib_stream.next_in            = (Bytef*) packer_ptr->buffer_unpacked;
         } /* while (n_bytes_read != n_bytes_to_read) */
 
         /* Move to the next file */

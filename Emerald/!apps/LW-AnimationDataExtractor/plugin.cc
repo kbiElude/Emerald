@@ -11,6 +11,7 @@
 #include "plugin_materials.h"
 #include "plugin_meshes.h"
 #include "plugin_misc.h"
+#include "plugin_pack.h"
 #include "plugin_ui.h"
 #include "plugin_vmaps.h"
 #include "scene/scene.h"
@@ -18,6 +19,7 @@
 #include "system/system_capabilities.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
+#include "system/system_file_packer.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_resizable_vector.h"
@@ -142,18 +144,12 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
                                    serializer);
 
         system_file_serializer_release(serializer);
-
-        message_funcs_ptr->info("Emerald Scene blob file saved.",
-                                NULL);
     }
     else
     {
         message_funcs_ptr->warning("Emerald Scene blob file NOT saved.",
                                    NULL);
     }
-
-    /* done! Kill the panel first.. */
-    DeinitUI();
 
     /* Release all plugin modules */
     DeinitCameraData  ();
@@ -163,6 +159,21 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
     DeinitMaterialData();
     DeinitMeshData    ();
     DeinitVMapData    ();
+
+    /* Now is the time to pack all files into a final blob! */
+    if (filename != NULL)
+    {
+        system_hashed_ansi_string filename_packed = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(filename),
+                                                                                                            ".packed");
+
+        AddFileToFinalBlob(filename);
+        SaveFinalBlob     (filename_packed);
+    }
+
+    DeinitPackData();
+
+    /* done! Kill the panel. */
+    DeinitUI();
 
     /* Finally release all LW pointers */
     global_func_ptr(LWCAMERAINFO_GLOBAL,      GFUSE_RELEASE);
@@ -211,6 +222,9 @@ XCALL_(int) ExportData(int         version,
     scene_info_ptr        = (LWSceneInfo*)     global(LWSCENEINFO_GLOBAL,       GFUSE_ACQUIRE);
     surface_funcs_ptr     = (LWSurfaceFuncs*)  global(LWSURFACEFUNCS_GLOBAL,    GFUSE_ACQUIRE);
     texture_funcs_ptr     = (LWTextureFuncs*)  global(LWTEXTUREFUNCS_GLOBAL,    GFUSE_ACQUIRE);
+
+    /* Set up packer module */
+    InitPackData();
 
     /* Set up UI */
     InitUI();

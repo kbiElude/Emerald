@@ -4,6 +4,7 @@
 #include "plugin.h"
 #include "plugin_common.h"
 #include "plugin_curves.h"
+#include "plugin_pack.h"
 #include "plugin_materials.h"
 #include "plugin_ui.h"
 #include "curve/curve_container.h"
@@ -201,6 +202,9 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
                             system_resizable_vector_push(texture_filenames_vector,
                                                         *current_texture.out_texture_file_name_ptr);
                         }
+
+                        /* Make sure the file is included in the final blob */
+                        AddFileToFinalBlob(*current_texture.out_texture_file_name_ptr);
                     } /* if (image_id != 0) */
                     else
                     {
