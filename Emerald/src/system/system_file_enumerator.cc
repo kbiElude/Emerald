@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -34,7 +34,8 @@ typedef struct _system_file_enumerator
         {
             _system_file_enumerator_entry* entry_ptr = NULL;
 
-            while (system_resizable_vector_pop(entries, &entry_ptr) )
+            while (system_resizable_vector_pop(entries,
+                                              &entry_ptr) )
             {
                 delete entry_ptr;
 
@@ -55,7 +56,8 @@ PRIVATE bool _system_file_enumerator_fill(__in __notnull _system_file_enumerator
     {
         _system_file_enumerator_entry* entry_ptr   = NULL;
 
-        while (system_resizable_vector_pop(enumerator_ptr->entries, &entry_ptr) )
+        while (system_resizable_vector_pop(enumerator_ptr->entries,
+                                          &entry_ptr) )
         {
             delete entry_ptr;
 
@@ -96,9 +98,11 @@ PRIVATE bool _system_file_enumerator_fill(__in __notnull _system_file_enumerator
             entry_ptr->file_name = system_hashed_ansi_string_create(file_finder_data.cFileName);
 
             /* Stash it */
-            system_resizable_vector_push(enumerator_ptr->entries, entry_ptr);
+            system_resizable_vector_push(enumerator_ptr->entries,
+                                         entry_ptr);
         } /* if (file_finder_data.dwFileAttributes & FILE_ATTRIBUTE_NORMAL) */
-    } while (::FindNextFileA(file_finder, &file_finder_data) != 0);
+    } while (::FindNextFileA(file_finder,
+                            &file_finder_data) != 0);
 
     result = true;
 end:
@@ -113,31 +117,72 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in           system_file_enumerator_file_operation operation,
-                                                                                       __in __notnull system_hashed_ansi_string             filter,
-                                                                                       __in __notnull system_hashed_ansi_string             filter_name,
-                                                                                       __in __notnull system_hashed_ansi_string             dialog_title)
+PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in                                   system_file_enumerator_file_operation operation,
+                                                                                       __in                                   unsigned int                          n_filters,
+                                                                                       __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_descriptions,
+                                                                                       __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_extensions,
+                                                                                       __in                   __notnull       system_hashed_ansi_string             dialog_title)
 {
     char                      buffer[MAX_PATH];
     OPENFILENAME              config;
-    const char*               filter_name_raw_ptr    = system_hashed_ansi_string_get_buffer(filter_name);
-    unsigned int              filter_name_length     = strlen(filter_name_raw_ptr);
-    const char*               filter_raw_ptr         = system_hashed_ansi_string_get_buffer(filter);
-    unsigned int              filter_raw_length      = strlen(filter_raw_ptr);
-    unsigned int              filter_adapted_length  = filter_name_length + 1 + filter_raw_length + 2;
-    char*                     filter_adapted_raw_ptr = new char[filter_adapted_length];
-    system_hashed_ansi_string result                 = NULL;
+    system_hashed_ansi_string result = NULL;
 
-    memset(buffer, 0, sizeof(buffer) );
+    memset(buffer,
+           0,
+           sizeof(buffer) );
 
-    ASSERT_ALWAYS_SYNC(filter_adapted_raw_ptr != NULL, "Out of memory");
+    /* Construct filter string: Count number of characters we will need for the lpstrFilter string */
+    char*        filter_adapted_raw_ptr = NULL;
+    unsigned int n_filter_characters    = 1; /* final terminator at the end */
+
+    for (unsigned int n_filter = 0;
+                      n_filter < n_filters;
+                    ++n_filter)
+    {
+        n_filter_characters += system_hashed_ansi_string_get_length(filter_descriptions[n_filter]) + 1; /* terminator */
+        n_filter_characters += system_hashed_ansi_string_get_length(filter_extensions  [n_filter]) + 1; /* terminator */
+    } /* for (all filters) */
+
+    filter_adapted_raw_ptr = new (std::nothrow) char[n_filter_characters];
+
+    ASSERT_DEBUG_SYNC(filter_adapted_raw_ptr != NULL,
+                      "Out of memory");
+
     if (filter_adapted_raw_ptr != NULL)
     {
-        memset(filter_adapted_raw_ptr,                         0,                   filter_adapted_length);
-        memcpy(filter_adapted_raw_ptr,                         filter_name_raw_ptr, filter_name_length);
-        memcpy(filter_adapted_raw_ptr + filter_name_length + 1,filter_raw_ptr,      filter_raw_length);
+        /* Construct filter string */
+        char* traveller_ptr = filter_adapted_raw_ptr;
 
-        memset(&config, 0, sizeof(config) );
+        memset(filter_adapted_raw_ptr,
+               0,
+               n_filter_characters);
+
+        for (unsigned int n_filter = 0;
+                          n_filter < n_filters;
+                        ++n_filter)
+        {
+            const unsigned int filter_description_length = system_hashed_ansi_string_get_length(filter_descriptions[n_filter]);
+            const unsigned int filter_extension_length   = system_hashed_ansi_string_get_length(filter_extensions  [n_filter]);
+
+            memcpy(traveller_ptr,
+                   system_hashed_ansi_string_get_buffer(filter_descriptions[n_filter]),
+                   filter_description_length);
+
+              traveller_ptr += filter_description_length;
+            ++traveller_ptr; /* terminator */
+
+            memcpy(traveller_ptr,
+                   system_hashed_ansi_string_get_buffer(filter_extensions[n_filter]),
+                   filter_extension_length);
+
+              traveller_ptr += filter_extension_length;
+            ++traveller_ptr; /* terminator */
+        } /* for (all filters) */
+
+        /* Set up the OPENFILE descriptor */
+        memset(&config,
+               0,
+               sizeof(config) );
 
         config.Flags           = ((operation == SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD) ? OFN_FILEMUSTEXIST : 0) | OFN_PATHMUSTEXIST;
         config.lStructSize     = sizeof(config);
@@ -167,7 +212,35 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_
             goto end;
         }
 
-        result = system_hashed_ansi_string_create(buffer);
+        /* WinAPI does not seem to append the selected extension. If that's the case, make sure to append it
+         * when creating the result value */
+        const char* selected_filter_extension_raw_ptr = NULL;
+
+        ASSERT_DEBUG_SYNC((config.nFilterIndex - 1) < n_filters,
+                          "Invalid filter index reported by WinAPI");
+
+        selected_filter_extension_raw_ptr = system_hashed_ansi_string_get_buffer(filter_extensions[config.nFilterIndex - 1]);
+
+        if (strstr(buffer,
+                   selected_filter_extension_raw_ptr + 1 /* wildcard */) == NULL)
+        {
+            ASSERT_DEBUG_SYNC(selected_filter_extension_raw_ptr[0] == '*',
+                              "Invalid first character in the filter extension");
+
+            const char* file_name_parts[] =
+            {
+                buffer,
+                selected_filter_extension_raw_ptr + 1, /* skip the wildcard character */
+            };
+            const unsigned int n_file_name_parts = sizeof(file_name_parts) / sizeof(file_name_parts[0]);
+
+            result = system_hashed_ansi_string_create_by_merging_strings(n_file_name_parts,
+                                                                         file_name_parts);
+        }
+        else
+        {
+            result = system_hashed_ansi_string_create(buffer);
+        }
     }
 
 end:

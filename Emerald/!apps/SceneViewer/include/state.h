@@ -59,7 +59,7 @@ PUBLIC scene state_get_scene();
 PUBLIC ogl_scene_renderer state_get_scene_renderer();
 
 /** TODO */
-PUBLIC void state_init(__in __notnull system_hashed_ansi_string scene_filename);
+PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename);
 
 /** TODO */
 PUBLIC void state_set_active_camera_index(unsigned int index);

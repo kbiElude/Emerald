@@ -124,12 +124,16 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
     FillSceneWithCurveData(new_scene);
 
     /* Check where the user wants to store the data */
+    system_hashed_ansi_string filter_extension = system_hashed_ansi_string_create("*.scene");
+    system_hashed_ansi_string filter_name      = system_hashed_ansi_string_create("Emerald Scene blob");
+
     message_funcs_ptr->info("Please select target file to store the blob.",
                             NULL);
 
     system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE,
-                                                                                   system_hashed_ansi_string_create("*"),
-                                                                                   system_hashed_ansi_string_create("Emerald Scene blob"),
+                                                                                   1, /* n_filters */
+                                                                                   &filter_extension,
+                                                                                   &filter_name,
                                                                                    system_hashed_ansi_string_create("Select target Emerald Scene blob file") );
 
     if (filename != NULL)

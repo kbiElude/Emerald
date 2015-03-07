@@ -39,6 +39,7 @@ typedef struct _system_file_packer
     char*                   buffer_packed;
     char*                   buffer_unpacked;
     system_resizable_vector files; /* _system_file_packer_file* */
+    uint32_t                total_filesize;
 
     _system_file_packer()
     {
@@ -47,6 +48,7 @@ typedef struct _system_file_packer
         files           = system_resizable_vector_create(4,     /* capacity */
                                                          sizeof(_system_file_packer_file*),
                                                          true); /* should_be_thread_safe */
+        total_filesize  = 0;
 
         ASSERT_ALWAYS_SYNC(buffer_packed   != NULL &&
                            buffer_unpacked != NULL,
@@ -101,7 +103,7 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
     *(uint32_t*) traveller_ptr  = n_files_to_use;
     traveller_ptr              += sizeof(uint32_t);
 
-    ASSERT_DEBUG_SYNC(traveller_ptr - out_result_data < result_data_bytes,
+    ASSERT_DEBUG_SYNC(traveller_ptr - out_result_data < (int32_t) result_data_bytes,
                       "Input container is too small.");
 
     /* Store an entry for each file enqueued */
@@ -124,7 +126,7 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
         *(uint32_t*) traveller_ptr  = system_hashed_ansi_string_get_length(file_ptr->filename);
         traveller_ptr              += sizeof(uint32_t);
 
-        ASSERT_DEBUG_SYNC(traveller_ptr - out_result_data < result_data_bytes,
+        ASSERT_DEBUG_SYNC(traveller_ptr - out_result_data < (int32_t) result_data_bytes,
                           "Input container is too small.");
 
         /* Write the actual string */
@@ -140,7 +142,7 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
         *(uint32_t*) traveller_ptr  = summed_file_size;
         traveller_ptr              += sizeof(uint32_t);
 
-        ASSERT_DEBUG_SYNC(traveller_ptr - out_result_data < result_data_bytes,
+        ASSERT_DEBUG_SYNC(traveller_ptr - out_result_data < (int32_t) result_data_bytes,
                           "Input container is too small.");
 
         /* Update the offset. */
@@ -214,6 +216,9 @@ PUBLIC EMERALD_API bool system_file_packer_add_file(__in __notnull system_file_p
     system_resizable_vector_push(packer_ptr->files,
                                  new_file_ptr);
 
+    /* Also update packer-wide summed up file size info */
+    packer_ptr->total_filesize += file_size;
+
     /* All done */
 end:
     return result;
@@ -284,6 +289,13 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
 
     is_zlib_inited = true;
 
+    /* Store total number of bytes in the decoded stream */
+    const uint32_t n_total_decoded_bytes = file_table_size + packer_ptr->total_filesize;
+
+    system_file_serializer_write(out_file_serializer,
+                                 sizeof(n_total_decoded_bytes),
+                                &n_total_decoded_bytes);
+
     /* Start constructing input data for the result blob */
     uint32_t n_current_file                = 0;
     char*    unpacked_buffer_traveller_ptr = packer_ptr->buffer_unpacked + file_table_size;
@@ -317,7 +329,7 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
                            "Could not spawn file serializer for file [%s]",
                            system_hashed_ansi_string_get_buffer(file_ptr->filename) );
 
-        while (n_bytes_read != n_bytes_to_read)
+        while (n_bytes_to_read != 0)
         {
             const unsigned int n_remaining_bytes_to_read = file_ptr->filesize - n_bytes_read;
 
@@ -368,6 +380,7 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
             /* Update the helper variables */
             n_bytes_available_for_writing  = INTERNAL_BUFFER_SIZE;
             n_bytes_read                  += n_bytes_to_read;
+            n_bytes_to_read                = file_ptr->filesize - n_bytes_read;
             unpacked_buffer_traveller_ptr  = packer_ptr->buffer_unpacked;
             zlib_stream.next_in            = (Bytef*) packer_ptr->buffer_unpacked;
         } /* while (n_bytes_read != n_bytes_to_read) */

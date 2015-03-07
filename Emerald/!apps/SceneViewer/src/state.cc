@@ -12,6 +12,7 @@
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "system/system_critical_section.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_resizable_vector.h"
 #include "app_config.h"
 #include "include/main.h"
@@ -331,13 +332,87 @@ PUBLIC system_hashed_ansi_string* state_get_camera_path_names()
 }
 
 /** Please see header for spec */
-PUBLIC void state_init(__in __notnull system_hashed_ansi_string scene_filename)
+PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
 {
-    const float camera_start_position[3] = {0, 0, 0};
+    const float          camera_start_position[3] = {0, 0, 0};
+    bool                 result                   = true;
+    system_file_unpacker unpacker                 = NULL;
 
-    /* Load the scene */
-    _scene = scene_load(_context,
-                        scene_filename);
+    /* Load the scene.
+     *
+     * Note that the input filename can either refer to a packed blob or to actual
+     * "raw" scene file. Handle both cases accordingly.
+     */
+    if (system_hashed_ansi_string_contains(scene_filename,
+                                           system_hashed_ansi_string_create(".packed") ))
+    {
+        unpacker = system_file_unpacker_create(scene_filename);
+
+        if (unpacker == NULL)
+        {
+            ASSERT_ALWAYS_SYNC(unpacker != NULL,
+                               "Could not unpack the file called [%s]",
+                               system_hashed_ansi_string_get_buffer(scene_filename) );
+
+            result = false;
+            goto end;
+        }
+
+        /* Locate the .scene file we need to load */
+        unsigned int n_packed_files   = 0;
+        unsigned int scene_file_index = -1;
+
+        system_file_unpacker_get_property(unpacker,
+                                          SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES,
+                                         &n_packed_files);
+
+        for (unsigned int n_packed_file = 0;
+                          n_packed_file < n_packed_files;
+                        ++n_packed_file)
+        {
+            system_hashed_ansi_string file_name = NULL;
+
+            system_file_unpacker_get_file_property(unpacker,
+                                                   n_packed_file,
+                                                   SYSTEM_FILE_UNPACKER_FILE_PROPERTY_NAME,
+                                                  &file_name);
+
+            if (system_hashed_ansi_string_contains(file_name,
+                                                   system_hashed_ansi_string_create(".scene") ))
+            {
+                /* OK, located the scene file! */
+                scene_file_index = n_packed_file;
+
+                break;
+            }
+        } /* for (all packed files) */
+
+        if (scene_file_index == -1)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "No scene file found inside [%s]",
+                              system_hashed_ansi_string_get_buffer(scene_filename) );
+
+            result = false;
+            goto end;
+        }
+
+        /* Retrieve a memory region-based file serializer and load up the scene */
+        system_file_serializer scene_serializer = NULL;
+
+        system_file_unpacker_get_file_property(unpacker,
+                                               scene_file_index,
+                                               SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
+                                              &scene_serializer);
+
+        _scene = scene_load_with_serializer(_context,
+                                            scene_serializer);
+    }
+    else
+    {
+        _scene = scene_load(_context,
+                            scene_filename);
+    }
 
     /* Enumerate all cameras */
     _camera_cs = system_critical_section_create();
@@ -389,6 +464,17 @@ PUBLIC void state_init(__in __notnull system_hashed_ansi_string scene_filename)
     /* Spawn curve renderer */
     _curve_renderer = ogl_curve_renderer_create(_context,
                                                 system_hashed_ansi_string_create("Curve renderer") );
+
+end:
+    /* Release the unpacker */
+    if (unpacker != NULL)
+    {
+        system_file_unpacker_release(unpacker);
+
+        unpacker = NULL;
+    }
+
+    return result;
 }
 
 /** Please see header for spec */

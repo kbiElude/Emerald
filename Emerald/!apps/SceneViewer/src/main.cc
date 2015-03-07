@@ -334,9 +334,21 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         NULL);
 
     /* Let the user select the scene file */
+    const system_hashed_ansi_string filters[] =
+    {
+        system_hashed_ansi_string_create("Packed Blob Files"),
+        system_hashed_ansi_string_create("Scene Blob Files")
+    };
+    const system_hashed_ansi_string filter_extensions[] =
+    {
+        system_hashed_ansi_string_create("*.packed"),
+        system_hashed_ansi_string_create("*.scene")
+    };
+
     system_hashed_ansi_string scene_filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
-                                                                                         system_hashed_ansi_string_create("*.scene"),
-                                                                                         system_hashed_ansi_string_create("Emerald Scene files"),
+                                                                                         2, /* n_filters */
+                                                                                         filters,
+                                                                                         filter_extensions,
                                                                                          system_hashed_ansi_string_create("Select Emerald Scene file") );
 
     if (scene_filename == NULL)
@@ -345,7 +357,10 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     }
 
     /* Initialize various states required to run the demo */
-    state_init(scene_filename);
+    if (!state_init(scene_filename) )
+    {
+        goto end;
+    }
 
     /* Set up UI */
     ui_init();

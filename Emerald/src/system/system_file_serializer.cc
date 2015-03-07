@@ -17,17 +17,25 @@
 #include "system/system_variant.h"
 
 /** Internal type definitions */
+typedef enum
+{
+    SYSTEM_FILE_SERIALIZER_TYPE_FILE,
+    SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION
+
+} _system_file_serializer_type;
+
 typedef struct 
 {
-    char*                     contents;               /* reading/writing */
-    uint32_t                  current_index;          /* reading/writing */
-    HANDLE                    file_handle;            /* reading only */
-    system_hashed_ansi_string file_name;              /* reading/writing */
-    system_hashed_ansi_string file_path;              /* reading only */
-    uint32_t                  file_size;              /* reading only */
-    bool                      for_reading;            /* if false, the serializer is write-only; if true, it is read-only */
-    system_event              reading_finished_event; /* reading only */
-    uint32_t                  writing_capacity;       /* writing only */
+    char*                        contents;               /* reading/writing */
+    uint32_t                     current_index;          /* reading/writing */
+    HANDLE                       file_handle;            /* reading only */
+    system_hashed_ansi_string    file_name;              /* reading/writing */
+    system_hashed_ansi_string    file_path;              /* reading only */
+    uint32_t                     file_size;              /* reading only */
+    bool                         for_reading;            /* if false, the serializer is write-only; if true, it is read-only */
+    system_event                 reading_finished_event; /* reading only */
+    _system_file_serializer_type type;
+    uint32_t                     writing_capacity;       /* writing only */
 } _system_file_serializer_descriptor;
 
 /** Function that reads the file and sets the internal event, so that normal function can make full use of the read data.
@@ -39,6 +47,9 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
     _system_file_serializer_descriptor* serializer_descriptor = (_system_file_serializer_descriptor*) argument;
 
     /* Open the file */
+    ASSERT_DEBUG_SYNC(serializer_descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
+                      "_system_file_serializer_read_task_executor() can only be called for file serializers.");
+
     serializer_descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
                                                       GENERIC_READ,
                                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -123,6 +134,9 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
 /** TODO */
 PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _system_file_serializer_descriptor* descriptor)
 {
+    ASSERT_DEBUG_SYNC(descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
+                      "_system_file_serializer_write_down_data_to_file() can only be called for file serializers.");
+
     if (descriptor->file_handle == NULL)
     {
         /* Open the file for writing. If a file already exists, overwrite it */
@@ -163,6 +177,26 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
     }
 }
 
+
+/** Please see header file for specification */
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(__in_bcount(data_size) __notnull void*        data,
+                                                                                                  __in                             unsigned int data_size)
+{
+    _system_file_serializer_descriptor* new_descriptor = new _system_file_serializer_descriptor;
+
+    new_descriptor->contents               = (char*) data;
+    new_descriptor->current_index          = 0;
+    new_descriptor->file_handle            = NULL;
+    new_descriptor->file_name              = NULL;
+    new_descriptor->file_size              = data_size;
+    new_descriptor->for_reading            = true;
+    new_descriptor->reading_finished_event = system_event_create(true,  /* manual_reset */
+                                                                 true); /* start_state  */
+    new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION;
+
+    return (system_file_serializer) new_descriptor;
+}
+
 /** Please see header file for specification */
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading(__in __notnull system_hashed_ansi_string file_name,
                                                                                     __in           bool                      async_read)
@@ -177,6 +211,7 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
     new_descriptor->for_reading            = true;
     new_descriptor->reading_finished_event = system_event_create(true,
                                                                  false);
+    new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
 
     if (async_read)
     {
@@ -216,6 +251,7 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writ
         new_descriptor->file_size              = 0;
         new_descriptor->for_reading            = false;
         new_descriptor->reading_finished_event = NULL;
+        new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
         new_descriptor->writing_capacity       = FILE_SERIALIZER_START_CAPACITY;
 
         ASSERT_ALWAYS_SYNC(new_descriptor->contents != NULL,
@@ -437,7 +473,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
     }
 
     /* Iterate through all segments */
-    for (uint32_t n_segment = 0; n_segment < n_segments; ++n_segment)
+    for (uint32_t n_segment = 0;
+                  n_segment < n_segments;
+                ++n_segment)
     {
         /* Read general curve segment data */
         system_timeline_time segment_start_time = 0;
@@ -1044,7 +1082,13 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
 
         /* Release reading-specific fields */
         system_event_release(descriptor->reading_finished_event);
-        delete [] descriptor->contents;
+
+        if (descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE)
+        {
+            delete [] descriptor->contents;
+
+            descriptor->contents = NULL;
+        }
     }
     else
     {
@@ -1064,6 +1108,30 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     }
 
     delete descriptor;
+}
+
+/** Please see header file for specification */
+PUBLIC EMERALD_API void system_file_serializer_set_property(__in __notnull system_file_serializer          serializer,
+                                                            __in           system_file_serializer_property property,
+                                                            __in __notnull void*                           data)
+{
+    _system_file_serializer_descriptor* serializer_ptr = (_system_file_serializer_descriptor*) serializer;
+
+    switch (property)
+    {
+        case SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME:
+        {
+            serializer_ptr->file_name = *(system_hashed_ansi_string*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized system_file_serializer_property value.");
+        }
+    } /* switch (property) */
 }
 
 /** Please see header file for specification */

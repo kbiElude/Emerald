@@ -2,10 +2,20 @@
  *
  *  Emerald (kbi/elude @2012-2015)
  *
- *  @brief File serializer is an efficient file proxy object. For:
+ *  @brief File serializer is an efficient file proxy object.
  *
- *  - reading: it loads the file asynchronously, allowing the caller to do other things while the
- *             file contents loads. Read calls are blocked until file contents become available.
+ *         The serializer can work in different modes:
+ *
+ *         1) File mode, where an actual file is read from or
+ *            written to.
+ *         2) Memory region mode, where the serializer acts as
+ *            a shim layer for load & store ops.
+ *
+ * For:
+ *
+ *  - reading: the serilizer loads the file asynchronously, allowing the caller to do other
+ *             things while the file contents loads. Read calls are blocked until file contents
+ *             become available.
  *  - writing: it caches data to be stored and flushes the file when releasing the serializer.
  */
 #ifndef SYSTEM_FILE_SERIALIZER_H
@@ -20,13 +30,22 @@ typedef enum
     /* not settable, uint32_t */
     SYSTEM_FILE_SERIALIZER_PROPERTY_CURRENT_OFFSET,
 
-    /* not settable, system_hashed_ansi_string */
+    /* settable, system_hashed_ansi_string.
+     *
+     * Works for both file and memory region serializers.
+     */
     SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
 
-    /* not settable, system_hashed_ansi_string */
+    /* not settable, system_hashed_ansi_string.
+     *
+     * Works for both file and memory region serializers.
+     */
     SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH,
 
-    /* not settable, system_hashed_ansi_string */
+    /* not settable, system_hashed_ansi_string.
+     *
+     * Works for both file and memory region serializers.
+     */
     SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_PATH_AND_NAME,
 
     /* not settable, const char*. Internal usage only. */
@@ -38,7 +57,17 @@ typedef enum
     SYSTEM_FILE_SERIALIZER_PROPERTY_UNKNOWN
 } system_file_serializer_property;
 
-/** Creates a file serializer instance for reading an uncompressed file.
+
+/** Creates a file serializer instance for reading a memory region.
+ *
+ *  @param data      Memory region to use as a data source.
+ *  @param data_size Number of bytes available for reading under @param data.
+ *
+ */
+PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_reading_memory_region(__in_bcount(data_size) __notnull void*        data,
+                                                                                                  __in                             unsigned int data_size);
+
+/** Creates a file serializer instance for reading a file.
  *
  *  @param system_hashed_ansi_string File name (with path, if necessary)
  *
@@ -103,6 +132,11 @@ PUBLIC EMERALD_API bool system_file_serializer_read_variant(__in  __notnull syst
  *  @param system_file_serializer File serializer to release.
  */
 PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __deallocate(mem) system_file_serializer);
+
+/** TODO */
+PUBLIC EMERALD_API void system_file_serializer_set_property(__in __notnull system_file_serializer          serializer,
+                                                            __in           system_file_serializer_property property,
+                                                            __in __notnull void*                           data);
 
 /** Schedules @param uint32_t bytes to be written to the file. This operation DOES NOT result in writing the data.
  *  This operation should only be used for a writing file serializer - otherwise an assertion failure will occur.

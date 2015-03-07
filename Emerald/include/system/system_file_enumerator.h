@@ -31,10 +31,11 @@ typedef enum
  *  This function DOES NOT require a system_file_enumerator instance.
  *
  **/
-PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in           system_file_enumerator_file_operation operation,
-                                                                                       __in __notnull system_hashed_ansi_string             filter,
-                                                                                       __in __notnull system_hashed_ansi_string             filter_name,
-                                                                                       __in __notnull system_hashed_ansi_string             dialog_title);
+PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in                                   system_file_enumerator_file_operation operation,
+                                                                                       __in                                   unsigned int                          n_filters,
+                                                                                       __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_descriptions,
+                                                                                       __in_ecount(n_filters) __notnull const system_hashed_ansi_string*            filter_extensions,
+                                                                                       __in                   __notnull       system_hashed_ansi_string             dialog_title);
 
 /** TODO */
 PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(__in __notnull system_hashed_ansi_string file_pattern);

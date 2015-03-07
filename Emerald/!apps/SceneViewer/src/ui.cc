@@ -97,8 +97,19 @@ PRIVATE void _update_controls_location()
 /** Please see header for spec */
 PUBLIC void ui_deinit()
 {
-    ogl_ui_release  (_ui);
-    ogl_text_release(_text_renderer);
+    if (_ui != NULL)
+    {
+        ogl_ui_release(_ui);
+
+        _ui = NULL;
+    }
+
+    if (_text_renderer != NULL)
+    {
+        ogl_text_release(_text_renderer);
+
+        _text_renderer = NULL;
+    }
 }
 
 /** Please see header for spec */
