@@ -1,12 +1,15 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
 #include "png.h"
 #include "gfx/gfx_image.h"
 #include "system/system_assertions.h"
+#include "system/system_file_enumerator.h"
+#include "system/system_file_serializer.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 
@@ -21,12 +24,16 @@ typedef struct
  *  of the file, so we maintain a helper structure throughout the loading process, which keeps track of current offset and
  *  of the original pointer we started from.
  */
-PRIVATE void _gfx_png_shared_load_handler_mem_load_helper(png_structp png_ptr, png_bytep data_ptr, png_size_t length)
+PRIVATE void _gfx_png_shared_load_handler_mem_load_helper(png_structp png_ptr,
+                                                          png_bytep   data_ptr,
+                                                          png_size_t  length)
 {
     _mem_load_helper* in_data = (_mem_load_helper*) png_ptr->io_ptr;
 
-    memcpy(data_ptr, in_data->src_ptr + in_data->offset, length);
-    
+    memcpy(data_ptr,
+           in_data->src_ptr + in_data->offset,
+           length);
+
     in_data->src_ptr += in_data->offset;
 }
 
@@ -34,35 +41,63 @@ PRIVATE void _gfx_png_shared_load_handler_mem_load_helper(png_structp png_ptr, p
 /** Please see header for specification */
 PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                                 should_load_from_file,
                                               __in __notnull  system_hashed_ansi_string file_name,
+                                              __in_opt        system_file_unpacker      file_unpacker,
                                               __in __maybenull const unsigned char*     in_data_ptr)
 {
     /* Open file handle */
-    unsigned char*   data_ptr     = NULL;
-    FILE*            file_handle  = NULL;
-    _mem_load_helper mem_load_helper;
-    unsigned int     n_components = 0;
-    png_infop        png_info_ptr = NULL;
-    png_structp      png_ptr      = NULL;
-    gfx_image        result       = NULL;
-    unsigned int     row_size     = 0;
+    unsigned char*         data_ptr                  = NULL;
+    _mem_load_helper       mem_load_helper;
+    unsigned int           n_components              = 0;
+    png_infop              png_info_ptr              = NULL;
+    png_structp            png_ptr                   = NULL;
+    gfx_image              result                    = NULL;
+    unsigned int           row_size                  = 0;
+    system_file_serializer serializer                = NULL;
+    bool                   should_release_serializer = false;
 
     if (should_load_from_file)
     {
-        file_handle  = ::fopen( system_hashed_ansi_string_get_buffer(file_name), "rb");
-
-        ASSERT_ALWAYS_SYNC(file_handle != NULL, "Could not load file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
-        if (file_handle == NULL)
+        if (file_unpacker == NULL)
         {
-            LOG_FATAL("Could not load file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
-
-            goto end;
+            serializer                = system_file_serializer_create_for_reading(file_name,
+                                                                                  false); /* async_read */
+            should_release_serializer = true;
         }
-    }
+        else
+        {
+            unsigned int file_index = 0;
+            bool         file_found = false;
+
+            file_found = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
+                                                                                        file_name,
+                                                                                       &file_index);
+
+            ASSERT_DEBUG_SYNC(file_found,
+                              "File [%s] was not found in file_unpacker.",
+                              system_hashed_ansi_string_get_buffer(file_name) );
+
+            system_file_unpacker_get_file_property(file_unpacker,
+                                                   file_index,
+                                                   SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
+                                                  &serializer);
+
+            should_release_serializer = false; /* serializer is owned by parent of file_unpacker */
+        }
+
+        system_file_serializer_get_property(serializer,
+                                            SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
+                                           &in_data_ptr);
+    } /* if (should_load_from_file) */
 
     /* Initialize libpng */
-    png_ptr = ::png_create_read_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+    png_ptr = ::png_create_read_struct(PNG_LIBPNG_VER_STRING,
+                                       0,  /* error_ptr */
+                                       0,  /* error_fn */
+                                       0); /* warn_fn */
 
-    ASSERT_ALWAYS_SYNC(png_ptr != NULL, "Could not create png_struct instance.");
+    ASSERT_ALWAYS_SYNC(png_ptr != NULL,
+                       "Could not create png_struct instance.");
+
     if (png_ptr == 0)
     {
         LOG_FATAL("Could not create png_struct instance.");
@@ -72,7 +107,9 @@ PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                         
 
     png_info_ptr = png_create_info_struct(png_ptr);
 
-    ASSERT_ALWAYS_SYNC(png_info_ptr != NULL, "Could not create png_info instance.");
+    ASSERT_ALWAYS_SYNC(png_info_ptr != NULL,
+                       "Could not create png_info instance.");
+
     if (png_info_ptr == NULL)
     {
         LOG_FATAL("Could not create png_info instance.");
@@ -82,43 +119,49 @@ PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                         
 
     if (setjmp(png_jmpbuf(png_ptr) ))
     {
-        LOG_FATAL("Error occured in libpng while reading file [%s].", system_hashed_ansi_string_get_buffer(file_name) );
+        LOG_FATAL("Error occured in libpng while reading file [%s].",
+                  system_hashed_ansi_string_get_buffer(file_name) );
 
         goto end;
     }
 
-    if (should_load_from_file)
-    {
-        /* Initialize IO */
-        png_init_io(png_ptr, file_handle);
+    /* Set up mem-based PNG loading. */
+    mem_load_helper.offset  = 0;
+    mem_load_helper.src_ptr = in_data_ptr;
 
-    }
-    else
-    {
-        mem_load_helper.offset  = 0;
-        mem_load_helper.src_ptr = in_data_ptr;
-
-        png_set_read_fn(png_ptr, &mem_load_helper, _gfx_png_shared_load_handler_mem_load_helper);
-    }
+    png_set_read_fn(png_ptr,
+                   &mem_load_helper,
+                    _gfx_png_shared_load_handler_mem_load_helper);
 
     /* Read the file */
-    png_read_png(png_ptr, png_info_ptr, 0, png_voidp_NULL);
+    png_read_png(png_ptr,
+                 png_info_ptr,
+                 0,              /* transforms */
+                 png_voidp_NULL);
 
     /* Make sure we support the file */
-    ASSERT_ALWAYS_SYNC(png_ptr->bit_depth == 8, "Only 8-bit PNG files are supported [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+    ASSERT_ALWAYS_SYNC(png_ptr->bit_depth == 8,
+                       "Only 8-bit PNG files are supported [%s]",
+                       system_hashed_ansi_string_get_buffer(file_name) );
+
     if (png_ptr->bit_depth != 8)
     {
-        LOG_FATAL("Only 8-bit PNG files are supported [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+        LOG_FATAL("Only 8-bit PNG files are supported [%s]",
+                  system_hashed_ansi_string_get_buffer(file_name) );
 
         goto end;
     }
 
-    ASSERT_ALWAYS_SYNC(png_ptr->color_type == PNG_COLOR_TYPE_RGB || png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA, 
-                       "File [%s] is not of RGB and RGBA format.", 
+    ASSERT_ALWAYS_SYNC(png_ptr->color_type == PNG_COLOR_TYPE_RGB        ||
+                       png_ptr->color_type == PNG_COLOR_TYPE_RGB_ALPHA,
+                       "File [%s] is not of RGB and RGBA format.",
                        system_hashed_ansi_string_get_buffer(file_name) );
-    if (png_ptr->color_type != PNG_COLOR_TYPE_RGB && png_ptr->color_type != PNG_COLOR_TYPE_RGB_ALPHA)
+
+    if (png_ptr->color_type != PNG_COLOR_TYPE_RGB        &&
+        png_ptr->color_type != PNG_COLOR_TYPE_RGB_ALPHA)
     {
-        LOG_FATAL("File [%s] is not of RGB and RGBA format.", system_hashed_ansi_string_get_buffer(file_name) );
+        LOG_FATAL("File [%s] is not of RGB and RGBA format.",
+                  system_hashed_ansi_string_get_buffer(file_name) );
 
         goto end;
     }
@@ -128,17 +171,25 @@ PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                         
     data_ptr     = new (std::nothrow) unsigned char[n_components * png_info_ptr->width * png_info_ptr->height];
     row_size     = n_components * png_info_ptr->width;
 
-    ASSERT_ALWAYS_SYNC(data_ptr != NULL, "Out of memory while allocating space for decompressed content storage of file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+    ASSERT_ALWAYS_SYNC(data_ptr != NULL,
+                       "Out of memory while allocating space for decompressed content storage of file [%s]",
+                       system_hashed_ansi_string_get_buffer(file_name) );
+
     if (data_ptr == NULL)
     {
-        LOG_FATAL("Out of memory while allocating space for decompressed content storage of file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+        LOG_FATAL("Out of memory while allocating space for decompressed content storage of file [%s]",
+                  system_hashed_ansi_string_get_buffer(file_name) );
 
         goto end;
     }
 
-    for (unsigned int y = 0; y < png_info_ptr->height; ++y)
+    for (unsigned int y = 0;
+                      y < png_info_ptr->height;
+                    ++y)
     {
-        memcpy(data_ptr + y * row_size, png_info_ptr->row_pointers[y], row_size);
+        memcpy(data_ptr + y * row_size,
+               png_info_ptr->row_pointers[y],
+               row_size);
     }
 
     /* Create the result object */
@@ -146,6 +197,7 @@ PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                         
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "gfx_image_create() call failed");
+
     if (result == NULL)
     {
         goto end;
@@ -162,22 +214,33 @@ PRIVATE gfx_image gfx_png_shared_load_handler(__in bool                         
                          should_load_from_file); /* should_release_cached_data */
 
 end:
-    png_destroy_read_struct(&png_ptr, &png_info_ptr, png_infopp_NULL);
+    png_destroy_read_struct(&png_ptr,
+                            &png_info_ptr,
+                             png_infopp_NULL);
 
-    if (should_load_from_file)
+    if (should_release_serializer)
     {
-        fclose(file_handle);
+        system_file_serializer_release(serializer);
+
+        serializer = NULL;
     }
 
     return result;
 }
 
-PUBLIC EMERALD_API gfx_image gfx_png_load_from_file(__in __notnull system_hashed_ansi_string file_name)
+/** Please see header for specification */
+PUBLIC EMERALD_API gfx_image gfx_png_load_from_file(__in __notnull system_hashed_ansi_string file_name,
+                                                    __in __notnull system_file_unpacker      file_unpacker)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL, "Cannot use NULL file name.");
+    ASSERT_DEBUG_SYNC(file_name != NULL,
+                      "Cannot use NULL file name.");
+
     if (file_name != NULL)
     {
-        return gfx_png_shared_load_handler(true, file_name, NULL);
+        return gfx_png_shared_load_handler(true,          /* should_load_from_file */
+                                           file_name,
+                                           file_unpacker,
+                                           NULL);
     }
     else
     {
@@ -188,5 +251,8 @@ PUBLIC EMERALD_API gfx_image gfx_png_load_from_file(__in __notnull system_hashed
 /** Please see header for specification */
 PUBLIC EMERALD_API gfx_image gfx_png_load_from_memory(__in __notnull const unsigned char* data_ptr)
 {
-    return gfx_png_shared_load_handler(false, system_hashed_ansi_string_get_default_empty_string(), data_ptr);
+    return gfx_png_shared_load_handler(false,                                                /* should_load_from_file */
+                                       system_hashed_ansi_string_get_default_empty_string(),
+                                       NULL,                                                 /* file_unpacker */
+                                       data_ptr);
 }

@@ -41,7 +41,8 @@ REFCOUNT_INSERT_DECLARATIONS(gfx_image, gfx_image)
 
 typedef system_hashed_ansi_string (*PFNGFXIMAGEGETALTERNATIVEFILENAMEPROCPTR)(void*                     user_arg,
                                                                               system_hashed_ansi_string decompressed_filename,
-                                                                              GLenum*                   out_compressed_gl_enum); /* can be NULL if the result is not a compressed filename */
+                                                                              GLenum*                   out_compressed_gl_enum,  /* can be NULL if the result is not a compressed filename */
+                                                                              system_file_unpacker*     out_file_unpacker);      /* can be NULL if the file does not come from a file unpacker */
 
 /** TODO */
 PUBLIC unsigned int gfx_image_add_mipmap(__in __notnull                   gfx_image            image,

@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "system/system_file_serializer.h"
 #include "system/system_file_unpacker.h"
+#include "system/system_global.h"
 #include "system/system_resizable_vector.h"
 #include <zlib.h>
 
@@ -273,6 +274,9 @@ PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(__in __notnu
         file_unpacker = NULL;
     }
 
+    /* Store the instance in the global storage */
+    system_global_add_file_unpacker( (system_file_unpacker) file_unpacker);
+
     /* We don't need to initialize anything, so go ahead & return the descriptor as-is */
     return (system_file_unpacker) file_unpacker;
 }
@@ -350,6 +354,13 @@ PUBLIC EMERALD_API void system_file_unpacker_get_property(__in  __notnull system
 
     switch (property)
     {
+        case SYSTEM_FILE_UNPACKER_PROPERTY_PACKED_FILENAME:
+        {
+            *(system_hashed_ansi_string*) out_result = unpacker_ptr->packed_filename;
+
+            break;
+        }
+
         case SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES:
         {
             *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(unpacker_ptr->files);
@@ -370,6 +381,9 @@ PUBLIC EMERALD_API void system_file_unpacker_release(__in __notnull __post_inval
 {
     ASSERT_DEBUG_SYNC(unpacker != NULL,
                       "Input unpacker argument is NULL");
+
+    /* Remove the unpacker from the global storage before proceeding */
+    system_global_delete_file_unpacker(unpacker);
 
     /* The necessary magic happens in the destructor */
     delete (_system_file_unpacker*) unpacker;

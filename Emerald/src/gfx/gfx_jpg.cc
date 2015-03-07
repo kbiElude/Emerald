@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -8,6 +8,9 @@
 #include "gfx/gfx_jpg.h"
 #include "gfx/gfx_image.h"
 #include "system/system_assertions.h"
+#include "system/system_file_enumerator.h"
+#include "system/system_file_serializer.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 
@@ -49,61 +52,86 @@ METHODDEF(void) _handle_error(j_common_ptr cinfo)
 
 
 /** Please see header for specification */
-PRIVATE gfx_image gfx_jpg_shared_load_handler(__in bool                                  should_load_from_file,
+PRIVATE gfx_image gfx_jpg_shared_load_handler(__in             bool                      should_load_from_file,
                                               __in __notnull   system_hashed_ansi_string file_name,
+                                              __in_opt         system_file_unpacker      file_unpacker,
                                               __in __maybenull const unsigned char*      in_data_ptr,
                                               __in             unsigned int              data_size)
 {
-    unsigned char* file_data   = NULL;
-    HANDLE         file_handle = NULL;
-    gfx_image      result      = NULL;
+    unsigned char* file_data = NULL;
+    gfx_image      result    = NULL;
 
     if (should_load_from_file)
     {
-        file_handle = ::CreateFileA(system_hashed_ansi_string_get_buffer(file_name),
-                                    GENERIC_READ,
-                                    FILE_SHARE_READ,
-                                    NULL, /* no security attribs */
-                                    OPEN_EXISTING,
-                                    FILE_ATTRIBUTE_NORMAL,
-                                    NULL); /* no template file */
+        /* Create the file serializer */
+        system_file_serializer serializer                = NULL;
+        bool                   should_release_serializer = false;
 
-        if (file_handle == INVALID_HANDLE_VALUE)
+        if (file_unpacker == NULL)
         {
-            LOG_FATAL("Could not open file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+            serializer                = system_file_serializer_create_for_reading(file_name,
+                                                                                  false); /* async_read */
+            should_release_serializer = true;
+        }
+        else
+        {
+            unsigned int file_index = -1;
+            bool         file_found = false;
+
+            file_found = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
+                                                                                        file_name,
+                                                                                       &file_index);
+
+            ASSERT_DEBUG_SYNC(file_found,
+                              "File [%s] was not found in file_unpacker instance.",
+                              system_hashed_ansi_string_get_buffer(file_name) );
+
+            system_file_unpacker_get_file_property(file_unpacker,
+                                                   file_index,
+                                                   SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
+                                                  &serializer);
+
+            should_release_serializer = false; /* file serializer is owned by parent of the file_unpacker */
+        }
+
+        if (serializer == NULL)
+        {
+            LOG_FATAL("Could not open file [%s]",
+                      system_hashed_ansi_string_get_buffer(file_name) );
 
             goto end;
         }
 
         /* ..and cache its contents */
-        DWORD file_size    = ::GetFileSize(file_handle, NULL /* lpFileSizeHigh */);
-        DWORD n_bytes_read = 0;
+        unsigned int file_size = 0;
 
-        if (file_size == INVALID_FILE_SIZE)
-        {
-            LOG_FATAL("Could not retrieve file [%s]'s size.", system_hashed_ansi_string_get_buffer(file_name) );
+        system_file_serializer_get_property(serializer,
+                                            SYSTEM_FILE_SERIALIZER_PROPERTY_SIZE,
+                                           &file_size);
 
-            goto end;
-        }
+        ASSERT_DEBUG_SYNC(file_size != 0,
+                          "File has a zero bytes size.");
 
         file_data = new (std::nothrow) unsigned char[ (unsigned int) file_size];
 
-        ASSERT_ALWAYS_SYNC(file_data != NULL, "Could not allocate memory buffer for file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+        ASSERT_ALWAYS_SYNC(file_data != NULL,
+                           "Could not allocate memory buffer for file [%s]",
+                           system_hashed_ansi_string_get_buffer(file_name) );
+
         if (file_data == NULL)
         {
-            LOG_FATAL("Could not allocate memory buffer for file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+            LOG_FATAL("Could not allocate memory buffer for file [%s]",
+                      system_hashed_ansi_string_get_buffer(file_name) );
 
             goto end;
         }
 
-        if (!::ReadFile(file_handle,
-                        file_data,
-                        file_size,
-                        &n_bytes_read,
-                        NULL) ||    /* overlapped access not needed */
-            n_bytes_read != file_size) 
+        if (!system_file_serializer_read(serializer,
+                                         file_size,
+                                         file_data) )
         {
-            LOG_FATAL("Could not fill memory buffer with file [%s]'s contents.", system_hashed_ansi_string_get_buffer(file_name) );
+            LOG_FATAL("Could not fill memory buffer with file [%s]'s contents.",
+                      system_hashed_ansi_string_get_buffer(file_name) );
 
             goto end;
         }
@@ -111,6 +139,13 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in bool                         
         /* Store the pointer in in_data_ptr so that we can refer to the same pointer in following shared parts of the code */
         data_size   = (unsigned int) file_size;
         in_data_ptr = file_data;
+
+        if (should_release_serializer)
+        {
+            system_file_serializer_release(serializer);
+
+            serializer = NULL;
+        }
     }
 
     /* Input data pointer should not be NULL at this point */
@@ -139,23 +174,32 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in bool                         
         // Handle potential error case!
         jpeg_destroy_decompress(&cinfo);
 
-        ASSERT_ALWAYS_SYNC(false, "Could not set error handler for .jpg loader");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not set error handler for .jpg loader");
 
         goto end;
     } 
 
     jpeg_create_decompress(&cinfo);
-    jpeg_mem_src          (&cinfo, (void*) in_data_ptr, data_size);
-    jpeg_read_header      (&cinfo, TRUE);
+    jpeg_mem_src          (&cinfo,
+                           (void*) in_data_ptr,
+                           data_size);
+    jpeg_read_header      (&cinfo,
+                           TRUE);
     jpeg_start_decompress (&cinfo);
 
     row_stride = cinfo.output_width * cinfo.output_components;
-    buffer     = (*cinfo.mem->alloc_sarray) ( (j_common_ptr) &cinfo, JPOOL_IMAGE, row_stride, 1);
+    buffer     = (*cinfo.mem->alloc_sarray) ((j_common_ptr) &cinfo,
+                                             JPOOL_IMAGE,
+                                             row_stride,
+                                             1);
 
     /* Allocate space for temporary representation */
     unsigned char* temp_buffer = new unsigned char[cinfo.image_width * cinfo.image_height * 3];
 
-    ASSERT_ALWAYS_SYNC(temp_buffer != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(temp_buffer != NULL,
+                       "Out of memory");
+
     if (temp_buffer == NULL)
     {
         goto end;
@@ -163,7 +207,9 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in bool                         
 
     while (cinfo.output_scanline < cinfo.output_height)
     {
-        jpeg_read_scanlines(&cinfo, buffer, 1 /* max_lines */);
+        jpeg_read_scanlines(&cinfo,
+                            buffer,
+                            1 /* max_lines */);
 
         memcpy(temp_buffer + (cinfo.output_height - (cinfo.output_scanline)) * cinfo.image_width * 3,
                buffer[0],
@@ -178,6 +224,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in bool                         
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "gfx_image_create() call failed");
+
     if (result == NULL)
     {
         goto end;
@@ -209,28 +256,25 @@ end:
 
             file_data = NULL;
         }
-
-        if (file_handle != NULL)
-        {
-            ::CloseHandle(file_handle);
-
-            file_handle = NULL;
-        }
     }
 
     return result;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(__in __notnull system_hashed_ansi_string file_name)
+PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(__in __notnull system_hashed_ansi_string file_name,
+                                                    __in __notnull system_file_unpacker      file_unpacker)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL, "Cannot use NULL file name.");
+    ASSERT_DEBUG_SYNC(file_name != NULL,
+                      "Cannot use NULL file name.");
+
     if (file_name != NULL)
     {
-        return gfx_jpg_shared_load_handler(true, /* should_load_from_file */
+        return gfx_jpg_shared_load_handler(true,          /* should_load_from_file */
                                            file_name,
-                                           NULL,
-                                           0);
+                                           file_unpacker,
+                                           NULL,          /* in_data_ptr */
+                                           0);            /* data_size   */
     }
     else
     {
@@ -242,8 +286,9 @@ PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_file(__in __notnull system_hashed
 PUBLIC EMERALD_API gfx_image gfx_jpg_load_from_memory(__in __notnull const unsigned char* data_ptr,
                                                       __in           unsigned int         data_size)
 {
-    return gfx_jpg_shared_load_handler(false, /* should_load_from_file */
+    return gfx_jpg_shared_load_handler(false,                                                /* should_load_from_file */
                                        system_hashed_ansi_string_get_default_empty_string(),
+                                       NULL,                                                 /* file_unpacker */
                                        data_ptr,
                                        data_size);
 }

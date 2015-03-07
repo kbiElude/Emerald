@@ -12,6 +12,7 @@
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
 #include "system/system_critical_section.h"
+#include "system/system_file_enumerator.h"
 #include "system/system_file_unpacker.h"
 #include "system/system_resizable_vector.h"
 #include "app_config.h"

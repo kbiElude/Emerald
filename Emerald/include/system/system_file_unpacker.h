@@ -17,6 +17,9 @@ typedef enum
 
 typedef enum
 {
+    /* not settable, system_hashed_ansi_string */
+    SYSTEM_FILE_UNPACKER_PROPERTY_PACKED_FILENAME,
+
     /* not settable, uint32_t. */
     SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES
 } system_file_unpacker_property;

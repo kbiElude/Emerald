@@ -61,6 +61,22 @@ PUBLIC EMERALD_API void system_file_enumerator_get_property(__in  __notnull syst
  **/
 PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull system_hashed_ansi_string file_name);
 
+/** Checks if user-specified file can be found in a system_file_unpacker instance.
+ *
+ *  This function DOES NOT require a system_file_enumerator instance.
+ *
+ *  @param file_unpacker  system_file_unpacker instance to use.
+ *  @param file_name      Name of the file to look for.
+ *  @param out_file_index If not NULL, *out_file_index will be set to the corresponding
+ *                        file index within the @param file_unpacker instance, IF the
+ *                        seeked file was found.
+ *
+ *  @return true if the file was found, false otherwise.
+ */
+PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(__in __notnull system_file_unpacker      file_unpacker,
+                                                                                       __in __notnull system_hashed_ansi_string file_name,
+                                                                                       __out_opt      unsigned int*             out_file_index);
+
 /** TODO */
 PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_file_enumerator);
 

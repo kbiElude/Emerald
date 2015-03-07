@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "system/system_file_enumerator.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_resizable_vector.h"
 #include "commdlg.h"
 
@@ -356,6 +357,46 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull sy
 
         result = true;
     }
+
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(__in __notnull system_file_unpacker      file_unpacker,
+                                                                                       __in __notnull system_hashed_ansi_string file_name,
+                                                                                       __out_opt      unsigned int*             out_file_index)
+{
+    unsigned int n_packed_files = 0;
+    bool         result         = false;
+
+    system_file_unpacker_get_property(file_unpacker,
+                                      SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES,
+                                     &n_packed_files);
+
+    for (unsigned int n_packed_file = 0;
+                      n_packed_file < n_packed_files;
+                    ++n_packed_file)
+    {
+        system_hashed_ansi_string current_file_name = NULL;
+
+        system_file_unpacker_get_file_property(file_unpacker,
+                                               n_packed_file,
+                                               SYSTEM_FILE_UNPACKER_FILE_PROPERTY_NAME,
+                                              &current_file_name);
+
+        if (system_hashed_ansi_string_is_equal_to_hash_string(current_file_name,
+                                                              file_name))
+        {
+            /* OK, located the file! */
+            if (out_file_index != NULL)
+            {
+                *out_file_index = n_packed_file;
+            }
+
+            result = true;
+            break;
+        }
+    } /* for (all packed files) */
 
     return result;
 }

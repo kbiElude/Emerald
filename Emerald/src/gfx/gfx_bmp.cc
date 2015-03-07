@@ -1,12 +1,15 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
 #include "gfx/gfx_bmp.h"
 #include "gfx/gfx_image.h"
 #include "system/system_assertions.h"
+#include "system/system_file_enumerator.h"
+#include "system/system_file_serializer.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 
@@ -14,7 +17,7 @@
 #pragma pack(push)
     #pragma pack(1)
 
-    typedef struct 
+    typedef struct
     {
         DWORD size;
         LONG  width;
@@ -31,77 +34,105 @@
 #pragma pack(pop)
 
 /** Please see header for specification */
-PRIVATE gfx_image gfx_bmp_shared_load_handler(__in bool                                 should_load_from_file,
-                                              __in __notnull  system_hashed_ansi_string file_name,
-                                              __in __maybenull const unsigned char*     in_data_ptr)
+PRIVATE gfx_image gfx_bmp_shared_load_handler(__in             bool                      should_load_from_file,
+                                              __in __notnull   system_hashed_ansi_string file_name,
+                                              __in_opt         system_file_unpacker      file_unpacker,
+                                              __in __maybenull const unsigned char*      in_data_ptr)
 {
-    /* Open file handle */
-    unsigned char*   data_ptr     = NULL;
-    FILE*            file_handle  = NULL;
-    fpos_t           file_size    = 0;
-    gfx_image        result       = NULL;
+    /* Create or retrieve the file serializer */
+    unsigned char* data_ptr = NULL;
+    gfx_image      result   = NULL;
 
     if (should_load_from_file)
     {
-        file_handle  = ::fopen( system_hashed_ansi_string_get_buffer(file_name), "rb");
+        unsigned int           file_size                 = 0;
+        system_file_serializer serializer                = NULL;
+        bool                   should_release_serializer = false;
 
-        ASSERT_ALWAYS_SYNC(file_handle != NULL, "Could not load file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
-        if (file_handle == NULL)
+        if (file_unpacker == NULL)
         {
-            LOG_FATAL("Could not load file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+            serializer = system_file_serializer_create_for_reading(file_name,
+                                                                   false); /* async_read */
+
+            should_release_serializer = true;
+        }
+        else
+        {
+            unsigned int file_index = -1;
+            bool         file_found = false;
+
+            file_found = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
+                                                                                        file_name,
+                                                                                       &file_index);
+
+            ASSERT_DEBUG_SYNC(file_found,
+                              "Requested file [%s] not found in a file_unpacker instance.",
+                              system_hashed_ansi_string_get_buffer(file_name) );
+
+            system_file_unpacker_get_file_property(file_unpacker,
+                                                   file_index,
+                                                   SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
+                                                  &serializer);
+
+            should_release_serializer = false; /* owned by parent of the file_unpacker */
+        }
+
+        if (serializer == NULL)
+        {
+            LOG_FATAL("Could not load file [%s]",
+                      system_hashed_ansi_string_get_buffer(file_name) );
 
             goto end;
         }
 
         /* ..and cache its contents */
-        if (::fseek(file_handle, 0, SEEK_END) != 0)
-        {
-            LOG_FATAL("Could not seek to file [%s]'s end.", system_hashed_ansi_string_get_buffer(file_name) );
+        system_file_serializer_get_property(serializer,
+                                            SYSTEM_FILE_SERIALIZER_PROPERTY_SIZE,
+                                           &file_size);
 
-            goto end;
-        }
-
-        if (::fgetpos(file_handle, &file_size) != 0)
-        {
-            LOG_FATAL("Could not retrieve file [%s]'s size.", system_hashed_ansi_string_get_buffer(file_name) );
-
-            goto end;
-        }
-
-        if (::fseek(file_handle, 0, SEEK_SET) != 0)
-        {
-            LOG_FATAL("Could not seek to file [%s]'s beginning.", system_hashed_ansi_string_get_buffer(file_name) );
-
-            goto end;
-        }
+        ASSERT_DEBUG_SYNC(file_size != 0,
+                          "File size is 0");
 
         data_ptr = new (std::nothrow) unsigned char[ (unsigned int) file_size];
-        
-        ASSERT_ALWAYS_SYNC(data_ptr != NULL, "Could not allocate memory buffer for file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+
+        ASSERT_ALWAYS_SYNC(data_ptr != NULL,
+                           "Could not allocate memory buffer for file [%s]",
+                           system_hashed_ansi_string_get_buffer(file_name) );
+
         if (data_ptr == NULL)
         {
-            LOG_FATAL("Could not allocate memory buffer for file [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+            LOG_FATAL("Could not allocate memory buffer for file [%s]",
+                      system_hashed_ansi_string_get_buffer(file_name) );
 
             goto end;
         }
 
-        if (::fread(data_ptr, (size_t) file_size, 1, file_handle) != 1)
+        if (!system_file_serializer_read(serializer,
+                                         file_size,
+                                         data_ptr) )
         {
-            LOG_FATAL("Could not fill memory buffer with file [%s]'s contents.", system_hashed_ansi_string_get_buffer(file_name) );
+            LOG_FATAL("Could not fill memory buffer with file [%s]'s contents.",
+                      system_hashed_ansi_string_get_buffer(file_name) );
 
             goto end;
         }
 
-        ::fclose(file_handle);
+        if (should_release_serializer)
+        {
+            system_file_serializer_release(serializer);
+
+            serializer = NULL;
+        }
 
         /* Store the pointer in in_data_ptr so that we can refer to the same pointer in following shared parts of the code */
         in_data_ptr = data_ptr;
     }
-    
+
     /* Input data pointer should not be NULL at this point */
     if (in_data_ptr == NULL)
     {
-        LOG_FATAL("Input data pointer is NULL - cannot proceed with loading [%s]", system_hashed_ansi_string_get_buffer(file_name) );
+        LOG_FATAL("Input data pointer is NULL - cannot proceed with loading [%s]",
+                  system_hashed_ansi_string_get_buffer(file_name) );
 
         goto end;
     }
@@ -109,18 +140,24 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in bool                         
     /* Do a few checks, limiting current bitmap support to raw 24-bits */
     bitmap_info_header* header_ptr = (bitmap_info_header*) (in_data_ptr + sizeof(BITMAPFILEHEADER) );
 
-    ASSERT_ALWAYS_SYNC(header_ptr->bit_count == 24, "Only 24-bit .bmp files are supported");
+    ASSERT_ALWAYS_SYNC(header_ptr->bit_count == 24,
+                       "Only 24-bit .bmp files are supported");
+
     if (header_ptr->bit_count != 24)
     {
-        LOG_FATAL("[%s] uses [%d] bits. Only 24-bit .bmps are supported", system_hashed_ansi_string_get_buffer(file_name), header_ptr->bit_count);
+        LOG_FATAL("[%s] uses [%d] bits. Only 24-bit .bmps are supported",
+                  system_hashed_ansi_string_get_buffer(file_name), header_ptr->bit_count);
 
         goto end;
     }
 
-    ASSERT_ALWAYS_SYNC(header_ptr->compression == 0, "Only non-compressed .bmp files are supported.");
+    ASSERT_ALWAYS_SYNC(header_ptr->compression == 0,
+                       "Only non-compressed .bmp files are supported.");
+
     if (header_ptr->compression != 0)
     {
-        LOG_FATAL("[%s] uses compression. Only non-compressed .bmps are supported", system_hashed_ansi_string_get_buffer(file_name) );
+        LOG_FATAL("[%s] uses compression. Only non-compressed .bmps are supported",
+                  system_hashed_ansi_string_get_buffer(file_name) );
 
         goto end;
     }
@@ -130,6 +167,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in bool                         
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "Could not create a gfx_image instance");
+
     if (result == NULL)
     {
         goto end;
@@ -152,13 +190,6 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in bool                         
 end:
     if (should_load_from_file)
     {
-        if (file_handle != NULL)
-        {
-            fclose(file_handle);
-
-            file_handle = NULL;
-        }
-
         if (in_data_ptr != NULL)
         {
             delete in_data_ptr;
@@ -171,12 +202,18 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(__in __notnull system_hashed_ansi_string file_name)
+PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(__in __notnull system_hashed_ansi_string file_name,
+                                                    __in __notnull system_file_unpacker      file_unpacker)
 {
-    ASSERT_DEBUG_SYNC(file_name != NULL, "Cannot use NULL file name.");
+    ASSERT_DEBUG_SYNC(file_name != NULL,
+                      "Cannot use NULL file name.");
+
     if (file_name != NULL)
     {
-        return gfx_bmp_shared_load_handler(true, file_name, NULL);
+        return gfx_bmp_shared_load_handler(true,     /* should_load_from_file */
+                                           file_name,
+                                           file_unpacker,
+                                           NULL);    /* in_data_ptr */
     }
     else
     {
@@ -187,5 +224,8 @@ PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_file(__in __notnull system_hashed
 /** Please see header for specification */
 PUBLIC EMERALD_API gfx_image gfx_bmp_load_from_memory(__in __notnull const unsigned char* data_ptr)
 {
-    return gfx_bmp_shared_load_handler(false, system_hashed_ansi_string_get_default_empty_string(), data_ptr);
+    return gfx_bmp_shared_load_handler(false, /* should_load_from_file */
+                                       system_hashed_ansi_string_get_default_empty_string(),
+                                       NULL, /* file_unpacker */
+                                       data_ptr);
 }

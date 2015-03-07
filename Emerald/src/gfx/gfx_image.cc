@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -12,7 +12,9 @@
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_context_texture_compression.h"
 #include "system/system_assertions.h"
+#include "system/system_file_enumerator.h"
 #include "system/system_file_serializer.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -52,6 +54,7 @@ typedef struct _gfx_image_mipmap
 
 typedef struct
 {
+    system_file_unpacker      file_unpacker;
     system_hashed_ansi_string filename;
     system_hashed_ansi_string filename_actual;
     system_resizable_vector   mipmaps;
@@ -60,7 +63,8 @@ typedef struct
     REFCOUNT_INSERT_VARIABLES
 } _gfx_image;
 
-typedef gfx_image (*PFNLOADIMAGEPROC)(system_hashed_ansi_string file_name);
+typedef gfx_image (*PFNLOADIMAGEPROC)(system_hashed_ansi_string file_name,
+                                      system_file_unpacker      file_unpacker);
 
 typedef struct
 {
@@ -71,24 +75,44 @@ typedef struct
 
 const _gfx_image_format supported_image_formats[] =
 {
-    {system_hashed_ansi_string_create("bmp"),  gfx_bmp_load_from_file},
-    {system_hashed_ansi_string_create("jpg"),  gfx_jpg_load_from_file},
-    {system_hashed_ansi_string_create("jpeg"), gfx_jpg_load_from_file},
-    {system_hashed_ansi_string_create("png"),  gfx_png_load_from_file}
+    {
+        system_hashed_ansi_string_create("bmp"),
+        gfx_bmp_load_from_file
+    },
+
+    {
+        system_hashed_ansi_string_create("jpg"),
+        gfx_jpg_load_from_file
+    },
+
+    {
+        system_hashed_ansi_string_create("jpeg"),
+        gfx_jpg_load_from_file
+    },
+
+    {
+        system_hashed_ansi_string_create("png"),
+        gfx_png_load_from_file
+    }
 };
-const uint32_t n_supported_image_formats = sizeof(supported_image_formats) / sizeof(supported_image_formats[0]);
+const uint32_t n_supported_image_formats = sizeof(supported_image_formats) /
+                                           sizeof(supported_image_formats[0]);
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(gfx_image, gfx_image, _gfx_image);
+REFCOUNT_INSERT_IMPLEMENTATION(gfx_image,
+                               gfx_image,
+                              _gfx_image);
 
 
 /** TODO */
-PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_hashed_ansi_string name,
-                                                         __in __notnull system_hashed_ansi_string compressed_filename,
-                                                         __in           GLenum                    compressed_filename_glenum)
+PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_hashed_ansi_string name,
+                                                          __in __notnull system_hashed_ansi_string alternative_filename,
+                                                          __in           GLenum                    alternative_filename_glenum,
+                                                          __in_opt       system_file_unpacker      file_unpacker)
 {
-    gfx_image result = NULL;
+    gfx_image result                    = NULL;
+    bool      should_release_serializer = false;
 
     /* Load the file contents.
      *
@@ -96,8 +120,32 @@ PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_h
      *       all threads in the thread pool. If we did not create a synchronous
      *       serializer here, we would have ended up with a deadlock.
      */
-    system_file_serializer serializer = system_file_serializer_create_for_reading(compressed_filename,
-                                                                                  false);
+    system_file_serializer serializer = NULL;
+
+    if (file_unpacker == NULL)
+    {
+        serializer                = system_file_serializer_create_for_reading(alternative_filename,
+                                                                              false);              /* async_read */
+        should_release_serializer = true;
+    }
+    else
+    {
+        unsigned int alternative_filename_index = -1;
+        bool         found_file                 = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
+                                                                                                                 alternative_filename,
+                                                                                                                &alternative_filename_index);
+
+        ASSERT_ALWAYS_SYNC(found_file,
+                          "Alternative file was not found in a file_unpacker instance");
+
+        system_file_unpacker_get_file_property(file_unpacker,
+                                               alternative_filename_index,
+                                               SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
+                                              &serializer);
+
+        /* Do not release the serializer - it is owned by the parent of the file_unpacker! */
+        should_release_serializer = false;
+    }
 
     /* Load in the header */
     ogl_context_texture_compression_compressed_blob_header header;
@@ -108,7 +156,7 @@ PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_h
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not load header of [%s]",
-                           system_hashed_ansi_string_get_buffer(compressed_filename) );
+                           system_hashed_ansi_string_get_buffer(alternative_filename) );
 
         goto end;
     }
@@ -118,6 +166,7 @@ PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_h
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "Failed to create a gfx_image instance");
+
     if (result == NULL)
     {
         goto end;
@@ -155,8 +204,8 @@ PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_h
         gfx_image_add_mipmap(result,
                              mipmap_header_ptr->width,
                              mipmap_header_ptr->height,
-                             1,
-                             compressed_filename_glenum,
+                             1,      /* row_alignment */
+                             alternative_filename_glenum,
                              true,   /* is_compressed */
                              data,
                              mipmap_header_ptr->data_size,
@@ -168,6 +217,13 @@ PRIVATE gfx_image _gfx_image_create_from_compressed_file(__in __notnull system_h
     }
 
 end:
+    if (should_release_serializer)
+    {
+        system_file_serializer_release(serializer);
+
+        serializer = NULL;
+    }
+
     return result;
 }
 
@@ -270,7 +326,8 @@ PUBLIC unsigned int gfx_image_add_mipmap(__in __notnull                   gfx_im
 
     result = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
 
-    system_resizable_vector_push(image_ptr->mipmaps, mipmap_ptr);
+    system_resizable_vector_push(image_ptr->mipmaps,
+                                 mipmap_ptr);
 
 end:
     return result;
@@ -281,18 +338,22 @@ PUBLIC gfx_image gfx_image_create(__in __notnull system_hashed_ansi_string name)
 {
     _gfx_image* new_gfx_image = new (std::nothrow) _gfx_image;
 
-    ASSERT_DEBUG_SYNC(new_gfx_image != NULL, "Out of memory while allocating _gfx_image");
+    ASSERT_DEBUG_SYNC(new_gfx_image != NULL,
+                      "Out of memory while allocating _gfx_image");
+
     if (new_gfx_image != NULL)
     {
         new_gfx_image->filename        = NULL;
         new_gfx_image->filename_actual = NULL;
-        new_gfx_image->mipmaps         = system_resizable_vector_create(1, sizeof(_gfx_image_mipmap*) );
+        new_gfx_image->mipmaps         = system_resizable_vector_create(1, /* capacity */
+                                                                        sizeof(_gfx_image_mipmap*) );
         new_gfx_image->name            = name;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_gfx_image,
                                                        _gfx_image_release,
                                                        OBJECT_TYPE_GFX_IMAGE,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\GFX Images\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\GFX Images\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (gfx_image) new_gfx_image;
@@ -303,22 +364,35 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
                                                         __in __notnull system_hashed_ansi_string file_name,
                                                         __in           bool                      use_alternative_filename_getter)
 {
-    const char*               file_name_raw_ptr           = system_hashed_ansi_string_get_buffer(file_name);
-    GLenum                    compressed_file_name_glenum = GL_NONE;
-    system_hashed_ansi_string in_file_name                = file_name;
-    gfx_image                 result                      = NULL;
+    const char*               file_name_raw_ptr            = system_hashed_ansi_string_get_buffer(file_name);
+    GLenum                    alternative_file_name_glenum = GL_NONE;
+    system_file_unpacker      alternative_file_unpacker    = NULL;
+    system_hashed_ansi_string in_file_name                 = file_name;
+    gfx_image                 result                       = NULL;
 
     /* If an alternative filename getter was configured, use it against input filename */
-    if (_alternative_filename_getter_proc_ptr != NULL && use_alternative_filename_getter)
+    if (_alternative_filename_getter_proc_ptr != NULL &&
+        use_alternative_filename_getter)
     {
         system_hashed_ansi_string proposed_file_name = _alternative_filename_getter_proc_ptr(_alternative_filename_getter_user_arg,
                                                                                              file_name,
-                                                                                            &compressed_file_name_glenum);
+                                                                                            &alternative_file_name_glenum,
+                                                                                            &alternative_file_unpacker);
 
         if (proposed_file_name != NULL)
         {
-            LOG_INFO("Loading [%s] instead of [%s]",
+            system_hashed_ansi_string file_unpacker_name = system_hashed_ansi_string_create("none");
+
+            if (alternative_file_unpacker != NULL)
+            {
+                system_file_unpacker_get_property(alternative_file_unpacker,
+                                                  SYSTEM_FILE_UNPACKER_PROPERTY_PACKED_FILENAME,
+                                                 &file_unpacker_name);
+            }
+
+            LOG_INFO("Loading [%s] (file_unpacker name:[%s]) instead of [%s]",
                      system_hashed_ansi_string_get_buffer(proposed_file_name),
+                     system_hashed_ansi_string_get_buffer(file_unpacker_name),
                      system_hashed_ansi_string_get_buffer(file_name) );
 
             file_name         = proposed_file_name;
@@ -329,11 +403,12 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
     /* Look for extension in the file name */
     const char* file_name_last_dot_ptr = NULL;
 
-    if ( (file_name_last_dot_ptr = strrchr(file_name_raw_ptr, '.')) != NULL)
+    if ( (file_name_last_dot_ptr = strrchr(file_name_raw_ptr,
+                                           '.')) != NULL)
     {
         bool has_found_handler = false;
 
-        if (compressed_file_name_glenum == GL_NONE)
+        if (alternative_file_name_glenum == GL_NONE)
         {
             /* Browse available file handlers and see if we can load the original file */
             for (uint32_t n_extension = 0;
@@ -344,7 +419,8 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
                            system_hashed_ansi_string_get_buffer(supported_image_formats[n_extension].extension)) == 0)
                 {
                     has_found_handler = true;
-                    result            = supported_image_formats[n_extension].file_loader(file_name);
+                    result            = supported_image_formats[n_extension].file_loader(file_name,
+                                                                                         alternative_file_unpacker);
 
                     break;
                 }
@@ -353,9 +429,10 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
         else
         {
             /* This is a compressed file, so need to use a special internal handler */
-            result            = _gfx_image_create_from_compressed_file(name,
-                                                                       file_name,
-                                                                       compressed_file_name_glenum);
+            result            = _gfx_image_create_from_alternative_file(name,
+                                                                        file_name,
+                                                                        alternative_file_name_glenum,
+                                                                        alternative_file_unpacker);
             has_found_handler = (result != NULL);
         }
 
@@ -373,6 +450,7 @@ PUBLIC EMERALD_API gfx_image gfx_image_create_from_file(__in __notnull system_ha
             /* Set the gfx_image's filename */
             _gfx_image* image_ptr = (_gfx_image*) result;
 
+            image_ptr->file_unpacker   = alternative_file_unpacker;
             image_ptr->filename        = in_file_name;
             image_ptr->filename_actual = file_name;
         }
@@ -397,8 +475,19 @@ PUBLIC unsigned int gfx_image_get_data_size(__in GLenum       internalformat,
 
     switch (internalformat)
     {
-        case GL_RGB8:  pixel_size = 24; break;
-        case GL_RGBA8: pixel_size = 32; break;
+        case GL_RGB8:
+        {
+            pixel_size = 24;
+
+            break;
+        }
+
+        case GL_RGBA8:
+        {
+            pixel_size = 32;
+
+            break;
+        }
 
         default:
         {
@@ -430,7 +519,9 @@ PUBLIC EMERALD_API bool gfx_image_get_mipmap_property(__in  __notnull gfx_image 
     {
         _gfx_image_mipmap* mipmap_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(image_ptr->mipmaps, n_mipmap, &mipmap_ptr) )
+        if (system_resizable_vector_get_element_at(image_ptr->mipmaps,
+                                                   n_mipmap,
+                                                  &mipmap_ptr) )
         {
             switch (mipmap_property)
             {
@@ -540,7 +631,8 @@ PUBLIC EMERALD_API void gfx_image_get_property(__in __notnull const gfx_image   
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized GFX image property");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized GFX image property");
         }
     } /* switch (property) */
 }

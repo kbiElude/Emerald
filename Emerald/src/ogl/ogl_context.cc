@@ -25,6 +25,7 @@
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
 #include "system/system_file_enumerator.h"
+#include "system/system_file_unpacker.h"
 #include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -147,7 +148,8 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers 
 /** TODO */
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __notnull void*                     user_arg,
                                                                        __in  __notnull system_hashed_ansi_string decompressed_filename,
-                                                                       __out __notnull GLenum*                   out_compressed_gl_enum)
+                                                                       __out __notnull GLenum*                   out_compressed_gl_enum,
+                                                                       __out __notnull system_file_unpacker*     out_file_unpacker)
 {
     _ogl_context*             context_ptr                  = (_ogl_context*) user_arg;
     int                       n_compressed_internalformats = 0;
@@ -170,101 +172,147 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
     }
 
     /* If this function was called, we are in a dire situation where the image
-     * file was not found in the original directory. To handle these cases,
-     * Emerald keeps track of the directories, which hold data/scene blobs.
-     * We use each such directory to first try to find the originally named
-     * gfx_image file.
-     * If in each such directory the originally named file was not found, we
-     * iterate over all supported compressed internalformats* and check if the
-     * same file BUT with a different extension is perhaps present.
+     * file was not found in the original directory. This usually happens when
+     * a demo application is launched on a machine different from the one used
+     * to create a scene blob.
+     *
+     * To handle these cases, Emerald:
+     *
+     * 1) keeps track of the directories, which hold data/scene blobs.
+     * 2) keeps track of instantiated file unpackers which can hold scene files.
+     *
+     * We use each such directory and each such unpacker to first try to find
+     * the originally named gfx_image file.
+     * For each file unpacker (including the default "non-existing" one) and for
+     * each such directory we check if the originally named file is embedded there.
+     * If not, we iterate over all supported compressed internalformats* and check
+     * if the same file BUT with a different extension is perhaps present.
      */
-    unsigned int n_asset_paths = 0;
+    unsigned int n_asset_paths    = 0;
+    unsigned int n_file_unpackers = 0;
 
     ogl_context_texture_compression_get_property(context_ptr->texture_compression,
                                                  OGL_CONTEXT_TEXTURE_COMPRESSION_PROPERTY_N_COMPRESSED_INTERNALFORMAT,
                                                 &n_compressed_internalformats);
     system_global_get_general_property          (SYSTEM_GLOBAL_PROPERTY_N_ASSET_PATHS,
                                                 &n_asset_paths);
+    system_global_get_general_property          (SYSTEM_GLOBAL_PROPERTY_N_FILE_UNPACKERS,
+                                                &n_file_unpackers);
 
-    for (unsigned int n_asset_path = 0;
-                      n_asset_path < n_asset_paths;
-                    ++n_asset_path)
+    for (unsigned int n_file_unpacker = 0;
+                      n_file_unpacker < (n_file_unpackers + 1 /* non-existing file unpacker */);
+                    ++n_file_unpacker)
     {
-        /* Retrieve current asset path */
-        system_hashed_ansi_string current_asset_path     = NULL;
-        const char*               current_asset_path_raw = NULL;
+        system_file_unpacker current_file_unpacker = NULL;
 
-        system_global_get_indexed_property(SYSTEM_GLOBAL_PROPERTY_ASSET_PATH,
-                                           n_asset_path,
-                                          &current_asset_path);
-
-        current_asset_path_raw = system_hashed_ansi_string_get_buffer(current_asset_path);
-
-        /* Iterate over all internalformats.
-         *
-         * NOTE: We're using -1 as a start value for the index as we also
-         *       need to check if the originally named file is available
-         *       under any of the asset paths considered.
-         */
-        for (int n_compressed_internalformat = -1;
-                 n_compressed_internalformat < n_compressed_internalformats;
-               ++n_compressed_internalformat)
+        if (n_file_unpacker < n_file_unpackers)
         {
-            GLenum                    enum_value = GL_NONE;
-            system_hashed_ansi_string extension  = NULL;
+            system_global_get_indexed_property(SYSTEM_GLOBAL_PROPERTY_FILE_UNPACKER,
+                                               n_file_unpacker,
+                                              &current_file_unpacker);
+        }
 
-            if (n_compressed_internalformat < 0)
+        if (current_file_unpacker != NULL)
+        {
+            /* For file unpackers, also try the original file name which was not found
+             * in the working directory.
+             */
+            if (system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
+                                                                               decompressed_filename,
+                                                                               NULL) ) /* out_file_index */
             {
-                enum_value = GL_NONE;
-                extension  = system_hashed_ansi_string_create(decompressed_filename_last_dot_ptr + 1);
+                *out_compressed_gl_enum = GL_NONE;
+                *out_file_unpacker      = current_file_unpacker;
+                 result                 = decompressed_filename;
+
+                 break;
             }
-            else
+        } /* if (current_file_unpacker != NULL) */
+
+        for (unsigned int n_asset_path = 0;
+                          n_asset_path < n_asset_paths;
+                        ++n_asset_path)
+        {
+            /* Retrieve current asset path */
+            system_hashed_ansi_string current_asset_path     = NULL;
+            const char*               current_asset_path_raw = NULL;
+
+            system_global_get_indexed_property(SYSTEM_GLOBAL_PROPERTY_ASSET_PATH,
+                                               n_asset_path,
+                                              &current_asset_path);
+
+            current_asset_path_raw = system_hashed_ansi_string_get_buffer(current_asset_path);
+
+            /* Iterate over all internalformats.
+             *
+             * NOTE: We're using -1 as a start value for the index as we also
+             *       need to check if the originally named file is available
+             *       under any of the asset paths considered.
+             */
+            for (int n_compressed_internalformat = -1;
+                     n_compressed_internalformat < n_compressed_internalformats;
+                   ++n_compressed_internalformat)
             {
-                ogl_context_texture_compression_get_algorithm_property(context_ptr->texture_compression,
-                                                                       n_compressed_internalformat,
-                                                                       OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_GL_VALUE,
-                                                                      &enum_value);
-                ogl_context_texture_compression_get_algorithm_property(context_ptr->texture_compression,
-                                                                       n_compressed_internalformat,
-                                                                       OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_FILE_EXTENSION,
-                                                                      &extension);
-            }
+                GLenum                    enum_value = GL_NONE;
+                system_hashed_ansi_string extension  = NULL;
 
-            /* Form a new filename */
-            std::string               result_filename;
-            system_hashed_ansi_string result_filename_has;
+                if (n_compressed_internalformat < 0)
+                {
+                    enum_value = GL_NONE;
+                    extension  = system_hashed_ansi_string_create(decompressed_filename_last_dot_ptr + 1);
+                }
+                else
+                {
+                    ogl_context_texture_compression_get_algorithm_property(context_ptr->texture_compression,
+                                                                           n_compressed_internalformat,
+                                                                           OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_GL_VALUE,
+                                                                          &enum_value);
+                    ogl_context_texture_compression_get_algorithm_property(context_ptr->texture_compression,
+                                                                           n_compressed_internalformat,
+                                                                           OGL_CONTEXT_TEXTURE_COMPRESSION_ALGORITHM_PROPERTY_FILE_EXTENSION,
+                                                                          &extension);
+                }
 
-            if (n_compressed_internalformat < 0)
-            {
-                system_hashed_ansi_string decompressed_filename_wo_path = NULL;
+                /* Form a new filename */
+                std::string               result_filename;
+                system_hashed_ansi_string result_filename_has;
 
-                decompressed_filename_wo_path = system_hashed_ansi_string_create_substring(decompressed_filename_last_slash_ptr + 1,
-                                                                                           0,                             /* start_offset */
-                                                                                           decompressed_filename_length); /* length */
+                if (n_compressed_internalformat < 0)
+                {
+                    system_hashed_ansi_string decompressed_filename_wo_path = NULL;
 
-                result_filename  = std::string(system_hashed_ansi_string_get_buffer(current_asset_path) );
-                result_filename += std::string("/");
-                result_filename += std::string(system_hashed_ansi_string_get_buffer(decompressed_filename_wo_path) );
-            }
-            else
-            {
-                result_filename += std::string                         (decompressed_filename_ptr,
-                                                                        decompressed_filename_last_dot_ptr - decompressed_filename_ptr + 1);
-                result_filename += system_hashed_ansi_string_get_buffer(extension);
-            }
+                    decompressed_filename_wo_path = system_hashed_ansi_string_create_substring(decompressed_filename_last_slash_ptr + 1,
+                                                                                               0,                             /* start_offset */
+                                                                                               decompressed_filename_length); /* length */
 
-            result_filename_has  = system_hashed_ansi_string_create    (result_filename.c_str() );
+                    result_filename  = std::string(system_hashed_ansi_string_get_buffer(current_asset_path) );
+                    result_filename += std::string("/");
+                    result_filename += std::string(system_hashed_ansi_string_get_buffer(decompressed_filename_wo_path) );
+                }
+                else
+                {
+                    result_filename += std::string                         (decompressed_filename_ptr,
+                                                                            decompressed_filename_last_dot_ptr - decompressed_filename_ptr + 1);
+                    result_filename += system_hashed_ansi_string_get_buffer(extension);
+                }
 
-            /* Is the file available? */
-            if (system_file_enumerator_is_file_present(result_filename_has) )
-            {
-                result                  = result_filename_has;
-                *out_compressed_gl_enum = enum_value;
+                result_filename_has  = system_hashed_ansi_string_create(result_filename.c_str() );
 
-                break;
-            }
-        } /* for (all compressed internalformats) */
-    } /* for (all asset paths) */
+                /* Is the file available? */
+                if (current_file_unpacker != NULL && system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
+                                                                                                                    result_filename_has,
+                                                                                                                    NULL)                 || /* out_file_index */
+                    current_file_unpacker == NULL && system_file_enumerator_is_file_present                        (result_filename_has) )
+                {
+                    result                  = result_filename_has;
+                    *out_compressed_gl_enum = enum_value;
+                    *out_file_unpacker      = current_file_unpacker;
+
+                    break;
+                }
+            } /* for (all compressed internalformats) */
+        } /* for (all asset paths) */
+    } /* for (all active file unpackers) */
 
 end:
     return result;
