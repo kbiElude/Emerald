@@ -224,6 +224,8 @@ DECLARE_HANDLE(system_file_packer);
 DECLARE_HANDLE(system_file_serializer);
 /********************* FILE UNPACKER *************************************/
 DECLARE_HANDLE(system_file_unpacker);
+/******************* FILE MULTIUNPACKER **********************************/
+DECLARE_HANDLE(system_file_multiunpacker);
 /*********************** 4X4 MATRIX **************************************/
 /* An instance of 4x4 matrix object */
 DECLARE_HANDLE(system_matrix4x4);

@@ -24,7 +24,11 @@ typedef enum
     SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES
 } system_file_unpacker_property;
 
-/** TODO */
+/** TODO.
+ *
+ *  The call does not leave until the unpacking process finishes!
+ *
+ **/
 PUBLIC EMERALD_API system_file_unpacker system_file_unpacker_create(__in __notnull system_hashed_ansi_string packed_filename);
 
 /** TODO */
