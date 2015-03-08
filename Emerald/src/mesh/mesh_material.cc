@@ -14,6 +14,7 @@
 #include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
+#include "scene/scene_light.h"
 #include "scene/scene_material.h"
 #include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
@@ -156,8 +157,8 @@ PRIVATE void _mesh_material_deinit_shading_property_attachment(__in_opt _mesh_ma
 
 
 /** TODO */
-PRIVATE void _mesh_material_on_lights_added_to_scene(const void* not_used,
-                                                     void*       material)
+PRIVATE void _mesh_material_on_material_invalidation_needed(const void* not_used,
+                                                            void*       material)
 {
     /* We will need a new ogl_uber instance for the re-configured scene. */
     ((_mesh_material*) material)->dirty = true;
@@ -301,6 +302,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
     {
         /* Copy relevant fields */
         new_material_ptr->dirty               = src_material_ptr->dirty;
+        new_material_ptr->fs_behavior         = src_material_ptr->fs_behavior;
         new_material_ptr->name                = src_material_ptr->name;
         new_material_ptr->object_manager_path = src_material_ptr->object_manager_path;
         new_material_ptr->shading             = src_material_ptr->shading;
@@ -938,20 +940,55 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
 
         if (material_ptr->owner_scene == NULL)
         {
+            /* The material needs to be marked as dirty every time a light is added, or
+             * when a significant scene_light property is changed */
+            unsigned int            n_scene_lights         = 0;
             system_callback_manager scene_callback_manager = NULL;
 
             scene_get_property(scene,
                                SCENE_PROPERTY_CALLBACK_MANAGER,
                               &scene_callback_manager);
+            scene_get_property(scene,
+                               SCENE_PROPERTY_N_LIGHTS,
+                              &n_scene_lights);
 
             system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
                                                             SCENE_CALLBACK_ID_LIGHT_ADDED,
                                                             CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                            _mesh_material_on_lights_added_to_scene,
+                                                            _mesh_material_on_material_invalidation_needed,
                                                             material_ptr);
 
+            for (unsigned int n_scene_light = 0;
+                              n_scene_light < n_scene_lights;
+                            ++n_scene_light)
+            {
+                scene_light             current_light                  = scene_get_light_by_index(scene,
+                                                                                                  n_scene_light);
+                system_callback_manager current_light_callback_manager = NULL;
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
+                                        &current_light_callback_manager);
+
+                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
+                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                                _mesh_material_on_material_invalidation_needed,
+                                                                material_ptr);
+                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
+                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                                _mesh_material_on_material_invalidation_needed,
+                                                                material_ptr);
+                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
+                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                                _mesh_material_on_material_invalidation_needed,
+                                                                material_ptr);
+            } /* for (all lights) */
+
             material_ptr->owner_scene = scene;
-        }
+        } /* if (uber requested for the first time for this material) */
 
         material_ptr->dirty       = false;
         material_ptr->uber_sm     = ogl_materials_get_uber(materials,
@@ -1219,6 +1256,15 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
     if (material_a_fs_behavior != material_b_fs_behavior ||
         material_a_vs_behavior != material_b_vs_behavior)
     {
+        goto end;
+    }
+
+    /* If this is a 'no shading' material and we've reached this point, we can
+     * safely assume both materials are a match. */
+    if (material_a_shading == MESH_MATERIAL_SHADING_NONE)
+    {
+        result = true;
+
         goto end;
     }
 

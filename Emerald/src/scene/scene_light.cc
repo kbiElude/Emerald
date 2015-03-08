@@ -10,6 +10,7 @@
 #include "scene/scene_curve.h"
 #include "scene/scene_light.h"
 #include "system/system_assertions.h"
+#include "system/system_callback_manager.h"
 #include "system/system_file_serializer.h"
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
@@ -22,6 +23,7 @@
 /* Private declarations */
 typedef struct
 {
+    system_callback_manager                     callback_manager;
     curve_container                             color    [3];
     curve_container                             color_intensity;
     curve_container                             cone_angle_half;
@@ -281,12 +283,14 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->quadratic_attenuation = NULL;
     light_ptr->range                 = NULL;
 
+    light_ptr->callback_manager                 = system_callback_manager_create( (_callback_id) SCENE_LIGHT_CALLBACK_ID_LAST);
     light_ptr->shadow_map_bias                  = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
     light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
                                                    light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat        = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
     light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
+    //light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL;
     light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
     light_ptr->shadow_map_projection            = system_matrix4x4_create();
@@ -389,6 +393,13 @@ PRIVATE void _scene_light_release(void* data_ptr)
             *containers[n_container] = NULL;
         }
     } /* for (all curve containers) */
+
+    if (light_ptr->callback_manager != NULL)
+    {
+        system_callback_manager_release(light_ptr->callback_manager);
+
+        light_ptr->callback_manager = NULL;
+    }
 
     if (light_ptr->shadow_map_projection != NULL)
     {
@@ -581,6 +592,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
 
     switch (property)
     {
+        case SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER:
+        {
+            *(system_callback_manager*) out_result = light_ptr->callback_manager;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_COLOR:
         {
             if (light_ptr->color[0] == NULL ||
@@ -1529,14 +1547,28 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS:
         {
-            light_ptr->shadow_map_bias = *(scene_light_shadow_map_bias*) data;
+            if (light_ptr->shadow_map_bias != *(scene_light_shadow_map_bias*) data)
+            {
+                light_ptr->shadow_map_bias = *(scene_light_shadow_map_bias*) data;
+
+                system_callback_manager_call_back(light_ptr->callback_manager,
+                                                  SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
+                                                  light_ptr);
+            }
 
             break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING:
         {
-            light_ptr->shadow_map_filtering = *(scene_light_shadow_map_filtering*) data;
+            if (light_ptr->shadow_map_filtering != *(scene_light_shadow_map_filtering*) data)
+            {
+                light_ptr->shadow_map_filtering = *(scene_light_shadow_map_filtering*) data;
+
+                system_callback_manager_call_back(light_ptr->callback_manager,
+                                                  SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
+                                                  light_ptr);
+            }
 
             break;
         }
@@ -1550,7 +1582,14 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM:
         {
-            light_ptr->shadow_map_pointlight_algorithm = *(scene_light_shadow_map_pointlight_algorithm*) data;
+            if (light_ptr->shadow_map_pointlight_algorithm != *(scene_light_shadow_map_pointlight_algorithm*) data)
+            {
+                light_ptr->shadow_map_pointlight_algorithm = *(scene_light_shadow_map_pointlight_algorithm*) data;
+
+                system_callback_manager_call_back(light_ptr->callback_manager,
+                                                  SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
+                                                  light_ptr);
+            }
 
             break;
         }

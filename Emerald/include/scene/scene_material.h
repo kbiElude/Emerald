@@ -40,6 +40,7 @@ enum scene_material_property
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MAG_FILTER,     /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_NORMAL_TEXTURE_MIN_FILTER,     /*     settable, scene_material_texture_filtering */
     SCENE_MATERIAL_PROPERTY_OBJECT_MANAGER_PATH,           /* not settable, system_hashed_ansi_string        */
+    SCENE_MATERIAL_PROPERTY_OWNER_SCENE,                   /* not settable, scene                            */
     SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO,              /*     settable, curve_container                  */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_FILE_NAME,  /*     settable, system_hashed_ansi_string        */
     SCENE_MATERIAL_PROPERTY_REFLECTION_TEXTURE_MAG_FILTER, /*     settable, scene_material_texture_filtering */
@@ -51,9 +52,14 @@ enum scene_material_property
     SCENE_MATERIAL_PROPERTY_SPECULAR_TEXTURE_MIN_FILTER,   /*     settable, scene_material_texture_filtering */
 };
 
-/** TODO */
+/** TODO.
+ *
+ *  scene_material DOES NOT increment @param owner_scene reference counter.
+ *
+ **/
 PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull system_hashed_ansi_string name,
-                                                        __in_opt           system_hashed_ansi_string object_manager_path);
+                                                        __in_opt           system_hashed_ansi_string object_manager_path,
+                                                        __in     __notnull scene                     owner_scene);
 
 /** TODO */
 PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_material,

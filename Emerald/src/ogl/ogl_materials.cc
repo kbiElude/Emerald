@@ -1104,11 +1104,23 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
                                               scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
                                                                                                     scene,
                                                                                                     use_shadow_maps) );
+            bool does_scene_matter         = true;
             bool does_sm_setting_match     = (uber_ptr->use_shadow_maps == use_shadow_maps);
 
-            if ( do_materials_match       &&
-                does_material_match_scene &&
-                does_sm_setting_match)
+            /* Do not take scene input into account if IFA shading is used */
+            mesh_material_shading material_shading = MESH_MATERIAL_SHADING_NONE;
+
+            mesh_material_get_property(uber_ptr->material,
+                                       MESH_MATERIAL_PROPERTY_SHADING,
+                                      &material_shading);
+
+            does_scene_matter = (material_shading != MESH_MATERIAL_SHADING_NONE);
+
+            /* Determine the outcome */
+            if (  do_materials_match                              &&
+                (!does_scene_matter                               ||
+                  does_scene_matter && does_material_match_scene) &&
+                  does_sm_setting_match)
             {
                 result = uber_ptr->uber;
 
@@ -1143,16 +1155,16 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
 
             if (new_uber_descriptor != NULL)
             {
-                const char*               name_suffix           = (use_shadow_maps) ? " copy with SM" : " copy without SM";
-                const char*               src_material_name     = NULL;
-                system_hashed_ansi_string src_material_name_has = NULL;
+                const char*               name_suffix   = (use_shadow_maps) ? " copy with SM" : " copy without SM";
+                const char*               uber_name     = NULL;
+                system_hashed_ansi_string uber_name_has = NULL;
 
-                mesh_material_get_property(material,
-                                           MESH_MATERIAL_PROPERTY_NAME,
-                                          &src_material_name_has);
+                ogl_uber_get_shader_general_property(new_uber,
+                                                     OGL_UBER_GENERAL_PROPERTY_NAME,
+                                                    &uber_name_has);
 
-                src_material_name                    = system_hashed_ansi_string_get_buffer(src_material_name_has);
-                new_uber_descriptor->material        = mesh_material_create_copy           (system_hashed_ansi_string_create_by_merging_two_strings(src_material_name,
+                uber_name                            = system_hashed_ansi_string_get_buffer(uber_name_has);
+                new_uber_descriptor->material        = mesh_material_create_copy           (system_hashed_ansi_string_create_by_merging_two_strings(uber_name,
                                                                                                                                                     name_suffix),
                                                                                             material);
                 new_uber_descriptor->uber            = new_uber;

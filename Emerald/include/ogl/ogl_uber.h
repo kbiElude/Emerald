@@ -17,10 +17,11 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_uber, ogl_uber)
 
 typedef enum
 {
-    OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,     /* vec3  */
-    OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF, /* float */
-    OGL_UBER_GENERAL_PROPERTY_FLIP_Z,              /* float */
-    OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,          /* float */
+    OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,     /* vec3                      */
+    OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF, /* float                     */
+    OGL_UBER_GENERAL_PROPERTY_FLIP_Z,              /* float                     */
+    OGL_UBER_GENERAL_PROPERTY_NAME,                /* system_hashed_ansi_string */
+    OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,          /* float                     */
     OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
     OGL_UBER_GENERAL_PROPERTY_VP,
 

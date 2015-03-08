@@ -32,6 +32,7 @@ typedef struct
     scene_material_texture_filtering normal_texture_mag_filter;
     scene_material_texture_filtering normal_texture_min_filter;
     system_hashed_ansi_string        object_manager_path;
+    scene                            owner_scene;                    /* scene_material DOES NOT increment owner_scene ref cnt */
     curve_container                  reflection_ratio;
     system_hashed_ansi_string        reflection_texture_file_name;
     scene_material_texture_filtering reflection_texture_mag_filter;
@@ -54,7 +55,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(scene_material,
 /** TODO */
 PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_ptr,
                                   __in __notnull system_hashed_ansi_string name,
-                                  __in __notnull system_hashed_ansi_string object_manager_path)
+                                  __in __notnull system_hashed_ansi_string object_manager_path,
+                                  __in __notnull scene                     owner_scene)
 {
     memset(data_ptr,
            0,
@@ -82,6 +84,7 @@ PRIVATE void _scene_material_init(__in __notnull _scene_material*          data_
                                                            SYSTEM_VARIANT_FLOAT);
     data_ptr->name                = name;
     data_ptr->object_manager_path = object_manager_path;
+    data_ptr->owner_scene         = owner_scene;
     data_ptr->reflection_ratio    = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                    " Reflection Ratio [default]"),
                                                            object_manager_path,
@@ -231,7 +234,8 @@ PRIVATE bool _scene_material_save_curve(__in_opt           scene                
 
 /* Please see header for specification */
 PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull system_hashed_ansi_string name,
-                                                        __in_opt           system_hashed_ansi_string object_manager_path)
+                                                        __in_opt           system_hashed_ansi_string object_manager_path,
+                                                        __in     __notnull scene                     owner_scene)
 {
     _scene_material* new_scene_material = new (std::nothrow) _scene_material;
 
@@ -241,7 +245,8 @@ PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull syste
     {
         _scene_material_init(new_scene_material,
                              name,
-                             object_manager_path);
+                             object_manager_path,
+                             owner_scene);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_scene_material,
                                                        _scene_material_release,
@@ -361,6 +366,13 @@ PUBLIC EMERALD_API void scene_material_get_property(__in  __notnull scene_materi
             break;
         }
 
+        case SCENE_MATERIAL_PROPERTY_OWNER_SCENE:
+        {
+            *(scene*) out_result = material_ptr->owner_scene;
+
+            break;
+        }
+
         case SCENE_MATERIAL_PROPERTY_REFLECTION_RATIO:
         {
             *(curve_container*) out_result = material_ptr->reflection_ratio;
@@ -452,7 +464,8 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
 
     /* Spawn the instance.  */
     result_material = scene_material_create(name,
-                                            object_manager_path);
+                                            object_manager_path,
+                                            owner_scene);
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "Could not instantiate a scene_material object");

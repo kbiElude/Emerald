@@ -11,9 +11,27 @@
 REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
 
 
+typedef enum scene_light_callback
+{
+    /* arg: source scene_light instance */
+    SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
+
+    /* arg: source scene_light instance */
+    SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_FILTERING_CHANGED,
+
+    /* arg: source scene_light instance */
+    SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED,
+
+    /* Always last */
+    SCENE_LIGHT_CALLBACK_ID_LAST = SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED
+} scene_light_callback;
+
 typedef enum scene_light_property
 {
                                             /* GENERAL PROPERTIES: */
+
+    /* Not settable, system_callback_manager */
+    SCENE_LIGHT_PROPERTY_CALLBACK_MANAGER,
 
     /* Settable, curve_container[3] */
     SCENE_LIGHT_PROPERTY_COLOR,

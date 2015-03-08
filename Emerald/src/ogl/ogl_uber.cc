@@ -1100,6 +1100,13 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull con
 
     switch (property)
     {
+        case OGL_UBER_GENERAL_PROPERTY_NAME:
+        {
+            *(system_hashed_ansi_string*) out_result = uber_ptr->name;
+
+            break;
+        }
+
         case OGL_UBER_GENERAL_PROPERTY_N_ITEMS:
         {
             *( (uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
