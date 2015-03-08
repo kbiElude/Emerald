@@ -9,6 +9,7 @@
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "scene/scene_camera.h"
+#include "scene/scene_light.h"
 #include "system/system_critical_section.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
@@ -16,9 +17,24 @@
 #include "include/main.h"
 #include "state.h"
 
-PRIVATE ogl_text       _text_renderer               = NULL;
-PRIVATE ogl_ui         _ui                          = NULL;
-PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown = NULL;
+PRIVATE ogl_text       _text_renderer                       = NULL;
+PRIVATE ogl_ui         _ui                                  = NULL;
+PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown = NULL;
+PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown         = NULL;
+
+
+scene_light_shadow_map_pointlight_algorithm shadow_map_pointlight_algorithm_emerald_enums[] =
+{
+    SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL,
+    SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID
+};
+system_hashed_ansi_string shadow_map_pointlight_algorithm_strings[] =
+{
+    system_hashed_ansi_string_create("6-pass cubical"),
+    system_hashed_ansi_string_create("2-pass paraboloid")
+};
+const uint32_t n_shadow_map_pointlight_algorithm_strings = sizeof(shadow_map_pointlight_algorithm_strings) /
+                                                           sizeof(shadow_map_pointlight_algorithm_strings[0]);
 
 
 const unsigned int shadow_map_size_ints[] =
@@ -31,7 +47,6 @@ const unsigned int shadow_map_size_ints[] =
     256,
     128
 };
-
 system_hashed_ansi_string shadow_map_size_strings[] =
 {
     /* NOTE: The order must correspond to the order used in shadow_map_size_ints */
@@ -45,6 +60,30 @@ system_hashed_ansi_string shadow_map_size_strings[] =
 const uint32_t n_shadow_map_size_strings = sizeof(shadow_map_size_strings)    /
                                            sizeof(shadow_map_size_strings[0]);
 
+
+/** TODO */
+PRIVATE unsigned int _ui_get_current_shadow_map_pointlight_algorithm_index()
+{
+    scene_light_shadow_map_pointlight_algorithm current_pl_algo = state_get_shadow_map_pointlight_algorithm();
+    unsigned int                                result          = -1;
+
+    for (unsigned int n_pl_algo = 0;
+                      n_pl_algo < n_shadow_map_pointlight_algorithm_strings;
+                    ++n_pl_algo)
+    {
+        if (current_pl_algo == shadow_map_pointlight_algorithm_emerald_enums[n_pl_algo])
+        {
+            result = n_pl_algo;
+
+            break;
+        }
+    }
+
+    ASSERT_DEBUG_SYNC(result != -1,
+                      "Unrecognized shadow map point light algorithm is currently selected");
+
+    return result;
+}
 
 /** TODO */
 PRIVATE unsigned int _ui_get_current_shadow_map_size_index()
@@ -71,8 +110,18 @@ PRIVATE unsigned int _ui_get_current_shadow_map_size_index()
 }
 
 /** TODO */
-PRIVATE void _on_shadow_map_size_changed(void* unused,
-                                         void* event_user_arg)
+PRIVATE void _ui_on_shadow_map_pointlight_algorithm_changed(void* unused,
+                                                            void* event_user_arg)
+{
+    scene_light_shadow_map_pointlight_algorithm new_pl_algo = (scene_light_shadow_map_pointlight_algorithm) (unsigned int) event_user_arg;
+
+    /* Update Emerald state */
+    state_set_shadow_map_pointlight_algorithm(new_pl_algo);
+}
+
+/** TODO */
+PRIVATE void _ui_on_shadow_map_size_changed(void* unused,
+                                            void* event_user_arg)
 {
     unsigned int new_shadow_map_size = (unsigned int) event_user_arg;
 
@@ -99,9 +148,10 @@ PUBLIC void ui_draw()
 /** Please see header for spec */
 PUBLIC void ui_init()
 {
-    const float  shadow_map_size_dropdown_x1y1[2] = {0.9f, 0.1f};
-    const float  text_default_size                = 0.5f;
-    int          window_size[2]                   = {0};
+    const float  shadow_map_size_dropdown_x1y1[2]          = {0.9f, 0.1f};
+    const float  shadow_map_pl_algorithms_dropdown_x1y1[2] = {0.9f, 0.2f};
+    const float  text_default_size                         = 0.5f;
+    int          window_size[2]                            = {0};
 
     /* Initialize components required to power UI */
     system_window_get_property(_window,
@@ -130,8 +180,19 @@ PUBLIC void ui_init()
                                                        _ui_get_current_shadow_map_size_index(),
                                                        system_hashed_ansi_string_create("Shadow map size"),
                                                        shadow_map_size_dropdown_x1y1,
-                                                       _on_shadow_map_size_changed,
+                                                       _ui_on_shadow_map_size_changed,
                                                        NULL); /* fire_user_arg */
+
+    /* Add point light algorithm dropdown */
+    _ui_shadow_map_pl_algorithm_dropdown = ogl_ui_add_dropdown(_ui,
+                                                               n_shadow_map_pointlight_algorithm_strings,
+                                                               shadow_map_pointlight_algorithm_strings,
+                                                               (void**) shadow_map_pointlight_algorithm_emerald_enums,
+                                                               _ui_get_current_shadow_map_pointlight_algorithm_index(),
+                                                               system_hashed_ansi_string_create("Point light CM algorithm"),
+                                                               shadow_map_pl_algorithms_dropdown_x1y1,
+                                                               _ui_on_shadow_map_pointlight_algorithm_changed,
+                                                               NULL); /* fire_user_arg */
 }
 
 

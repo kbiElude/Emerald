@@ -56,12 +56,14 @@ const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
 
 
 /* Other stuff */
-ogl_pipeline         _pipeline                                   = NULL;
-uint32_t             _pipeline_stage_id                          = -1;
-system_timeline_time _playback_start_time                        = 0;
-_scene_descriptor    _scenes                [_n_scene_filenames];
-system_timeline_time _scenes_duration_summed[_n_scene_filenames] = {0};
-unsigned int         _shadow_map_size                            = 1024;
+ogl_pipeline                                _pipeline                                   = NULL;
+uint32_t                                    _pipeline_stage_id                          = -1;
+system_timeline_time                        _playback_start_time                        = 0;
+_scene_descriptor                           _scenes                [_n_scene_filenames];
+system_timeline_time                        _scenes_duration_summed[_n_scene_filenames] = {0};
+scene_light_shadow_map_pointlight_algorithm _shadow_map_pl_algo                         = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
+unsigned int                                _shadow_map_size                            = 1024;
+
 
 /** Please see header for spec */
 PUBLIC void state_deinit()
@@ -161,6 +163,12 @@ PUBLIC ogl_pipeline state_get_pipeline()
 PUBLIC uint32_t state_get_pipeline_stage_id()
 {
     return _pipeline_stage_id;
+}
+
+/** Please see header for spec */
+PUBLIC scene_light_shadow_map_pointlight_algorithm state_get_shadow_map_pointlight_algorithm()
+{
+    return _shadow_map_pl_algo;
 }
 
 /** Please see header for spec */
@@ -282,6 +290,53 @@ PUBLIC void state_init()
                                 system_hashed_ansi_string_create("Scene rendering"),
                                 _render_scene,
                                 NULL);
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_map_pointlight_algorithm pl_algo)
+{
+    /* Wait for the current frame to render and lock the rendering pipeline, while
+     * we adjust the shadow map size..
+     */
+    ogl_rendering_handler_lock_bound_context(_rendering_handler);
+
+    /* Update PL algorithm for all point lights in all scenes we know of */
+    for (unsigned int n_scene = 0;
+                      n_scene < _n_scene_filenames;
+                    ++n_scene)
+    {
+        scene        current_scene = _scenes[n_scene].this_scene;
+        unsigned int n_lights      = 0;
+
+        scene_get_property(current_scene,
+                           SCENE_PROPERTY_N_LIGHTS,
+                          &n_lights);
+
+        for (unsigned int n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+        {
+            scene_light      current_light = scene_get_light_by_index(current_scene,
+                                                                      n_light);
+            scene_light_type current_light_type;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+
+            if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+            {
+                scene_light_set_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                        &pl_algo);
+            } /* if (current light is not an ambient light) */
+        } /* for (all scene lights) */
+    } /* for (all loaded scenes) */
+
+    _shadow_map_pl_algo = pl_algo;
+
+    /* Unlock the rendering process */
+    ogl_rendering_handler_unlock_bound_context(_rendering_handler);
 }
 
 /** Please see header for spec */
