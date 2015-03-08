@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -63,15 +63,19 @@ PRIVATE void _ogl_ui_frame_init_program(__in __notnull ogl_ui         ui,
                                             system_hashed_ansi_string_create("UI frame program") );
 
     /* Set up shaders */
-    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create(ui_frame_fragment_shader_body) );
-    ogl_shader_set_body(vertex_shader,   system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
+    ogl_shader_set_body(fragment_shader,
+                        system_hashed_ansi_string_create(ui_frame_fragment_shader_body) );
+    ogl_shader_set_body(vertex_shader,
+                        system_hashed_ansi_string_create(ui_general_vertex_shader_body) );
 
     ogl_shader_compile(fragment_shader);
     ogl_shader_compile(vertex_shader);
 
     /* Set up program object */
-    ogl_program_attach_shader(frame_ptr->program, fragment_shader);
-    ogl_program_attach_shader(frame_ptr->program, vertex_shader);
+    ogl_program_attach_shader(frame_ptr->program,
+                              fragment_shader);
+    ogl_program_attach_shader(frame_ptr->program,
+                              vertex_shader);
 
     ogl_program_link(frame_ptr->program);
 
@@ -113,21 +117,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
     frame_ptr->pGLEnable(GL_BLEND);
     {
         frame_ptr->pGLUseProgram(ogl_program_get_id(frame_ptr->program) );
-        frame_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        frame_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                 0,
+                                 4);
     }
     frame_ptr->pGLDisable(GL_BLEND);
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void* frame,
-                                      __in  __notnull int         property_value,
-                                      __out __notnull void*       out_result)
+PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void*              frame,
+                                      __in            _ogl_ui_control_property property,
+                                      __out __notnull void*                    out_result)
 {
     const _ogl_ui_frame* frame_ptr = (const _ogl_ui_frame*) frame;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_FRAME_PROPERTY_X1Y1X2Y2:
+        case OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
         {
             memcpy(out_result,
                    frame_ptr->x1y1x2y2,
@@ -139,7 +145,7 @@ PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void* frame,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized frame property");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }
@@ -150,11 +156,15 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
 {
     _ogl_ui_frame* new_frame = new (std::nothrow) _ogl_ui_frame;
 
-    ASSERT_ALWAYS_SYNC(new_frame != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_frame != NULL,
+                       "Out of memory");
+
     if (new_frame != NULL)
     {
         /* Initialize fields */
-        memset(new_frame, 0, sizeof(_ogl_ui_frame) );
+        memset(new_frame,
+               0,
+               sizeof(_ogl_ui_frame) );
 
         new_frame->context     = ogl_ui_get_context(instance);
         new_frame->x1y1x2y2[0] = x1y1x2y2[0];
@@ -204,13 +214,16 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
         }
 
         /* Retrieve the rendering program */
-        new_frame->program = ogl_ui_get_registered_program(instance, ui_frame_program_name);
+        new_frame->program = ogl_ui_get_registered_program(instance,
+                                                           ui_frame_program_name);
 
         if (new_frame->program == NULL)
         {
-            _ogl_ui_frame_init_program(instance, new_frame);
+            _ogl_ui_frame_init_program(instance,
+                                       new_frame);
 
-            ASSERT_DEBUG_SYNC(new_frame->program != NULL, "Could not initialize frame UI program");
+            ASSERT_DEBUG_SYNC(new_frame->program != NULL,
+                              "Could not initialize frame UI program");
         } /* if (new_button->program == NULL) */
 
         /* Retrieve the uniforms */
@@ -227,15 +240,15 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_frame_set_property(__in  __notnull void*       frame,
-                                      __in  __notnull int         property_value,
-                                      __out __notnull const void* data)
+PUBLIC void ogl_ui_frame_set_property(__in __notnull void*                    frame,
+                                      __in __notnull _ogl_ui_control_property property,
+                                      __in __notnull const void*              data)
 {
     _ogl_ui_frame* frame_ptr = (_ogl_ui_frame*) frame;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_FRAME_PROPERTY_X1Y1X2Y2:
+        case OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
         {
             const float* x1y1x2y2 = (const float*) data;
 
@@ -249,7 +262,7 @@ PUBLIC void ogl_ui_frame_set_property(__in  __notnull void*       frame,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized property value");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -44,15 +44,15 @@ PUBLIC void ogl_ui_label_deinit(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_label_get_property(__in  __notnull const void* label,
-                                      __in  __notnull int         property_value,
-                                      __out __notnull void*       out_result)
+PUBLIC void ogl_ui_label_get_property(__in  __notnull const void*              label,
+                                      __in            _ogl_ui_control_property property,
+                                      __out __notnull void*                    out_result)
 {
     const _ogl_ui_label* label_ptr = (const _ogl_ui_label*) label;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_LABEL_PROPERTY_TEXT_HEIGHT_SS:
+        case OGL_UI_CONTROL_PROPERTY_LABEL_TEXT_HEIGHT_SS:
         {
             ogl_text_get_text_string_property(label_ptr->text_renderer,
                                               OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
@@ -65,7 +65,7 @@ PUBLIC void ogl_ui_label_get_property(__in  __notnull const void* label,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized label property");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }
@@ -78,11 +78,15 @@ PUBLIC void* ogl_ui_label_init(__in           __notnull   ogl_ui                
 {
     _ogl_ui_label* new_label = new (std::nothrow) _ogl_ui_label;
 
-    ASSERT_ALWAYS_SYNC(new_label != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_label != NULL,
+                       "Out of memory");
+
     if (new_label != NULL)
     {
         /* Initialize fields */
-        memset(new_label, 0, sizeof(_ogl_ui_label) );
+        memset(new_label,
+               0,
+               sizeof(_ogl_ui_label) );
 
         new_label->x1y1[0] =     x1y1[0];
         new_label->x1y1[1] = 1 - x1y1[1];
@@ -112,15 +116,15 @@ PUBLIC void* ogl_ui_label_init(__in           __notnull   ogl_ui                
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_label_set_property(__in  __notnull void*       label,
-                                      __in  __notnull int         property_value,
-                                      __out __notnull const void* data)
+PUBLIC void ogl_ui_label_set_property(__in __notnull void*                    label,
+                                      __in __notnull _ogl_ui_control_property property,
+                                      __in __notnull const void*              data)
 {
     _ogl_ui_label* label_ptr = (_ogl_ui_label*) label;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_LABEL_PROPERTY_TEXT:
+        case OGL_UI_CONTROL_PROPERTY_LABEL_TEXT:
         {
             ogl_text_set(label_ptr->text_renderer,
                          label_ptr->text_id,
@@ -129,7 +133,7 @@ PUBLIC void ogl_ui_label_set_property(__in  __notnull void*       label,
             break;
         }
 
-        case OGL_UI_LABEL_PROPERTY_X1Y1:
+        case OGL_UI_CONTROL_PROPERTY_LABEL_X1Y1:
         {
             const float* x1y1 = (const float*) data;
 
@@ -147,7 +151,7 @@ PUBLIC void ogl_ui_label_set_property(__in  __notnull void*       label,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized property value");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }

@@ -9,21 +9,6 @@
 #ifndef OGL_UI_TEXTURE_PREVIEW_H
 #define OGL_UI_TEXTURE_PREVIEW_H
 
-/** Properties */
-typedef enum
-{
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_COLOR,              /* settable, GLfloat[4]                                        */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_ALPHA,     /* settable, GLenum                                            */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_RGB,       /* settable, GLenum                                            */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_ALPHA, /* settable, GLenum                                            */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_RGB,   /* settable, GLenum                                            */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_ALPHA, /* settable, GLenum                                            */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_RGB,   /* settable, GLenum                                            */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_IS_BLENDING_ENABLED,      /* settable, bool                                              */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_LAYER_SHOWN,              /* settable, GLuint. Only useful for 2d array texture previews */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_SHOW_TEXTURE_NAME,        /* settable, bool                                              */
-    OGL_UI_TEXTURE_PREVIEW_PROPERTY_TEXTURE,                  /* settable, ogl_texture                                       */
-};
 
 /** TODO */
 PUBLIC void ogl_ui_texture_preview_deinit(void* internal_instance);
@@ -32,9 +17,9 @@ PUBLIC void ogl_ui_texture_preview_deinit(void* internal_instance);
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_instance);
 
 /** TODO */
-PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void* texture_preview,
-                                                __in  __notnull int         property_value,
-                                                __out __notnull void*       out_result);
+PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void*              texture_preview,
+                                                __in            _ogl_ui_control_property property,
+                                                __out __notnull void*                    out_result);
 
 /** TODO */
 PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui                      instance,
@@ -46,8 +31,8 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
                                          __in                     ogl_ui_texture_preview_type preview_type);
 
 /** TODO */
-PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*       texture_preview,
-                                                __in __notnull int         property_value,
-                                                __in __notnull const void* data);
+PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*                    texture_preview,
+                                                __in __notnull _ogl_ui_control_property property,
+                                                __in __notnull const void*              data);
 
 #endif /* OGL_UI_TEXTURE_PREVIEW_H */

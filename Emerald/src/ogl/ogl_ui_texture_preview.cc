@@ -530,15 +530,15 @@ end:
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void* texture_preview,
-                                                __in  __notnull int         property_value,
-                                                __out __notnull void*       out_result)
+PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void*              texture_preview,
+                                                __in  __notnull _ogl_ui_control_property property,
+                                                __out __notnull void*                    out_result)
 {
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_COLOR:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
             memcpy(out_result,
                    texture_preview_ptr->blend_color,
@@ -547,56 +547,56 @@ PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void* text
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_ALPHA:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_equation_alpha;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_RGB:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_equation_rgb;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_ALPHA:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_dst_alpha;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_RGB:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_dst_rgb;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_ALPHA:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_src_alpha;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_RGB:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
         {
             *(GLenum*) out_result = texture_preview_ptr->blend_function_src_rgb;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_IS_BLENDING_ENABLED:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
             *(bool*) out_result = texture_preview_ptr->is_blending_enabled;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_SHOW_TEXTURE_NAME:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
         {
             ogl_text_get_text_string_property(texture_preview_ptr->text_renderer,
                                               OGL_TEXT_STRING_PROPERTY_VISIBILITY,
@@ -606,7 +606,7 @@ PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void* text
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_TEXTURE:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE:
         {
             *(ogl_texture*) out_result = texture_preview_ptr->texture;
 
@@ -616,7 +616,7 @@ PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void* text
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_texture_preview property requested");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }
@@ -775,15 +775,15 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*       texture_preview,
-                                                __in __notnull int         property_value,
-                                                __in __notnull const void* data)
+PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*                    texture_preview,
+                                                __in __notnull _ogl_ui_control_property property,
+                                                __in __notnull const void*              data)
 {
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) texture_preview;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_COLOR:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
             memcpy(texture_preview_ptr->blend_color,
                    data,
@@ -792,63 +792,63 @@ PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*       textu
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_ALPHA:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_ALPHA:
         {
             texture_preview_ptr->blend_equation_alpha = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_EQUATION_RGB:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_EQUATION_RGB:
         {
             texture_preview_ptr->blend_equation_rgb = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_ALPHA:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_ALPHA:
         {
             texture_preview_ptr->blend_function_dst_alpha = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_DST_RGB:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_DST_RGB:
         {
             texture_preview_ptr->blend_function_dst_rgb = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_ALPHA:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_ALPHA:
         {
             texture_preview_ptr->blend_function_src_alpha = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_BLEND_FUNCTION_SRC_RGB:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_FUNCTION_SRC_RGB:
         {
             texture_preview_ptr->blend_function_src_rgb = *(GLenum*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_IS_BLENDING_ENABLED:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_IS_BLENDING_ENABLED:
         {
             texture_preview_ptr->is_blending_enabled = *(bool*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_LAYER_SHOWN:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_LAYER_SHOWN:
         {
             texture_preview_ptr->layer_shown = *(GLuint*) data;
 
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_SHOW_TEXTURE_NAME:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME:
         {
             ogl_text_set_text_string_property(texture_preview_ptr->text_renderer,
                                               texture_preview_ptr->text_index,
@@ -858,7 +858,7 @@ PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*       textu
             break;
         }
 
-        case OGL_UI_TEXTURE_PREVIEW_PROPERTY_TEXTURE:
+        case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE:
         {
             if (texture_preview_ptr->texture != NULL)
             {
@@ -879,7 +879,7 @@ PUBLIC void ogl_ui_texture_preview_set_property(__in __notnull void*       textu
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_texture_preview property requested");
+                              "Unrecognized _ogl_ui_control_property value requested");
         }
-    } /* switch (property_value) */
+    } /* switch (property) */
 }

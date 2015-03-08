@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * Internal usage only - no functions exported.
  *
@@ -9,13 +9,6 @@
 #ifndef OGL_UI_BUTTON_H
 #define OGL_UI_BUTTON_H
 
-typedef enum
-{
-    OGL_UI_BUTTON_PROPERTY_HEIGHT_SS, /* not settable, float */
-    OGL_UI_BUTTON_PROPERTY_WIDTH_SS,  /* not settable, float */
-    OGL_UI_BUTTON_PROPERTY_X1Y1,      /* settable, float[2] */
-    OGL_UI_BUTTON_PROPERTY_X1Y1X2Y2   /* settable, float[4] */
-};
 
 /** TODO */
 PUBLIC void ogl_ui_button_deinit(void* internal_instance);
@@ -24,9 +17,9 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance);
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance);
 
 /** TODO */
-PUBLIC void ogl_ui_button_get_property(__in  __notnull const void* button,
-                                       __in  __notnull int         property_value,
-                                       __out __notnull void*       out_result);
+PUBLIC void ogl_ui_button_get_property(__in  __notnull const void*              button,
+                                       __in            _ogl_ui_control_property property,
+                                       __out __notnull void*                    out_result);
 
 /** TODO */
 PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui                    instance,
@@ -47,8 +40,8 @@ PUBLIC void ogl_ui_button_on_lbm_down(void* internal_instance, const float* xy);
 PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy);
 
 /** TODO */
-PUBLIC void ogl_ui_button_set_property(__in __notnull void*       button,
-                                       __in __notnull int         property_value,
-                                       __in __notnull const void* data);
+PUBLIC void ogl_ui_button_set_property(__in __notnull void*                    button,
+                                       __in __notnull _ogl_ui_control_property property,
+                                       __in __notnull const void*              data);
 
 #endif /* OGL_UI_BUTTON_H */

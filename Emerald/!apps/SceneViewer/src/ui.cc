@@ -77,10 +77,10 @@ PRIVATE void _update_controls_location()
     float prev_active_path_x1y1x2y2  [4];
 
     ogl_ui_get_property(_ui_active_camera_control,
-                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
+                        OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2,
                         prev_active_camera_x1y1x2y2);
     ogl_ui_get_property(_ui_active_path_control,
-                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
+                        OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2,
                         prev_active_path_x1y1x2y2);
 
     active_path_dy              = fabs(prev_active_path_x1y1x2y2[3] - prev_active_path_x1y1x2y2[1]);
@@ -90,7 +90,7 @@ PRIVATE void _update_controls_location()
     new_active_path_x1y1x2y2[3] = new_active_path_x1y1x2y2[1] - active_path_dy;
 
     ogl_ui_set_property(_ui_active_path_control,
-                        OGL_UI_DROPDOWN_PROPERTY_X1Y1,
+                        OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1,
                         new_active_path_x1y1x2y2);
 }
 
@@ -176,7 +176,7 @@ PUBLIC void ui_init()
     float texture_preview_max_size[2] = {0.2f, 0.2f};
 
     ogl_ui_get_property(_ui_active_camera_control,
-                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
+                        OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2,
                         prev_ui_control_x1y1x2y2);
 
     next_ui_control_x1y1[0] = active_camera_dropdown_x1y1[0];

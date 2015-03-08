@@ -348,22 +348,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_get_property(__in  __notnull const void* button,
-                                       __in  __notnull int         property_value,
-                                       __out __notnull void*       out_result)
+PUBLIC void ogl_ui_button_get_property(__in  __notnull const void*              button,
+                                       __in            _ogl_ui_control_property property,
+                                       __out __notnull void*                    out_result)
 {
     const _ogl_ui_button* button_ptr = (const _ogl_ui_button*) button;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_BUTTON_PROPERTY_HEIGHT_SS:
+        case OGL_UI_CONTROL_PROPERTY_BUTTON_HEIGHT_SS:
         {
             *(float*) out_result = button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1];
 
             break;
         }
 
-        case OGL_UI_BUTTON_PROPERTY_WIDTH_SS:
+        case OGL_UI_CONTROL_PROPERTY_BUTTON_WIDTH_SS:
         {
             *(float*) out_result = button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0];
 
@@ -373,7 +373,7 @@ PUBLIC void ogl_ui_button_get_property(__in  __notnull const void* button,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_button property");
+                              "Unrecognized _ogl_ui_control_property property");
         }
     } /* switch (property_value) */
 }
@@ -551,15 +551,15 @@ PUBLIC void ogl_ui_button_on_lbm_up(void* internal_instance, const float* xy)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_button_set_property(__in  __notnull void*       button,
-                                       __in  __notnull int         property_value,
-                                       __out __notnull const void* data)
+PUBLIC void ogl_ui_button_set_property(__in __notnull void*                    button,
+                                       __in __notnull _ogl_ui_control_property property,
+                                       __in __notnull const void*              data)
 {
     _ogl_ui_button* button_ptr = (_ogl_ui_button*) button;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_BUTTON_PROPERTY_X1Y1:
+        case OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1:
         {
             float dx = button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0];
             float dy = button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1];
@@ -581,7 +581,7 @@ PUBLIC void ogl_ui_button_set_property(__in  __notnull void*       button,
             break;
         }
 
-        case OGL_UI_BUTTON_PROPERTY_X1Y1X2Y2:
+        case OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1X2Y2:
         {
             memcpy(button_ptr->x1y1x2y2,
                    data,
@@ -599,7 +599,7 @@ PUBLIC void ogl_ui_button_set_property(__in  __notnull void*       button,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_button property");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }

@@ -1253,22 +1253,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void* dropdown,
-                                         __in  __notnull int         property_value,
-                                         __out __notnull void*       out_result)
+PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*              dropdown,
+                                         __in            _ogl_ui_control_property property,
+                                         __out __notnull void*                    out_result)
 {
     const _ogl_ui_dropdown* dropdown_ptr = (const _ogl_ui_dropdown*) dropdown;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_DROPDOWN_PROPERTY_IS_DROPAREA_VISIBLE:
+        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_IS_DROPAREA_VISIBLE:
         {
             *(bool*) out_result = dropdown_ptr->is_droparea_visible;
 
             break;
         }
 
-        case OGL_UI_DROPDOWN_PROPERTY_LABEL_BG_X1Y1X2Y2:
+        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_LABEL_BG_X1Y1X2Y2:
         {
             memcpy(out_result,
                    dropdown_ptr->label_bg_x1y1x2y2,
@@ -1277,7 +1277,7 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void* dropdown,
             break;
         }
 
-        case OGL_UI_DROPDOWN_PROPERTY_LABEL_X1Y1:
+        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_LABEL_X1Y1:
         {
             memcpy(out_result,
                    dropdown_ptr->label_x1y1,
@@ -1286,7 +1286,7 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void* dropdown,
             break;
         }
 
-        case OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2:
+        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2:
         {
             float* result = (float*) out_result;
 
@@ -1311,7 +1311,7 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void* dropdown,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_dropdown property requested");
+                              "Unrecognized _ogl_ui_control_property property requested");
         }
     } /* switch (property) */
 }
@@ -1780,15 +1780,15 @@ PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
-                                         __in __notnull int         property_value,
-                                         __in __notnull const void* data)
+PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*                    dropdown,
+                                         __in __notnull _ogl_ui_control_property property,
+                                         __in __notnull const void*              data)
 {
     _ogl_ui_dropdown* dropdown_ptr = (_ogl_ui_dropdown*) dropdown;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_DROPDOWN_PROPERTY_VISIBLE:
+        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE:
         {
             dropdown_ptr->visible = *(bool*) data;
 
@@ -1797,7 +1797,7 @@ PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
             break;
         }
 
-        case OGL_UI_DROPDOWN_PROPERTY_X1Y1:
+        case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1:
         {
             __analysis_assume(sizeof(data) == sizeof(float) * 2);
 
@@ -1810,7 +1810,7 @@ PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_dropdown property");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }

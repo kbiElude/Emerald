@@ -384,15 +384,15 @@ end:
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_get_property(__in  __notnull const void* scrollbar,
-                                          __in  __notnull int         property_value,
-                                          __out __notnull void*       out_result)
+PUBLIC void ogl_ui_scrollbar_get_property(__in  __notnull const void*              scrollbar,
+                                          __in            _ogl_ui_control_property property,
+                                          __out __notnull void*                    out_result)
 {
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) scrollbar;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_SCROLLBAR_PROPERTY_VISIBLE:
+        case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
             *(bool*) out_result = scrollbar_ptr->is_visible;
 
@@ -402,7 +402,7 @@ PUBLIC void ogl_ui_scrollbar_get_property(__in  __notnull const void* scrollbar,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_scrollbar property");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }
@@ -703,15 +703,15 @@ PUBLIC void ogl_ui_scrollbar_on_mouse_move(void*        internal_instance,
 }
 
 /** TODO */
-PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*       scrollbar,
-                                          __in __notnull int         property_value,
-                                          __in __notnull const void* data)
+PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*                    scrollbar,
+                                          __in __notnull _ogl_ui_control_property property,
+                                          __in __notnull const void*              data)
 {
     _ogl_ui_scrollbar* scrollbar_ptr = (_ogl_ui_scrollbar*) scrollbar;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_SCROLLBAR_PROPERTY_VISIBLE:
+        case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
             scrollbar_ptr->is_visible = *(bool*) data;
 
@@ -726,7 +726,7 @@ PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*       scrollbar,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_scrollbar property");
+                              "Unrecognized _ogl_ui_control_property property");
         }
     } /* switch (property_value) */
 }

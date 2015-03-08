@@ -32,26 +32,26 @@
 #define N_START_CONTROLS     (4)
 
 /** Internal types */
-typedef void (*PFNOGLUIDEINITPROCPTR)        (      void*  internal_instance);
-typedef void (*PFNOGLUIDRAWPROCPTR)          (      void*  internal_instance);
-typedef void (*PFNOGLUIGETPROPERTYPROCPTR)   (const void*  internal_instance,
-                                                    int    property_value,
-                                                    void*  out_result);
-typedef void (*PFNOGLUIHOVERPROCPTR)         (      void*  internal_instance,
-                                              const float* xy_screen_norm);
-typedef bool (*PFNOGLUIISOVERPROCPTR)        (      void*  internal_instance,
-                                              const float* xy);
-typedef void (*PFNOGLUIONLBMDOWNPROCPTR)     (      void*  internal_instance,
-                                              const float* xy);
-typedef void (*PFNOGLUIONLBMUPPROCPTR)       (      void*  internal_instance,
-                                              const float* xy);
-typedef void (*PFNOGLUIONMOUSEMOVEPROCPTR)   (      void*  internal_instance,
-                                              const float* xy);
-typedef void (*PFNOGLUIONMOUSEWHEELPROCPTR)  (      void*  internal_instance,
-                                              float        wheel_delta);
-typedef void (*PFNOGLUISETPROPERTYPROCPTR)   (      void*  internal_instance,
-                                              int          property_value,
-                                              const void*  data);
+typedef void (*PFNOGLUIDEINITPROCPTR)        (      void*                    internal_instance);
+typedef void (*PFNOGLUIDRAWPROCPTR)          (      void*                    internal_instance);
+typedef void (*PFNOGLUIGETPROPERTYPROCPTR)   (const void*                    internal_instance,
+                                                    _ogl_ui_control_property property,
+                                                    void*                    out_result);
+typedef void (*PFNOGLUIHOVERPROCPTR)         (      void*                    internal_instance,
+                                              const float*                   xy_screen_norm);
+typedef bool (*PFNOGLUIISOVERPROCPTR)        (      void*                    internal_instance,
+                                              const float*                   xy);
+typedef void (*PFNOGLUIONLBMDOWNPROCPTR)     (      void*                    internal_instance,
+                                              const float*                   xy);
+typedef void (*PFNOGLUIONLBMUPPROCPTR)       (      void*                    internal_instance,
+                                              const float*                   xy);
+typedef void (*PFNOGLUIONMOUSEMOVEPROCPTR)   (      void*                    internal_instance,
+                                              const float*                   xy);
+typedef void (*PFNOGLUIONMOUSEWHEELPROCPTR)  (      void*                    internal_instance,
+                                                    float                    wheel_delta);
+typedef void (*PFNOGLUISETPROPERTYPROCPTR)   (      void*                    internal_instance,
+                                                    _ogl_ui_control_property property,
+                                              const void*                    data);
 
 typedef struct _ogl_ui_callback
 {
@@ -1151,9 +1151,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui
 }
 
 /** Please see header for speciication */
-PUBLIC EMERALD_API void ogl_ui_get_property(__in  __notnull ogl_ui_control control,
-                                            __in            int            property_value,
-                                            __out __notnull void*          out_result)
+PUBLIC EMERALD_API void ogl_ui_get_property(__in  __notnull ogl_ui_control           control,
+                                            __in            _ogl_ui_control_property property,
+                                            __out __notnull void*                    out_result)
 {
     _ogl_ui_control* ui_control_ptr = (_ogl_ui_control*) control;
 
@@ -1163,7 +1163,7 @@ PUBLIC EMERALD_API void ogl_ui_get_property(__in  __notnull ogl_ui_control contr
     if (ui_control_ptr->pfn_get_property_func_ptr != NULL)
     {
         ui_control_ptr->pfn_get_property_func_ptr(ui_control_ptr->internal,
-                                                  property_value,
+                                                  property,
                                                   out_result);
     }
 }
@@ -1308,9 +1308,9 @@ PUBLIC bool ogl_ui_register_program(__in __notnull ogl_ui                    ui,
 }
 
 /** Please see header for speciication */
-PUBLIC EMERALD_API void ogl_ui_set_property(__in __notnull ogl_ui_control control,
-                                            __in           int            property_value,
-                                            __in __notnull const void*    data)
+PUBLIC EMERALD_API void ogl_ui_set_property(__in __notnull ogl_ui_control           control,
+                                            __in           _ogl_ui_control_property property,
+                                            __in __notnull const void*              data)
 {
     _ogl_ui_control* ui_control_ptr = (_ogl_ui_control*) control;
 
@@ -1320,7 +1320,7 @@ PUBLIC EMERALD_API void ogl_ui_set_property(__in __notnull ogl_ui_control contro
     if (ui_control_ptr->pfn_set_property_func_ptr != NULL)
     {
         ui_control_ptr->pfn_set_property_func_ptr(ui_control_ptr->internal,
-                                                  property_value,
+                                                  property,
                                                   data);
     }
 }

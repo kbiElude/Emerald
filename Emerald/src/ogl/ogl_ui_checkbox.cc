@@ -375,15 +375,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_ui_checkbox_get_property(__in  __notnull const void* internal_instance,
-                                                               int   property_value,
-                                         __out __notnull       void* out_result)
+PUBLIC void ogl_ui_checkbox_get_property(__in  __notnull const void*              checkbox,
+                                         __in            _ogl_ui_control_property property,
+                                         __out __notnull void*                    out_result)
 {
-    const _ogl_ui_checkbox* checkbox_ptr = (const _ogl_ui_checkbox*) internal_instance;
+    const _ogl_ui_checkbox* checkbox_ptr = (const _ogl_ui_checkbox*) checkbox;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_CHECKBOX_PROPERTY_CHECK_STATUS:
+        case OGL_UI_CONTROL_PROPERTY_CHECKBOX_CHECK_STATUS:
         {
             *(bool*) out_result = checkbox_ptr->status;
 
@@ -393,7 +393,7 @@ PUBLIC void ogl_ui_checkbox_get_property(__in  __notnull const void* internal_in
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_checkbox property");
+                              "Unrecognized _ogl_ui_control_property property");
         }
     } /* switch (property) */
 }
@@ -578,15 +578,15 @@ PUBLIC void ogl_ui_checkbox_on_lbm_up(void*        internal_instance,
 }
 
 /* Please see header for spec */
-PUBLIC void ogl_ui_checkbox_set_property(__in __notnull void*       checkbox,
-                                         __in __notnull int         property_value,
-                                         __in __notnull const void* data)
+PUBLIC void ogl_ui_checkbox_set_property(__in __notnull void*                    checkbox,
+                                         __in __notnull _ogl_ui_control_property property,
+                                         __in __notnull const void*              data)
 {
     _ogl_ui_checkbox* checkbox_ptr = (_ogl_ui_checkbox*) checkbox;
 
-    switch (property_value)
+    switch (property)
     {
-        case OGL_UI_CHECKBOX_PROPERTY_X1Y1:
+        case OGL_UI_CONTROL_PROPERTY_CHECKBOX_X1Y1:
         {
             __analysis_assume(sizeof(data) == sizeof(float) * 2);
 
@@ -605,7 +605,7 @@ PUBLIC void ogl_ui_checkbox_set_property(__in __notnull void*       checkbox,
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized ogl_ui_checkbox property");
+                              "Unrecognized _ogl_ui_control_property value");
         }
     } /* switch (property_value) */
 }

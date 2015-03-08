@@ -1763,12 +1763,18 @@ typedef enum
 
 } ogl_ui_texture_preview_type;
 
+/* UI bag handle */
+DECLARE_HANDLE(ogl_ui_bag);
 /* UI control handle */
 DECLARE_HANDLE(ogl_ui_control);
 
 /** Rendering handler call-back */
-typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context /* context */, uint32_t /* n_frame */, system_timeline_time /* frame time */, void* user_arg);
-typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context /* context */, void* /* user argument */);
+typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context          context,
+                                                           uint32_t             n_frame,
+                                                           system_timeline_time frame_time,
+                                                           void*                user_arg);
+typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context          context,
+                                                           void*                user_arg);
 
 /*************** Type handlers ***********************/
 /** Releases all fields of an _ogl_context_gl_info structure without actually releasing
@@ -1778,6 +1784,7 @@ typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context /* contex
  */
 PUBLIC void deinit_ogl_context_gl_info(__in __notnull __deallocate(mem) ogl_context_gl_info* info);
 
-PUBLIC void init_ogl_context_gl_info(__in __notnull ogl_context_gl_info* info, const __in __notnull ogl_context_gl_limits* limits);
+PUBLIC void init_ogl_context_gl_info(__in __notnull       ogl_context_gl_info*   info,
+                                     __in __notnull const ogl_context_gl_limits* limits);
 
 #endif /* OGL_TYPES_H */

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  * Internal usage only - no functions exported.
  *
@@ -15,17 +15,6 @@ typedef enum
     OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,  /* fired when droparea is toggled on or off       user_arg: not used */
 };
 
-/** Properties */
-typedef enum
-{
-    OGL_UI_DROPDOWN_PROPERTY_IS_DROPAREA_VISIBLE, /* not settable, bool */
-    OGL_UI_DROPDOWN_PROPERTY_LABEL_BG_X1Y1X2Y2,   /* not settable, float[4] */
-    OGL_UI_DROPDOWN_PROPERTY_LABEL_X1Y1,          /* not settable, float[2] */
-    OGL_UI_DROPDOWN_PROPERTY_VISIBLE,             /*     settable, bool */
-    OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,            /* not settable, float[4] */
-    OGL_UI_DROPDOWN_PROPERTY_X1Y1,                /*     settable, float[2] */
-};
-
 
 /** TODO */
 PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance);
@@ -34,9 +23,9 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance);
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance);
 
 /** TODO */
-PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void* dropdown,
-                                         __in  __notnull int         property_value,
-                                         __out __notnull void*       out_result);
+PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*              dropdown,
+                                         __in            _ogl_ui_control_property property,
+                                         __out __notnull void*                    out_result);
 
 /** TODO */
 PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui                     instance,
@@ -73,8 +62,8 @@ PUBLIC void ogl_ui_dropdown_on_mouse_wheel(void* internal_instance,
                                            float wheel_delta);
 
 /** TODO */
-PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*       dropdown,
-                                         __in __notnull int         property_value,
-                                         __in __notnull const void* data);
+PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*                    dropdown,
+                                         __in __notnull _ogl_ui_control_property property,
+                                         __in __notnull const void*              data);
 
 #endif /* OGL_UI_DROPDOWN_H */
