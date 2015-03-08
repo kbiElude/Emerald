@@ -16,6 +16,9 @@ PUBLIC void state_get_current_frame_properties(__out __notnull scene*           
                                                __out           system_timeline_time* out_current_frame_time);
 
 /** TODO */
+PUBLIC unsigned int state_get_shadow_map_size();
+
+/** TODO */
 PUBLIC ogl_pipeline state_get_pipeline();
 
 /** TODO */
@@ -23,5 +26,8 @@ PUBLIC uint32_t state_get_pipeline_stage_id();
 
 /** TODO */
 PUBLIC void state_init();
+
+/** TODO */
+PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size);
 
 #endif /* STATE_H */

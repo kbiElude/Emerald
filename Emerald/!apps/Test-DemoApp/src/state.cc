@@ -5,11 +5,13 @@
  */
 #include "shared.h"
 #include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
-#include "scene/scene_multiloader.h"
 #include "scene/scene_graph.h"
+#include "scene/scene_light.h"
+#include "scene/scene_multiloader.h"
 #include "system/system_log.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_unpacker.h"
@@ -54,11 +56,12 @@ const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
 
 
 /* Other stuff */
-ogl_pipeline         _pipeline            = NULL;
-uint32_t             _pipeline_stage_id   = -1;
-system_timeline_time _playback_start_time = 0;
+ogl_pipeline         _pipeline                                   = NULL;
+uint32_t             _pipeline_stage_id                          = -1;
+system_timeline_time _playback_start_time                        = 0;
 _scene_descriptor    _scenes                [_n_scene_filenames];
 system_timeline_time _scenes_duration_summed[_n_scene_filenames] = {0};
+unsigned int         _shadow_map_size                            = 1024;
 
 /** Please see header for spec */
 PUBLIC void state_deinit()
@@ -161,11 +164,18 @@ PUBLIC uint32_t state_get_pipeline_stage_id()
 }
 
 /** Please see header for spec */
+PUBLIC uint32_t state_get_shadow_map_size()
+{
+    return _shadow_map_size;
+}
+
+/** Please see header for spec */
 PUBLIC void state_init()
 {
     const float camera_start_position[3] = {0, 0, 0};
 
     /* Initialize the unpackers */
+    system_timeline_time   loading_time_start                    = system_time_now();
     system_file_serializer scene_serializers[_n_scene_filenames] = {NULL};
     system_file_unpacker   unpackers        [_n_scene_filenames] = {NULL};
 
@@ -199,7 +209,6 @@ PUBLIC void state_init()
                                                                                                        scene_serializers);
     system_timeline_time loading_time_end      = 0;
     uint32_t             loading_time_msec     = 0;
-    system_timeline_time loading_time_start    = system_time_now();
     system_timeline_time scene_duration_summed = 0;
 
     scene_multiloader_load_async         (loader);
@@ -258,6 +267,9 @@ PUBLIC void state_init()
              loading_time_msec / 1000,
              loading_time_msec % 1000);
 
+    /* Update the shadow map size in all loaded scenes */
+    state_set_shadow_map_size(_shadow_map_size);
+
     /* Construct the pipeline object */
     _pipeline = ogl_pipeline_create(_context,
                                     true, /* should_overlay_performance_info */
@@ -270,4 +282,57 @@ PUBLIC void state_init()
                                 system_hashed_ansi_string_create("Scene rendering"),
                                 _render_scene,
                                 NULL);
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size)
+{
+    /* Wait for the current frame to render and lock the rendering pipeline, while
+     * we adjust the shadow map size..
+     */
+    ogl_rendering_handler_lock_bound_context(_rendering_handler);
+
+    /* Update shadow map size for all scene lights */
+    for (unsigned int n_scene = 0;
+                      n_scene < _n_scene_filenames;
+                    ++n_scene)
+    {
+        scene        current_scene = _scenes[n_scene].this_scene;
+        unsigned int n_lights      = 0;
+
+        scene_get_property(current_scene,
+                           SCENE_PROPERTY_N_LIGHTS,
+                          &n_lights);
+
+        for (unsigned int n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+        {
+            scene_light      current_light = scene_get_light_by_index(current_scene,
+                                                                      n_light);
+            scene_light_type current_light_type;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+
+            if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                unsigned int final_shadow_map_size[2] =
+                {
+                    new_shadow_map_size,
+                    new_shadow_map_size
+                };
+
+                scene_light_set_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
+                                         final_shadow_map_size);
+            } /* if (current light is not an ambient light) */
+        } /* for (all scene lights) */
+    } /* for (all loaded scenes) */
+
+    _shadow_map_size = new_shadow_map_size;
+
+    /* Unlock the rendering process */
+    ogl_rendering_handler_unlock_bound_context(_rendering_handler);
 }

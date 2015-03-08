@@ -24,17 +24,18 @@
 #include "state.h"
 #include "ui.h"
 
-ogl_context    _context             = NULL;
-system_window  _window              = NULL;
-system_event   _window_closed_event = system_event_create(true, false);
-GLuint         _vao_id              = 0;
+ogl_context           _context             = NULL;
+ogl_rendering_handler _rendering_handler   = NULL;
+system_window         _window              = NULL;
+system_event          _window_closed_event = system_event_create(true, false);
+GLuint                _vao_id              = 0;
 
 
 /** Rendering handler */
-void _rendering_handler(ogl_context          context,
-                        uint32_t             n_frames_rendered,
-                        system_timeline_time frame_time,
-                        void*                unused)
+void _rendering_handler_entrypoint(ogl_context          context,
+                                   uint32_t             n_frames_rendered,
+                                   system_timeline_time frame_time,
+                                   void*                unused)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
@@ -168,31 +169,30 @@ void _rendering_rbm_callback_handler(system_window           window,
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
     bool                  context_result           = false;
-    ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_size    [2]       = {WINDOW_WIDTH, WINDOW_HEIGHT};
     int                   window_x1y1x2y2[4]       = {0};
 
     /* Carry on */
     system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            4,    /* n_multisampling_samples */
-                                                                            true, /* vsync_enabled           */
-                                                                            true, /* multisampling_supported */
-                                                                            true);
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                            60,
-                                                                            _rendering_handler,
-                                                                            NULL);
+    _window            = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
+                                                                      window_x1y1x2y2,
+                                                                      system_hashed_ansi_string_create("Test window"),
+                                                                      false,
+                                                                      4,    /* n_multisampling_samples */
+                                                                      true, /* vsync_enabled           */
+                                                                      true, /* multisampling_supported */
+                                                                      true);
+    _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                      60,
+                                                                      _rendering_handler_entrypoint,
+                                                                      NULL);
 
     system_window_get_property         (_window,
                                         SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                                        &_context);
     system_window_set_rendering_handler(_window,
-                                        window_rendering_handler);
+                                        _rendering_handler);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
@@ -206,13 +206,13 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     ui_init();
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler,
+    ogl_rendering_handler_play(_rendering_handler,
                                0); /* time */
 
     system_event_wait_single_infinite(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(window_rendering_handler);
+    ogl_rendering_handler_stop(_rendering_handler);
 
     ui_deinit   ();
     state_deinit();
