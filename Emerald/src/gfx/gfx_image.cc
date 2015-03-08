@@ -133,6 +133,7 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
         unsigned int alternative_filename_index = -1;
         bool         found_file                 = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
                                                                                                                  alternative_filename,
+                                                                                                                 true, /* use_exact_match */
                                                                                                                 &alternative_filename_index);
 
         ASSERT_ALWAYS_SYNC(found_file,

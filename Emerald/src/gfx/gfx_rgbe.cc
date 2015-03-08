@@ -418,6 +418,7 @@ PUBLIC EMERALD_API gfx_image gfx_rgbe_load_from_file(__in __notnull system_hashe
 
             file_found = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
                                                                                         file_name,
+                                                                                        true, /* use_exact_match */
                                                                                        &file_index);
 
             ASSERT_DEBUG_SYNC(file_found,

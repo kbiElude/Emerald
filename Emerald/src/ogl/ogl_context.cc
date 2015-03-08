@@ -219,6 +219,7 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
              */
             if (system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
                                                                                decompressed_filename,
+                                                                               true, /* use_exact_match */
                                                                                NULL) ) /* out_file_index */
             {
                 *out_compressed_gl_enum = GL_NONE;
@@ -301,6 +302,7 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
                 /* Is the file available? */
                 if (current_file_unpacker != NULL && system_file_enumerator_is_file_present_in_system_file_unpacker(current_file_unpacker,
                                                                                                                     result_filename_has,
+                                                                                                                    true,                    /* use_exact_match */
                                                                                                                     NULL)                 || /* out_file_index */
                     current_file_unpacker == NULL && system_file_enumerator_is_file_present                        (result_filename_has) )
                 {

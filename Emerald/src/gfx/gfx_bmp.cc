@@ -63,6 +63,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in             bool             
 
             file_found = system_file_enumerator_is_file_present_in_system_file_unpacker(file_unpacker,
                                                                                         file_name,
+                                                                                        true, /* use_exact_match */
                                                                                        &file_index);
 
             ASSERT_DEBUG_SYNC(file_found,

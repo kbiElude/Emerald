@@ -942,6 +942,9 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notn
             ASSERT_DEBUG_SYNC(gfx_image_texture != NULL,
                               "ogl_texture_create_from_gfx_image() call failed.");
         } /* for (all map entries) */
+
+        /* All entries processed! */
+        system_hash64map_clear(scene_ptr->loader_ptr->image_filename_to_gfx_image_map);
     }
     system_critical_section_leave(scene_ptr->loader_ptr->cs);
 

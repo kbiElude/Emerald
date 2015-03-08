@@ -364,6 +364,7 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull sy
 /** Please see header for spec */
 PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(__in __notnull system_file_unpacker      file_unpacker,
                                                                                        __in __notnull system_hashed_ansi_string file_name,
+                                                                                       __in           bool                      use_exact_match,
                                                                                        __out_opt      unsigned int*             out_file_index)
 {
     unsigned int n_packed_files = 0;
@@ -384,8 +385,10 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_un
                                                SYSTEM_FILE_UNPACKER_FILE_PROPERTY_NAME,
                                               &current_file_name);
 
-        if (system_hashed_ansi_string_is_equal_to_hash_string(current_file_name,
-                                                              file_name))
+        if ( use_exact_match && system_hashed_ansi_string_is_equal_to_hash_string(current_file_name,
+                                                                                  file_name)        ||
+            !use_exact_match && system_hashed_ansi_string_contains               (current_file_name,
+                                                                                  file_name) )
         {
             /* OK, located the file! */
             if (out_file_index != NULL)

@@ -75,6 +75,7 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull sy
  */
 PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_unpacker(__in __notnull system_file_unpacker      file_unpacker,
                                                                                        __in __notnull system_hashed_ansi_string file_name,
+                                                                                       __in           bool                      use_exact_match,
                                                                                        __out_opt      unsigned int*             out_file_index);
 
 /** TODO */

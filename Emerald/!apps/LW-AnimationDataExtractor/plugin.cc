@@ -132,8 +132,8 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
 
     system_hashed_ansi_string filename = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_SAVE,
                                                                                    1, /* n_filters */
-                                                                                   &filter_extension,
                                                                                    &filter_name,
+                                                                                   &filter_extension,
                                                                                    system_hashed_ansi_string_create("Select target Emerald Scene blob file") );
 
     if (filename != NULL)

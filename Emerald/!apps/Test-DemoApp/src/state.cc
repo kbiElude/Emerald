@@ -11,6 +11,8 @@
 #include "scene/scene_multiloader.h"
 #include "scene/scene_graph.h"
 #include "system/system_log.h"
+#include "system/system_file_enumerator.h"
+#include "system/system_file_unpacker.h"
 #include "app_config.h"
 #include "include/main.h"
 #include "state.h"
@@ -43,9 +45,9 @@ typedef struct _scene_descriptor
 /* Array of scene filenames to use for the demo */
 system_hashed_ansi_string _scene_filenames[] =
 {
-    system_hashed_ansi_string_create("blob/scene1/test"),
-    system_hashed_ansi_string_create("blob/scene2/test"),
-    system_hashed_ansi_string_create("blob/scene3/test")
+    system_hashed_ansi_string_create("blob/scene1/test.packed"),
+    system_hashed_ansi_string_create("blob/scene2/test.packed"),
+    system_hashed_ansi_string_create("blob/scene3/test.packed")
 };
 const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
                                         sizeof(_scene_filenames[0]);
@@ -163,10 +165,38 @@ PUBLIC void state_init()
 {
     const float camera_start_position[3] = {0, 0, 0};
 
+    /* Initialize the unpackers */
+    system_file_serializer scene_serializers[_n_scene_filenames] = {NULL};
+    system_file_unpacker   unpackers        [_n_scene_filenames] = {NULL};
+
+    for (unsigned int n_packed_file = 0;
+                      n_packed_file < _n_scene_filenames;
+                    ++n_packed_file)
+    {
+        unpackers[n_packed_file] = system_file_unpacker_create(_scene_filenames[n_packed_file]);
+
+        /* Locate the scene file */
+        bool         scene_file_found = false;
+        unsigned int scene_file_index = -1;
+
+        scene_file_found = system_file_enumerator_is_file_present_in_system_file_unpacker(unpackers[n_packed_file],
+                                                                                          system_hashed_ansi_string_create("test.scene"),
+                                                                                          false, /* use_exact_match */
+                                                                                         &scene_file_index);
+
+        ASSERT_DEBUG_SYNC(scene_file_found,
+                          "Scene file not found in a packed file");
+
+        system_file_unpacker_get_file_property(unpackers[n_packed_file],
+                                               scene_file_index,
+                                               SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
+                                               scene_serializers + n_packed_file);
+    } /* for (all packed files) */
+
     /* Load the scenes */
-    scene_multiloader    loader                = scene_multiloader_create_from_filenames(_context,
-                                                                                         _n_scene_filenames,
-                                                                                         _scene_filenames);
+    scene_multiloader    loader                = scene_multiloader_create_from_system_file_serializers(_context,
+                                                                                                       _n_scene_filenames,
+                                                                                                       scene_serializers);
     system_timeline_time loading_time_end      = 0;
     uint32_t             loading_time_msec     = 0;
     system_timeline_time loading_time_start    = system_time_now();
@@ -204,6 +234,16 @@ PUBLIC void state_init()
 
         /* Initialize ogl_uber instances */
         ogl_scene_renderer_bake_gpu_assets(_scenes[n_scene].renderer);
+    }
+
+    for (unsigned int n_unpacker = 0;
+                      n_unpacker < _n_scene_filenames;
+                    ++n_unpacker)
+    {
+        system_file_unpacker_release(unpackers[n_unpacker]);
+
+        scene_serializers[n_unpacker] = NULL;
+        unpackers        [n_unpacker] = NULL;
     }
 
     scene_multiloader_release(loader);
