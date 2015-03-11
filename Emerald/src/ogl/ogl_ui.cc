@@ -25,6 +25,7 @@
 #include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_read_write_mutex.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_window.h"
 
@@ -75,8 +76,8 @@ typedef struct
 typedef struct
 {
     system_resizable_vector   controls;
+    system_read_write_mutex   controls_rw_mutex;
     system_hashed_ansi_string name;
-    system_critical_section   rendering_cs;
     ogl_text                  text_renderer;
     system_window             window;
 
@@ -96,8 +97,11 @@ typedef struct
     REFCOUNT_INSERT_VARIABLES
 } _ogl_ui;
 
-typedef struct
+typedef struct _ogl_ui_control
 {
+    _ogl_ui_control_type control_type;
+    _ogl_ui*             owner_ptr;
+
     /* NOT called from a rendering thread */
     PFNOGLUIDEINITPROCPTR         pfn_deinit_func_ptr;
     /* CALLED from a rendering thread */
@@ -116,7 +120,23 @@ typedef struct
     PFNOGLUIONMOUSEWHEELPROCPTR   pfn_on_mouse_wheel_func_ptr;
     /* NOT called from a renderingt thread */
     PFNOGLUISETPROPERTYPROCPTR    pfn_set_property_func_ptr;
+
     void* internal;
+
+    _ogl_ui_control()
+    {
+        control_type                = OGL_UI_CONTROL_TYPE_UNKNOWN;
+        owner_ptr                   = NULL;
+        pfn_deinit_func_ptr         = NULL;
+        pfn_draw_func_ptr           = NULL;
+        pfn_get_property_func_ptr   = NULL;
+        pfn_is_over_func_ptr        = NULL;
+        pfn_on_lbm_down_func_ptr    = NULL;
+        pfn_on_lbm_up_func_ptr      = NULL;
+        pfn_on_mouse_move_func_ptr  = NULL;
+        pfn_on_mouse_wheel_func_ptr = NULL;
+        pfn_set_property_func_ptr   = NULL;
+    }
 } _ogl_ui_control;
 
 /* Forward declarations */
@@ -244,6 +264,13 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
                                                      ui_ptr);
 
     /* Release all controls */
+    if (ui_ptr->controls_rw_mutex != NULL)
+    {
+        system_read_write_mutex_release(ui_ptr->controls_rw_mutex);
+
+        ui_ptr->controls_rw_mutex = NULL;
+    }
+
     while (system_resizable_vector_get_amount_of_elements(ui_ptr->controls) > 0)
     {
         if (!system_resizable_vector_get_element_at(ui_ptr->controls,
@@ -269,8 +296,6 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
     ui_ptr->controls = NULL;
 
     /* Release other owned objects */
-    system_critical_section_release(ui_ptr->rendering_cs);
-
     if (ui_ptr->text_renderer != NULL)
     {
         ogl_text_release(ui_ptr->text_renderer);
@@ -382,13 +407,13 @@ PRIVATE void _ogl_ui_init(__in __notnull _ogl_ui*                  ui_ptr,
 
     ui_ptr->controls                        = system_resizable_vector_create(N_START_CONTROLS,
                                                                              sizeof(_ogl_ui_control*) );
+    ui_ptr->controls_rw_mutex               = system_read_write_mutex_create();
     ui_ptr->current_lbm_status              = false;
     ui_ptr->current_mouse_xy[0]             = 0;
     ui_ptr->current_mouse_xy[1]             = 0;
     ui_ptr->name                            = name;
     ui_ptr->registered_ui_control_callbacks = system_hash64map_create(sizeof(void*) );
     ui_ptr->registered_ui_control_programs  = system_hash64map_create(sizeof(void*) );
-    ui_ptr->rendering_cs                    = system_critical_section_create();
     ui_ptr->text_renderer                   = text_renderer;
     ui_ptr->window                          = NULL;
 
@@ -489,30 +514,36 @@ PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
          *
          * NOTE: This has got nothing to do with rendering - the handler will NOT be called from a rendering thread.
          */
-        size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
-
-        for (size_t n_control = 0;
-                    n_control < n_controls;
-                  ++n_control)
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_READ);
         {
-            _ogl_ui_control* control_ptr = NULL;
+            size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
 
-            if (system_resizable_vector_get_element_at(ui_ptr->controls,
-                                                       n_control,
-                                                      &control_ptr) )
+            for (size_t n_control = 0;
+                        n_control < n_controls;
+                      ++n_control)
             {
-                if (control_ptr->pfn_is_over_func_ptr != NULL &&
-                    control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
-                                                      click_xy) )
-                {
-                    control_ptr->pfn_on_lbm_down_func_ptr(control_ptr->internal,
-                                                          click_xy);
+                _ogl_ui_control* control_ptr = NULL;
 
-                    has_captured = true;
-                    break;
-                } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, click_xy) ) */
-            } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-        } /* foreach (control) */
+                if (system_resizable_vector_get_element_at(ui_ptr->controls,
+                                                           n_control,
+                                                          &control_ptr) )
+                {
+                    if (control_ptr->pfn_is_over_func_ptr != NULL &&
+                        control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
+                                                          click_xy) )
+                    {
+                        control_ptr->pfn_on_lbm_down_func_ptr(control_ptr->internal,
+                                                              click_xy);
+
+                        has_captured = true;
+                        break;
+                    } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, click_xy) ) */
+                } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
+            } /* foreach (control) */
+        }
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_READ);
 
         ui_ptr->current_lbm_status = true;
     } /* if (!ui_ptr->current_lbm_status) */
@@ -542,12 +573,8 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
                                    SYSTEM_WINDOW_PROPERTY_POSITION,
                                    window_position);
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
-        {
-            click_xy[0] = float(x - window_position[0]) / float(window_size[0]);
-            click_xy[1] = float(y - window_position[1]) / float(window_size[1]);
-        }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        click_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+        click_xy[1] = float(y - window_position[1]) / float(window_size[1]);
 
         /* Iterate through all controls and ping all controls about the event. This must not
          * be limited to controls that the user is hovering over, because the user might have
@@ -555,25 +582,31 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
          *
          * NOTE: This has got nothing to do with rendering - the handler will NOT be called from a rendering thread.
          */
-        size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
-
-        for (size_t n_control = 0;
-                    n_control < n_controls;
-                  ++n_control)
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_READ);
         {
-            _ogl_ui_control* control_ptr = NULL;
+            size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
 
-            if (system_resizable_vector_get_element_at(ui_ptr->controls,
-                                                       n_control,
-                                                      &control_ptr) )
+            for (size_t n_control = 0;
+                        n_control < n_controls;
+                      ++n_control)
             {
-                if (control_ptr->pfn_on_lbm_up_func_ptr != NULL)
+                _ogl_ui_control* control_ptr = NULL;
+
+                if (system_resizable_vector_get_element_at(ui_ptr->controls,
+                                                           n_control,
+                                                          &control_ptr) )
                 {
-                    control_ptr->pfn_on_lbm_up_func_ptr(control_ptr->internal,
-                                                        click_xy);
-                }
-            } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-        } /* foreach (control) */
+                    if (control_ptr->pfn_on_lbm_up_func_ptr != NULL)
+                    {
+                        control_ptr->pfn_on_lbm_up_func_ptr(control_ptr->internal,
+                                                            click_xy);
+                    }
+                } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
+            } /* foreach (control) */
+        }
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_READ);
 
         ui_ptr->current_lbm_status = false;
     } /* if (ui_ptr->current_lbm_status) */
@@ -599,47 +632,49 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
                                SYSTEM_WINDOW_PROPERTY_POSITION,
                                window_position);
 
-    system_critical_section_enter(ui_ptr->rendering_cs);
-    {
-        ui_ptr->current_mouse_xy[0] = float(x - window_position[0]) / float(window_size[0]);
-        ui_ptr->current_mouse_xy[1] = float(y - window_position[1]) / float(window_size[1]);
-    }
-    system_critical_section_leave(ui_ptr->rendering_cs);
+    ui_ptr->current_mouse_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+    ui_ptr->current_mouse_xy[1] = float(y - window_position[1]) / float(window_size[1]);
 
     /* Iterate through controls and see if any is in the area. If so, notify of the event 
      *
      * NOTE: This has got nothing to do with rendering - the handler will NOT be called from a rendering thread.
      */
-    size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
-
-    for (size_t n_control = 0;
-                n_control < n_controls;
-              ++n_control)
+    system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                 ACCESS_READ);
     {
-        _ogl_ui_control* control_ptr = NULL;
+        size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
 
-        if (system_resizable_vector_get_element_at(ui_ptr->controls,
-                                                   n_control,
-                                                  &control_ptr) )
+        for (size_t n_control = 0;
+                    n_control < n_controls;
+                  ++n_control)
         {
-            if (control_ptr->pfn_is_over_func_ptr       != NULL           &&
-                control_ptr->pfn_on_mouse_move_func_ptr != NULL           &&
-                control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
-                                                  ui_ptr->current_mouse_xy))
-            {
-                control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
-                                                        ui_ptr->current_mouse_xy);
+            _ogl_ui_control* control_ptr = NULL;
 
-                break;
-            } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) ) */
-            
-            if (control_ptr->pfn_on_mouse_move_func_ptr != NULL)
+            if (system_resizable_vector_get_element_at(ui_ptr->controls,
+                                                       n_control,
+                                                      &control_ptr) )
             {
-                control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
-                                                        ui_ptr->current_mouse_xy);
-            }
-        } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-    } /* foreach (control) */
+                if (control_ptr->pfn_is_over_func_ptr       != NULL           &&
+                    control_ptr->pfn_on_mouse_move_func_ptr != NULL           &&
+                    control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
+                                                      ui_ptr->current_mouse_xy))
+                {
+                    control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
+                                                            ui_ptr->current_mouse_xy);
+
+                    break;
+                } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) ) */
+            
+                if (control_ptr->pfn_on_mouse_move_func_ptr != NULL)
+                {
+                    control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
+                                                            ui_ptr->current_mouse_xy);
+                }
+            } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
+        } /* foreach (control) */
+    }
+    system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                   ACCESS_READ);
 
     return true;
 }
@@ -664,42 +699,44 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
                                SYSTEM_WINDOW_PROPERTY_POSITION,
                                window_position);
 
-    system_critical_section_enter(ui_ptr->rendering_cs);
-    {
-        ui_ptr->current_mouse_xy[0] = float(x - window_position[0]) / float(window_size[0]);
-        ui_ptr->current_mouse_xy[1] = float(y - window_position[1]) / float(window_size[1]);
-    }
-    system_critical_section_leave(ui_ptr->rendering_cs);
+    ui_ptr->current_mouse_xy[0] = float(x - window_position[0]) / float(window_size[0]);
+    ui_ptr->current_mouse_xy[1] = float(y - window_position[1]) / float(window_size[1]);
 
     /* Iterate through controls and see if any is in the area. If so, notify of the event
      *
      * NOTE: This has got nothing to do with rendering - the handler will NOT be called from a rendering thread.
      */
-    size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
-
-    for (size_t n_control = 0;
-                n_control < n_controls;
-              ++n_control)
+    system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                 ACCESS_READ);
     {
-        _ogl_ui_control* control_ptr = NULL;
+        size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
 
-        if (system_resizable_vector_get_element_at(ui_ptr->controls,
-                                                   n_control,
-                                                  &control_ptr) )
+        for (size_t n_control = 0;
+                    n_control < n_controls;
+                  ++n_control)
         {
-            if (control_ptr->pfn_is_over_func_ptr        != NULL              &&
-                control_ptr->pfn_on_mouse_wheel_func_ptr != NULL              &&
-                control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
-                                                  ui_ptr->current_mouse_xy) )
-            {
-                control_ptr->pfn_on_mouse_wheel_func_ptr(control_ptr->internal,
-                                                         float(wheel_delta) / float(WHEEL_DELTA) );
+            _ogl_ui_control* control_ptr = NULL;
 
-                handled = true;
-                break;
-            }
-        } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
-    } /* foreach (control) */
+            if (system_resizable_vector_get_element_at(ui_ptr->controls,
+                                                       n_control,
+                                                      &control_ptr) )
+            {
+                if (control_ptr->pfn_is_over_func_ptr        != NULL              &&
+                    control_ptr->pfn_on_mouse_wheel_func_ptr != NULL              &&
+                    control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
+                                                      ui_ptr->current_mouse_xy) )
+                {
+                    control_ptr->pfn_on_mouse_wheel_func_ptr(control_ptr->internal,
+                                                             float(wheel_delta) / float(WHEEL_DELTA) );
+
+                    handled = true;
+                    break;
+                }
+            } /* if (system_resizable_vector_get_element_at(ui_ptr->controls, n_control, &control_ptr) ) */
+        } /* foreach (control) */
+    }
+    system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                   ACCESS_READ);
 
     return !handled;
 }
@@ -746,7 +783,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   o
                0,
                sizeof(_ogl_ui_control) );
 
+        new_ui_control_ptr->control_type                = OGL_UI_CONTROL_TYPE_BUTTON;
         new_ui_control_ptr->internal                    = new_internal;
+        new_ui_control_ptr->owner_ptr                   = (_ogl_ui*) ui_instance;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_button_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ogl_ui_button_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_button_get_property;
@@ -757,12 +796,14 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   o
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_button_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -806,7 +847,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
                0,
                sizeof(_ogl_ui_control) );
 
+        new_ui_control_ptr->control_type                = OGL_UI_CONTROL_TYPE_CHECKBOX;
         new_ui_control_ptr->internal                    = new_internal;
+        new_ui_control_ptr->owner_ptr                   = (_ogl_ui*) ui_instance;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_checkbox_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ogl_ui_checkbox_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_checkbox_get_property;
@@ -817,12 +860,14 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_checkbox(__in           __notnull  
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_checkbox_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -871,7 +916,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
                0,
                sizeof(_ogl_ui_control) );
 
+        new_ui_control_ptr->control_type                = OGL_UI_CONTROL_TYPE_DROPDOWN;
         new_ui_control_ptr->internal                    = new_internal;
+        new_ui_control_ptr->owner_ptr                   = (_ogl_ui*) ui_instance;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_dropdown_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ogl_ui_dropdown_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_dropdown_get_property;
@@ -882,12 +929,14 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_dropdown(__in                   __n
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = ogl_ui_dropdown_on_mouse_wheel;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_dropdown_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -913,7 +962,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(__in           __notnull ogl_
                0,
                sizeof(_ogl_ui_control) );
 
+        new_ui_control_ptr->control_type                = OGL_UI_CONTROL_TYPE_FRAME;
         new_ui_control_ptr->internal                    = new_internal;
+        new_ui_control_ptr->owner_ptr                   = (_ogl_ui*) ui_instance;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_frame_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ogl_ui_frame_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_frame_get_property;
@@ -924,12 +975,14 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_frame(__in           __notnull ogl_
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_frame_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -958,7 +1011,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_
                0,
                sizeof(_ogl_ui_control) );
 
+        new_ui_control_ptr->control_type                = OGL_UI_CONTROL_TYPE_LABEL;
         new_ui_control_ptr->internal                    = new_internal;
+        new_ui_control_ptr->owner_ptr                   = (_ogl_ui*) ui_instance;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_label_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = NULL;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_label_get_property;
@@ -969,12 +1024,14 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_label_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -1025,7 +1082,9 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
                0,
                sizeof(_ogl_ui_control) );
 
+        new_ui_control_ptr->control_type                = OGL_UI_CONTROL_TYPE_SCROLLBAR;
         new_ui_control_ptr->internal                    = new_internal;
+        new_ui_control_ptr->owner_ptr                   = (_ogl_ui*) ui_instance;
         new_ui_control_ptr->pfn_deinit_func_ptr         = ogl_ui_scrollbar_deinit;
         new_ui_control_ptr->pfn_draw_func_ptr           = ogl_ui_scrollbar_draw;
         new_ui_control_ptr->pfn_get_property_func_ptr   = ogl_ui_scrollbar_get_property;
@@ -1036,12 +1095,14 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull 
         new_ui_control_ptr->pfn_on_mouse_wheel_func_ptr = NULL;
         new_ui_control_ptr->pfn_set_property_func_ptr   = ogl_ui_scrollbar_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -1076,18 +1137,22 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_texture_preview(__in __notnull     
                0,
                sizeof(_ogl_ui_control) );
 
-        new_ui_control_ptr->internal                   = new_internal;
-        new_ui_control_ptr->pfn_deinit_func_ptr        = ogl_ui_texture_preview_deinit;
-        new_ui_control_ptr->pfn_draw_func_ptr          = ogl_ui_texture_preview_draw;
-        new_ui_control_ptr->pfn_get_property_func_ptr  = ogl_ui_texture_preview_get_property;
-        new_ui_control_ptr->pfn_set_property_func_ptr  = ogl_ui_texture_preview_set_property;
+        new_ui_control_ptr->control_type              = OGL_UI_CONTROL_TYPE_TEXTURE_PREVIEW;
+        new_ui_control_ptr->internal                  = new_internal;
+        new_ui_control_ptr->owner_ptr                 = (_ogl_ui*) ui_instance;
+        new_ui_control_ptr->pfn_deinit_func_ptr       = ogl_ui_texture_preview_deinit;
+        new_ui_control_ptr->pfn_draw_func_ptr         = ogl_ui_texture_preview_draw;
+        new_ui_control_ptr->pfn_get_property_func_ptr = ogl_ui_texture_preview_get_property;
+        new_ui_control_ptr->pfn_set_property_func_ptr = ogl_ui_texture_preview_set_property;
 
-        system_critical_section_enter(ui_ptr->rendering_cs);
+        system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                     ACCESS_WRITE);
         {
             system_resizable_vector_push(ui_ptr->controls,
                                          new_ui_control_ptr);
         }
-        system_critical_section_leave(ui_ptr->rendering_cs);
+        system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                       ACCESS_WRITE);
     }
 
     return (ogl_ui_control) new_ui_control_ptr;
@@ -1151,17 +1216,37 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui
 }
 
 /** Please see header for speciication */
-PUBLIC EMERALD_API void ogl_ui_get_property(__in  __notnull ogl_ui_control           control,
-                                            __in            _ogl_ui_control_property property,
-                                            __out __notnull void*                    out_result)
+PUBLIC EMERALD_API void ogl_ui_get_control_property(__in  __notnull ogl_ui_control           control,
+                                                    __in            _ogl_ui_control_property property,
+                                                    __out __notnull void*                    out_result)
 {
     _ogl_ui_control* ui_control_ptr = (_ogl_ui_control*) control;
 
     ASSERT_DEBUG_SYNC(ui_control_ptr->pfn_get_property_func_ptr != NULL,
                       "Requested user control does not support property getters");
 
+    if (property == OGL_UI_CONTROL_PROPERTY_GENERAL_INDEX)
+    {
+        LOG_ERROR("Performance warning: OGL_UI_CONTROL_PROPERTY_GENERAL_INDEX query is not optimized.");
+
+        uint32_t result = system_resizable_vector_find(ui_control_ptr->owner_ptr->controls,
+                                                       control);
+
+        ASSERT_DEBUG_SYNC(result != ITEM_NOT_FOUND,
+                          "Requested control was not found.");
+
+        *(uint32_t*) out_result = result;
+    }
+    else
+    if (property == OGL_UI_CONTROL_PROPERTY_GENERAL_TYPE)
+    {
+        *(_ogl_ui_control_type*) out_result = ui_control_ptr->control_type;
+    }
+    else
     if (ui_control_ptr->pfn_get_property_func_ptr != NULL)
     {
+        /* OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED is handled
+         * exclusively by each control */
         ui_control_ptr->pfn_get_property_func_ptr(ui_control_ptr->internal,
                                                   property,
                                                   out_result);
@@ -1191,6 +1276,14 @@ PUBLIC ogl_program ogl_ui_get_registered_program(__in __notnull ogl_ui          
     }
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void ogl_ui_lock(__in __notnull ogl_ui                              ui,
+                                    __in           system_read_write_mutex_access_type access_type)
+{
+    system_read_write_mutex_lock( ((_ogl_ui*) ui)->controls_rw_mutex,
+                                  access_type);
 }
 
 /** Please see header for specification */
@@ -1307,10 +1400,65 @@ PUBLIC bool ogl_ui_register_program(__in __notnull ogl_ui                    ui,
     return result;
 }
 
-/** Please see header for speciication */
-PUBLIC EMERALD_API void ogl_ui_set_property(__in __notnull ogl_ui_control           control,
-                                            __in           _ogl_ui_control_property property,
-                                            __in __notnull const void*              data)
+/** Please see header for specification */
+PUBLIC EMERALD_API void ogl_ui_reposition_control(__in __notnull ogl_ui_control control,
+                                                  __in           unsigned int   new_control_index)
+{
+    _ogl_ui_control* control_ptr = (_ogl_ui_control*) control;
+    unsigned int     n_controls  = 0;
+    _ogl_ui*         ui_ptr      = control_ptr->owner_ptr;
+
+    n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+
+    if (n_controls > new_control_index)
+    {
+        LOG_ERROR("Performance warning: Code-path that could use some optimizations");
+
+        /* Locate the requested control */
+        unsigned int control_index = system_resizable_vector_find(ui_ptr->controls,
+                                                                  control);
+
+        ASSERT_DEBUG_SYNC(control_index != new_control_index,
+                          "ogl_ui_reposition_control() call will NOP");
+
+        if (control_index != new_control_index)
+        {
+            system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
+                                         ACCESS_WRITE);
+            {
+                /* Insert the control in a new location */
+                system_resizable_vector_delete_element_at(ui_ptr->controls,
+                                                          control_index);
+
+                if (new_control_index < control_index)
+                {
+                    /* Preceding controls have not had their indices changed */
+                    system_resizable_vector_insert_element_at(ui_ptr->controls,
+                                                              new_control_index,
+                                                              control);
+                }
+                else
+                {
+                    /* Subsequent controls have had their indices decremented so take
+                     * that into account */
+                    ASSERT_DEBUG_SYNC(new_control_index > 0,
+                                      "new_control_index <= 0 !");
+
+                    system_resizable_vector_insert_element_at(ui_ptr->controls,
+                                                              new_control_index - 1,
+                                                              control);
+                }
+            }
+            system_read_write_mutex_unlock(ui_ptr->controls_rw_mutex,
+                                           ACCESS_WRITE);
+        } /* if (control_index != new_control_index) */
+    }
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void ogl_ui_set_control_property(__in __notnull ogl_ui_control           control,
+                                                    __in           _ogl_ui_control_property property,
+                                                    __in __notnull const void*              data)
 {
     _ogl_ui_control* ui_control_ptr = (_ogl_ui_control*) control;
 
@@ -1323,4 +1471,12 @@ PUBLIC EMERALD_API void ogl_ui_set_property(__in __notnull ogl_ui_control       
                                                   property,
                                                   data);
     }
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void ogl_ui_unlock(__in __notnull ogl_ui                              ui,
+                                      __in           system_read_write_mutex_access_type access_type)
+{
+    system_read_write_mutex_unlock( ((_ogl_ui*) ui)->controls_rw_mutex,
+                                    access_type);
 }

@@ -133,11 +133,19 @@ PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void*              f
 
     switch (property)
     {
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
+        {
+            *(float*) out_result = frame_ptr->x1y1x2y2[3] - frame_ptr->x1y1x2y2[1];
+
+            break;
+        }
+
         case OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
         {
-            memcpy(out_result,
-                   frame_ptr->x1y1x2y2,
-                   sizeof(frame_ptr->x1y1x2y2) );
+            ((float*) out_result)[0] =        frame_ptr->x1y1x2y2[0];
+            ((float*) out_result)[1] = 1.0f - frame_ptr->x1y1x2y2[1];
+            ((float*) out_result)[2] =        frame_ptr->x1y1x2y2[2];
+            ((float*) out_result)[3] = 1.0f - frame_ptr->x1y1x2y2[3];
 
             break;
         }
@@ -168,9 +176,9 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
 
         new_frame->context     = ogl_ui_get_context(instance);
         new_frame->x1y1x2y2[0] = x1y1x2y2[0];
-        new_frame->x1y1x2y2[1] = x1y1x2y2[1];
+        new_frame->x1y1x2y2[1] = 1.0f - x1y1x2y2[1];
         new_frame->x1y1x2y2[2] = x1y1x2y2[2];
-        new_frame->x1y1x2y2[3] = x1y1x2y2[3];
+        new_frame->x1y1x2y2[3] = 1.0f - x1y1x2y2[3];
 
         ogl_context_retain(new_frame->context);
 
@@ -255,6 +263,9 @@ PUBLIC void ogl_ui_frame_set_property(__in __notnull void*                    fr
             memcpy(frame_ptr->x1y1x2y2,
                    x1y1x2y2,
                    sizeof(float) * 4);
+
+            frame_ptr->x1y1x2y2[1] = 1.0f - frame_ptr->x1y1x2y2[1];
+            frame_ptr->x1y1x2y2[3] = 1.0f - frame_ptr->x1y1x2y2[3];
 
             break;
         }

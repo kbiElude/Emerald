@@ -7,6 +7,7 @@
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
+#include "ogl/ogl_ui_bag.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_light.h"
@@ -19,6 +20,7 @@
 
 PRIVATE ogl_text       _text_renderer                       = NULL;
 PRIVATE ogl_ui         _ui                                  = NULL;
+PRIVATE ogl_ui_bag     _ui_bag                              = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown         = NULL;
 
@@ -133,8 +135,9 @@ PRIVATE void _ui_on_shadow_map_size_changed(void* unused,
 /** Please see header for spec */
 PUBLIC void ui_deinit()
 {
-    ogl_ui_release  (_ui);
-    ogl_text_release(_text_renderer);
+    ogl_ui_bag_release(_ui_bag);
+    ogl_ui_release    (_ui);
+    ogl_text_release  (_text_renderer);
 }
 
 /** Please see header for spec */
@@ -148,10 +151,9 @@ PUBLIC void ui_draw()
 /** Please see header for spec */
 PUBLIC void ui_init()
 {
-    const float  shadow_map_size_dropdown_x1y1[2]          = {0.9f, 0.1f};
-    const float  shadow_map_pl_algorithms_dropdown_x1y1[2] = {0.9f, 0.2f};
-    const float  text_default_size                         = 0.5f;
-    int          window_size[2]                            = {0};
+    const float temp_x1y1[2]      = {0.0f};
+    const float text_default_size = 0.5f;
+    int         window_size[2]    = {0};
 
     /* Initialize components required to power UI */
     system_window_get_property(_window,
@@ -179,7 +181,7 @@ PUBLIC void ui_init()
                                                        (void**) shadow_map_size_ints,
                                                        _ui_get_current_shadow_map_size_index(),
                                                        system_hashed_ansi_string_create("Shadow map size"),
-                                                       shadow_map_size_dropdown_x1y1,
+                                                       temp_x1y1,
                                                        _ui_on_shadow_map_size_changed,
                                                        NULL); /* fire_user_arg */
 
@@ -190,9 +192,24 @@ PUBLIC void ui_init()
                                                                (void**) shadow_map_pointlight_algorithm_emerald_enums,
                                                                _ui_get_current_shadow_map_pointlight_algorithm_index(),
                                                                system_hashed_ansi_string_create("Point light CM algorithm"),
-                                                               shadow_map_pl_algorithms_dropdown_x1y1,
+                                                               temp_x1y1,
                                                                _ui_on_shadow_map_pointlight_algorithm_changed,
                                                                NULL); /* fire_user_arg */
+
+    /* Add a bag which will re-adjust control positions whenever any of the dropdowns
+     * is opened */
+    const float          control_bag_x1y1[2] = {0.9f, 0.1f};
+    const ogl_ui_control ui_controls[]       =
+    {
+        _ui_shadow_map_size_dropdown,
+        _ui_shadow_map_pl_algorithm_dropdown
+    };
+    const unsigned int n_ui_controls = sizeof(ui_controls) / sizeof(ui_controls[0]);
+
+    _ui_bag = ogl_ui_bag_create(_ui,
+                                control_bag_x1y1,
+                                n_ui_controls,
+                                ui_controls);
 }
 
 

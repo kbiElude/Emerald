@@ -28,6 +28,11 @@ typedef void (*PFNOGLUISETCURRENTVALUEPROCPTR)(void*          user_arg,
 typedef enum
 {
     /* general */
+    OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED, /* not settable, float. Range: <0.0, 1.0> */
+    OGL_UI_CONTROL_PROPERTY_GENERAL_INDEX,             /* not settable, unsigned int. Tells the index of the control in the control stack */
+    OGL_UI_CONTROL_PROPERTY_GENERAL_TYPE,
+    OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED,  /* not settable, float. Range: <0.0, 1.0> */
+    OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,              /* settable, float[2]. */
 
     /* ogl_ui_button-specific */
     OGL_UI_CONTROL_PROPERTY_BUTTON_HEIGHT_SS, /* not settable, float */
@@ -71,6 +76,20 @@ typedef enum
     OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_SHOW_TEXTURE_NAME,        /* settable, bool                                              */
     OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE,                  /* settable, ogl_texture                                       */
 } _ogl_ui_control_property;
+
+typedef enum _ogl_ui_control_type
+{
+    OGL_UI_CONTROL_TYPE_BUTTON,
+    OGL_UI_CONTROL_TYPE_CHECKBOX,
+    OGL_UI_CONTROL_TYPE_DROPDOWN,
+    OGL_UI_CONTROL_TYPE_FRAME,
+    OGL_UI_CONTROL_TYPE_LABEL,
+    OGL_UI_CONTROL_TYPE_SCROLLBAR,
+    OGL_UI_CONTROL_TYPE_TEXTURE_PREVIEW,
+
+    OGL_UI_CONTROL_TYPE_UNKNOWN
+} _ogl_ui_control_type;
+
 
 /** TODO */
 PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_button(__in           __notnull   ogl_ui                    ui_instance,
@@ -133,9 +152,9 @@ PUBLIC EMERALD_API ogl_ui ogl_ui_create(__in __notnull ogl_text                 
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_get_property(__in  __notnull ogl_ui_control           control,
-                                            __in            _ogl_ui_control_property property,
-                                            __out __notnull void*                    out_result);
+PUBLIC EMERALD_API void ogl_ui_get_control_property(__in  __notnull ogl_ui_control           control,
+                                                    __in            _ogl_ui_control_property property,
+                                                    __out __notnull void*                    out_result);
 
 /** INTERNAL USAGE ONLY.
  *
@@ -149,6 +168,10 @@ PUBLIC ogl_context ogl_ui_get_context(__in __notnull ogl_ui);
  **/
 PUBLIC ogl_program ogl_ui_get_registered_program(__in __notnull ogl_ui,
                                                  __in __notnull system_hashed_ansi_string);
+
+/** TODO */
+PUBLIC EMERALD_API void ogl_ui_lock(__in __notnull ogl_ui                              ui,
+                                    __in           system_read_write_mutex_access_type access_type);
 
 /** INTERNAL USAGE ONLY.
  *
@@ -176,8 +199,16 @@ PUBLIC bool ogl_ui_register_program(__in __notnull ogl_ui,
                                     __in __notnull ogl_program);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_ui_set_property(__in __notnull ogl_ui_control           control,
-                                            __in           _ogl_ui_control_property property,
-                                            __in __notnull const void*              data);
+PUBLIC EMERALD_API void ogl_ui_reposition_control(__in __notnull ogl_ui_control control,
+                                                  __in           unsigned int   new_control_index);
+
+/** TODO */
+PUBLIC EMERALD_API void ogl_ui_set_control_property(__in __notnull ogl_ui_control           control,
+                                                    __in           _ogl_ui_control_property property,
+                                                    __in __notnull const void*              data);
+
+/** TODO */
+PUBLIC EMERALD_API void ogl_ui_unlock(__in __notnull ogl_ui                              ui,
+                                      __in           system_read_write_mutex_access_type access_type);
 
 #endif /* OGL_UI_H */

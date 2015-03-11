@@ -1286,8 +1286,41 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*            
             break;
         }
 
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
+        {
+            if (!dropdown_ptr->is_droparea_visible)
+            {
+                *(float*) out_result = dropdown_ptr->x1y1x2y2[3] - dropdown_ptr->x1y1x2y2[1];
+            }
+            else
+            {
+                *(float*) out_result = dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] +
+                                       dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1];
+            }
+
+            break;
+        }
+
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
+        {
+            *(float*) out_result = dropdown_ptr->x1y1x2y2[2] - dropdown_ptr->label_bg_x1y1x2y2[0];
+
+            break;
+        }
+
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        {
+            float* result = (float*) out_result;
+
+            result[0] = dropdown_ptr->label_bg_x1y1x2y2[0];
+            result[1] = dropdown_ptr->label_bg_x1y1x2y2[1];
+
+            break;
+        }
+
         case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2:
         {
+            /* NOTE: Update OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED handler if this changes */
             float* result = (float*) out_result;
 
             if (!dropdown_ptr->is_droparea_visible)
@@ -1797,6 +1830,7 @@ PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*                   
             break;
         }
 
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         case OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1:
         {
             __analysis_assume(sizeof(data) == sizeof(float) * 2);

@@ -129,9 +129,9 @@ PUBLIC void _render_scene(ogl_context          context,
 
             if (active_path_control != NULL)
             {
-                ogl_ui_set_property(active_path_control,
-                                    OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
-                                   &new_visibility);
+                ogl_ui_set_control_property(active_path_control,
+                                            OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
+                                           &new_visibility);
             }
         } /* if (!camera_ptr->is_flyby) */
         else
@@ -145,9 +145,9 @@ PUBLIC void _render_scene(ogl_context          context,
 
             if (active_path_control != NULL)
             {
-                ogl_ui_set_property(active_path_control,
-                                    OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
-                                   &new_visibility);
+                ogl_ui_set_control_property(active_path_control,
+                                            OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE,
+                                           &new_visibility);
             }
 
             ogl_flyby_get_property(context,
@@ -276,9 +276,9 @@ PUBLIC void _render_scene(ogl_context          context,
 
     if (ui_texture_preview != NULL)
     {
-        ogl_ui_set_property(ui_texture_preview,
-                            OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE,
-                           &light_sm);
+        ogl_ui_set_control_property(ui_texture_preview,
+                                    OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_TEXTURE,
+                                   &light_sm);
     }
 
     /* Render UI */
