@@ -623,11 +623,6 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
 
     dropdown_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 
-    /* Slider X1 & X2 */
-    const float droparea_button_start_u = dropdown_ptr->drop_x1y2x2y1[2] - float(BUTTON_WIDTH_PX) / float(window_size[0]);
-
-    dropdown_ptr->slider_x1x2[0] = droparea_button_start_u      + (BUTTON_WIDTH_PX - float(SLIDER_WIDTH_PX)) / float(window_size[0]) * 0.5f;
-    dropdown_ptr->slider_x1x2[1] = dropdown_ptr->slider_x1x2[0] + float(SLIDER_WIDTH_PX)                     / float(window_size[0]);
 }
 
 /* TODO */
@@ -923,6 +918,12 @@ PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_d
     {
         dropdown_ptr->slider_height = 1.0f;
     }
+
+    /* Update slider position */
+    const float droparea_button_start_u = dropdown_ptr->drop_x1y2x2y1[2] - float(BUTTON_WIDTH_PX) / float(window_size[0]);
+
+    dropdown_ptr->slider_x1x2[0] = droparea_button_start_u      + (BUTTON_WIDTH_PX - float(SLIDER_WIDTH_PX)) / float(window_size[0]) * 0.5f;
+    dropdown_ptr->slider_x1x2[1] = dropdown_ptr->slider_x1x2[0] + float(SLIDER_WIDTH_PX)                     / float(window_size[0]);
 
     /* We can now position the text strings */
     _ogl_ui_dropdown_update_entry_strings   (dropdown_ptr, false);
