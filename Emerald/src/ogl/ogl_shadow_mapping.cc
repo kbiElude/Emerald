@@ -82,11 +82,17 @@ typedef struct _ogl_shadow_mapping
     /* A variant of FP type */
     system_variant temp_variant_float;
 
-    /* Tells what ogl_texture is currently being used for SM rendering.
+    /* Tells what ogl_texture is currently being used as a zeroth color attachment for SM rendering.
      *
      * This only makes sense if is_enabled is true.
      */
-    ogl_texture current_sm_texture;
+    ogl_texture current_sm_color0_texture;
+
+    /* Tells what ogl_texture is currently being used as a depth attachment for SM rendering.
+     *
+     * This only makes sense if is_enabled is true.
+     */
+    ogl_texture current_sm_depth_texture;
 
     /* Tells whether ogl_shadow_mapping has been toggled on.
      *
@@ -99,21 +105,22 @@ typedef struct _ogl_shadow_mapping
 
     _ogl_shadow_mapping()
     {
-        context             = NULL;
-        current_camera      = NULL;
-        current_light       = NULL;
-        current_sm_texture  = NULL;
-        current_target_face = OGL_SHADOW_MAPPING_TARGET_FACE_UNKNOWN;
-        fbo_id              = 0;
-        is_enabled          = false;
-        meshes_to_render    = system_resizable_vector_create(16,                                     /* capacity */
-                                                             sizeof(_ogl_shadow_mapping_mesh_item*),
-                                                             false);                                 /* should_be_thread_safe */
-        mesh_item_pool      = system_resource_pool_create   (sizeof(_ogl_shadow_mapping_mesh_item),
-                                                             64 ,                                    /* n_elements_to_preallocate */
-                                                             NULL,                                   /* init_fn */
-                                                             NULL);                                  /* deinit_fn */
-        temp_variant_float  = system_variant_create         (SYSTEM_VARIANT_FLOAT);
+        context                   = NULL;
+        current_camera            = NULL;
+        current_light             = NULL;
+        current_sm_color0_texture = NULL;
+        current_sm_depth_texture  = NULL;
+        current_target_face       = OGL_SHADOW_MAPPING_TARGET_FACE_UNKNOWN;
+        fbo_id                    = 0;
+        is_enabled                = false;
+        meshes_to_render          = system_resizable_vector_create(16,                                     /* capacity */
+                                                                   sizeof(_ogl_shadow_mapping_mesh_item*),
+                                                                   false);                                 /* should_be_thread_safe */
+        mesh_item_pool            = system_resource_pool_create   (sizeof(_ogl_shadow_mapping_mesh_item),
+                                                                   64 ,                                    /* n_elements_to_preallocate */
+                                                                   NULL,                                   /* init_fn */
+                                                                   NULL);                                  /* deinit_fn */
+        temp_variant_float        = system_variant_create         (SYSTEM_VARIANT_FLOAT);
     }
 
     ~_ogl_shadow_mapping()
@@ -270,7 +277,7 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
     /* Add the shadow map texture sampler */
     _ogl_shadow_mapping_add_constructor_variable(constructor,
                                                  n_light,
-                                                 system_hashed_ansi_string_create("shadow_map"),
+                                                 system_hashed_ansi_string_create("shadow_map_depth"),
                                                  VARIABLE_TYPE_UNIFORM,
                                                  LAYOUT_QUALIFIER_NONE,
                                                  TYPE_SAMPLER2DSHADOW,
@@ -316,7 +323,7 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
             /* Add the shadow map texture sampler */
             _ogl_shadow_mapping_add_constructor_variable(constructor,
                                                          n_light,
-                                                         system_hashed_ansi_string_create("shadow_map"),
+                                                         system_hashed_ansi_string_create("shadow_map_depth"),
                                                          VARIABLE_TYPE_UNIFORM,
                                                          LAYOUT_QUALIFIER_NONE,
                                                          TYPE_SAMPLERCUBESHADOW,
@@ -361,7 +368,7 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
             /* Add the shadow map texture sampler */
             _ogl_shadow_mapping_add_constructor_variable(constructor,
                                                          n_light,
-                                                         system_hashed_ansi_string_create("shadow_map"),
+                                                         system_hashed_ansi_string_create("shadow_map_depth"),
                                                          VARIABLE_TYPE_UNIFORM,
                                                          LAYOUT_QUALIFIER_NONE,
                                                          TYPE_SAMPLER2DARRAYSHADOW,
@@ -2546,11 +2553,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
         if (!handler_ptr->is_enabled)
         {
-            bool                             light_shadow_map_cull_front_faces        = false;
-            ogl_texture_dimensionality       light_shadow_map_dimensionality          = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
-            scene_light_shadow_map_filtering light_shadow_map_filtering               = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-            GLenum                           light_shadow_map_internalformat          = GL_NONE;
-            uint32_t                         light_shadow_map_size[3]                 = {0, 0, 1};
+            scene_light_shadow_map_algorithm light_shadow_map_algorithm            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+            bool                             light_shadow_map_cull_front_faces     = false;
+            ogl_texture_dimensionality       light_shadow_map_dimensionality       = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
+            scene_light_shadow_map_filtering light_shadow_map_filtering            = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+            GLenum                           light_shadow_map_internalformat_color = GL_NONE;
+            GLenum                           light_shadow_map_internalformat_depth = GL_NONE;
+            uint32_t                         light_shadow_map_size[3]              = {0, 0, 1};
 
             /* Determine shadow map texture dimensionality */
             switch (light_type)
@@ -2586,7 +2595,14 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                 }
             } /* switch (light_type) */
 
-            /* Set up the shadow map */
+            /* Set up shadow map texture(s).
+             *
+             * For plain shadow mapping, we only use a single depth texture attachment.
+             * For VSM, we use a two-component color attachment & a depth texture attachment.
+             */
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                    &light_shadow_map_algorithm);
             scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,
                                     &light_shadow_map_cull_front_faces);
@@ -2594,8 +2610,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
                                     &light_shadow_map_filtering);
             scene_light_get_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
-                                    &light_shadow_map_internalformat);
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
+                                    &light_shadow_map_internalformat_color);
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
+                                    &light_shadow_map_internalformat_depth);
             scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_SIZE,
                                      light_shadow_map_size);
@@ -2603,26 +2622,52 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
             ASSERT_DEBUG_SYNC(light_shadow_map_size[0] > 0 &&
                               light_shadow_map_size[1] > 0,
                               "Invalid shadow map size requested for a scene_light instance.");
-            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_texture == NULL,
-                              "SM texture is already active");
+            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture == NULL &&
+                              handler_ptr->current_sm_depth_texture  == NULL,
+                              "SM texture(s) are already active");
 
-            handler_ptr->current_sm_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
-                                                                                 light_shadow_map_dimensionality,
-                                                                                 1, /* n_mipmaps */
-                                                                                 light_shadow_map_internalformat,
-                                                                                 light_shadow_map_size[0],
-                                                                                 light_shadow_map_size[1],
-                                                                                 light_shadow_map_size[2],
-                                                                                 0,      /* n_samples */
-                                                                                 false); /* fixed_samples_location */
-            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_texture != NULL,
-                             "Could not retrieve a shadow map texture from the texture pool.");
+            handler_ptr->current_sm_depth_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
+                                                                                       light_shadow_map_dimensionality,
+                                                                                       1, /* n_mipmaps */
+                                                                                       light_shadow_map_internalformat_depth,
+                                                                                       light_shadow_map_size[0],
+                                                                                       light_shadow_map_size[1],
+                                                                                       light_shadow_map_size[2],
+                                                                                       0,      /* n_samples */
+                                                                                       false); /* fixed_samples_location */
+
+            if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+            {
+                handler_ptr->current_sm_color0_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
+                                                                                            OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
+                                                                                            1, /* n_mipmaps */
+                                                                                            light_shadow_map_internalformat_color,
+                                                                                            light_shadow_map_size[0],
+                                                                                            light_shadow_map_size[1],
+                                                                                            1,      /* base_mipmap_depth */
+                                                                                            0,      /* n_samples */
+                                                                                            false); /* fixed_samples_location */
+
+                ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture != NULL,
+                                  "Could not retrieve a shadow map color texture from the texture pool.");
+            }
+
+            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != NULL,
+                             "Could not retrieve a shadow map depth texture from the texture pool.");
 
             switch (light_shadow_map_filtering)
             {
                 case SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF:
                 {
-                    dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+                    if (handler_ptr->current_sm_color0_texture != NULL)
+                    {
+                        dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_color0_texture,
+                                                                  light_shadow_map_texture_target_general,
+                                                                  GL_TEXTURE_MAG_FILTER,
+                                                                  GL_LINEAR);
+                    }
+
+                    dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                               light_shadow_map_texture_target_general,
                                                               GL_TEXTURE_MAG_FILTER,
                                                               GL_LINEAR);
@@ -2632,7 +2677,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
                 case SCENE_LIGHT_SHADOW_MAP_FILTERING_PLAIN:
                 {
-                    dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+                    if (handler_ptr->current_sm_color0_texture != NULL)
+                    {
+                        dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_color0_texture,
+                                                                  light_shadow_map_texture_target_general,
+                                                                  GL_TEXTURE_MAG_FILTER,
+                                                                  GL_NEAREST);
+                    }
+
+                    dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                               light_shadow_map_texture_target_general,
                                                               GL_TEXTURE_MAG_FILTER,
                                                               GL_NEAREST);
@@ -2649,44 +2702,91 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
             const float border_color[] = {1, 0, 0, 0};
 
-            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+            if (handler_ptr->current_sm_color0_texture != NULL)
+            {
+                dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_color0_texture,
+                                                          light_shadow_map_texture_target_general,
+                                                          GL_TEXTURE_MIN_FILTER,
+                                                          GL_LINEAR);
+            }
+            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_MIN_FILTER,
                                                       GL_LINEAR);
-            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+
+            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_COMPARE_FUNC,
                                                       GL_LESS);
-            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_COMPARE_MODE,
                                                       GL_COMPARE_REF_TO_TEXTURE);
-            dsa_entry_points->pGLTextureParameterfvEXT(handler_ptr->current_sm_texture,
+
+            if (handler_ptr->current_sm_color0_texture != NULL)
+            {
+                dsa_entry_points->pGLTextureParameterfvEXT(handler_ptr->current_sm_color0_texture,
+                                                           light_shadow_map_texture_target_general,
+                                                           GL_TEXTURE_BORDER_COLOR,
+                                                           border_color);
+            }
+            dsa_entry_points->pGLTextureParameterfvEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_BORDER_COLOR,
                                                       border_color);
-            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+
+            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_WRAP_R,
                                                       GL_CLAMP_TO_BORDER);
-            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
-                                                      light_shadow_map_texture_target_general,
-                                                      GL_TEXTURE_WRAP_S,
-                                                      GL_CLAMP_TO_BORDER);
-            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_texture,
+
+            if (handler_ptr->current_sm_color0_texture != NULL)
+            {
+                dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_color0_texture,
+                                                          light_shadow_map_texture_target_general,
+                                                          GL_TEXTURE_WRAP_S,
+                                                          GL_CLAMP_TO_BORDER);
+            }
+            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
+                                                       light_shadow_map_texture_target_general,
+                                                       GL_TEXTURE_WRAP_S,
+                                                       GL_CLAMP_TO_BORDER);
+
+            if (handler_ptr->current_sm_color0_texture != NULL)
+            {
+                dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_color0_texture,
+                                                          light_shadow_map_texture_target_general,
+                                                          GL_TEXTURE_WRAP_T,
+                                                          GL_CLAMP_TO_BORDER);
+            }
+            dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
                                                       GL_TEXTURE_WRAP_T,
                                                       GL_CLAMP_TO_BORDER);
 
             scene_light_set_property(light,
-                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
-                                    &handler_ptr->current_sm_texture);
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
+                                    &handler_ptr->current_sm_color0_texture);
+            scene_light_set_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH,
+                                    &handler_ptr->current_sm_depth_texture);
 
             /* Set up color & depth masks */
-            entry_points->pGLColorMask(GL_FALSE,
-                                       GL_FALSE,
-                                       GL_FALSE,
-                                       GL_FALSE);
+            if (handler_ptr->current_sm_color0_texture == NULL)
+            {
+                entry_points->pGLColorMask(GL_FALSE,
+                                           GL_FALSE,
+                                           GL_FALSE,
+                                           GL_FALSE);
+            }
+            else
+            {
+                entry_points->pGLColorMask(GL_TRUE,
+                                           GL_TRUE,
+                                           GL_TRUE,
+                                           GL_TRUE);
+            }
+
             entry_points->pGLDepthMask(GL_TRUE);
 
             /* render back-facing faces only: THIS WON'T WORK FOR NON-CONVEX GEOMETRY */
@@ -2713,20 +2813,26 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         } /* if (!handler_ptr->is_enabled) */
         else
         {
-            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_texture != NULL,
-                              "ogl_shadow_mapping is enabled but no SM texture is associated with the instance");
+            ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != NULL,
+                              "ogl_shadow_mapping is enabled but no depth SM texture is associated with the instance");
         }
 
         /* Set up the draw FBO */
-        entry_points->pGLBindFramebuffer     (GL_DRAW_FRAMEBUFFER,
-                                              handler_ptr->fbo_id);
+        entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                         handler_ptr->fbo_id);
+
+        entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
+                                              GL_COLOR_ATTACHMENT0,
+                                              GL_TEXTURE_2D,
+                                              handler_ptr->current_sm_color0_texture,
+                                              0); /* level */
 
         if (light_shadow_map_texture_target_detailed != OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY)
         {
             entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                                   GL_DEPTH_ATTACHMENT,
                                                   light_shadow_map_texture_target_detailed,
-                                                  handler_ptr->current_sm_texture,
+                                                  handler_ptr->current_sm_depth_texture,
                                                   0); /* level */
         }
         else
@@ -2758,12 +2864,21 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
             entry_points->pGLFramebufferTextureLayer(GL_DRAW_FRAMEBUFFER,
                                                      GL_DEPTH_ATTACHMENT,
-                                                     handler_ptr->current_sm_texture,
+                                                     handler_ptr->current_sm_depth_texture,
                                                      0, /* level */
                                                      slice_index);
         }
 
         /* Clear the depth buffer */
+        int clear_bits = GL_DEPTH_BUFFER_BIT;
+
+        if (handler_ptr->current_sm_color0_texture != NULL)
+        {
+            clear_bits |= GL_COLOR_BUFFER_BIT;
+
+            entry_points->pGLClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+
         entry_points->pGLClearDepth(1.0);
         entry_points->pGLClear     (GL_DEPTH_BUFFER_BIT);
     } /* if (should_enable) */
@@ -2800,10 +2915,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                          0);
 
         /* "Unbind" the SM texture from the ogl_shadow_mapping instance */
-        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_texture != NULL,
+        ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != NULL,
                           "ogl_shadow_mapping_toggle() called to disable SM rendering without an active SM");
 
-        handler_ptr->current_sm_texture = NULL;
+        handler_ptr->current_sm_color0_texture = NULL;
+        handler_ptr->current_sm_depth_texture  = NULL;
     }
 
     handler_ptr->is_enabled = should_enable;

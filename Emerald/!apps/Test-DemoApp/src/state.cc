@@ -324,7 +324,7 @@ PUBLIC void state_init()
             if (!has_updated_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
                                         &_shadow_map_internalformat);
 
                 has_updated_sm_internalformat = true;
@@ -391,7 +391,7 @@ PUBLIC void state_set_shadow_map_internalformat(__in ogl_texture_internalformat 
             if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_set_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
                                         &new_internalformat);
             } /* if (current light is not an ambient light) */
         } /* for (all scene lights) */

@@ -42,14 +42,16 @@ typedef struct
     scene_light_shadow_map_bias                 shadow_map_bias;                  /* NOTE: This property affects the generated ogl_uber! */
     bool                                        shadow_map_cull_front_faces;
     scene_light_shadow_map_filtering            shadow_map_filtering;             /* NOTE: This property affects the generated ogl_uber! */
-    ogl_texture_internalformat                  shadow_map_internalformat;
+    ogl_texture_internalformat                  shadow_map_internalformat_color;
+    ogl_texture_internalformat                  shadow_map_internalformat_depth;
     scene_light_shadow_map_pointlight_algorithm shadow_map_pointlight_algorithm;  /* NOTE: This property affects the generated ogl_uber! */
     float                                       shadow_map_pointlight_far_plane;
     float                                       shadow_map_pointlight_near_plane;
     system_matrix4x4                            shadow_map_projection;
     float                                       shadow_map_spotlight_near_plane;
     unsigned int                                shadow_map_size[2];
-    ogl_texture                                 shadow_map_texture;
+    ogl_texture                                 shadow_map_texture_color;
+    ogl_texture                                 shadow_map_texture_depth;
     system_matrix4x4                            shadow_map_view;
     system_matrix4x4                            shadow_map_vp;
     scene_light_type                            type;
@@ -291,7 +293,8 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
                                                    light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
-    light_ptr->shadow_map_internalformat        = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
+    light_ptr->shadow_map_internalformat_color  = OGL_TEXTURE_INTERNALFORMAT_GL_RG16F;
+    light_ptr->shadow_map_internalformat_depth  = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
     light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
     light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
@@ -299,7 +302,8 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_spotlight_near_plane  = 0.1f;
     light_ptr->shadow_map_size[0]               = DEFAULT_SHADOW_MAP_SIZE;
     light_ptr->shadow_map_size[1]               = DEFAULT_SHADOW_MAP_SIZE;
-    light_ptr->shadow_map_texture               = NULL;
+    light_ptr->shadow_map_texture_color         = NULL;
+    light_ptr->shadow_map_texture_depth         = NULL;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
 
@@ -799,9 +803,16 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR:
         {
-            *(ogl_texture_internalformat*) out_result = light_ptr->shadow_map_internalformat;
+            *(ogl_texture_internalformat*) out_result = light_ptr->shadow_map_internalformat_color;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH:
+        {
+            *(ogl_texture_internalformat*) out_result = light_ptr->shadow_map_internalformat_depth;
 
             break;
         }
@@ -850,9 +861,16 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR:
         {
-            *(ogl_texture*) out_result = light_ptr->shadow_map_texture;
+            *(ogl_texture*) out_result = light_ptr->shadow_map_texture_color;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH:
+        {
+            *(ogl_texture*) out_result = light_ptr->shadow_map_texture_depth;
 
             break;
         }
@@ -1628,9 +1646,16 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR:
         {
-            light_ptr->shadow_map_internalformat = *(ogl_texture_internalformat*) data;
+            light_ptr->shadow_map_internalformat_color = *(ogl_texture_internalformat*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH:
+        {
+            light_ptr->shadow_map_internalformat_depth = *(ogl_texture_internalformat*) data;
 
             break;
         }
@@ -1679,12 +1704,22 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
-        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE:
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR:
         {
             /* NOTE: ogl_texture is considered a state by scene_light. It's not used
              *       by scene_light in any way, so its reference counter is left intact.
              */
-            light_ptr->shadow_map_texture = *(ogl_texture*) data;
+            light_ptr->shadow_map_texture_color = *(ogl_texture*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH:
+        {
+            /* NOTE: ogl_texture is considered a state by scene_light. It's not used
+             *       by scene_light in any way, so its reference counter is left intact.
+             */
+            light_ptr->shadow_map_texture_depth = *(ogl_texture*) data;
 
             break;
         }

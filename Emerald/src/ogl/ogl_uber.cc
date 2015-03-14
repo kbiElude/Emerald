@@ -90,8 +90,10 @@ typedef struct _ogl_uber_fragment_shader_item
     bool             current_light_range_dirty;
     GLint            current_light_range_ub_offset;
 
-    ogl_texture current_light_shadow_map_texture;
-    GLuint      current_light_shadow_map_texture_sampler_location;
+    ogl_texture current_light_shadow_map_texture_color;
+    GLuint      current_light_shadow_map_texture_color_sampler_location;
+    ogl_texture current_light_shadow_map_texture_depth;
+    GLuint      current_light_shadow_map_texture_depth_sampler_location;
 
     float current_light_view[16];
     bool  current_light_view_dirty;
@@ -99,22 +101,24 @@ typedef struct _ogl_uber_fragment_shader_item
 
     _ogl_uber_fragment_shader_item()
     {
-        ambient_color_ub_offset                           = -1;
-        current_light_attenuations_ub_offset              = -1;
-        current_light_camera_eye_to_light_eye_ub_offset   = -1;
-        current_light_cone_angle_ub_offset                = -1;
-        current_light_diffuse_ub_offset                   = -1;
-        current_light_direction_ub_offset                 = -1;
-        current_light_edge_angle_ub_offset                = -1;
-        current_light_far_near_diff_ub_offset             = -1;
-        current_light_location_ub_offset                  = -1;
-        current_light_near_plane_ub_offset                = -1;
-        current_light_projection_ub_offset                = -1;
-        current_light_range_ub_offset                     = -1;
-        current_light_shadow_map_texture_sampler_location = -1;
-        current_light_view_ub_offset                      = -1;
+        ambient_color_ub_offset                                 = -1;
+        current_light_attenuations_ub_offset                    = -1;
+        current_light_camera_eye_to_light_eye_ub_offset         = -1;
+        current_light_cone_angle_ub_offset                      = -1;
+        current_light_diffuse_ub_offset                         = -1;
+        current_light_direction_ub_offset                       = -1;
+        current_light_edge_angle_ub_offset                      = -1;
+        current_light_far_near_diff_ub_offset                   = -1;
+        current_light_location_ub_offset                        = -1;
+        current_light_near_plane_ub_offset                      = -1;
+        current_light_projection_ub_offset                      = -1;
+        current_light_range_ub_offset                           = -1;
+        current_light_shadow_map_texture_color_sampler_location = -1;
+        current_light_shadow_map_texture_depth_sampler_location = -1;
+        current_light_view_ub_offset                            = -1;
 
-        current_light_shadow_map_texture = NULL;
+        current_light_shadow_map_texture_color = NULL;
+        current_light_shadow_map_texture_depth = NULL;
 
         ambient_color_dirty                         = true;
         current_light_attenuations_dirty            = true;
@@ -1765,8 +1769,10 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_projection_uniform_ptr = NULL;
                 std::stringstream                     light_range_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_range_uniform_ptr = NULL;
-                std::stringstream                     light_shadow_map_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_shadow_map_uniform_ptr = NULL;
+                std::stringstream                     light_shadow_map_color_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_shadow_map_color_uniform_ptr = NULL;
+                std::stringstream                     light_shadow_map_depth_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_shadow_map_depth_uniform_ptr = NULL;
                 std::stringstream                     light_view_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_view_uniform_ptr = NULL;
 
@@ -1803,9 +1809,14 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 light_range_uniform_name_sstream                   << "light"
                                                                    << n_item
                                                                    << "_range";
-                light_shadow_map_uniform_name_sstream              << "light"
+                light_shadow_map_color_uniform_name_sstream        << "light"
                                                                    << n_item
-                                                                   << "_shadow_map";
+                                                                   << "_shadow_map_"
+                                                                   << "color";
+                light_shadow_map_depth_uniform_name_sstream        << "light"
+                                                                   << n_item
+                                                                   << "_shadow_map_"
+                                                                   << "depth";
                 light_view_uniform_name_sstream                    << "light"
                                                                    << n_item
                                                                    << "_view";
@@ -1847,8 +1858,11 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                                                 system_hashed_ansi_string_create(light_range_uniform_name_sstream.str().c_str()  ),
                                                &light_range_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
-                                                system_hashed_ansi_string_create(light_shadow_map_uniform_name_sstream.str().c_str() ),
-                                               &light_shadow_map_uniform_ptr);
+                                                system_hashed_ansi_string_create(light_shadow_map_color_uniform_name_sstream.str().c_str() ),
+                                               &light_shadow_map_color_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_shadow_map_depth_uniform_name_sstream.str().c_str() ),
+                                               &light_shadow_map_depth_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_view_uniform_name_sstream.str().c_str() ),
                                                &light_view_uniform_ptr);
@@ -1913,9 +1927,14 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                     item_ptr->fragment_shader_item.current_light_range_ub_offset = light_range_uniform_ptr->ub_offset;
                 }
 
-                if (light_shadow_map_uniform_ptr != NULL)
+                if (light_shadow_map_color_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location = light_shadow_map_uniform_ptr->location;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location = light_shadow_map_color_uniform_ptr->location;
+                }
+
+                if (light_shadow_map_depth_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth_sampler_location = light_shadow_map_depth_uniform_ptr->location;
                 }
 
                 if (light_view_uniform_ptr != NULL)
@@ -2618,16 +2637,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_range_dirty = false;
                     }
 
-                    if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location != -1)
+                    if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location != -1)
                     {
                         /* Bind the shadow map */
                         GLuint n_texture_unit            = uber_ptr->n_texture_units_assigned++;
                         GLenum shadow_map_texture_target = GL_NONE;
 
-                        ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture != NULL,
-                                          "No shadow map assigned to a light which casts shadows");
+                        ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color != NULL,
+                                          "No color shadow map assigned to a light which casts shadows");
 
-                        ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture,
+                        ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_color,
                                                  OGL_TEXTURE_PROPERTY_TARGET,
                                                  &shadow_map_texture_target);
 
@@ -2635,9 +2654,32 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                                                  0);            /* TODO: use a sampler instead of SM texture state! */
                         dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
                                                                  shadow_map_texture_target,
-                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture);
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_color);
                         entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
-                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_sampler_location,
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location,
+                                                                 n_texture_unit);
+                    }
+
+                    if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth_sampler_location != -1)
+                    {
+                        /* Bind the shadow map */
+                        GLuint n_texture_unit            = uber_ptr->n_texture_units_assigned++;
+                        GLenum shadow_map_texture_target = GL_NONE;
+
+                        ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth != NULL,
+                                          "No depth shadow map assigned to a light which casts shadows");
+
+                        ogl_texture_get_property(item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth,
+                                                 OGL_TEXTURE_PROPERTY_TARGET,
+                                                 &shadow_map_texture_target);
+
+                        entry_points->pGLBindSampler            (n_texture_unit,
+                                                                 0);            /* TODO: use a sampler instead of SM texture state! */
+                        dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0 + n_texture_unit,
+                                                                 shadow_map_texture_target,
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth);
+                        entry_points->pGLProgramUniform1i       (ogl_program_get_id(uber_ptr->program),
+                                                                 item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth_sampler_location,
                                                                  n_texture_unit);
                     }
 
@@ -2974,7 +3016,8 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX:
-        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
@@ -3175,9 +3218,16 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                         break;
                     }
 
-                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP:
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR:
                     {
-                        item_ptr->fragment_shader_item.current_light_shadow_map_texture = *(ogl_texture*) data;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture_color = *(ogl_texture*) data;
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
+                    {
+                        item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth = *(ogl_texture*) data;
 
                         break;
                     }

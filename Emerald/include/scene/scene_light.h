@@ -112,8 +112,18 @@ typedef enum scene_light_property
     /* Settable, scene_light_shadow_map_filtering. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
 
-    /* Settable, ogl_texture_internalformat */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT,
+    /* Settable, ogl_texture_internalformat.
+     *
+     * Stores internalformat of draw buffers used during SM generation pass.
+     * Such texture is currently only generated for VSM SM algorithm.
+     */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
+
+    /* Settable, ogl_texture_internalformat.
+     *
+     * Stores internalformat of the depth texture used during SM generation pass.
+     */
+     SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
 
     /* Not settable, system_matrix4x4.
      *
@@ -129,7 +139,8 @@ typedef enum scene_light_property
      * and are returned as soon as the SM-enabled rendering process finishes.
      *
      */
-    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE,
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH,
 
     /* Not settable, system_matrix4x4.
      *
