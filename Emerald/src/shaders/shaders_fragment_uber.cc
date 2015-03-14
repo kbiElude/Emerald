@@ -69,7 +69,9 @@ typedef struct
 } _shaders_fragment_uber;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_uber, shaders_fragment_uber, _shaders_fragment_uber);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_uber,
+                               shaders_fragment_uber,
+                              _shaders_fragment_uber);
 
 
 /* Internal variables */
@@ -660,7 +662,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     /* Spawn an attribute item descriptor */
     _shaders_fragment_uber_item* new_item_ptr = new (std::nothrow) _shaders_fragment_uber_item;
 
-    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+                       "Out of memory");
 
     new_item_ptr->data = (void*) attribute_type;
     new_item_ptr->type = SHADERS_FRAGMENT_UBER_ITEM_INPUT_ATTRIBUTE;
@@ -716,12 +719,24 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
 
     switch (fs_attribute_type)
     {
-        case TYPE_VEC2: body_sstream << fs_attribute_name_sstream.str().c_str() << ", 0, 0);\n"; break;
-        case TYPE_VEC3: body_sstream << fs_attribute_name_sstream.str().c_str() << ", 0);\n";    break;
+        case TYPE_VEC2:
+        {
+            body_sstream << fs_attribute_name_sstream.str().c_str() << ", 0, 0);\n";
+
+            break;
+        }
+
+        case TYPE_VEC3:
+        {
+            body_sstream << fs_attribute_name_sstream.str().c_str() << ", 0);\n";
+
+            break;
+        }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized fs attribute type");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized fs attribute type");
         }
     }
 
@@ -739,7 +754,9 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
         callback_data.fs_attribute_type = fs_attribute_type;
         callback_data.vs_attribute_name = vs_attribute_name_has;
 
-        pCallbackProc(SHADERS_FRAGMENT_UBER_PARENT_CALLBACK_NEW_FRAGMENT_INPUT, &callback_data, user_arg);
+        pCallbackProc(SHADERS_FRAGMENT_UBER_PARENT_CALLBACK_NEW_FRAGMENT_INPUT,
+                     &callback_data,
+                      user_arg);
     }
     else
     {
@@ -747,7 +764,8 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
     }
 
     /* Add the descriptor to added items vector */
-    system_resizable_vector_push(uber_ptr->added_items, new_item_ptr);
+    system_resizable_vector_push(uber_ptr->added_items,
+                                 new_item_ptr);
 
     uber_ptr->dirty = true;
 
@@ -1290,7 +1308,9 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                " fragment uber"));
 
-    ASSERT_DEBUG_SYNC(shader_constructor != NULL, "Could not create a shader constructor");
+    ASSERT_DEBUG_SYNC(shader_constructor != NULL,
+                      "Could not create a shader constructor");
+
     if (shader_constructor == NULL)
     {
         LOG_ERROR("Could not create a shader constructor");
@@ -1374,8 +1394,9 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
     if (!ogl_shader_set_body(embedded_shader,
                              ogl_shader_constructor_get_shader_body(shader_constructor) ))
     {
-        LOG_ERROR("Could not set body of uber shader.");
-        ASSERT_DEBUG_SYNC(false, "");
+        LOG_ERROR        ("Could not set body of uber shader.");
+        ASSERT_DEBUG_SYNC(false,
+                          "");
 
         goto end;
     }
@@ -1383,7 +1404,9 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_uber;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_uber object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_uber object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating uber object instance.");
@@ -1391,13 +1414,15 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
         goto end;
     }
 
-    result_object->added_items                   = system_resizable_vector_create(4 /* capacity */, sizeof(_shaders_fragment_uber_item*) );
+    result_object->added_items                   = system_resizable_vector_create(4 /* capacity */,
+                                                                                  sizeof(_shaders_fragment_uber_item*) );
     result_object->dirty                         = true;
     result_object->fragment_shader_properties_ub = fragment_shader_properties_ub;
     result_object->shader                        = embedded_shader;
     result_object->shader_constructor            = shader_constructor;
 
-    ASSERT_ALWAYS_SYNC(result_object->added_items != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(result_object->added_items != NULL,
+                       "Out of memory");
 
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_fragment_uber_release,
@@ -1466,9 +1491,12 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(__in __notnull shade
     _shaders_fragment_uber*      uber_ptr = (_shaders_fragment_uber*) uber;
     bool                         result   = false;
 
-    if (!system_resizable_vector_get_element_at(uber_ptr->added_items, item_id, &item_ptr) )
+    if (!system_resizable_vector_get_element_at(uber_ptr->added_items,
+                                                item_id,
+                                               &item_ptr) )
     {
-        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]", item_id);
+        LOG_ERROR("Could not retrieve uber vertex shader item type at index [%d]",
+                  item_id);
 
         goto end;
     }
@@ -1544,14 +1572,17 @@ PUBLIC EMERALD_API void shaders_fragment_uber_recompile(__in __notnull shaders_f
     _shaders_fragment_uber* uber_ptr = (_shaders_fragment_uber*) uber;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(uber_ptr->dirty, "shaders_fragment_uber_recompile() failed for non-dirty object");
+    ASSERT_DEBUG_SYNC(uber_ptr->dirty,
+                      "shaders_fragment_uber_recompile() failed for non-dirty object");
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = ogl_shader_constructor_get_shader_body(uber_ptr->shader_constructor);
     bool                      result      = ogl_shader_set_body                   (uber_ptr->shader,
                                                                                    shader_body);
 
-    ASSERT_DEBUG_SYNC(result, "ogl_shader_set_body() failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "ogl_shader_set_body() failed");
+
     if (!result)
     {
         LOG_ERROR("Could not set uber fragment shader body.");

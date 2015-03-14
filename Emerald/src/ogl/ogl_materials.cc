@@ -724,7 +724,8 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
         /* TODO: Expand to support other light types */
         ASSERT_DEBUG_SYNC(current_light_type == SCENE_LIGHT_TYPE_AMBIENT     ||
                           current_light_type == SCENE_LIGHT_TYPE_DIRECTIONAL ||
-                          current_light_type == SCENE_LIGHT_TYPE_POINT,
+                          current_light_type == SCENE_LIGHT_TYPE_POINT       ||
+                          current_light_type == SCENE_LIGHT_TYPE_SPOT,
                           "TODO: Unsupported light type, expand.");
 
         ASSERT_DEBUG_SYNC(current_uber_item_light_type == SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT             ||
@@ -740,7 +741,8 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
                                                                    current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL)  ||
             current_light_type == SCENE_LIGHT_TYPE_POINT       && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT       &&
                                                                    current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT         &&
-                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT) )
+                                                                   current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT)         ||
+            current_light_type == SCENE_LIGHT_TYPE_SPOT        && (current_uber_item_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT) )
         {
             /* Nope */
             result = false;
@@ -968,7 +970,7 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull me
                     name_sstream << "Shadow caster: "
                                     "algorithm:["
                                  << system_hashed_ansi_string_get_buffer(shadow_map_algorithm_has)
-                                 << "bias:["
+                                 << "] bias:["
                                  << system_hashed_ansi_string_get_buffer(shadow_map_bias_has)
                                  << "] filtering:["
                                  << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
@@ -1061,7 +1063,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "\n"
                                                               "void main()\n"
                                                               "{\n"
-                                                              "    float normalized_depth = out_vs_depth * 0.5f + 0.5f;\n"
+                                                              "    float normalized_depth = clamp(out_vs_depth * 0.5 + 0.5, 0.0, 1.0);\n"
                                                               "\n"
                                                               "    result = vec2(normalized_depth,\n"
                                                               "                  normalized_depth * normalized_depth);\n"
@@ -1070,7 +1072,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "\n"
                                                               "uniform VertexShaderProperties\n"
                                                               "{\n"
-                                                              "    mat4 vp;\n"
+                                                              "    layout(row_major) mat4 vp;\n"
                                                               "};\n"
                                                               "\n"
                                                               "uniform mat4  model;\n"
@@ -1080,7 +1082,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "void main()\n"
                                                               "{\n"
                                                               "    gl_Position  = vp * model * vec4(object_vertex, 1.0);\n"
-                                                              "    out_vs_depth = gl_Position;\n"
+                                                              "    out_vs_depth = gl_Position.z / gl_Position.w;\n"
                                                               "}\n";
 
     mesh_material special_material_depth_clip_and_squared_depth_clip = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),

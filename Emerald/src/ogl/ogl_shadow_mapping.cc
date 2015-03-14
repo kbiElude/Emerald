@@ -274,15 +274,53 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
                                                  0, /* ub_id */
                                                  out_light_shadow_coord_var_name_has);
 
-    /* Add the shadow map texture sampler */
-    _ogl_shadow_mapping_add_constructor_variable(constructor,
-                                                 n_light,
-                                                 system_hashed_ansi_string_create("shadow_map_depth"),
-                                                 VARIABLE_TYPE_UNIFORM,
-                                                 LAYOUT_QUALIFIER_NONE,
-                                                 TYPE_SAMPLER2DSHADOW,
-                                                 0, /* ub_id */
-                                                 out_shadow_map_sampler_var_name_has);
+    /* Add the shadow map texture sampler.
+     *
+     * For plain shadow mapping, we go with a shadow texture.
+     * For VSM, which uses a 2-channel color texture to hold the depth data, we use a regular 2D sampler.
+     */
+    scene_light_shadow_map_algorithm sm_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+
+    scene_light_get_property(light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                            &sm_algorithm);
+
+    switch (sm_algorithm)
+    {
+        case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN:
+        {
+            _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                         n_light,
+                                                         system_hashed_ansi_string_create("shadow_map_depth"),
+                                                         VARIABLE_TYPE_UNIFORM,
+                                                         LAYOUT_QUALIFIER_NONE,
+                                                         TYPE_SAMPLER2DSHADOW,
+                                                         0, /* ub_id */
+                                                         out_shadow_map_sampler_var_name_has);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM:
+        {
+            _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                         n_light,
+                                                         system_hashed_ansi_string_create("shadow_map_color"),
+                                                         VARIABLE_TYPE_UNIFORM,
+                                                         LAYOUT_QUALIFIER_NONE,
+                                                         TYPE_SAMPLER2D,
+                                                         0, /* ub_id */
+                                                         out_shadow_map_sampler_var_name_has);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_shadow_map_algorithm value.");
+        }
+    } /* switch (sm_algorithm) */
 }
 
 /** TODO */
@@ -928,10 +966,6 @@ PRIVATE void _ogl_shadow_mapping_init_renderer_callback(__in __notnull ogl_conte
 
     /* Set up the FBO state */
     entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                     shadow_mapping_ptr->fbo_id);
-    entry_points->pGLDrawBuffer     (GL_NONE);
-
-    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
                                      0);
 }
 
@@ -1025,10 +1059,14 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                          __in            system_hashed_ansi_string  light_vector_non_norm_var_name,
                                                          __out __notnull system_hashed_ansi_string* out_visibility_var_name)
 {
+    scene_light_shadow_map_algorithm            light_sm_algorithm;
     scene_light_shadow_map_pointlight_algorithm light_sm_pointlight_algorithm;
     scene_light_shadow_map_bias                 light_sm_bias;
     scene_light_type                            light_type;
 
+    scene_light_get_property(light_instance,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                            &light_sm_algorithm);
     scene_light_get_property(light_instance,
                              SCENE_LIGHT_PROPERTY_TYPE,
                             &light_type);
@@ -1219,31 +1257,141 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                           &light_bias_var_name_has);
 
     /* Add the light-specific visibility calculations */
+    std::stringstream light_ref_var_name_sstream;
+    std::stringstream light_visibility_helper_var_name_sstream;
     std::stringstream light_visibility_var_name_sstream;
-    bool              uses_texturelod                   = false; /* takes a LOD argument */
-    bool              uses_textureprojlod               = false; /* P takes an additional divisor component */
 
-    light_visibility_var_name_sstream << "light_"
-                                      << n_light
-                                      << "_visibility";
+    light_ref_var_name_sstream               << "light_"
+                                             << n_light
+                                             << "_ref";
+    light_visibility_helper_var_name_sstream << "light_"
+                                             << n_light
+                                             << "_visibility_helper";
+    light_visibility_var_name_sstream        << "light_"
+                                             << n_light
+                                             << "_visibility";
 
+    /* Reference comparison value */
     code_snippet_sstream << "float "
-                             << light_visibility_var_name_sstream.str()
-                             << " = 0.1 + 0.9 * ";
+                         << light_ref_var_name_sstream.str()
+                         << " = ";
 
     if (is_directional_light)
     {
-        code_snippet_sstream << "textureLod("
-                             << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
-                             << ", vec3("
-                             << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
-                             << ".xy, "
-                             << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
+        code_snippet_sstream << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
                              << ".z - "
-                             << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
+                             << system_hashed_ansi_string_get_buffer(light_bias_var_name_has)
+                             << ";\n";
+    } /* if (is_directional_light) */
+    else
+    if (is_point_light)
+    {
+        scene_light_shadow_map_pointlight_algorithm sm_algorithm;
 
-        uses_texturelod = true;
+        scene_light_get_property(light_instance,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                &sm_algorithm);
+
+        switch (sm_algorithm)
+        {
+            case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL:
+            {
+                code_snippet_sstream << light_vertex_depth_window_var_name_sstream.str()
+                                     << " - "
+                                     << system_hashed_ansi_string_get_buffer(light_bias_var_name_has)
+                                     << ";\n";
+
+                break;
+            }
+
+            case SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID:
+            {
+                /* Fragment depth, as seen in light space */
+                code_snippet_sstream << light_vertex_depth_var_name_sstream.str()
+                                     << " - "
+                                     /* Bias */
+                                     << system_hashed_ansi_string_get_buffer(light_bias_var_name_has)
+                                     << ";\n";
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized SM point light algorithm");
+            }
+        } /* switch (sm_algorithm) */
+    } /* if (is_point_light) */
+    else
+    {
+        code_snippet_sstream << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
+                             << ".z "
+                             << " - "
+                             << system_hashed_ansi_string_get_buffer(light_bias_var_name_has)
+                             << ";\n";
     }
+
+    /* Helpers for light visibility calculations */
+    if (is_directional_light && light_sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+    {
+        /* We're using a 2D texture sampler in this case, so need to do the comparison "by hand" */
+        code_snippet_sstream << "float "
+                             << light_visibility_helper_var_name_sstream.str()
+                             << " = textureLod("
+                             << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
+                             << ", "
+                             << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
+                             << ".xy, 0.0).x;\n"
+                             << "\n"
+                                "if ("
+                             << light_visibility_helper_var_name_sstream.str()
+                             << " < "
+                             << light_ref_var_name_sstream.str()
+                             << ") "
+                             << light_visibility_helper_var_name_sstream.str()
+                             << " = 0.0;else "
+                             << light_visibility_helper_var_name_sstream.str()
+                             << " = 1.0;\n";
+    }
+
+    /* Light visibility value */
+    code_snippet_sstream << "float "
+                         << light_visibility_var_name_sstream.str()
+                         << " = 0.1 + 0.9 * ";
+
+    if (is_directional_light)
+    {
+        switch (light_sm_algorithm)
+        {
+            case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN:
+            {
+                /* We're using a shadow sampler in this case */
+                code_snippet_sstream << "textureLod("
+                                     << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
+                                     << ", vec3("
+                                     << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
+                                     << ".xy, "
+                                     << light_ref_var_name_sstream.str()
+                                     << "), 0.0);\n";
+
+                break;
+            }
+
+            case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM:
+            {
+                code_snippet_sstream << light_visibility_helper_var_name_sstream.str() << ";\n";
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized scene_light_shadow_map_algorithm value.");
+            }
+        } /* switch (light_sm_algorithm) */
+    } /* if (is_directional_light) */
     else
     {
         /* All other light use shadow maps constructed with perspective projection matrices */
@@ -1264,9 +1412,8 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                          << ", vec4("
                                          << "normalize(" << light_vertex_var_name_sstream.str() << ".xyz)"
                                          << ", "
-                                         << light_vertex_depth_window_var_name_sstream.str()
-                                         << " - "
-                                         << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
+                                         << light_ref_var_name_sstream.str()
+                                         << ") );\n";
 
                     break;
                 }
@@ -1283,11 +1430,9 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                          /* Which face should we sample from? */
                                          << "("
                                          << light_vertex_var_name_sstream.str() << ".z >= 0.0) ? 0.0 : 1.0, "
-                                         /* Fragment depth, as seen in light space */
-                                         << light_vertex_depth_var_name_sstream.str()
-                                         << " - "
-                                         /* Bias */
-                                         << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
+                                         /* Reference value */
+                                         << light_ref_var_name_sstream.str()
+                                         << ") );\n";
 
                     break;
                 }
@@ -1306,31 +1451,13 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                  << ", vec4("
                                  << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
                                  << ".xy, "
+                                 << light_ref_var_name_sstream.str()
+                                 << ", "
                                  << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
-                                 << ".z "
-                                 << " - "
-                                 << system_hashed_ansi_string_get_buffer(light_bias_var_name_has);
-
-            uses_texturelod     = true;
-            uses_textureprojlod = true;
+                                 << ".w"
+                                 << "), 0.0);\n";
         }
     }
-
-    if (uses_textureprojlod)
-    {
-        code_snippet_sstream << ", "
-                             << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
-                             << ".w";
-    }
-
-    code_snippet_sstream << ")";
-
-    if (uses_texturelod)
-    {
-        code_snippet_sstream << ", 0.0";
-    }
-
-    code_snippet_sstream << ");\n";
 
     code_snippet_has = system_hashed_ansi_string_create(code_snippet_sstream.str().c_str());
 
@@ -2821,6 +2948,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                          handler_ptr->fbo_id);
 
+        entry_points->pGLDrawBuffer          ((handler_ptr->current_sm_color0_texture != NULL) ? GL_COLOR_ATTACHMENT0 : GL_NONE);
         entry_points->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                               GL_COLOR_ATTACHMENT0,
                                               GL_TEXTURE_2D,
@@ -2876,11 +3004,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         {
             clear_bits |= GL_COLOR_BUFFER_BIT;
 
-            entry_points->pGLClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            entry_points->pGLClearColor(1.0f, 0.0f, 0.0f, 1.0f);
         }
 
         entry_points->pGLClearDepth(1.0);
-        entry_points->pGLClear     (GL_DEPTH_BUFFER_BIT);
+        entry_points->pGLClear     (clear_bits);
     } /* if (should_enable) */
     else
     {
