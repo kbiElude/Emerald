@@ -67,8 +67,14 @@ typedef enum
     /* settable, mesh_material_shading */
     MESH_MATERIAL_PROPERTY_SHADING,
 
+    /* not settable, ogl_program */
+    MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM,
+
     /* not settable, scene_material */
     MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL,
+
+    /* not settable, mesh_material_type */
+    MESH_MATERIAL_PROPERTY_TYPE,
 
     /* settable, system_hashed_ansi_string */
     MESH_MATERIAL_PROPERTY_UV_MAP_NAME,
@@ -153,6 +159,22 @@ typedef enum
     MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN
 } mesh_material_texture_filtering;
 
+/* Tells how the mesh_material instance was initialized. */
+typedef enum
+{
+    /* Created with:
+     *
+     * mesh_material_create()
+     * mesh_material_create_from_scene_material()
+     */
+    MESH_MATERIAL_TYPE_GENERAL,
+
+    /* Created with mesh_material_create_from_shader_bodies() */
+    MESH_MATERIAL_TYPE_PROGRAM,
+
+    MESH_MATERIAL_TYPE_UNDEFINED
+} mesh_material_type;
+
 typedef enum
 {
     /* Outputs all data necessary to carry out shading in world space.
@@ -162,10 +184,10 @@ typedef enum
 
     /* Sets gl_Position to clip-space position of the input vertex,
      * adjusted for the dual paraboloid shadow mapping purposes.
-     * Output clip_depth to FS, so that fragments outside the paraboloid
+     * Outputs clip_depth to FS, so that fragments outside the paraboloid
      * can be discarded.
      */
-     MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM
+     MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM,
 
 } mesh_material_vs_behavior;
 
@@ -181,6 +203,16 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in __notnull scene_material src_material,
                                                                           __in_opt       ogl_context    context);
+
+/** TODO */
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(__in __notnull system_hashed_ansi_string name,
+                                                                         __in __notnull ogl_context               context,
+                                                                         __in_opt       system_hashed_ansi_string object_manager_path,
+                                                                         __in_opt       system_hashed_ansi_string fs_body,
+                                                                         __in_opt       system_hashed_ansi_string gs_body,
+                                                                         __in_opt       system_hashed_ansi_string tc_body,
+                                                                         __in_opt       system_hashed_ansi_string te_body,
+                                                                         __in_opt       system_hashed_ansi_string vs_body);
 
 /** TODO
  *
@@ -210,6 +242,12 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_propert
  *
  *  Internal usage only.
  */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(__in mesh_material_type type);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
 PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_vs_behavior_has(__in mesh_material_vs_behavior vs_behavior);
 
 /** TODO.
@@ -225,6 +263,7 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
 PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material          material,
                                                    __in            mesh_material_property property,
                                                    __out __notnull void*                  out_result);
+
 
 /** TODO */
 PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_property_attachment_type(__in __notnull mesh_material                  material,
@@ -293,10 +332,7 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
                                                                                        __in           mesh_material_shading_property         property,
                                                                                        __in           mesh_material_input_fragment_attribute attribute);
 
-/** TODO.
- *
- *  (ogl_texture here is not perfect since it's a GL asset, not a gfx_image, but oh well)
- */
+/** TODO. */
 PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(__in __notnull mesh_material                   material,
                                                                       __in           mesh_material_shading_property  property,
                                                                       __in           ogl_texture                     texture,

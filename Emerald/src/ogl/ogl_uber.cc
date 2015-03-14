@@ -176,6 +176,15 @@ typedef struct _ogl_uber_item
     }
 } _ogl_uber_item;
 
+typedef enum
+{
+    /* Created with ogl_uber_create() */
+    OGL_UBER_TYPE_REGULAR,
+
+    /* Created with ogl_uber_create_from_ogl_program() */
+    OGL_UBER_TYPE_OGL_PROGRAM_DRIVEN
+} _ogl_uber_type;
+
 /* A single item that defines a VAO configured for a particular mesh and current
  * ogl_uber instance.
  */
@@ -191,7 +200,7 @@ typedef struct __ogl_uber_vao
     }
 } _ogl_uber_vao;
 
-typedef struct
+typedef struct _ogl_uber
 {
     ogl_context               context;
     system_hashed_ansi_string name;
@@ -253,11 +262,16 @@ typedef struct
     bool                      dirty;
 
     system_matrix4x4          graph_rendering_current_matrix;
+    _ogl_uber_type            type;
     system_variant            variant_float;
 
     system_hash64map mesh_to_vao_descriptor_map;
 
     REFCOUNT_INSERT_VARIABLES
+
+    explicit _ogl_uber(__in __notnull ogl_context               context,
+                       __in __notnull system_hashed_ansi_string name,
+                       __in           _ogl_uber_type            type);
 } _ogl_uber;
 
 /** Reference counter impl */
@@ -276,6 +290,7 @@ PRIVATE void _ogl_uber_link_renderer_callback                    (              
 PRIVATE void _ogl_uber_release                                   (__in __notnull __deallocate(mem) void*                                       uber);
 PRIVATE void _ogl_uber_release_renderer_callback                 (                                 ogl_context                                 context,
                                                                                                    void*                                       arg);
+PRIVATE void _ogl_uber_reset_attribute_uniform_locations         (__in __notnull _ogl_uber*        uber_ptr);
 
 #ifdef _DEBUG
     PRIVATE void _ogl_uber_verify_context_type(__in __notnull ogl_context);
@@ -284,6 +299,39 @@ PRIVATE void _ogl_uber_release_renderer_callback                 (              
 #endif
 
 /** Internal variables */
+
+/** TODO */
+_ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
+                     __in __notnull system_hashed_ansi_string in_name,
+                     __in           _ogl_uber_type            in_type)
+{
+    added_items                       = system_resizable_vector_create(4 /* capacity */,
+                                                                       sizeof(_ogl_uber_item*) );
+    bo_data                           = NULL;
+    bo_data_size                      = -1;
+    bo_data_vertex_offset             = -1;
+    context                           = in_context;    /* DO NOT retain, or face circular dependencies! */
+    current_camera_location_dirty     = true;
+    current_far_near_plane_diff_dirty = true;
+    current_flip_z_dirty              = true;
+    current_near_plane_dirty          = true;
+    current_vp                        = system_matrix4x4_create();
+    current_vp_dirty                  = true;
+    dirty                             = true;
+    graph_rendering_current_matrix    = system_matrix4x4_create();
+    is_rendering                      = false;
+    mesh_to_vao_descriptor_map        = system_hash64map_create(sizeof(_ogl_uber_vao*),
+                                                                false);
+    name                              = in_name;
+    n_texture_units_assigned          = 0;
+    program                           = NULL;
+    shader_fragment                   = NULL;
+    shader_vertex                     = NULL;
+    type                              = in_type;
+
+    _ogl_uber_reset_attribute_uniform_locations(this);
+}
+
 
 /** TODO */
 PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(         _shaders_fragment_uber_parent_callback_type type,
@@ -296,7 +344,8 @@ PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(         _shad
         {
             const _shaders_fragment_uber_new_fragment_input_callback* callback_data = (const _shaders_fragment_uber_new_fragment_input_callback*) data;
 
-            ASSERT_DEBUG_SYNC(callback_data != NULL, "Callback data pointer is NULL");
+            ASSERT_DEBUG_SYNC(callback_data != NULL,
+                              "Callback data pointer is NULL");
 
             /* Fragment shader uses an input attribute. Update the vertex shader so that
              * the data is taken in vertex shader stage and patched through to the fragment
@@ -312,7 +361,8 @@ PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(         _shad
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized callback from shaders_fragment_uber object");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized callback from shaders_fragment_uber object");
         }
     } /* switch (type) */
 }
@@ -435,7 +485,8 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                   n_layer < n_layers;
                 ++n_layer)
     {
-        const uint32_t n_layer_passes = mesh_get_amount_of_layer_passes(mesh, n_layer);
+        const uint32_t n_layer_passes = mesh_get_amount_of_layer_passes(mesh,
+                                                                        n_layer);
 
         /* Set up attribute data */
         struct _attribute_item
@@ -475,7 +526,9 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
         } /* for (all attribute items) */
 
         /* Iterate over all layer passes */
-        for (uint32_t n_layer_pass = 0; n_layer_pass < n_layer_passes; ++n_layer_pass)
+        for (uint32_t n_layer_pass = 0;
+                      n_layer_pass < n_layer_passes;
+                    ++n_layer_pass)
         {
             mesh_material layer_pass_material = NULL;
 
@@ -532,7 +585,9 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
             };
             const uint32_t n_attachments = sizeof(attachments) / sizeof(attachments[0]);
 
-            for (uint32_t n_attachment = 0; n_attachment < n_attachments; ++n_attachment)
+            for (uint32_t n_attachment = 0;
+                          n_attachment < n_attachments;
+                        ++n_attachment)
             {
                 const _attachment&                      attachment      = attachments[n_attachment];
                 const mesh_material_property_attachment attachment_type = mesh_material_get_shading_property_attachment_type(layer_pass_material,
@@ -603,19 +658,16 @@ end:
 PRIVATE void _ogl_uber_create_renderer_callback(ogl_context context,
                                                 void*       arg)
 {
-    _ogl_uber*                                                uber_ptr         = (_ogl_uber*) arg;
-    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    _ogl_uber*                        uber_ptr     = (_ogl_uber*) arg;
+    const ogl_context_gl_entrypoints* entry_points = NULL;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
-                            &dsa_entry_points);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
     /* Generate buffer object we will use for feeding the data to the uber program */
-    entry_points->pGLGenBuffers(1, &uber_ptr->bo_id);
+    entry_points->pGLGenBuffers(1,
+                               &uber_ptr->bo_id);
 }
 
 /** TODO */
@@ -707,16 +759,22 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
         if (uber_ptr->shader_fragment != NULL)
         {
             shaders_fragment_uber_release(uber_ptr->shader_fragment);
+
+            uber_ptr->shader_fragment = NULL;
         }
 
         if (uber_ptr->shader_vertex != NULL)
         {
             shaders_vertex_uber_release(uber_ptr->shader_vertex);
+
+            uber_ptr->shader_vertex = NULL;
         }
 
         if (uber_ptr->program != NULL)
         {
             ogl_program_release(uber_ptr->program);
+
+            uber_ptr->program = NULL;
         }
 
         if (uber_ptr->bo_data != NULL)
@@ -800,6 +858,36 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
 }
 
 /** TODO */
+PRIVATE void _ogl_uber_reset_attribute_uniform_locations(__in __notnull _ogl_uber* uber_ptr)
+{
+    uber_ptr->ambient_material_sampler_uniform_location    = -1;
+    uber_ptr->ambient_material_vec4_uniform_location       = -1;
+    uber_ptr->diffuse_material_sampler_uniform_location    = -1;
+    uber_ptr->diffuse_material_vec4_uniform_location       = -1;
+    uber_ptr->far_near_plane_diff_ub_offset                = -1;
+    uber_ptr->flip_z_ub_offset                             = -1;
+    uber_ptr->glosiness_uniform_location                   = -1;
+    uber_ptr->luminosity_material_sampler_uniform_location = -1;
+    uber_ptr->luminosity_material_float_uniform_location   = -1;
+    uber_ptr->mesh_sh3_uniform_location                    = -1;
+    uber_ptr->mesh_sh3_data_offset_uniform_location        = -1;
+    uber_ptr->mesh_sh4_uniform_location                    = -1;
+    uber_ptr->mesh_sh4_data_offset_uniform_location        = -1;
+    uber_ptr->model_uniform_location                       = -1;
+    uber_ptr->near_plane_ub_offset                         = -1;
+    uber_ptr->normal_matrix_uniform_location               = -1;
+    uber_ptr->object_normal_attribute_location             = -1;
+    uber_ptr->object_uv_attribute_location                 = -1;
+    uber_ptr->object_vertex_attribute_location             = -1;
+    uber_ptr->shininess_material_sampler_uniform_location  = -1;
+    uber_ptr->shininess_material_float_uniform_location    = -1;
+    uber_ptr->specular_material_sampler_uniform_location   = -1;
+    uber_ptr->specular_material_float_uniform_location     = -1;
+    uber_ptr->vp_ub_offset                                 = -1;
+    uber_ptr->world_camera_ub_offset                       = -1;
+}
+
+/** TODO */
 #ifdef _DEBUG
     /* TODO */
     PRIVATE void _ogl_uber_verify_context_type(__in __notnull ogl_context context)
@@ -824,6 +912,9 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
     shaders_fragment_uber_item_id              fs_item_id         = -1;
     ogl_uber_item_id                           result             = -1;
     _ogl_uber*                                 uber_ptr           = (_ogl_uber*) uber;
+
+    ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
+                      "ogl_uber_add_input_fragment_attribute_item() is only supported for regular ogl_uber instances.");
 
     switch (input_attribute)
     {
@@ -887,6 +978,9 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
     _ogl_uber*       uber_ptr     = (_ogl_uber*) uber;
     _ogl_uber_item*  new_item_ptr = NULL;
     ogl_uber_item_id result       = -1;
+
+    ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
+                      "ogl_uber_add_light_item() is only supported for regular ogl_uber instances.");
 
     /* Update uber shader instances */
     shaders_fragment_uber_item_id fs_item_id = -1;
@@ -1000,64 +1094,22 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
 {
     _ogl_uber_verify_context_type(context);
 
-    _ogl_uber* result = new (std::nothrow) _ogl_uber;
+    _ogl_uber* result = new (std::nothrow) _ogl_uber(context,
+                                                     name,
+                                                     OGL_UBER_TYPE_REGULAR);
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Out of memory");
+
     if (result != NULL)
     {
-        result->added_items                       = system_resizable_vector_create(4 /* capacity */,
-                                                                                   sizeof(_ogl_uber_item*) );
-        result->bo_data                           = NULL;
-        result->bo_data_size                      = -1;
-        result->bo_data_vertex_offset             = -1;
-        result->context                           = context;    /* DO NOT retain, or face circular dependencies! */
-        result->current_camera_location_dirty     = true;
-        result->current_far_near_plane_diff_dirty = true;
-        result->current_flip_z_dirty              = true;
-        result->current_near_plane_dirty          = true;
-        result->current_vp                        = system_matrix4x4_create();
-        result->current_vp_dirty                  = true;
-        result->dirty                             = true;
-        result->is_rendering                      = false;
-        result->mesh_to_vao_descriptor_map        = system_hash64map_create(sizeof(_ogl_uber_vao*),
-                                                                            false);
-        result->name                              = name;
-        result->n_texture_units_assigned          = 0;
-        result->shader_fragment                   = shaders_fragment_uber_create(context,
-                                                                                 name,
-                                                                                 fs_type);
-        result->shader_vertex                     = shaders_vertex_uber_create  (context,
-                                                                                 name,
-                                                                                 vs_type);
-        result->variant_float                     = system_variant_create(SYSTEM_VARIANT_FLOAT);
-
-        result->ambient_material_sampler_uniform_location    = -1;
-        result->ambient_material_vec4_uniform_location       = -1;
-        result->diffuse_material_sampler_uniform_location    = -1;
-        result->diffuse_material_vec4_uniform_location       = -1;
-        result->far_near_plane_diff_ub_offset                = -1;
-        result->flip_z_ub_offset                             = -1;
-        result->glosiness_uniform_location                   = -1;
-        result->luminosity_material_sampler_uniform_location = -1;
-        result->luminosity_material_float_uniform_location   = -1;
-        result->mesh_sh3_uniform_location                    = -1;
-        result->mesh_sh3_data_offset_uniform_location        = -1;
-        result->mesh_sh4_uniform_location                    = -1;
-        result->mesh_sh4_data_offset_uniform_location        = -1;
-        result->model_uniform_location                       = -1;
-        result->near_plane_ub_offset                         = -1;
-        result->normal_matrix_uniform_location               = -1;
-        result->object_normal_attribute_location             = -1;
-        result->object_uv_attribute_location                 = -1;
-        result->object_vertex_attribute_location             = -1;
-        result->shininess_material_sampler_uniform_location  = -1;
-        result->shininess_material_float_uniform_location    = -1;
-        result->specular_material_sampler_uniform_location   = -1;
-        result->specular_material_float_uniform_location     = -1;
-        result->vp_ub_offset                                 = -1;
-        result->world_camera_ub_offset                       = -1;
-
-        result->graph_rendering_current_matrix = system_matrix4x4_create();
+        result->shader_fragment = shaders_fragment_uber_create(context,
+                                                               name,
+                                                               fs_type);
+        result->shader_vertex   = shaders_vertex_uber_create  (context,
+                                                               name,
+                                                               vs_type);
+        result->variant_float   = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                        _ogl_uber_release,
@@ -1068,8 +1120,11 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         /* Create a program with the shaders we were provided */
         result->program = ogl_program_create(context,
                                              name);
+        result->type    = OGL_UBER_TYPE_REGULAR;
 
-        ASSERT_ALWAYS_SYNC(result->program != NULL, "Cannot instantiate uber program");
+        ASSERT_ALWAYS_SYNC(result->program != NULL,
+                           "Cannot instantiate uber program");
+
         if (result->program != NULL)
         {
             if (!ogl_program_attach_shader(result->program,
@@ -1092,6 +1147,46 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_context               context,
+                                                             __in __notnull system_hashed_ansi_string name,
+                                                             __in __notnull ogl_program               program)
+{
+    _ogl_uber_verify_context_type(context);
+
+    _ogl_uber* result = new (std::nothrow) _ogl_uber(context,
+                                                     name,
+                                                     OGL_UBER_TYPE_OGL_PROGRAM_DRIVEN);
+
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Out of memory");
+
+    if (result != NULL)
+    {
+        /* Cache the input program */
+        ASSERT_DEBUG_SYNC(program != NULL,
+                          "Input program is NULL");
+
+        result->program = program;
+        result->type    = OGL_UBER_TYPE_OGL_PROGRAM_DRIVEN;
+
+        ogl_program_retain(program);
+
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
+                                                       _ogl_uber_release,
+                                                       OBJECT_TYPE_OGL_UBER,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Ubers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
+
+        /* Request renderer thread call-back to do the other part of the initialization */
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _ogl_uber_create_renderer_callback,
+                                                         result);
+    } /* if (result != NULL) */
+
+    return (ogl_uber) result;
+}
+
+/* Please see header for specification */
 PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull const ogl_uber             uber,
                                                              __in            _ogl_uber_general_property property,
                                                              __out __notnull void*                      out_result)
@@ -1109,6 +1204,9 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull con
 
         case OGL_UBER_GENERAL_PROPERTY_N_ITEMS:
         {
+            ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
+                              "OGL_UBER_GENERAL_PROPERTY_N_ITEMS query is only supported for regular ogl_uber instances.");
+
             *( (uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
             break;
@@ -1130,6 +1228,9 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
 {
     const _ogl_uber*      uber_ptr = (const _ogl_uber*) uber;
           _ogl_uber_item* item_ptr = NULL;
+
+    ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
+                      "ogl_uber_get_shader_item_property() is only supported for regular ogl_uber instances.");
 
     if (system_resizable_vector_get_element_at(uber_ptr->added_items,
                                                item_id,
@@ -1303,48 +1404,27 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Recompile shaders if needed */
-    if (shaders_fragment_uber_is_dirty(uber_ptr->shader_fragment) )
+    if (uber_ptr->type == OGL_UBER_TYPE_REGULAR)
     {
-        shaders_fragment_uber_recompile(uber_ptr->shader_fragment);
-    }
+        if (shaders_fragment_uber_is_dirty(uber_ptr->shader_fragment) )
+        {
+            shaders_fragment_uber_recompile(uber_ptr->shader_fragment);
+        }
 
-    if (shaders_vertex_uber_is_dirty(uber_ptr->shader_vertex) )
-    {
-        shaders_vertex_uber_recompile(uber_ptr->shader_vertex);
-    }
+        if (shaders_vertex_uber_is_dirty(uber_ptr->shader_vertex) )
+        {
+            shaders_vertex_uber_recompile(uber_ptr->shader_vertex);
+        }
 
-    /* Link the program object */
-    if (!ogl_program_link(uber_ptr->program) )
-    {
-        ASSERT_ALWAYS_SYNC(false, "Cannot link uber program");
-    }
+        /* Link the program object */
+        if (!ogl_program_link(uber_ptr->program) )
+        {
+            ASSERT_ALWAYS_SYNC(false, "Cannot link uber program");
+        }
+    } /* if (uber_ptr->type == OGL_UBER_TYPE_REGULAR) */
 
     /* Set default attribute & uniform locations */
-    uber_ptr->ambient_material_sampler_uniform_location    = -1;
-    uber_ptr->ambient_material_vec4_uniform_location       = -1;
-    uber_ptr->diffuse_material_sampler_uniform_location    = -1;
-    uber_ptr->diffuse_material_vec4_uniform_location       = -1;
-    uber_ptr->far_near_plane_diff_ub_offset                = -1;
-    uber_ptr->flip_z_ub_offset                             = -1;
-    uber_ptr->glosiness_uniform_location                   = -1;
-    uber_ptr->luminosity_material_sampler_uniform_location = -1;
-    uber_ptr->luminosity_material_float_uniform_location   = -1;
-    uber_ptr->mesh_sh3_uniform_location                    = -1;
-    uber_ptr->mesh_sh3_data_offset_uniform_location        = -1;
-    uber_ptr->mesh_sh4_uniform_location                    = -1;
-    uber_ptr->mesh_sh4_data_offset_uniform_location        = -1;
-    uber_ptr->model_uniform_location                       = -1;
-    uber_ptr->near_plane_ub_offset                         = -1;
-    uber_ptr->normal_matrix_uniform_location               = -1;
-    uber_ptr->object_normal_attribute_location             = -1;
-    uber_ptr->object_uv_attribute_location                 = -1;
-    uber_ptr->object_vertex_attribute_location             = -1;
-    uber_ptr->shininess_material_sampler_uniform_location  = -1;
-    uber_ptr->shininess_material_float_uniform_location    = -1;
-    uber_ptr->specular_material_sampler_uniform_location   = -1;
-    uber_ptr->specular_material_float_uniform_location     = -1;
-    uber_ptr->vp_ub_offset                                 = -1;
-    uber_ptr->world_camera_ub_offset                       = -1;
+    _ogl_uber_reset_attribute_uniform_locations(uber_ptr);
 
     /* Retrieve attribute locations */
     const ogl_program_attribute_descriptor* object_normal_descriptor = NULL;
@@ -2876,6 +2956,9 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                                                           __in           const void*             data)
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
+
+    ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
+                      "ogl_uber_set_shader_item_property() is only supported for regular ogl_uber instances.");
 
     switch (property)
     {

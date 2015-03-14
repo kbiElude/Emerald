@@ -14,6 +14,9 @@ REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
 typedef enum scene_light_callback
 {
     /* arg: source scene_light instance */
+    SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
+
+    /* arg: source scene_light instance */
     SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
 
     /* arg: source scene_light instance */
@@ -92,6 +95,16 @@ typedef enum scene_light_property
 
     /* Settable, scene_light_shadow_map_bias. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+
+    /* Settable, scene_light_shadow_map_algorithm.
+     *
+     * Configures SM generation process. By definition, it affects the uber shader
+     * implementation and shadow map texture internalformat.
+     *
+     * This is the property you want to change, if you want to enable more complex algorithms
+     * like Variance Shadow Mapping.
+     */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
 
     /* Settable, bool */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES,
@@ -180,6 +193,17 @@ typedef enum scene_light_property
 
 typedef enum
 {
+    /* Depth texture-based plain shadow mapping */
+    SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN,
+
+    /* Variance shadow maps */
+    SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM,
+
+    SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN
+} scene_light_shadow_map_algorithm;
+
+typedef enum
+{
     /* 6-pass cube-map-based omnidirectional SM implementation */
     SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL,
 
@@ -228,6 +252,12 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,
  *  Internal usage only.
  */
 PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(__in scene_light_falloff falloff);
+
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_algorithm_has(__in scene_light_shadow_map_algorithm algorithm);
 
 /** TODO
  *

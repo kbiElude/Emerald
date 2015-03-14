@@ -8,8 +8,10 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
+#include "ogl/ogl_program.h"
 #include "ogl/ogl_sampler.h"
 #include "ogl/ogl_samplers.h"
+#include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
@@ -86,6 +88,18 @@ typedef struct _mesh_material_property
     }
 } _mesh_material_property;
 
+typedef enum
+{
+    MESH_MATERIAL_SHADER_STAGE_FRAGMENT,
+    MESH_MATERIAL_SHADER_STAGE_GEOMETRY,
+    MESH_MATERIAL_SHADER_STAGE_TESSELLATION_CONTROL,
+    MESH_MATERIAL_SHADER_STAGE_TESSELLATION_EVALUATION,
+    MESH_MATERIAL_SHADER_STAGE_VERTEX,
+
+    /* Always last */
+    MESH_MATERIAL_SHADER_STAGE_COUNT
+} _mesh_material_shader_stage;
+
 /** TODO */
 typedef struct _mesh_material
 {
@@ -95,17 +109,23 @@ typedef struct _mesh_material
     system_hashed_ansi_string name;
     system_hashed_ansi_string object_manager_path;
     scene                     owner_scene;
+    mesh_material_type        type;
+
+    /* MESH_MATERIAL_TYPE_GENERAL-specific properties */
+    mesh_material_fs_behavior fs_behavior;
     mesh_material_shading     shading;
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
-    scene_material            source_scene_material;
+    scene_material            source_scene_material; /* only used if source == MESH_MATERIAL_SOURCE_OGL_UBER */
     system_variant            temp_variant_float;
-    ogl_uber                  uber_non_sm; /*         uses shadow maps for per-light visibility calculation */
-    ogl_uber                  uber_sm;     /* does not use shadow maps for per-light visibility calculation */
-
-    mesh_material_fs_behavior fs_behavior;
-    system_hashed_ansi_string uv_map_name; /* NULL by default, needs to be manually set */
+    ogl_uber                  uber_non_sm;            /*         uses shadow maps for per-light visibility calculation */
+    ogl_uber                  uber_sm;                /* does not use shadow maps for per-light visibility calculation */
+    system_hashed_ansi_string uv_map_name;            /* NULL by default, needs to be manually set */
     float                     vertex_smoothing_angle;
     mesh_material_vs_behavior vs_behavior;
+
+    /* MESH_MATERIAL_TYPE_SHADER_BODIES-specific properties */
+    ogl_program program;
+    ogl_shader  shaders[MESH_MATERIAL_SHADER_STAGE_COUNT];
 
     _mesh_material()
     {
@@ -116,13 +136,19 @@ typedef struct _mesh_material
         name                   = NULL;
         object_manager_path    = NULL;
         owner_scene            = NULL;
+        program                = NULL;
         source_scene_material  = NULL;
         temp_variant_float     = system_variant_create(SYSTEM_VARIANT_FLOAT);
+        type                   = MESH_MATERIAL_TYPE_UNDEFINED;
         uber_non_sm            = NULL;
         uber_sm                = NULL;
         uv_map_name            = NULL;
         vertex_smoothing_angle = 0.0f;
         vs_behavior            = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+
+        memset(shaders,
+               0,
+               sizeof(shaders) );
     }
 
     REFCOUNT_INSERT_VARIABLES
@@ -160,6 +186,9 @@ PRIVATE void _mesh_material_deinit_shading_property_attachment(__in_opt _mesh_ma
 PRIVATE void _mesh_material_on_material_invalidation_needed(const void* not_used,
                                                             void*       material)
 {
+    ASSERT_DEBUG_SYNC( ((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                       "Redundant callback detected.");
+
     /* We will need a new ogl_uber instance for the re-configured scene. */
     ((_mesh_material*) material)->dirty = true;
 }
@@ -173,48 +202,73 @@ PRIVATE void _mesh_material_release(void* data_ptr)
     LOG_INFO("Releasing material [%s]",
              system_hashed_ansi_string_get_buffer(material_ptr->name) );
 
-    for (mesh_material_shading_property current_property = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
-                                        current_property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
-                                ++(int&)current_property)
+    if (material_ptr->type == MESH_MATERIAL_TYPE_GENERAL)
     {
-        switch (material_ptr->shading_properties[current_property].attachment)
+        for (mesh_material_shading_property current_property = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
+                                            current_property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
+                                    ++(int&)current_property)
         {
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
+            switch (material_ptr->shading_properties[current_property].attachment)
             {
-                const unsigned int n_components = (material_ptr->shading_properties[current_property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
-
-                for (unsigned int n_component = 0;
-                                  n_component < n_components;
-                                ++n_component)
+                case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
+                case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                 {
-                    curve_container_release(material_ptr->shading_properties[current_property].curve_container_data[n_component]);
+                    const unsigned int n_components = (material_ptr->shading_properties[current_property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT) ? 1 : 3;
 
-                    material_ptr->shading_properties[current_property].curve_container_data[n_component] = NULL;
+                    for (unsigned int n_component = 0;
+                                      n_component < n_components;
+                                    ++n_component)
+                    {
+                        curve_container_release(material_ptr->shading_properties[current_property].curve_container_data[n_component]);
+
+                        material_ptr->shading_properties[current_property].curve_container_data[n_component] = NULL;
+                    }
+
+                    break;
                 }
 
-                break;
+                case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+                {
+                    ogl_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
+                    ogl_texture_release(material_ptr->shading_properties[current_property].texture_data.texture);
+
+                    material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
+                    material_ptr->shading_properties[current_property].texture_data.texture = NULL;
+
+                    break;
+                } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
             }
-
-            case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-            {
-                ogl_sampler_release(material_ptr->shading_properties[current_property].texture_data.sampler);
-                ogl_texture_release(material_ptr->shading_properties[current_property].texture_data.texture);
-
-                material_ptr->shading_properties[current_property].texture_data.sampler = NULL;
-                material_ptr->shading_properties[current_property].texture_data.texture = NULL;
-
-                break;
-            } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE: */
         }
-    }
 
-    if (material_ptr->temp_variant_float != NULL)
+        if (material_ptr->temp_variant_float != NULL)
+        {
+            system_variant_release(material_ptr->temp_variant_float);
+
+            material_ptr->temp_variant_float = NULL;
+        }
+    } /* if (material_ptr->type == MESH_MATERIAL_TYPE_GENERAL) */
+
+    if (material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM)
     {
-        system_variant_release(material_ptr->temp_variant_float);
+        for (unsigned int n_shader_stage = 0;
+                          n_shader_stage < (unsigned int) MESH_MATERIAL_SHADER_STAGE_COUNT;
+                        ++n_shader_stage)
+        {
+            if (material_ptr->shaders[n_shader_stage] != NULL)
+            {
+                ogl_shader_release(material_ptr->shaders[n_shader_stage]);
 
-        material_ptr->temp_variant_float = NULL;
-    }
+                material_ptr->shaders[n_shader_stage] = NULL;
+            }
+        } /* for (all shader stages) */
+
+        if (material_ptr->program != NULL)
+        {
+            ogl_program_release(material_ptr->program);
+
+            material_ptr->program = NULL;
+        }
+    } /* if (material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM) */
 
     /* Release callback manager */
     if (material_ptr->callback_manager != NULL)
@@ -232,16 +286,53 @@ PRIVATE GLenum _mesh_material_get_glenum_for_mesh_material_texture_filtering(__i
 
     switch (filtering)
     {
-        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR:          result = GL_LINEAR;                 break;
-        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR:   result = GL_LINEAR_MIPMAP_LINEAR;   break;
-        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_NEAREST:  result = GL_LINEAR_MIPMAP_NEAREST;  break;
-        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST:         result = GL_NEAREST;                break;
-        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST_LINEAR:  result = GL_NEAREST_MIPMAP_LINEAR;  break;
-        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST_NEAREST: result = GL_NEAREST_MIPMAP_NEAREST; break;
+        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR:
+        {
+            result = GL_LINEAR;
+
+            break;
+        }
+
+        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_LINEAR:
+        {
+            result = GL_LINEAR_MIPMAP_LINEAR;
+
+            break;
+        }
+
+        case MESH_MATERIAL_TEXTURE_FILTERING_LINEAR_NEAREST:
+        {
+            result = GL_LINEAR_MIPMAP_NEAREST;
+
+            break;
+        }
+
+        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST:
+        {
+            result = GL_NEAREST;
+
+            break;
+        }
+
+        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST_LINEAR:
+        {
+            result = GL_NEAREST_MIPMAP_LINEAR;
+
+            break;
+        }
+
+        case MESH_MATERIAL_TEXTURE_FILTERING_NEAREST_NEAREST:
+        {
+            result = GL_NEAREST_MIPMAP_NEAREST;
+
+            break;
+        }
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized material texture filtering requested [%d]", filtering);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized material texture filtering requested [%d]",
+                              filtering);
         }
     } /* switch (filtering) */
 
@@ -271,6 +362,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in     __notnull system_
         new_material->context             = context;
         new_material->name                = name;
         new_material->object_manager_path = object_manager_path;
+        new_material->type                = MESH_MATERIAL_TYPE_GENERAL;
         new_material->uv_map_name         = NULL;
         new_material->vs_behavior         = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
@@ -302,42 +394,74 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
     {
         /* Copy relevant fields */
         new_material_ptr->dirty               = src_material_ptr->dirty;
-        new_material_ptr->fs_behavior         = src_material_ptr->fs_behavior;
         new_material_ptr->name                = src_material_ptr->name;
         new_material_ptr->object_manager_path = src_material_ptr->object_manager_path;
-        new_material_ptr->shading             = src_material_ptr->shading;
-        new_material_ptr->uber_non_sm         = src_material_ptr->uber_non_sm;
-        new_material_ptr->uber_sm             = src_material_ptr->uber_sm;
-        new_material_ptr->vs_behavior         = src_material_ptr->vs_behavior;
+        new_material_ptr->type                = src_material_ptr->type;
 
-        memcpy(new_material_ptr->shading_properties,
-               src_material_ptr->shading_properties,
-               sizeof(src_material_ptr->shading_properties) );
-
-        /* Retain assets that are reference-counted */
-        for (unsigned int n_shading_properties = 0;
-                          n_shading_properties < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
-                        ++n_shading_properties)
+        if (new_material_ptr->type == MESH_MATERIAL_TYPE_GENERAL)
         {
-            _mesh_material_property& shading_property = new_material_ptr->shading_properties[n_shading_properties];
+            new_material_ptr->fs_behavior = src_material_ptr->fs_behavior;
+            new_material_ptr->shading     = src_material_ptr->shading;
+            new_material_ptr->uber_non_sm = src_material_ptr->uber_non_sm;
+            new_material_ptr->uber_sm     = src_material_ptr->uber_sm;
+            new_material_ptr->vs_behavior = src_material_ptr->vs_behavior;
 
-            if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+            memcpy(new_material_ptr->shading_properties,
+                   src_material_ptr->shading_properties,
+                   sizeof(src_material_ptr->shading_properties) );
+
+            /* Retain assets that are reference-counted */
+            for (unsigned int n_shading_properties = 0;
+                              n_shading_properties < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
+                            ++n_shading_properties)
             {
-                curve_container_retain(shading_property.curve_container_data[0]);
+                _mesh_material_property& shading_property = new_material_ptr->shading_properties[n_shading_properties];
+
+                if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
+                {
+                    curve_container_retain(shading_property.curve_container_data[0]);
+                }
+                else
+                if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3)
+                {
+                    curve_container_retain(shading_property.curve_container_data[0]);
+                    curve_container_retain(shading_property.curve_container_data[1]);
+                    curve_container_retain(shading_property.curve_container_data[2]);
+                }
+                else
+                if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
+                {
+                    ogl_sampler_retain(shading_property.texture_data.sampler);
+                    ogl_texture_retain(shading_property.texture_data.texture);
+                }
             }
-            else
-            if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3)
+        } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_GENERAL) */
+        else
+        if (new_material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM)
+        {
+            for (unsigned int n_shader_stage = 0;
+                              n_shader_stage < MESH_MATERIAL_SHADER_STAGE_COUNT;
+                            ++n_shader_stage)
             {
-                curve_container_retain(shading_property.curve_container_data[0]);
-                curve_container_retain(shading_property.curve_container_data[1]);
-                curve_container_retain(shading_property.curve_container_data[2]);
-            }
-            else
-            if (shading_property.attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
+                if (src_material_ptr->shaders[n_shader_stage] != NULL)
+                {
+                    new_material_ptr->shaders[n_shader_stage] = src_material_ptr->shaders[n_shader_stage];
+
+                    ogl_shader_retain(new_material_ptr->shaders[n_shader_stage]);
+                } /* if (src_material_ptr->shaders[n_shader_stage] != NULL) */
+            } /* for (all shader stages) */
+
+            if (src_material_ptr->program != NULL)
             {
-                ogl_sampler_retain(shading_property.texture_data.sampler);
-                ogl_texture_retain(shading_property.texture_data.texture);
-            }
+                new_material_ptr->program = src_material_ptr->program;
+
+                ogl_program_retain(new_material_ptr->program);
+            } /* if (src_material_ptr->program != NULL) */
+        } /* if (new_material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM) */
+        else
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material instance type");
         }
 
         /* Set up reference counting for new asset */
@@ -664,6 +788,160 @@ end:
 }
 
 /* Please see header for specification */
+PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(__in __notnull system_hashed_ansi_string name,
+                                                                         __in __notnull ogl_context               context,
+                                                                         __in_opt       system_hashed_ansi_string object_manager_path,
+                                                                         __in_opt       system_hashed_ansi_string fs_body,
+                                                                         __in_opt       system_hashed_ansi_string gs_body,
+                                                                         __in_opt       system_hashed_ansi_string tc_body,
+                                                                         __in_opt       system_hashed_ansi_string te_body,
+                                                                         __in_opt       system_hashed_ansi_string vs_body)
+{
+    mesh_material   result_material     = NULL;
+    _mesh_material* result_material_ptr = NULL;
+    ogl_program     result_program      = NULL;
+    ogl_shader      temp_shader         = NULL;
+
+    struct _body
+    {
+        system_hashed_ansi_string body;
+        const char*               suffix;
+        ogl_shader_type           type;
+    } bodies[] =
+    {
+        {fs_body, " FS", SHADER_TYPE_FRAGMENT},
+        {gs_body, " GS", SHADER_TYPE_GEOMETRY},
+        {tc_body, " TC", SHADER_TYPE_TESSELLATION_CONTROL},
+        {te_body, " TE", SHADER_TYPE_TESSELLATION_EVALUATION},
+        {vs_body, " VS", SHADER_TYPE_VERTEX}
+    };
+    const unsigned int n_bodies = sizeof(bodies) / sizeof(bodies[0]);
+
+    /* Create a new mesh_material instance */
+    result_material = mesh_material_create(name,
+                                           context,
+                                           object_manager_path);
+
+    ASSERT_DEBUG_SYNC(result_material != NULL,
+                      "mesh_material_create() failed.");
+    if (result_material == NULL)
+    {
+        goto end;
+    }
+
+    /* Update the mesh_material instance by changing its type and setting up the program object */
+    result_material_ptr = (_mesh_material*) result_material;
+    result_program      = ogl_program_create(context,
+                                             name);
+
+    result_material_ptr->type = MESH_MATERIAL_TYPE_PROGRAM;
+
+    if (result_program == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "ogl_program_create() call failed.");
+
+        goto end_error;
+    }
+
+    for (unsigned int n_body = 0;
+                      n_body < n_bodies;
+                    ++n_body)
+    {
+        if (bodies[n_body].body != NULL)
+        {
+            temp_shader = ogl_shader_create(context,
+                                            bodies[n_body].type,
+                                            system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                    bodies[n_body].suffix) );
+
+            if (temp_shader == NULL)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not create an ogl_shader instance");
+
+                goto end_error;
+            }
+
+            if (!ogl_shader_set_body(temp_shader,
+                                     bodies[n_body].body) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "ogl_shader_set_body() call failed.");
+
+                goto end_error;
+            }
+
+            if (!ogl_shader_compile(temp_shader) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "ogl_shader_compile() call failed.");
+
+                goto end_error;
+            }
+
+            /* So far so good! */
+            if (!ogl_program_attach_shader(result_program,
+                                           temp_shader) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "ogl_program_attach_shader() call failed.");
+
+                goto end_error;
+            }
+
+            result_material_ptr->shaders[n_body] = temp_shader;
+        } /* if (bodies[n_body].body != NULL) */
+    } /* for (all input bodies) */
+
+    /* Link the PO */
+    if (!ogl_program_link(result_program) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "ogl_program_link() call failed.");
+
+        goto end_error;
+    }
+
+    result_material_ptr->program = result_program;
+
+    /* All done */
+    goto end;
+
+end_error:
+    /* Wind down any shader object we may have created */
+    for (unsigned int n_shader = 0;
+                      n_shader < MESH_MATERIAL_SHADER_STAGE_COUNT;
+                    ++n_shader)
+    {
+        if (result_material_ptr->shaders[n_shader] != NULL)
+        {
+            ogl_shader_release(result_material_ptr->shaders[n_shader]);
+
+            result_material_ptr->shaders[n_shader] = NULL;
+        } /* if (result_material_ptr->shaders[n_shader] != NULL) */
+    } /* for (all shader stages) */
+
+    if (temp_shader != NULL)
+    {
+        ogl_shader_release(temp_shader);
+
+        temp_shader = NULL;
+    }
+
+    /* Do the same for the result program object */
+    if (result_material_ptr->program != NULL)
+    {
+        ogl_program_release(result_material_ptr->program);
+
+        result_material_ptr->program = NULL;
+    }
+
+end:
+    return result_material;
+}
+
+/* Please see header for specification */
 PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_fs_behavior_has(__in mesh_material_fs_behavior fs_behavior)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
@@ -822,6 +1100,40 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_has(__i
 }
 
 /* Please see header for specification */
+PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(__in mesh_material_type type)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* type_general_name = "General";
+    static const char* type_program_name = "Program-based";
+
+    switch (type)
+    {
+        case MESH_MATERIAL_TYPE_GENERAL:
+        {
+            result = system_hashed_ansi_string_create(type_general_name);
+
+            break;
+        }
+
+        case MESH_MATERIAL_TYPE_PROGRAM:
+        {
+            result = system_hashed_ansi_string_create(type_program_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_type value.");
+        }
+    } /* switch (type) */
+
+    return result;
+}
+
+/* Please see header for specification */
 PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_property_has(__in mesh_material_shading_property property)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
@@ -938,7 +1250,8 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
 
         LOG_INFO("Material is dirty - baking..");
 
-        if (material_ptr->owner_scene == NULL)
+        if (material_ptr->owner_scene == NULL &&
+            material_ptr->type        == MESH_MATERIAL_TYPE_GENERAL)
         {
             /* The material needs to be marked as dirty every time a light is added, or
              * when a significant scene_light property is changed */
@@ -971,6 +1284,11 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
                                         &current_light_callback_manager);
 
                 system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
+                                                                SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
+                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                                _mesh_material_on_material_invalidation_needed,
+                                                                material_ptr);
+                system_callback_manager_subscribe_for_callbacks(current_light_callback_manager,
                                                                 SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_BIAS_CHANGED,
                                                                 CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
                                                                 _mesh_material_on_material_invalidation_needed,
@@ -990,15 +1308,30 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
             material_ptr->owner_scene = scene;
         } /* if (uber requested for the first time for this material) */
 
-        material_ptr->dirty       = false;
-        material_ptr->uber_sm     = ogl_materials_get_uber(materials,
+        material_ptr->dirty = false;
+
+        if (material_ptr->type == MESH_MATERIAL_TYPE_GENERAL)
+        {
+            material_ptr->uber_sm     = ogl_materials_get_uber(materials,
+                                                               material,
+                                                               scene,
+                                                               true); /* use_shadow_maps */
+            material_ptr->uber_non_sm = ogl_materials_get_uber(materials,
+                                                               material,
+                                                               scene,
+                                                               false); /* use_shadow_maps */
+        }
+        else
+        {
+            /* SM does not affect ogl_program-driven materials */
+            material_ptr->uber_sm = ogl_materials_get_uber(materials,
                                                            material,
                                                            scene,
-                                                           true); /* use_shadow_maps */
-        material_ptr->uber_non_sm = ogl_materials_get_uber(materials,
-                                                           material,
-                                                           scene,
-                                                           false); /* use_shadow_maps */
+                                                           true); /* use any value */
+
+            material_ptr->uber_non_sm = material_ptr->uber_sm;
+            ogl_uber_retain(material_ptr->uber_sm);
+        }
     }
 
     return use_shadow_maps ? material_ptr->uber_sm
@@ -1023,6 +1356,9 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
         case MESH_MATERIAL_PROPERTY_FS_BEHAVIOR:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_FS_BEHAVIOR query is invalid for customized mesh_material instances.");
+
             *(mesh_material_fs_behavior*) out_result = material_ptr->fs_behavior;
 
             break;
@@ -1037,13 +1373,30 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_SHADING query is invalid for customized mesh_material instances.");
+
             *(mesh_material_shading*) out_result = material_ptr->shading;
+
+            break;
+        }
+
+        case MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM:
+        {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM,
+                              "MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM query is invalid for non-program mesh_material instances.");
+            ASSERT_DEBUG_SYNC(material_ptr->program != NULL,
+                              "mesh_material instance's program is NULL.");
+
+            *(ogl_program*) out_result = material_ptr->program;
 
             break;
         }
 
         case MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_SOURCE_SCENE_MATERIAL query is invalid for customized mesh_material instances.");
             ASSERT_DEBUG_SYNC(material_ptr->source_scene_material != NULL,
                               "Source scene_material is being queried for but none is set for the queried mesh_material instance");
 
@@ -1052,8 +1405,18 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
             break;
         }
 
+        case MESH_MATERIAL_PROPERTY_TYPE:
+        {
+            *(mesh_material_type*) out_result = material_ptr->type;
+
+            break;
+        }
+
         case MESH_MATERIAL_PROPERTY_UV_MAP_NAME:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_UV_MAP_NAME query is invalid for customized mesh_material instances.");
+
             *(system_hashed_ansi_string*) out_result = material_ptr->uv_map_name;
 
             break;
@@ -1061,6 +1424,9 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
         case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE query is invalid for customized mesh_material instances.");
+
             *(float*) out_result = material_ptr->vertex_smoothing_angle;
 
             break;
@@ -1068,6 +1434,9 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
         case MESH_MATERIAL_PROPERTY_VS_BEHAVIOR:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_VS_BEHAVIOR query is invalid for customized mesh_material instances.");
+
             *(mesh_material_vs_behavior*) out_result = material_ptr->vs_behavior;
 
             break;
@@ -1085,6 +1454,9 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 PUBLIC EMERALD_API mesh_material_property_attachment mesh_material_get_shading_property_attachment_type(__in __notnull mesh_material                  material,
                                                                                                         __in           mesh_material_shading_property property)
 {
+    ASSERT_DEBUG_SYNC(((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_attachment_type() call is invalid for customized mesh_material instances.");
+
     return ((_mesh_material*) material)->shading_properties[property].attachment;
 }
 
@@ -1097,6 +1469,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
     _mesh_material*          material_ptr = ((_mesh_material*) material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
 
+    ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_value_curve_container_float() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
                       "Requested shading property is not using a curve container float attachment");
 
@@ -1117,6 +1491,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_curve_container
     _mesh_material*          material_ptr = ((_mesh_material*) material);
     _mesh_material_property* property_ptr = material_ptr->shading_properties + property;
 
+    ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_value_curve_container_vec3() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
                       "Requested shading property is not using a curve container vec3 attachment");
 
@@ -1140,6 +1516,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_float(__in     
 {
     _mesh_material_property* property_ptr = ((_mesh_material*) material)->shading_properties + property;
 
+    ASSERT_DEBUG_SYNC(((_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_value_float() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT,
                       "Requested shading property is not using a float attachment");
 
@@ -1154,6 +1532,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_input_fragment_
     _mesh_material* material_ptr = (_mesh_material*) material;
 
     /* Sanity checks */
+    ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_value_input_fragment_attribute() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property == MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
                       "Invalid property requested");
     ASSERT_DEBUG_SYNC(material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE,
@@ -1176,6 +1556,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_texture(__in   
     _mesh_material_property*         property_ptr     = ( (_mesh_material*) material)->shading_properties + property;
     _mesh_material_property_texture* texture_data_ptr = &property_ptr->texture_data;
 
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_value_texture() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE,
                       "Requested shading property is not using a texture attachment");
 
@@ -1202,6 +1584,8 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
 {
     _mesh_material_property* property_ptr = ((_mesh_material*) material)->shading_properties + property;
 
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_get_shading_property_value_vec4() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(property_ptr->attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4,
                       "Requested shading property is not using a vec4 attachment");
 
@@ -1216,9 +1600,21 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
 {
     bool result = false;
 
-    /* We only check the properties that affect how the shaders are built */
+    ASSERT_DEBUG_SYNC(material_a != NULL &&
+                      material_b != NULL,
+                      "One or both input material arguments are NULL.");
 
-    /* 1. Shading */
+    /* 1. Type */
+    mesh_material_type material_a_type = ( (_mesh_material*) material_a)->type;
+    mesh_material_type material_b_type = ( (_mesh_material*) material_b)->type;
+
+    if (material_a_type != material_b_type)
+    {
+        goto end;
+    }
+
+    /* We only check the properties that affect how the shaders are built */
+    /* 2. Shading */
     mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
     mesh_material_shading material_b_shading = MESH_MATERIAL_SHADING_UNKNOWN;
 
@@ -1234,7 +1630,7 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
         goto end;
     }
 
-    /* 2. FS & VS behavior */
+    /* 3. FS & VS behavior */
     mesh_material_fs_behavior material_a_fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
     mesh_material_vs_behavior material_a_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
     mesh_material_fs_behavior material_b_fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
@@ -1268,7 +1664,7 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
         goto end;
     }
 
-    /* 3. Shading properties */
+    /* 4. Shading properties */
     for (unsigned int n_material_property = 0;
                       n_material_property < MESH_MATERIAL_SHADING_PROPERTY_COUNT;
                     ++n_material_property)
@@ -1364,6 +1760,9 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
     {
         case MESH_MATERIAL_PROPERTY_FS_BEHAVIOR:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_FS_BEHAVIOR property can only be set for general mesh_material instances.");
+
             material_ptr->fs_behavior = *(mesh_material_fs_behavior*) data;
             material_ptr->dirty       = true;
 
@@ -1372,6 +1771,9 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_SHADING property can only be set for general mesh_material instances.");
+
             material_ptr->shading = *(mesh_material_shading*) data;
             material_ptr->dirty   = true;
 
@@ -1380,6 +1782,9 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
         case MESH_MATERIAL_PROPERTY_UV_MAP_NAME:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_UV_MAP_NAME property can only be set for general mesh_material instances.");
+
             material_ptr->uv_map_name = *(system_hashed_ansi_string*) data;
 
             break;
@@ -1387,6 +1792,9 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
         case MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE property can only be set for general mesh_material instances.");
+
             material_ptr->vertex_smoothing_angle = *(float*) data;
 
             /* Call back registered parties. */
@@ -1399,6 +1807,9 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
         case MESH_MATERIAL_PROPERTY_VS_BEHAVIOR:
         {
+            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                              "MESH_MATERIAL_PROPERTY_VS_BEHAVIOR property can only be set for general mesh_material instances.");
+
             material_ptr->vs_behavior = *(mesh_material_vs_behavior*) data;
             material_ptr->dirty       = true;
 
@@ -1420,6 +1831,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_fl
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_set_shading_property_to_curve_container_float() call is invalid for customized mesh_material instances.");
+
     _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
 
     material_ptr->dirty                                                = true;
@@ -1438,6 +1852,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_curve_container_ve
                                                                                    __in_ecount(3)           curve_container*               data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
+
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_set_shading_property_to_curve_container_vec3() call is invalid for customized mesh_material instances.");
 
     _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
 
@@ -1458,6 +1875,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_float(__in __notnu
                                                                     __in           float                          data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
+
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_set_shading_property_to_float() call is invalid for customized mesh_material instances.");
 
     _mesh_material_deinit_shading_property_attachment(material_ptr->shading_properties[property]);
 
@@ -1484,6 +1904,8 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_input_fragment_att
     _mesh_material* material_ptr = (_mesh_material*) material;
 
     /* Sanity checks */
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_set_shading_property_to_input_fragment_attribute() call is invalid for customized mesh_material instances.");
     ASSERT_DEBUG_SYNC(material_ptr->shading == MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE,
                       "Invalid mesh material shading");
     ASSERT_DEBUG_SYNC(property == MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
@@ -1509,7 +1931,10 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(__in __not
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
 
-    ASSERT_DEBUG_SYNC(texture != NULL, "Bound texture is NULL");
+    ASSERT_DEBUG_SYNC(( (_mesh_material*) material)->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_set_shading_property_to_texture() call is invalid for customized mesh_material instances.");
+    ASSERT_DEBUG_SYNC(texture != NULL,
+                      "Bound texture is NULL");
 
     if (material_ptr->shading_properties[property].attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE)
     {
@@ -1564,6 +1989,9 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_vec4(__in __notnul
                                                                    __in_ecount(4) const float*                   data)
 {
     _mesh_material* material_ptr = (_mesh_material*) material;
+
+    ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
+                      "mesh_material_set_shading_property_to_vec4() call is invalid for customized mesh_material instances.");
 
     material_ptr->dirty                                   = true;
     material_ptr->shading_properties[property].attachment = MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4;

@@ -2070,16 +2070,35 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
 
     /* Retrieve the material and associated uber, which
      * should be used for the rendering process. */
-    _ogl_materials_special_material sm_special_material = SPECIAL_MATERIAL_UNKNOWN;
+    scene_light_shadow_map_algorithm sm_algo             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+    _ogl_materials_special_material  sm_special_material = SPECIAL_MATERIAL_UNKNOWN;
+
+    scene_light_get_property(shadow_mapping_ptr->current_light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                            &sm_algo);
 
     if (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
         shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
     {
+        ASSERT_DEBUG_SYNC(sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN,
+                          "TODO");
+
         sm_special_material = SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID;
     }
     else
     {
-        sm_special_material = SPECIAL_MATERIAL_DEPTH_CLIP;
+        ASSERT_DEBUG_SYNC(sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN ||
+                          sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM,
+                          "Unrecognized SM algorithm type");
+
+        if (sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN)
+        {
+            sm_special_material = SPECIAL_MATERIAL_DEPTH_CLIP;
+        }
+        else
+        {
+            sm_special_material = SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED;
+        }
     }
 
     mesh_material sm_material      = ogl_materials_get_special_material(materials,

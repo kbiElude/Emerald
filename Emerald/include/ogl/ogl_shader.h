@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_SHADER_H
@@ -9,7 +9,8 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_shader, ogl_shader)
+REFCOUNT_INSERT_DECLARATIONS(ogl_shader,
+                             ogl_shader)
 
 
 /** Compiles a shader. After callnig this function you can check the log provided by the underlying
@@ -24,7 +25,7 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_shader, ogl_shader)
  */
 PUBLIC EMERALD_API bool ogl_shader_compile(__in __notnull ogl_shader);
 
-/** Creates a new shader instance of given type. 
+/** Creates a new shader instance of given type.
  *
  *  This function calls back into rendering handler's rendering loop so you can expect a frame drop
  *  when calling.
@@ -35,7 +36,7 @@ PUBLIC EMERALD_API bool ogl_shader_compile(__in __notnull ogl_shader);
  *
  *  @return GL shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context, 
+PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context,
                                                 __in           ogl_shader_type,
                                                 __in __notnull system_hashed_ansi_string);
 

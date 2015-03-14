@@ -15,6 +15,7 @@
 
 REFCOUNT_INSERT_DECLARATIONS(ogl_uber, ogl_uber)
 
+
 typedef enum
 {
     OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,     /* vec3                      */
@@ -24,7 +25,6 @@ typedef enum
     OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,          /* float                     */
     OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
     OGL_UBER_GENERAL_PROPERTY_VP,
-
 
     /* Always last */
     OGL_UBER_GENERAL_PROPERTY_UNKNOWN
@@ -105,6 +105,11 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
                                             __in __notnull system_hashed_ansi_string  name,
                                             __in           shaders_fragment_uber_type fs_type,
                                             __in           shaders_vertex_uber_type   vs_type);
+
+/** TODO */
+PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_context               context,
+                                                             __in __notnull system_hashed_ansi_string name,
+                                                             __in __notnull ogl_program               program);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull const ogl_uber             uber,

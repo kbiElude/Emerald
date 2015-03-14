@@ -2440,7 +2440,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->pWGLSwapIntervalEXT                        = NULL;
 
                             _result->primitive_renderer                         = NULL;
-                            _result->materials                                  = ogl_materials_create( (ogl_context) _result);
+                            _result->materials                                  = NULL; /* deferred till first query time */
                             _result->opengl32_dll_handle                        = NULL;
                             _result->multisampling_samples                      = 0;
                             _result->multisampling_supported_sample             = NULL;
@@ -2852,6 +2852,12 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_MATERIALS:
         {
+            /* If there's no material manager available, create one now */
+            if (context_ptr->materials == NULL)
+            {
+                context_ptr->materials = ogl_materials_create(context);
+            }
+
             *((ogl_materials*) out_result) = context_ptr->materials;
 
             break;

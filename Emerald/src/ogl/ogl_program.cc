@@ -1187,7 +1187,8 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program pro
                                                          _ogl_program_attach_shader_callback,
                                                         &callback_argument);
 
-        result = (system_resizable_vector_find(program_ptr->attached_shaders, shader) != ITEM_NOT_FOUND);
+        result = (system_resizable_vector_find(program_ptr->attached_shaders,
+                                               shader) != ITEM_NOT_FOUND);
     }
     else
     {

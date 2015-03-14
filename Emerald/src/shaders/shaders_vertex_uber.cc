@@ -521,7 +521,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                       system_hashed_ansi_string_create("vp"),
                                                       NULL /* out_variable_id */);
 
-    /* Add global model uniform */
+    /* Add model uniform */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
                                                       LAYOUT_QUALIFIER_NONE, /* global UB, so we must use column-major ordering */

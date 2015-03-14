@@ -36,7 +36,9 @@ typedef struct
 } _ogl_shader;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_shader, ogl_shader, _ogl_shader);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_shader,
+                               ogl_shader,
+                              _ogl_shader);
 
 
 /** TODO */

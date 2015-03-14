@@ -211,184 +211,141 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     LOG_INFO("Performance warning: _ogl_materials_bake_uber() called.");
 
     /* Spawn a new uber  */
-    mesh_material_fs_behavior fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
-    mesh_material_vs_behavior vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
-    system_hashed_ansi_string uber_name   = _ogl_materials_get_uber_name(material,
-                                                                         scene,
-                                                                         use_shadow_maps);
+    mesh_material_type        material_type = MESH_MATERIAL_TYPE_UNDEFINED;
+    ogl_uber                  new_uber      = NULL;
+    system_hashed_ansi_string uber_name     = _ogl_materials_get_uber_name(material,
+                                                                           scene,
+                                                                           use_shadow_maps);
 
     mesh_material_get_property(material,
-                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                              &fs_behavior);
-    mesh_material_get_property(material,
-                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                              &vs_behavior);
+                               MESH_MATERIAL_PROPERTY_TYPE,
+                              &material_type);
 
-    ogl_uber new_uber = ogl_uber_create(context,
-                                        uber_name,
-                                        shaders_fragment_uber_get_fs_uber_type_for_fs_behavior(fs_behavior),
-                                        shaders_vertex_uber_get_vs_uber_type_for_vs_behavior  (vs_behavior) );
-
-    ASSERT_ALWAYS_SYNC(new_uber != NULL,
-                       "Could not spawn an uber instance");
-    if (new_uber != NULL)
+    switch (material_type)
     {
-        mesh_material_shading material_shading             = MESH_MATERIAL_SHADING_UNKNOWN;
-        bool                  scene_shadow_mapping_enabled = false;
-
-        mesh_material_get_property(material,
-                                   MESH_MATERIAL_PROPERTY_SHADING,
-                                  &material_shading);
-        scene_get_property        (scene,
-                                   SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
-                                  &scene_shadow_mapping_enabled);
-
-        if (material_shading == MESH_MATERIAL_SHADING_LAMBERT ||
-            material_shading == MESH_MATERIAL_SHADING_PHONG)
+        case MESH_MATERIAL_TYPE_GENERAL:
         {
-            /* Map mesh_material property attachments to shaders_fragment_uber data source equivalents */
-            struct _mapping
+            mesh_material_fs_behavior fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
+            mesh_material_vs_behavior vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
+
+            mesh_material_get_property(material,
+                                       MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                                      &fs_behavior);
+            mesh_material_get_property(material,
+                                       MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
+                                      &vs_behavior);
+
+            new_uber = ogl_uber_create(context,
+                                       uber_name,
+                                       shaders_fragment_uber_get_fs_uber_type_for_fs_behavior(fs_behavior),
+                                       shaders_vertex_uber_get_vs_uber_type_for_vs_behavior  (vs_behavior) );
+
+            ASSERT_ALWAYS_SYNC(new_uber != NULL,
+                               "Could not spawn an uber instance");
+
+            if (new_uber != NULL)
             {
-                mesh_material_shading_property material_property;
-                shaders_fragment_uber_property fragment_uber_property;
-            } mappings[] =
-            {
+                mesh_material_shading material_shading             = MESH_MATERIAL_SHADING_UNKNOWN;
+                bool                  scene_shadow_mapping_enabled = false;
+
+                mesh_material_get_property(material,
+                                           MESH_MATERIAL_PROPERTY_SHADING,
+                                          &material_shading);
+                scene_get_property        (scene,
+                                           SCENE_PROPERTY_SHADOW_MAPPING_ENABLED,
+                                          &scene_shadow_mapping_enabled);
+
+                if (material_shading == MESH_MATERIAL_SHADING_LAMBERT ||
+                    material_shading == MESH_MATERIAL_SHADING_PHONG)
                 {
-                    MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
-                    SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE
-                },
-
-                {
-                    MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-                    SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE
-                },
-
-                {
-                    MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-                    SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE
-                },
-
-                {
-                    MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                    SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE
-                },
-
-                {
-                    MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-                    SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE
-                },
-            };
-            const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
-
-            unsigned int n_uber_fragment_property_value_pairs     = 0;
-            unsigned int uber_fragment_property_value_pairs[(n_mappings + 1 /* view vector setting */) * 2];
-
-            /* Add ambient/diffuse/emission factors */
-            for (unsigned int n_mapping = 0;
-                              n_mapping < n_mappings;
-                            ++n_mapping)
-            {
-                _mapping                          mapping             = mappings[n_mapping];
-                mesh_material_property_attachment material_attachment = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                           mapping.material_property);
-
-                _ogl_materials_get_forced_setting(materials,
-                                                  mapping.material_property,
-                                                 &material_attachment,
-                                                 NULL /* out_attachment_data */);
-
-                if (material_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
-                {
-                    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 0] = mapping.fragment_uber_property;
-
-                    switch (material_attachment)
+                    /* Map mesh_material property attachments to shaders_fragment_uber data source equivalents */
+                    struct _mapping
                     {
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
-                        {
-                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT;
-
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
-                        {
-                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3;
-
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
-                        {
-                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT;
-
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
-                        {
-                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D;
-
-                            break;
-                        }
-
-                        case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
-                        {
-                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4;
-
-                            break;
-                        }
-
-                        default:
-                        {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Unrecognized material attachment type");
-                        }
-                    } /* switch (material_attachment) */
-
-                    n_uber_fragment_property_value_pairs++;
-                }
-            } /* for (all mappings) */
-
-            /* Add lights */
-            if (scene != NULL)
-            {
-                unsigned int n_scene_lights = 0;
-
-                scene_get_property(scene,
-                                   SCENE_PROPERTY_N_LIGHTS,
-                                  &n_scene_lights);
-
-                for (unsigned int n_scene_light = 0;
-                                  n_scene_light < n_scene_lights;
-                                ++n_scene_light)
-                {
-                    scene_light      current_light      = scene_get_light_by_index(scene,
-                                                                                   n_scene_light);
-                    scene_light_type current_light_type = SCENE_LIGHT_TYPE_UNKNOWN;
-
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_TYPE,
-                                            &current_light_type);
-
-                    /* Determine uber light type, given scene light type and material's BRDF type */
-                    shaders_fragment_uber_light_type uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
-
-                    switch (material_shading)
+                        mesh_material_shading_property material_property;
+                        shaders_fragment_uber_property fragment_uber_property;
+                    } mappings[] =
                     {
-                        case MESH_MATERIAL_SHADING_LAMBERT:
                         {
-                            switch (current_light_type)
+                            MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
+                            SHADERS_FRAGMENT_UBER_PROPERTY_AMBIENT_DATA_SOURCE
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+                            SHADERS_FRAGMENT_UBER_PROPERTY_DIFFUSE_DATA_SOURCE
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+                            SHADERS_FRAGMENT_UBER_PROPERTY_LUMINOSITY_DATA_SOURCE
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+                            SHADERS_FRAGMENT_UBER_PROPERTY_SHININESS_DATA_SOURCE
+                        },
+
+                        {
+                            MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+                            SHADERS_FRAGMENT_UBER_PROPERTY_SPECULAR_DATA_SOURCE
+                        },
+                    };
+                    const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
+
+                    unsigned int n_uber_fragment_property_value_pairs     = 0;
+                    unsigned int uber_fragment_property_value_pairs[(n_mappings + 1 /* view vector setting */) * 2];
+
+                    /* Add ambient/diffuse/emission factors */
+                    for (unsigned int n_mapping = 0;
+                                      n_mapping < n_mappings;
+                                    ++n_mapping)
+                    {
+                        _mapping                          mapping             = mappings[n_mapping];
+                        mesh_material_property_attachment material_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                                   mapping.material_property);
+
+                        _ogl_materials_get_forced_setting(materials,
+                                                          mapping.material_property,
+                                                         &material_attachment,
+                                                         NULL /* out_attachment_data */);
+
+                        if (material_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
+                        {
+                            uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 0] = mapping.fragment_uber_property;
+
+                            switch (material_attachment)
                             {
-                                case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT:
                                 {
-                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL;
+                                    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_FLOAT;
 
                                     break;
                                 }
 
-                                case SCENE_LIGHT_TYPE_POINT:
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3:
                                 {
-                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT;
+                                    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_CURVE_CONTAINER_VEC3;
+
+                                    break;
+                                }
+
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT:
+                                {
+                                    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_FLOAT;
+
+                                    break;
+                                }
+
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE:
+                                {
+                                    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_TEXTURE2D;
+
+                                    break;
+                                }
+
+                                case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4:
+                                {
+                                    uber_fragment_property_value_pairs[n_uber_fragment_property_value_pairs * 2 + 1] = SHADERS_FRAGMENT_UBER_PROPERTY_VALUE_VEC4;
 
                                     break;
                                 }
@@ -396,41 +353,106 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                 default:
                                 {
                                     ASSERT_DEBUG_SYNC(false,
-                                                      "TODO: Unrecognized scene light type for Lambert shading");
+                                                      "Unrecognized material attachment type");
                                 }
-                            } /* switch (current_light_type) */
+                            } /* switch (material_attachment) */
 
-                            break;
-                        } /* case MESH_MATERIAL_SHADING_LAMBERT: */
+                            n_uber_fragment_property_value_pairs++;
+                        }
+                    } /* for (all mappings) */
 
-                        case MESH_MATERIAL_SHADING_PHONG:
+                    /* Add lights */
+                    if (scene != NULL)
+                    {
+                        unsigned int n_scene_lights = 0;
+
+                        scene_get_property(scene,
+                                           SCENE_PROPERTY_N_LIGHTS,
+                                          &n_scene_lights);
+
+                        for (unsigned int n_scene_light = 0;
+                                          n_scene_light < n_scene_lights;
+                                        ++n_scene_light)
                         {
-                            switch (current_light_type)
+                            scene_light      current_light      = scene_get_light_by_index(scene,
+                                                                                           n_scene_light);
+                            scene_light_type current_light_type = SCENE_LIGHT_TYPE_UNKNOWN;
+
+                            scene_light_get_property(current_light,
+                                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                                    &current_light_type);
+
+                            /* Determine uber light type, given scene light type and material's BRDF type */
+                            shaders_fragment_uber_light_type uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE;
+
+                            switch (material_shading)
                             {
-                                case SCENE_LIGHT_TYPE_AMBIENT:
+                                case MESH_MATERIAL_SHADING_LAMBERT:
                                 {
-                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT;
+                                    switch (current_light_type)
+                                    {
+                                        case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                                        {
+                                            uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_DIRECTIONAL;
+
+                                            break;
+                                        }
+
+                                        case SCENE_LIGHT_TYPE_POINT:
+                                        {
+                                            uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_LAMBERT_POINT;
+
+                                            break;
+                                        }
+
+                                        default:
+                                        {
+                                            ASSERT_DEBUG_SYNC(false,
+                                                              "TODO: Unrecognized scene light type for Lambert shading");
+                                        }
+                                    } /* switch (current_light_type) */
 
                                     break;
-                                }
+                                } /* case MESH_MATERIAL_SHADING_LAMBERT: */
 
-                                case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                                case MESH_MATERIAL_SHADING_PHONG:
                                 {
-                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL;
+                                    switch (current_light_type)
+                                    {
+                                        case SCENE_LIGHT_TYPE_AMBIENT:
+                                        {
+                                            uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_AMBIENT;
 
-                                    break;
-                                }
+                                            break;
+                                        }
 
-                                case SCENE_LIGHT_TYPE_POINT:
-                                {
-                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT;
+                                        case SCENE_LIGHT_TYPE_DIRECTIONAL:
+                                        {
+                                            uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_DIRECTIONAL;
 
-                                    break;
-                                }
+                                            break;
+                                        }
 
-                                case SCENE_LIGHT_TYPE_SPOT:
-                                {
-                                    uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT;
+                                        case SCENE_LIGHT_TYPE_POINT:
+                                        {
+                                            uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_POINT;
+
+                                            break;
+                                        }
+
+                                        case SCENE_LIGHT_TYPE_SPOT:
+                                        {
+                                            uber_light_type = SHADERS_FRAGMENT_UBER_LIGHT_TYPE_PHONG_SPOT;
+
+                                            break;
+                                        }
+
+                                        default:
+                                        {
+                                            ASSERT_DEBUG_SYNC(false,
+                                                              "TODO: Unrecognized scene light type for phong shading");
+                                        }
+                                    } /* switch (current_light_type) */
 
                                     break;
                                 }
@@ -438,108 +460,124 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                                 default:
                                 {
                                     ASSERT_DEBUG_SYNC(false,
-                                                      "TODO: Unrecognized scene light type for phong shading");
+                                                      "TODO: Unsupported shading algorithm");
                                 }
-                            } /* switch (current_light_type) */
+                            } /* switch (material_shading) */
+
+                            /* Determine if we should check visibility for the light.
+                             *
+                             * Note that scene has a property called SCENE_PROPERTY_SHADOW_MAPPING_ENABLED which
+                             * should be ANDed with light's property.
+                             *
+                             * Also note that we must not forget about the global "use shadow maps" setting here.
+                             */
+                            bool uses_shadow_mapping = false;
+
+                            scene_light_get_property(current_light,
+                                                     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                                    &uses_shadow_mapping);
+
+                            uses_shadow_mapping &= scene_shadow_mapping_enabled;
+                            uses_shadow_mapping &= use_shadow_maps;
+
+                            /* Add the light item if not a NULL light */
+                            if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
+                            {
+                                ogl_uber_add_light_item(new_uber,
+                                                        current_light,
+                                                        uber_light_type,
+                                                        uses_shadow_mapping,
+                                                        n_uber_fragment_property_value_pairs,
+                                                        uber_fragment_property_value_pairs);
+                            } /* if (uber_light_type != UBER_LIGHT_NONE) */
+                        } /* for (all scene lights) */
+                    } /* if (scene != NULL) */
+                } /* if (material_shading == MESH_MATERIAL_SHADING_LAMBERT || material_shading == MESH_MATERIAL_SHADING_PHONG) */
+                else
+                if (material_shading == MESH_MATERIAL_SHADING_NONE)
+                {
+                    /* Nothing to be done here! */
+                }
+                else
+                {
+                    /* Sanity checks */
+                    mesh_material_input_fragment_attribute input_fragment_attribute   = MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
+                    mesh_material_property_attachment      input_attribute_attachment = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
+
+                    ASSERT_DEBUG_SYNC(material_shading == MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE,
+                                      "Unrecognized mesh material shading");
+
+                    input_attribute_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                    MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE);
+
+                    ASSERT_DEBUG_SYNC(input_attribute_attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE,
+                                      "Invalid input attribute attachment");
+
+                    /* Retrieve the attribute we want to use as color data source */
+                    mesh_material_get_shading_property_value_input_fragment_attribute(material,
+                                                                                      MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
+                                                                                     &input_fragment_attribute);
+
+                    /* Configure the ogl_uber instance */
+                    _ogl_uber_input_fragment_attribute uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
+
+                    switch (input_fragment_attribute)
+                    {
+                        case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:
+                        {
+                            uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;
+
+                            break;
+                        }
+
+                        case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD:
+                        {
+                            uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD;
 
                             break;
                         }
 
                         default:
                         {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "TODO: Unsupported shading algorithm");
+                            ASSERT_DEBUG_SYNC(false, "Unrecognized input fragment attribute");
                         }
-                    } /* switch (material_shading) */
+                    }
 
-                    /* Determine if we should check visibility for the light.
-                     *
-                     * Note that scene has a property called SCENE_PROPERTY_SHADOW_MAPPING_ENABLED which
-                     * should be ANDed with light's property.
-                     *
-                     * Also note that we must not forget about the global "use shadow maps" setting here.
-                     */
-                    bool uses_shadow_mapping = false;
-
-                    scene_light_get_property(current_light,
-                                             SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
-                                            &uses_shadow_mapping);
-
-                    uses_shadow_mapping &= scene_shadow_mapping_enabled;
-                    uses_shadow_mapping &= use_shadow_maps;
-
-                    /* Add the light item if not a NULL light */
-                    if (uber_light_type != SHADERS_FRAGMENT_UBER_LIGHT_TYPE_NONE)
+                    if (uber_input_attribute != OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN)
                     {
-                        ogl_uber_add_light_item(new_uber,
-                                                current_light,
-                                                uber_light_type,
-                                                uses_shadow_mapping,
-                                                n_uber_fragment_property_value_pairs,
-                                                uber_fragment_property_value_pairs);
-                    } /* if (uber_light_type != UBER_LIGHT_NONE) */
-                } /* for (all scene lights) */
-            } /* if (scene != NULL) */
-        } /* if (material_shading == MESH_MATERIAL_SHADING_LAMBERT || material_shading == MESH_MATERIAL_SHADING_PHONG) */
-        else
-        if (material_shading == MESH_MATERIAL_SHADING_NONE)
+                        ogl_uber_add_input_fragment_attribute_item(new_uber,
+                                                                   uber_input_attribute);
+                    }
+                }
+            } /* if (new_uber != NULL) */
+
+            break;
+        } /* case MESH_MATERIAL_TYPE_GENERAL: */
+
+        case MESH_MATERIAL_TYPE_PROGRAM:
         {
-            /* Nothing to be done here! */
-        }
-        else
+            ogl_program material_program = NULL;
+
+            mesh_material_get_property(material,
+                                       MESH_MATERIAL_PROPERTY_SOURCE_OGL_PROGRAM,
+                                      &material_program);
+
+            new_uber = ogl_uber_create_from_ogl_program(context,
+                                                        uber_name,
+                                                        material_program);
+
+            ASSERT_ALWAYS_SYNC(new_uber != NULL,
+                               "Could not spawn an uber instance");
+
+            break;
+        } /* case MESH_MATERIAL_TYPE_PROGRAM: */
+
+        default:
         {
-            /* Sanity checks */
-            mesh_material_input_fragment_attribute input_fragment_attribute   = MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
-            mesh_material_property_attachment      input_attribute_attachment = MESH_MATERIAL_PROPERTY_ATTACHMENT_UNKNOWN;
-
-            ASSERT_DEBUG_SYNC(material_shading == MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE,
-                              "Unrecognized mesh material shading");
-
-            input_attribute_attachment = mesh_material_get_shading_property_attachment_type(material,
-                                                                                            MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE);
-
-            ASSERT_DEBUG_SYNC(input_attribute_attachment == MESH_MATERIAL_PROPERTY_ATTACHMENT_INPUT_FRAGMENT_ATTRIBUTE,
-                              "Invalid input attribute attachment");
-
-            /* Retrieve the attribute we want to use as color data source */
-            mesh_material_get_shading_property_value_input_fragment_attribute(material,
-                                                                              MESH_MATERIAL_SHADING_PROPERTY_INPUT_ATTRIBUTE,
-                                                                             &input_fragment_attribute);
-
-            /* Configure the ogl_uber instance */
-            _ogl_uber_input_fragment_attribute uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN;
-
-            switch (input_fragment_attribute)
-            {
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL:
-                {
-                    uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_NORMAL;
-
-                    break;
-                }
-
-                case MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD:
-                {
-                    uber_input_attribute = OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD;
-
-                    break;
-                }
-
-                default:
-                {
-                    ASSERT_DEBUG_SYNC(false, "Unrecognized input fragment attribute");
-                }
-            }
-
-            if (uber_input_attribute != OGL_UBER_INPUT_FRAGMENT_ATTRIBUTE_UNKNOWN)
-            {
-                ogl_uber_add_input_fragment_attribute_item(new_uber,
-                                                           uber_input_attribute);
-            }
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized mesh_material_type value.");
         }
-
-        /* Done! */
-    }
+    } /* switch (type) */
 
     /* Return the result */
     return (ogl_uber) new_uber;
@@ -793,173 +831,196 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull me
                  << system_hashed_ansi_string_get_buffer(material_name)
                  << "]\n";
 
-    /* Shading */
-    mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+    /* Type */
+    mesh_material_type material_type = MESH_MATERIAL_TYPE_UNDEFINED;
 
     mesh_material_get_property(material,
-                               MESH_MATERIAL_PROPERTY_SHADING,
-                              &material_shading);
+                               MESH_MATERIAL_PROPERTY_TYPE,
+                              &material_type);
 
-    name_sstream << "Shading:["
-                 << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_shading_has(material_shading) )
-                 << "]\n\n";
-
-    /* Iterate over all shading properties, whose attachments are not MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE */
-    name_sstream << "Mesh material shading properties:\n>>\n";
-
-    for (mesh_material_shading_property current_property  = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
-                                        current_property != MESH_MATERIAL_SHADING_PROPERTY_COUNT;
-                                ++(int&)current_property)
-    {
-        mesh_material_property_attachment property_attachment = mesh_material_get_shading_property_attachment_type(material,
-                                                                                                                   current_property);
-
-        if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
-        {
-            system_hashed_ansi_string current_attachment_has = mesh_material_get_mesh_material_property_attachment_has(property_attachment);
-            system_hashed_ansi_string current_property_has   = mesh_material_get_mesh_material_shading_property_has   (current_property);
-
-            name_sstream << "Property ["
-                         << system_hashed_ansi_string_get_buffer(current_property_has)
-                         << "] uses an attachment of type ["
-                         << system_hashed_ansi_string_get_buffer(current_attachment_has)
-                         << "]\n";
-        } /* if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE) */
-    } /* for (all shading properties) */
-
-    name_sstream << "<<\n\n";
-
-    /* FS & VS behavior */
-    mesh_material_fs_behavior material_fs_behavior;
-    system_hashed_ansi_string material_fs_behavior_has = NULL;
-    mesh_material_vs_behavior material_vs_behavior;
-    system_hashed_ansi_string material_vs_behavior_has = NULL;
-
-    mesh_material_get_property(material,
-                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                              &material_fs_behavior);
-    mesh_material_get_property(material,
-                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                              &material_vs_behavior);
-
-    material_fs_behavior_has = mesh_material_get_mesh_material_fs_behavior_has(material_fs_behavior);
-    material_vs_behavior_has = mesh_material_get_mesh_material_vs_behavior_has(material_vs_behavior);
-
-    name_sstream << "FS behavior:["
-                 << system_hashed_ansi_string_get_buffer(material_fs_behavior_has)
-                 << "]\nVS behavior:["
-                 << system_hashed_ansi_string_get_buffer(material_vs_behavior_has)
-                 << "]\n\n";
-
-    if (material_shading != MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE &&
-        material_shading != MESH_MATERIAL_SHADING_NONE)
-    {
-        /* Light configuration */
-        unsigned int n_lights = 0;
-
-        scene_get_property(scene,
-                           SCENE_PROPERTY_N_LIGHTS,
-                          &n_lights);
-
-        name_sstream << "Lights:["
-                     << n_lights
-                     << "]:\n>>\n";
-
-        for (unsigned int n_light = 0;
-                          n_light < n_lights;
-                        ++n_light)
-        {
-            scene_light               current_light           = scene_get_light_by_index(scene,
-                                                                                         n_light);
-            bool                      current_light_is_caster = false;
-            scene_light_type          current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
-            system_hashed_ansi_string current_light_type_has  = NULL;
-
-            scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_TYPE,
-                                    &current_light_type);
-            scene_light_get_property(current_light,
-                                     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
-                                    &current_light_is_caster);
-
-            current_light_type_has = scene_light_get_scene_light_type_has(current_light_type);
-
-            name_sstream << "Light ["
-                         << n_light
-                         << "] (type:["
-                         << system_hashed_ansi_string_get_buffer(current_light_type_has)
-                         << "]):\n";
-
-            /* If this light is a caster, include SM-specific info */
-            if (current_light_is_caster)
-            {
-                scene_light_shadow_map_bias      shadow_map_bias          = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
-                system_hashed_ansi_string        shadow_map_bias_has      = NULL;
-                scene_light_shadow_map_filtering shadow_map_filtering     = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
-                system_hashed_ansi_string        shadow_map_filtering_has = NULL;
-
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
-                                        &shadow_map_bias);
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
-                                        &shadow_map_filtering);
-
-                shadow_map_bias_has      = scene_light_get_scene_light_shadow_map_bias_has     (shadow_map_bias);
-                shadow_map_filtering_has = scene_light_get_scene_light_shadow_map_filtering_has(shadow_map_filtering);
-
-                name_sstream << "Shadow caster: bias:["
-                             << system_hashed_ansi_string_get_buffer(shadow_map_bias_has)
-                             << "] filtering:["
-                             << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
-                             << "]\n";
-            } /* if (current_light_is_caster) */
-
-            /* If this is a point or a spot light, include falloff setting */
-            if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
-                current_light_type == SCENE_LIGHT_TYPE_SPOT)
-            {
-                scene_light_falloff       current_light_falloff     = SCENE_LIGHT_FALLOFF_UNKNOWN;
-                system_hashed_ansi_string current_light_falloff_has = NULL;
-
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_FALLOFF,
-                                        &current_light_falloff);
-
-                current_light_falloff_has = scene_light_get_scene_light_falloff_has(current_light_falloff);
-
-                name_sstream << "Light falloff:["
-                             << system_hashed_ansi_string_get_buffer(current_light_falloff_has)
-                             << "]\n";
-            }
-
-            /* If this is a point light, also query the SM algorithm */
-            if (current_light_type == SCENE_LIGHT_TYPE_POINT)
-            {
-                scene_light_shadow_map_pointlight_algorithm sm_algorithm;
-                system_hashed_ansi_string                   sm_algorithm_has;
-
-                scene_light_get_property(current_light,
-                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
-                                        &sm_algorithm);
-
-                sm_algorithm_has = scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(sm_algorithm);
-
-                name_sstream << "SM pointlight algorithm:["
-                             << system_hashed_ansi_string_get_buffer(sm_algorithm_has)
-                             << "]\n";
-            }
-
-            name_sstream << "\n";
-        } /* for (all lights) */
-    } /* if (lambert or phong shading is used) */
-
-    /* SM global setting */
-    name_sstream << "<<\n"
-                 << "\n"
-                 << "Global SM setting:["
-                 << ((use_shadow_maps) ? "ON" : "OFF")
+    name_sstream << "Type:["
+                 << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_type_has(material_type) )
                  << "]\n";
+
+    if (material_type == MESH_MATERIAL_TYPE_GENERAL)
+    {
+        /* Shading */
+        mesh_material_shading material_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+
+        mesh_material_get_property(material,
+                                   MESH_MATERIAL_PROPERTY_SHADING,
+                                  &material_shading);
+
+        name_sstream << "Shading:["
+                     << system_hashed_ansi_string_get_buffer(mesh_material_get_mesh_material_shading_has(material_shading) )
+                     << "]\n";
+
+        /* Iterate over all shading properties, whose attachments are not MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE */
+        name_sstream << "Mesh material shading properties:\n>>\n";
+
+        for (mesh_material_shading_property current_property  = MESH_MATERIAL_SHADING_PROPERTY_FIRST;
+                                            current_property != MESH_MATERIAL_SHADING_PROPERTY_COUNT;
+                                    ++(int&)current_property)
+        {
+            mesh_material_property_attachment property_attachment = mesh_material_get_shading_property_attachment_type(material,
+                                                                                                                       current_property);
+
+            if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE)
+            {
+                system_hashed_ansi_string current_attachment_has = mesh_material_get_mesh_material_property_attachment_has(property_attachment);
+                system_hashed_ansi_string current_property_has   = mesh_material_get_mesh_material_shading_property_has   (current_property);
+
+                name_sstream << "Property ["
+                             << system_hashed_ansi_string_get_buffer(current_property_has)
+                             << "] uses an attachment of type ["
+                             << system_hashed_ansi_string_get_buffer(current_attachment_has)
+                             << "]\n";
+            } /* if (property_attachment != MESH_MATERIAL_PROPERTY_ATTACHMENT_NONE) */
+        } /* for (all shading properties) */
+
+        name_sstream << "<<\n\n";
+
+        /* FS & VS behavior */
+        mesh_material_fs_behavior material_fs_behavior;
+        system_hashed_ansi_string material_fs_behavior_has = NULL;
+        mesh_material_vs_behavior material_vs_behavior;
+        system_hashed_ansi_string material_vs_behavior_has = NULL;
+
+        mesh_material_get_property(material,
+                                   MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
+                                  &material_fs_behavior);
+        mesh_material_get_property(material,
+                                   MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
+                                  &material_vs_behavior);
+
+        material_fs_behavior_has = mesh_material_get_mesh_material_fs_behavior_has(material_fs_behavior);
+        material_vs_behavior_has = mesh_material_get_mesh_material_vs_behavior_has(material_vs_behavior);
+
+        name_sstream << "FS behavior:["
+                     << system_hashed_ansi_string_get_buffer(material_fs_behavior_has)
+                     << "]\nVS behavior:["
+                     << system_hashed_ansi_string_get_buffer(material_vs_behavior_has)
+                     << "]\n\n";
+
+        if (material_shading != MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE &&
+            material_shading != MESH_MATERIAL_SHADING_NONE)
+        {
+            /* Light configuration */
+            unsigned int n_lights = 0;
+
+            scene_get_property(scene,
+                               SCENE_PROPERTY_N_LIGHTS,
+                              &n_lights);
+
+            name_sstream << "Lights:["
+                         << n_lights
+                         << "]:\n>>\n";
+
+            for (unsigned int n_light = 0;
+                              n_light < n_lights;
+                            ++n_light)
+            {
+                scene_light               current_light           = scene_get_light_by_index(scene,
+                                                                                             n_light);
+                bool                      current_light_is_caster = false;
+                scene_light_type          current_light_type      = SCENE_LIGHT_TYPE_UNKNOWN;
+                system_hashed_ansi_string current_light_type_has  = NULL;
+
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_TYPE,
+                                        &current_light_type);
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
+                                        &current_light_is_caster);
+
+                current_light_type_has = scene_light_get_scene_light_type_has(current_light_type);
+
+                name_sstream << "Light ["
+                             << n_light
+                             << "] (type:["
+                             << system_hashed_ansi_string_get_buffer(current_light_type_has)
+                             << "]):\n";
+
+                /* If this light is a caster, include SM-specific info */
+                if (current_light_is_caster)
+                {
+                    scene_light_shadow_map_algorithm shadow_map_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+                    system_hashed_ansi_string        shadow_map_algorithm_has = NULL;
+                    scene_light_shadow_map_bias      shadow_map_bias          = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
+                    system_hashed_ansi_string        shadow_map_bias_has      = NULL;
+                    scene_light_shadow_map_filtering shadow_map_filtering     = SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN;
+                    system_hashed_ansi_string        shadow_map_filtering_has = NULL;
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                            &shadow_map_algorithm);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
+                                            &shadow_map_bias);
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_FILTERING,
+                                            &shadow_map_filtering);
+
+                    shadow_map_algorithm_has = scene_light_get_scene_light_shadow_map_algorithm_has(shadow_map_algorithm);
+                    shadow_map_bias_has      = scene_light_get_scene_light_shadow_map_bias_has     (shadow_map_bias);
+                    shadow_map_filtering_has = scene_light_get_scene_light_shadow_map_filtering_has(shadow_map_filtering);
+
+                    name_sstream << "Shadow caster: "
+                                    "algorithm:["
+                                 << system_hashed_ansi_string_get_buffer(shadow_map_algorithm_has)
+                                 << "bias:["
+                                 << system_hashed_ansi_string_get_buffer(shadow_map_bias_has)
+                                 << "] filtering:["
+                                 << system_hashed_ansi_string_get_buffer(shadow_map_filtering_has)
+                                 << "]\n";
+                } /* if (current_light_is_caster) */
+
+                /* If this is a point or a spot light, include falloff setting */
+                if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
+                    current_light_type == SCENE_LIGHT_TYPE_SPOT)
+                {
+                    scene_light_falloff       current_light_falloff     = SCENE_LIGHT_FALLOFF_UNKNOWN;
+                    system_hashed_ansi_string current_light_falloff_has = NULL;
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_FALLOFF,
+                                            &current_light_falloff);
+
+                    current_light_falloff_has = scene_light_get_scene_light_falloff_has(current_light_falloff);
+
+                    name_sstream << "Light falloff:["
+                                 << system_hashed_ansi_string_get_buffer(current_light_falloff_has)
+                                 << "]\n";
+                }
+
+                /* If this is a point light, also query the SM algorithm */
+                if (current_light_type == SCENE_LIGHT_TYPE_POINT)
+                {
+                    scene_light_shadow_map_pointlight_algorithm sm_algorithm;
+                    system_hashed_ansi_string                   sm_algorithm_has;
+
+                    scene_light_get_property(current_light,
+                                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+                                            &sm_algorithm);
+
+                    sm_algorithm_has = scene_light_get_scene_light_shadow_map_pointlight_algorithm_has(sm_algorithm);
+
+                    name_sstream << "SM pointlight algorithm:["
+                                 << system_hashed_ansi_string_get_buffer(sm_algorithm_has)
+                                 << "]\n";
+                }
+
+                name_sstream << "\n";
+            } /* for (all lights) */
+        } /* if (lambert or phong shading is used) */
+
+        /* SM global setting */
+        name_sstream << "<<\n"
+                     << "\n"
+                     << "Global SM setting:["
+                     << ((use_shadow_maps) ? "ON" : "OFF")
+                     << "]\n";
+    } /* if (material_type == MESH_MATERIAL_TYPE_GENERAL) */
 
     name_string = name_sstream.str();
 
@@ -972,25 +1033,64 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
     const mesh_material_fs_behavior fs_behavior_dpsm = MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM;
     const mesh_material_vs_behavior vs_behavior_dpsm = MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM;
 
-    const mesh_material_shading     shading_type_attribute_data                 = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
-    const mesh_material_shading     shading_type_none                           = MESH_MATERIAL_SHADING_NONE;
-          mesh_material             special_material_depth_clip                 = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
-                                                                                                       materials_ptr->context,
-                                                                                                       NULL); /* object_manager_path */
-          mesh_material             special_material_depth_dual_paraboloid_clip = mesh_material_create(system_hashed_ansi_string_create("Special material: depth dual paraboloid clip"),
-                                                                                                       materials_ptr->context,
-                                                                                                       NULL); /* object_manager_path */
-          mesh_material             special_material_normal                     = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
-                                                                                                       materials_ptr->context,
-                                                                                                       NULL); /* object_manager_path */
-          mesh_material             special_material_texcoord                   = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
-                                                                                                       materials_ptr->context,
-                                                                                                       NULL); /* object_manager_path */
+    const mesh_material_shading     shading_type_attribute_data                  = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
+    const mesh_material_shading     shading_type_none                            = MESH_MATERIAL_SHADING_NONE;
+          mesh_material             special_material_depth_clip                  = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
+                                                                                                        materials_ptr->context,
+                                                                                                        NULL); /* object_manager_path */
+          mesh_material             special_material_depth_dual_paraboloid_clip  = mesh_material_create(system_hashed_ansi_string_create("Special material: depth dual paraboloid clip"),
+                                                                                                        materials_ptr->context,
+                                                                                                        NULL); /* object_manager_path */
+          mesh_material             special_material_normal                      = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
+                                                                                                        materials_ptr->context,
+                                                                                                        NULL); /* object_manager_path */
+          mesh_material             special_material_texcoord                    = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
+                                                                                                        materials_ptr->context,
+                                                                                                        NULL); /* object_manager_path */
 
-    /* Configure "depth clip preview" material */
+    /* Configure "depth clip" material */
     mesh_material_set_property(special_material_depth_clip,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type_none);
+
+    /* Configure "depth clip and depth clip squared" material */
+    static const char* depth_clip_and_squared_depth_clip_fs = "#version 420\n"
+                                                              "\n"
+                                                              "                     in float out_vs_depth;\n"
+                                                              "layout(location = 0) out vec2 result;\n"
+                                                              "\n"
+                                                              "void main()\n"
+                                                              "{\n"
+                                                              "    float normalized_depth = out_vs_depth * 0.5f + 0.5f;\n"
+                                                              "\n"
+                                                              "    result = vec2(normalized_depth,\n"
+                                                              "                  normalized_depth * normalized_depth);\n"
+                                                              "}\n";
+    static const char* depth_clip_and_squared_depth_clip_vs = "#version 420\n"
+                                                              "\n"
+                                                              "uniform VertexShaderProperties\n"
+                                                              "{\n"
+                                                              "    mat4 vp;\n"
+                                                              "};\n"
+                                                              "\n"
+                                                              "uniform mat4  model;\n"
+                                                              "in      vec3  object_vertex;\n"
+                                                              "out     float out_vs_depth;\n"
+                                                              "\n"
+                                                              "void main()\n"
+                                                              "{\n"
+                                                              "    gl_Position  = vp * model * vec4(object_vertex, 1.0);\n"
+                                                              "    out_vs_depth = gl_Position;\n"
+                                                              "}\n";
+
+    mesh_material special_material_depth_clip_and_squared_depth_clip = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
+                                                                                                               materials_ptr->context,
+                                                                                                               NULL, /* object_manager_path */
+                                                                                                               system_hashed_ansi_string_create(depth_clip_and_squared_depth_clip_fs),
+                                                                                                               NULL, /* gs_body */
+                                                                                                               NULL, /* tc_body */
+                                                                                                               NULL, /* te_body */
+                                                                                                               system_hashed_ansi_string_create(depth_clip_and_squared_depth_clip_vs) );
 
     /* Configure DPSM material */
     mesh_material_set_property(special_material_depth_dual_paraboloid_clip,
@@ -1020,10 +1120,11 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                                    MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD);
 
     /* Store the materials */
-    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP]            = special_material_depth_clip;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID] = special_material_depth_dual_paraboloid_clip;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]               = special_material_normal;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD]              = special_material_texcoord;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP]                        = special_material_depth_clip;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID]             = special_material_depth_dual_paraboloid_clip;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED] = special_material_depth_clip_and_squared_depth_clip;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]                           = special_material_normal;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD]                          = special_material_texcoord;
 }
 
 
@@ -1098,23 +1199,28 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
                                                    n_material,
                                                   &uber_ptr) )
         {
-            bool do_materials_match        = mesh_material_is_a_match_to_mesh_material             (uber_ptr->material,
-                                                                                                    material);
-            bool does_material_match_scene = (scene == NULL                                                          ||
-                                              scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
-                                                                                                    scene,
-                                                                                                    use_shadow_maps) );
+            bool do_materials_match        = mesh_material_is_a_match_to_mesh_material(uber_ptr->material,
+                                                                                       material);
+            bool does_material_match_scene = false;
             bool does_scene_matter         = true;
             bool does_sm_setting_match     = (uber_ptr->use_shadow_maps == use_shadow_maps);
 
-            /* Do not take scene input into account if IFA shading is used */
-            mesh_material_shading material_shading = MESH_MATERIAL_SHADING_NONE;
+            if (do_materials_match)
+            {
+                does_material_match_scene = (scene == NULL                                                          ||
+                                             scene != NULL && _ogl_materials_does_uber_match_scene(uber_ptr->uber,
+                                                                                                   scene,
+                                                                                                   use_shadow_maps) );
 
-            mesh_material_get_property(uber_ptr->material,
-                                       MESH_MATERIAL_PROPERTY_SHADING,
-                                      &material_shading);
+                /* Do not take scene input into account if IFA shading is used */
+                mesh_material_shading material_shading = MESH_MATERIAL_SHADING_NONE;
 
-            does_scene_matter = (material_shading != MESH_MATERIAL_SHADING_NONE);
+                mesh_material_get_property(uber_ptr->material,
+                                           MESH_MATERIAL_PROPERTY_SHADING,
+                                          &material_shading);
+
+                does_scene_matter = (material_shading != MESH_MATERIAL_SHADING_NONE);
+            }
 
             /* Determine the outcome */
             if (  do_materials_match                              &&

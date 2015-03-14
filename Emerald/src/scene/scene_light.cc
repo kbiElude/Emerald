@@ -38,6 +38,7 @@ typedef struct
     float                                       position[3];
     curve_container                             quadratic_attenuation;
     curve_container                             range;
+    scene_light_shadow_map_algorithm            shadow_map_algorithm;             /* NOTE: This property affects the generated ogl_uber! */
     scene_light_shadow_map_bias                 shadow_map_bias;                  /* NOTE: This property affects the generated ogl_uber! */
     bool                                        shadow_map_cull_front_faces;
     scene_light_shadow_map_filtering            shadow_map_filtering;             /* NOTE: This property affects the generated ogl_uber! */
@@ -284,13 +285,14 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->range                 = NULL;
 
     light_ptr->callback_manager                 = system_callback_manager_create( (_callback_id) SCENE_LIGHT_CALLBACK_ID_LAST);
+    light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN;
+    //light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM;
     light_ptr->shadow_map_bias                  = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
     light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
                                                    light_ptr->type != SCENE_LIGHT_TYPE_SPOT);
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat        = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT24;
     light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
-    //light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL;
     light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
     light_ptr->shadow_map_projection            = system_matrix4x4_create();
@@ -769,6 +771,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM:
+        {
+            *(scene_light_shadow_map_algorithm*) out_result = light_ptr->shadow_map_algorithm;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS:
         {
             *(scene_light_shadow_map_bias*) out_result = light_ptr->shadow_map_bias;
@@ -938,6 +947,40 @@ PUBLIC system_hashed_ansi_string scene_light_get_scene_light_falloff_has(__in sc
                               "Unrecognized scene_light_falloff value.");
         }
     } /* switch (falloff) */
+
+    return result;
+}
+
+/* Please see header for spec */
+PUBLIC system_hashed_ansi_string scene_light_get_scene_light_shadow_map_algorithm_has(__in scene_light_shadow_map_algorithm algorithm)
+{
+    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
+
+    static const char* algorithm_plain_name = "Plain";
+    static const char* algorithm_vsm_name   = "Variance Shadow Maps";
+
+    switch (algorithm)
+    {
+        case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN:
+        {
+            result = system_hashed_ansi_string_create(algorithm_plain_name);
+
+            break;
+        }
+
+        case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM:
+        {
+            result = system_hashed_ansi_string_create(algorithm_vsm_name);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized scene_light_shadow_map_algorithm value.");
+        }
+    } /* switch (algorithm) */
 
     return result;
 }
@@ -1536,6 +1579,18 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             light_ptr->range = *(curve_container*) data;
 
             break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM:
+        {
+            if (light_ptr->shadow_map_algorithm != *(scene_light_shadow_map_algorithm*) data)
+            {
+                light_ptr->shadow_map_algorithm = *(scene_light_shadow_map_algorithm*) data;
+
+                system_callback_manager_call_back(light_ptr->callback_manager,
+                                                  SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
+                                                  light_ptr);
+            }
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:
