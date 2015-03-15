@@ -305,11 +305,13 @@ bool _rendering_key_down_callback_handler(system_window  window,
                                           unsigned short key,
                                           void*          unused)
 {
-    bool result = false;
+    bool result = true;
 
     if (key == ' ')
     {
         state_set_playback_status(!state_get_playback_status() );
+
+        result = false;
     }
 
     return result;
