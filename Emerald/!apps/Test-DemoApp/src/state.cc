@@ -49,21 +49,22 @@ typedef struct _scene_descriptor
 system_hashed_ansi_string _scene_filenames[] =
 {
     system_hashed_ansi_string_create("blob/scene1/test.packed"),
-    system_hashed_ansi_string_create("blob/scene2/test.packed"),
-    system_hashed_ansi_string_create("blob/scene3/test.packed"),
-    system_hashed_ansi_string_create("blob/scene4/test.packed")
+    //system_hashed_ansi_string_create("blob/scene2/test.packed"),
+    //system_hashed_ansi_string_create("blob/scene3/test.packed"),
+    //system_hashed_ansi_string_create("blob/scene4/test.packed")
 };
 const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
                                         sizeof(_scene_filenames[0]);
 
 
 /* Other stuff */
+ogl_texture_internalformat                  _color_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_RG32F;
+ogl_texture_internalformat                  _depth_shadow_map_internalformat            = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
 ogl_pipeline                                _pipeline                                   = NULL;
 uint32_t                                    _pipeline_stage_id                          = -1;
 system_timeline_time                        _playback_start_time                        = 0;
 _scene_descriptor                           _scenes                [_n_scene_filenames];
 system_timeline_time                        _scenes_duration_summed[_n_scene_filenames] = {0};
-ogl_texture_internalformat                  _shadow_map_internalformat                  = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
 scene_light_shadow_map_pointlight_algorithm _shadow_map_pl_algo                         = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
 unsigned int                                _shadow_map_size                            = 1024;
 
@@ -169,9 +170,15 @@ PUBLIC uint32_t state_get_pipeline_stage_id()
 }
 
 /** Please see header for spec */
-PUBLIC ogl_texture_internalformat state_get_shadow_map_internalformat()
+PUBLIC ogl_texture_internalformat state_get_color_shadow_map_internalformat()
 {
-    return _shadow_map_internalformat;
+    return _color_shadow_map_internalformat;
+}
+
+/** Please see header for spec */
+PUBLIC ogl_texture_internalformat state_get_depth_shadow_map_internalformat()
+{
+    return _depth_shadow_map_internalformat;
 }
 
 /** Please see header for spec */
@@ -294,11 +301,14 @@ PUBLIC void state_init()
     /* Retrieve shadow map internalformat & point light algorithm currently used by 
      * all lights.
      */
-    bool has_updated_sm_internalformat = false;
-    bool has_updated_sm_pl_algo        = false;
+    bool has_updated_color_sm_internalformat = false;
+    bool has_updated_depth_sm_internalformat = false;
+    bool has_updated_sm_pl_algo              = false;
 
     for (unsigned int n_scene = 0;
-                      n_scene < _n_scene_filenames && (!has_updated_sm_internalformat || !has_updated_sm_pl_algo);
+                      n_scene < _n_scene_filenames && (!has_updated_color_sm_internalformat ||
+                                                       !has_updated_depth_sm_internalformat ||
+                                                       !has_updated_sm_pl_algo);
                     ++n_scene)
     {
         uint32_t n_lights = 0;
@@ -309,7 +319,9 @@ PUBLIC void state_init()
 
         /* Iterate over all lights until we retrieve the property we need */
         for (unsigned int n_light = 0;
-                          n_light < n_lights && (!has_updated_sm_internalformat || !has_updated_sm_pl_algo);
+                          n_light < n_lights && (!has_updated_color_sm_internalformat ||
+                                                 !has_updated_depth_sm_internalformat ||
+                                                 !has_updated_sm_pl_algo);
                         ++n_light)
         {
             scene_light      current_light = scene_get_light_by_index(_scenes[n_scene].this_scene,
@@ -320,14 +332,24 @@ PUBLIC void state_init()
                                      SCENE_LIGHT_PROPERTY_TYPE,
                                     &current_light_type);
 
-            /* internalformat */
-            if (!has_updated_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            /* color SM internalformat */
+            if (!has_updated_color_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
+                                        &_color_shadow_map_internalformat);
+
+                has_updated_color_sm_internalformat = true;
+            }
+
+            /* depth SM internalformat */
+            if (!has_updated_depth_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
             {
                 scene_light_get_property(current_light,
                                          SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_DEPTH,
-                                        &_shadow_map_internalformat);
+                                        &_depth_shadow_map_internalformat);
 
-                has_updated_sm_internalformat = true;
+                has_updated_depth_sm_internalformat = true;
             }
 
             /* PL algo */
@@ -357,7 +379,54 @@ PUBLIC void state_init()
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat)
+PUBLIC void state_set_color_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat)
+{
+    /* Wait for the current frame to render and lock the rendering pipeline, while
+     * we adjust the shadow map size..
+     */
+    ogl_rendering_handler_lock_bound_context(_rendering_handler);
+
+    /* Update shadow map size for all scene lights */
+    for (unsigned int n_scene = 0;
+                      n_scene < _n_scene_filenames;
+                    ++n_scene)
+    {
+        scene        current_scene = _scenes[n_scene].this_scene;
+        unsigned int n_lights      = 0;
+
+        scene_get_property(current_scene,
+                           SCENE_PROPERTY_N_LIGHTS,
+                          &n_lights);
+
+        for (unsigned int n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+        {
+            scene_light      current_light = scene_get_light_by_index(current_scene,
+                                                                      n_light);
+            scene_light_type current_light_type;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+
+            if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                scene_light_set_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_INTERNALFORMAT_COLOR,
+                                        &new_internalformat);
+            } /* if (current light is not an ambient light) */
+        } /* for (all scene lights) */
+    } /* for (all loaded scenes) */
+
+    _depth_shadow_map_internalformat = new_internalformat;
+
+    /* Unlock the rendering process */
+    ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat)
 {
     /* Wait for the current frame to render and lock the rendering pipeline, while
      * we adjust the shadow map size..
@@ -397,7 +466,7 @@ PUBLIC void state_set_shadow_map_internalformat(__in ogl_texture_internalformat 
         } /* for (all scene lights) */
     } /* for (all loaded scenes) */
 
-    _shadow_map_internalformat = new_internalformat;
+    _depth_shadow_map_internalformat = new_internalformat;
 
     /* Unlock the rendering process */
     ogl_rendering_handler_unlock_bound_context(_rendering_handler);

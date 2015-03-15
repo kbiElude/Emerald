@@ -19,7 +19,10 @@ PUBLIC void state_get_current_frame_properties(__out __notnull scene*           
                                                __out           system_timeline_time* out_current_frame_time);
 
 /** TODO */
-PUBLIC ogl_texture_internalformat state_get_shadow_map_internalformat();
+PUBLIC ogl_texture_internalformat state_get_color_shadow_map_internalformat();
+
+/** TODO */
+PUBLIC ogl_texture_internalformat state_get_depth_shadow_map_internalformat();
 
 /** TODO */
 PUBLIC scene_light_shadow_map_pointlight_algorithm state_get_shadow_map_pointlight_algorithm();
@@ -37,7 +40,10 @@ PUBLIC uint32_t state_get_pipeline_stage_id();
 PUBLIC void state_init();
 
 /** TODO */
-PUBLIC void state_set_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat);
+PUBLIC void state_set_color_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat);
+
+/** TODO */
+PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_map_pointlight_algorithm pl_algo);
