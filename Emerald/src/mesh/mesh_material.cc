@@ -1332,6 +1332,11 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
             material_ptr->uber_non_sm = material_ptr->uber_sm;
             ogl_uber_retain(material_ptr->uber_sm);
         }
+
+        /* Call back any subscribers & inform them about the event */
+        system_callback_manager_call_back(material_ptr->callback_manager,
+                                          MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
+                                          material_ptr);
     }
 
     return use_shadow_maps ? material_ptr->uber_sm

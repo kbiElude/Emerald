@@ -25,6 +25,9 @@ PUBLIC ogl_texture_internalformat state_get_color_shadow_map_internalformat();
 PUBLIC ogl_texture_internalformat state_get_depth_shadow_map_internalformat();
 
 /** TODO */
+PUBLIC scene_light_shadow_map_algorithm state_get_shadow_map_algorithm();
+
+/** TODO */
 PUBLIC scene_light_shadow_map_pointlight_algorithm state_get_shadow_map_pointlight_algorithm();
 
 /** TODO */
@@ -44,6 +47,9 @@ PUBLIC void state_set_color_shadow_map_internalformat(__in ogl_texture_internalf
 
 /** TODO */
 PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalformat new_internalformat);
+
+/** TODO */
+PUBLIC void state_set_shadow_map_algorithm(__in scene_light_shadow_map_algorithm sm_algo);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_map_pointlight_algorithm pl_algo);

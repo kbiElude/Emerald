@@ -23,8 +23,23 @@ PRIVATE ogl_ui         _ui                                          = NULL;
 PRIVATE ogl_ui_bag     _ui_bag                                      = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_internalformat_dropdown = NULL;
 PRIVATE ogl_ui_control _ui_depth_shadow_map_internalformat_dropdown = NULL;
+PRIVATE ogl_ui_control _ui_shadow_map_algorithm_dropdown            = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown         = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown                 = NULL;
+
+
+scene_light_shadow_map_algorithm shadow_map_algorithm_emerald_enums[] =
+{
+    SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN,
+    SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM
+};
+system_hashed_ansi_string shadow_map_algorithm_strings[] =
+{
+    system_hashed_ansi_string_create("Plain Shadow Mapping"),
+    system_hashed_ansi_string_create("Variance Shadow Mapping")
+};
+const uint32_t n_shadow_map_algorithm_emerald_enums = sizeof(shadow_map_algorithm_emerald_enums) /
+                                                      sizeof(shadow_map_algorithm_emerald_enums[0]);
 
 
 scene_light_shadow_map_pointlight_algorithm shadow_map_pointlight_algorithm_emerald_enums[] =
@@ -146,6 +161,30 @@ PRIVATE unsigned int _ui_get_current_depth_shadow_map_internalformat_index()
 }
 
 /** TODO */
+PRIVATE unsigned int _ui_get_current_shadow_map_algorithm_index()
+{
+    scene_light_shadow_map_algorithm current_sm_algo = state_get_shadow_map_algorithm();
+    unsigned int                     result          = -1;
+
+    for (unsigned int n_sm_algo = 0;
+                      n_sm_algo < n_shadow_map_algorithm_emerald_enums;
+                    ++n_sm_algo)
+    {
+        if (current_sm_algo == shadow_map_algorithm_emerald_enums[n_sm_algo])
+        {
+            result = n_sm_algo;
+
+            break;
+        }
+    } /* for (all recognized shadow mapping algorithms) */
+
+    ASSERT_DEBUG_SYNC(result != -1,
+                      "Unrecognized sadow map algorithm is currently selected");
+
+    return result;
+}
+
+/** TODO */
 PRIVATE unsigned int _ui_get_current_shadow_map_pointlight_algorithm_index()
 {
     scene_light_shadow_map_pointlight_algorithm current_pl_algo = state_get_shadow_map_pointlight_algorithm();
@@ -214,6 +253,16 @@ PRIVATE void _ui_on_depth_shadow_map_internalformat_changed(void* unused,
 }
 
 /** TODO */
+PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
+                                                 void* event_user_arg)
+{
+    scene_light_shadow_map_algorithm new_sm_algo = (scene_light_shadow_map_algorithm) (unsigned int) event_user_arg;
+
+    /* Update Emerald state */
+    state_set_shadow_map_algorithm(new_sm_algo);
+}
+
+/** TODO */
 PRIVATE void _ui_on_shadow_map_pointlight_algorithm_changed(void* unused,
                                                             void* event_user_arg)
 {
@@ -276,6 +325,17 @@ PUBLIC void ui_init()
     _ui = ogl_ui_create(_text_renderer,
                         system_hashed_ansi_string_create("UI") );
 
+    /* Add shadow map algorithm dropdown */
+    _ui_shadow_map_algorithm_dropdown = ogl_ui_add_dropdown(_ui,
+                                                            n_shadow_map_algorithm_emerald_enums,
+                                                            shadow_map_algorithm_strings,
+                                                            (void**) shadow_map_algorithm_emerald_enums,
+                                                            _ui_get_current_shadow_map_algorithm_index(),
+                                                            system_hashed_ansi_string_create("Shadow map algorithm"),
+                                                            temp_x1y1,
+                                                            _ui_on_shadow_map_algorithm_changed,
+                                                            NULL); /* fire_user_arg */
+
     /* Add color shadow map internalformat dropdown */
     _ui_color_shadow_map_internalformat_dropdown = ogl_ui_add_dropdown(_ui,
                                                                        n_color_shadow_map_internalformat_strings,
@@ -325,6 +385,7 @@ PUBLIC void ui_init()
     const float          control_bag_x1y1[2] = {0.9f, 0.1f};
     const ogl_ui_control ui_controls[]       =
     {
+        _ui_shadow_map_algorithm_dropdown,
         _ui_color_shadow_map_internalformat_dropdown,
         _ui_depth_shadow_map_internalformat_dropdown,
         _ui_shadow_map_size_dropdown,

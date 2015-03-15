@@ -65,6 +65,7 @@ uint32_t                                    _pipeline_stage_id                  
 system_timeline_time                        _playback_start_time                        = 0;
 _scene_descriptor                           _scenes                [_n_scene_filenames];
 system_timeline_time                        _scenes_duration_summed[_n_scene_filenames] = {0};
+scene_light_shadow_map_algorithm            _shadow_map_algo                            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
 scene_light_shadow_map_pointlight_algorithm _shadow_map_pl_algo                         = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
 unsigned int                                _shadow_map_size                            = 1024;
 
@@ -121,6 +122,12 @@ PUBLIC void state_get_current_frame_properties(__out __notnull scene*           
 
     n_times_scene_shown = current_time / _scenes_duration_summed[_n_scene_filenames - 1];
     current_time        = current_time % _scenes_duration_summed[_n_scene_filenames - 1];
+
+    #ifndef ENABLE_ANIMATION
+    {
+        current_time = 0;
+    }
+    #endif
 
     /* Which scene should be playing right now? */
     for (unsigned int n_scene = 0;
@@ -179,6 +186,12 @@ PUBLIC ogl_texture_internalformat state_get_color_shadow_map_internalformat()
 PUBLIC ogl_texture_internalformat state_get_depth_shadow_map_internalformat()
 {
     return _depth_shadow_map_internalformat;
+}
+
+/** Please see header for spec */
+PUBLIC scene_light_shadow_map_algorithm state_get_shadow_map_algorithm()
+{
+    return _shadow_map_algo;
 }
 
 /** Please see header for spec */
@@ -298,16 +311,18 @@ PUBLIC void state_init()
     /* Update the shadow map size in all loaded scenes */
     state_set_shadow_map_size(_shadow_map_size);
 
-    /* Retrieve shadow map internalformat & point light algorithm currently used by 
+    /* Retrieve shadow map algorithm & internalformat & point light algorithm currently used by
      * all lights.
      */
     bool has_updated_color_sm_internalformat = false;
     bool has_updated_depth_sm_internalformat = false;
+    bool has_updated_sm_algo                 = false;
     bool has_updated_sm_pl_algo              = false;
 
     for (unsigned int n_scene = 0;
                       n_scene < _n_scene_filenames && (!has_updated_color_sm_internalformat ||
                                                        !has_updated_depth_sm_internalformat ||
+                                                       !has_updated_sm_algo                 ||
                                                        !has_updated_sm_pl_algo);
                     ++n_scene)
     {
@@ -321,6 +336,7 @@ PUBLIC void state_init()
         for (unsigned int n_light = 0;
                           n_light < n_lights && (!has_updated_color_sm_internalformat ||
                                                  !has_updated_depth_sm_internalformat ||
+                                                 !has_updated_sm_algo                 ||
                                                  !has_updated_sm_pl_algo);
                         ++n_light)
         {
@@ -331,6 +347,16 @@ PUBLIC void state_init()
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_TYPE,
                                     &current_light_type);
+
+            /* SM algorithm */
+            if (!has_updated_sm_algo && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                        &_shadow_map_algo);
+
+                has_updated_sm_algo = true;
+            }
 
             /* color SM internalformat */
             if (!has_updated_color_sm_internalformat && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
@@ -467,6 +493,53 @@ PUBLIC void state_set_depth_shadow_map_internalformat(__in ogl_texture_internalf
     } /* for (all loaded scenes) */
 
     _depth_shadow_map_internalformat = new_internalformat;
+
+    /* Unlock the rendering process */
+    ogl_rendering_handler_unlock_bound_context(_rendering_handler);
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_shadow_map_algorithm(__in scene_light_shadow_map_algorithm new_sm_algo)
+{
+    /* Wait for the current frame to render and lock the rendering pipeline, while
+     * we adjust the shadow map size..
+     */
+    ogl_rendering_handler_lock_bound_context(_rendering_handler);
+
+    /* Update shadow map size for all scene lights */
+    for (unsigned int n_scene = 0;
+                      n_scene < _n_scene_filenames;
+                    ++n_scene)
+    {
+        scene        current_scene = _scenes[n_scene].this_scene;
+        unsigned int n_lights      = 0;
+
+        scene_get_property(current_scene,
+                           SCENE_PROPERTY_N_LIGHTS,
+                          &n_lights);
+
+        for (unsigned int n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+        {
+            scene_light      current_light = scene_get_light_by_index(current_scene,
+                                                                      n_light);
+            scene_light_type current_light_type;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+
+            if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                scene_light_set_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                        &new_sm_algo);
+            } /* if (current light is not an ambient light) */
+        } /* for (all scene lights) */
+    } /* for (all loaded scenes) */
+
+    _shadow_map_algo = new_sm_algo;
 
     /* Unlock the rendering process */
     ogl_rendering_handler_unlock_bound_context(_rendering_handler);

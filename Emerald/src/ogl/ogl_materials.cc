@@ -668,6 +668,26 @@ PRIVATE bool _ogl_materials_does_uber_match_scene(__in __notnull ogl_uber uber,
 
         current_light_is_shadow_caster &= (use_shadow_mapping && scene_sm_enabled);
 
+        /* Make sure the shadow mapping algorithms match */
+        scene_light_shadow_map_algorithm current_light_shadow_map_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+        scene_light_shadow_map_algorithm current_uber_item_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+
+        scene_light_get_property         (current_light,
+                                          SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                         &current_light_shadow_map_algorithm);
+        ogl_uber_get_shader_item_property(uber,
+                                          n_light,
+                                          OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,
+                                         &current_uber_item_shadow_map_algorithm);
+
+        if (current_light_shadow_map_algorithm != current_uber_item_shadow_map_algorithm)
+        {
+            /* Nope */
+            result = false;
+
+            goto end;
+        }
+
         /* Carry on with other light stuff */
         if (current_light_type == SCENE_LIGHT_TYPE_POINT ||
             current_light_type == SCENE_LIGHT_TYPE_SPOT)

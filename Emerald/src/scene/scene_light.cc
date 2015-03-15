@@ -1617,6 +1617,8 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
                                                   SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
                                                   light_ptr);
             }
+
+            break;
         }
 
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_CULL_FRONT_FACES:

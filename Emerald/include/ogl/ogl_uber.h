@@ -68,6 +68,7 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA,  /* settable, _ogl_uber_light_sh_data */
 
     OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,                         /* not settable, scene_light_falloff */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,            /* not settable, scene_light_shadow_map_algorithm */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR,        /*     settable, ogl_texture */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,        /*     settable, ogl_texture */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,                 /* not settable, scene_light_shadow_map_bias */

@@ -45,7 +45,7 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode             (__in 
 PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool  (                          system_resource_pool_block);
 PRIVATE void _ogl_scene_renderer_on_camera_show_frustum_setting_changed   (                          const void*                     unused,
                                                                                                            void*                     scene_renderer);
-PRIVATE void _ogl_scene_renderer_on_light_added                           (                          const void*                     unused,
+PRIVATE void _ogl_scene_renderer_on_ubers_map_invalidated                 (                          const void*                     unused,
                                                                                                            void*                     scene_renderer);
 PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering       (                __notnull scene_mesh                      scene_mesh_instance,
                                                                            __in                      void*                           renderer);
@@ -119,6 +119,21 @@ typedef struct _ogl_scene_renderer_mesh_id_data
 typedef struct _ogl_scene_renderer_uber
 {
     system_resizable_vector meshes; /* holds _ogl_scene_renderer_mesh* items */
+
+    _ogl_scene_renderer_uber()
+    {
+        meshes = NULL;
+    }
+
+    ~_ogl_scene_renderer_uber()
+    {
+        if (meshes != NULL)
+        {
+            system_resizable_vector_release(meshes);
+
+            meshes = NULL;
+        }
+    }
 } _ogl_scene_renderer_uber;
 
 typedef struct _ogl_scene_renderer
@@ -270,28 +285,16 @@ PRIVATE void _ogl_scene_renderer_deinit_cached_ubers_map_contents(__in __notnull
                                            &uber_ptr,
                                            &ogl_uber_hash) )
     {
-        const uint32_t n_meshes = system_resizable_vector_get_amount_of_elements(uber_ptr->meshes);
+        delete uber_ptr;
+        uber_ptr = NULL;
 
-        for (uint32_t n_mesh_item = 0;
-                      n_mesh_item < n_meshes;
-                    ++n_mesh_item)
+        if (!system_hash64map_remove(ubers_map,
+                                     ogl_uber_hash) )
         {
-            _ogl_scene_renderer_mesh* mesh_ptr = NULL;
-
-            system_resizable_vector_get_element_at(uber_ptr->meshes,
-                                                   n_mesh_item,
-                                                  &mesh_ptr);
-
-            if (mesh_ptr != NULL)
-            {
-                system_matrix4x4_release(mesh_ptr->model_matrix);
-                system_matrix4x4_release(mesh_ptr->normal_matrix);
-            }
+            ASSERT_DEBUG_SYNC(false,
+                              "system_hash64map_remove() call failed.");
         }
-
-        system_hash64map_remove(ubers_map,
-                                ogl_uber_hash);
-    }
+    } 
 }
 
 /* TODO */
@@ -411,10 +414,19 @@ PRIVATE void _ogl_scene_renderer_on_camera_show_frustum_setting_changed(const vo
     _ogl_scene_renderer_update_frustum_preview_assigned_cameras(renderer_ptr);
 }
 
+/** TODO */
+PRIVATE void _ogl_scene_renderer_on_mesh_material_ogl_uber_invalidated(const void* callback_data,
+                                                                             void* scene_renderer)
+{
+    mesh_material        source_material    = (mesh_material)        callback_data;
+    _ogl_scene_renderer* scene_renderer_ptr = (_ogl_scene_renderer*) scene_renderer;
+
+    _ogl_scene_renderer_deinit_cached_ubers_map_contents(scene_renderer_ptr->ubers_map);
+}
 
 /** TODO */
-PRIVATE void _ogl_scene_renderer_on_light_added(const void* unused,
-                                                      void* scene_renderer)
+PRIVATE void _ogl_scene_renderer_on_ubers_map_invalidated(const void* unused,
+                                                                void* scene_renderer)
 {
     _ogl_scene_renderer* renderer_ptr = (_ogl_scene_renderer*) scene_renderer;
 
@@ -1144,9 +1156,69 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
         system_callback_manager_subscribe_for_callbacks(scene_callback_manager,
                                                         SCENE_CALLBACK_ID_LIGHT_ADDED,
                                                         CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
-                                                        _ogl_scene_renderer_on_light_added,
+                                                        _ogl_scene_renderer_on_ubers_map_invalidated,
                                                         scene_renderer_ptr);                /* callback_proc_user_arg */
-    }
+
+        /* Sign up for mesh_material callbacks. In case the material becomes outdated, we need
+         * to re-create the entry for mesh_uber */
+        uint32_t n_scene_unique_meshes = 0;
+
+        scene_get_property(scene,
+                           SCENE_PROPERTY_N_UNIQUE_MESHES,
+                          &n_scene_unique_meshes);
+
+        for (uint32_t n_scene_unique_mesh = 0;
+                      n_scene_unique_mesh < n_scene_unique_meshes;
+                    ++n_scene_unique_mesh)
+        {
+            mesh                    current_mesh             = scene_get_unique_mesh_by_index(scene,
+                                                                                              n_scene_unique_mesh);
+            system_resizable_vector current_mesh_materials   = NULL;
+            uint32_t                n_current_mesh_materials = 0;
+
+            ASSERT_DEBUG_SYNC(current_mesh != NULL,
+                              "Could not retrieve unique mesh at index [%d]",
+                              n_scene_unique_mesh);
+
+            mesh_get_property(current_mesh,
+                              MESH_PROPERTY_MATERIALS,
+                             &current_mesh_materials);
+
+            ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
+                              "Could not retrieve unique mesh materials.");
+
+            n_current_mesh_materials = system_resizable_vector_get_amount_of_elements(current_mesh_materials);
+
+            for (uint32_t n_current_mesh_material = 0;
+                          n_current_mesh_material < n_current_mesh_materials;
+                        ++n_current_mesh_material)
+            {
+                mesh_material           current_mesh_material                  = NULL;
+                system_callback_manager current_mesh_material_callback_manager = NULL;
+
+                system_resizable_vector_get_element_at(current_mesh_materials,
+                                                       n_current_mesh_material,
+                                                      &current_mesh_material);
+
+                ASSERT_DEBUG_SYNC(current_mesh_material != NULL,
+                                  "Could not retrieve mesh_material instance.");
+
+                /* Finally, time to sign up! */
+                mesh_material_get_property(current_mesh_material,
+                                           MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
+                                          &current_mesh_material_callback_manager);
+
+                ASSERT_DEBUG_SYNC(current_mesh_material_callback_manager != NULL,
+                                  "Could not retrieve callback manager from a mesh_material instance.");
+
+                system_callback_manager_subscribe_for_callbacks(current_mesh_material_callback_manager,
+                                                                MESH_MATERIAL_CALLBACK_ID_OGL_UBER_UPDATED,
+                                                                CALLBACK_SYNCHRONICITY_SYNCHRONOUS,
+                                                                _ogl_scene_renderer_on_mesh_material_ogl_uber_invalidated,
+                                                                scene_renderer_ptr);
+            } /* for (all current mesh materials) */
+        } /* for (all unique meshes) */
+    } /* if (scene_renderer_ptr != NULL) */
 
     return (ogl_scene_renderer) scene_renderer_ptr;
 }

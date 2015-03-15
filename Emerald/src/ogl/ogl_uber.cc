@@ -161,6 +161,7 @@ typedef struct _ogl_uber_item
     shaders_fragment_uber_item_id               fs_item_id;
     _ogl_uber_fragment_shader_item              fragment_shader_item;
     bool                                        is_shadow_caster;
+    scene_light_shadow_map_algorithm            shadow_map_algorithm;
     scene_light_shadow_map_bias                 shadow_map_bias;
     scene_light_shadow_map_pointlight_algorithm shadow_map_pointlight_algorithm;
     _ogl_uber_vertex_shader_item                vertex_shader_item;
@@ -173,6 +174,7 @@ typedef struct _ogl_uber_item
         falloff                         = SCENE_LIGHT_FALLOFF_UNKNOWN;
         fs_item_id                      = -1;
         is_shadow_caster                = false;
+        shadow_map_algorithm            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
         shadow_map_bias                 = SCENE_LIGHT_SHADOW_MAP_BIAS_UNKNOWN;
         shadow_map_pointlight_algorithm = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_UNKNOWN;
         type                            = OGL_UBER_ITEM_UNKNOWN;
@@ -1061,6 +1063,9 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_BIAS,
                             &new_item_ptr->shadow_map_bias);
     scene_light_get_property(light_instance,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                            &new_item_ptr->shadow_map_algorithm);
+    scene_light_get_property(light_instance,
                              SCENE_LIGHT_PROPERTY_SHADOW_MAP_POINTLIGHT_ALGORITHM,
                             &new_item_ptr->shadow_map_pointlight_algorithm);
 
@@ -1328,6 +1333,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                                   "Invalid OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF request");
 
                 *(scene_light_falloff*) result = item_ptr->falloff;
+
+                break;
+            }
+
+            case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
+                                  "Invalid OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM request");
+
+                *(scene_light_shadow_map_algorithm*) result = item_ptr->shadow_map_algorithm;
 
                 break;
             }
