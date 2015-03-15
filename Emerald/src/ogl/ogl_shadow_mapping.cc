@@ -21,6 +21,7 @@
 #include "scene/scene_light.h"
 #include "scene/scene_mesh.h"
 #include "system/system_log.h"
+#include "system/system_math_other.h"
 #include "system/system_math_vector.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_resizable_vector.h"
@@ -157,11 +158,13 @@ typedef struct _ogl_shadow_mapping
 
 
 /** TODO */
-PRIVATE void _ogl_shadow_mapping_add_bias_variable_to_fragment_uber(__in            std::stringstream&          code_snippet_sstream,
-                                                                    __in            const uint32_t              n_light,
-                                                                    __in            scene_light_shadow_map_bias light_sm_bias,
-                                                                    __out __notnull system_hashed_ansi_string*  out_light_bias_var_name_has)
+PRIVATE void _ogl_shadow_mapping_add_bias_variable_to_fragment_uber(__in            std::stringstream&               code_snippet_sstream,
+                                                                    __in            const uint32_t                   n_light,
+                                                                    __in            scene_light_shadow_map_bias      light_sm_bias,
+                                                                    __in            scene_light_shadow_map_algorithm sm_algo,
+                                                                    __out __notnull system_hashed_ansi_string*       out_light_bias_var_name_has)
 {
+    /* Create the new code snippet */
     std::stringstream light_bias_var_name_sstream;
 
     light_bias_var_name_sstream << "light_"
@@ -1254,6 +1257,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     _ogl_shadow_mapping_add_bias_variable_to_fragment_uber(code_snippet_sstream,
                                                            n_light,
                                                            light_sm_bias,
+                                                           light_sm_algorithm,
                                                           &light_bias_var_name_has);
 
     /* Add the light-specific visibility calculations */
@@ -1336,23 +1340,68 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     if (is_directional_light && light_sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
     {
         /* We're using a 2D texture sampler in this case, so need to do the comparison "by hand" */
-        code_snippet_sstream << "float "
+        std::stringstream mean_var_name_sstream;
+        std::stringstream variance_var_name_sstream;
+
+        mean_var_name_sstream     << "light"
+                                  << n_light
+                                  << "_mean";
+        variance_var_name_sstream << "light"
+                                  << n_light
+                                  << "_variance";
+
+        code_snippet_sstream << "vec2 "
                              << light_visibility_helper_var_name_sstream.str()
-                             << " = textureLod("
+                             << " = texture("
                              << system_hashed_ansi_string_get_buffer(light_shadow_map_sampler_var_name_has)
                              << ", "
                              << system_hashed_ansi_string_get_buffer(light_shadow_coord_var_name_has)
-                             << ".xy, 0.0).x;\n"
-                             << "\n"
+                             << ".xy).xy;\n" /* first & second moment */
+                                "\n"
                                 "if ("
                              << light_visibility_helper_var_name_sstream.str()
-                             << " < "
+                             << ".x > "
                              << light_ref_var_name_sstream.str()
                              << ") "
                              << light_visibility_helper_var_name_sstream.str()
-                             << " = 0.0;else "
+                             << ".x = 1.0;else\n"
+                                "{\n"
+                             /* Calculate variance */
+                             << "float "
+                             << mean_var_name_sstream.str()
+                             << " = "
                              << light_visibility_helper_var_name_sstream.str()
-                             << " = 1.0;\n";
+                             << ".x;\n"
+                             << "float "
+                             << variance_var_name_sstream.str()
+                             << " = max("
+                             << light_visibility_helper_var_name_sstream.str()
+                             << ".y - "
+                             << mean_var_name_sstream.str()
+                             << " * "
+                             << mean_var_name_sstream.str()
+                             << ", 0.00001);\n"
+                             /* Calculate result light attenuation */
+                             << light_visibility_helper_var_name_sstream.str() /* result */
+                             << ".x = "
+                             << variance_var_name_sstream.str() /* variance squared */
+                             << " / ("
+                             << variance_var_name_sstream.str() /* variance squared */
+                             << " + ("
+                             << light_ref_var_name_sstream.str() /* depth */
+                             << " - "
+                             << mean_var_name_sstream.str() /* mean */
+                             << ") * ("
+                             << light_ref_var_name_sstream.str() /* depth */
+                             << " - "
+                             << mean_var_name_sstream.str() /* mean */
+                             << ") );\n"
+                             /* cut off the <0, start_cutoff> region and rescale to full <0, 1> to fight the light bleeding effect */
+                             << light_visibility_helper_var_name_sstream.str()
+                             << ".x = smoothstep(0.1, 1.0, "
+                             << light_visibility_helper_var_name_sstream.str()
+                             << ".x);\n"
+                                "}\n";
     }
 
     /* Light visibility value */
@@ -1380,7 +1429,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
 
             case SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM:
             {
-                code_snippet_sstream << light_visibility_helper_var_name_sstream.str() << ";\n";
+                code_snippet_sstream << light_visibility_helper_var_name_sstream.str() << ".x;\n";
 
                 break;
             }
@@ -2724,8 +2773,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
             /* Set up shadow map texture(s).
              *
-             * For plain shadow mapping, we only use a single depth texture attachment.
-             * For VSM, we use a two-component color attachment & a depth texture attachment.
+             * For plain shadow mapping, we only use a single depth texture attachment. The texture
+             * must only define a single mip-map, as the depth data is not linear.
+             *
+             * For VSM, we use a two-component color attachment & a depth texture attachment. Since we're
+             * working with the moments, the data fetches can be linearized. We therefore want the whole
+             * mip-map chain to be present for the color texture.
              */
             scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
@@ -2765,9 +2818,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
             if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
             {
+                ASSERT_DEBUG_SYNC(light_shadow_map_size[0] == light_shadow_map_size[1],
+                                  "For VSM, shadow map textures must be square.");
+
                 handler_ptr->current_sm_color0_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
                                                                                             OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
-                                                                                            1, /* n_mipmaps */
+                                                                                            log2_uint32(light_shadow_map_size[0]),
                                                                                             light_shadow_map_internalformat_color,
                                                                                             light_shadow_map_size[0],
                                                                                             light_shadow_map_size[1],
@@ -2834,7 +2890,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                 dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_color0_texture,
                                                           light_shadow_map_texture_target_general,
                                                           GL_TEXTURE_MIN_FILTER,
-                                                          GL_LINEAR);
+                                                          GL_LINEAR_MIPMAP_LINEAR);
             }
             dsa_entry_points->pGLTextureParameteriEXT(handler_ptr->current_sm_depth_texture,
                                                       light_shadow_map_texture_target_general,
@@ -3041,6 +3097,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         /* Unbind the SM FBO */
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                          0);
+
+        /* If necessary, also generate mipmaps for the color texture */
+        if (handler_ptr->current_sm_color0_texture != NULL)
+        {
+            dsa_entry_points->pGLGenerateTextureMipmapEXT(handler_ptr->current_sm_color0_texture,
+                                                          GL_TEXTURE_2D);
+        }
 
         /* "Unbind" the SM texture from the ogl_shadow_mapping instance */
         ASSERT_DEBUG_SYNC(handler_ptr->current_sm_depth_texture != NULL,
