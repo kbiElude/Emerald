@@ -763,13 +763,18 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
 
         if (current_light_shadow_caster)
         {
-            system_matrix4x4 current_light_depth_view               = NULL;
-            const float*     current_light_depth_view_row_major     = NULL;
-            const float*     current_light_depth_vp_row_major       = NULL;
-            system_matrix4x4 current_light_depth_vp                 = NULL;
-            ogl_texture      current_light_shadow_map_texture_color = NULL;
-            ogl_texture      current_light_shadow_map_texture_depth = NULL;
+            system_matrix4x4                 current_light_depth_view               = NULL;
+            const float*                     current_light_depth_view_row_major     = NULL;
+            const float*                     current_light_depth_vp_row_major       = NULL;
+            system_matrix4x4                 current_light_depth_vp                 = NULL;
+            ogl_texture                      current_light_shadow_map_texture_color = NULL;
+            ogl_texture                      current_light_shadow_map_texture_depth = NULL;
+            float                            current_light_shadow_map_vsm_cutoff    = 0;
+            scene_light_shadow_map_algorithm current_light_sm_algo;
 
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                    &current_light_sm_algo);
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
                                     &current_light_shadow_map_texture_color);
@@ -782,6 +787,9 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
             scene_light_get_property(current_light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
                                     &current_light_depth_vp);
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF,
+                                    &current_light_shadow_map_vsm_cutoff);
 
             /* Depth view matrix */
             current_light_depth_view_row_major = system_matrix4x4_get_row_major_data(current_light_depth_view);
@@ -808,6 +816,15 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                               n_light,
                                               OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,
                                              &current_light_shadow_map_texture_depth);
+
+            /* VSM cut-off (if VSM is enabled) */
+            if (current_light_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+            {
+                ogl_uber_set_shader_item_property(material_uber,
+                                                  n_light,
+                                                  OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,
+                                                 &current_light_shadow_map_vsm_cutoff);
+            } /* if (current_light_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM) */
         }
 
         _ogl_scene_renderer_get_light_color(current_light,

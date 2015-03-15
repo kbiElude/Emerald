@@ -152,6 +152,15 @@ typedef enum scene_light_property
      * Update by doing system_matrix4x4_*() calls on the exposed matrix. */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
 
+    /* Settable, float.
+     *
+     * This parameter adjusts the cut-off range for Variance Shadow Mapping.
+     * Helps fight the light bleeding artifact at the cost of dimming the penumbras.
+     *
+     * Should be tweaked per-scene.
+     */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF,
+
     /* Settable, bool */
     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
 

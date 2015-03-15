@@ -73,6 +73,7 @@ typedef enum
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,        /*     settable, ogl_texture */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,                 /* not settable, scene_light_shadow_map_bias */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM, /* not settable, scene_light_shadow_map_pointlight_algorithm */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,           /*     settable, float */
     OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
     OGL_UBER_ITEM_PROPERTY_TYPE,

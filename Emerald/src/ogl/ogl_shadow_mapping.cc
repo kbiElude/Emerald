@@ -262,7 +262,8 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
                                                                                    __in  __notnull scene_light                light,
                                                                                    __in            uint32_t                   n_light,
                                                                                    __out __notnull system_hashed_ansi_string* out_light_shadow_coord_var_name_has,
-                                                                                   __out __notnull system_hashed_ansi_string* out_shadow_map_sampler_var_name_has)
+                                                                                   __out __notnull system_hashed_ansi_string* out_shadow_map_sampler_var_name_has,
+                                                                                   __out __notnull system_hashed_ansi_string* out_vsm_cutoff_var_name_has)
 {
     /* Add the light-specific shadow coordinate input variable.
      *
@@ -314,6 +315,15 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
                                                          TYPE_SAMPLER2D,
                                                          0, /* ub_id */
                                                          out_shadow_map_sampler_var_name_has);
+
+            _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                         n_light,
+                                                         system_hashed_ansi_string_create("shadow_map_vsm_cutoff"),
+                                                         VARIABLE_TYPE_UNIFORM,
+                                                         LAYOUT_QUALIFIER_NONE,
+                                                         TYPE_FLOAT,
+                                                         ub_fs,
+                                                         out_vsm_cutoff_var_name_has);
 
             break;
         }
@@ -1086,9 +1096,10 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     system_hashed_ansi_string light_far_near_diff_var_name_has      = NULL;
     system_hashed_ansi_string light_near_var_name_has               = NULL;
     system_hashed_ansi_string light_projection_matrix_var_name_has  = NULL;
-    system_hashed_ansi_string light_view_matrix_var_name_has        = NULL;
     system_hashed_ansi_string light_shadow_coord_var_name_has       = NULL;
     system_hashed_ansi_string light_shadow_map_sampler_var_name_has = NULL;
+    system_hashed_ansi_string light_view_matrix_var_name_has        = NULL;
+    system_hashed_ansi_string light_vsm_cutoff_var_name_has         = NULL;
 
     if (!is_point_light)
     {
@@ -1097,7 +1108,8 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                                               light_instance,
                                                                               n_light,
                                                                              &light_shadow_coord_var_name_has,
-                                                                             &light_shadow_map_sampler_var_name_has);
+                                                                             &light_shadow_map_sampler_var_name_has,
+                                                                             &light_vsm_cutoff_var_name_has);
     }
     else
     {
@@ -1340,6 +1352,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     if (is_directional_light && light_sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
     {
         /* We're using a 2D texture sampler in this case, so need to do the comparison "by hand" */
+        std::stringstream cutoff_var_name_sstream;
         std::stringstream mean_var_name_sstream;
         std::stringstream variance_var_name_sstream;
 
@@ -1398,7 +1411,9 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                              << ") );\n"
                              /* cut off the <0, start_cutoff> region and rescale to full <0, 1> to fight the light bleeding effect */
                              << light_visibility_helper_var_name_sstream.str()
-                             << ".x = smoothstep(0.1, 1.0, "
+                             << ".x = smoothstep("
+                             << system_hashed_ansi_string_get_buffer(light_vsm_cutoff_var_name_has)
+                             << ", 1.0, "
                              << light_visibility_helper_var_name_sstream.str()
                              << ".x);\n"
                                 "}\n";

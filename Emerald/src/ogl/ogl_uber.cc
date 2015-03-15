@@ -94,10 +94,14 @@ typedef struct _ogl_uber_fragment_shader_item
     GLuint      current_light_shadow_map_texture_color_sampler_location;
     ogl_texture current_light_shadow_map_texture_depth;
     GLuint      current_light_shadow_map_texture_depth_sampler_location;
+    float       current_light_shadow_map_vsm_cutoff;
+    bool        current_light_shadow_map_vsm_cutoff_dirty;
+    GLint       current_light_shadow_map_vsm_cutoff_ub_offset;
 
     float current_light_view[16];
     bool  current_light_view_dirty;
     GLint current_light_view_ub_offset;
+
 
     _ogl_uber_fragment_shader_item()
     {
@@ -115,6 +119,7 @@ typedef struct _ogl_uber_fragment_shader_item
         current_light_range_ub_offset                           = -1;
         current_light_shadow_map_texture_color_sampler_location = -1;
         current_light_shadow_map_texture_depth_sampler_location = -1;
+        current_light_shadow_map_vsm_cutoff_ub_offset           = -1;
         current_light_view_ub_offset                            = -1;
 
         current_light_shadow_map_texture_color = NULL;
@@ -132,6 +137,7 @@ typedef struct _ogl_uber_fragment_shader_item
         current_light_near_plane_dirty              = true;
         current_light_projection_dirty              = true;
         current_light_range_dirty                   = true;
+        current_light_shadow_map_vsm_cutoff_dirty   = true;
         current_light_view_dirty                    = true;
     }
 } _ogl_uber_fragment_shader_item;
@@ -1367,6 +1373,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                 break;
             }
 
+            case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1,
+                                  "OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF requested but the underlying shader does not use the property");
+
+                *((float*) result) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff;
+
+                break;
+            }
+
             case OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP:
             {
                 ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
@@ -1788,6 +1804,8 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_shadow_map_color_uniform_ptr = NULL;
                 std::stringstream                     light_shadow_map_depth_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_shadow_map_depth_uniform_ptr = NULL;
+                std::stringstream                     light_shadow_map_vsm_cutoff_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_shadow_map_vsm_cutoff_uniform_ptr = NULL;
                 std::stringstream                     light_view_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_view_uniform_ptr = NULL;
 
@@ -1826,12 +1844,13 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                                                                    << "_range";
                 light_shadow_map_color_uniform_name_sstream        << "light"
                                                                    << n_item
-                                                                   << "_shadow_map_"
-                                                                   << "color";
+                                                                   << "_shadow_map_color";
                 light_shadow_map_depth_uniform_name_sstream        << "light"
                                                                    << n_item
-                                                                   << "_shadow_map_"
-                                                                   << "depth";
+                                                                   << "_shadow_map_depth";
+                light_shadow_map_vsm_cutoff_uniform_name_sstream   << "light"
+                                                                   << n_item
+                                                                   << "_shadow_map_vsm_cutoff";
                 light_view_uniform_name_sstream                    << "light"
                                                                    << n_item
                                                                    << "_view";
@@ -1881,6 +1900,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_view_uniform_name_sstream.str().c_str() ),
                                                &light_view_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_shadow_map_vsm_cutoff_uniform_name_sstream.str().c_str() ),
+                                               &light_shadow_map_vsm_cutoff_uniform_ptr);
 
                 if (light_ambient_color_uniform_ptr != NULL)
                 {
@@ -1955,6 +1977,11 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 if (light_view_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_view_ub_offset = light_view_uniform_ptr->ub_offset;
+                }
+
+                if (light_shadow_map_vsm_cutoff_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset = light_shadow_map_vsm_cutoff_uniform_ptr->ub_offset;
                 }
 
                 /* Vertex shader stuff */
@@ -2698,6 +2725,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                                                  n_texture_unit);
                     }
 
+                    if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty)
+                    {
+                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff;
+
+                        has_modified_bo_data                                                      = true;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_view_dirty)
                     {
@@ -3033,6 +3069,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
@@ -3243,6 +3280,13 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                     case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
                     {
                         item_ptr->fragment_shader_item.current_light_shadow_map_texture_depth = *(ogl_texture*) data;
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
+                    {
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff = *(float*) data;
 
                         break;
                     }

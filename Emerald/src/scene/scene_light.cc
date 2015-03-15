@@ -54,6 +54,7 @@ typedef struct
     ogl_texture                                 shadow_map_texture_depth;
     system_matrix4x4                            shadow_map_view;
     system_matrix4x4                            shadow_map_vp;
+    float                                       shadow_map_vsm_cutoff;
     scene_light_type                            type;
     bool                                        uses_shadow_map;
 
@@ -287,7 +288,6 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->range                 = NULL;
 
     light_ptr->callback_manager                 = system_callback_manager_create( (_callback_id) SCENE_LIGHT_CALLBACK_ID_LAST);
-    //light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN;
     light_ptr->shadow_map_algorithm             = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM;
     light_ptr->shadow_map_bias                  = SCENE_LIGHT_SHADOW_MAP_BIAS_ADAPTIVE;
     light_ptr->shadow_map_cull_front_faces      = (light_ptr->type != SCENE_LIGHT_TYPE_POINT &&
@@ -306,6 +306,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_texture_depth         = NULL;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
+    light_ptr->shadow_map_vsm_cutoff            = 0.1f;
 
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_projection);
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_view);
@@ -893,6 +894,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP:
         {
             *(system_matrix4x4*) out_result = light_ptr->shadow_map_vp;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF:
+        {
+            *(float*) out_result = light_ptr->shadow_map_vsm_cutoff;
 
             break;
         }
@@ -1730,6 +1738,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
              *       by scene_light in any way, so its reference counter is left intact.
              */
             light_ptr->shadow_map_texture_depth = *(ogl_texture*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF:
+        {
+            light_ptr->shadow_map_vsm_cutoff = *(float*) data;
 
             break;
         }
