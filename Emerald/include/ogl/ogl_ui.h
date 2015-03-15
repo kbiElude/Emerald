@@ -130,6 +130,7 @@ PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_label(__in           __notnull ogl_
 /** TODO */
 PUBLIC EMERALD_API ogl_ui_control ogl_ui_add_scrollbar(__in           __notnull   ogl_ui                         ui_instance,
                                                        __in           __notnull   system_hashed_ansi_string      name,
+                                                       __in                       ogl_ui_scrollbar_text_location text_location,
                                                        __in           __notnull   system_variant                 min_value,
                                                        __in           __notnull   system_variant                 max_value,
                                                        __in_ecount(2) __notnull   const float*                   x1y1,

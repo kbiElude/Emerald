@@ -10,6 +10,12 @@
 #define OGL_UI_SCROLLBAR_H
 
 
+/* Call-backs */
+typedef enum
+{
+    OGL_UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE, /* fired when scrollbar visibility is toggled on or off / user_arg: not used */
+};
+
 /** TODO */
 PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance);
 
@@ -28,6 +34,7 @@ PUBLIC void ogl_ui_scrollbar_hover(void*        internal_instance,
 /** TODO */
 PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui                         instance,
                                    __in           __notnull   ogl_text                       text_renderer,
+                                   __in                       ogl_ui_scrollbar_text_location text_location,
                                    __in           __notnull   system_hashed_ansi_string      name,
                                    __in           __notnull   system_variant                 min_value,
                                    __in           __notnull   system_variant                 max_value,

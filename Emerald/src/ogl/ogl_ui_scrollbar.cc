@@ -68,7 +68,9 @@ typedef struct
     system_hashed_ansi_string      name;
 
     uint32_t                       text_index;
+    ogl_ui_scrollbar_text_location text_location;
     ogl_text                       text_renderer;
+    ogl_ui                         ui;
 
     ogl_program                    program_slider;
     GLint                          program_slider_border_width_uniform_location;
@@ -264,8 +266,16 @@ PRIVATE void _ogl_ui_scrollbar_update_text_position(__in __notnull _ogl_ui_scrol
                                       scrollbar_ptr->text_index,
                                      &text_width);
 
-    text_xy[0] = (int) ((scrollbar_ptr->slider_x1y1x2y2[0] + (scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0] - float(text_width)  / window_size[0])  * 0.5f) * (float) window_size[0]);
-    text_xy[1] = (int) ((1.0f - scrollbar_ptr->slider_x1y1x2y2[1] - (float(text_height) / window_size[1]) ) * (float) window_size[1]);
+    if (scrollbar_ptr->text_location == OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
+    {
+        text_xy[0] = (int) ((scrollbar_ptr->slider_x1y1x2y2[0] + (scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0] - float(text_width)  / window_size[0])  * 0.5f) * (float) window_size[0]);
+        text_xy[1] = (int) ((1.0f - scrollbar_ptr->slider_x1y1x2y2[1] - (float(text_height) / window_size[1]) ) * (float) window_size[1]);
+    }
+    else
+    {
+        text_xy[0] = (int) ((scrollbar_ptr->slider_x1y1x2y2[0])        * (float) window_size[0]) - text_width - TEXT_SCROLLBAR_SEPARATION_PX;
+        text_xy[1] = (int) ((1.0f - scrollbar_ptr->slider_x1y1x2y2[1] + 0.5f * (float(text_height) / window_size[1] - scrollbar_ptr->slider_x1y1x2y2[3] + scrollbar_ptr->slider_x1y1x2y2[1])) * (float) window_size[1]);
+    }
 
     ogl_text_set_text_string_property(scrollbar_ptr->text_renderer,
                                       scrollbar_ptr->text_index,
@@ -427,16 +437,27 @@ PUBLIC void ogl_ui_scrollbar_get_property(__in  __notnull const void*           
     {
         case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
         {
-            float text_height = 0.0f;
+            if (scrollbar_ptr->is_visible)
+            {
+                float text_height = 0.0f;
 
-            ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
-                                              scrollbar_ptr->text_index,
-                                             &text_height);
+                ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
+                                                  OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                                  scrollbar_ptr->text_index,
+                                                 &text_height);
 
-            *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[3] -
-                                   scrollbar_ptr->slider_x1y1x2y2[1] +
-                                   text_height;
+                *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[3] -
+                                       scrollbar_ptr->slider_x1y1x2y2[1];
+
+                if (scrollbar_ptr->text_location == OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
+                {
+                    *(float*) out_result += text_height;
+                }
+            }
+            else
+            {
+                *(float*) out_result = 0.0f;
+            }
 
             break;
         }
@@ -480,6 +501,7 @@ PUBLIC void ogl_ui_scrollbar_hover(void* internal_instance, const float* xy_scre
 /** TODO */
 PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui                         instance,
                                    __in           __notnull   ogl_text                       text_renderer,
+                                   __in                       ogl_ui_scrollbar_text_location text_location,
                                    __in           __notnull   system_hashed_ansi_string      name,
                                    __in           __notnull   system_variant                 min_value,
                                    __in           __notnull   system_variant                 max_value,
@@ -519,6 +541,8 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
 
         new_scrollbar->text_renderer                  = text_renderer;
         new_scrollbar->text_index                     = ogl_text_add_string(text_renderer);
+        new_scrollbar->text_location                  = text_location;
+        new_scrollbar->ui                             = instance;
 
         new_scrollbar->max_value_variant              = system_variant_create(system_variant_get_type(max_value) );
         new_scrollbar->min_value_variant              = system_variant_create(system_variant_get_type(min_value) );
@@ -768,14 +792,17 @@ PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*                  
     {
         case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
         {
-            const float dx = scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0];
-            const float dy = scrollbar_ptr->slider_x1y1x2y2[3] - scrollbar_ptr->slider_x1y1x2y2[1];
-                  float text_height_ss;
+            const float dx             = scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0];
+            const float dy             = scrollbar_ptr->slider_x1y1x2y2[3] - scrollbar_ptr->slider_x1y1x2y2[1];
+                  float text_height_ss = 0.0f;
 
-            ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
-                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
-                                              scrollbar_ptr->text_index,
-                                             &text_height_ss);
+            if (scrollbar_ptr->text_location == OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER)
+            {
+                ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
+                                                  OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                                  scrollbar_ptr->text_index,
+                                                 &text_height_ss);
+            }
 
             scrollbar_ptr->slider_x1y1x2y2[0] =        ((float*) data)[0];
             scrollbar_ptr->slider_x1y1x2y2[1] = 1.0f - ((float*) data)[1] - dy - text_height_ss;
@@ -797,6 +824,11 @@ PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*                  
                                               scrollbar_ptr->text_index,
                                               OGL_TEXT_STRING_PROPERTY_VISIBILITY,
                                               data);
+
+            ogl_ui_receive_control_callback(scrollbar_ptr->ui,
+                                            (ogl_ui_control) scrollbar_ptr,
+                                            OGL_UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                            NULL); /* callback_user_arg */
 
             break;
         }

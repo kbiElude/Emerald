@@ -286,6 +286,9 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
         ogl_ui_set_control_property(_ui_depth_shadow_map_internalformat_dropdown,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
+        ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &not_visible);
     }
     else
     {
@@ -293,6 +296,9 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
         ogl_ui_set_control_property(_ui_depth_shadow_map_internalformat_dropdown,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &visible);
+        ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
     }
@@ -435,6 +441,7 @@ PUBLIC void ui_init()
 
     _ui_vsm_cutoff_scrollbar = ogl_ui_add_scrollbar(_ui,
                                                     system_hashed_ansi_string_create("VSM cut-off"),
+                                                    OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
                                                     vsm_cutoff_min_value,
                                                     vsm_cutoff_max_value,
                                                     temp_x1y1,

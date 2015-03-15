@@ -9,6 +9,7 @@
 #include "ogl/ogl_ui_bag.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_ui_frame.h"
+#include "ogl/ogl_ui_scrollbar.h"
 #include "ogl/ogl_ui_shared.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
@@ -302,6 +303,15 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(__in                    __notnul
                 ogl_ui_register_control_callback(ui,
                                                  controls[n_control],
                                                  OGL_UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                                 _ogl_ui_on_controls_changed_callback,
+                                                 new_bag_ptr);
+            }
+            else
+            if (control_type == OGL_UI_CONTROL_TYPE_SCROLLBAR)
+            {
+                ogl_ui_register_control_callback(ui,
+                                                 controls[n_control],
+                                                 OGL_UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE,
                                                  _ogl_ui_on_controls_changed_callback,
                                                  new_bag_ptr);
             }
