@@ -40,6 +40,12 @@ PUBLIC ogl_curve_renderer state_get_curve_renderer();
 PUBLIC ogl_curve_item_id state_get_curve_renderer_item_id();
 
 /** TODO */
+PUBLIC system_timeline_time state_get_last_frame_time();
+
+/** TODO */
+PUBLIC bool state_get_playback_status();
+
+/** TODO */
 PUBLIC void state_lock_current_camera(__out __notnull scene_camera* out_current_camera,
                                       __out           bool*         out_is_flyby);
 
@@ -66,6 +72,12 @@ PUBLIC void state_set_active_camera_index(unsigned int index);
 
 /** TODO */
 PUBLIC void state_set_active_camera_path_index(unsigned int index);
+
+/** TODO */
+PUBLIC void state_set_last_frame_time(system_timeline_time time);
+
+/** TODO */
+PUBLIC void state_set_playback_status(bool new_status);
 
 /** TODO */
 PUBLIC void state_unlock_current_camera();

@@ -7,6 +7,7 @@
 #include "ogl/ogl_curve_renderer.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -32,8 +33,10 @@ system_hashed_ansi_string* _camera_names                 = NULL;
 system_resizable_vector    _cameras                      = NULL;
 ogl_curve_renderer         _curve_renderer               = NULL;
 ogl_curve_item_id          _curve_renderer_item_id       = -1;
+system_timeline_time       _last_frame_time              = 0;
 ogl_pipeline               _pipeline                     = NULL;
 uint32_t                   _pipeline_stage_id            = -1;
+bool                       _playback_status              = true;
 scene                      _scene                        = NULL;
 system_timeline_time       _scene_duration               = 0;
 ogl_scene_renderer         _scene_renderer               = NULL;
@@ -267,6 +270,18 @@ PUBLIC void** state_get_camera_indices()
 }
 
 /** Please see header for spec */
+PUBLIC void** state_get_camera_path_indices()
+{
+    return _camera_path_indices;
+}
+
+/** Please see header for spec */
+PUBLIC system_hashed_ansi_string* state_get_camera_path_names()
+{
+    return _camera_path_names;
+}
+
+/** Please see header for spec */
 PUBLIC system_hashed_ansi_string* state_get_camera_names()
 {
     return _camera_names;
@@ -291,6 +306,12 @@ PUBLIC ogl_curve_item_id state_get_curve_renderer_item_id()
 }
 
 /** Please see header for spec */
+PUBLIC system_timeline_time state_get_last_frame_time()
+{
+    return _last_frame_time;
+}
+
+/** Please see header for spec */
 PUBLIC uint32_t state_get_number_of_cameras()
 {
     return system_resizable_vector_get_amount_of_elements(_cameras);
@@ -309,6 +330,12 @@ PUBLIC uint32_t state_get_pipeline_stage_id()
 }
 
 /** Please see header for spec */
+PUBLIC bool state_get_playback_status()
+{
+    return _playback_status;
+}
+
+/** Please see header for spec */
 PUBLIC scene state_get_scene()
 {
     return _scene;
@@ -318,18 +345,6 @@ PUBLIC scene state_get_scene()
 PUBLIC ogl_scene_renderer state_get_scene_renderer()
 {
     return _scene_renderer;
-}
-
-/** Please see header for spec */
-PUBLIC void** state_get_camera_path_indices()
-{
-    return _camera_path_indices;
-}
-
-/** Please see header for spec */
-PUBLIC system_hashed_ansi_string* state_get_camera_path_names()
-{
-    return _camera_path_names;
 }
 
 /** Please see header for spec */
@@ -559,6 +574,18 @@ PUBLIC void state_set_active_camera_path_index(unsigned int index)
                                                                                     10.0f); /* view_vector_length */
        }
     }
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_last_frame_time(system_timeline_time time)
+{
+    _last_frame_time = time;
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_playback_status(bool new_status)
+{
+    _playback_status = new_status;
 }
 
 /** Please see header for spec */

@@ -43,17 +43,18 @@
 #include "state.h"
 #include "ui.h"
 
-ogl_context    _context             = NULL;
-system_window  _window              = NULL;
-system_event   _window_closed_event = system_event_create(true, false);
-GLuint         _vao_id              = 0;
+ogl_context           _context             = NULL;
+ogl_rendering_handler _rendering_handler   = NULL;
+system_window         _window              = NULL;
+system_event          _window_closed_event = system_event_create(true, false);
+GLuint                _vao_id              = 0;
 
 
 /** Rendering handler */
-void _rendering_handler(ogl_context          context,
-                        uint32_t             n_frames_rendered,
-                        system_timeline_time frame_time,
-                        void*                unused)
+void _rendering_handler_callback(ogl_context          context,
+                                 uint32_t             n_frames_rendered,
+                                 system_timeline_time frame_time,
+                                 void*                unused)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
@@ -79,14 +80,23 @@ PUBLIC void _render_scene(ogl_context          context,
                           system_timeline_time time,
                           void*                not_used)
 {
-    static system_timeline_time start_time = system_time_now();
+    system_timeline_time frame_time;
 
-#ifdef ENABLE_ANIMATION
-           system_timeline_time frame_time = (system_time_now() - start_time) %
-                                             state_get_animation_duration_time();
-#else
-           system_timeline_time frame_time = 0;
-#endif
+    if (!state_get_playback_status() )
+    {
+        frame_time = state_get_last_frame_time();
+    }
+    else
+    {
+        static system_timeline_time start_time = system_time_now();
+
+        #ifdef ENABLE_ANIMATION
+           frame_time = (system_time_now() - start_time) %
+                        state_get_animation_duration_time();
+        #else
+           frame_time = 0;
+        #endif
+    }
 
     /* Update view matrix */
     scene_camera     camera                 = NULL;
@@ -285,8 +295,24 @@ PUBLIC void _render_scene(ogl_context          context,
     ui_draw();
 
     /* All done */
+    state_set_last_frame_time(frame_time);
+
     system_matrix4x4_release(view);
     system_matrix4x4_release(projection);
+}
+
+bool _rendering_key_down_callback_handler(system_window  window,
+                                          unsigned short key,
+                                          void*          unused)
+{
+    bool result = false;
+
+    if (key == ' ')
+    {
+        state_set_playback_status(!state_get_playback_status() );
+    }
+
+    return result;
 }
 
 void _rendering_rbm_callback_handler(system_window           window,
@@ -301,36 +327,40 @@ void _rendering_rbm_callback_handler(system_window           window,
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
-    ogl_rendering_handler window_rendering_handler = NULL;
-    int                   window_size    [2]       = {WINDOW_WIDTH, WINDOW_HEIGHT};
-    int                   window_x1y1x2y2[4]       = {0};
+    int window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
+    int window_x1y1x2y2[4] = {0};
 
     /* Carry on */
     system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
-                                                                            window_x1y1x2y2,
-                                                                            system_hashed_ansi_string_create("Test window"),
-                                                                            false,
-                                                                            0,
-                                                                            true, /* vsync_enabled */
-                                                                            false,
-                                                                            true);
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                            60,
-                                                                            _rendering_handler,
-                                                                            NULL);
+    _window                  = system_window_create_not_fullscreen   (OGL_CONTEXT_TYPE_GL,
+                                                                      window_x1y1x2y2,
+                                                                      system_hashed_ansi_string_create("Test window"),
+                                                                      false,
+                                                                      0,
+                                                                      true, /* vsync_enabled */
+                                                                      false,
+                                                                      true);
+    _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                      60,
+                                                                      _rendering_handler_callback,
+                                                                      NULL);
 
     system_window_get_property(_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
 
     system_window_set_rendering_handler(_window,
-                                        window_rendering_handler);
+                                        _rendering_handler);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                         _rendering_rbm_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
+                                        _rendering_key_down_callback_handler,
                                         NULL);
 
     /* Let the user select the scene file */
@@ -366,13 +396,13 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     ui_init();
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler,
+    ogl_rendering_handler_play(_rendering_handler,
                                0); /* time */
 
     system_event_wait_single_infinite(_window_closed_event);
 
     /* Clean up */
-    ogl_rendering_handler_stop(window_rendering_handler);
+    ogl_rendering_handler_stop(_rendering_handler);
 
 end:
     ui_deinit   ();

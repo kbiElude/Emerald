@@ -32,48 +32,48 @@ typedef enum
 
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_window,
-                                                        __in           system_window_callback_func_priority,
-                                                        __in           system_window_callback_func,
-                                                        __in __notnull void*,
-                                                        __in __notnull void* /* user arg */);
+PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_window                        window,
+                                                        __in           system_window_callback_func_priority priority,
+                                                        __in           system_window_callback_func          callback_func,
+                                                        __in __notnull void*                                pfn_callback_func,
+                                                        __in __notnull void*                                callback_func_user_arg);
 
 /** TODO. Releases rendering handler! */
-PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) system_window);
+PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) system_window window);
 
 /** TODO */
-PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in system_hashed_ansi_string /*name */,
+PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in system_hashed_ansi_string name,
                                                                           __in ogl_context_type          context_type,
-                                                                          __in uint16_t                  /* n_multisampling_samples */,
-                                                                          __in bool                      /* vsync_enabled */,
-                                                                          __in system_window_handle      /* parent_window_handle */,
-                                                                          __in bool                      /* multisampling_supported */);
+                                                                          __in uint16_t                  n_multisampling_samples,
+                                                                          __in bool                      vsync_enabled,
+                                                                          __in system_window_handle      parent_window_handle,
+                                                                          __in bool                      multisampling_supported);
 
 /** TODO */
 PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in                       ogl_context_type          context_type,
                                                                      __in __notnull __ecount(4) const int*                x1y1x2y2,
                                                                      __in __notnull             system_hashed_ansi_string title,
                                                                      __in                       bool                      scalable,
-                                                                     __in                       uint16_t                  n_multisampling_samples, 
+                                                                     __in                       uint16_t                  n_multisampling_samples,
                                                                      __in                       bool                      vsync_enabled,
                                                                      __in                       bool                      multisampling_supported,
                                                                      __in                       bool                      visible);
 
 /** TODO */
 PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_context_type context_type,
-                                                                 __in uint16_t         /* width */,
-                                                                 __in uint16_t         /* height */,
-                                                                 __in uint16_t         /* bpp */,
-                                                                 __in uint16_t         /* freq */,
-                                                                 __in uint16_t         /* n_multisampling_samples */, 
-                                                                 __in bool             /* vsync_enabled */,
-                                                                 __in bool             /* multisampling_supported */);
+                                                                 __in uint16_t         width,
+                                                                 __in uint16_t         height,
+                                                                 __in uint16_t         bpp,
+                                                                 __in uint16_t         freq,
+                                                                 __in uint16_t         n_multisampling_samples,
+                                                                 __in bool             vsync_enabled,
+                                                                 __in bool             multisampling_supported);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system_window,
-                                                           __in           system_window_callback_func,
-                                                           __in __notnull void*,
-                                                           __in __notnull void* /* user arg */);
+PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system_window               window,
+                                                           __in           system_window_callback_func callback_func,
+                                                           __in __notnull void*                       pfn_callback_func,
+                                                           __in __notnull void*                       callback_func_user_arg);
 
 /** Retrieves coordinates that can be passed to system_window_create_not_fullscreen() in order
  *  to position the window in the center of primary monitor.
@@ -92,12 +92,12 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
                                                    __out __notnull void*                  out_result);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_set_cursor_visibility(__in __notnull system_window,
-                                                                           bool);
+PUBLIC EMERALD_API bool system_window_set_cursor_visibility(__in __notnull system_window window,
+                                                                           bool          visibility);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window,
-                                                                system_window_mouse_cursor);
+PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window              window,
+                                                                system_window_mouse_cursor cursor);
 
 /** Binds a rendering handler to the window.
  *
@@ -111,18 +111,18 @@ PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window,
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_window_set_rendering_handler(__in __notnull system_window,
-                                                            __in __notnull ogl_rendering_handler);
+PUBLIC EMERALD_API bool system_window_set_rendering_handler(__in __notnull system_window         window,
+                                                            __in __notnull ogl_rendering_handler rendering_handler);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_set_position(__in __notnull system_window,
-                                                   __in __notnull int /* x */,
-                                                   __in __notnull int /* y */);
+PUBLIC EMERALD_API bool system_window_set_position(__in __notnull system_window window,
+                                                   __in __notnull int           x,
+                                                   __in __notnull int           y);
 
 /** TODO */
-PUBLIC EMERALD_API bool system_window_set_size(__in __notnull system_window,
-                                               __in           int /* width */,
-                                               __in           int /* height */);
+PUBLIC EMERALD_API bool system_window_set_size(__in __notnull system_window window,
+                                               __in           int           width,
+                                               __in           int           height);
 /** TODO */
 PUBLIC void _system_window_init();
 
