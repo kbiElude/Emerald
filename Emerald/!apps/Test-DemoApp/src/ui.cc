@@ -18,6 +18,7 @@
 #include "include/main.h"
 #include "state.h"
 
+PRIVATE system_variant _temp_variant_float                          = NULL;
 PRIVATE ogl_text       _text_renderer                               = NULL;
 PRIVATE ogl_ui         _ui                                          = NULL;
 PRIVATE ogl_ui_bag     _ui_bag                                      = NULL;
@@ -26,6 +27,7 @@ PRIVATE ogl_ui_control _ui_depth_shadow_map_internalformat_dropdown = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_algorithm_dropdown            = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown         = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown                 = NULL;
+PRIVATE ogl_ui_control _ui_vsm_cutoff_scrollbar                     = NULL;
 
 
 scene_light_shadow_map_algorithm shadow_map_algorithm_emerald_enums[] =
@@ -233,6 +235,16 @@ PRIVATE unsigned int _ui_get_current_shadow_map_size_index()
 }
 
 /** TODO */
+PRIVATE void _ui_get_current_vsm_cutoff_value(void*          unused,
+                                              system_variant result)
+{
+    float vsm_cutoff = state_get_shadow_map_vsm_cutoff();
+
+    system_variant_set_float(result,
+                             vsm_cutoff);
+}
+
+/** TODO */
 PRIVATE void _ui_on_color_shadow_map_internalformat_changed(void* unused,
                                                             void* event_user_arg)
 {
@@ -306,6 +318,17 @@ PRIVATE void _ui_on_shadow_map_size_changed(void* unused,
     state_set_shadow_map_size(new_shadow_map_size);
 }
 
+/** TODO */
+PRIVATE void _ui_set_current_vsm_cutoff_value(void*          unused,
+                                              system_variant new_value)
+{
+    float new_vsm_cutoff_value;
+
+    system_variant_get_float       (new_value,
+                                   &new_vsm_cutoff_value);
+    state_set_shadow_map_vsm_cutoff(new_vsm_cutoff_value);
+}
+
 
 /** Please see header for spec */
 PUBLIC void ui_deinit()
@@ -313,6 +336,8 @@ PUBLIC void ui_deinit()
     ogl_ui_bag_release(_ui_bag);
     ogl_ui_release    (_ui);
     ogl_text_release  (_text_renderer);
+
+    system_variant_release(_temp_variant_float);
 }
 
 /** Please see header for spec */
@@ -404,6 +429,23 @@ PUBLIC void ui_init()
                                                                _ui_on_shadow_map_pointlight_algorithm_changed,
                                                                NULL); /* fire_user_arg */
 
+    /* Add VSM cutoff scrollbar */
+    system_variant vsm_cutoff_max_value = system_variant_create_float(1.0f);
+    system_variant vsm_cutoff_min_value = system_variant_create_float(0.0f);
+
+    _ui_vsm_cutoff_scrollbar = ogl_ui_add_scrollbar(_ui,
+                                                    system_hashed_ansi_string_create("VSM cut-off"),
+                                                    vsm_cutoff_min_value,
+                                                    vsm_cutoff_max_value,
+                                                    temp_x1y1,
+                                                    _ui_get_current_vsm_cutoff_value,
+                                                    NULL,
+                                                    _ui_set_current_vsm_cutoff_value,
+                                                    NULL);
+
+    system_variant_release(vsm_cutoff_max_value);
+    system_variant_release(vsm_cutoff_min_value);
+
     /* Add a bag which will re-adjust control positions whenever any of the dropdowns
      * is opened */
     const float          control_bag_x1y1[2] = {0.9f, 0.1f};
@@ -413,7 +455,8 @@ PUBLIC void ui_init()
         _ui_color_shadow_map_internalformat_dropdown,
         _ui_depth_shadow_map_internalformat_dropdown,
         _ui_shadow_map_size_dropdown,
-        _ui_shadow_map_pl_algorithm_dropdown
+        _ui_shadow_map_pl_algorithm_dropdown,
+        _ui_vsm_cutoff_scrollbar
     };
     const unsigned int n_ui_controls = sizeof(ui_controls) / sizeof(ui_controls[0]);
 
@@ -421,6 +464,9 @@ PUBLIC void ui_init()
                                 control_bag_x1y1,
                                 n_ui_controls,
                                 ui_controls);
+
+    /* Set up a temp variant */
+    _temp_variant_float = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
     /* Configure control visibility */
     _ui_on_shadow_map_algorithm_changed(NULL,

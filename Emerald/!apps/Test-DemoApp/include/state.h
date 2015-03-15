@@ -34,6 +34,9 @@ PUBLIC scene_light_shadow_map_pointlight_algorithm state_get_shadow_map_pointlig
 PUBLIC unsigned int state_get_shadow_map_size();
 
 /** TODO */
+PUBLIC float state_get_shadow_map_vsm_cutoff();
+
+/** TODO */
 PUBLIC ogl_pipeline state_get_pipeline();
 
 /** TODO */
@@ -56,5 +59,8 @@ PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_ma
 
 /** TODO */
 PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size);
+
+/** TODO */
+PUBLIC void state_set_shadow_map_vsm_cutoff(float new_value);
 
 #endif /* STATE_H */

@@ -3286,7 +3286,8 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                     case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
                     {
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff = *(float*) data;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff       = *(float*) data;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = true;
 
                         break;
                     }

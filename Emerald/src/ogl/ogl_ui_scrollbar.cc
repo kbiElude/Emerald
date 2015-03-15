@@ -239,6 +239,39 @@ PRIVATE void _ogl_ui_scrollbar_update_slider_handle_position(__in __notnull _ogl
                                                y_delta * 0.5f       + (scrollbar_ptr->slider_handle_size[1] * 0.5f);
 }
 
+/** TODO */
+PRIVATE void _ogl_ui_scrollbar_update_text_position(__in __notnull _ogl_ui_scrollbar* scrollbar_ptr)
+{
+    int           text_height    = 0;
+    int           text_xy[2]     = {0};
+    int           text_width     = 0;
+    system_window window         = NULL;
+    int           window_size[2] = {0};
+
+    ogl_context_get_property  (scrollbar_ptr->context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
+
+    ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
+                                      OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
+                                      scrollbar_ptr->text_index,
+                                     &text_height);
+    ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
+                                      OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
+                                      scrollbar_ptr->text_index,
+                                     &text_width);
+
+    text_xy[0] = (int) ((scrollbar_ptr->slider_x1y1x2y2[0] + (scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0] - float(text_width)  / window_size[0])  * 0.5f) * (float) window_size[0]);
+    text_xy[1] = (int) ((1.0f - scrollbar_ptr->slider_x1y1x2y2[1] - (float(text_height) / window_size[1]) ) * (float) window_size[1]);
+
+    ogl_text_set_text_string_property(scrollbar_ptr->text_renderer,
+                                      scrollbar_ptr->text_index,
+                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
+                                      text_xy);
+}
 
 /** TODO */
 PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
@@ -392,6 +425,38 @@ PUBLIC void ogl_ui_scrollbar_get_property(__in  __notnull const void*           
 
     switch (property)
     {
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
+        {
+            float text_height = 0.0f;
+
+            ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
+                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                              scrollbar_ptr->text_index,
+                                             &text_height);
+
+            *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[3] -
+                                   scrollbar_ptr->slider_x1y1x2y2[1] +
+                                   text_height;
+
+            break;
+        }
+
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
+        {
+            *(float*) out_result = scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0];
+
+            break;
+        }
+
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        {
+            ((float*) out_result)[0] = scrollbar_ptr->slider_x1y1x2y2[0];
+            ((float*) out_result)[1] = scrollbar_ptr->slider_x1y1x2y2[1];
+
+            break;
+        }
+
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
             *(bool*) out_result = scrollbar_ptr->is_visible;
@@ -523,8 +588,6 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                      system_hashed_ansi_string_get_buffer(name) );
 
         int           text_height    = 0;
-        int           text_xy[2]     = {0};
-        int           text_width     = 0;
         system_window window         = NULL;
         int           window_size[2] = {0};
 
@@ -532,10 +595,6 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                           OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_PX,
                                           new_scrollbar->text_index,
                                          &text_height);
-        ogl_text_get_text_string_property(new_scrollbar->text_renderer,
-                                          OGL_TEXT_STRING_PROPERTY_TEXT_WIDTH_PX,
-                                          new_scrollbar->text_index,
-                                         &text_width);
 
         ogl_context_get_property  (new_scrollbar->context,
                                    OGL_CONTEXT_PROPERTY_WINDOW,
@@ -544,8 +603,6 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                    SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                    window_size);
 
-        text_xy[0]                         = (int) ((x1y1[0] + (x2y2[0] - x1y1[0] - float(text_width)  / window_size[0])  * 0.5f) * (float) window_size[0]);
-        text_xy[1]                         = (int) ((x2y2[1] - (float(text_height) / window_size[1]) ) * (float) window_size[1]);
         new_scrollbar->slider_x1y1x2y2[3] -= float(text_height + TEXT_SCROLLBAR_SEPARATION_PX) / window_size[1];
 
         ASSERT_DEBUG_SYNC(new_scrollbar->slider_x1y1x2y2[1] < new_scrollbar->slider_x1y1x2y2[3],
@@ -555,10 +612,8 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                           new_scrollbar->text_index,
                                           OGL_TEXT_STRING_PROPERTY_COLOR,
                                           _ui_scrollbar_text_color);
-        ogl_text_set_text_string_property(new_scrollbar->text_renderer,
-                                          new_scrollbar->text_index,
-                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                          text_xy);
+
+        _ogl_ui_scrollbar_update_text_position(new_scrollbar);
 
         /* Calculate slider sizes */
         new_scrollbar->slider_border_width       [0] = 1.0f / (float)((new_scrollbar->slider_x1y1x2y2[2] - new_scrollbar->slider_x1y1x2y2[0]) * window_size[0]);
@@ -711,6 +766,28 @@ PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*                  
 
     switch (property)
     {
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1:
+        {
+            const float dx = scrollbar_ptr->slider_x1y1x2y2[2] - scrollbar_ptr->slider_x1y1x2y2[0];
+            const float dy = scrollbar_ptr->slider_x1y1x2y2[3] - scrollbar_ptr->slider_x1y1x2y2[1];
+                  float text_height_ss;
+
+            ogl_text_get_text_string_property(scrollbar_ptr->text_renderer,
+                                              OGL_TEXT_STRING_PROPERTY_TEXT_HEIGHT_SS,
+                                              scrollbar_ptr->text_index,
+                                             &text_height_ss);
+
+            scrollbar_ptr->slider_x1y1x2y2[0] =        ((float*) data)[0];
+            scrollbar_ptr->slider_x1y1x2y2[1] = 1.0f - ((float*) data)[1] - dy - text_height_ss;
+            scrollbar_ptr->slider_x1y1x2y2[2] = scrollbar_ptr->slider_x1y1x2y2[0] + dx;
+            scrollbar_ptr->slider_x1y1x2y2[3] = scrollbar_ptr->slider_x1y1x2y2[1] + dy;
+
+            _ogl_ui_scrollbar_update_slider_handle_position(scrollbar_ptr);
+            _ogl_ui_scrollbar_update_text_position         (scrollbar_ptr);
+
+            break;
+        }
+
         case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
