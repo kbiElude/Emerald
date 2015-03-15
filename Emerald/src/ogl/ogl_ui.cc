@@ -529,6 +529,17 @@ PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
                                                            n_control,
                                                           &control_ptr) )
                 {
+                    bool is_visible = true;
+
+                    control_ptr->pfn_get_property_func_ptr(control_ptr->internal,
+                                                           OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                                          &is_visible);
+
+                    if (!is_visible)
+                    {
+                        continue;
+                    }
+
                     if (control_ptr->pfn_is_over_func_ptr != NULL &&
                         control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
                                                           click_xy) )
@@ -597,6 +608,17 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
                                                            n_control,
                                                           &control_ptr) )
                 {
+                    bool is_visible = true;
+
+                    control_ptr->pfn_get_property_func_ptr(control_ptr->internal,
+                                                           OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                                          &is_visible);
+
+                    if (!is_visible)
+                    {
+                        continue;
+                    }
+
                     if (control_ptr->pfn_on_lbm_up_func_ptr != NULL)
                     {
                         control_ptr->pfn_on_lbm_up_func_ptr(control_ptr->internal,
@@ -654,6 +676,17 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
                                                        n_control,
                                                       &control_ptr) )
             {
+                bool is_visible = true;
+
+                control_ptr->pfn_get_property_func_ptr(control_ptr->internal,
+                                                       OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                                      &is_visible);
+
+                if (!is_visible)
+                {
+                    continue;
+                }
+
                 if (control_ptr->pfn_is_over_func_ptr       != NULL           &&
                     control_ptr->pfn_on_mouse_move_func_ptr != NULL           &&
                     control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
@@ -664,7 +697,7 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
 
                     break;
                 } /* if (control_ptr->pfn_is_over_func_ptr(control_ptr->internal, ui_ptr->current_mouse_xy) ) */
-            
+
                 if (control_ptr->pfn_on_mouse_move_func_ptr != NULL)
                 {
                     control_ptr->pfn_on_mouse_move_func_ptr(control_ptr->internal,
@@ -721,6 +754,17 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
                                                        n_control,
                                                       &control_ptr) )
             {
+                bool is_visible = true;
+
+                control_ptr->pfn_get_property_func_ptr(control_ptr->internal,
+                                                       OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                                      &is_visible);
+
+                if (!is_visible)
+                {
+                    continue;
+                }
+
                 if (control_ptr->pfn_is_over_func_ptr        != NULL              &&
                     control_ptr->pfn_on_mouse_wheel_func_ptr != NULL              &&
                     control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
@@ -1207,6 +1251,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui
                                                    n_control,
                                                   &ui_control_ptr) )
         {
+            bool is_visible = true;
+
+            ui_control_ptr->pfn_get_property_func_ptr(ui_control_ptr->internal,
+                                                      OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                                     &is_visible);
+
+            if (!is_visible)
+            {
+                continue;
+            }
+
             if (ui_control_ptr->pfn_draw_func_ptr != NULL)
             {
                 ui_control_ptr->pfn_draw_func_ptr(ui_control_ptr->internal);
@@ -1245,7 +1300,8 @@ PUBLIC EMERALD_API void ogl_ui_get_control_property(__in  __notnull ogl_ui_contr
     else
     if (ui_control_ptr->pfn_get_property_func_ptr != NULL)
     {
-        /* OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED is handled
+        /* OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED and
+         * OGL_UI_CONTROL_PROPERTY_GENERLA_VISIBLE are handled
          * exclusively by each control */
         ui_control_ptr->pfn_get_property_func_ptr(ui_control_ptr->internal,
                                                   property,

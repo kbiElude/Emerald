@@ -31,6 +31,7 @@ typedef enum
     OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED, /* not settable, float. Range: <0.0, 1.0> */
     OGL_UI_CONTROL_PROPERTY_GENERAL_INDEX,             /* not settable, unsigned int. Tells the index of the control in the control stack */
     OGL_UI_CONTROL_PROPERTY_GENERAL_TYPE,
+    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,           /* settable, bool. */
     OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED,  /* not settable, float. Range: <0.0, 1.0> */
     OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,              /* settable, float[2]. */
 

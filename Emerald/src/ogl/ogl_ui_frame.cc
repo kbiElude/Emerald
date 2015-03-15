@@ -22,6 +22,7 @@ typedef struct
 {
     ogl_context context;
     ogl_program program;
+    bool        visible;
     float       x1y1x2y2[4];
 
     GLint       program_x1y1x2y2_uniform_location;
@@ -140,6 +141,13 @@ PUBLIC void ogl_ui_frame_get_property(__in  __notnull const void*              f
             break;
         }
 
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        {
+            *(bool*) out_result = frame_ptr->visible;
+
+            break;
+        }
+
         case OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2:
         {
             ((float*) out_result)[0] =        frame_ptr->x1y1x2y2[0];
@@ -175,6 +183,7 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                sizeof(_ogl_ui_frame) );
 
         new_frame->context     = ogl_ui_get_context(instance);
+        new_frame->visible     = true;
         new_frame->x1y1x2y2[0] = x1y1x2y2[0];
         new_frame->x1y1x2y2[1] = 1.0f - x1y1x2y2[1];
         new_frame->x1y1x2y2[2] = x1y1x2y2[2];

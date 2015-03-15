@@ -43,6 +43,7 @@ typedef struct
     bool                 should_update_border_width;
     float                start_hovering_brightness;
     system_timeline_time start_hovering_time;
+    bool                 visible;
 
     ogl_context context;
     ogl_program program;
@@ -370,6 +371,14 @@ PUBLIC void ogl_ui_button_get_property(__in  __notnull const void*              
             break;
         }
 
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        {
+            *(bool*) out_result = button_ptr->visible;
+
+            break;
+        }
+
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
@@ -410,6 +419,7 @@ PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui               
         new_button->pfn_fire_proc_ptr  = pfn_fire_proc_ptr;
         new_button->text_renderer      = text_renderer;
         new_button->text_index         = ogl_text_add_string(text_renderer);
+        new_button->visible            = true;
 
         ogl_context_retain(new_button->context);
 

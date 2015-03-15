@@ -130,24 +130,32 @@ PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr)
                       n_control < n_controls;
                     ++n_control)
     {
-        ogl_ui_control control        = NULL;
-        float          control_height = 0.0f;
+        ogl_ui_control control         = NULL;
+        float          control_height  = 0.0f;
+        bool           control_visible = false;
 
         system_resizable_vector_get_element_at(bag_ptr->controls,
                                                n_control,
                                               &control);
 
         ogl_ui_get_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED,
-                                   &control_height);
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &control_visible);
 
-        current_x1y1[1] += v_delta;
+        if (control_visible)
+        {
+            ogl_ui_get_control_property(control,
+                                        OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED,
+                                       &control_height);
 
-        ogl_ui_set_control_property(control,
-                                    OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,
-                                    current_x1y1);
+            current_x1y1[1] += v_delta;
 
-        current_x1y1[1] += control_height;
+            ogl_ui_set_control_property(control,
+                                        OGL_UI_CONTROL_PROPERTY_GENERAL_X1Y1,
+                                        current_x1y1);
+
+            current_x1y1[1] += control_height;
+        } /* if (control_visible) */
     } /* for (all bag-controlled controls) */
 
     current_x1y1[1] += v_delta;
@@ -204,10 +212,10 @@ PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr)
 }
 
 /** TODO */
-PRIVATE void _ogl_ui_on_dropdown_toggle_callback(__in __notnull ogl_ui_control control,
-                                                 __in           int            callback_id,
-                                                 __in __notnull void*          callback_subscriber_data,
-                                                 __in __notnull void*          callback_data)
+PRIVATE void _ogl_ui_on_controls_changed_callback(__in __notnull ogl_ui_control control,
+                                                  __in           int            callback_id,
+                                                  __in __notnull void*          callback_subscriber_data,
+                                                  __in __notnull void*          callback_data)
 {
     /* Reposition the controls and resize the frame */
     _ogl_ui_bag_position_controls( (_ogl_ui_bag*) callback_subscriber_data);
@@ -289,9 +297,13 @@ PUBLIC EMERALD_API ogl_ui_bag ogl_ui_bag_create(__in                    __notnul
                 ogl_ui_register_control_callback(ui,
                                                  controls[n_control],
                                                  OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,
-                                                 _ogl_ui_on_dropdown_toggle_callback,
+                                                 _ogl_ui_on_controls_changed_callback,
                                                  new_bag_ptr);
-
+                ogl_ui_register_control_callback(ui,
+                                                 controls[n_control],
+                                                 OGL_UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                                 _ogl_ui_on_controls_changed_callback,
+                                                 new_bag_ptr);
             }
         } /* for (all controls) */
 

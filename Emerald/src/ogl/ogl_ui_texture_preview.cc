@@ -32,6 +32,7 @@ typedef struct
     GLenum  blend_function_src_rgb;
     bool    is_blending_enabled;
     GLuint  layer_shown;
+    bool    visible;
 
     float                       border_width[2];
     float                       max_size[2];
@@ -538,6 +539,13 @@ PUBLIC void ogl_ui_texture_preview_get_property(__in  __notnull const void*     
 
     switch (property)
     {
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        {
+            *(bool*) out_result = texture_preview_ptr->visible;
+
+            break;
+        }
+
         case OGL_UI_CONTROL_PROPERTY_TEXTURE_PREVIEW_BLEND_COLOR:
         {
             memcpy(out_result,
@@ -660,6 +668,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
         new_texture_preview->text_index          = ogl_text_add_string(text_renderer);
         new_texture_preview->texture             = to;
         new_texture_preview->texture_initialized = false;
+        new_texture_preview->visible             = true;
 
         if (to != NULL)
         {

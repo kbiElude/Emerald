@@ -260,6 +260,30 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
 
     /* Update Emerald state */
     state_set_shadow_map_algorithm(new_sm_algo);
+
+    /* If VSM is enabled, how both color & depth SM internalformat dropdowns.
+     * Otherwise, only show depth SM internalformat dropdown*/
+    bool not_visible = false;
+    bool visible     = true;
+
+    if (new_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN)
+    {
+        ogl_ui_set_control_property(_ui_color_shadow_map_internalformat_dropdown,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &not_visible);
+        ogl_ui_set_control_property(_ui_depth_shadow_map_internalformat_dropdown,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &visible);
+    }
+    else
+    {
+        ogl_ui_set_control_property(_ui_color_shadow_map_internalformat_dropdown,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &visible);
+        ogl_ui_set_control_property(_ui_depth_shadow_map_internalformat_dropdown,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &visible);
+    }
 }
 
 /** TODO */
@@ -397,6 +421,10 @@ PUBLIC void ui_init()
                                 control_bag_x1y1,
                                 n_ui_controls,
                                 ui_controls);
+
+    /* Configure control visibility */
+    _ui_on_shadow_map_algorithm_changed(NULL,
+                                        (void*) state_get_shadow_map_algorithm() );
 }
 
 

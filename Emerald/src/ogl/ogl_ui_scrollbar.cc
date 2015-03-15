@@ -711,6 +711,7 @@ PUBLIC void ogl_ui_scrollbar_set_property(__in __notnull void*                  
 
     switch (property)
     {
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         case OGL_UI_CONTROL_PROPERTY_SCROLLBAR_VISIBLE:
         {
             scrollbar_ptr->is_visible = *(bool*) data;

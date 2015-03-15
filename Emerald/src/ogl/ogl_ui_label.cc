@@ -25,6 +25,7 @@ typedef struct
     ogl_context         context;
     ogl_text_string_id  text_id;
     ogl_text            text_renderer;
+    bool                visible;
     float               x1y1[2];
 } _ogl_ui_label;
 
@@ -52,6 +53,13 @@ PUBLIC void ogl_ui_label_get_property(__in  __notnull const void*              l
 
     switch (property)
     {
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        {
+            *(bool*) out_result = label_ptr->visible;
+
+            break;
+        }
+
         case OGL_UI_CONTROL_PROPERTY_LABEL_TEXT_HEIGHT_SS:
         {
             ogl_text_get_text_string_property(label_ptr->text_renderer,
@@ -94,6 +102,7 @@ PUBLIC void* ogl_ui_label_init(__in           __notnull   ogl_ui                
         new_label->context       = ogl_ui_get_context(instance);
         new_label->text_renderer = text_renderer;
         new_label->text_id       = ogl_text_add_string(text_renderer);
+        new_label->visible       = true;
 
         ogl_context_retain(new_label->context);
 

@@ -12,7 +12,8 @@
 /* Call-backs */
 typedef enum
 {
-    OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,  /* fired when droparea is toggled on or off       user_arg: not used */
+    OGL_UI_DROPDOWN_CALLBACK_ID_DROPAREA_TOGGLE,   /* fired when droparea is toggled on or off            / user_arg: not used */
+    OGL_UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE, /* fired when droparea visibility is toggled on or off / user_arg: not used */
 };
 
 

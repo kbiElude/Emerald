@@ -1289,14 +1289,21 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*            
 
         case OGL_UI_CONTROL_PROPERTY_GENERAL_HEIGHT_NORMALIZED:
         {
-            if (!dropdown_ptr->is_droparea_visible)
+            if (dropdown_ptr->visible)
             {
-                *(float*) out_result = dropdown_ptr->x1y1x2y2[3] - dropdown_ptr->x1y1x2y2[1];
-            }
+                if (!dropdown_ptr->is_droparea_visible)
+                {
+                    *(float*) out_result = dropdown_ptr->x1y1x2y2[3] - dropdown_ptr->x1y1x2y2[1];
+                }
+                else
+                {
+                    *(float*) out_result = dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] +
+                                           dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1];
+                }
+            } /* if (dropdown_ptr->visible) */
             else
             {
-                *(float*) out_result = dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3] +
-                                       dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1];
+                *(float*) out_result = 0.0f;
             }
 
             break;
@@ -1305,6 +1312,13 @@ PUBLIC void ogl_ui_dropdown_get_property(__in  __notnull const void*            
         case OGL_UI_CONTROL_PROPERTY_GENERAL_WIDTH_NORMALIZED:
         {
             *(float*) out_result = dropdown_ptr->x1y1x2y2[2] - dropdown_ptr->label_bg_x1y1x2y2[0];
+
+            break;
+        }
+
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
+        {
+            *(bool*) out_result = dropdown_ptr->visible;
 
             break;
         }
@@ -1823,11 +1837,17 @@ PUBLIC void ogl_ui_dropdown_set_property(__in __notnull void*                   
     switch (property)
     {
         case OGL_UI_CONTROL_PROPERTY_DROPDOWN_VISIBLE:
+        case OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE:
         {
             dropdown_ptr->visible = *(bool*) data;
 
             _ogl_ui_dropdown_update_entry_visibility(dropdown_ptr);
 
+            /* If there's anyone waiting on this event, let them know */
+            ogl_ui_receive_control_callback(dropdown_ptr->ui,
+                                            (ogl_ui_control) dropdown_ptr,
+                                            OGL_UI_DROPDOWN_CALLBACK_ID_VISIBILITY_TOGGLE,
+                                            dropdown_ptr);
             break;
         }
 
