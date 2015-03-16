@@ -97,6 +97,9 @@ typedef struct _ogl_uber_fragment_shader_item
     float       current_light_shadow_map_vsm_cutoff;
     bool        current_light_shadow_map_vsm_cutoff_dirty;
     GLint       current_light_shadow_map_vsm_cutoff_ub_offset;
+    float       current_light_shadow_map_vsm_min_variance;
+    bool        current_light_shadow_map_vsm_min_variance_dirty;
+    GLint       current_light_shadow_map_vsm_min_variance_ub_offset;
 
     float current_light_view[16];
     bool  current_light_view_dirty;
@@ -120,25 +123,27 @@ typedef struct _ogl_uber_fragment_shader_item
         current_light_shadow_map_texture_color_sampler_location = -1;
         current_light_shadow_map_texture_depth_sampler_location = -1;
         current_light_shadow_map_vsm_cutoff_ub_offset           = -1;
+        current_light_shadow_map_vsm_min_variance_ub_offset     = -1;
         current_light_view_ub_offset                            = -1;
 
         current_light_shadow_map_texture_color = NULL;
         current_light_shadow_map_texture_depth = NULL;
 
-        ambient_color_dirty                         = true;
-        current_light_attenuations_dirty            = true;
-        current_light_camera_eye_to_light_eye_dirty = true;
-        current_light_cone_angle_dirty              = true;
-        current_light_diffuse_dirty                 = true;
-        current_light_direction_dirty               = true;
-        current_light_edge_angle_dirty              = true;
-        current_light_far_near_diff_dirty           = true;
-        current_light_location_dirty                = true;
-        current_light_near_plane_dirty              = true;
-        current_light_projection_dirty              = true;
-        current_light_range_dirty                   = true;
-        current_light_shadow_map_vsm_cutoff_dirty   = true;
-        current_light_view_dirty                    = true;
+        ambient_color_dirty                             = true;
+        current_light_attenuations_dirty                = true;
+        current_light_camera_eye_to_light_eye_dirty     = true;
+        current_light_cone_angle_dirty                  = true;
+        current_light_diffuse_dirty                     = true;
+        current_light_direction_dirty                   = true;
+        current_light_edge_angle_dirty                  = true;
+        current_light_far_near_diff_dirty               = true;
+        current_light_location_dirty                    = true;
+        current_light_near_plane_dirty                  = true;
+        current_light_projection_dirty                  = true;
+        current_light_range_dirty                       = true;
+        current_light_shadow_map_vsm_cutoff_dirty       = true;
+        current_light_shadow_map_vsm_min_variance_dirty = true;
+        current_light_view_dirty                        = true;
     }
 } _ogl_uber_fragment_shader_item;
 
@@ -1383,6 +1388,16 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                 break;
             }
 
+            case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE:
+            {
+                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1,
+                                  "OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE requested but the underlying shader does not use the property");
+
+                *((float*) result) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance;
+
+                break;
+            }
+
             case OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP:
             {
                 ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
@@ -1806,54 +1821,59 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_shadow_map_depth_uniform_ptr = NULL;
                 std::stringstream                     light_shadow_map_vsm_cutoff_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_shadow_map_vsm_cutoff_uniform_ptr = NULL;
+                std::stringstream                     light_shadow_map_vsm_min_variance_uniform_name_sstream;
+                const ogl_program_uniform_descriptor* light_shadow_map_vsm_min_variance_uniform_ptr = NULL;
                 std::stringstream                     light_view_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_view_uniform_ptr = NULL;
 
-                light_attenuations_uniform_name_sstream            << "light"
-                                                                   << n_item
-                                                                   << "_attenuations";
-                light_camera_eye_to_light_eye_uniform_name_sstream << "light"
-                                                                   << n_item
-                                                                   << "_camera_eye_to_light_eye";
-                light_cone_angle_uniform_name_sstream              << "light"
-                                                                   << n_item
-                                                                   << "_cone_angle";
-                light_diffuse_uniform_name_sstream                 << "light"
-                                                                   << n_item
-                                                                   << "_diffuse";
-                light_direction_uniform_name_sstream               << "light"
-                                                                   << n_item
-                                                                   << "_direction";
-                light_edge_angle_uniform_name_sstream              << "light"
-                                                                   << n_item
-                                                                   << "_edge_angle";
-                light_far_near_diff_uniform_name_sstream           << "light"
-                                                                   << n_item
-                                                                   << "_far_near_diff";
-                light_location_uniform_name_sstream                << "light"
-                                                                   << n_item
-                                                                   << "_world_pos";
-                light_near_plane_uniform_name_sstream              << "light"
-                                                                   << n_item
-                                                                   << "_near";
-                light_projection_uniform_name_sstream              << "light"
-                                                                   << n_item
-                                                                   << "_projection";
-                light_range_uniform_name_sstream                   << "light"
-                                                                   << n_item
-                                                                   << "_range";
-                light_shadow_map_color_uniform_name_sstream        << "light"
-                                                                   << n_item
-                                                                   << "_shadow_map_color";
-                light_shadow_map_depth_uniform_name_sstream        << "light"
-                                                                   << n_item
-                                                                   << "_shadow_map_depth";
-                light_shadow_map_vsm_cutoff_uniform_name_sstream   << "light"
-                                                                   << n_item
-                                                                   << "_shadow_map_vsm_cutoff";
-                light_view_uniform_name_sstream                    << "light"
-                                                                   << n_item
-                                                                   << "_view";
+                light_attenuations_uniform_name_sstream                << "light"
+                                                                       << n_item
+                                                                       << "_attenuations";
+                light_camera_eye_to_light_eye_uniform_name_sstream     << "light"
+                                                                       << n_item
+                                                                       << "_camera_eye_to_light_eye";
+                light_cone_angle_uniform_name_sstream                  << "light"
+                                                                       << n_item
+                                                                       << "_cone_angle";
+                light_diffuse_uniform_name_sstream                     << "light"
+                                                                       << n_item
+                                                                       << "_diffuse";
+                light_direction_uniform_name_sstream                   << "light"
+                                                                       << n_item
+                                                                       << "_direction";
+                light_edge_angle_uniform_name_sstream                  << "light"
+                                                                       << n_item
+                                                                       << "_edge_angle";
+                light_far_near_diff_uniform_name_sstream               << "light"
+                                                                       << n_item
+                                                                       << "_far_near_diff";
+                light_location_uniform_name_sstream                    << "light"
+                                                                       << n_item
+                                                                       << "_world_pos";
+                light_near_plane_uniform_name_sstream                  << "light"
+                                                                       << n_item
+                                                                       << "_near";
+                light_projection_uniform_name_sstream                  << "light"
+                                                                       << n_item
+                                                                       << "_projection";
+                light_range_uniform_name_sstream                       << "light"
+                                                                       << n_item
+                                                                       << "_range";
+                light_shadow_map_color_uniform_name_sstream            << "light"
+                                                                       << n_item
+                                                                       << "_shadow_map_color";
+                light_shadow_map_depth_uniform_name_sstream            << "light"
+                                                                       << n_item
+                                                                       << "_shadow_map_depth";
+                light_shadow_map_vsm_cutoff_uniform_name_sstream       << "light"
+                                                                       << n_item
+                                                                       << "_shadow_map_vsm_cutoff";
+                light_shadow_map_vsm_min_variance_uniform_name_sstream << "light"
+                                                                       << n_item
+                                                                       << "_shadow_map_vsm_min_variance";
+                light_view_uniform_name_sstream                        << "light"
+                                                                       << n_item
+                                                                       << "_view";
 
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create("ambient_color"),
@@ -1903,6 +1923,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_shadow_map_vsm_cutoff_uniform_name_sstream.str().c_str() ),
                                                &light_shadow_map_vsm_cutoff_uniform_ptr);
+                ogl_program_get_uniform_by_name(uber_ptr->program,
+                                                system_hashed_ansi_string_create(light_shadow_map_vsm_min_variance_uniform_name_sstream.str().c_str() ),
+                                               &light_shadow_map_vsm_min_variance_uniform_ptr);
 
                 if (light_ambient_color_uniform_ptr != NULL)
                 {
@@ -1982,6 +2005,11 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 if (light_shadow_map_vsm_cutoff_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset = light_shadow_map_vsm_cutoff_uniform_ptr->ub_offset;
+                }
+
+                if (light_shadow_map_vsm_min_variance_uniform_ptr != NULL)
+                {
+                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset = light_shadow_map_vsm_min_variance_uniform_ptr->ub_offset;
                 }
 
                 /* Vertex shader stuff */
@@ -2734,6 +2762,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = false;
                     }
 
+                    if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1 &&
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty)
+                    {
+                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance;
+
+                        has_modified_bo_data                                                           = true;
+                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty = false;
+                    }
+
                     if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_view_dirty)
                     {
@@ -3070,6 +3107,7 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH:
         case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
+        case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE:
         case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
         {
             _ogl_uber_item* item_ptr = NULL;
@@ -3286,8 +3324,22 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                     case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
                     {
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff       = *(float*) data;
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = true;
+                        if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff != *(float*) data)
+                        {
+                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff       = *(float*) data;
+                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = true;
+                        }
+
+                        break;
+                    }
+
+                    case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE:
+                    {
+                        if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance != *(float*) data)
+                        {
+                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance       = *(float*) data;
+                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty = true;
+                        }
 
                         break;
                     }

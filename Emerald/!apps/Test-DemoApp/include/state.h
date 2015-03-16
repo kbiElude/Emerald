@@ -37,6 +37,9 @@ PUBLIC unsigned int state_get_shadow_map_size();
 PUBLIC float state_get_shadow_map_vsm_cutoff();
 
 /** TODO */
+PUBLIC float state_get_shadow_map_vsm_min_variance();
+
+/** TODO */
 PUBLIC ogl_pipeline state_get_pipeline();
 
 /** TODO */
@@ -62,5 +65,8 @@ PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_vsm_cutoff(float new_value);
+
+/** TODO */
+PUBLIC void state_set_shadow_map_vsm_min_variance(float new_value);
 
 #endif /* STATE_H */

@@ -263,7 +263,8 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
                                                                                    __in            uint32_t                   n_light,
                                                                                    __out __notnull system_hashed_ansi_string* out_light_shadow_coord_var_name_has,
                                                                                    __out __notnull system_hashed_ansi_string* out_shadow_map_sampler_var_name_has,
-                                                                                   __out __notnull system_hashed_ansi_string* out_vsm_cutoff_var_name_has)
+                                                                                   __out __notnull system_hashed_ansi_string* out_vsm_cutoff_var_name_has,
+                                                                                   __out __notnull system_hashed_ansi_string* out_vsm_min_variance_var_name_has)
 {
     /* Add the light-specific shadow coordinate input variable.
      *
@@ -324,6 +325,15 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_non_point_lig
                                                          TYPE_FLOAT,
                                                          ub_fs,
                                                          out_vsm_cutoff_var_name_has);
+
+            _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                         n_light,
+                                                         system_hashed_ansi_string_create("shadow_map_vsm_min_variance"),
+                                                         VARIABLE_TYPE_UNIFORM,
+                                                         LAYOUT_QUALIFIER_NONE,
+                                                         TYPE_FLOAT,
+                                                         ub_fs,
+                                                         out_vsm_min_variance_var_name_has);
 
             break;
         }
@@ -1100,6 +1110,7 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
     system_hashed_ansi_string light_shadow_map_sampler_var_name_has = NULL;
     system_hashed_ansi_string light_view_matrix_var_name_has        = NULL;
     system_hashed_ansi_string light_vsm_cutoff_var_name_has         = NULL;
+    system_hashed_ansi_string light_vsm_min_variance_var_name_has   = NULL;
 
     if (!is_point_light)
     {
@@ -1109,7 +1120,8 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                                                                               n_light,
                                                                              &light_shadow_coord_var_name_has,
                                                                              &light_shadow_map_sampler_var_name_has,
-                                                                             &light_vsm_cutoff_var_name_has);
+                                                                             &light_vsm_cutoff_var_name_has,
+                                                                             &light_vsm_min_variance_var_name_has);
     }
     else
     {
@@ -1393,7 +1405,9 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
                              << mean_var_name_sstream.str()
                              << " * "
                              << mean_var_name_sstream.str()
-                             << ", 0.00001);\n"
+                             << ", "
+                             << system_hashed_ansi_string_get_buffer(light_vsm_min_variance_var_name_has)
+                             << ");\n"
                              /* Calculate result light attenuation */
                              << light_visibility_helper_var_name_sstream.str() /* result */
                              << ".x = "

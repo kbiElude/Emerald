@@ -161,6 +161,16 @@ typedef enum scene_light_property
      */
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF,
 
+    /* Settable, float.
+     *
+     * This parameter defines the minimum allowed variance value that should be
+     * stored in the color shadow map. In conjuction with the color shadow map
+     * internalformat, this setting can be used to reduce precision requirements
+     * at the cost of the SM quality.
+     *
+     */
+    SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MIN_VARIANCE,
+
     /* Settable, bool */
     SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
 
