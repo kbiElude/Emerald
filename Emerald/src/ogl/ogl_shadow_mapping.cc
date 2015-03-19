@@ -15,6 +15,7 @@
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
+#include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_graph.h"
@@ -31,6 +32,8 @@
 #include <string>
 #include <sstream>
 
+#define N_TAPS (8)
+
 
 /** TODO */
 typedef struct
@@ -44,6 +47,9 @@ typedef struct
 /** TODO */
 typedef struct _ogl_shadow_mapping
 {
+    /* Blur handler */
+    postprocessing_blur_gaussian blur_handler;
+
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
      */
@@ -106,6 +112,7 @@ typedef struct _ogl_shadow_mapping
 
     _ogl_shadow_mapping()
     {
+        blur_handler              = NULL;
         context                   = NULL;
         current_camera            = NULL;
         current_light             = NULL;
@@ -126,6 +133,13 @@ typedef struct _ogl_shadow_mapping
 
     ~_ogl_shadow_mapping()
     {
+        if (blur_handler != NULL)
+        {
+            postprocessing_blur_gaussian_release(blur_handler);
+
+            blur_handler = NULL;
+        }
+
         if (meshes_to_render != NULL)
         {
             system_resizable_vector_release(meshes_to_render);
@@ -1701,6 +1715,11 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in 
          *       we're already within a GL rendering context.. */
         _ogl_shadow_mapping_init_renderer_callback(context,
                                                    new_instance);
+
+        new_instance->blur_handler = postprocessing_blur_gaussian_create(context,
+                                                                         system_hashed_ansi_string_create("Gaussian blur handler"),
+                                                                         N_TAPS,
+                                                                         N_TAPS); /* TODO TEMP TEMP TEMP TEMP */
     } /* if (new_instance != NULL) */
 
     return (ogl_shadow_mapping) new_instance;
@@ -2536,10 +2555,11 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
                   n_light < n_lights;
                 ++n_light)
     {
-        scene_light      current_light                  = scene_get_light_by_index(current_scene,
-                                                                                   n_light);
-        bool             current_light_is_shadow_caster = false;
-        scene_light_type current_light_type             = SCENE_LIGHT_TYPE_UNKNOWN;
+        scene_light                      current_light                  = scene_get_light_by_index(current_scene,
+                                                                                                   n_light);
+        bool                             current_light_is_shadow_caster = false;
+        scene_light_shadow_map_algorithm current_light_sm_algorithm     = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+        scene_light_type                 current_light_type             = SCENE_LIGHT_TYPE_UNKNOWN;
 
         ASSERT_DEBUG_SYNC(current_light != NULL,
                           "Scene light is NULL");
@@ -2547,6 +2567,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
         scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_TYPE,
                                 &current_light_type);
+        scene_light_get_property(current_light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                &current_light_sm_algorithm);
         scene_light_get_property(current_light,
                                  SCENE_LIGHT_PROPERTY_USES_SHADOW_MAP,
                                 &current_light_is_shadow_caster);
@@ -3126,6 +3149,27 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         /* Unbind the SM FBO */
         entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                          0);
+
+        /* Blur the SM if it makes sense */
+        scene_light_shadow_map_algorithm light_shadow_map_algorithm = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
+
+        scene_light_get_property(light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                                &light_shadow_map_algorithm);
+
+        if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+        {
+            ogl_texture sm_color_texture = NULL;
+
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
+                                    &sm_color_texture);
+
+            postprocessing_blur_gaussian_execute(handler_ptr->blur_handler,
+                                                 N_TAPS, /* n_taps */
+                                                 3,      /* n_iterations */
+                                                 sm_color_texture);
+        }
 
         /* If necessary, also generate mipmaps for the color texture */
         if (handler_ptr->current_sm_color0_texture != NULL)

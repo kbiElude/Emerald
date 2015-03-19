@@ -281,7 +281,7 @@ PUBLIC void _render_scene(ogl_context          context,
     ogl_ui_control ui_texture_preview = ui_get_texture_preview_control();
 
     scene_light_get_property(light,
-                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_DEPTH,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
                             &light_sm);
 
     if (ui_texture_preview != NULL)

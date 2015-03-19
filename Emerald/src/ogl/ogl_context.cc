@@ -2628,9 +2628,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                 ogl_context_to_bindings_init        (_result->to_bindings,
                                                                     &_result->entry_points_private);
 
-                                /* Initialize shadow mapping handler */
-                                _result->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) _result);
-
                                 /* Set up the zero-VAA VAO */
                                 _result->entry_points_gl.pGLGenVertexArrays(1,
                                                                            &_result->vao_no_vaas_id);
@@ -2893,6 +2890,12 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_SHADOW_MAPPING:
         {
+            if (context_ptr->shadow_mapping == NULL)
+            {
+                /* Create the shadow mapping handler if this is the first incoming request */
+                context_ptr->shadow_mapping = ogl_shadow_mapping_create( (ogl_context) context_ptr);
+            }
+
             *(ogl_shadow_mapping*) out_result = context_ptr->shadow_mapping;
 
             break;

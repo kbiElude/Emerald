@@ -16,6 +16,7 @@ typedef enum
 } postprocessing_blur_poisson_blur_bluriness_source;
 
 DECLARE_HANDLE(postprocessing_bloom);
+DECLARE_HANDLE(postprocessing_blur_gaussian);
 DECLARE_HANDLE(postprocessing_blur_poisson);
 DECLARE_HANDLE(postprocessing_reinhard_tonemap);
 
