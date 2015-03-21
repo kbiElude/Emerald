@@ -3167,8 +3167,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
             postprocessing_blur_gaussian_execute(handler_ptr->blur_handler,
                                                  N_TAPS, /* n_taps */
-                                                 3,      /* n_iterations */
-                                                 sm_color_texture);
+                                                 1,      /* n_iterations */
+                                                 sm_color_texture,
+                                                 POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF);
         }
 
         /* If necessary, also generate mipmaps for the color texture */

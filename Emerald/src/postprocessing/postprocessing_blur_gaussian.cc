@@ -8,6 +8,8 @@
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_programs.h"
+#include "ogl/ogl_sampler.h"
+#include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_texture.h"
@@ -601,10 +603,11 @@ end:
 }
 
 /** Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(__in __notnull postprocessing_blur_gaussian blur,
-                                                                                    __in           unsigned int                 n_taps,
-                                                                                    __in           unsigned int                 n_iterations,
-                                                                                    __in __notnull ogl_texture                  src_texture)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(     __notnull postprocessing_blur_gaussian            blur,
+                                                                                    __in           unsigned int                            n_taps,
+                                                                                    __in           unsigned int                            n_iterations,
+                                                                                    __in __notnull ogl_texture                             src_texture,
+                                                                                    __in           postprocessing_blur_gaussian_resolution blur_resolution)
 {
     _postprocessing_blur_gaussian*                            blur_ptr                   = (_postprocessing_blur_gaussian*) blur;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr        = NULL;
@@ -648,20 +651,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                          &src_texture_width);
 
-    /* Retrieve a 2D Array texture we will use for execution of the iterations */
-    temp_2d_array_texture = ogl_textures_get_texture_from_pool(blur_ptr->context,
-                                                               OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY,
-                                                               1, /* n_mipmaps */
-                                                               src_texture_internalformat,
-                                                               src_texture_width,
-                                                               src_texture_height,
-                                                               2,      /* base_mipmap_depth */
-                                                               1,      /* n_samples */
-                                                               false); /* fixed_sample_locations */
-
     /* The function carries out the following tasks:
      *
-     * 1) Copies data from the source texture to ping (0th) texture layer.
+     * 1) Copies data from the source texture to ping (0th) texture layer. Downsamples if requested.
      *    Draw (ping) FBO is attached the ping texture layer.
      *    Read (pong) FBO is attached the source texture.
      *
@@ -688,6 +680,57 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     entrypoints_ptr->pGLDisable  (GL_CULL_FACE);
 
     /* Step 1) */
+    unsigned int target_height;
+    GLenum       target_interpolation;
+    unsigned int target_width;
+
+    switch (blur_resolution)
+    {
+        case POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_ORIGINAL:
+        {
+            target_height        = src_texture_height;
+            target_interpolation = GL_NEAREST; /* no interpolation needed */
+            target_width         = src_texture_width;
+
+            break;
+        }
+
+        case POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF:
+        {
+            target_height        = src_texture_height / 2;
+            target_interpolation = GL_LINEAR;
+            target_width        = src_texture_width  / 2;
+
+            break;
+        }
+
+        case POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_QUARTER:
+        {
+            target_height        = src_texture_height / 4;
+            target_interpolation = GL_LINEAR;
+            target_width        = src_texture_width  / 4;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized blur resolution requested");
+        }
+    } /* switch (blur_resolution) */
+
+    /* Retrieve a 2D Array texture we will use for execution of the iterations */
+    temp_2d_array_texture = ogl_textures_get_texture_from_pool(blur_ptr->context,
+                                                               OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY,
+                                                               1, /* n_mipmaps */
+                                                               src_texture_internalformat,
+                                                               target_width,
+                                                               target_height,
+                                                               2,      /* base_mipmap_depth */
+                                                               1,      /* n_samples */
+                                                               false); /* fixed_sample_locations */
+
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                         ping_fbo_id);
     entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
@@ -703,16 +746,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                             GL_TEXTURE_2D,
                                                             src_texture,
                                                             0); /* level */
+
+
     entrypoints_ptr->pGLBlitFramebuffer(0, /* srcX0 */
                                         0, /* srcY0 */
                                         src_texture_width,
                                         src_texture_height,
                                         0, /* dstX0 */
                                         0, /* dstY0 */
-                                        src_texture_width,
-                                        src_texture_height,
+                                        target_width,
+                                        target_height,
                                         GL_COLOR_BUFFER_BIT,
-                                        GL_NEAREST); /* no need for any interpolation */
+                                        target_interpolation);
 
     /* Step 2): Set-up */
     const GLuint po_id = ogl_program_get_id(blur_ptr->po);
@@ -734,8 +779,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     entrypoints_ptr->pGLViewport                           (0, /* x */
                                                             0, /* y */
-                                                            src_texture_width,
-                                                            src_texture_height);
+                                                            target_width,
+                                                            target_height);
     dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
                                                             GL_COLOR_ATTACHMENT0,
                                                             temp_2d_array_texture,
@@ -787,14 +832,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     entrypoints_ptr->pGLBlitFramebuffer(0,                  /* srcX0 */
                                         0,                  /* srcY0 */
-                                        src_texture_width,
-                                        src_texture_height,
+                                        target_width,
+                                        target_height,
                                         0,                  /* dstX0 */
                                         0,                  /* dstY0 */
                                         src_texture_width,
                                         src_texture_height,
                                         GL_COLOR_BUFFER_BIT,
-                                        GL_NEAREST);
+                                        target_interpolation);
 
     /* All done */
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
