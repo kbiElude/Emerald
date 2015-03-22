@@ -154,6 +154,22 @@ typedef enum scene_light_property
 
     /* Settable, float.
      *
+     * Adjusts the number of taps used for blurring.
+     *
+     * Note: if frac(n_taps) != 0, the SM color texture will be a lerp between floor(n_taps)
+     *       and ceil(n_taps). This means two separate blur passes will be executed which will
+     *       affect the performance.
+     */
+     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS,
+
+    /* Settable, postprocessing_blur_gaussian_resolution.
+     *
+     * Adjusts the resolution, at which the SM color texture is going to be blurred.
+     */
+     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION,
+
+    /* Settable, float.
+     *
      * This parameter adjusts the cut-off range for Variance Shadow Mapping.
      * Helps fight the light bleeding artifact at the cost of dimming the penumbras.
      *

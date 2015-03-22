@@ -16,6 +16,15 @@ DECLARE_HANDLE(ogl_shadow_mapping);
 
 typedef enum
 {
+    /* not settable, unsigned int */
+    OGL_SHADOW_MAPPING_PROPERTY_N_MAX_BLUR_TAPS,
+
+    /* not settable, unsigned int */
+    OGL_SHADOW_MAPPING_PROPERTY_N_MIN_BLUR_TAPS,
+} ogl_shadow_mapping_property;
+
+typedef enum
+{
     /* directional / spot lights */
     OGL_SHADOW_MAPPING_TARGET_FACE_2D,
 
@@ -69,6 +78,11 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                                                       __in_ecount(3)  __notnull const float*                   aabb_max_world,
                                                       __out           __notnull system_matrix4x4*              out_view_matrix,
                                                       __out           __notnull system_matrix4x4*              out_projection_matrix);
+
+/** TODO */
+PUBLIC EMERALD_API void ogl_shadow_mapping_get_property(__in  __notnull ogl_shadow_mapping          shadow_mapping,
+                                                        __in            ogl_shadow_mapping_property property,
+                                                        __out __notnull void*                       out_result);
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notnull scene_mesh scene_mesh_instance,

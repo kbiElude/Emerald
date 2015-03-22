@@ -7,6 +7,7 @@
 #ifndef SHADERS_FRAGMENT_UBER_H
 #define SHADERS_FRAGMENT_UBER_H
 
+#include "mesh/mesh_material.h"
 #include "ogl/ogl_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_uber, shaders_fragment_uber)

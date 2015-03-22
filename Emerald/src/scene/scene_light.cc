@@ -6,6 +6,7 @@
  */
 #include "shared.h"
 #include "curve/curve_container.h"
+#include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene.h"
 #include "scene/scene_curve.h"
 #include "scene/scene_light.h"
@@ -54,6 +55,8 @@ typedef struct
     ogl_texture                                 shadow_map_texture_depth;
     system_matrix4x4                            shadow_map_view;
     system_matrix4x4                            shadow_map_vp;
+    float                                       shadow_map_vsm_blur_n_taps;
+    postprocessing_blur_gaussian_resolution     shadow_map_vsm_blur_resolution;
     float                                       shadow_map_vsm_cutoff;
     float                                       shadow_map_vsm_min_variance;
     scene_light_type                            type;
@@ -307,6 +310,8 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_texture_depth         = NULL;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
+    light_ptr->shadow_map_vsm_blur_n_taps       = 9.0f;
+    light_ptr->shadow_map_vsm_blur_resolution   = POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF;
     light_ptr->shadow_map_vsm_cutoff            = 0.1f;
     light_ptr->shadow_map_vsm_min_variance      = 1e-5f;
 
@@ -896,6 +901,20 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP:
         {
             *(system_matrix4x4*) out_result = light_ptr->shadow_map_vp;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS:
+        {
+            *(float*) out_result = light_ptr->shadow_map_vsm_blur_n_taps;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION:
+        {
+            *(postprocessing_blur_gaussian_resolution*) out_result = light_ptr->shadow_map_vsm_blur_resolution;
 
             break;
         }
@@ -1747,6 +1766,20 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
              *       by scene_light in any way, so its reference counter is left intact.
              */
             light_ptr->shadow_map_texture_depth = *(ogl_texture*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS:
+        {
+            light_ptr->shadow_map_vsm_blur_n_taps = *(float*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION:
+        {
+            light_ptr->shadow_map_vsm_blur_resolution = *(postprocessing_blur_gaussian_resolution*) data;
 
             break;
         }

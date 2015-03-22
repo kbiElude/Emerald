@@ -32,7 +32,8 @@
 #include <string>
 #include <sstream>
 
-#define N_TAPS (8)
+#define N_MAX_BLUR_TAPS (16)
+#define N_MIN_BLUR_TAPS (2)
 
 
 /** TODO */
@@ -1718,8 +1719,8 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_shadow_mapping ogl_shadow_mapping_create(__in 
 
         new_instance->blur_handler = postprocessing_blur_gaussian_create(context,
                                                                          system_hashed_ansi_string_create("Gaussian blur handler"),
-                                                                         N_TAPS,
-                                                                         N_TAPS); /* TODO TEMP TEMP TEMP TEMP */
+                                                                         N_MIN_BLUR_TAPS,
+                                                                         N_MAX_BLUR_TAPS);
     } /* if (new_instance != NULL) */
 
     return (ogl_shadow_mapping) new_instance;
@@ -2158,6 +2159,37 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
                               "Unsupported light type encountered");
         }
     } /* switch (light_type) */
+}
+
+/** TODO */
+PUBLIC EMERALD_API void ogl_shadow_mapping_get_property(__in  __notnull ogl_shadow_mapping          shadow_mapping,
+                                                        __in            ogl_shadow_mapping_property property,
+                                                        __out __notnull void*                       out_result)
+{
+    const _ogl_shadow_mapping* shadow_mapping_ptr = (const _ogl_shadow_mapping*) shadow_mapping;
+
+    switch (property)
+    {
+        case OGL_SHADOW_MAPPING_PROPERTY_N_MAX_BLUR_TAPS:
+        {
+            *(unsigned int*) out_result = N_MAX_BLUR_TAPS;
+
+            break;
+        }
+
+        case OGL_SHADOW_MAPPING_PROPERTY_N_MIN_BLUR_TAPS:
+        {
+            *(unsigned int*) out_result = N_MIN_BLUR_TAPS;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ogl_shadow_mapping_property value.");
+        }
+    } /* switch (property) */
 }
 
 /** TODO */
@@ -3159,17 +3191,39 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
         if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
         {
-            ogl_texture sm_color_texture = NULL;
+            float                                   sm_blur_n_taps_float;
+            postprocessing_blur_gaussian_resolution sm_blur_resolution;
+            ogl_texture                             sm_color_texture = NULL;
 
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION,
+                                    &sm_blur_resolution);
+            scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS,
+                                    &sm_blur_n_taps_float);
             scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
                                     &sm_color_texture);
 
+            if (sm_blur_n_taps_float < N_MIN_BLUR_TAPS)
+            {
+                LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to lower boundary!");
+
+                sm_blur_n_taps_float = (float) N_MIN_BLUR_TAPS;
+            }
+            else
+            if (sm_blur_n_taps_float > N_MAX_BLUR_TAPS)
+            {
+                LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to upper boundary!");
+
+                sm_blur_n_taps_float = (float) N_MAX_BLUR_TAPS;
+            }
+
             postprocessing_blur_gaussian_execute(handler_ptr->blur_handler,
-                                                 N_TAPS, /* n_taps */
-                                                 1,      /* n_iterations */
+                                                 sm_blur_n_taps_float,
+                                                 1,                    /* n_iterations */
                                                  sm_color_texture,
-                                                 POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF);
+                                                 sm_blur_resolution);
         }
 
         /* If necessary, also generate mipmaps for the color texture */

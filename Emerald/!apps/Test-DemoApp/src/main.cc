@@ -38,11 +38,20 @@ void _rendering_handler_entrypoint(ogl_context          context,
                                    system_timeline_time frame_time,
                                    void*                unused)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
+    const ogl_context_gl_entrypoints* entry_points   = NULL;
+    static bool                       ui_initialized = false;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+
+    if (!ui_initialized)
+    {
+        /* Set up UI */
+        ui_init();
+
+        ui_initialized = true;
+    }
 
     entry_points->pGLClearColor(0.0f,
                                 0.0f,
@@ -202,9 +211,6 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 
     /* Initialize data required to run the demo */
     state_init();
-
-    /* Set up UI */
-    ui_init();
 
     /* Carry on */
     ogl_rendering_handler_play(_rendering_handler,

@@ -67,8 +67,11 @@ PUBLIC EMERALD_API void ogl_rendering_handler_lock_bound_context(__in __notnull 
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
-    system_event_set                 (rendering_handler_ptr->unbind_context_request_event);
-    system_event_wait_single_infinite(rendering_handler_ptr->unbind_context_request_ack_event);
+    if (system_threads_get_thread_id() != rendering_handler_ptr->thread_id)
+    {
+        system_event_set                 (rendering_handler_ptr->unbind_context_request_event);
+        system_event_wait_single_infinite(rendering_handler_ptr->unbind_context_request_ack_event);
+    }
 }
 
 /** TODO */
@@ -403,8 +406,11 @@ PUBLIC EMERALD_API void ogl_rendering_handler_unlock_bound_context(__in __notnul
 {
     _ogl_rendering_handler* rendering_handler_ptr = (_ogl_rendering_handler*) rendering_handler;
 
-    system_event_set                 (rendering_handler_ptr->bind_context_request_event);
-    system_event_wait_single_infinite(rendering_handler_ptr->bind_context_request_ack_event);
+    if (system_threads_get_thread_id() != rendering_handler_ptr->thread_id)
+    {
+        system_event_set                 (rendering_handler_ptr->bind_context_request_event);
+        system_event_wait_single_infinite(rendering_handler_ptr->bind_context_request_ack_event);
+    }
 }
 
 /** TODO */

@@ -74,17 +74,9 @@ static const char* fs_body =     "layout(binding = 0, std140) uniform coeffs_dat
                                  "        result += textureLod(data_sampler,\n"
                                  "                             vec3(uv + offset_multiplier * tap_offset, float(read_layer_id) ),\n"
                                  "                             0.0) * tap_weight;\n"
-                                 "\n"
-                                 "        if (n_tap != 0)\n"
-                                 "        {\n"
-                                 "            result += textureLod(data_sampler,\n"
-                                 "                                 vec3(uv - offset_multiplier * tap_offset, float(read_layer_id) ),\n"
-                                 "                                 0.0) * tap_weight;\n"
-                                 "        }\n"
-                                 "        else\n"
-                                 "        {\n"
-                                 "            result *= 2.0;\n"
-                                 "        }\n"
+                                 "        result += textureLod(data_sampler,\n"
+                                 "                             vec3(uv - offset_multiplier * tap_offset, float(read_layer_id) ),\n"
+                                 "                             0.0) * tap_weight;\n"
                                  "    }\n"
                                  "}\n";
 static const char* vs_body =     "#version 420 core\n"
@@ -131,6 +123,7 @@ typedef struct _postprocessing_blur_gaussian
     unsigned int              n_max_taps;
     unsigned int              n_min_taps;
     ogl_program               po;
+    ogl_sampler               sampler; /* do not release - retrieved from context-wide ogl_samplers */
 
     _postprocessing_blur_gaussian(__in __notnull ogl_context               in_context,
                                   __in           unsigned int              in_n_min_taps,
@@ -148,6 +141,7 @@ typedef struct _postprocessing_blur_gaussian
         n_min_taps           = in_n_min_taps;
         name                 = in_name;
         po                   = NULL;
+        sampler              = NULL;
 
         memset(fbo_ids,
                0,
@@ -256,6 +250,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+    const ogl_context_gl_limits*                              limits_ptr          = NULL;
     _postprocessing_blur_gaussian*                            instance_ptr        = (_postprocessing_blur_gaussian*) user_arg;
 
     ogl_context_get_property(context,
@@ -264,6 +259,9 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
 
     /* Generate the coefficients.
      *
@@ -317,16 +315,24 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
     const unsigned int      n_max_taps_plus_1_half_2  = (instance_ptr->n_max_taps + 1) / 2;
     const unsigned int      n_min_taps_minus_1_half_2 = instance_ptr->n_min_taps - 1;
     const unsigned int      n_tap_datasets            = n_max_taps_plus_1 - instance_ptr->n_min_taps;
-    const float             padding                   = 0.0f;
 
-    instance_ptr->coeff_buffer_offsets = new (std::nothrow) unsigned int[n_tap_datasets];
+    /* Uniform buffer bindings must be aligned. When we generate cooefs & offsets, we ignore this. Later on,
+     * after these are calculated, we will prepare a final data buffer which will also take UB alignment requirements
+     * into consideration.
+     */
+    unsigned int* misaligned_coeff_buffer_offsets = new (std::nothrow) unsigned int[n_tap_datasets];
+
+    ASSERT_DEBUG_SYNC(misaligned_coeff_buffer_offsets != NULL,
+                      "Out of memory");
 
     for (unsigned int n_taps  = instance_ptr->n_min_taps;
                       n_taps <= instance_ptr->n_max_taps;
                     ++n_taps)
     {
+        const float padding = 0.0f;
+
         /* Store the offset for this dataset */
-        instance_ptr->coeff_buffer_offsets[n_taps - instance_ptr->n_min_taps] = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float);
+        misaligned_coeff_buffer_offsets[n_taps - instance_ptr->n_min_taps] = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float);
 
         /* Precalc the binomial values */
         const unsigned int binomial_n        = n_taps + 3;
@@ -347,11 +353,16 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         } /* for (all binomial values) */
 
         /* Calculate the tap weights */
-        float sanity_check_sum = 0.0f;
+        unsigned int n_tap_dataset_coeffs = 0;
+        int          n_tap_weight_center  = n_tap_weights - 1;
+        float        sanity_check_sum     = 0.0f;
 
         binomial_sum -= 2 * (1 + binomial_n); /* subtract the first and the last two binomial values */
 
-        for (int n_tap_weight  = n_tap_weights - 1;
+        ASSERT_DEBUG_SYNC((n_tap_weight_center + 1) == n_tap_weights,
+                          "Sanity check failed");
+
+        for (int n_tap_weight  = n_tap_weight_center;
                  n_tap_weight >= 0;
                --n_tap_weight)
         {
@@ -370,10 +381,28 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
                                          *((void**) &padding));
             system_resizable_vector_push(coeff_vector,
                                          *((void**) &padding));
+
+            n_tap_dataset_coeffs++;
         } /* for (all tap weights) */
 
-        ASSERT_DEBUG_SYNC(fabs(2.0f * sanity_check_sum - 1.0f) < 1e-5f,
-                          "Sanity check failed");
+        if ((n_taps % 2) == 0)
+        {
+            ASSERT_DEBUG_SYNC(fabs(2.0f * sanity_check_sum - 1.0f) < 1e-5f,
+                              "Sanity check failed");
+        }
+        else
+        {
+            float center_item                     = float(binomial_values[2 + n_tap_weight_center]) / float(binomial_sum);
+            float sanity_check_sum_wo_center_item = sanity_check_sum - center_item;
+
+            ASSERT_DEBUG_SYNC(fabs(2.0f * sanity_check_sum_wo_center_item + center_item - 1.0f) < 1e-5f,
+                              "Sanity check failed");
+        }
+
+        if (n_taps == 12)
+        {
+            int a = 1; a++;
+        }
 
         /* Calculate the tap offsets */
         for (unsigned int n_tap_offset = 0;
@@ -382,25 +411,24 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         {
             /* Two cases here:
              *
-             * For an odd number of taps, we get the following binomial set:
+             * For an odd number of taps (after +3 is added to the even input number) we get the following binomial set:
              *
              *            A B C D E D C B A
              *
              * which is fine, because we can set offset values to a set of consecutive
              * texel offsets (in px space)
              *
-             * For an even number of taps, things get a dab whack:
+             * For an even number of taps (after +3 is added to the odd input number), things get a dab whack:
              *
-             *             A B C D C B A
+             *             A B C C B A
              *
-             * In this case, we only sample D once (and give it a doubled weight, and
-             * need to ensure that the offsets are properly adjusted, so that:
-             * - central texel are unaffected
-             * - border texels are unaffected
+             * In this case, we only sample C once (and give it a doubled weight, and
+             * need to ensure that the offsets are properly adjusted, so that weights
+             * reflect the fact the samples are between input texels.
              *
              */
             const float offset = ((n_taps % 2) != 0) ?  float(n_tap_offset)
-                                                     : (float(n_tap_weights) * float(n_tap_offset) / float(n_tap_weights - 1));
+                                                     :  (float(n_tap_offset) + float(n_tap_offset + 1.0f) / float(n_tap_weights + 1.0f));
 
             system_resizable_vector_push(coeff_vector,
                                          *((void**) &offset));
@@ -410,21 +438,103 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
                                          *((void**) &padding));
             system_resizable_vector_push(coeff_vector,
                                          *((void**) &padding));
+
+            n_tap_dataset_coeffs++;
         } /* for (all tap offsets) */
 
         /* Update the n_max_data_coeffs variable. */
-        n_max_data_coeffs = n_tap_weights * 2 /* weight + offset */;
+        if (n_tap_dataset_coeffs > n_max_data_coeffs)
+        {
+            n_max_data_coeffs = n_tap_dataset_coeffs;
+        }
     }
 
-    /* n_max_data_coeffs tells how much data we need bound for the whole run. Store it */
+    /* n_max_data_coeffs tells how much data we need bound for the whole run. Store it,
+     * this will be used later on when building the shader code.
+     */
     instance_ptr->n_max_data_coeffs = n_max_data_coeffs;
+
+    /* We next run two iterations of the same loop.
+     *
+     * In the first run, we calculate the final data buffer size.
+     *
+     * In the second run, we allocate an actual buffer and copy the memory blocks
+     * from the coeff data buffer we've created earlier.
+     */
+    const char*  coeff_vector_data_raw_ptr       = (const char*) system_resizable_vector_get_array(coeff_vector);
+    char*        final_data_bo_raw_ptr           = NULL;
+    char*        final_data_bo_raw_traveller_ptr = NULL;
+    unsigned int final_data_bo_size              = 0;
+
+    instance_ptr->coeff_buffer_offsets = new (std::nothrow) unsigned int [n_tap_datasets];
+
+    ASSERT_DEBUG_SYNC(instance_ptr->coeff_buffer_offsets != NULL,
+                      "Out of memory");
+
+    for (unsigned int n_iteration = 0;
+                      n_iteration < 2;
+                    ++n_iteration)
+    {
+        /* Allocate the buffer if this is the second run */
+        if (n_iteration == 1)
+        {
+            ASSERT_DEBUG_SYNC(final_data_bo_size != 0,
+                              "No data BO size defined for the second loop iteration");
+
+            final_data_bo_raw_ptr           = new (std::nothrow) char[final_data_bo_size];
+            final_data_bo_raw_traveller_ptr = final_data_bo_raw_ptr;
+
+            ASSERT_DEBUG_SYNC(final_data_bo_raw_ptr != NULL,
+                              "Out of memory");
+        } /* if (n_iteration == 1) */
+
+        for (unsigned int n_tap_dataset = 0;
+                          n_tap_dataset < n_tap_datasets;
+                        ++n_tap_dataset)
+        {
+            unsigned int aligned_dataset_size    = 0;
+            unsigned int misaligned_dataset_size = 0;
+            unsigned int padding                 = 0;
+
+            if (n_tap_dataset != (n_tap_datasets - 1))
+            {
+                misaligned_dataset_size = misaligned_coeff_buffer_offsets[n_tap_dataset + 1] -
+                                          misaligned_coeff_buffer_offsets[n_tap_dataset];
+            } /* if (n_tap_dataset == (n_tap_datasets - 1)) */
+            else
+            {
+                misaligned_dataset_size = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float) -
+                                          misaligned_coeff_buffer_offsets[n_tap_dataset];
+            }
+
+            /* Calculated padding we need to insert */
+            padding = (limits_ptr->uniform_buffer_offset_alignment - (misaligned_dataset_size % limits_ptr->uniform_buffer_offset_alignment) );
+
+            if (n_iteration == 0)
+            {
+                final_data_bo_size += misaligned_dataset_size + padding;
+            }
+            else
+            {
+                /* Copy the data sub-buffers to our final BO */
+                unsigned int dataset_size = 0;
+
+                memcpy(final_data_bo_raw_traveller_ptr,
+                       coeff_vector_data_raw_ptr + misaligned_coeff_buffer_offsets[n_tap_dataset],
+                       misaligned_dataset_size);
+
+                instance_ptr->coeff_buffer_offsets[n_tap_dataset]  = final_data_bo_raw_traveller_ptr - final_data_bo_raw_ptr;
+                final_data_bo_raw_traveller_ptr                   += misaligned_dataset_size + padding;
+            }
+        } /* for (all tap datasets) */
+    } /* for (both iterations) */
 
     /* Set up the BO */
     entrypoints_ptr->pGLGenBuffers               (1,
                                                  &instance_ptr->coeff_bo_id);
     dsa_entrypoints_ptr->pGLNamedBufferStorageEXT(instance_ptr->coeff_bo_id,
-                                                  system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float),
-                                                  system_resizable_vector_get_array             (coeff_vector),
+                                                  final_data_bo_size,
+                                                  final_data_bo_raw_ptr,
                                                   0); /* flags */
 
     /* Set up the PO */
@@ -509,13 +619,41 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         ogl_program_retain(instance_ptr->po);
     }
 
+    /* Retrieve the sampler object we will use to perform the blur operation */
+    ogl_samplers context_samplers        = NULL;
+    const GLenum filter_gl_clamp_to_edge = GL_CLAMP_TO_EDGE;
+    const GLenum filter_gl_linear        = GL_LINEAR;
+
+    ogl_context_get_property(instance_ptr->context,
+                             OGL_CONTEXT_PROPERTY_SAMPLERS,
+                            &context_samplers);
+
+    instance_ptr->sampler = ogl_samplers_get_sampler(context_samplers,
+                                                     NULL,                    /* border_color */
+                                                     &filter_gl_linear,       /* mag_filter_ptr */
+                                                     NULL,                    /* max_lod_ptr*/
+                                                     &filter_gl_linear,       /* min_filter_ptr */
+                                                     NULL,                    /* min_lod_ptr */
+                                                     NULL,                    /* texture_compare_func_ptr */
+                                                     NULL,                    /* texture_compare_mode_ptr */
+                                                     NULL,                    /* wrap_r_ptr */
+                                                    &filter_gl_clamp_to_edge, /* wrap_s_ptr */
+                                                    &filter_gl_clamp_to_edge);/* wrap_t_ptr */
+
+    ASSERT_DEBUG_SYNC(instance_ptr->sampler != NULL,
+                      "Could not retrieve a sampler object from ogl_samplers");
+
     /* Reserve FBO ids */
     entrypoints_ptr->pGLGenFramebuffers(sizeof(instance_ptr->fbo_ids) / sizeof(instance_ptr->fbo_ids[0]),
                                         instance_ptr->fbo_ids);
 
     /* Clean up */
-    delete [] binomial_values;
-    binomial_values = NULL;
+    if (binomial_values != NULL)
+    {
+        delete [] binomial_values;
+
+        binomial_values = NULL;
+    }
 
     if (coeff_vector != NULL)
     {
@@ -524,8 +662,26 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         coeff_vector = NULL;
     }
 
-    delete [] factorial_values;
-    factorial_values = NULL;
+    if (factorial_values != NULL)
+    {
+        delete [] factorial_values;
+
+        factorial_values = NULL;
+    }
+
+    if (final_data_bo_raw_ptr != NULL)
+    {
+        delete [] final_data_bo_raw_ptr;
+
+        final_data_bo_raw_ptr = NULL;
+    }
+
+    if (misaligned_coeff_buffer_offsets != NULL)
+    {
+        delete [] misaligned_coeff_buffer_offsets;
+
+        misaligned_coeff_buffer_offsets = NULL;
+    }
 
     if (fs != NULL)
     {
@@ -609,16 +765,17 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                                     __in __notnull ogl_texture                             src_texture,
                                                                                     __in           postprocessing_blur_gaussian_resolution blur_resolution)
 {
-    _postprocessing_blur_gaussian*                            blur_ptr                   = (_postprocessing_blur_gaussian*) blur;
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr        = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints_ptr            = NULL;
-    unsigned int                                              src_texture_height         = 0;
-    GLenum                                                    src_texture_internalformat = GL_NONE;
-    unsigned int                                              src_texture_width          = 0;
-    ogl_context_state_cache                                   state_cache                = NULL;
-    ogl_texture                                               temp_2d_array_texture      = NULL;
-    GLuint                                                    vao_id                     = 0;
-    GLint                                                     viewport_data[4]           = {0};
+    _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
+    unsigned int                                              src_texture_height            = 0;
+    GLenum                                                    src_texture_internalformat    = GL_NONE;
+    unsigned int                                              src_texture_width             = 0;
+    ogl_context_state_cache                                   state_cache                   = NULL;
+    ogl_sampler                                               temp_2d_array_texture_sampler = NULL;
+    ogl_texture                                               temp_2d_array_texture         = NULL;
+    GLuint                                                    vao_id                        = 0;
+    GLint                                                     viewport_data[4]              = {0};
 
     ASSERT_DEBUG_SYNC(n_taps >= blur_ptr->n_min_taps &&
                       n_taps <= blur_ptr->n_max_taps,
@@ -768,6 +925,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     dsa_entrypoints_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                                 GL_TEXTURE_2D_ARRAY,
                                                 temp_2d_array_texture);
+    entrypoints_ptr->pGLBindSampler            (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
+                                                ogl_sampler_get_id(blur_ptr->sampler) );
+
     entrypoints_ptr->pGLBindBufferRange        (GL_UNIFORM_BUFFER,
                                                 COEFFS_DATA_UB_BP,
                                                 blur_ptr->coeff_bo_id,
@@ -843,6 +1003,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     /* All done */
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                        0);
+    entrypoints_ptr->pGLBindSampler    (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                         0);
     entrypoints_ptr->pGLViewport       (viewport_data[0],
                                         viewport_data[1],
