@@ -3191,7 +3191,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
 
         if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
         {
-            float                                   sm_blur_n_taps_float;
+            float                                   sm_blur_n_iterations;
+            unsigned int                            sm_blur_n_taps;
             postprocessing_blur_gaussian_resolution sm_blur_resolution;
             ogl_texture                             sm_color_texture = NULL;
 
@@ -3199,29 +3200,32 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_RESOLUTION,
                                     &sm_blur_resolution);
             scene_light_get_property(light,
+                                     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES,
+                                    &sm_blur_n_iterations);
+            scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS,
-                                    &sm_blur_n_taps_float);
+                                    &sm_blur_n_taps);
             scene_light_get_property(light,
                                      SCENE_LIGHT_PROPERTY_SHADOW_MAP_TEXTURE_COLOR,
                                     &sm_color_texture);
 
-            if (sm_blur_n_taps_float < N_MIN_BLUR_TAPS)
+            if (sm_blur_n_taps < N_MIN_BLUR_TAPS)
             {
                 LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to lower boundary!");
 
-                sm_blur_n_taps_float = (float) N_MIN_BLUR_TAPS;
+                sm_blur_n_taps = N_MIN_BLUR_TAPS;
             }
             else
-            if (sm_blur_n_taps_float > N_MAX_BLUR_TAPS)
+            if (sm_blur_n_taps > N_MAX_BLUR_TAPS)
             {
                 LOG_ERROR("SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS clamped to upper boundary!");
 
-                sm_blur_n_taps_float = (float) N_MAX_BLUR_TAPS;
+                sm_blur_n_taps = N_MAX_BLUR_TAPS;
             }
 
             postprocessing_blur_gaussian_execute(handler_ptr->blur_handler,
-                                                 sm_blur_n_taps_float,
-                                                 1,                    /* n_iterations */
+                                                 sm_blur_n_taps,
+                                                 sm_blur_n_iterations,
                                                  sm_color_texture,
                                                  sm_blur_resolution);
         }

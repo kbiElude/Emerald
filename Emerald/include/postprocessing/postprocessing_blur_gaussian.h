@@ -31,7 +31,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API postprocessing_blur_gaussian postproce
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_execute(     __notnull postprocessing_blur_gaussian            blur,
                                                                                     __in           unsigned int                            n_taps,
-                                                                                    __in           unsigned int                            n_iterations,
+                                                                                    __in           float                                   n_iterations,
                                                                                     __in __notnull ogl_texture                             src_texture,
                                                                                     __in           postprocessing_blur_gaussian_resolution blur_resolution);
 

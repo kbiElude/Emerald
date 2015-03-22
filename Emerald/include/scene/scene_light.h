@@ -153,12 +153,19 @@ typedef enum scene_light_property
     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VP,
 
     /* Settable, float.
+      *
+      * Adjusts the number of times SM color texture is going to be blurred.
+      *
+      * Note: if frac(n_times) != 0, the SM color texture will be a lerp between floor(n_times)
+      *       and ceil(n_times). This means two separate blur passes will be executed which will
+      *       affect the performance.
+      */
+     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES,
+
+    /* Settable, unsigned int.
      *
      * Adjusts the number of taps used for blurring.
      *
-     * Note: if frac(n_taps) != 0, the SM color texture will be a lerp between floor(n_taps)
-     *       and ceil(n_taps). This means two separate blur passes will be executed which will
-     *       affect the performance.
      */
      SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS,
 

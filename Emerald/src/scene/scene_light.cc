@@ -55,7 +55,8 @@ typedef struct
     ogl_texture                                 shadow_map_texture_depth;
     system_matrix4x4                            shadow_map_view;
     system_matrix4x4                            shadow_map_vp;
-    float                                       shadow_map_vsm_blur_n_taps;
+    float                                       shadow_map_vsm_blur_n_passes;
+    unsigned int                                shadow_map_vsm_blur_n_taps;
     postprocessing_blur_gaussian_resolution     shadow_map_vsm_blur_resolution;
     float                                       shadow_map_vsm_cutoff;
     float                                       shadow_map_vsm_min_variance;
@@ -310,7 +311,8 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_texture_depth         = NULL;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
-    light_ptr->shadow_map_vsm_blur_n_taps       = 9.0f;
+    light_ptr->shadow_map_vsm_blur_n_passes     = 3;
+    light_ptr->shadow_map_vsm_blur_n_taps       = 9;
     light_ptr->shadow_map_vsm_blur_resolution   = POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF;
     light_ptr->shadow_map_vsm_cutoff            = 0.1f;
     light_ptr->shadow_map_vsm_min_variance      = 1e-5f;
@@ -905,9 +907,16 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES:
+        {
+            *(float*) out_result = light_ptr->shadow_map_vsm_blur_n_passes;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS:
         {
-            *(float*) out_result = light_ptr->shadow_map_vsm_blur_n_taps;
+            *(unsigned int*) out_result = light_ptr->shadow_map_vsm_blur_n_taps;
 
             break;
         }
@@ -1770,9 +1779,16 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
             break;
         }
 
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_PASSES:
+        {
+            light_ptr->shadow_map_vsm_blur_n_passes = *(float*) data;
+
+            break;
+        }
+
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_BLUR_N_TAPS:
         {
-            light_ptr->shadow_map_vsm_blur_n_taps = *(float*) data;
+            light_ptr->shadow_map_vsm_blur_n_taps = *(unsigned int*) data;
 
             break;
         }

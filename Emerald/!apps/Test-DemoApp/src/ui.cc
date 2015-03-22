@@ -284,10 +284,10 @@ PRIVATE unsigned int _ui_get_current_shadow_map_size_index()
 PRIVATE void _ui_get_current_vsm_blur_taps_value(void*          unused,
                                                  system_variant result)
 {
-    float vsm_blur_taps = state_get_shadow_map_vsm_blur_taps();
+    unsigned int vsm_blur_taps = state_get_shadow_map_vsm_blur_taps();
 
     system_variant_set_float(result,
-                             vsm_blur_taps);
+                             (float) vsm_blur_taps);
 }
 
 /** TODO */
@@ -422,11 +422,11 @@ PRIVATE void _ui_on_shadow_map_size_changed(void* unused,
 PRIVATE void _ui_set_current_vsm_blur_taps_value(void*          unused,
                                                  system_variant new_value)
 {
-    float new_vsm_blur_taps_value;
+    float new_vsm_blur_taps_value_float;
 
     system_variant_get_float          (new_value,
-                                      &new_vsm_blur_taps_value);
-    state_set_shadow_map_vsm_blur_taps(new_vsm_blur_taps_value);
+                                      &new_vsm_blur_taps_value_float);
+    state_set_shadow_map_vsm_blur_taps( (unsigned int) new_vsm_blur_taps_value_float);
 }
 
 /** TODO */

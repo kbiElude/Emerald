@@ -69,7 +69,7 @@ system_timeline_time                        _scenes_duration_summed[_n_scene_fil
 scene_light_shadow_map_algorithm            _shadow_map_algo                            = SCENE_LIGHT_SHADOW_MAP_ALGORITHM_UNKNOWN;
 scene_light_shadow_map_pointlight_algorithm _shadow_map_pl_algo                         = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
 unsigned int                                _shadow_map_size                            = 1024;
-float                                       _shadow_map_vsm_blur_taps                   = 0.0f;
+unsigned int                                _shadow_map_vsm_blur_taps                   = 0;
 float                                       _shadow_map_vsm_cutoff                      = 0.1f;
 float                                       _shadow_map_vsm_min_variance                = 1e-5f;
 
@@ -217,7 +217,7 @@ PUBLIC uint32_t state_get_shadow_map_size()
 }
 
 /** Please see header for spec */
-PUBLIC float state_get_shadow_map_vsm_blur_taps()
+PUBLIC unsigned int state_get_shadow_map_vsm_blur_taps()
 {
     return _shadow_map_vsm_blur_taps;
 }
@@ -773,7 +773,7 @@ PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size)
 }
 
 /** Please see header for spec */
-PUBLIC void state_set_shadow_map_vsm_blur_taps(float new_vsm_blur_taps)
+PUBLIC void state_set_shadow_map_vsm_blur_taps(unsigned int new_vsm_blur_taps)
 {
     /* Update the parameter for all scene lights */
     for (unsigned int n_scene = 0;
