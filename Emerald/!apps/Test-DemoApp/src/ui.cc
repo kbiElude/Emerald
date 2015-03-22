@@ -25,6 +25,7 @@ PRIVATE system_variant _temp_variant_float                           = NULL;
 PRIVATE ogl_text       _text_renderer                                = NULL;
 PRIVATE ogl_ui         _ui                                           = NULL;
 PRIVATE ogl_ui_bag     _ui_bag                                       = NULL;
+PRIVATE ogl_ui_control _ui_color_shadow_map_blur_n_passes_scrollbar  = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_blur_n_taps_scrollbar    = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_blur_resolution_dropdown = NULL;
 PRIVATE ogl_ui_control _ui_color_shadow_map_internalformat_dropdown  = NULL;
@@ -281,6 +282,16 @@ PRIVATE unsigned int _ui_get_current_shadow_map_size_index()
 }
 
 /** TODO */
+PRIVATE void _ui_get_current_vsm_blur_n_passes_value(void*          unused,
+                                                     system_variant result)
+{
+    float vsm_blur_n_passes = state_get_shadow_map_vsm_blur_n_passes();
+
+    system_variant_set_float(result,
+                             vsm_blur_n_passes);
+}
+
+/** TODO */
 PRIVATE void _ui_get_current_vsm_blur_taps_value(void*          unused,
                                                  system_variant result)
 {
@@ -356,6 +367,9 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
 
     if (new_sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN)
     {
+        ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_passes_scrollbar,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &not_visible);
         ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_taps_scrollbar,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &not_visible);
@@ -377,6 +391,9 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
     }
     else
     {
+        ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_passes_scrollbar,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &visible);
         ogl_ui_set_control_property(_ui_color_shadow_map_blur_n_taps_scrollbar,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
@@ -416,6 +433,17 @@ PRIVATE void _ui_on_shadow_map_size_changed(void* unused,
 
     /* Update Emerald state */
     state_set_shadow_map_size(new_shadow_map_size);
+}
+
+/** TODO */
+PRIVATE void _ui_set_current_vsm_blur_n_passes_value(void*          unused,
+                                                     system_variant new_value)
+{
+    float new_vsm_blur_n_passes_value_float;
+
+    system_variant_get_float               (new_value,
+                                           &new_vsm_blur_n_passes_value_float);
+    state_set_shadow_map_vsm_blur_n_passes( (unsigned int) new_vsm_blur_n_passes_value_float);
 }
 
 /** TODO */
@@ -506,6 +534,24 @@ PUBLIC void ui_init()
                                                             temp_x1y1,
                                                             _ui_on_shadow_map_algorithm_changed,
                                                             NULL); /* fire_user_arg */
+
+    /* Add color shadow map blur n passes scrollbar */
+    system_variant blur_n_passes_max_value = system_variant_create_float(9.0f);
+    system_variant blur_n_passes_min_value = system_variant_create_float(1.0f);
+
+    _ui_color_shadow_map_blur_n_passes_scrollbar = ogl_ui_add_scrollbar(_ui,
+                                                                        system_hashed_ansi_string_create("Color Shadow map blur passes"),
+                                                                        OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                                        blur_n_passes_min_value,
+                                                                        blur_n_passes_max_value,
+                                                                        temp_x1y1,
+                                                                        _ui_get_current_vsm_blur_n_passes_value,
+                                                                        NULL,
+                                                                        _ui_set_current_vsm_blur_n_passes_value,
+                                                                        NULL);
+
+    system_variant_release(blur_n_passes_max_value);
+    system_variant_release(blur_n_passes_min_value);
 
     /* Add color shadow map blur n taps dropdown */
     ogl_shadow_mapping context_shadow_mapping = NULL;
@@ -637,6 +683,7 @@ PUBLIC void ui_init()
     const ogl_ui_control ui_controls[]       =
     {
         _ui_shadow_map_algorithm_dropdown,
+        _ui_color_shadow_map_blur_n_passes_scrollbar,
         _ui_color_shadow_map_blur_n_taps_scrollbar,
         _ui_color_shadow_map_blur_resolution_dropdown,
         _ui_color_shadow_map_internalformat_dropdown,

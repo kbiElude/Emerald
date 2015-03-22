@@ -38,6 +38,9 @@ PUBLIC scene_light_shadow_map_pointlight_algorithm state_get_shadow_map_pointlig
 PUBLIC unsigned int state_get_shadow_map_size();
 
 /** TODO */
+PUBLIC float state_get_shadow_map_vsm_blur_n_passes();
+
+/** TODO */
 PUBLIC unsigned int state_get_shadow_map_vsm_blur_taps();
 
 /** TODO */
@@ -72,6 +75,9 @@ PUBLIC void state_set_shadow_map_pointlight_algorithm(__in scene_light_shadow_ma
 
 /** TODO */
 PUBLIC void state_set_shadow_map_size(__in unsigned int new_shadow_map_size);
+
+/** TODO */
+PUBLIC void state_set_shadow_map_vsm_blur_n_passes(float new_value);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_vsm_blur_taps(unsigned int new_value);
