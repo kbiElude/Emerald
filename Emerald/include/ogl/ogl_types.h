@@ -1476,6 +1476,16 @@ typedef struct
 
 typedef struct
 {
+    PFNGLINVALIDATEBUFFERDATAPROC     pGLInvalidateBufferData;
+    PFNGLINVALIDATEBUFFERSUBDATAPROC  pGLInvalidateBufferSubData;
+    PFNGLINVALIDATEFRAMEBUFFERPROC    pGLInvalidateFramebuffer;
+    PFNGLINVALIDATESUBFRAMEBUFFERPROC pGLInvalidateSubFramebuffer;
+    PFNGLINVALIDATETEXIMAGEPROC       pGLInvalidateTexImage;
+    PFNGLINVALIDATETEXSUBIMAGEPROC    pGLInvalidateTexSubImage;
+} ogl_context_gl_entrypoints_arb_invalidate_subdata;
+
+typedef struct
+{
     PFNGLBINDBUFFERSBASEPROC     pGLBindBuffersBase;
     PFNGLBINDBUFFERSRANGEPROC    pGLBindBuffersRange;
     PFNGLBINDIMAGETEXTURESPROC   pGLBindImageTextures;

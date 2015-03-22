@@ -65,6 +65,7 @@ typedef struct
     ogl_context_gl_entrypoints_arb_compute_shader               entry_points_gl_arb_compute_shader;
     ogl_context_gl_entrypoints_arb_debug_output                 entry_points_gl_arb_debug_output;
     ogl_context_gl_entrypoints_arb_framebuffer_no_attachments   entry_points_gl_arb_framebuffer_no_attachments;
+    ogl_context_gl_entrypoints_arb_invalidate_subdata           entry_points_gl_arb_invalidate_subdata;
     ogl_context_gl_entrypoints_arb_multi_bind                   entry_points_gl_arb_multi_bind;
     ogl_context_gl_entrypoints_arb_program_interface_query      entry_points_gl_arb_program_interface_query;
     ogl_context_gl_entrypoints_arb_shader_storage_buffer_object entry_points_gl_arb_shader_storage_buffer_object;
@@ -93,6 +94,7 @@ typedef struct
     bool gl_arb_compute_shader_support;
     bool gl_arb_debug_output_support;
     bool gl_arb_framebuffer_no_attachments_support;
+    bool gl_arb_invalidate_subdata_support;
     bool gl_arb_multi_bind_support;
     bool gl_arb_program_interface_query_support;
     bool gl_arb_shader_storage_buffer_object_support;
@@ -138,6 +140,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_compute_shader_limits                 
 PRIVATE void _ogl_context_retrieve_GL_ARB_debug_output_function_pointers                (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_framebuffer_no_attachments_function_pointers  (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_framebuffer_no_attachments_limits             (__inout __notnull _ogl_context* context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_invalidate_subdata_function_pointers          (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers                  (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_program_interface_query_function_pointers     (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_function_pointers(__inout __notnull _ogl_context* context_ptr);
@@ -641,6 +644,12 @@ PRIVATE void _ogl_context_initialize_gl_arb_framebuffer_no_attachments_extension
 {
     _ogl_context_retrieve_GL_ARB_framebuffer_no_attachments_function_pointers(context_ptr);
     _ogl_context_retrieve_GL_ARB_framebuffer_no_attachments_limits           (context_ptr);
+}
+
+/** TODO */
+PRIVATE void _ogl_context_initialize_gl_arb_invalidate_subdata_extension(__inout __notnull _ogl_context* context_ptr)
+{
+    _ogl_context_retrieve_GL_ARB_invalidate_subdata_function_pointers(context_ptr);
 }
 
 /** TODO */
@@ -1479,6 +1488,31 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_framebuffer_no_attachments_limits(__in
 
     ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
                       "Could not retrieve at least one ARB_framebuffer_no_attachments limit");
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_invalidate_subdata_function_pointers(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    func_ptr_table_entry func_ptr_table[] =
+    {
+        {&context_ptr->entry_points_gl_arb_invalidate_subdata.pGLInvalidateBufferData,     "glInvalidateBufferData"},
+        {&context_ptr->entry_points_gl_arb_invalidate_subdata.pGLInvalidateBufferSubData,  "glInvalidateBufferSubData"},
+        {&context_ptr->entry_points_gl_arb_invalidate_subdata.pGLInvalidateFramebuffer,    "glInvalidateFramebuffer"},
+        {&context_ptr->entry_points_gl_arb_invalidate_subdata.pGLInvalidateSubFramebuffer, "glInvalidateSubFramebuffer"},
+        {&context_ptr->entry_points_gl_arb_invalidate_subdata.pGLInvalidateTexImage,       "glInvalidateTexImage"},
+        {&context_ptr->entry_points_gl_arb_invalidate_subdata.pGLInvalidateTexSubImage,    "glInvalidateTexSubImage"}
+    };
+    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
+
+    if (_ogl_context_get_function_pointers(context_ptr,
+                                           func_ptr_table,
+                                           n_func_ptr_table_entries) )
+    {
+        context_ptr->gl_arb_invalidate_subdata_support = true;
+    }
 }
 
 /** TODO */
@@ -2430,6 +2464,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->gl_arb_compute_shader_support              = false;
                             _result->gl_arb_debug_output_support                = false;
                             _result->gl_arb_framebuffer_no_attachments_support  = false;
+                            _result->gl_arb_invalidate_subdata_support          = false;
                             _result->gl_arb_multi_bind_support                  = false;
                             _result->gl_arb_program_interface_query_support     = false;
                             _result->gl_arb_texture_buffer_object_rgb32_support = false;
@@ -2532,6 +2567,13 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                        system_hashed_ansi_string_create("GL_ARB_framebuffer_no_attachments") ))
                                 {
                                     _ogl_context_initialize_gl_arb_framebuffer_no_attachments_extension(_result);
+                                }
+
+                                /* If GL_ARB_invalidate_subdata is supported, initialize func pointers */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_invalidate_subdata") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_invalidate_subdata_extension(_result);
                                 }
 
                                 /* If GL_ARB_multi_bind is supported, initialize func pointers */
@@ -2754,6 +2796,16 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_FRAMEBUFFER_NO_ATTACHMENTS property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints_arb_framebuffer_no_attachments**) out_result) = &context_ptr->entry_points_gl_arb_framebuffer_no_attachments;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA:
+        {
+            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                              "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA property requested for a non-GL context");
+
+            *((const ogl_context_gl_entrypoints_arb_invalidate_subdata**) out_result) = &context_ptr->entry_points_gl_arb_invalidate_subdata;
 
             break;
         }

@@ -768,6 +768,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
+    const ogl_context_gl_entrypoints_arb_invalidate_subdata*  is_entrypoints_ptr            = NULL;
     unsigned int                                              src_texture_height            = 0;
     GLenum                                                    src_texture_internalformat    = GL_NONE;
     unsigned int                                              src_texture_width             = 0;
@@ -781,6 +782,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
 
+    ogl_context_get_property            (blur_ptr->context,
+                                         OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA,
+                                        &is_entrypoints_ptr);
     ogl_context_get_property            (blur_ptr->context,
                                          OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                         &dsa_entrypoints_ptr);
@@ -856,7 +860,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         {
             target_height        = src_texture_height / 2;
             target_interpolation = GL_LINEAR;
-            target_width        = src_texture_width  / 2;
+            target_width         = src_texture_width  / 2;
 
             break;
         }
@@ -865,7 +869,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         {
             target_height        = src_texture_height / 4;
             target_interpolation = GL_LINEAR;
-            target_width        = src_texture_width  / 4;
+            target_width         = src_texture_width  / 4;
 
             break;
         }
@@ -903,7 +907,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                             GL_TEXTURE_2D,
                                                             src_texture,
                                                             0); /* level */
-
 
     entrypoints_ptr->pGLBlitFramebuffer(0, /* srcX0 */
                                         0, /* srcY0 */
@@ -1002,6 +1005,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                         target_interpolation);
 
     /* All done */
+    GLuint temp_2d_array_texture_id = 0;
+
+    ogl_texture_get_property(temp_2d_array_texture,
+                             OGL_TEXTURE_PROPERTY_ID,
+                            &temp_2d_array_texture_id);
+
+    is_entrypoints_ptr->pGLInvalidateTexImage(temp_2d_array_texture_id,
+                                              0); /* level */
+
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                         0);
     entrypoints_ptr->pGLBindSampler    (DATA_SAMPLER_TEXTURE_UNIT_INDEX,

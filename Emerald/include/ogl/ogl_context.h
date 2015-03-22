@@ -35,6 +35,8 @@ typedef enum ogl_context_property
                                                                            * Only accessible for GL contexts */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_FRAMEBUFFER_NO_ATTACHMENTS,   /* not settable, ogl_context_entrypoints_arb_framebuffer_no_attachments*
                                                                            * Only accessible for GL contexts */
+    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA,           /* not settable, ogl_context_entrypoints_arb_invalidate_subdata*
+                                                                           * Only accessible for GL contexts */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_PROGRAM_INTERFACE_QUERY,      /* not settable, ogl_context_entrypoints_arb_program_interface_query*
                                                                            * Only accessible for GL contexts */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT, /* not settable, ogl_context_entrypoints_arb_shader_storage_buffer_object*
