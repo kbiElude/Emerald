@@ -1001,10 +1001,6 @@ PRIVATE void _ogl_shadow_mapping_init_renderer_callback(__in __notnull ogl_conte
     /* Generate a FBO id. */
     entry_points->pGLGenFramebuffers(1,
                                     &shadow_mapping_ptr->fbo_id);
-
-    /* Set up the FBO state */
-    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
-                                     0);
 }
 
 /** TODO */

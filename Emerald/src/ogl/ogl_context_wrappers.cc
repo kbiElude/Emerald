@@ -17,6 +17,56 @@ __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr 
 
 
 /************************************************************* OTHER STATE ************************************************************/
+PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
+                                                            GLuint fbo_id)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER,
+                                                &fbo_id);
+
+            break;
+        }
+
+        case GL_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER,
+                                                &fbo_id);
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER,
+                                                &fbo_id);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_set_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER,
+                                                &fbo_id);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
+}
+
 PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
@@ -125,7 +175,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendFuncSeparate(GLenum srcRGB,
 }
 
 /** Please see header for spec */
-PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
+PUBLIC void APIENTRY ogl_context_wrappers_glBlitFramebuffer(GLint      srcX0,
+                                                            GLint      srcY0,
+                                                            GLint      srcX1,
+                                                            GLint      srcY1,
+                                                            GLint      dstX0,
+                                                            GLint      dstY0,
+                                                            GLint      dstX1,
+                                                            GLint      dstY1,
+                                                            GLbitfield mask,
+                                                            GLenum     filter)
 {
     ogl_context             context     = ogl_context_get_current_context();
     ogl_context_state_cache state_cache = NULL;
@@ -135,9 +194,40 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
                             &state_cache);
 
     ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_COLOR      |
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      |
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK);
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+    _private_entrypoints_ptr->pGLBlitFramebuffer(srcX0,
+                                                 srcY0,
+                                                 srcX1,
+                                                 srcY1,
+                                                 dstX0,
+                                                 dstY0,
+                                                 dstX1,
+                                                 dstY1,
+                                                 mask,
+                                                 filter);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
+{
+    int                     clear_mask  = 0;
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    clear_mask = ((mask & GL_COLOR_BUFFER_BIT) ? STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_COLOR : 0) |
+                 ((mask & GL_DEPTH_BUFFER_BIT) ? STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_DEPTH : 0);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 clear_mask                                   |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
 
     _private_entrypoints_ptr->pGLClear(mask);
 }
@@ -159,6 +249,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
     ogl_context_state_cache_set_property(state_cache,
                                          OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_COLOR,
                                          color);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glClearDepth(GLdouble value)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH,
+                                        &value);
 }
 
 /** Please see header for spec */
@@ -323,6 +428,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
         _private_entrypoints_ptr->pGLEnablei(cap,
                                              index);
     }
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode)
+{
+    ogl_context             context       = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache   = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_set_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE,
+                                        &mode);
 }
 
 /** Please see header for spec */
@@ -1077,13 +1197,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1119,13 +1247,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1163,13 +1299,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1207,13 +1351,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1251,13 +1403,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1297,13 +1457,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1340,13 +1508,21 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1814,13 +1990,21 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1858,13 +2042,21 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -1904,13 +2096,21 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                             &to_bindings);
 
     ogl_context_state_cache_sync     (state_cache,
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT   | STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX      | STATE_CACHE_SYNC_BIT_BLENDING                   |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK | STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
-                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE        | STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC);
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_CULL_FACE           |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
+                                      STATE_CACHE_SYNC_BIT_BLENDING);
     ogl_context_bo_bindings_sync     (bo_bindings,
-                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     | BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER |
-                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER | BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
+                                      BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_SHADER_STORAGE_BUFFER     |
+                                      BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER |
+                                      BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER);
     ogl_context_sampler_bindings_sync(sampler_bindings);
     ogl_context_to_bindings_sync     (to_bindings,
                                       OGL_CONTEXT_TO_BINDINGS_SYNC_BIT_ALL);
@@ -2019,13 +2219,19 @@ PUBLIC void APIENTRY ogl_context_wrappers_glReadPixels(GLint   x,
 {
     ogl_context             context     = ogl_context_get_current_context();
     ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_state_cache state_cache = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
                             &bo_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
 
     ogl_context_bo_bindings_sync(bo_bindings,
                                  BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER);
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
 
     _private_entrypoints_ptr->pGLReadPixels(x,
                                             y,
@@ -3095,7 +3301,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage1D(GLenum  target,
                                         &texture_unit);
 
     ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT     |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3148,7 +3355,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexImage2D(GLenum  target,
                                         &texture_unit);
 
     ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT     |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3199,7 +3407,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage1D(GLenum  target,
                             &to_bindings);
 
     ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT     |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3234,7 +3443,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage2D(GLenum  target,
                             &to_bindings);
 
     ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT     |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3272,7 +3482,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTexSubImage3D(GLenum  target,
                             &to_bindings);
 
     ogl_context_state_cache_sync(state_cache,
-                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_TEXTURE_UNIT     |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3298,11 +3509,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage1DEXT(ogl_texture te
                                                                   GLsizei     width,
                                                                   GLint       border)
 {
-    GLuint texture_id = 0;
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+    GLuint                  texture_id  = 0;
 
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+    ogl_texture_get_property    (texture,
+                                 OGL_TEXTURE_PROPERTY_ID,
+                                &texture_id);
 
     _private_entrypoints_ptr->pGLCopyTextureImage1DEXT(texture_id,
                                                        target,
@@ -3333,11 +3551,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureImage2DEXT(ogl_texture te
                                                                   GLsizei     height,
                                                                   GLint       border)
 {
-    GLuint texture_id = 0;
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+    GLuint                  texture_id  = 0;
 
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+    ogl_texture_get_property    (texture,
+                                 OGL_TEXTURE_PROPERTY_ID,
+                                &texture_id);
 
     _private_entrypoints_ptr->pGLCopyTextureImage2DEXT(texture_id,
                                                        target,
@@ -3371,11 +3596,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage1DEXT(ogl_texture
                                                                      GLint       y,
                                                                      GLsizei     width)
 {
-    GLuint texture_id = 0;
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+    GLuint                  texture_id  = 0;
 
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+    ogl_texture_get_property    (texture,
+                                 OGL_TEXTURE_PROPERTY_ID,
+                                &texture_id);
 
     _private_entrypoints_ptr->pGLCopyTextureSubImage1DEXT(texture_id,
                                                           target,
@@ -3397,11 +3629,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage2DEXT(ogl_texture
                                                                      GLsizei     width,
                                                                      GLsizei     height)
 {
-    GLuint texture_id = 0;
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+    GLuint                  texture_id  = 0;
 
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+    ogl_texture_get_property    (texture,
+                                 OGL_TEXTURE_PROPERTY_ID,
+                                &texture_id);
 
     _private_entrypoints_ptr->pGLCopyTextureSubImage2DEXT(texture_id,
                                                           target,
@@ -3426,11 +3665,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(ogl_texture
                                                                      GLsizei     width,
                                                                      GLsizei     height)
 {
-    GLuint texture_id = 0;
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+    GLuint                  texture_id  = 0;
 
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
+    ogl_context_get_property    (context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+    ogl_texture_get_property    (texture,
+                                 OGL_TEXTURE_PROPERTY_ID,
+                                &texture_id);
 
     _private_entrypoints_ptr->pGLCopyTextureSubImage3DEXT(texture_id,
                                                           target,
@@ -3445,20 +3691,83 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(ogl_texture
 }
 
 /* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffer(GLenum mode)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+    _private_entrypoints_ptr->pGLDrawBuffer(mode);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffers(      GLsizei n,
+                                                        const GLenum* bufs)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+    _private_entrypoints_ptr->pGLDrawBuffers(n, bufs);
+}
+
+/* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum      target,
                                                                GLenum      attachment,
                                                                ogl_texture texture,
                                                                GLint       level)
 {
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
     GLuint                  texture_id  = 0;
     ogl_context_to_bindings to_bindings = NULL;
 
-    ogl_context_get_property(ogl_context_get_current_context(),
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(target) );
@@ -3470,21 +3779,77 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum      targe
 }
 
 /* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBufferEXT(GLuint framebuffer,
+                                                                     GLenum mode)
+{
+    _private_entrypoints_ptr->pGLFramebufferDrawBufferEXT(framebuffer,
+                                                          mode);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBuffersEXT(      GLuint  framebuffer,
+                                                                            GLsizei n,
+                                                                      const GLenum* bufs)
+{
+    _private_entrypoints_ptr->pGLFramebufferDrawBuffersEXT(framebuffer,
+                                                           n,
+                                                           bufs);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferReadBufferEXT(GLuint framebuffer,
+                                                                     GLenum mode)
+{
+    _private_entrypoints_ptr->pGLFramebufferReadBufferEXT(framebuffer,
+                                                          mode);
+}
+
+/* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum      target,
                                                                  GLenum      attachment,
                                                                  GLenum      textarget,
                                                                  ogl_texture texture,
                                                                  GLint       level)
 {
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
     GLuint                  texture_id  = 0;
     ogl_context_to_bindings to_bindings = NULL;
 
-    ogl_context_get_property(ogl_context_get_current_context(),
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
@@ -3503,15 +3868,45 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture2D(GLenum      tar
                                                                  ogl_texture texture,
                                                                  GLint       level)
 {
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
     GLuint                  texture_id  = 0;
     ogl_context_to_bindings to_bindings = NULL;
 
-    ogl_context_get_property(ogl_context_get_current_context(),
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
@@ -3531,15 +3926,45 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture3D(GLenum      tar
                                                                  GLint       level,
                                                                  GLint       layer)
 {
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
     GLuint                  texture_id  = 0;
     ogl_context_to_bindings to_bindings = NULL;
 
-    ogl_context_get_property(ogl_context_get_current_context(),
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_ID,
                             &texture_id);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(textarget) );
@@ -3559,11 +3984,16 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      
                                                                     GLint       level,
                                                                     GLint       layer)
 {
+    ogl_context             context        = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache    = NULL;
     GLuint                  texture_id     = 0;
     GLenum                  texture_target = GL_ZERO;
     ogl_context_to_bindings to_bindings    = NULL;
 
-    ogl_context_get_property(ogl_context_get_current_context(),
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+    ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TO_BINDINGS,
                             &to_bindings);
     ogl_texture_get_property(texture,
@@ -3572,6 +4002,31 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTextureLayer(GLenum      
     ogl_texture_get_property(texture,
                              OGL_TEXTURE_PROPERTY_TARGET,
                             &texture_target);
+
+    switch (fb_target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
 
     ogl_context_to_bindings_sync(to_bindings,
                                  ogl_context_to_bindings_get_ogl_context_to_bindings_sync_bit_from_gl_target(texture_target) );
@@ -4079,6 +4534,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureLayerEXT(GLui
                                                                  texture_id,
                                                                  level,
                                                                  layer);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glReadBuffer(GLenum mode)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+    _private_entrypoints_ptr->pGLReadBuffer(mode);
 }
 
 /* Please see header for specification */

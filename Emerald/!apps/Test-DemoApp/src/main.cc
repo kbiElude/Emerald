@@ -189,7 +189,7 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                       window_x1y1x2y2,
                                                                       system_hashed_ansi_string_create("Test window"),
                                                                       false,
-                                                                      4,    /* n_multisampling_samples */
+                                                                      0,    /* n_multisampling_samples */
                                                                       true, /* vsync_enabled           */
                                                                       true, /* multisampling_supported */
                                                                       true);

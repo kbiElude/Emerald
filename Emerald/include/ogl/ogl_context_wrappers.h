@@ -10,6 +10,10 @@
 
 /*** OTHER CONTEXT-WIDE STATE */
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
+                                                            GLuint fbo_id);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
@@ -33,6 +37,18 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBlendFuncSeparate(GLenum srcRGB,
                                                               GLenum dstAlpha);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glBlitFramebuffer(GLint      srcX0,
+                                                            GLint      srcY0,
+                                                            GLint      srcX1,
+                                                            GLint      srcY1,
+                                                            GLint      dstX0,
+                                                            GLint      dstY0,
+                                                            GLint      dstX1,
+                                                            GLint      dstY1,
+                                                            GLbitfield mask,
+                                                            GLenum     filter);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask);
 
 /** TODO */
@@ -40,6 +56,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
                                                        GLfloat alpha);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glClearDepth(GLdouble value);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glColorMask(GLboolean red,
@@ -69,6 +88,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glEnable(GLenum cap);
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
                                                     GLuint index);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glFrontFace(GLenum mode);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glScissor(GLint   x,
@@ -744,11 +766,30 @@ PUBLIC void APIENTRY ogl_context_wrappers_glCopyTextureSubImage3DEXT(ogl_texture
                                                                      GLsizei     height);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffer(GLenum mode);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawBuffers(      GLsizei n,
+                                                        const GLenum* bufs);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture(GLenum      target,
                                                                GLenum      attachment,
                                                                ogl_texture texture,
                                                                GLint       level);
 
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBufferEXT(GLuint framebuffer,
+                                                                     GLenum mode);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBuffersEXT(      GLuint  framebuffer,
+                                                                            GLsizei n,
+                                                                      const GLenum* bufs);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferReadBufferEXT(GLuint framebuffer,
+                                                                     GLenum mode);
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferTexture1D(GLenum      target,
                                                                  GLenum      attachment,
@@ -907,6 +948,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureLayerEXT(GLui
                                                                             ogl_texture texture,
                                                                             GLint       level,
                                                                             GLint       layer);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glReadBuffer(GLenum mode);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glTexBuffer(GLenum target,

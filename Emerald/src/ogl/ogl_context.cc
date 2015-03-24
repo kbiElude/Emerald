@@ -1560,9 +1560,9 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLCopyTextureSubImage3DEXT,                                         "glCopyTextureSubImage3DEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLDisableVertexArrayAttribEXT,                   "glDisableVertexArrayAttribEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLEnableVertexArrayAttribEXT,                    "glEnableVertexArrayAttribEXT"},
-        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBufferEXT,                      "glFramebufferDrawBufferEXT"},
-        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBuffersEXT,                     "glFramebufferDrawBuffersEXT"},
-        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferReadBufferEXT,                      "glFramebufferReadBufferEXT"},
+        {&context_ptr->entry_points_private.pGLFramebufferDrawBufferEXT,                                         "glFramebufferDrawBufferEXT"},
+        {&context_ptr->entry_points_private.pGLFramebufferDrawBuffersEXT,                                        "glFramebufferDrawBuffersEXT"},
+        {&context_ptr->entry_points_private.pGLFramebufferReadBufferEXT,                                         "glFramebufferReadBufferEXT"},
         {&context_ptr->entry_points_private.pGLGenerateTextureMipmapEXT,                                         "glGenerateTextureMipmapEXT"},
         {&context_ptr->entry_points_private.pGLGetCompressedTextureImageEXT,                                     "glGetCompressedTextureImageEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLGetFramebufferParameterivEXT,                  "glGetFramebufferParameterivEXT"},
@@ -1657,6 +1657,9 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage1DEXT          = ogl_context_wrappers_glCopyTextureSubImage1DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage2DEXT          = ogl_context_wrappers_glCopyTextureSubImage2DEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLCopyTextureSubImage3DEXT          = ogl_context_wrappers_glCopyTextureSubImage3DEXT;
+    context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBufferEXT          = ogl_context_wrappers_glFramebufferDrawBufferEXT;
+    context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferDrawBuffersEXT         = ogl_context_wrappers_glFramebufferDrawBuffersEXT;
+    context_ptr->entry_points_gl_ext_direct_state_access.pGLFramebufferReadBufferEXT          = ogl_context_wrappers_glFramebufferReadBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGenerateTextureMipmapEXT          = ogl_context_wrappers_glGenerateTextureMipmapEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGetCompressedTextureImageEXT      = ogl_context_wrappers_glGetCompressedTextureImageEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGetNamedBufferParameterivEXT      = ogl_context_wrappers_glGetNamedBufferParameterivEXT;
@@ -1829,7 +1832,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLBindBufferBase,                 "glBindBufferBase"},
             {&context_ptr->entry_points_private.pGLBindBufferRange,                "glBindBufferRange"},
             {&context_ptr->entry_points_gl.pGLBindFragDataLocation,                "glBindFragDataLocation"},
-            {&context_ptr->entry_points_gl.pGLBindFramebuffer,                     "glBindFramebuffer"},
+            {&context_ptr->entry_points_private.pGLBindFramebuffer,                "glBindFramebuffer"},
             {&context_ptr->entry_points_private.pGLBindImageTexture,               "glBindImageTexture"},
             {&context_ptr->entry_points_gl.pGLBindProgramPipeline,                 "glBindProgramPipeline"},
             {&context_ptr->entry_points_private.pGLBindSampler,                    "glBindSampler"},
@@ -1841,7 +1844,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLBlendEquationSeparate,          "glBlendEquationSeparate"},
             {&context_ptr->entry_points_private.pGLBlendFunc,                      "glBlendFunc"},
             {&context_ptr->entry_points_private.pGLBlendFuncSeparate,              "glBlendFuncSeparate"},
-            {&context_ptr->entry_points_gl.pGLBlitFramebuffer,                     "glBlitFramebuffer"},
+            {&context_ptr->entry_points_private.pGLBlitFramebuffer,                "glBlitFramebuffer"},
             {&context_ptr->entry_points_private.pGLBufferData,                     "glBufferData"},
             {&context_ptr->entry_points_private.pGLGetBufferParameteriv,           "glGetBufferParameteriv"},
             {&context_ptr->entry_points_private.pGLGetBufferPointerv,              "glGetBufferPointerv"},
@@ -1855,7 +1858,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLClearBufferuiv,                      "glClearBufferuiv"},
             {&context_ptr->entry_points_private.pGLClearColor,                     "glClearColor"},
             {&context_ptr->entry_points_gl.pGLClearStencil,                        "glClearStencil"},
-            {&context_ptr->entry_points_gl.pGLClearDepth,                          "glClearDepth"},
+            {&context_ptr->entry_points_private.pGLClearDepth,                     "glClearDepth"},
             {&context_ptr->entry_points_private.pGLColorMask,                      "glColorMask"},
             {&context_ptr->entry_points_gl.pGLColorMaski,                          "glColorMaski"},
             {&context_ptr->entry_points_gl.pGLCompileShader,                       "glCompileShader"},
@@ -1894,8 +1897,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLDrawArrays,                     "glDrawArrays"},
             {&context_ptr->entry_points_private.pGLDrawArraysInstanced,            "glDrawArraysInstanced"},
             {&context_ptr->entry_points_private.pGLDrawArraysInstancedBaseInstance,"glDrawArraysInstancedBaseInstance"},
-            {&context_ptr->entry_points_gl.pGLDrawBuffer,                          "glDrawBuffer"},
-            {&context_ptr->entry_points_gl.pGLDrawBuffers,                         "glDrawBuffers"},
+            {&context_ptr->entry_points_private.pGLDrawBuffer,                     "glDrawBuffer"},
+            {&context_ptr->entry_points_private.pGLDrawBuffers,                    "glDrawBuffers"},
             {&context_ptr->entry_points_private.pGLDrawElements,                   "glDrawElements"},
             {&context_ptr->entry_points_private.pGLDrawElementsInstanced,          "glDrawElementsInstanced"},
             {&context_ptr->entry_points_private.pGLDrawRangeElements,              "glDrawRangeElements"},
@@ -1913,7 +1916,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLFramebufferTexture2D,           "glFramebufferTexture2D"},
             {&context_ptr->entry_points_private.pGLFramebufferTexture3D,           "glFramebufferTexture3D"},
             {&context_ptr->entry_points_private.pGLFramebufferTextureLayer,        "glFramebufferTextureLayer"},
-            {&context_ptr->entry_points_gl.pGLFrontFace,                           "glFrontFace"},
+            {&context_ptr->entry_points_private.pGLFrontFace,                      "glFrontFace"},
             {&context_ptr->entry_points_gl.pGLGenBuffers,                          "glGenBuffers"},
             {&context_ptr->entry_points_gl.pGLGenerateMipmap,                      "glGenerateMipmap"},
             {&context_ptr->entry_points_gl.pGLGenFramebuffers,                     "glGenFramebuffers"},
@@ -2049,7 +2052,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4fv,             "glProgramUniformMatrix4fv"},
             {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x2fv,           "glProgramUniformMatrix4x2fv"},
             {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x3fv,           "glProgramUniformMatrix4x3fv"},
-            {&context_ptr->entry_points_gl.pGLReadBuffer,                          "glReadBuffer"},
+            {&context_ptr->entry_points_private.pGLReadBuffer,                     "glReadBuffer"},
             {&context_ptr->entry_points_private.pGLReadPixels,                     "glReadPixels"},
             {&context_ptr->entry_points_private.pGLResumeTransformFeedback,        "glResumeTransformFeedback"},
             {&context_ptr->entry_points_gl.pGLPointSize,                           "glPointSize"},
@@ -2164,6 +2167,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLBindBuffer                      = ogl_context_wrappers_glBindBuffer;
         context_ptr->entry_points_gl.pGLBindBufferBase                  = ogl_context_wrappers_glBindBufferBase;
         context_ptr->entry_points_gl.pGLBindBufferRange                 = ogl_context_wrappers_glBindBufferRange;
+        context_ptr->entry_points_gl.pGLBindFramebuffer                 = ogl_context_wrappers_glBindFramebuffer;
         context_ptr->entry_points_gl.pGLBindImageTexture                = ogl_context_wrappers_glBindImageTextureEXT;
         context_ptr->entry_points_gl.pGLBindSampler                     = ogl_context_wrappers_glBindSampler;
         context_ptr->entry_points_gl.pGLBindTexture                     = ogl_context_wrappers_glBindTexture;
@@ -2173,10 +2177,12 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLBlendEquationSeparate           = ogl_context_wrappers_glBlendEquationSeparate;
         context_ptr->entry_points_gl.pGLBlendFunc                       = ogl_context_wrappers_glBlendFunc;
         context_ptr->entry_points_gl.pGLBlendFuncSeparate               = ogl_context_wrappers_glBlendFuncSeparate;
+        context_ptr->entry_points_gl.pGLBlitFramebuffer                 = ogl_context_wrappers_glBlitFramebuffer;
         context_ptr->entry_points_gl.pGLBufferData                      = ogl_context_wrappers_glBufferData;
         context_ptr->entry_points_gl.pGLBufferSubData                   = ogl_context_wrappers_glBufferSubData;
         context_ptr->entry_points_gl.pGLClear                           = ogl_context_wrappers_glClear;
         context_ptr->entry_points_gl.pGLClearColor                      = ogl_context_wrappers_glClearColor;
+        context_ptr->entry_points_gl.pGLClearDepth                      = ogl_context_wrappers_glClearDepth;
         context_ptr->entry_points_gl.pGLColorMask                       = ogl_context_wrappers_glColorMask;
         context_ptr->entry_points_gl.pGLCompressedTexImage1D            = ogl_context_wrappers_glCompressedTexImage1D;
         context_ptr->entry_points_gl.pGLCompressedTexImage2D            = ogl_context_wrappers_glCompressedTexImage2D;
@@ -2200,6 +2206,8 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLDrawArrays                      = ogl_context_wrappers_glDrawArrays;
         context_ptr->entry_points_gl.pGLDrawArraysInstanced             = ogl_context_wrappers_glDrawArraysInstanced;
         context_ptr->entry_points_gl.pGLDrawArraysInstancedBaseInstance = ogl_context_wrappers_glDrawArraysInstancedBaseInstance;
+        context_ptr->entry_points_gl.pGLDrawBuffer                      = ogl_context_wrappers_glDrawBuffer;
+        context_ptr->entry_points_gl.pGLDrawBuffers                     = ogl_context_wrappers_glDrawBuffers;
         context_ptr->entry_points_gl.pGLDrawElements                    = ogl_context_wrappers_glDrawElements;
         context_ptr->entry_points_gl.pGLDrawElementsInstanced           = ogl_context_wrappers_glDrawElementsInstanced;
         context_ptr->entry_points_gl.pGLDrawRangeElements               = ogl_context_wrappers_glDrawRangeElements;
@@ -2212,6 +2220,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLFramebufferTexture2D            = ogl_context_wrappers_glFramebufferTexture2D;
         context_ptr->entry_points_gl.pGLFramebufferTexture3D            = ogl_context_wrappers_glFramebufferTexture3D;
         context_ptr->entry_points_gl.pGLFramebufferTextureLayer         = ogl_context_wrappers_glFramebufferTextureLayer;
+        context_ptr->entry_points_gl.pGLFrontFace                       = ogl_context_wrappers_glFrontFace;
         context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv  = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
         context_ptr->entry_points_gl.pGLGetBooleani_v                   = ogl_context_wrappers_glGetBooleani_v;
         context_ptr->entry_points_gl.pGLGetBooleanv                     = ogl_context_wrappers_glGetBooleanv;
@@ -2247,6 +2256,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLMultiDrawArrays                 = ogl_context_wrappers_glMultiDrawArrays;
         context_ptr->entry_points_gl.pGLMultiDrawElements               = ogl_context_wrappers_glMultiDrawElements;
         context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex     = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
+        context_ptr->entry_points_gl.pGLReadBuffer                      = ogl_context_wrappers_glReadBuffer;
         context_ptr->entry_points_gl.pGLReadPixels                      = ogl_context_wrappers_glReadPixels;
         context_ptr->entry_points_gl.pGLResumeTransformFeedback         = ogl_context_wrappers_glResumeTransformFeedback;
         context_ptr->entry_points_gl.pGLSamplerParameterf               = ogl_context_wrappers_glSamplerParameterf;

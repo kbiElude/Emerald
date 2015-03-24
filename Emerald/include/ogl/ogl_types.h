@@ -1223,6 +1223,7 @@ typedef struct
     PFNGLBINDBUFFERPROC                      pGLBindBuffer;
     PFNGLBINDBUFFERBASEPROC                  pGLBindBufferBase;
     PFNGLBINDBUFFERRANGEPROC                 pGLBindBufferRange;
+    PFNGLBINDFRAMEBUFFERPROC                 pGLBindFramebuffer;
     PFNGLBINDIMAGETEXTUREPROC                pGLBindImageTexture;
     PFNGLBINDSAMPLERPROC                     pGLBindSampler;
     PFNGLBINDTEXTUREPROC                     pGLBindTexture;
@@ -1232,10 +1233,12 @@ typedef struct
     PFNGLBLENDEQUATIONSEPARATEPROC           pGLBlendEquationSeparate;
     PFNGLBLENDFUNCPROC                       pGLBlendFunc;
     PFNGLBLENDFUNCSEPARATEPROC               pGLBlendFuncSeparate;
+    PFNGLBLITFRAMEBUFFERPROC                 pGLBlitFramebuffer;
     PFNGLBUFFERDATAPROC                      pGLBufferData;
     PFNGLBUFFERSUBDATAPROC                   pGLBufferSubData;
     PFNGLCLEARPROC                           pGLClear;
     PFNGLCLEARCOLORPROC                      pGLClearColor;
+    PFNGLCLEARDEPTHPROC                      pGLClearDepth;
     PFNGLCOLORMASKPROC                       pGLColorMask;
     PFNGLCOMPRESSEDTEXIMAGE3DPROC            pGLCompressedTexImage3D;
     PFNGLCOMPRESSEDTEXIMAGE2DPROC            pGLCompressedTexImage2D;
@@ -1259,6 +1262,8 @@ typedef struct
     PFNGLDRAWARRAYSPROC                      pGLDrawArrays;
     PFNGLDRAWARRAYSINSTANCEDPROC             pGLDrawArraysInstanced;
     PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC pGLDrawArraysInstancedBaseInstance;
+    PFNGLDRAWBUFFERPROC                      pGLDrawBuffer;
+    PFNGLDRAWBUFFERSPROC                     pGLDrawBuffers;
     PFNGLDRAWELEMENTSPROC                    pGLDrawElements;
     PFNGLDRAWELEMENTSINSTANCEDPROC           pGLDrawElementsInstanced;
     PFNGLDRAWRANGEELEMENTSPROC               pGLDrawRangeElements;
@@ -1271,6 +1276,7 @@ typedef struct
     PFNGLFRAMEBUFFERTEXTURE2DPROC            pGLFramebufferTexture2D;
     PFNGLFRAMEBUFFERTEXTURE3DPROC            pGLFramebufferTexture3D;
     PFNGLFRAMEBUFFERTEXTURELAYERPROC         pGLFramebufferTextureLayer;
+    PFNGLFRONTFACEPROC                       pGLFrontFace;
     PFNGLGETACTIVEATOMICCOUNTERBUFFERIVPROC  pGLGetActiveAtomicCounterBufferiv;
     PFNGLGETBOOLEANI_VPROC                   pGLGetBooleani_v;
     PFNGLGETBOOLEANVPROC                     pGLGetBooleanv;
@@ -1301,6 +1307,7 @@ typedef struct
     PFNGLMULTIDRAWARRAYSPROC                 pGLMultiDrawArrays;
     PFNGLMULTIDRAWELEMENTSPROC               pGLMultiDrawElements;
     PFNGLMULTIDRAWELEMENTSBASEVERTEXPROC     pGLMultiDrawElementsBaseVertex;
+    PFNGLREADBUFFERPROC                      pGLReadBuffer;
     PFNGLREADPIXELSPROC                      pGLReadPixels;
     PFNGLRESUMETRANSFORMFEEDBACKPROC         pGLResumeTransformFeedback;
     PFNGLSAMPLERPARAMETERFPROC               pGLSamplerParameterf;
@@ -1340,6 +1347,9 @@ typedef struct
     PFNGLCOPYTEXTURESUBIMAGE1DEXTPROC        pGLCopyTextureSubImage1DEXT;
     PFNGLCOPYTEXTURESUBIMAGE2DEXTPROC        pGLCopyTextureSubImage2DEXT;
     PFNGLCOPYTEXTURESUBIMAGE3DEXTPROC        pGLCopyTextureSubImage3DEXT;
+    PFNGLFRAMEBUFFERDRAWBUFFEREXTPROC        pGLFramebufferDrawBufferEXT;
+    PFNGLFRAMEBUFFERDRAWBUFFERSEXTPROC       pGLFramebufferDrawBuffersEXT;
+    PFNGLFRAMEBUFFERREADBUFFEREXTPROC        pGLFramebufferReadBufferEXT;
     PFNGLGENERATETEXTUREMIPMAPEXTPROC        pGLGenerateTextureMipmapEXT;
     PFNGLGETCOMPRESSEDTEXTUREIMAGEEXTPROC    pGLGetCompressedTextureImageEXT;
     PFNGLGETTEXTUREIMAGEEXTPROC              pGLGetTextureImageEXT;

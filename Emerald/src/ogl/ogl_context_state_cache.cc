@@ -15,6 +15,9 @@ typedef struct _ogl_context_state_cache
     GLfloat active_clear_color_context[4];
     GLfloat active_clear_color_local  [4];
 
+    GLdouble active_clear_depth_context;
+    GLdouble active_clear_depth_local;
+
     GLboolean active_color_mask_context[4];
     GLboolean active_color_mask_local  [4];
 
@@ -26,6 +29,15 @@ typedef struct _ogl_context_state_cache
 
     GLboolean active_depth_mask_context;
     GLboolean active_depth_mask_local;
+
+    GLuint active_draw_fbo_context;
+    GLuint active_draw_fbo_local;
+
+    GLenum active_front_face_context;
+    GLenum active_front_face_local;
+
+    GLuint active_read_fbo_context;
+    GLuint active_read_fbo_local;
 
     GLuint active_program_context;
     GLuint active_program_local;
@@ -182,9 +194,30 @@ PUBLIC void ogl_context_state_cache_get_property(__in  __notnull const ogl_conte
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER:
+        {
+            *(GLuint*) out_result = cache_ptr->active_draw_fbo_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
+        {
+            *(GLuint*) out_result = cache_ptr->active_front_face_local;
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
             *((GLuint*) out_result) = cache_ptr->active_program_local;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER:
+        {
+            *(GLuint*) out_result = cache_ptr->active_read_fbo_local;
 
             break;
         }
@@ -253,9 +286,21 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
     cache_ptr->active_depth_mask_context = GL_TRUE;
     cache_ptr->active_depth_mask_local   = GL_TRUE;
 
+    /* Set default state: active draw framebuffer */
+    cache_ptr->active_draw_fbo_context = 0;
+    cache_ptr->active_draw_fbo_local   = 0;
+
+    /* Set default state: active front face */
+    cache_ptr->active_front_face_context = GL_CCW;
+    cache_ptr->active_front_face_local   = GL_CCW;
+
     /* Set default state: active program */
     cache_ptr->active_program_context      = 0;
     cache_ptr->active_program_local        = 0;
+
+    /* Set default state: active read framebuffer */
+    cache_ptr->active_read_fbo_context = 0;
+    cache_ptr->active_read_fbo_local   = 0;
 
     /* Set default state: active texture unit */
     cache_ptr->active_texture_unit_context = 0;
@@ -308,6 +353,10 @@ PUBLIC void ogl_context_state_cache_init(__in __notnull ogl_context_state_cache 
     memset(cache_ptr->active_clear_color_local,
            0,
            sizeof(cache_ptr->active_clear_color_local) );
+
+    /* Set default state: clear depth value */
+    cache_ptr->active_clear_depth_context = 1.0f;
+    cache_ptr->active_clear_depth_local   = 1.0f;
 
     /* Set default state: cull face */
     cache_ptr->active_cull_face_context = GL_BACK;
@@ -419,6 +468,13 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_CLEAR_DEPTH:
+        {
+            cache_ptr->active_clear_depth_local = *(GLdouble*) data;
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_COLOR_MASK:
         {
             memcpy(cache_ptr->active_color_mask_local,
@@ -449,9 +505,30 @@ PUBLIC void ogl_context_state_cache_set_property(__in __notnull ogl_context_stat
             break;
         }
 
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_DRAW_FRAMEBUFFER:
+        {
+            cache_ptr->active_draw_fbo_local = *(GLuint*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_FRONT_FACE:
+        {
+            cache_ptr->active_front_face_local = *(GLenum*) data;
+
+            break;
+        }
+
         case OGL_CONTEXT_STATE_CACHE_PROPERTY_PROGRAM_OBJECT:
         {
             cache_ptr->active_program_local = *(GLuint*) data;
+
+            break;
+        }
+
+        case OGL_CONTEXT_STATE_CACHE_PROPERTY_READ_FRAMEBUFFER:
+        {
+            cache_ptr->active_read_fbo_local = *(GLuint*) data;
 
             break;
         }
@@ -576,6 +653,15 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
                    sizeof(cache_ptr->active_clear_color_context) );
         }
 
+        /* Clear depth */
+        if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_CLEAR_DEPTH) &&
+            fabs(cache_ptr->active_clear_depth_context - cache_ptr->active_clear_depth_local) > 1e-5f)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLClearDepth(cache_ptr->active_clear_depth_local);
+
+            cache_ptr->active_clear_depth_context = cache_ptr->active_clear_depth_local;
+        }
+
         /* Color / depth mask */
         if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK)
         {
@@ -619,6 +705,25 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
             cache_ptr->active_depth_func_context = cache_ptr->active_depth_func_local;
         }
 
+        /* Draw framebuffer */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER &&
+            cache_ptr->active_draw_fbo_context != cache_ptr->active_draw_fbo_local)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                                   cache_ptr->active_draw_fbo_local);
+
+            cache_ptr->active_draw_fbo_context = cache_ptr->active_draw_fbo_local;
+        }
+
+        /* Front face */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE &&
+            cache_ptr->active_front_face_context != cache_ptr->active_front_face_local)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLFrontFace(cache_ptr->active_front_face_local);
+
+            cache_ptr->active_front_face_context = cache_ptr->active_front_face_local;
+        }
+
         /* Program object */
         if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT)             &&
             cache_ptr->active_program_context != cache_ptr->active_program_local)
@@ -626,6 +731,16 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
             cache_ptr->entrypoints_private_ptr->pGLUseProgram(cache_ptr->active_program_local);
 
             cache_ptr->active_program_context = cache_ptr->active_program_local;
+        }
+
+        /* Read framebuffer */
+        if (sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER &&
+            cache_ptr->active_read_fbo_context != cache_ptr->active_read_fbo_local)
+        {
+            cache_ptr->entrypoints_private_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                                                   cache_ptr->active_read_fbo_local);
+
+            cache_ptr->active_read_fbo_context = cache_ptr->active_read_fbo_local;
         }
 
         /* Scissor box */
