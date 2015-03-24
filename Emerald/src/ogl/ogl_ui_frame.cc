@@ -28,6 +28,8 @@ typedef struct
     GLint       program_x1y1x2y2_uniform_location;
 
     /* Cached func ptrs */
+    PFNGLBLENDEQUATIONPROC     pGLBlendEquation;
+    PFNGLBLENDFUNCPROC         pGLBlendFunc;
     PFNGLDISABLEPROC           pGLDisable;
     PFNGLDRAWARRAYSPROC        pGLDrawArrays;
     PFNGLENABLEPROC            pGLEnable;
@@ -115,7 +117,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
                                     frame_ptr->x1y1x2y2);
 
     /* Draw */
-    frame_ptr->pGLEnable(GL_BLEND);
+    frame_ptr->pGLBlendEquation(GL_FUNC_ADD);
+    frame_ptr->pGLBlendFunc    (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    frame_ptr->pGLEnable       (GL_BLEND);
     {
         frame_ptr->pGLUseProgram(ogl_program_get_id(frame_ptr->program) );
         frame_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
@@ -206,6 +210,8 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
+            new_frame->pGLBlendEquation     = entry_points->pGLBlendEquation;
+            new_frame->pGLBlendFunc         = entry_points->pGLBlendFunc;
             new_frame->pGLDisable           = entry_points->pGLDisable;
             new_frame->pGLDrawArrays        = entry_points->pGLDrawArrays;
             new_frame->pGLEnable            = entry_points->pGLEnable;
@@ -223,6 +229,8 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
+            new_frame->pGLBlendEquation     = entry_points->pGLBlendEquation;
+            new_frame->pGLBlendFunc         = entry_points->pGLBlendFunc;
             new_frame->pGLDisable           = entry_points->pGLDisable;
             new_frame->pGLDrawArrays        = entry_points->pGLDrawArrays;
             new_frame->pGLEnable            = entry_points->pGLEnable;

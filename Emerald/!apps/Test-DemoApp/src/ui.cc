@@ -441,9 +441,9 @@ PRIVATE void _ui_set_current_vsm_blur_n_passes_value(void*          unused,
 {
     float new_vsm_blur_n_passes_value_float;
 
-    system_variant_get_float               (new_value,
-                                           &new_vsm_blur_n_passes_value_float);
-    state_set_shadow_map_vsm_blur_n_passes( (unsigned int) new_vsm_blur_n_passes_value_float);
+    system_variant_get_float              (new_value,
+                                          &new_vsm_blur_n_passes_value_float);
+    state_set_shadow_map_vsm_blur_n_passes(new_vsm_blur_n_passes_value_float);
 }
 
 /** TODO */
@@ -536,7 +536,7 @@ PUBLIC void ui_init()
                                                             NULL); /* fire_user_arg */
 
     /* Add color shadow map blur n passes scrollbar */
-    system_variant blur_n_passes_max_value = system_variant_create_float(9.0f);
+    system_variant blur_n_passes_max_value = system_variant_create_float(4.0f);
     system_variant blur_n_passes_min_value = system_variant_create_float(1.0f);
 
     _ui_color_shadow_map_blur_n_passes_scrollbar = ogl_ui_add_scrollbar(_ui,

@@ -311,7 +311,7 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_texture_depth         = NULL;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
-    light_ptr->shadow_map_vsm_blur_n_passes     = 3;
+    light_ptr->shadow_map_vsm_blur_n_passes     = 2;
     light_ptr->shadow_map_vsm_blur_n_taps       = 9;
     light_ptr->shadow_map_vsm_blur_resolution   = POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_HALF;
     light_ptr->shadow_map_vsm_cutoff            = 0.1f;

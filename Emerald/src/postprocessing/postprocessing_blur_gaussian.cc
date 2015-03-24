@@ -64,6 +64,10 @@ static const char* fs_body =     "layout(binding = 0, std140) uniform coeffs_dat
                                  "        result = vec4(0.0);\n"
                                  "    }\n"
                                  "\n"
+                                 /* Note: we also use this program for blending if frac(n_taps) != .0. In this case,
+                                  *       n_taps is set to 1, which essentially fetches 1 texel from data_sampler and
+                                  *       returns the read value. data[0] is set to 1.0 for this iteration.
+                                  */
                                  "    for (int n_tap = n_start_tap;\n"
                                  "             n_tap < n_taps_half;\n"
                                  "             n_tap ++)\n"
@@ -115,6 +119,7 @@ static const char* vs_body =     "#version 420 core\n"
 typedef struct _postprocessing_blur_gaussian
 {
     GLuint                    coeff_bo_id;
+    unsigned int              coeff_buffer_offset_for_value_1; /* holds offset to where 1.0 is stored in BO with id coeff_bo_id */
     unsigned int*             coeff_buffer_offsets; // [0] for n_min_taps, [1] for n_min_taps+1, etc..
     ogl_context               context;
     GLuint                    fbo_ids[2]; /* ping/pong FBO */
@@ -133,15 +138,16 @@ typedef struct _postprocessing_blur_gaussian
         ASSERT_DEBUG_SYNC(in_n_min_taps <= in_n_max_taps,
                           "Invalid min/max tap argument values");
 
-        coeff_bo_id          = 0;
-        coeff_buffer_offsets = NULL;
-        context              = in_context;
-        n_max_data_coeffs    = 0;
-        n_max_taps           = in_n_max_taps;
-        n_min_taps           = in_n_min_taps;
-        name                 = in_name;
-        po                   = NULL;
-        sampler              = NULL;
+        coeff_bo_id                     = 0;
+        coeff_buffer_offset_for_value_1 = 0; /* always zero */
+        coeff_buffer_offsets            = NULL;
+        context                         = in_context;
+        n_max_data_coeffs               = 0;
+        n_max_taps                      = in_n_max_taps;
+        n_min_taps                      = in_n_min_taps;
+        name                            = in_name;
+        po                              = NULL;
+        sampler                         = NULL;
 
         memset(fbo_ids,
                0,
@@ -488,14 +494,24 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
                               "Out of memory");
         } /* if (n_iteration == 1) */
 
-        for (unsigned int n_tap_dataset = 0;
-                          n_tap_dataset < n_tap_datasets;
-                        ++n_tap_dataset)
+        /* Go ahead with the tap datasets.
+         *
+         * A special iteration with index -1 is used to store a single value of 1.0, used
+         * for the optional blending phase.
+         */
+        for (int n_tap_dataset = -1;
+                 n_tap_dataset < (int) n_tap_datasets;
+               ++n_tap_dataset)
         {
             unsigned int aligned_dataset_size    = 0;
             unsigned int misaligned_dataset_size = 0;
             unsigned int padding                 = 0;
 
+            if (n_tap_dataset == -1)
+            {
+                misaligned_dataset_size = sizeof(float);
+            }
+            else
             if (n_tap_dataset != (n_tap_datasets - 1))
             {
                 misaligned_dataset_size = misaligned_coeff_buffer_offsets[n_tap_dataset + 1] -
@@ -519,12 +535,20 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
                 /* Copy the data sub-buffers to our final BO */
                 unsigned int dataset_size = 0;
 
-                memcpy(final_data_bo_raw_traveller_ptr,
-                       coeff_vector_data_raw_ptr + misaligned_coeff_buffer_offsets[n_tap_dataset],
-                       misaligned_dataset_size);
+                if (n_tap_dataset != -1)
+                {
+                    memcpy(final_data_bo_raw_traveller_ptr,
+                           coeff_vector_data_raw_ptr + misaligned_coeff_buffer_offsets[n_tap_dataset],
+                           misaligned_dataset_size);
 
-                instance_ptr->coeff_buffer_offsets[n_tap_dataset]  = final_data_bo_raw_traveller_ptr - final_data_bo_raw_ptr;
-                final_data_bo_raw_traveller_ptr                   += misaligned_dataset_size + padding;
+                    instance_ptr->coeff_buffer_offsets[n_tap_dataset]  = final_data_bo_raw_traveller_ptr - final_data_bo_raw_ptr;
+                }
+                else
+                {
+                    *(float*) final_data_bo_raw_traveller_ptr = 1.0f;
+                }
+
+                final_data_bo_raw_traveller_ptr += misaligned_dataset_size + padding;
             }
         } /* for (all tap datasets) */
     } /* for (both iterations) */
@@ -812,22 +836,51 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                          &src_texture_width);
 
-    /* The function carries out the following tasks:
+    /* The implementation below may look a bit wooly. Below is the break-down of the
+     * whole process:
      *
-     * 1) Copies data from the source texture to ping (0th) texture layer. Downsamples if requested.
+     * 1) Copy data from the source texture to ping (0th) texture layer.
+     *    Downsample if requested.
+     *
      *    Draw (ping) FBO is attached the ping texture layer.
      *    Read (pong) FBO is attached the source texture.
      *
-     * 2) For each iteration:
-     *    a) Horizontal pass:
-     *       X Draw (pong) FBO is attached the pong (1st) texture layer.
-     *       X Read (ping) FBO is attached the ping (0th) texture layer.
+     * 2a) For each iteration:
+     *     a) Horizontal pass:
+     *        X Draw (pong) FBO is attached the pong (1st) texture layer.
+     *        X Texture layer 0 is read.
      *
-     *    b) Vertical pass:
-     *       X Draw (ping) FBO is attached the ping (0th) texture layer.
-     *       X Read (pong) FBO is attached the pong (1st) texture layer.
+     *     b) Vertical pass:
+     *        X Draw (ping) FBO is attached the ping (0th) texture layer.
+     *        X Texture layer 1 is read.
      *
-     * 3) Copies data from the ping (0th) texture layer to the source texture.
+     * 2b) If we need an extra iteration of step 2a (which happens if frac(n_iterations) != 0), re-configure
+     *     ping/pong FBOs and execute extra run of step 2a:
+     *
+     *     a) Horizontal pass:
+     *        X Draw (pong) FBO is attached the 2nd texture layer.
+     *        X Texture layer 0 is read.
+     *
+     *     b) Vertical pass:
+     *        X Draw (ping) FBO is attached the 1st texture layer.
+     *        X Texture layer 2 is read.
+     *
+     *     As a result:
+     *
+     *     a) 0th texture layer holds texture blurred n_iterations   n times.
+     *     b) 1st texture layer holds texture blurred n_iterations+1 n times.
+     *
+     *     ..which we will lerp between in optional step 4!
+     *
+     * 3) If frac(n_iterations) != 0, we use the same program to draw (1st) texture layer
+     *    over the contents of the zeroth texture layer, with blending enabled & configured
+     *    so that the operation acts as a lerp between the (n_iterations) and (n_iterations+1)
+     *    texture layers, with the weight controlled by the fractional part.
+     *    This saves us a PO switch.
+     *
+     * 4) Copy data from the ping (0th) texture layer to the source texture.
+     *    Upsample if requested.
+     *
      *    Draw (pong) FBO is attached the source texture.
      *    Read (ping) FBO is attached the ping (0th) texture layer.
      */
@@ -838,6 +891,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                   GL_TRUE,
                                   GL_TRUE,
                                   GL_TRUE);
+    entrypoints_ptr->pGLDisable  (GL_BLEND);
     entrypoints_ptr->pGLDisable  (GL_CULL_FACE);
 
     /* Step 1) */
@@ -888,7 +942,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                src_texture_internalformat,
                                                                target_width,
                                                                target_height,
-                                                               2,      /* base_mipmap_depth */
+                                                               3,      /* base_mipmap_depth */
                                                                1,      /* n_samples */
                                                                false); /* fixed_sample_locations */
 
@@ -955,16 +1009,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                             0,  /* level */
                                                             1); /* layer */
 
-    /* Step 2): Kick off! */
+    /* Step 2a): Kick off. Result blurred texture is stored under layer 0 */
+    float n_iterations_frac = fmod(n_iterations, 1.0f);
+
     for (unsigned int n_iteration = 0;
-                      n_iteration < (unsigned int) n_iterations;
+                      n_iteration < (unsigned int) floor(n_iterations);
                     ++n_iteration)
     {
         /* Horizontal pass */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                             pong_fbo_id);
-        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            ping_fbo_id);
 
         entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
                                        0,  /* first - 0 will cause FS to read from layer 0 */
@@ -973,15 +1027,76 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         /* Vertical pass */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                             ping_fbo_id);
-        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            pong_fbo_id);
 
         entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
                                        4,  /* first - 4 will cause FS to read from layer 1 */
                                        4); /* count */
     } /* for (all iterations) */
 
-    /* Step 3): Store the result in the user-specified texture */
+    /* Step 2b) Run the extra iteration if frac(n_iterations) != 0 */
+    if (n_iterations_frac > 1e-5f)
+    {
+        /* Draw the src texture, blurred (n_iterations + 1) times, into texture layer 1 */
+
+        /* Horizontal pass */
+        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                            pong_fbo_id);
+
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+                                                                GL_COLOR_ATTACHMENT0,
+                                                                temp_2d_array_texture,
+                                                                0,  /* level */
+                                                                2); /* layer */
+
+        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                       0,  /* first - 0 will cause FS to read from layer 0 */
+                                       4); /* count */
+
+        /* Vertical pass */
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+                                                                GL_COLOR_ATTACHMENT0,
+                                                                temp_2d_array_texture,
+                                                                0,  /* level */
+                                                                1); /* layer */
+
+        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                       8,  /* first - 8 will cause FS to read from layer 2 */
+                                       4); /* count */
+
+        /* Step 3): Blend the (n_iterations + 1) texture layer over the (n_iterations) texture layer*/
+        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                            ping_fbo_id);
+        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                            0);
+
+        entrypoints_ptr->pGLEnable       (GL_BLEND);
+        entrypoints_ptr->pGLBlendColor   (0.0f, /* red */
+                                          0.0f, /* green */
+                                          0.0f, /* blue */
+                                          n_iterations_frac);
+        entrypoints_ptr->pGLBlendEquation(GL_FUNC_ADD);
+        entrypoints_ptr->pGLBlendFunc    (GL_CONSTANT_ALPHA,
+                                          GL_ONE_MINUS_CONSTANT_ALPHA);
+
+        entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                            COEFFS_DATA_UB_BP,
+                                            blur_ptr->coeff_bo_id,
+                                            blur_ptr->coeff_buffer_offset_for_value_1,
+                                            blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
+
+        entrypoints_ptr->pGLProgramUniform1i(po_id,
+                                             N_TAPS_UNIFORM_LOCATION,
+                                             1);
+
+        /* Draw data from texture layer 1 */
+        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                       4,  /* first */
+                                       4); /* count */
+
+        entrypoints_ptr->pGLDisable(GL_BLEND);
+    } /* if (n_iterations_frac > 1e-5f) */
+
+    /* Step 4): Store the result in the user-specified texture */
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                         pong_fbo_id);
     entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
