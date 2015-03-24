@@ -16,6 +16,192 @@
 __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
 
 
+/************************************************************ HELPER FUNCS ************************************************************/
+PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(__in GLenum property)
+{
+    ogl_context_state_cache_property result = OGL_CONTEXT_STATE_CACHE_PROPERTY_UNKNOWN;
+
+    switch (property)
+    {
+        case GL_BLEND:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_BLEND;
+
+            break;
+        }
+
+        case GL_COLOR_LOGIC_OP:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_COLOR_LOGIC_OP;
+
+            break;
+        }
+
+        case GL_CULL_FACE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE;
+
+            break;
+        }
+
+        case GL_DEPTH_CLAMP:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_CLAMP;
+
+            break;
+        }
+
+        case GL_DEPTH_TEST:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DEPTH_TEST;
+
+            break;
+        }
+
+        case GL_DITHER:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_DITHER;
+
+            break;
+        }
+
+        case GL_FRAMEBUFFER_SRGB:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_FRAMEBUFFER_SRGB;
+
+            break;
+        }
+
+        case GL_LINE_SMOOTH:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_LINE_SMOOTH;
+
+            break;
+        }
+
+        case GL_MULTISAMPLE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_MULTISAMPLE;
+
+            break;
+        }
+
+        case GL_POLYGON_OFFSET_FILL:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_FILL;
+
+            break;
+        }
+
+        case GL_POLYGON_OFFSET_LINE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_OFFSET_LINE;
+
+            break;
+        }
+
+        case GL_POLYGON_SMOOTH:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_POLYGON_SMOOTH;
+
+            break;
+        }
+
+        case GL_PRIMITIVE_RESTART:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART;
+
+            break;
+        }
+
+        case GL_PRIMITIVE_RESTART_FIXED_INDEX:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PRIMITIVE_RESTART_FIXED_INDEX;
+
+            break;
+        }
+
+        case GL_PROGRAM_POINT_SIZE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_PROGRAM_POINT_SIZE;
+
+            break;
+        }
+
+        case GL_RASTERIZER_DISCARD:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_RASTERIZER_DISCARD;
+
+            break;
+        }
+
+        case GL_SAMPLE_ALPHA_TO_COVERAGE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_COVERAGE;
+
+            break;
+        }
+
+        case GL_SAMPLE_ALPHA_TO_ONE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_ALPHA_TO_ONE;
+
+            break;
+        }
+
+        case GL_SAMPLE_COVERAGE:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_COVERAGE;
+
+            break;
+        }
+
+        case GL_SAMPLE_SHADING:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_SHADING;
+
+            break;
+        }
+
+
+        case GL_SAMPLE_MASK:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SAMPLE_MASK;
+
+            break;
+        }
+
+        case GL_SCISSOR_TEST:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_SCISSOR_TEST;
+
+            break;
+        }
+
+        case GL_STENCIL_TEST:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_STENCIL_TEST;
+
+            break;
+        }
+
+        case GL_TEXTURE_CUBE_MAP_SEAMLESS:
+        {
+            result = OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_TEXTURE_CUBE_MAP_SEAMLESS;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized property value");
+        }
+    } /* switch (property) */
+
+    return result;
+}
+
 /************************************************************* OTHER STATE ************************************************************/
 PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
                                                             GLuint fbo_id)
@@ -227,6 +413,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask)
                                  clear_mask                                   |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_COLOR_DEPTH_MASK |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER |
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES  |
                                  STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX);
 
     _private_entrypoints_ptr->pGLClear(mask);
@@ -333,101 +520,55 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDepthMask(GLboolean flag)
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDisable(GLenum cap)
 {
-    /* TODO: Add support for other modes */
-    if (cap == GL_BLEND)
-    {
-        ogl_context             context     = ogl_context_get_current_context();
-        const bool              new_state   = false;
-        ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache_property cap_property = _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(cap);
+    ogl_context                      context      = ogl_context_get_current_context                                      ();
+    const bool                       new_state    = false;
+    ogl_context_state_cache          state_cache  = NULL;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
 
-        ogl_context_state_cache_set_property(state_cache,
-                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
-                                            &new_state);
-    }
-    else
-    {
-        _private_entrypoints_ptr->pGLDisable(cap);
-    }
+    ogl_context_state_cache_set_property(state_cache,
+                                         cap_property,
+                                        &new_state);
 }
 
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDisablei(GLenum cap,
                                                      GLuint index)
 {
-    /* TODO: Add support for other modes */
-    if (cap == GL_BLEND && index == 0)
-    {
-        ogl_context             context     = ogl_context_get_current_context();
-        const bool              new_state   = false;
-        ogl_context_state_cache state_cache = NULL;
+    ASSERT_DEBUG_SYNC(index == 0,
+                      "TODO");
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                &state_cache);
-
-        ogl_context_state_cache_set_property(state_cache,
-                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
-                                            &new_state);
-    }
-    else
-    {
-        _private_entrypoints_ptr->pGLDisablei(cap,
-                                              index);
-    }
+    ogl_context_wrappers_glDisable(cap);
 }
 
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glEnable(GLenum cap)
 {
-    /* TODO: Add support for other modes */
-    if (cap == GL_BLEND)
-    {
-        ogl_context             context     = ogl_context_get_current_context();
-        const bool              new_state   = true;
-        ogl_context_state_cache state_cache = NULL;
+    ogl_context_state_cache_property cap_property = _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(cap);
+    ogl_context                      context      = ogl_context_get_current_context                                      ();
+    const bool                       new_state    = true;
+    ogl_context_state_cache          state_cache  = NULL;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                &state_cache);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
 
-        ogl_context_state_cache_set_property(state_cache,
-                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
-                                            &new_state);
-    }
-    else
-    {
-        _private_entrypoints_ptr->pGLEnable(cap);
-    }
+    ogl_context_state_cache_set_property(state_cache,
+                                         cap_property,
+                                        &new_state);
 }
 
 /** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glEnablei(GLenum cap,
                                                     GLuint index)
 {
-    /* TODO: Add support for other modes */
-    if (cap == GL_BLEND && index == 0)
-    {
-        ogl_context             context     = ogl_context_get_current_context();
-        const bool              new_state   = true;
-        ogl_context_state_cache state_cache = NULL;
+    ASSERT_DEBUG_SYNC(index == 0,
+                      "TODO");
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                &state_cache);
-
-        ogl_context_state_cache_set_property(state_cache,
-                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_BLEND_MODE_ENABLED,
-                                            &new_state);
-    }
-    else
-    {
-        _private_entrypoints_ptr->pGLEnablei(cap,
-                                             index);
-    }
+    ogl_context_wrappers_glEnable(cap);
 }
 
 /** Please see header for spec */
@@ -1203,6 +1344,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArrays(GLenum  mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1253,6 +1395,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstanced(GLenum  mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1305,6 +1448,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawArraysInstancedBaseInstance(GLen
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1357,6 +1501,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1409,6 +1554,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1463,6 +1609,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1514,6 +1661,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VIEWPORT            |
@@ -1995,6 +2143,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
@@ -2047,6 +2196,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum          
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
@@ -2101,6 +2251,7 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DEPTH_FUNC          |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER    |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_FRONT_FACE          |
+                                      STATE_CACHE_SYNC_BIT_ACTIVE_RENDERING_MODES     |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT      |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_SCISSOR_BOX         |
                                       STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT |
