@@ -1078,14 +1078,14 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
     /* Configure "depth clip and depth clip squared" material */
     static const char* depth_clip_and_squared_depth_clip_fs = "#version 420\n"
                                                               "\n"
-                                                              "                     in float out_vs_depth;\n"
+                                                              "                     in  vec2 out_vs_depth;\n"
                                                               "layout(location = 0) out vec2 result;\n"
                                                               "\n"
                                                               "void main()\n"
                                                               "{\n"
                                                               "    float dx               = dFdx(out_vs_depth);\n"
                                                               "    float dy               = dFdy(out_vs_depth);\n"
-                                                              "    float normalized_depth = clamp(out_vs_depth * 0.5 + 0.5, 0.0, 1.0);\n"
+                                                              "    float normalized_depth = clamp(out_vs_depth.x / out_vs_depth.y * 0.5 + 0.5, 0.0, 1.0);\n"
                                                               "\n"
                                                               "    result = vec2(normalized_depth,\n"
                                                               /* Use derivatives to account for necessary bias (as per article in GPU Gems 3) */
@@ -1100,12 +1100,12 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "\n"
                                                               "uniform mat4  model;\n"
                                                               "in      vec3  object_vertex;\n"
-                                                              "out     float out_vs_depth;\n"
+                                                              "out     vec2 out_vs_depth;\n"
                                                               "\n"
                                                               "void main()\n"
                                                               "{\n"
                                                               "    gl_Position  = vp * model * vec4(object_vertex, 1.0);\n"
-                                                              "    out_vs_depth = gl_Position.z / gl_Position.w;\n"
+                                                              "    out_vs_depth = gl_Position.zw;\n"
                                                               "}\n";
 
     mesh_material special_material_depth_clip_and_squared_depth_clip = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),

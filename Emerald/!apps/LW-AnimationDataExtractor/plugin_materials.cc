@@ -230,7 +230,8 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
 
         /* Configure new material instance */
         scene_material new_material = scene_material_create(surface_name,
-                                                            NULL); /* object_manager_path */
+                                                            NULL, /* object_manager_path */
+                                                            in_scene);
 
         ASSERT_DEBUG_SYNC(new_material != NULL,
                           "scene_material_create() failed.");

@@ -892,7 +892,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                   GL_TRUE,
                                   GL_TRUE);
     entrypoints_ptr->pGLDisable  (GL_BLEND);
-    entrypoints_ptr->pGLDisable  (GL_CULL_FACE);
+    //entrypoints_ptr->pGLDisable  (GL_CULL_FACE);
 
     /* Step 1) */
     unsigned int target_height;
