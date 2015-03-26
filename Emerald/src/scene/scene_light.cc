@@ -300,7 +300,8 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_filtering             = SCENE_LIGHT_SHADOW_MAP_FILTERING_PCF;
     light_ptr->shadow_map_internalformat_color  = OGL_TEXTURE_INTERNALFORMAT_GL_RG32F;
     light_ptr->shadow_map_internalformat_depth  = OGL_TEXTURE_INTERNALFORMAT_GL_DEPTH_COMPONENT16;
-    light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
+    //light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID;
+    light_ptr->shadow_map_pointlight_algorithm  = SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL;
     light_ptr->shadow_map_pointlight_far_plane  = 0.0f;
     light_ptr->shadow_map_pointlight_near_plane = 0.1f;
     light_ptr->shadow_map_projection            = system_matrix4x4_create();

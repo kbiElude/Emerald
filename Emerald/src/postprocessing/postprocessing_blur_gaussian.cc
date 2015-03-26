@@ -793,6 +793,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
     const ogl_context_gl_entrypoints_arb_invalidate_subdata*  is_entrypoints_ptr            = NULL;
+    ogl_texture_dimensionality                                src_texture_dimensionality    = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
     unsigned int                                              src_texture_height            = 0;
     GLenum                                                    src_texture_internalformat    = GL_NONE;
     unsigned int                                              src_texture_width             = 0;
@@ -828,6 +829,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                          0, /* mipmap_level */
                                          OGL_TEXTURE_MIPMAP_PROPERTY_HEIGHT,
                                          &src_texture_height);
+    ogl_texture_get_property            (src_texture,
+                                         OGL_TEXTURE_PROPERTY_DIMENSIONALITY,
+                                        &src_texture_dimensionality);
     ogl_texture_get_property            (src_texture,
                                          OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
                                          &src_texture_internalformat);
@@ -884,15 +888,20 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
      *    Draw (pong) FBO is attached the source texture.
      *    Read (ping) FBO is attached the ping (0th) texture layer.
      */
-    const GLuint ping_fbo_id = blur_ptr->fbo_ids[0];
-    const GLuint pong_fbo_id = blur_ptr->fbo_ids[1];
+    bool         is_culling_enabled = false;
+    const GLuint ping_fbo_id        = blur_ptr->fbo_ids[0];
+    const GLuint pong_fbo_id        = blur_ptr->fbo_ids[1];
+
+    ogl_context_state_cache_get_property(state_cache,
+                                         OGL_CONTEXT_STATE_CACHE_PROPERTY_RENDERING_MODE_CULL_FACE,
+                                        &is_culling_enabled);
 
     entrypoints_ptr->pGLColorMask(GL_TRUE,
                                   GL_TRUE,
                                   GL_TRUE,
                                   GL_TRUE);
     entrypoints_ptr->pGLDisable  (GL_BLEND);
-    //entrypoints_ptr->pGLDisable  (GL_CULL_FACE);
+    entrypoints_ptr->pGLDisable  (GL_CULL_FACE);
 
     /* Step 1) */
     unsigned int target_height;
@@ -946,38 +955,32 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                                1,      /* n_samples */
                                                                false); /* fixed_sample_locations */
 
-    entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        ping_fbo_id);
-    entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                        pong_fbo_id);
-
-    dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
-                                                            GL_COLOR_ATTACHMENT0,
-                                                            temp_2d_array_texture,
-                                                            0,  /* level */
-                                                            0); /* layer */
-    dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT   (pong_fbo_id,
-                                                            GL_COLOR_ATTACHMENT0,
-                                                            GL_TEXTURE_2D,
-                                                            src_texture,
-                                                            0); /* level */
-
-    entrypoints_ptr->pGLBlitFramebuffer(0, /* srcX0 */
-                                        0, /* srcY0 */
-                                        src_texture_width,
-                                        src_texture_height,
-                                        0, /* dstX0 */
-                                        0, /* dstY0 */
-                                        target_width,
-                                        target_height,
-                                        GL_COLOR_BUFFER_BIT,
-                                        target_interpolation);
-
-    /* Step 2): Set-up */
+    /* Step 2): Set-up
+     *
+     * NOTE: For the time being, we need to handle two separate texture types:
+     *
+     * X 2D Textures
+     * X Cube-map Textures
+     *
+     * ..possibly more in the future..
+     *
+     * For 2D textures, things are straightforward.
+     *
+     * For CM textures, we need to perform the same task for each cube-map face.
+     * We could possibly improve performance by using multilayered rendering and
+     * reworking the fragment shader, but.. This is left as homework. :D No,
+     * seriously, this would require a major revamp of the implementation and
+     * there are more interesting things to be looking at ATM!
+     *
+     */
     const GLuint po_id = ogl_program_get_id(blur_ptr->po);
 
     entrypoints_ptr->pGLBindVertexArray(vao_id);
     entrypoints_ptr->pGLUseProgram     (po_id);
+    entrypoints_ptr->pGLViewport       (0, /* x */
+                                        0, /* y */
+                                        target_width,
+                                        target_height);
 
     dsa_entrypoints_ptr->pGLBindMultiTextureEXT(GL_TEXTURE0 + DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                                 GL_TEXTURE_2D_ARRAY,
@@ -994,130 +997,200 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                                 N_TAPS_UNIFORM_LOCATION,
                                                 n_taps);
 
-    entrypoints_ptr->pGLViewport                           (0, /* x */
-                                                            0, /* y */
-                                                            target_width,
-                                                            target_height);
-    dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
-                                                            GL_COLOR_ATTACHMENT0,
-                                                            temp_2d_array_texture,
-                                                            0,  /* level */
-                                                            0); /* layer */
-    dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
-                                                            GL_COLOR_ATTACHMENT0,
-                                                            temp_2d_array_texture,
-                                                            0,  /* level */
-                                                            1); /* layer */
+    /* Iterate over all layers we need blurred */
+    ASSERT_DEBUG_SYNC(src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D       ||
+                      src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP,
+                      "Unsupported source texture dimensionality");
 
-    /* Step 2a): Kick off. Result blurred texture is stored under layer 0 */
-    float n_iterations_frac = fmod(n_iterations, 1.0f);
+    const unsigned int n_layers = (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D) ? 1 : 6;
 
-    for (unsigned int n_iteration = 0;
-                      n_iteration < (unsigned int) floor(n_iterations);
-                    ++n_iteration)
+    for (unsigned int n_layer = 0;
+                      n_layer < n_layers;
+                    ++n_layer)
     {
-        /* Horizontal pass */
-        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                            pong_fbo_id);
+        GLenum current_layer_target = GL_NONE;
 
-        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
-                                       0,  /* first - 0 will cause FS to read from layer 0 */
-                                       4); /* count */
+        if (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D)
+        {
+            current_layer_target = GL_TEXTURE_2D;
+        }
+        else
+        {
+            current_layer_target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + n_layer;
+        }
 
-        /* Vertical pass */
+        /* Copy the layer to blur */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                             ping_fbo_id);
-
-        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
-                                       4,  /* first - 4 will cause FS to read from layer 1 */
-                                       4); /* count */
-    } /* for (all iterations) */
-
-    /* Step 2b) Run the extra iteration if frac(n_iterations) != 0 */
-    if (n_iterations_frac > 1e-5f)
-    {
-        /* Draw the src texture, blurred (n_iterations + 1) times, into texture layer 1 */
-
-        /* Horizontal pass */
-        entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+        entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
                                             pong_fbo_id);
 
-        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
                                                                 GL_COLOR_ATTACHMENT0,
                                                                 temp_2d_array_texture,
                                                                 0,  /* level */
-                                                                2); /* layer */
+                                                                0); /* layer */
 
-        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
-                                       0,  /* first - 0 will cause FS to read from layer 0 */
-                                       4); /* count */
+        if (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D)
+        {
+            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
+                                                                 GL_COLOR_ATTACHMENT0,
+                                                                 GL_TEXTURE_2D,
+                                                                 src_texture,
+                                                                 0); /* level */
+        }
+        else
+        {
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+                                                                    GL_COLOR_ATTACHMENT0,
+                                                                    src_texture,
+                                                                    0, /* level */
+                                                                    n_layer);
+        }
 
-        /* Vertical pass */
+        entrypoints_ptr->pGLBlitFramebuffer(0, /* srcX0 */
+                                            0, /* srcY0 */
+                                            src_texture_width,
+                                            src_texture_height,
+                                            0, /* dstX0 */
+                                            0, /* dstY0 */
+                                            target_width,
+                                            target_height,
+                                            GL_COLOR_BUFFER_BIT,
+                                            target_interpolation);
+
+        dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(ping_fbo_id,
+                                                                GL_COLOR_ATTACHMENT0,
+                                                                temp_2d_array_texture,
+                                                                0,  /* level */
+                                                                0); /* layer */
         dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
                                                                 GL_COLOR_ATTACHMENT0,
                                                                 temp_2d_array_texture,
                                                                 0,  /* level */
                                                                 1); /* layer */
 
-        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
-                                       8,  /* first - 8 will cause FS to read from layer 2 */
-                                       4); /* count */
+        /* Step 2a): Kick off. Result blurred texture is stored under layer 0 */
+        float n_iterations_frac = fmod(n_iterations, 1.0f);
 
-        /* Step 3): Blend the (n_iterations + 1) texture layer over the (n_iterations) texture layer*/
+        for (unsigned int n_iteration = 0;
+                          n_iteration < (unsigned int) floor(n_iterations);
+                        ++n_iteration)
+        {
+            /* Horizontal pass */
+            entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                pong_fbo_id);
+
+            entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                           0,  /* first - 0 will cause FS to read from layer 0 */
+                                           4); /* count */
+
+            /* Vertical pass */
+            entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                ping_fbo_id);
+
+            entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                           4,  /* first - 4 will cause FS to read from layer 1 */
+                                           4); /* count */
+        } /* for (all iterations) */
+
+        /* Step 2b) Run the extra iteration if frac(n_iterations) != 0 */
+        if (n_iterations_frac > 1e-5f)
+        {
+            /* Draw the src texture, blurred (n_iterations + 1) times, into texture layer 1 */
+
+            /* Horizontal pass */
+            entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                pong_fbo_id);
+
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+                                                                    GL_COLOR_ATTACHMENT0,
+                                                                    temp_2d_array_texture,
+                                                                    0,  /* level */
+                                                                    2); /* layer */
+
+            entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                           0,  /* first - 0 will cause FS to read from layer 0 */
+                                           4); /* count */
+
+            /* Vertical pass */
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+                                                                    GL_COLOR_ATTACHMENT0,
+                                                                    temp_2d_array_texture,
+                                                                    0,  /* level */
+                                                                    1); /* layer */
+
+            entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                           8,  /* first - 8 will cause FS to read from layer 2 */
+                                           4); /* count */
+
+            /* Step 3): Blend the (n_iterations + 1) texture layer over the (n_iterations) texture layer*/
+            entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
+                                                ping_fbo_id);
+            entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
+                                                0);
+
+            entrypoints_ptr->pGLEnable       (GL_BLEND);
+            entrypoints_ptr->pGLBlendColor   (0.0f, /* red */
+                                              0.0f, /* green */
+                                              0.0f, /* blue */
+                                              n_iterations_frac);
+            entrypoints_ptr->pGLBlendEquation(GL_FUNC_ADD);
+            entrypoints_ptr->pGLBlendFunc    (GL_CONSTANT_ALPHA,
+                                              GL_ONE_MINUS_CONSTANT_ALPHA);
+
+            entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                                COEFFS_DATA_UB_BP,
+                                                blur_ptr->coeff_bo_id,
+                                                blur_ptr->coeff_buffer_offset_for_value_1,
+                                                blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
+
+            entrypoints_ptr->pGLProgramUniform1i(po_id,
+                                                 N_TAPS_UNIFORM_LOCATION,
+                                                 1);
+
+            /* Draw data from texture layer 1 */
+            entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
+                                           4,  /* first */
+                                           4); /* count */
+
+            entrypoints_ptr->pGLDisable(GL_BLEND);
+        } /* if (n_iterations_frac > 1e-5f) */
+
+        /* Step 4): Store the result in the user-specified texture */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                            ping_fbo_id);
+                                            pong_fbo_id);
         entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                            0);
+                                            ping_fbo_id);
 
-        entrypoints_ptr->pGLEnable       (GL_BLEND);
-        entrypoints_ptr->pGLBlendColor   (0.0f, /* red */
-                                          0.0f, /* green */
-                                          0.0f, /* blue */
-                                          n_iterations_frac);
-        entrypoints_ptr->pGLBlendEquation(GL_FUNC_ADD);
-        entrypoints_ptr->pGLBlendFunc    (GL_CONSTANT_ALPHA,
-                                          GL_ONE_MINUS_CONSTANT_ALPHA);
+        if (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D)
+        {
+            dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
+                                                                 GL_COLOR_ATTACHMENT0,
+                                                                 GL_TEXTURE_2D,
+                                                                 src_texture,
+                                                                 0); /* level */
+        }
+        else
+        {
+            dsa_entrypoints_ptr->pGLNamedFramebufferTextureLayerEXT(pong_fbo_id,
+                                                                    GL_COLOR_ATTACHMENT0,
+                                                                    src_texture,
+                                                                    0, /* level */
+                                                                    n_layer);
+        }
 
-        entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                            COEFFS_DATA_UB_BP,
-                                            blur_ptr->coeff_bo_id,
-                                            blur_ptr->coeff_buffer_offset_for_value_1,
-                                            blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
-
-        entrypoints_ptr->pGLProgramUniform1i(po_id,
-                                             N_TAPS_UNIFORM_LOCATION,
-                                             1);
-
-        /* Draw data from texture layer 1 */
-        entrypoints_ptr->pGLDrawArrays(GL_TRIANGLE_STRIP,
-                                       4,  /* first */
-                                       4); /* count */
-
-        entrypoints_ptr->pGLDisable(GL_BLEND);
-    } /* if (n_iterations_frac > 1e-5f) */
-
-    /* Step 4): Store the result in the user-specified texture */
-    entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
-                                        pong_fbo_id);
-    entrypoints_ptr->pGLBindFramebuffer(GL_READ_FRAMEBUFFER,
-                                        ping_fbo_id);
-
-    dsa_entrypoints_ptr->pGLNamedFramebufferTexture2DEXT(pong_fbo_id,
-                                                         GL_COLOR_ATTACHMENT0,
-                                                         GL_TEXTURE_2D,
-                                                         src_texture,
-                                                         0); /* level */
-
-    entrypoints_ptr->pGLBlitFramebuffer(0,                  /* srcX0 */
-                                        0,                  /* srcY0 */
-                                        target_width,
-                                        target_height,
-                                        0,                  /* dstX0 */
-                                        0,                  /* dstY0 */
-                                        src_texture_width,
-                                        src_texture_height,
-                                        GL_COLOR_BUFFER_BIT,
-                                        target_interpolation);
+        entrypoints_ptr->pGLBlitFramebuffer(0,                  /* srcX0 */
+                                            0,                  /* srcY0 */
+                                            target_width,
+                                            target_height,
+                                            0,                  /* dstX0 */
+                                            0,                  /* dstY0 */
+                                            src_texture_width,
+                                            src_texture_height,
+                                            GL_COLOR_BUFFER_BIT,
+                                            target_interpolation);
+    } /* for (all layers that need to be blurred) */
 
     /* All done */
     GLuint temp_2d_array_texture_id = 0;
@@ -1137,6 +1210,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                         viewport_data[1],
                                         viewport_data[2],
                                         viewport_data[3]);
+
+    if (is_culling_enabled)
+    {
+        entrypoints_ptr->pGLEnable(GL_CULL_FACE);
+    }
 
     ogl_textures_return_reusable(blur_ptr->context,
                                  temp_2d_array_texture);
