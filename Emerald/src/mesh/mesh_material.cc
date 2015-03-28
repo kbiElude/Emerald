@@ -1295,9 +1295,6 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
 
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
-            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
-                              "MESH_MATERIAL_PROPERTY_SHADING query is invalid for customized mesh_material instances.");
-
             *(mesh_material_shading*) out_result = material_ptr->shading;
 
             break;

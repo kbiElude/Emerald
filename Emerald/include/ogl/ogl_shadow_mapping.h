@@ -16,6 +16,30 @@ DECLARE_HANDLE(ogl_shadow_mapping);
 
 typedef enum
 {
+    /* Fragment shader to be used for generating color shadow map data for
+     * Variance Shadow Mapping.
+     */
+    OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS,
+
+    /* Vertex shader to be used for generating color shadow map data for
+     * Variance Shadow Mapping.
+     */
+     OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS,
+
+    /* Fragment shader to be used for generating depth shadow map data for
+     * Plain Shadow Mapping.
+     */
+     OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS,
+
+    /* Vertex shader to be used for generating depth shadow map data for
+     * Plain Shadow Mapping.
+     */
+     OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_VS
+
+} ogl_shadow_mapping_special_material_body_type;
+
+typedef enum
+{
     /* not settable, unsigned int */
     OGL_SHADOW_MAPPING_PROPERTY_N_MAX_BLUR_TAPS,
 
@@ -83,6 +107,12 @@ PUBLIC void ogl_shadow_mapping_get_matrices_for_light(__in            __notnull 
 PUBLIC EMERALD_API void ogl_shadow_mapping_get_property(__in  __notnull ogl_shadow_mapping          shadow_mapping,
                                                         __in            ogl_shadow_mapping_property property,
                                                         __out __notnull void*                       out_result);
+
+/** TODO.
+ *
+ *  NOTE: Internal usage only.
+ **/
+PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_body(__in ogl_shadow_mapping_special_material_body_type body_type);
 
 /** TODO */
 PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notnull scene_mesh scene_mesh_instance,

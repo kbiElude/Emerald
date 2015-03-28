@@ -7,6 +7,7 @@
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
+#include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
@@ -1044,98 +1045,22 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
      * NOTE: These bodies need to adhere to the requirements inposed
      *       by how ogl_uber works.
      */
-    static const char* depth_clip_and_squared_depth_clip_fs = "#version 420\n"
-                                                              "\n"
-                                                              "                     in  vec2 out_vs_depth;\n"
-                                                              "layout(location = 0) out vec2 result;\n"
-                                                              "\n"
-                                                              "uniform float max_variance;\n"
-                                                              "\n"
-                                                              "void main()\n"
-                                                              "{\n"
-                                                              "    float dx               = dFdx(out_vs_depth);\n"
-                                                              "    float dy               = dFdy(out_vs_depth);\n"
-                                                              "    float normalized_depth = clamp(out_vs_depth.x / out_vs_depth.y * 0.5 + 0.5, 0.0, 1.0);\n"
-                                                              "\n"
-                                                              "    result = vec2(normalized_depth,\n"
-                                                              /* Use derivatives to account for necessary bias (as per the article in GPU Gems 3).
-                                                               * Note that we parametrize the upper boundary. This turns out to be necessary for
-                                                               * some scenes, where excessive variance causes the derivates to explode. */
-                                                              "                  clamp(normalized_depth * normalized_depth + 0.25*(dx * dx + dy * dy), 0.0, max_variance) );\n"
-                                                              "}\n";
-    static const char* depth_clip_and_squared_depth_clip_vs = "#version 420\n"
-                                                              "\n"
-                                                              "uniform VertexShaderProperties\n"
-                                                              "{\n"
-                                                              "    layout(row_major) mat4 vp;\n"
-                                                              "};\n"
-                                                              "\n"
-                                                              "uniform mat4  model;\n"
-                                                              "in      vec3  object_vertex;\n"
-                                                              "out     vec2  out_vs_depth;\n"
-                                                              "\n"
-                                                              "void main()\n"
-                                                              "{\n"
-                                                              "    gl_Position  = vp * model * vec4(object_vertex, 1.0);\n"
-                                                              "    out_vs_depth = gl_Position.zw;\n"
-                                                              "}\n";
-    static const char* depth_clip_dual_paraboloid_fs        = "#version 420\n"
-                                                              "\n"
-                                                              "in float clip_depth;\n"
-                                                              "\n"
-                                                              "void main()\n"
-                                                              "{\n"
-                                                              "    if (clip_depth < 0.0) discard;\n"
-                                                              "}\n";
-    static const char* depth_clip_dual_paraboloid_vs        = "#version 420\n"
-                                                              "\n"
-                                                              "uniform VertexShaderProperties\n"
-                                                              "{\n"
-                                                              "    layout(row_major) mat4 vp;\n"
-                                                              "};\n"
-                                                              "\n"
-                                                              "out     float clip_depth;\n"
-                                                              "uniform float far_near_plane_diff;\n"
-                                                              "uniform float flip_z;\n"
-                                                              "uniform mat4  model;\n"
-                                                              "uniform float near_plane;\n"
-                                                              "in      vec3  object_vertex;\n"
-                                                              "out     vec2  out_vs_depth;\n"
-                                                              "\n"
-                                                              "void main()\n"
-                                                              "{\n"
-                                                              "    vec4 world_vertex = vp * model * vec4(object_vertex, 1.0);\n"
-                                                              "    vec4 clip_vertex  = world_vertex;\n"
-                                                              "    \n"
-                                                              "    clip_vertex.z *= flip_z;\n"
-                                                              "    \n"
-                                                              "    float light_to_vertex_vec_len = length(clip_vertex.xyz);\n"
-                                                              "    \n"
-                                                              "    clip_vertex.xyz /= vec3(light_to_vertex_vec_len);\n"
-                                                              "    clip_depth       = clip_vertex.z;\n"
-                                                              "    clip_vertex.xy  /= vec2(clip_vertex.z + 1.0);\n"
-                                                              "    clip_vertex.z    = ((light_to_vertex_vec_len - near_plane) / far_near_plane_diff) * 2.0 - 1.0;\n"
-                                                              "    clip_vertex.w    = 1.0;\n"
-                                                              "    \n"
-                                                              "    gl_Position = clip_vertex;\n"
-                                                              "}\n";
-
     mesh_material special_material_depth_clip_dual_paraboloid        = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space dual paraboloid"),
                                                                                                                materials_ptr->context,
                                                                                                                NULL, /* object_manager_path */
-                                                                                                               system_hashed_ansi_string_create(depth_clip_dual_paraboloid_fs),
+                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS),
                                                                                                                NULL, /* gs_body */
                                                                                                                NULL, /* tc_body */
                                                                                                                NULL, /* te_body */
-                                                                                                               system_hashed_ansi_string_create(depth_clip_dual_paraboloid_vs) );
+                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_VS) );
     mesh_material special_material_depth_clip_and_depth_clip_squared = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
                                                                                                                materials_ptr->context,
                                                                                                                NULL, /* object_manager_path */
-                                                                                                               system_hashed_ansi_string_create(depth_clip_and_squared_depth_clip_fs),
+                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS),
                                                                                                                NULL, /* gs_body */
                                                                                                                NULL, /* tc_body */
                                                                                                                NULL, /* te_body */
-                                                                                                               system_hashed_ansi_string_create(depth_clip_and_squared_depth_clip_vs) );
+                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS) );
 
     /* Configure "normal preview" material */
     mesh_material_set_property                                    (special_material_normal,
