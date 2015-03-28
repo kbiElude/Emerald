@@ -657,7 +657,7 @@ PUBLIC void ui_init()
                                                                n_shadow_map_pointlight_algorithm_strings,
                                                                shadow_map_pointlight_algorithm_strings,
                                                                (void**) shadow_map_pointlight_algorithm_emerald_enums,
-                                                               _ui_get_current_color_shadow_map_blur_resolution_index(),
+                                                               _ui_get_current_color_shadow_map_pointlight_algorithm_index(),
                                                                system_hashed_ansi_string_create("Point light CM algorithm"),
                                                                temp_x1y1,
                                                                _ui_on_shadow_map_pointlight_algorithm_changed,

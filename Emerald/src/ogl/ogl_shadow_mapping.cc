@@ -1486,12 +1486,31 @@ PUBLIC void ogl_shadow_mapping_adjust_fragment_uber_code(__in  __notnull ogl_sha
         else
         if (is_point_light)
         {
-            /* first & second moment */
-            code_snippet_sstream << "texture("
-                                 << system_hashed_ansi_string_get_buffer(light_shadow_map_color_sampler_var_name_has)
-                                 << ", "
-                                    "normalize(" << light_vertex_var_name_sstream.str() << ".xyz)"
-                                 << ").xy;\n";
+            if (light_sm_pointlight_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_CUBICAL)
+            {
+                /* first & second moment */
+                code_snippet_sstream << "texture("
+                                     << system_hashed_ansi_string_get_buffer(light_shadow_map_color_sampler_var_name_has)
+                                     << ", "
+                                        "normalize(" << light_vertex_var_name_sstream.str() << ".xyz)"
+                                     << ").xy;\n";
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(light_sm_pointlight_algorithm == SCENE_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM_DUAL_PARABOLOID,
+                                  "Sanity check failed");
+
+                code_snippet_sstream << "texture("
+                                     << system_hashed_ansi_string_get_buffer(light_shadow_map_color_sampler_var_name_has)
+                                     << ", "
+                                     << "vec3("
+                                     /* UV */
+                                     << light_uv_var_name_sstream.str()
+                                     << ", "
+                                     /* Which face should we sample from? */
+                                     << "("
+                                     << light_vertex_var_name_sstream.str() << ".z >= 0.0) ? 0.0 : 1.0) ).xy;\n";
+            }
         }
         else
         if (is_spot_light)
@@ -2339,6 +2358,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 
     switch (body_type)
     {
+        /* Variance Shadow Mapping for 2D Texture / Cube-map Texture Targets */
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS:
         {
             static system_hashed_ansi_string depth_clip_and_squared_depth_clip_fs = system_hashed_ansi_string_create("#version 420\n"
@@ -2390,6 +2410,82 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
             break;
         }
 
+        /* Variance Shadow Mapping for two 2D Texture Targets (dual-paraboloid) */
+        case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_FS:
+        {
+            static system_hashed_ansi_string dc_and_squared_dc_dp_fs = system_hashed_ansi_string_create("#version 420\n"
+                                                                                                        "\n"
+                                                                                                        "                     in  vec2 out_vs_paraboloid_depth;\n"
+                                                                                                        "                     in  vec2 out_vs_depth;\n"
+                                                                                                        "layout(location = 0) out vec2 result;\n"
+                                                                                                        "\n"
+                                                                                                        "uniform float max_variance;\n"
+                                                                                                        "\n"
+                                                                                                        "void main()\n"
+                                                                                                        "{\n"
+                                                                                                        "    float dx         = dFdx(out_vs_depth);\n"
+                                                                                                        "    float dy         = dFdy(out_vs_depth);\n"
+                                                                                                        "    float clip_depth = out_vs_depth.x / out_vs_depth.y;\n"
+                                                                                                        "\n"
+                                                                                                        "    if (clip_depth < 0.0) discard;\n"
+                                                                                                        "\n"
+                                                                                                        "    float normalized_depth = clamp(out_vs_paraboloid_depth.x / out_vs_paraboloid_depth.y * 0.5 + 0.5, 0.0, 1.0);\n"
+                                                                                                        "\n"
+                                                                                                        "    result = vec2(normalized_depth,\n"
+                                                                                                        /* Use derivatives to account for necessary bias (as per the article in GPU Gems 3).
+                                                                                                         * Note that we parametrize the upper boundary. This turns out to be necessary for
+                                                                                                         * some scenes, where excessive variance causes the derivates to explode. */
+                                                                                                        "                  clamp(normalized_depth * normalized_depth, 0.0, max_variance) );\n"
+                                                                                                        "}\n");
+
+            result = dc_and_squared_dc_dp_fs;
+
+            break;
+        }
+
+        case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_VS:
+        {
+            static system_hashed_ansi_string dc_and_squared_dc_dp_vs = system_hashed_ansi_string_create("#version 420\n"
+                                                                                                        "\n"
+                                                                                                        "uniform VertexShaderProperties\n"
+                                                                                                        "{\n"
+                                                                                                        "                      float far_near_plane_diff;\n"
+                                                                                                        "                      float flip_z;\n"
+                                                                                                        "                      float near_plane;\n"
+                                                                                                        "    layout(row_major) mat4  vp;\n"
+                                                                                                        "};\n"
+                                                                                                        "\n"
+                                                                                                        "uniform mat4  model;\n"
+                                                                                                        "in      vec3  object_vertex;\n"
+                                                                                                        "out     vec2  out_vs_depth;\n"
+                                                                                                        "out     vec2  out_vs_paraboloid_depth;\n"
+                                                                                                        "\n"
+                                                                                                        "void main()\n"
+                                                                                                        "{\n"
+                                                                                                        "    vec4 world_vertex = vp * model * vec4(object_vertex, 1.0);\n"
+                                                                                                        "    vec4 clip_vertex  = world_vertex;\n"
+                                                                                                        "    \n"
+                                                                                                        "    clip_vertex.z *= flip_z;\n"
+                                                                                                        "    \n"
+                                                                                                        "    float light_to_vertex_vec_len = length(clip_vertex.xyz);\n"
+                                                                                                        "    \n"
+                                                                                                        "    clip_vertex.xyz /= vec3(light_to_vertex_vec_len);\n"
+                                                                                                        "    out_vs_depth     = clip_vertex.zw;\n"
+                                                                                                        "    clip_vertex.xy  /= vec2(clip_vertex.z + 1.0);\n"
+                                                                                                        "    clip_vertex.z    = ((light_to_vertex_vec_len - near_plane) / far_near_plane_diff) * 2.0 - 1.0;\n"
+                                                                                                        "    clip_vertex.w    = 1.0;\n"
+                                                                                                        "    \n"
+                                                                                                        "    gl_Position             = clip_vertex;\n"
+                                                                                                        "    out_vs_paraboloid_depth = clip_vertex.zw;\n"
+                                                                                                        "}\n");
+
+            result = dc_and_squared_dc_dp_vs;
+
+            break;
+        }
+
+
+        /* Plain Shadow Mapping for 2D texture / Cube-Map texture targets: */
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS:
         {
             static system_hashed_ansi_string depth_clip_dual_paraboloid_fs = system_hashed_ansi_string_create("#version 420\n"
@@ -2414,12 +2510,12 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
                                                                                                               "{\n"
                                                                                                               "                      float far_near_plane_diff;\n"
                                                                                                               "                      float flip_z;\n"
+                                                                                                              "                      float near_plane;\n"
                                                                                                               "    layout(row_major) mat4  vp;\n"
                                                                                                               "};\n"
                                                                                                               "\n"
                                                                                                               "out     float clip_depth;\n"
                                                                                                               "uniform mat4  model;\n"
-                                                                                                              "uniform float near_plane;\n"
                                                                                                               "in      vec3  object_vertex;\n"
                                                                                                               "out     vec2  out_vs_depth;\n"
                                                                                                               "\n"
@@ -2613,6 +2709,9 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
         }
         else
         {
+            ASSERT_DEBUG_SYNC(sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM,
+                              "Sanity check failed");
+
             sm_special_material = SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED_DUAL_PARABOLOID;
         }
     }
@@ -3191,6 +3290,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
             {
                 ASSERT_DEBUG_SYNC(light_shadow_map_size[0] == light_shadow_map_size[1],
                                   "For VSM, shadow map textures must be square.");
+                ASSERT_DEBUG_SYNC(light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D       && light_shadow_map_size[2] == 1 ||
+                                  light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY && light_shadow_map_size[2] >  1 ||
+                                  light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP && light_shadow_map_size[2] == 1,
+                                  "Sanity check failed");
 
                 handler_ptr->current_sm_color0_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
                                                                                             light_shadow_map_dimensionality,
@@ -3198,7 +3301,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                                                                             light_shadow_map_internalformat_color,
                                                                                             light_shadow_map_size[0],
                                                                                             light_shadow_map_size[1],
-                                                                                            1,      /* base_mipmap_depth */
+                                                                                            light_shadow_map_size[2],
                                                                                             0,      /* n_samples */
                                                                                             false); /* fixed_samples_location */
 
@@ -3442,7 +3545,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
         {
             clear_bits |= GL_COLOR_BUFFER_BIT;
 
-            entry_points->pGLClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            entry_points->pGLClearColor(1.0f, 1.0f, 0.0f, 1.0f);
         }
 
         entry_points->pGLClearDepth(1.0);

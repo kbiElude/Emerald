@@ -999,10 +999,47 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
 
     /* Iterate over all layers we need blurred */
     ASSERT_DEBUG_SYNC(src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D       ||
+                      src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY ||
                       src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP,
                       "Unsupported source texture dimensionality");
 
-    const unsigned int n_layers = (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D) ? 1 : 6;
+    unsigned int n_layers = 0;
+
+    switch (src_texture_dimensionality)
+    {
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D:
+        {
+            n_layers = 1;
+
+            break;
+        }
+
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY:
+        {
+            ogl_texture_get_mipmap_property(src_texture,
+                                            0, /* mipmap_level */
+                                            OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
+                                           &n_layers);
+
+            ASSERT_DEBUG_SYNC(n_layers != 0,
+                              "Could not retrieve the number of layers of the input 2D Array Texture.");
+
+            break;
+        }
+
+        case OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP:
+        {
+            n_layers = 6;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unsupported input texture dimensionality.");
+        }
+    } /* switch (src_texture_dimensionality) */
 
     for (unsigned int n_layer = 0;
                       n_layer < n_layers;
@@ -1010,7 +1047,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     {
         GLenum current_layer_target = GL_NONE;
 
-        if (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D)
+        if (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D        ||
+            src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY)
         {
             current_layer_target = GL_TEXTURE_2D;
         }

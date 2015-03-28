@@ -1025,9 +1025,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
           mesh_material             special_material_depth_clip                                        = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
                                                                                                                               materials_ptr->context,
                                                                                                                               NULL); /* object_manager_path */
-          mesh_material             special_material_depth_clip_and_depth_clip_squared_dual_paraboloid = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space and depth squared clip space dual paraboloid"),
-                                                                                                                              materials_ptr->context,
-                                                                                                                              NULL); /* object_manager_path */
+          
           mesh_material             special_material_normal                                            = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
                                                                                                                               materials_ptr->context,
                                                                                                                               NULL); /* object_manager_path */
@@ -1045,22 +1043,34 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
      * NOTE: These bodies need to adhere to the requirements inposed
      *       by how ogl_uber works.
      */
-    mesh_material special_material_depth_clip_dual_paraboloid        = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space dual paraboloid"),
-                                                                                                               materials_ptr->context,
-                                                                                                               NULL, /* object_manager_path */
-                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS),
-                                                                                                               NULL, /* gs_body */
-                                                                                                               NULL, /* tc_body */
-                                                                                                               NULL, /* te_body */
-                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_VS) );
-    mesh_material special_material_depth_clip_and_depth_clip_squared = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
-                                                                                                               materials_ptr->context,
-                                                                                                               NULL, /* object_manager_path */
-                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS),
-                                                                                                               NULL, /* gs_body */
-                                                                                                               NULL, /* tc_body */
-                                                                                                               NULL, /* te_body */
-                                                                                                               ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS) );
+    mesh_material special_material_depth_clip_and_depth_clip_squared                 = NULL;
+    mesh_material special_material_depth_clip_and_depth_clip_squared_dual_paraboloid = NULL;
+    mesh_material special_material_depth_clip_dual_paraboloid                        = NULL;
+
+    special_material_depth_clip_and_depth_clip_squared_dual_paraboloid = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space and depth squared clip space dual paraboloid"),
+                                                                                                                 materials_ptr->context,
+                                                                                                                 NULL, /* object_manager_path */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_FS),
+                                                                                                                 NULL, /* gs_body */
+                                                                                                                 NULL, /* tc_body */
+                                                                                                                 NULL, /* te_body */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_VS) );
+    special_material_depth_clip_dual_paraboloid                        = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space dual paraboloid"),
+                                                                                                                 materials_ptr->context,
+                                                                                                                 NULL, /* object_manager_path */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS),
+                                                                                                                 NULL, /* gs_body */
+                                                                                                                 NULL, /* tc_body */
+                                                                                                                 NULL, /* te_body */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_VS) );
+    special_material_depth_clip_and_depth_clip_squared                 = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
+                                                                                                                 materials_ptr->context,
+                                                                                                                 NULL, /* object_manager_path */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS),
+                                                                                                                 NULL, /* gs_body */
+                                                                                                                 NULL, /* tc_body */
+                                                                                                                 NULL, /* te_body */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS) );
 
     /* Configure "normal preview" material */
     mesh_material_set_property                                    (special_material_normal,

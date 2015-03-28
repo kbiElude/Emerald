@@ -26,6 +26,14 @@ typedef enum
      */
      OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS,
 
+    /* Fragment shader to be used for generating color shadow map data for
+     * Variance Shadow Mapping (DPSM-specific) */
+    OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_FS,
+
+    /* Vertex shader to be used for generating color shadow map data for
+     * Variance Shadow Mapping (DPSM-specific) */
+    OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_VS,
+
     /* Fragment shader to be used for generating depth shadow map data for
      * Plain Shadow Mapping.
      */
