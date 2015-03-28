@@ -7,7 +7,6 @@
 #ifndef SHADERS_FRAGMENT_UBER_H
 #define SHADERS_FRAGMENT_UBER_H
 
-#include "mesh/mesh_material.h"
 #include "ogl/ogl_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_uber, shaders_fragment_uber)
@@ -77,15 +76,6 @@ typedef enum
     SHADERS_FRAGMENT_UBER_ITEM_UNKNOWN
 } shaders_fragment_uber_item_type;
 
-typedef enum
-{
-    /* Equivalent of MESH_MATERIAL_FS_BEHAVIOR_DEFAULT */
-    SHADERS_FRAGMENT_UBER_TYPE_DEFAULT,
-
-    /* Equivalent of MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM */
-    SHADERS_FRAGMENT_UBER_TYPE_DUAL_PARABOLOID_SM,
-
-} shaders_fragment_uber_type;
 
 typedef unsigned int shaders_fragment_uber_item_id;
 
@@ -144,19 +134,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
  *
  *  @param ogl_context               Context to create the shader in.
  *  @param system_hashed_ansi_string TODO
- *  @param fs_type                   TODO
  * 
  *  @return shaders_fragment_static instance if successful, NULL otherwise.
  */
 PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __notnull ogl_context,
-                                                                      __in __notnull system_hashed_ansi_string  name,
-                                                                      __in           shaders_fragment_uber_type fs_type);
-
-/** TODO.
- *
- *  Internal usage only.
- */
-PUBLIC shaders_fragment_uber_type shaders_fragment_uber_get_fs_uber_type_for_fs_behavior(__in mesh_material_fs_behavior material_fs_behavior);
+                                                                      __in __notnull system_hashed_ansi_string  name);
 
 /** TODO */
 PUBLIC EMERALD_API bool shaders_fragment_uber_get_item_type(__in __notnull shaders_fragment_uber            uber,

@@ -112,7 +112,6 @@ typedef struct _mesh_material
     mesh_material_type        type;
 
     /* MESH_MATERIAL_TYPE_GENERAL-specific properties */
-    mesh_material_fs_behavior fs_behavior;
     mesh_material_shading     shading;
     _mesh_material_property   shading_properties[MESH_MATERIAL_SHADING_PROPERTY_COUNT];
     scene_material            source_scene_material; /* only used if source == MESH_MATERIAL_SOURCE_OGL_UBER */
@@ -121,7 +120,6 @@ typedef struct _mesh_material
     ogl_uber                  uber_sm;                /* does not use shadow maps for per-light visibility calculation */
     system_hashed_ansi_string uv_map_name;            /* NULL by default, needs to be manually set */
     float                     vertex_smoothing_angle;
-    mesh_material_vs_behavior vs_behavior;
 
     /* MESH_MATERIAL_TYPE_SHADER_BODIES-specific properties */
     ogl_program program;
@@ -132,7 +130,6 @@ typedef struct _mesh_material
         callback_manager       = NULL;
         context                = NULL;
         dirty                  = true;
-        fs_behavior            = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
         name                   = NULL;
         object_manager_path    = NULL;
         owner_scene            = NULL;
@@ -144,7 +141,6 @@ typedef struct _mesh_material
         uber_sm                = NULL;
         uv_map_name            = NULL;
         vertex_smoothing_angle = 0.0f;
-        vs_behavior            = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
         memset(shaders,
                0,
@@ -364,7 +360,6 @@ PUBLIC EMERALD_API mesh_material mesh_material_create(__in     __notnull system_
         new_material->object_manager_path = object_manager_path;
         new_material->type                = MESH_MATERIAL_TYPE_GENERAL;
         new_material->uv_map_name         = NULL;
-        new_material->vs_behavior         = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_material,
                                                        _mesh_material_release,
@@ -400,11 +395,9 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
 
         if (new_material_ptr->type == MESH_MATERIAL_TYPE_GENERAL)
         {
-            new_material_ptr->fs_behavior = src_material_ptr->fs_behavior;
             new_material_ptr->shading     = src_material_ptr->shading;
             new_material_ptr->uber_non_sm = src_material_ptr->uber_non_sm;
             new_material_ptr->uber_sm     = src_material_ptr->uber_sm;
-            new_material_ptr->vs_behavior = src_material_ptr->vs_behavior;
 
             memcpy(new_material_ptr->shading_properties,
                    src_material_ptr->shading_properties,
@@ -439,6 +432,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
         else
         if (new_material_ptr->type == MESH_MATERIAL_TYPE_PROGRAM)
         {
+            new_material_ptr->shading = MESH_MATERIAL_SHADING_NONE;
+
             for (unsigned int n_shader_stage = 0;
                               n_shader_stage < MESH_MATERIAL_SHADER_STAGE_COUNT;
                             ++n_shader_stage)
@@ -942,40 +937,6 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_fs_behavior_has(__in mesh_material_fs_behavior fs_behavior)
-{
-    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
-
-    static const char* behavior_default_name            = "default";
-    static const char* behavior_dual_paraboloid_sm_name = "dual paraboloid SM";
-
-    switch (fs_behavior)
-    {
-        case MESH_MATERIAL_FS_BEHAVIOR_DEFAULT:
-        {
-            result = system_hashed_ansi_string_create(behavior_default_name);
-
-            break;
-        }
-
-        case MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM:
-        {
-            result = system_hashed_ansi_string_create(behavior_dual_paraboloid_sm_name);
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized mesh_material_fs_behavior value.");
-        }
-    } /* switch (fs_behavior) */
-
-    return result;
-}
-
-/* Please see header for specification */
 PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attachment_has(__in mesh_material_property_attachment attachment)
 {
     system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
@@ -1200,40 +1161,6 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_propert
 }
 
 /* Please see header for specification */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_vs_behavior_has(__in mesh_material_vs_behavior vs_behavior)
-{
-    system_hashed_ansi_string result = system_hashed_ansi_string_get_default_empty_string();
-
-    static const char* behavior_default_name            = "default";
-    static const char* behavior_dual_paraboloid_sm_name = "dual paraboloid SM";
-
-    switch (vs_behavior)
-    {
-        case MESH_MATERIAL_VS_BEHAVIOR_DEFAULT:
-        {
-            result = system_hashed_ansi_string_create(behavior_default_name);
-
-            break;
-        }
-
-        case MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM:
-        {
-            result = system_hashed_ansi_string_create(behavior_dual_paraboloid_sm_name);
-
-            break;
-        }
-
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized mesh_material_vs_behavior value.");
-        }
-    } /* switch (vs_behavior) */
-
-    return result;
-}
-
-/* Please see header for specification */
 PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_material material,
                                                        __in_opt           scene         scene,
                                                        __in               bool          use_shadow_maps)
@@ -1359,16 +1286,6 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
             break;
         }
 
-        case MESH_MATERIAL_PROPERTY_FS_BEHAVIOR:
-        {
-            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
-                              "MESH_MATERIAL_PROPERTY_FS_BEHAVIOR query is invalid for customized mesh_material instances.");
-
-            *(mesh_material_fs_behavior*) out_result = material_ptr->fs_behavior;
-
-            break;
-        }
-
         case MESH_MATERIAL_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = material_ptr->name;
@@ -1433,16 +1350,6 @@ PUBLIC EMERALD_API void mesh_material_get_property(__in  __notnull mesh_material
                               "MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE query is invalid for customized mesh_material instances.");
 
             *(float*) out_result = material_ptr->vertex_smoothing_angle;
-
-            break;
-        }
-
-        case MESH_MATERIAL_PROPERTY_VS_BEHAVIOR:
-        {
-            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
-                              "MESH_MATERIAL_PROPERTY_VS_BEHAVIOR query is invalid for customized mesh_material instances.");
-
-            *(mesh_material_vs_behavior*) out_result = material_ptr->vs_behavior;
 
             break;
         }
@@ -1635,31 +1542,6 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
         goto end;
     }
 
-    /* 3. FS & VS behavior */
-    mesh_material_fs_behavior material_a_fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
-    mesh_material_vs_behavior material_a_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
-    mesh_material_fs_behavior material_b_fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
-    mesh_material_vs_behavior material_b_vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
-
-    mesh_material_get_property(material_a,
-                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                              &material_a_fs_behavior);
-    mesh_material_get_property(material_a,
-                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                              &material_a_vs_behavior);
-    mesh_material_get_property(material_b,
-                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                              &material_b_fs_behavior);
-    mesh_material_get_property(material_b,
-                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                              &material_b_vs_behavior);
-
-    if (material_a_fs_behavior != material_b_fs_behavior ||
-        material_a_vs_behavior != material_b_vs_behavior)
-    {
-        goto end;
-    }
-
     /* If this is a 'no shading' material and we've reached this point, we can
      * safely assume both materials are a match. */
     if (material_a_shading == MESH_MATERIAL_SHADING_NONE)
@@ -1763,17 +1645,6 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
 
     switch (property)
     {
-        case MESH_MATERIAL_PROPERTY_FS_BEHAVIOR:
-        {
-            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
-                              "MESH_MATERIAL_PROPERTY_FS_BEHAVIOR property can only be set for general mesh_material instances.");
-
-            material_ptr->fs_behavior = *(mesh_material_fs_behavior*) data;
-            material_ptr->dirty       = true;
-
-            break;
-        }
-
         case MESH_MATERIAL_PROPERTY_SHADING:
         {
             ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
@@ -1806,17 +1677,6 @@ PUBLIC EMERALD_API void mesh_material_set_property(__in __notnull mesh_material 
             system_callback_manager_call_back(material_ptr->callback_manager,
                                               MESH_MATERIAL_CALLBACK_ID_VSA_CHANGED,
                                               material);
-
-            break;
-        }
-
-        case MESH_MATERIAL_PROPERTY_VS_BEHAVIOR:
-        {
-            ASSERT_DEBUG_SYNC(material_ptr->type == MESH_MATERIAL_TYPE_GENERAL,
-                              "MESH_MATERIAL_PROPERTY_VS_BEHAVIOR property can only be set for general mesh_material instances.");
-
-            material_ptr->vs_behavior = *(mesh_material_vs_behavior*) data;
-            material_ptr->dirty       = true;
 
             break;
         }

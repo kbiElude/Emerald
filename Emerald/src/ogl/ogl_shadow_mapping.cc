@@ -495,14 +495,28 @@ PRIVATE void _ogl_shadow_mapping_add_uniforms_to_fragment_uber_for_point_light(_
                                                          out_light_view_matrix_var_name_has);
 
             /* Add the shadow map texture sampler */
-            _ogl_shadow_mapping_add_constructor_variable(constructor,
-                                                         n_light,
-                                                         system_hashed_ansi_string_create("shadow_map_depth"),
-                                                         VARIABLE_TYPE_UNIFORM,
-                                                         LAYOUT_QUALIFIER_NONE,
-                                                         TYPE_SAMPLER2DARRAYSHADOW,
-                                                         0, /* uniform_block */
-                                                         out_shadow_map_depth_sampler_var_name_has);
+            if (sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+            {
+                _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                             n_light,
+                                                             system_hashed_ansi_string_create("shadow_map_color"),
+                                                             VARIABLE_TYPE_UNIFORM,
+                                                             LAYOUT_QUALIFIER_NONE,
+                                                             TYPE_SAMPLER2DARRAY,
+                                                             0, /* ub_fs */
+                                                             out_shadow_map_color_sampler_var_name_has);
+            }
+            else
+            {
+                _ogl_shadow_mapping_add_constructor_variable(constructor,
+                                                             n_light,
+                                                             system_hashed_ansi_string_create("shadow_map_depth"),
+                                                             VARIABLE_TYPE_UNIFORM,
+                                                             LAYOUT_QUALIFIER_NONE,
+                                                             TYPE_SAMPLER2DARRAYSHADOW,
+                                                             0, /* uniform_block */
+                                                             out_shadow_map_depth_sampler_var_name_has);
+            }
 
             break;
         }
@@ -2469,10 +2483,14 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
     if (shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_FRONT ||
         shadow_mapping_ptr->current_target_face == OGL_SHADOW_MAPPING_TARGET_FACE_2D_PARABOLOID_REAR)
     {
-        ASSERT_DEBUG_SYNC(sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN,
-                          "TODO");
-
-        sm_special_material = SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID;
+        if (sm_algo == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_PLAIN)
+        {
+            sm_special_material = SPECIAL_MATERIAL_DEPTH_CLIP_DUAL_PARABOLOID;
+        }
+        else
+        {
+            sm_special_material = SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED_DUAL_PARABOLOID;
+        }
     }
     else
     {

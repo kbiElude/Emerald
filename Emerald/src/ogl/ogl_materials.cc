@@ -225,20 +225,8 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
     {
         case MESH_MATERIAL_TYPE_GENERAL:
         {
-            mesh_material_fs_behavior fs_behavior = MESH_MATERIAL_FS_BEHAVIOR_DEFAULT;
-            mesh_material_vs_behavior vs_behavior = MESH_MATERIAL_VS_BEHAVIOR_DEFAULT;
-
-            mesh_material_get_property(material,
-                                       MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                                      &fs_behavior);
-            mesh_material_get_property(material,
-                                       MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                                      &vs_behavior);
-
             new_uber = ogl_uber_create(context,
-                                       uber_name,
-                                       shaders_fragment_uber_get_fs_uber_type_for_fs_behavior(fs_behavior),
-                                       shaders_vertex_uber_get_vs_uber_type_for_vs_behavior  (vs_behavior) );
+                                       uber_name);
 
             ASSERT_ALWAYS_SYNC(new_uber != NULL,
                                "Could not spawn an uber instance");
@@ -902,28 +890,7 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull me
 
         name_sstream << "<<\n\n";
 
-        /* FS & VS behavior */
-        mesh_material_fs_behavior material_fs_behavior;
-        system_hashed_ansi_string material_fs_behavior_has = NULL;
-        mesh_material_vs_behavior material_vs_behavior;
-        system_hashed_ansi_string material_vs_behavior_has = NULL;
-
-        mesh_material_get_property(material,
-                                   MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                                  &material_fs_behavior);
-        mesh_material_get_property(material,
-                                   MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                                  &material_vs_behavior);
-
-        material_fs_behavior_has = mesh_material_get_mesh_material_fs_behavior_has(material_fs_behavior);
-        material_vs_behavior_has = mesh_material_get_mesh_material_vs_behavior_has(material_vs_behavior);
-
-        name_sstream << "FS behavior:["
-                     << system_hashed_ansi_string_get_buffer(material_fs_behavior_has)
-                     << "]\nVS behavior:["
-                     << system_hashed_ansi_string_get_buffer(material_vs_behavior_has)
-                     << "]\n\n";
-
+        /* Store material info details, if available */
         if (material_shading != MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE &&
             material_shading != MESH_MATERIAL_SHADING_NONE)
         {
@@ -1052,30 +1019,31 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull me
 /** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
-    const mesh_material_fs_behavior fs_behavior_dpsm = MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM;
-    const mesh_material_vs_behavior vs_behavior_dpsm = MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM;
-
-    const mesh_material_shading     shading_type_attribute_data                  = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
-    const mesh_material_shading     shading_type_none                            = MESH_MATERIAL_SHADING_NONE;
-          mesh_material             special_material_depth_clip                  = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
-                                                                                                        materials_ptr->context,
-                                                                                                        NULL); /* object_manager_path */
-          mesh_material             special_material_depth_dual_paraboloid_clip  = mesh_material_create(system_hashed_ansi_string_create("Special material: depth dual paraboloid clip"),
-                                                                                                        materials_ptr->context,
-                                                                                                        NULL); /* object_manager_path */
-          mesh_material             special_material_normal                      = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
-                                                                                                        materials_ptr->context,
-                                                                                                        NULL); /* object_manager_path */
-          mesh_material             special_material_texcoord                    = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
-                                                                                                        materials_ptr->context,
-                                                                                                        NULL); /* object_manager_path */
+    const mesh_material_shading     shading_type_attribute_data                                        = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
+    const mesh_material_shading     shading_type_none                                                  = MESH_MATERIAL_SHADING_NONE;
+          mesh_material             special_material_depth_clip                                        = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
+                                                                                                                              materials_ptr->context,
+                                                                                                                              NULL); /* object_manager_path */
+          mesh_material             special_material_depth_clip_and_depth_clip_squared_dual_paraboloid = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space and depth squared clip space dual paraboloid"),
+                                                                                                                              materials_ptr->context,
+                                                                                                                              NULL); /* object_manager_path */
+          mesh_material             special_material_normal                                            = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
+                                                                                                                              materials_ptr->context,
+                                                                                                                              NULL); /* object_manager_path */
+          mesh_material             special_material_texcoord                                          = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
+                                                                                                                              materials_ptr->context,
+                                                                                                                              NULL); /* object_manager_path */
 
     /* Configure "depth clip" material */
     mesh_material_set_property(special_material_depth_clip,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type_none);
 
-    /* Configure "depth clip and depth clip squared" material */
+    /* Configure materials using predefined shader bodies.
+     *
+     * NOTE: These bodies need to adhere to the requirements inposed
+     *       by how ogl_uber works.
+     */
     static const char* depth_clip_and_squared_depth_clip_fs = "#version 420\n"
                                                               "\n"
                                                               "                     in  vec2 out_vs_depth;\n"
@@ -1090,7 +1058,9 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "    float normalized_depth = clamp(out_vs_depth.x / out_vs_depth.y * 0.5 + 0.5, 0.0, 1.0);\n"
                                                               "\n"
                                                               "    result = vec2(normalized_depth,\n"
-                                                              /* Use derivatives to account for necessary bias (as per article in GPU Gems 3) */
+                                                              /* Use derivatives to account for necessary bias (as per the article in GPU Gems 3).
+                                                               * Note that we parametrize the upper boundary. This turns out to be necessary for
+                                                               * some scenes, where excessive variance causes the derivates to explode. */
                                                               "                  clamp(normalized_depth * normalized_depth + 0.25*(dx * dx + dy * dy), 0.0, max_variance) );\n"
                                                               "}\n";
     static const char* depth_clip_and_squared_depth_clip_vs = "#version 420\n"
@@ -1109,8 +1079,56 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "    gl_Position  = vp * model * vec4(object_vertex, 1.0);\n"
                                                               "    out_vs_depth = gl_Position.zw;\n"
                                                               "}\n";
+    static const char* depth_clip_dual_paraboloid_fs        = "#version 420\n"
+                                                              "\n"
+                                                              "in float clip_depth;\n"
+                                                              "\n"
+                                                              "void main()\n"
+                                                              "{\n"
+                                                              "    if (clip_depth < 0.0) discard;\n"
+                                                              "}\n";
+    static const char* depth_clip_dual_paraboloid_vs        = "#version 420\n"
+                                                              "\n"
+                                                              "uniform VertexShaderProperties\n"
+                                                              "{\n"
+                                                              "    layout(row_major) mat4 vp;\n"
+                                                              "};\n"
+                                                              "\n"
+                                                              "out     float clip_depth;\n"
+                                                              "uniform float far_near_plane_diff;\n"
+                                                              "uniform float flip_z;\n"
+                                                              "uniform mat4  model;\n"
+                                                              "uniform float near_plane;\n"
+                                                              "in      vec3  object_vertex;\n"
+                                                              "out     vec2  out_vs_depth;\n"
+                                                              "\n"
+                                                              "void main()\n"
+                                                              "{\n"
+                                                              "    vec4 world_vertex = vp * model * vec4(object_vertex, 1.0);\n"
+                                                              "    vec4 clip_vertex  = world_vertex;\n"
+                                                              "    \n"
+                                                              "    clip_vertex.z *= flip_z;\n"
+                                                              "    \n"
+                                                              "    float light_to_vertex_vec_len = length(clip_vertex.xyz);\n"
+                                                              "    \n"
+                                                              "    clip_vertex.xyz /= vec3(light_to_vertex_vec_len);\n"
+                                                              "    clip_depth       = clip_vertex.z;\n"
+                                                              "    clip_vertex.xy  /= vec2(clip_vertex.z + 1.0);\n"
+                                                              "    clip_vertex.z    = ((light_to_vertex_vec_len - near_plane) / far_near_plane_diff) * 2.0 - 1.0;\n"
+                                                              "    clip_vertex.w    = 1.0;\n"
+                                                              "    \n"
+                                                              "    gl_Position = clip_vertex;\n"
+                                                              "}\n";
 
-    mesh_material special_material_depth_clip_and_squared_depth_clip = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
+    mesh_material special_material_depth_clip_dual_paraboloid        = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space dual paraboloid"),
+                                                                                                               materials_ptr->context,
+                                                                                                               NULL, /* object_manager_path */
+                                                                                                               system_hashed_ansi_string_create(depth_clip_dual_paraboloid_fs),
+                                                                                                               NULL, /* gs_body */
+                                                                                                               NULL, /* tc_body */
+                                                                                                               NULL, /* te_body */
+                                                                                                               system_hashed_ansi_string_create(depth_clip_dual_paraboloid_vs) );
+    mesh_material special_material_depth_clip_and_depth_clip_squared = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip and squared depth clip"),
                                                                                                                materials_ptr->context,
                                                                                                                NULL, /* object_manager_path */
                                                                                                                system_hashed_ansi_string_create(depth_clip_and_squared_depth_clip_fs),
@@ -1118,17 +1136,6 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                                                                                NULL, /* tc_body */
                                                                                                                NULL, /* te_body */
                                                                                                                system_hashed_ansi_string_create(depth_clip_and_squared_depth_clip_vs) );
-
-    /* Configure DPSM material */
-    mesh_material_set_property(special_material_depth_dual_paraboloid_clip,
-                               MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
-                              &fs_behavior_dpsm);
-    mesh_material_set_property(special_material_depth_dual_paraboloid_clip,
-                               MESH_MATERIAL_PROPERTY_SHADING,
-                              &shading_type_none);
-    mesh_material_set_property(special_material_depth_dual_paraboloid_clip,
-                               MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
-                              &vs_behavior_dpsm);
 
     /* Configure "normal preview" material */
     mesh_material_set_property                                    (special_material_normal,
@@ -1147,11 +1154,12 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                                    MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD);
 
     /* Store the materials */
-    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP]                        = special_material_depth_clip;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID]             = special_material_depth_dual_paraboloid_clip;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED] = special_material_depth_clip_and_squared_depth_clip;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]                           = special_material_normal;
-    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD]                          = special_material_texcoord;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP]                                        = special_material_depth_clip;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_DUAL_PARABOLOID]                        = special_material_depth_clip_dual_paraboloid;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED]                 = special_material_depth_clip_and_depth_clip_squared;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED_DUAL_PARABOLOID] = special_material_depth_clip_and_depth_clip_squared_dual_paraboloid;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_NORMALS]                                           = special_material_normal;
+    materials_ptr->special_materials[SPECIAL_MATERIAL_TEXCOORD]                                          = special_material_texcoord;
 }
 
 

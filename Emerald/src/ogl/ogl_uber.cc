@@ -1111,9 +1111,7 @@ end:
 
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context                context,
-                                            __in __notnull system_hashed_ansi_string  name,
-                                            __in           shaders_fragment_uber_type fs_type,
-                                            __in           shaders_vertex_uber_type   vs_type)
+                                            __in __notnull system_hashed_ansi_string  name)
 {
     _ogl_uber_verify_context_type(context);
 
@@ -1127,11 +1125,9 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
     if (result != NULL)
     {
         result->shader_fragment = shaders_fragment_uber_create(context,
-                                                               name,
-                                                               fs_type);
+                                                               name);
         result->shader_vertex   = shaders_vertex_uber_create  (context,
-                                                               name,
-                                                               vs_type);
+                                                               name);
         result->variant_float   = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,

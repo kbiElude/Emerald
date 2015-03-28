@@ -173,9 +173,7 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
 
 /** TODO */
 PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context                context,
-                                            __in __notnull system_hashed_ansi_string  name,
-                                            __in           shaders_fragment_uber_type fs_type,
-                                            __in           shaders_vertex_uber_type   vs_type);
+                                            __in __notnull system_hashed_ansi_string  name);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_context               context,

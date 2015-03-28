@@ -36,16 +36,6 @@ typedef enum
 
 typedef enum
 {
-    /* The default FS behavior is unaffected. */
-    MESH_MATERIAL_FS_BEHAVIOR_DEFAULT,
-
-    /* Discards samples, whose clip_depth < 0. */
-     MESH_MATERIAL_FS_BEHAVIOR_DUAL_PARABOLOID_SM
-
-} mesh_material_fs_behavior;
-
-typedef enum
-{
     MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_NORMAL,
     MESH_MATERIAL_INPUT_FRAGMENT_ATTRIBUTE_TEXCOORD,
 
@@ -56,14 +46,6 @@ typedef enum
 {
     /* not settable, system_callback_manager */
     MESH_MATERIAL_PROPERTY_CALLBACK_MANAGER,
-
-    /* settable, mesh_material_fs_behavior.
-     *
-     * Tells which fragment shader implementation should be used.
-     * Unless for specialized behavior, you'll be OK to go with
-     * the default setting.
-     */
-    MESH_MATERIAL_PROPERTY_FS_BEHAVIOR,
 
     /* not settable, system_hashed_ansi_string */
     MESH_MATERIAL_PROPERTY_NAME,
@@ -88,14 +70,6 @@ typedef enum
      * Negative value indicates vertex smoothing is disabled.
      */
     MESH_MATERIAL_PROPERTY_VERTEX_SMOOTHING_ANGLE,
-
-    /* settable, mesh_material_vs_behavior.
-     *
-     * Tells which vertex shader implementation should be used.
-     * Unless for specialized behavior, you'll be OK to go with
-     * the default setting.
-     */
-    MESH_MATERIAL_PROPERTY_VS_BEHAVIOR,
 
 } mesh_material_property;
 
@@ -179,22 +153,6 @@ typedef enum
     MESH_MATERIAL_TYPE_UNDEFINED
 } mesh_material_type;
 
-typedef enum
-{
-    /* Outputs all data necessary to carry out shading in world space.
-     * Sets gl_Position to clip-space position of the input vertex.
-     */
-    MESH_MATERIAL_VS_BEHAVIOR_DEFAULT,
-
-    /* Sets gl_Position to clip-space position of the input vertex,
-     * adjusted for the dual paraboloid shadow mapping purposes.
-     * Outputs clip_depth to FS, so that fragments outside the paraboloid
-     * can be discarded.
-     */
-     MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM,
-
-} mesh_material_vs_behavior;
-
 /** TODO */
 PUBLIC EMERALD_API mesh_material mesh_material_create(__in __notnull system_hashed_ansi_string name,
                                                       __in __notnull ogl_context               context,
@@ -222,12 +180,6 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(__in __
  *
  *  Internal usage only.
  */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_fs_behavior_has(__in mesh_material_fs_behavior fs_behavior);
-
-/** TODO
- *
- *  Internal usage only.
- */
 PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_property_attachment_has(__in mesh_material_property_attachment attachment);
 
 /** TODO.
@@ -247,12 +199,6 @@ PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_shading_propert
  *  Internal usage only.
  */
 PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_type_has(__in mesh_material_type type);
-
-/** TODO
- *
- *  Internal usage only.
- */
-PUBLIC system_hashed_ansi_string mesh_material_get_mesh_material_vs_behavior_has(__in mesh_material_vs_behavior vs_behavior);
 
 /** TODO.
  *

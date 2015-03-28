@@ -24,8 +24,11 @@ typedef enum
     /* Used for directional/point/spot light SM generation (variance shadow mapping only) **/
     SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED,
 
-    /* Used for dual paraboloid SM generation for point lights */
-    SPECIAL_MATERIAL_DEPTH_DUAL_PARABOLOID,
+    /* Used for dual paraboloid SM generation for point lights (plain shadow mapping only) */
+    SPECIAL_MATERIAL_DEPTH_CLIP_DUAL_PARABOLOID,
+
+    /* Used for dual paraboloid SM generation for point lights (variance shadow mapping only) */
+    SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED_DUAL_PARABOLOID,
 
 
     /* Useful for debugging */

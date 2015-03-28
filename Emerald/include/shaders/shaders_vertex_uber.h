@@ -27,16 +27,6 @@ typedef enum
     SHADERS_VERTEX_UBER_ITEM_UNKNOWN
 } shaders_vertex_uber_item_type;
 
-typedef enum
-{
-    /* Equivalent of MESH_MATERIAL_VS_BEHAVIOR_DEFAULT */
-    SHADERS_VERTEX_UBER_TYPE_DEFAULT,
-
-    /* Equivalent of MESH_MATERIAL_VS_BEHAVIOR_DUAL_PARABOLOID_SM */
-    SHADERS_VERTEX_UBER_TYPE_DUAL_PARABOLOID_SM,
-
-} shaders_vertex_uber_type;
-
 
 typedef unsigned int shaders_vertex_uber_item_id;
 
@@ -58,8 +48,7 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
  *  @return shaders_vertex_uber instance if successful, NULL otherwise.
  */
 PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull ogl_context               context,
-                                                                  __in __notnull system_hashed_ansi_string name,
-                                                                  __in           shaders_vertex_uber_type  vs_type);
+                                                                  __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC EMERALD_API bool shaders_vertex_uber_get_item_type(__in __notnull shaders_vertex_uber            uber,
@@ -81,12 +70,6 @@ PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shade
  *  @return ogl_shader instance.
  **/
 PUBLIC EMERALD_API ogl_shader shaders_vertex_uber_get_shader(__in __notnull shaders_vertex_uber);
-
-/** TODO.
- *
- *  Internal usage only.
- */
-PUBLIC shaders_vertex_uber_type shaders_vertex_uber_get_vs_uber_type_for_vs_behavior(__in mesh_material_vs_behavior material_vs_behavior);
 
 /** TODO */
 PUBLIC EMERALD_API bool shaders_vertex_uber_is_dirty(__in __notnull shaders_vertex_uber);
