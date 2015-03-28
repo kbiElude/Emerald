@@ -59,6 +59,7 @@ typedef struct
     unsigned int                                shadow_map_vsm_blur_n_taps;
     postprocessing_blur_gaussian_resolution     shadow_map_vsm_blur_resolution;
     float                                       shadow_map_vsm_cutoff;
+    float                                       shadow_map_vsm_max_variance;
     float                                       shadow_map_vsm_min_variance;
     scene_light_type                            type;
     bool                                        uses_shadow_map;
@@ -312,10 +313,11 @@ PRIVATE void _scene_light_init(__in __notnull _scene_light* light_ptr)
     light_ptr->shadow_map_texture_depth         = NULL;
     light_ptr->shadow_map_view                  = system_matrix4x4_create();
     light_ptr->shadow_map_vp                    = system_matrix4x4_create();
-    light_ptr->shadow_map_vsm_blur_n_passes     = 2;
+    light_ptr->shadow_map_vsm_blur_n_passes     = 1;
     light_ptr->shadow_map_vsm_blur_n_taps       = 9;
     light_ptr->shadow_map_vsm_blur_resolution   = POSTPROCESSING_BLUR_GAUSSIAN_RESOLUTION_ORIGINAL;
     light_ptr->shadow_map_vsm_cutoff            = 0.01f;
+    light_ptr->shadow_map_vsm_max_variance      = 0.5f;
     light_ptr->shadow_map_vsm_min_variance      = 1e-5f;
 
     system_matrix4x4_set_to_identity(light_ptr->shadow_map_projection);
@@ -932,6 +934,13 @@ PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light    
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF:
         {
             *(float*) out_result = light_ptr->shadow_map_vsm_cutoff;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE:
+        {
+            *(float*) out_result = light_ptr->shadow_map_vsm_max_variance;
 
             break;
         }
@@ -1804,6 +1813,13 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
         case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_CUTOFF:
         {
             light_ptr->shadow_map_vsm_cutoff = *(float*) data;
+
+            break;
+        }
+
+        case SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE:
+        {
+            light_ptr->shadow_map_vsm_max_variance = *(float*) data;
 
             break;
         }

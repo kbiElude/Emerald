@@ -47,6 +47,9 @@ PUBLIC unsigned int state_get_shadow_map_vsm_blur_taps();
 PUBLIC float state_get_shadow_map_vsm_cutoff();
 
 /** TODO */
+PUBLIC float state_get_shadow_map_vsm_max_variance();
+
+/** TODO */
 PUBLIC float state_get_shadow_map_vsm_min_variance();
 
 /** TODO */
@@ -84,6 +87,9 @@ PUBLIC void state_set_shadow_map_vsm_blur_taps(unsigned int new_value);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_vsm_cutoff(float new_value);
+
+/** TODO */
+PUBLIC void state_set_shadow_map_vsm_max_variance(float new_value);
 
 /** TODO */
 PUBLIC void state_set_shadow_map_vsm_min_variance(float new_value);

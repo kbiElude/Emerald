@@ -234,6 +234,7 @@ typedef struct _ogl_uber
     uint32_t                  glosiness_uniform_location;
     uint32_t                  luminosity_material_sampler_uniform_location;
     uint32_t                  luminosity_material_float_uniform_location;
+    uint32_t                  max_variance_uniform_location;
     uint32_t                  mesh_sh3_uniform_location;
     uint32_t                  mesh_sh3_data_offset_uniform_location;
     uint32_t                  mesh_sh4_uniform_location;
@@ -274,6 +275,7 @@ typedef struct _ogl_uber
     bool                      current_near_plane_dirty;
     system_matrix4x4          current_vp;
     bool                      current_vp_dirty;
+    float                     current_vsm_max_variance;
 
     system_resizable_vector   added_items; /* holds _ogl_uber_item instances */
     bool                      dirty;
@@ -886,6 +888,7 @@ PRIVATE void _ogl_uber_reset_attribute_uniform_locations(__in __notnull _ogl_ube
     uber_ptr->glosiness_uniform_location                   = -1;
     uber_ptr->luminosity_material_sampler_uniform_location = -1;
     uber_ptr->luminosity_material_float_uniform_location   = -1;
+    uber_ptr->max_variance_uniform_location                = -1;
     uber_ptr->mesh_sh3_uniform_location                    = -1;
     uber_ptr->mesh_sh3_data_offset_uniform_location        = -1;
     uber_ptr->mesh_sh4_uniform_location                    = -1;
@@ -1518,6 +1521,7 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     const ogl_program_uniform_descriptor* glosiness_uniform_descriptor                   = NULL;
     const ogl_program_uniform_descriptor* luminosity_material_sampler_uniform_descriptor = NULL;
     const ogl_program_uniform_descriptor* luminosity_material_float_uniform_descriptor   = NULL;
+    const ogl_program_uniform_descriptor* max_variance_uniform_descriptor                = NULL;
     const ogl_program_uniform_descriptor* mesh_sh3_uniform_descriptor                    = NULL;
     const ogl_program_uniform_descriptor* mesh_sh3_data_offset_uniform_descriptor        = NULL;
     const ogl_program_uniform_descriptor* mesh_sh4_uniform_descriptor                    = NULL;
@@ -1565,6 +1569,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("luminosity_material"),
                                    &luminosity_material_float_uniform_descriptor);
+    ogl_program_get_uniform_by_name(uber_ptr->program,
+                                    system_hashed_ansi_string_create("max_variance"),
+                                   &max_variance_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("mesh_sh3"),
                                    &mesh_sh3_uniform_descriptor);
@@ -1654,6 +1661,11 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     if (luminosity_material_float_uniform_descriptor != NULL)
     {
         uber_ptr->luminosity_material_float_uniform_location = luminosity_material_float_uniform_descriptor->location;
+    }
+
+    if (max_variance_uniform_descriptor != NULL)
+    {
+        uber_ptr->max_variance_uniform_location = max_variance_uniform_descriptor->location;
     }
 
     if (mesh_sh3_uniform_descriptor != NULL)
@@ -2948,6 +2960,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         }
     } /* for (all vertex shader items) */
 
+    /* Configure uniforms (yuck!) */
+    if (uber_ptr->max_variance_uniform_location != -1)
+    {
+        entry_points->pGLProgramUniform1f(ogl_program_get_id(uber_ptr->program),
+                                          uber_ptr->max_variance_uniform_location,
+                                          uber_ptr->current_vsm_max_variance);
+    }
+
     /* Configure uniform buffer bindings */
     uint32_t fs_ub_size = 0;
     uint32_t vs_ub_size = 0;
@@ -3041,6 +3061,15 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
                 uber_ptr->current_flip_z       = *(float*) data;
                 uber_ptr->current_flip_z_dirty = true;
             }
+
+            break;
+        }
+
+        case OGL_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE:
+        {
+            /* max variance is an uniform so it doesn't make much sense to track it, as the program
+             * is context-wide and the value might've been changed by another ogl_uber instance. */
+            uber_ptr->current_vsm_max_variance = *(float*) data;
 
             break;
         }

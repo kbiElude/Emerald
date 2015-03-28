@@ -1081,6 +1081,8 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "                     in  vec2 out_vs_depth;\n"
                                                               "layout(location = 0) out vec2 result;\n"
                                                               "\n"
+                                                              "uniform float max_variance;\n"
+                                                              "\n"
                                                               "void main()\n"
                                                               "{\n"
                                                               "    float dx               = dFdx(out_vs_depth);\n"
@@ -1089,7 +1091,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "\n"
                                                               "    result = vec2(normalized_depth,\n"
                                                               /* Use derivatives to account for necessary bias (as per article in GPU Gems 3) */
-                                                              "                  normalized_depth * normalized_depth + 0.25*(dx * dx + dy * dy) );\n"
+                                                              "                  clamp(normalized_depth * normalized_depth + 0.25*(dx * dx + dy * dy), 0.0, max_variance) );\n"
                                                               "}\n";
     static const char* depth_clip_and_squared_depth_clip_vs = "#version 420\n"
                                                               "\n"
@@ -1100,7 +1102,7 @@ PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials
                                                               "\n"
                                                               "uniform mat4  model;\n"
                                                               "in      vec3  object_vertex;\n"
-                                                              "out     vec2 out_vs_depth;\n"
+                                                              "out     vec2  out_vs_depth;\n"
                                                               "\n"
                                                               "void main()\n"
                                                               "{\n"

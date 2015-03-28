@@ -186,6 +186,14 @@ typedef enum scene_light_property
 
     /* Settable, float.
      *
+     * This parameter defines the maximum allowed variance value that should be
+     * stored in the color shadow map. This setting should be used to reduce the
+     * light bleeding effect.
+     */
+     SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
+
+    /* Settable, float.
+     *
      * This parameter defines the minimum allowed variance value that should be
      * stored in the color shadow map. In conjuction with the color shadow map
      * internalformat, this setting can be used to reduce precision requirements

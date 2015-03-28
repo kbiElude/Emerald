@@ -34,6 +34,7 @@ PRIVATE ogl_ui_control _ui_shadow_map_algorithm_dropdown             = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_pl_algorithm_dropdown          = NULL;
 PRIVATE ogl_ui_control _ui_shadow_map_size_dropdown                  = NULL;
 PRIVATE ogl_ui_control _ui_vsm_cutoff_scrollbar                      = NULL;
+PRIVATE ogl_ui_control _ui_vsm_max_variance_scrollbar                = NULL;
 PRIVATE ogl_ui_control _ui_vsm_min_variance_scrollbar                = NULL;
 
 
@@ -312,6 +313,16 @@ PRIVATE void _ui_get_current_vsm_cutoff_value(void*          unused,
 }
 
 /** TODO */
+PRIVATE void _ui_get_current_vsm_max_variance_value(void*          unused,
+                                                    system_variant result)
+{
+    float vsm_max_variance = state_get_shadow_map_vsm_max_variance();
+
+    system_variant_set_float(result,
+                             vsm_max_variance);
+}
+
+/** TODO */
 PRIVATE void _ui_get_current_vsm_min_variance_value(void*          unused,
                                                     system_variant result)
 {
@@ -469,6 +480,17 @@ PRIVATE void _ui_set_current_vsm_cutoff_value(void*          unused,
 }
 
 /** TODO */
+PRIVATE void _ui_set_current_vsm_max_variance_value(void*          unused,
+                                                    system_variant new_value)
+{
+    float new_vsm_max_variance_value;
+
+    system_variant_get_float             (new_value,
+                                         &new_vsm_max_variance_value);
+    state_set_shadow_map_vsm_max_variance(new_vsm_max_variance_value);
+}
+
+/** TODO */
 PRIVATE void _ui_set_current_vsm_min_variance_value(void*          unused,
                                                     system_variant new_value)
 {
@@ -537,7 +559,7 @@ PUBLIC void ui_init()
 
     /* Add color shadow map blur n passes scrollbar */
     system_variant blur_n_passes_max_value = system_variant_create_float(4.0f);
-    system_variant blur_n_passes_min_value = system_variant_create_float(1.0f);
+    system_variant blur_n_passes_min_value = system_variant_create_float(0.0f);
 
     _ui_color_shadow_map_blur_n_passes_scrollbar = ogl_ui_add_scrollbar(_ui,
                                                                         system_hashed_ansi_string_create("Color Shadow map blur passes"),
@@ -659,6 +681,24 @@ PUBLIC void ui_init()
     system_variant_release(vsm_cutoff_max_value);
     system_variant_release(vsm_cutoff_min_value);
 
+    /* Add VSM max variance scrollbar */
+    system_variant vsm_max_variance_max_value = system_variant_create_float(0.1f);
+    system_variant vsm_max_variance_min_value = system_variant_create_float(4.0f);
+
+    _ui_vsm_max_variance_scrollbar = ogl_ui_add_scrollbar(_ui,
+                                                          system_hashed_ansi_string_create("VSM maximum variance"),
+                                                          OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
+                                                          vsm_max_variance_min_value,
+                                                          vsm_max_variance_max_value,
+                                                          temp_x1y1,
+                                                          _ui_get_current_vsm_max_variance_value,
+                                                          NULL,
+                                                          _ui_set_current_vsm_max_variance_value,
+                                                          NULL);
+
+    system_variant_release(vsm_max_variance_max_value);
+    system_variant_release(vsm_max_variance_min_value);
+
     /* Add VSM min variance scrollbar */
     system_variant vsm_min_variance_max_value = system_variant_create_float(1e-3f);
     system_variant vsm_min_variance_min_value = system_variant_create_float(1e-6f);
@@ -691,6 +731,7 @@ PUBLIC void ui_init()
         _ui_shadow_map_size_dropdown,
         _ui_shadow_map_pl_algorithm_dropdown,
         _ui_vsm_cutoff_scrollbar,
+        _ui_vsm_max_variance_scrollbar,
         _ui_vsm_min_variance_scrollbar
     };
     const unsigned int n_ui_controls = sizeof(ui_controls) / sizeof(ui_controls[0]);

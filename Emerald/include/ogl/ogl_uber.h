@@ -18,13 +18,32 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_uber, ogl_uber)
 
 typedef enum
 {
-    OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,     /* vec3                      */
-    OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF, /* float                     */
-    OGL_UBER_GENERAL_PROPERTY_FLIP_Z,              /* float                     */
-    OGL_UBER_GENERAL_PROPERTY_NAME,                /* system_hashed_ansi_string */
-    OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,          /* float                     */
+    /* vec3 */
+    OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+
+    /* float */
+    OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF,
+
+    /* float */
+    OGL_UBER_GENERAL_PROPERTY_FLIP_Z,
+
+    /* system_hashed_ansi_string */
+    OGL_UBER_GENERAL_PROPERTY_NAME,
+
+    /* float */
+    OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE,
+
     OGL_UBER_GENERAL_PROPERTY_N_ITEMS,
     OGL_UBER_GENERAL_PROPERTY_VP,
+
+    /* settable, float.
+     *
+     * This property is global, as opposed to _min_variance. The reason is that
+     * max variance is used during SM generation pass. The pass uses an
+     * ogl_uber instance created from an ogl_program delivered by ogl_materials
+     * (SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED).
+     */
+    OGL_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
 
     /* Always last */
     OGL_UBER_GENERAL_PROPERTY_UNKNOWN
@@ -50,34 +69,82 @@ typedef enum
 
 typedef enum
 {
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,      /* settable, float[3].      used by ambient light */
+    /* settable, float[3]. Used by ambient light */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,
 
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,      /* settable, float[3].             used by point lights               */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,        /* settable, float, radians.       used by spot lights                */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,           /* settable, float[3].             used by directional & point lights */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,         /* settable, float[3].             used by directional lights         */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,        /* settable, float, radians.       used by spot lights.               */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,     /* settable, float,                used by point lights (>= 1 algo)   */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,          /* settable, float[3].             used by point lights               */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,        /* settable, float,                used by point lights (>= 1 algo)   */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX, /* settable, float[16], row-major. used by point lights (>= 1 algo)   */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,             /* settable, float.                used by point & spot lights        */
-    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,       /* settable, float[16], row-major. used by point lights (>= 1 algo)   */
 
-    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP, /* settable, float[16], row-major */
-    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA,  /* settable, _ogl_uber_light_sh_data */
+    /* settable, float[3]. Used by point lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
 
-    OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,                         /* not settable, scene_light_falloff */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,            /* not settable, scene_light_shadow_map_algorithm */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR,        /*     settable, ogl_texture */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,        /*     settable, ogl_texture */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,                 /* not settable, scene_light_shadow_map_bias */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM, /* not settable, scene_light_shadow_map_pointlight_algorithm */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,           /*     settable, float */
-    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE,     /*     settable, float */
+    /* settable, float, radians. Used by spot lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,
+
+    /* settable, float[3]. Used by directional & point lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
+
+    /* settable, float[3]. Used by directional lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
+
+    /* settable, float, radians. Used by spot lights. */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,
+
+    /* settable, float, Used by point lights (>= 1 algo) */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,
+
+    /* settable, float[3]. Used by point lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,
+
+    /* settable, float. Used by point lights (>= 1 algo) */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,
+
+    /* settable, float[16], row-major. Used by point lights (>= 1 algo) */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX,
+
+    /* settable, float. Used by point & spot lights */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,
+
+    /* settable, float[16], row-major. Used by point lights (>= 1 algo) */
+    OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
+
+
+    /* settable, float[16], row-major */
+    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP,
+
+    /* settable, _ogl_uber_light_sh_data */
+    OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA,
+
+
+    /* not settable, scene_light_falloff */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF,
+
+    /* not settable, scene_light_shadow_map_algorithm */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_ALGORITHM,
+
+    /* settable, ogl_texture */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_COLOR,
+
+    /* settable, ogl_texture */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_TEXTURE_DEPTH,
+
+    /* not settable, scene_light_shadow_map_bias */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_BIAS,
+
+    /* not settable, scene_light_shadow_map_pointlight_algorithm */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM,
+
+    /* settable, float */
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,
+
+    /* settable, float.
+     *
+     * This property is per-light, as opposed to _max_variance. The reason is that
+     * min variance can theoretically be different for each light.
+     **/
+    OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE,
     OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
     OGL_UBER_ITEM_PROPERTY_TYPE,
+
 
     /* Always last */
     OGL_UBER_ITEM_PROPERTY_UNKNOWN

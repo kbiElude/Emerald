@@ -2496,14 +2496,33 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
                                                                         scene,
                                                                         false); /* use_shadow_maps */
 
-    /* Configure the uber. Since we're rendering a shadow map, configure far & near planes
-     * relative to the light space.
+    /* Configure the uber.
+     *
+     * NOTE: Since we're rendering a shadow map, far & near planes
+     *       are configured relative to the light space.
      */
-    scene_light_type light_type;
+    scene_light_shadow_map_algorithm light_sm_algorithm;
+    scene_light_type                 light_type;
 
+    scene_light_get_property(shadow_mapping_ptr->current_light,
+                             SCENE_LIGHT_PROPERTY_SHADOW_MAP_ALGORITHM,
+                            &light_sm_algorithm);
     scene_light_get_property(shadow_mapping_ptr->current_light,
                              SCENE_LIGHT_PROPERTY_TYPE,
                             &light_type);
+
+    if (light_sm_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
+    {
+        float light_vsm_max_variance;
+
+        scene_light_get_property(shadow_mapping_ptr->current_light,
+                                 SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
+                                &light_vsm_max_variance);
+
+        ogl_uber_set_shader_general_property(sm_material_uber,
+                                             OGL_UBER_GENERAL_PROPERTY_VSM_MAX_VARIANCE,
+                                            &light_vsm_max_variance);
+    }
 
     if (light_type == SCENE_LIGHT_TYPE_POINT)
     {

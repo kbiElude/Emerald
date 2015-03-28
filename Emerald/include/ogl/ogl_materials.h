@@ -21,14 +21,7 @@ typedef enum
      */
     SPECIAL_MATERIAL_DEPTH_CLIP = SPECIAL_MATERIAL_FIRST,
 
-    /* Used for directional/point/spot light SM generation (variance shadow mapping only)
-     *
-     * Fragment shader outputs:
-     *
-     * a) depth info (from clip space)         to draw buffer 0
-     * b) squared depth info (from clip space) to draw buffer 1
-     *
-     **/
+    /* Used for directional/point/spot light SM generation (variance shadow mapping only) **/
     SPECIAL_MATERIAL_DEPTH_CLIP_AND_DEPTH_CLIP_SQUARED,
 
     /* Used for dual paraboloid SM generation for point lights */

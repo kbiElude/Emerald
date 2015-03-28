@@ -73,6 +73,7 @@ unsigned int                                _shadow_map_size                    
 float                                       _shadow_map_vsm_blur_n_passes               = 0.0f;
 unsigned int                                _shadow_map_vsm_blur_taps                   = 0;
 float                                       _shadow_map_vsm_cutoff                      = 0.1f;
+float                                       _shadow_map_vsm_max_variance                = 1e-5f;
 float                                       _shadow_map_vsm_min_variance                = 1e-5f;
 
 
@@ -237,6 +238,12 @@ PUBLIC float state_get_shadow_map_vsm_cutoff()
 }
 
 /** Please see header for spec */
+PUBLIC float state_get_shadow_map_vsm_max_variance()
+{
+    return _shadow_map_vsm_max_variance;
+}
+
+/** Please see header for spec */
 PUBLIC float state_get_shadow_map_vsm_min_variance()
 {
     return _shadow_map_vsm_min_variance;
@@ -358,6 +365,7 @@ PUBLIC void state_init()
     bool has_updated_sm_vsm_blur_n_passes     = false;
     bool has_updated_sm_vsm_blur_taps         = false;
     bool has_updated_sm_vsm_cutoff            = false;
+    bool has_updated_sm_vsm_max_variance      = false;
     bool has_updated_sm_vsm_min_variance      = false;
 
     for (unsigned int n_scene = 0;
@@ -369,6 +377,7 @@ PUBLIC void state_init()
                                                        !has_updated_sm_vsm_blur_n_passes     ||
                                                        !has_updated_sm_vsm_blur_taps         ||
                                                        !has_updated_sm_vsm_cutoff            ||
+                                                       !has_updated_sm_vsm_max_variance      ||
                                                        !has_updated_sm_vsm_min_variance);
                     ++n_scene)
     {
@@ -388,6 +397,7 @@ PUBLIC void state_init()
                                                  !has_updated_sm_vsm_blur_n_passes     ||
                                                  !has_updated_sm_vsm_blur_taps         ||
                                                  !has_updated_sm_vsm_cutoff            ||
+                                                 !has_updated_sm_vsm_max_variance      ||
                                                  !has_updated_sm_vsm_min_variance);
                         ++n_light)
         {
@@ -477,6 +487,16 @@ PUBLIC void state_init()
                                         &_shadow_map_vsm_cutoff);
 
                 has_updated_sm_vsm_cutoff = true;
+            }
+
+            /* VSM max variance */
+            if (!has_updated_sm_vsm_max_variance && current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                scene_light_get_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
+                                        &_shadow_map_vsm_max_variance);
+
+                has_updated_sm_vsm_max_variance = true;
             }
 
             /* VSM min variance */
@@ -908,6 +928,45 @@ PUBLIC void state_set_shadow_map_vsm_cutoff(float new_vsm_cutoff)
     } /* for (all loaded scenes) */
 
     _shadow_map_vsm_cutoff = new_vsm_cutoff;
+}
+
+/** Please see header for spec */
+PUBLIC void state_set_shadow_map_vsm_max_variance(float new_vsm_max_variance)
+{
+    /* Update the parameter for all scene lights */
+    for (unsigned int n_scene = 0;
+                      n_scene < _n_scene_filenames;
+                    ++n_scene)
+    {
+        scene        current_scene = _scenes[n_scene].this_scene;
+        unsigned int n_lights      = 0;
+
+        scene_get_property(current_scene,
+                           SCENE_PROPERTY_N_LIGHTS,
+                          &n_lights);
+
+        for (unsigned int n_light = 0;
+                          n_light < n_lights;
+                        ++n_light)
+        {
+            scene_light      current_light = scene_get_light_by_index(current_scene,
+                                                                      n_light);
+            scene_light_type current_light_type;
+
+            scene_light_get_property(current_light,
+                                     SCENE_LIGHT_PROPERTY_TYPE,
+                                    &current_light_type);
+
+            if (current_light_type != SCENE_LIGHT_TYPE_AMBIENT)
+            {
+                scene_light_set_property(current_light,
+                                         SCENE_LIGHT_PROPERTY_SHADOW_MAP_VSM_MAX_VARIANCE,
+                                        &new_vsm_max_variance);
+            } /* if (current light is not an ambient light) */
+        } /* for (all scene lights) */
+    } /* for (all loaded scenes) */
+
+    _shadow_map_vsm_max_variance = new_vsm_max_variance;
 }
 
 /** Please see header for spec */
