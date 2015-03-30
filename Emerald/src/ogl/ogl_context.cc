@@ -69,6 +69,7 @@ typedef struct
     ogl_context_gl_entrypoints_arb_multi_bind                   entry_points_gl_arb_multi_bind;
     ogl_context_gl_entrypoints_arb_program_interface_query      entry_points_gl_arb_program_interface_query;
     ogl_context_gl_entrypoints_arb_shader_storage_buffer_object entry_points_gl_arb_shader_storage_buffer_object;
+    ogl_context_gl_entrypoints_arb_sparse_buffer                entry_points_gl_arb_sparse_buffer;
     ogl_context_gl_entrypoints_arb_texture_storage_multisample  entry_points_gl_arb_texture_storage_multisample;
     ogl_context_gl_entrypoints_ext_direct_state_access          entry_points_gl_ext_direct_state_access;
     ogl_context_gl_entrypoints_private                          entry_points_private;
@@ -77,6 +78,7 @@ typedef struct
     ogl_context_gl_limits_arb_compute_shader                    limits_arb_compute_shader;
     ogl_context_gl_limits_arb_framebuffer_no_attachments        limits_arb_framebuffer_no_attachments;
     ogl_context_gl_limits_arb_shader_storage_buffer_object      limits_arb_shader_storage_buffer_object;
+    ogl_context_gl_limits_arb_sparse_buffer                     limits_arb_sparse_buffer;
 
     /* WGL extensions */
     bool wgl_swap_control_support;
@@ -98,6 +100,7 @@ typedef struct
     bool gl_arb_multi_bind_support;
     bool gl_arb_program_interface_query_support;
     bool gl_arb_shader_storage_buffer_object_support;
+    bool gl_arb_sparse_buffer_support;
     bool gl_arb_texture_buffer_object_rgb32_support;
     bool gl_arb_texture_storage_multisample_support;
     bool gl_ext_direct_state_access_support;
@@ -145,6 +148,8 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers          
 PRIVATE void _ogl_context_retrieve_GL_ARB_program_interface_query_function_pointers     (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_function_pointers(__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_limits           (__inout __notnull _ogl_context* context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers               (__inout __notnull _ogl_context* context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                          (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_ARB_texture_storage_multisample_function_pointers (__inout __notnull _ogl_context* context_ptr);
 PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers         (__inout __notnull _ogl_context* context_ptr);
 
@@ -669,6 +674,13 @@ PRIVATE void _ogl_context_initialize_gl_arb_shader_storage_buffer_object_extensi
 {
     _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_function_pointers(context_ptr);
     _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_limits           (context_ptr);
+}
+
+/** TODO */
+PRIVATE void _ogl_context_initialize_gl_arb_sparse_buffer_extension(__inout __notnull _ogl_context* context_ptr)
+{
+    _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(context_ptr);
+    _ogl_context_retrieve_GL_ARB_sparse_buffer_limits           (context_ptr);
 }
 
 /** TODO */
@@ -1516,6 +1528,146 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_invalidate_subdata_function_pointers(_
 }
 
 /** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    func_ptr_table_entry func_ptr_table[] =
+    {
+        {&context_ptr->entry_points_private.pGLBindBuffersBase,             "glBindBuffersBase"},
+        {&context_ptr->entry_points_private.pGLBindBuffersRange,            "glBindBuffersRange"},
+        {&context_ptr->entry_points_gl_arb_multi_bind.pGLBindImageTextures, "glBindImageTextures"},
+        {&context_ptr->entry_points_private.pGLBindSamplers,                "glBindSamplers"},
+        {&context_ptr->entry_points_private.pGLBindTextures,                "glBindTextures"}
+    };
+    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
+
+    if (_ogl_context_get_function_pointers(context_ptr,
+                                           func_ptr_table,
+                                           n_func_ptr_table_entries) )
+    {
+        context_ptr->entry_points_gl_arb_multi_bind.pGLBindBuffersBase  = ogl_context_wrappers_glBindBuffersBase;
+        context_ptr->entry_points_gl_arb_multi_bind.pGLBindBuffersRange = ogl_context_wrappers_glBindBuffersRange;
+        context_ptr->entry_points_gl_arb_multi_bind.pGLBindSamplers     = ogl_context_wrappers_glBindSamplers;
+        context_ptr->entry_points_gl_arb_multi_bind.pGLBindTextures     = ogl_context_wrappers_glBindTextures;
+        context_ptr->gl_arb_multi_bind_support                          = true;
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_program_interface_query_function_pointers(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    func_ptr_table_entry func_ptr_table[] =
+    {
+        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramInterfaceiv,          "glGetProgramInterfaceiv"},
+        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceIndex,        "glGetProgramResourceIndex"},
+        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceName,         "glGetProgramResourceName"},
+        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceiv,           "glGetProgramResourceiv"},
+        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceLocation,     "glGetProgramResourceLocation"},
+        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceLocationIndex,"glGetProgramResourceLocationIndex"}
+    };
+    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
+
+    if (_ogl_context_get_function_pointers(context_ptr,
+                                           func_ptr_table,
+                                           n_func_ptr_table_entries) )
+    {
+        context_ptr->gl_arb_program_interface_query_support = true;
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_function_pointers(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    func_ptr_table_entry func_ptr_table[] =
+    {
+        {&context_ptr->entry_points_gl_arb_shader_storage_buffer_object.pGLShaderStorageBlockBinding, "glShaderStorageBlockBinding"}
+    };
+    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
+
+    if (_ogl_context_get_function_pointers(context_ptr,
+                                           func_ptr_table,
+                                           n_func_ptr_table_entries) )
+    {
+        context_ptr->gl_arb_shader_storage_buffer_object_support = true;
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_limits(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_combined_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_compute_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_fragment_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_geometry_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_block_size);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_buffer_bindings);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_control_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_evaluation_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_vertex_shader_storage_blocks);
+    context_ptr->entry_points_private.pGLGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+                                                    &context_ptr->limits_arb_shader_storage_buffer_object.shader_storage_buffer_offset_alignment);
+
+    ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
+                      "Could not retrieve at least one ARB_shader_storage_buffer_object limit");
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    func_ptr_table_entry func_ptr_table[] =
+    {
+        {&context_ptr->entry_points_gl_arb_sparse_buffer.pGLBufferPageCommitmentARB, "glBufferPageCommitmentARB"},
+    };
+    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
+
+    if (_ogl_context_get_function_pointers(context_ptr,
+                                           func_ptr_table,
+                                           n_func_ptr_table_entries) )
+    {
+        context_ptr->gl_arb_sparse_buffer_support = true;
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits(__inout __notnull _ogl_context* context_ptr)
+{
+    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                      "GL-specific function called for a non-GL context");
+
+    if (context_ptr->gl_arb_sparse_buffer_support)
+    {
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_SPARSE_BUFFER_PAGE_SIZE_ARB,
+                                                        &context_ptr->limits_arb_sparse_buffer.sparse_buffer_page_size);
+
+        ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
+                          "Could not retrieve at least one ARB_sparse_buffer limit");
+    }
+}
+
+/** TODO */
 PRIVATE void _ogl_context_retrieve_GL_ARB_texture_storage_multisample_function_pointers(__inout __notnull _ogl_context* context_ptr)
 {
     ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
@@ -1629,6 +1781,17 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
             }
         }
 
+        if (context_ptr->gl_arb_sparse_buffer_support)
+        {
+            context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT = (PFNGLNAMEDBUFFERPAGECOMMITMENTARBPROC) ::wglGetProcAddress("glNamedBufferPageCommitmentEXT");
+
+            if (context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT == NULL)
+            {
+                ASSERT_ALWAYS_SYNC(false,
+                                   "DSA version entry-points for GL_ARB_sparse_buffer are unavailable in spite of being reported.");
+            }
+        }
+
         if (context_ptr->gl_arb_texture_storage_multisample_support)
         {
             context_ptr->entry_points_private.pGLTextureStorage2DMultisampleEXT = (PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC) ::wglGetProcAddress("glTextureStorage2DMultisampleEXT");
@@ -1701,110 +1864,6 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLUnmapNamedBufferEXT               = ogl_context_wrappers_glUnmapNamedBufferEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribOffsetEXT  = ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLVertexArrayVertexAttribIOffsetEXT = ogl_context_wrappers_glVertexArrayVertexAttribIOffsetEXT;
-}
-
-/** TODO */
-PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers(__inout __notnull _ogl_context* context_ptr)
-{
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
-                      "GL-specific function called for a non-GL context");
-
-    func_ptr_table_entry func_ptr_table[] =
-    {
-        {&context_ptr->entry_points_private.pGLBindBuffersBase,             "glBindBuffersBase"},
-        {&context_ptr->entry_points_private.pGLBindBuffersRange,            "glBindBuffersRange"},
-        {&context_ptr->entry_points_gl_arb_multi_bind.pGLBindImageTextures, "glBindImageTextures"},
-        {&context_ptr->entry_points_private.pGLBindSamplers,                "glBindSamplers"},
-        {&context_ptr->entry_points_private.pGLBindTextures,                "glBindTextures"}
-    };
-    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
-
-    if (_ogl_context_get_function_pointers(context_ptr,
-                                           func_ptr_table,
-                                           n_func_ptr_table_entries) )
-    {
-        context_ptr->entry_points_gl_arb_multi_bind.pGLBindBuffersBase  = ogl_context_wrappers_glBindBuffersBase;
-        context_ptr->entry_points_gl_arb_multi_bind.pGLBindBuffersRange = ogl_context_wrappers_glBindBuffersRange;
-        context_ptr->entry_points_gl_arb_multi_bind.pGLBindSamplers     = ogl_context_wrappers_glBindSamplers;
-        context_ptr->entry_points_gl_arb_multi_bind.pGLBindTextures     = ogl_context_wrappers_glBindTextures;
-        context_ptr->gl_arb_multi_bind_support                          = true;
-    }
-}
-
-/** TODO */
-PRIVATE void _ogl_context_retrieve_GL_ARB_program_interface_query_function_pointers(__inout __notnull _ogl_context* context_ptr)
-{
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
-                      "GL-specific function called for a non-GL context");
-
-    func_ptr_table_entry func_ptr_table[] =
-    {
-        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramInterfaceiv,          "glGetProgramInterfaceiv"},
-        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceIndex,        "glGetProgramResourceIndex"},
-        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceName,         "glGetProgramResourceName"},
-        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceiv,           "glGetProgramResourceiv"},
-        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceLocation,     "glGetProgramResourceLocation"},
-        {&context_ptr->entry_points_gl_arb_program_interface_query.pGLGetProgramResourceLocationIndex,"glGetProgramResourceLocationIndex"}
-    };
-    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
-
-    if (_ogl_context_get_function_pointers(context_ptr,
-                                           func_ptr_table,
-                                           n_func_ptr_table_entries) )
-    {
-        context_ptr->gl_arb_program_interface_query_support = true;
-    }
-}
-
-/** TODO */
-PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_function_pointers(__inout __notnull _ogl_context* context_ptr)
-{
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
-                      "GL-specific function called for a non-GL context");
-
-    func_ptr_table_entry func_ptr_table[] =
-    {
-        {&context_ptr->entry_points_gl_arb_shader_storage_buffer_object.pGLShaderStorageBlockBinding, "glShaderStorageBlockBinding"}
-    };
-    const unsigned int n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
-
-    if (_ogl_context_get_function_pointers(context_ptr,
-                                           func_ptr_table,
-                                           n_func_ptr_table_entries) )
-    {
-        context_ptr->gl_arb_shader_storage_buffer_object_support = true;
-    }
-}
-
-/** TODO */
-PRIVATE void _ogl_context_retrieve_GL_ARB_shader_storage_buffer_object_limits(__inout __notnull _ogl_context* context_ptr)
-{
-    ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
-                      "GL-specific function called for a non-GL context");
-
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_combined_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_compute_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_fragment_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_GEOMETRY_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_geometry_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_block_size);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_shader_storage_buffer_bindings);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_CONTROL_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_control_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_TESS_EVALUATION_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_tess_evaluation_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.max_vertex_shader_storage_blocks);
-    context_ptr->entry_points_private.pGLGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
-                                                    &context_ptr->limits_arb_shader_storage_buffer_object.shader_storage_buffer_offset_alignment);
-
-    ASSERT_DEBUG_SYNC(context_ptr->entry_points_gl.pGLGetError() == GL_NO_ERROR,
-                      "Could not retrieve at least one ARB_shader_storage_buffer_object limit");
 }
 
 /** TODO */
@@ -2477,6 +2536,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->gl_arb_invalidate_subdata_support          = false;
                             _result->gl_arb_multi_bind_support                  = false;
                             _result->gl_arb_program_interface_query_support     = false;
+                            _result->gl_arb_sparse_buffer_support               = false;
                             _result->gl_arb_texture_buffer_object_rgb32_support = false;
                             _result->gl_ext_direct_state_access_support         = false;
 
@@ -2607,6 +2667,13 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                     _ogl_context_initialize_gl_arb_shader_storage_buffer_object_extension(_result);
                                 }
 
+                                /* If GL_ARB_sparse_buffer is supported, initialize func pointers and info variables */
+                                if (ogl_context_is_extension_supported(result,
+                                                                       system_hashed_ansi_string_create("GL_ARB_sparse_buffer") ))
+                                {
+                                    _ogl_context_initialize_gl_arb_sparse_buffer_extension(_result);
+                                }
+
                                 /* If GL_ARB_texture_storage_multisample is supported, initialize func pointers */
                                 if (ogl_context_is_extension_supported(result,
                                                                        system_hashed_ansi_string_create("GL_ARB_texture_storage_multisample") ))
@@ -2619,10 +2686,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                        system_hashed_ansi_string_create("GL_ARB_texture_buffer_object_rgb32") ))
                                 {
                                     _result->gl_arb_texture_buffer_object_rgb32_support = true;
-                                }
-                                else
-                                {
-                                    LOG_ERROR("GL_ARB_texture_buffer_object_rgb32 extension is not supported - demo will crash if 3-banded SH is used.");
                                 }
 
                                 /* Try to initialize DSA func ptrs */
@@ -2840,6 +2903,16 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER:
+        {
+            ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
+                              "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER property requested for a non-GL context");
+
+            *((const ogl_context_gl_entrypoints_arb_sparse_buffer**) out_result) = &context_ptr->entry_points_gl_arb_sparse_buffer;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_TEXTURE_STORAGE_MULTISAMPLE:
         {
             ASSERT_DEBUG_SYNC(context_ptr->context_type == OGL_CONTEXT_TYPE_GL,
@@ -2891,6 +2964,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_LIMITS_ARB_SHADER_STORAGE_BUFFER_OBJECT:
         {
             *((const ogl_context_gl_limits_arb_shader_storage_buffer_object**) out_result) = &context_ptr->limits_arb_shader_storage_buffer_object;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER:
+        {
+            *((const ogl_context_gl_limits_arb_sparse_buffer**) out_result) = &context_ptr->limits_arb_sparse_buffer;
 
             break;
         }

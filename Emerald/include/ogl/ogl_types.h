@@ -1505,6 +1505,17 @@ typedef struct
 
 typedef struct
 {
+    PFNGLBUFFERPAGECOMMITMENTARBPROC      pGLBufferPageCommitmentARB;
+    PFNGLNAMEDBUFFERPAGECOMMITMENTEXTPROC pGLNamedBufferPageCommitmentEXT;
+} ogl_context_gl_entrypoints_arb_sparse_buffer;
+
+typedef struct
+{
+    GLint sparse_buffer_page_size;
+} ogl_context_gl_limits_arb_sparse_buffer;
+
+typedef struct
+{
     PFNWRAPPEDGLTEXSTORAGE2DMULTISAMPLEPROC pGLTexStorage2DMultisample;
     PFNWRAPPEDGLTEXSTORAGE3DMULTISAMPLEPROC pGLTexStorage3DMultisample;
 } ogl_context_gl_entrypoints_arb_texture_storage_multisample;
