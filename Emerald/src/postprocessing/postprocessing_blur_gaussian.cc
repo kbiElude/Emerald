@@ -988,15 +988,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     entrypoints_ptr->pGLBindSampler            (DATA_SAMPLER_TEXTURE_UNIT_INDEX,
                                                 ogl_sampler_get_id(blur_ptr->sampler) );
 
-    entrypoints_ptr->pGLBindBufferRange        (GL_UNIFORM_BUFFER,
-                                                COEFFS_DATA_UB_BP,
-                                                blur_ptr->coeff_bo_id,
-                                                blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
-                                                blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
-    entrypoints_ptr->pGLProgramUniform1i       (po_id,
-                                                N_TAPS_UNIFORM_LOCATION,
-                                                n_taps);
-
     /* Iterate over all layers we need blurred */
     ASSERT_DEBUG_SYNC(src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D       ||
                       src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY ||
@@ -1045,17 +1036,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                       n_layer < n_layers;
                     ++n_layer)
     {
-        GLenum current_layer_target = GL_NONE;
-
-        if (src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D        ||
-            src_texture_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY)
-        {
-            current_layer_target = GL_TEXTURE_2D;
-        }
-        else
-        {
-            current_layer_target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + n_layer;
-        }
+        entrypoints_ptr->pGLProgramUniform1i(po_id,
+                                             N_TAPS_UNIFORM_LOCATION,
+                                             n_taps);
+        entrypoints_ptr->pGLBindBufferRange (GL_UNIFORM_BUFFER,
+                                             COEFFS_DATA_UB_BP,
+                                             blur_ptr->coeff_bo_id,
+                                             blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
+                                             blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
         /* Copy the layer to blur */
         entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
