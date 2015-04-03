@@ -133,7 +133,7 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
     _system_linear_alloc_pin_blob_descriptor* blob_descriptor = (_system_linear_alloc_pin_blob_descriptor*) descriptor->blobs[descriptor->n_current_blob];
     void*                                     result          = NULL;
 
-    if (blob_descriptor->next_alloc >= blob_descriptor->last_alloc)
+    if (blob_descriptor->next_alloc > blob_descriptor->last_alloc)
     {
         /* If there are more blobs available, just update the pointers. */
         if (descriptor->n_current_blob + 1 < descriptor->n_blobs)
@@ -186,7 +186,7 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
                 } /* if (new_blobs != NULL) */
             } /* if (new_blob_descriptor != NULL && new_raw_blob != NULL) */
         }
-    } /* if (blob_descriptor->next_alloc >= blob_descriptor->last_alloc) */
+    } /* if (blob_descriptor->next_alloc > blob_descriptor->last_alloc) */
 
     result                      =         blob_descriptor->next_alloc;
     blob_descriptor->next_alloc = (char*) result + descriptor->aligned_entry_size;

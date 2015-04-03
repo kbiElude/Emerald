@@ -25,9 +25,9 @@ TEST(CurvesTest, DefaultValue)
     ASSERT_TRUE(curve_container_set_default_value(test_curve,
                                                   test_default_value_variant) );
     ASSERT_TRUE(curve_container_get_value        (test_curve,
-                                                  0,                             /* time */
-                                                  false,                         /* should_force */
-                                                  test_default_value_variant) );
+                                                  0,              /* time */
+                                                  false,          /* should_force */
+                                                  result_variant) );
 
     system_variant_get_float(result_variant,
                             &result_float);
