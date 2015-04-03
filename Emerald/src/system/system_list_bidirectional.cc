@@ -26,6 +26,7 @@ typedef struct _system_list_bidirectional
 {
     _system_list_bidirectional_item* head_ptr;
     system_linear_alloc_pin          item_allocator;
+    unsigned int                     n_items;
     _system_list_bidirectional_item* last_ptr;
 
     _system_list_bidirectional()
@@ -34,6 +35,7 @@ typedef struct _system_list_bidirectional
         item_allocator = system_linear_alloc_pin_create(sizeof(_system_list_bidirectional_item),
                                                         16, /* n_entries_to_prealloc */
                                                         1); /* n_pins_to_prealloc */
+        n_items        = 0;
         last_ptr       = NULL;
     }
 
@@ -78,9 +80,10 @@ PUBLIC EMERALD_API void system_list_bidirectional_append(__in __notnull system_l
     else
     {
         /* Insert the new item between the submitted item and the one that used to follow it */
-        new_item_ptr->prev_ptr = item_ptr;
-        new_item_ptr->next_ptr = item_ptr->next_ptr;
-        item_ptr->next_ptr     = new_item_ptr;
+        new_item_ptr->next_ptr       = item_ptr->next_ptr;
+        new_item_ptr->prev_ptr       = item_ptr;
+        item_ptr->next_ptr->prev_ptr = new_item_ptr;
+        item_ptr->next_ptr           = new_item_ptr;
     }
 
     if (new_item_ptr->next_ptr == NULL)
@@ -88,6 +91,8 @@ PUBLIC EMERALD_API void system_list_bidirectional_append(__in __notnull system_l
         /* This is the last item on the list */
         list_ptr->last_ptr = new_item_ptr;
     }
+
+    list_ptr->n_items++;
 }
 
 /** TODO */
@@ -97,6 +102,7 @@ PUBLIC EMERALD_API void system_list_bidirectional_clear(__in __notnull system_li
 
     list_ptr->head_ptr = NULL;
     list_ptr->last_ptr = NULL;
+    list_ptr->n_items  = 0;
 
     system_linear_alloc_pin_return_all(list_ptr->item_allocator);
 }
@@ -119,6 +125,33 @@ PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_
 }
 
 /** TODO */
+PUBLIC EMERALD_API bool system_list_bidirectional_get_item_at(__in  __notnull system_list_bidirectional       list,
+                                                              __in            unsigned int                    index,
+                                                              __out __notnull system_list_bidirectional_item* out_item)
+{
+    _system_list_bidirectional*      list_ptr       = (_system_list_bidirectional*) list;
+    _system_list_bidirectional_item* item_ptr       = list_ptr->head_ptr;
+    unsigned int                     n_current_item = 0;
+    bool                             result         = false;
+
+    while (item_ptr       != NULL &&
+           n_current_item != index)
+    {
+        item_ptr = item_ptr->next_ptr;
+
+        ++n_current_item;
+    } /* while (item_ptr != NULL && n_current_item != index) */
+
+    if (item_ptr != NULL && n_current_item == index)
+    {
+        *out_item = (system_list_bidirectional_item) item_ptr;
+        result    = true;
+    }
+
+    return result;
+}
+
+/** TODO */
 PUBLIC EMERALD_API void system_list_bidirectional_get_item_data(__in  __notnull system_list_bidirectional_item list_item,
                                                                 __out __notnull void**                         out_result)
 {
@@ -131,6 +164,24 @@ PUBLIC EMERALD_API void system_list_bidirectional_get_item_data(__in  __notnull 
 PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_next_item(__in __notnull system_list_bidirectional_item list_item)
 {
     return (system_list_bidirectional_item) ( (_system_list_bidirectional_item*) list_item)->next_ptr;
+}
+
+/** TODO */
+PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_previous_item(__in __notnull system_list_bidirectional_item list_item)
+{
+    return (system_list_bidirectional_item) ( (_system_list_bidirectional_item*) list_item)->prev_ptr;
+}
+
+/** TODO */
+PUBLIC EMERALD_API unsigned int system_list_bidirectional_get_number_of_elements(__in __notnull system_list_bidirectional list)
+{
+    return ( (_system_list_bidirectional*) list)->n_items;
+}
+
+/** TODO */
+PUBLIC EMERALD_API system_list_bidirectional_item system_list_bidirectional_get_tail_item(__in __notnull system_list_bidirectional list)
+{
+    return (system_list_bidirectional_item) ( (_system_list_bidirectional*) list)->last_ptr;
 }
 
 /** TODO */
@@ -161,8 +212,11 @@ PUBLIC EMERALD_API void system_list_bidirectional_push_at_end(__in __notnull sys
 
         list_ptr->last_ptr->next_ptr = new_item_ptr;
         new_item_ptr->prev_ptr       = list_ptr->last_ptr;
-        list_ptr->last_ptr           = new_item_ptr;
+
+        list_ptr->last_ptr = new_item_ptr;
     }
+
+    list_ptr->n_items++;
 }
 
 /** TODO */
@@ -174,6 +228,12 @@ PUBLIC EMERALD_API void system_list_bidirectional_push_at_front(__in __notnull s
 
     new_item_ptr->data     = new_item_data;
     new_item_ptr->next_ptr = list_ptr->head_ptr;
+    new_item_ptr->prev_ptr = NULL;
+
+    if (list_ptr->head_ptr != NULL)
+    {
+        list_ptr->head_ptr->prev_ptr = new_item_ptr;
+    }
 
     list_ptr->head_ptr = new_item_ptr;
 
@@ -181,6 +241,8 @@ PUBLIC EMERALD_API void system_list_bidirectional_push_at_front(__in __notnull s
     {
         list_ptr->last_ptr = new_item_ptr;
     }
+
+    list_ptr->n_items++;
 }
 
 /** TODO */
@@ -218,6 +280,11 @@ PUBLIC EMERALD_API void system_list_bidirectional_remove_item(__in __notnull sys
 
         item_ptr->prev_ptr->next_ptr = NULL;
         list_ptr->last_ptr           = item_ptr->prev_ptr;
+
+        if (list_ptr->head_ptr == item_ptr)
+        {
+            list_ptr->head_ptr = NULL;
+        }
     }
     else
     if (item_ptr->prev_ptr == NULL && item_ptr->next_ptr != NULL)
@@ -230,10 +297,23 @@ PUBLIC EMERALD_API void system_list_bidirectional_remove_item(__in __notnull sys
 
         item_ptr->next_ptr->prev_ptr = NULL;
         list_ptr->head_ptr           = item_ptr->next_ptr;
+
+        if (list_ptr->last_ptr == item_ptr)
+        {
+            list_ptr->last_ptr = NULL;
+        }
+    }
+    else
+    if (list_ptr->n_items == 1)
+    {
+        list_ptr->head_ptr = NULL;
+        list_ptr->last_ptr = NULL;
     }
     else
     {
         ASSERT_DEBUG_SYNC(false,
                           "An abandonded item was detected in the list.");
     }
+
+    list_ptr->n_items--;
 }

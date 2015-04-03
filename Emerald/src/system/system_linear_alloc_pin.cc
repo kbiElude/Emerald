@@ -142,10 +142,12 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
 
             descriptor->n_current_blob                               ++;
             descriptor->blobs[descriptor->n_current_blob]->next_alloc = descriptor->blobs[descriptor->n_current_blob]->blob;
+
+            blob_descriptor = descriptor->blobs[descriptor->n_current_blob];
         } /* if (descriptor->n_current_blob + 1 < descriptor->n_blobs) */
         else
         {
-            LOG_TRACE("Pin-based linear allocator capacity exceeded! Need to expand.");
+            LOG_ERROR("Pin-based linear allocator capacity exceeded! Need to expand.");
 
             _system_linear_alloc_pin_blob_descriptor* new_blob_descriptor = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor;
             void*                                     new_raw_blob        = new (std::nothrow) char[descriptor->aligned_entry_size * descriptor->n_entries_per_blob];
@@ -154,37 +156,30 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
                               new_raw_blob        != NULL,
                               "Could not allocate new blob descriptor / raw blob.");
 
-            if (new_blob_descriptor != NULL &&
-                new_raw_blob        != NULL)
-            {
-                /* Got to resize blobs array. */
-                _system_linear_alloc_pin_blob_descriptor** new_blobs = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor*[descriptor->n_blobs+1];
+            /* Got to resize blobs array. */
+            _system_linear_alloc_pin_blob_descriptor** new_blobs = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor*[descriptor->n_blobs+1];
 
-                ASSERT_DEBUG_SYNC(new_blobs != NULL,
-                                  "Could not allocate new blobs array.");
+            ASSERT_DEBUG_SYNC(new_blobs != NULL,
+                              "Could not allocate new blobs array.");
 
-                if (new_blobs != NULL)
-                {
-                    memcpy(new_blobs,
-                           descriptor->blobs,
-                           sizeof(void*) * descriptor->n_blobs);
+            memcpy(new_blobs,
+                   descriptor->blobs,
+                   sizeof(void*) * descriptor->n_blobs);
 
-                    /* Insert new blob descriptor */
-                    new_blob_descriptor->blob       = new_raw_blob;
-                    new_blob_descriptor->last_alloc = (char*) new_raw_blob + (descriptor->n_entries_per_blob - 1) * descriptor->aligned_entry_size;
-                    new_blob_descriptor->next_alloc = (char*) new_raw_blob;
+            /* Insert new blob descriptor */
+            new_blob_descriptor->blob       = new_raw_blob;
+            new_blob_descriptor->last_alloc = (char*) new_raw_blob + (descriptor->n_entries_per_blob - 1) * descriptor->aligned_entry_size;
+            new_blob_descriptor->next_alloc = (char*) new_raw_blob;
 
-                    new_blobs[descriptor->n_blobs] = new_blob_descriptor;
-                    descriptor->n_blobs            ++;
+            new_blobs[descriptor->n_blobs] = new_blob_descriptor;
+            descriptor->n_blobs            ++;
 
-                    /* Free former blobs array, leave the descriptors intact. */
-                    delete [] descriptor->blobs;
+            /* Free former blobs array, leave the descriptors intact. */
+            delete [] descriptor->blobs;
 
-                    descriptor->n_current_blob++;
-                    descriptor->blobs = new_blobs;
-                    blob_descriptor   = new_blob_descriptor;
-                } /* if (new_blobs != NULL) */
-            } /* if (new_blob_descriptor != NULL && new_raw_blob != NULL) */
+            descriptor->n_current_blob++;
+            descriptor->blobs = new_blobs;
+            blob_descriptor   = new_blob_descriptor;
         }
     } /* if (blob_descriptor->next_alloc > blob_descriptor->last_alloc) */
 
