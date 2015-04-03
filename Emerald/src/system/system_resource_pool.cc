@@ -17,7 +17,7 @@ typedef struct
      *  If a variant is released by caller, it is transferred to released_variants_pool to be
      *  provided for next create() call. Hence, we do not use pins.
      */
-    system_linear_alloc_pin_handle allocator;
+    system_linear_alloc_pin allocator;
     /* Critical section is used to make the implementation multithread-safe */
     system_critical_section cs;
     /* Please see system_resource_pool_create() documentation for details. */

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -43,7 +43,9 @@ struct _system_linear_alloc_pin_descriptor
 /** TODO */
 PRIVATE void _system_linear_free_blobs(_system_linear_alloc_pin_descriptor* descriptor)
 {
-    for (size_t n_blob = 0; n_blob < descriptor->n_blobs; ++n_blob)
+    for (size_t n_blob = 0;
+                n_blob < descriptor->n_blobs;
+              ++n_blob)
     {
         delete descriptor->blobs[n_blob]->blob;
         delete descriptor->blobs[n_blob];
@@ -52,13 +54,15 @@ PRIVATE void _system_linear_free_blobs(_system_linear_alloc_pin_descriptor* desc
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_linear_alloc_pin_handle system_linear_alloc_pin_create(size_t entry_size,
-                                                                                 size_t n_entries_to_prealloc,
-                                                                                 size_t n_pins_to_prealloc)
+PUBLIC EMERALD_API system_linear_alloc_pin system_linear_alloc_pin_create(size_t entry_size,
+                                                                          size_t n_entries_to_prealloc,
+                                                                          size_t n_pins_to_prealloc)
 {
     _system_linear_alloc_pin_descriptor* new_descriptor = new (std::nothrow) _system_linear_alloc_pin_descriptor;
 
-    ASSERT_DEBUG_SYNC(new_descriptor != NULL, "Could not allocate a descriptor.");
+    ASSERT_DEBUG_SYNC(new_descriptor != NULL,
+                      "Could not allocate a descriptor.");
+
     if (new_descriptor != NULL)
     {
         new_descriptor->aligned_entry_size    = entry_size + (sizeof(void*) - entry_size % sizeof(void*) );
@@ -71,18 +75,24 @@ PUBLIC EMERALD_API system_linear_alloc_pin_handle system_linear_alloc_pin_create
 
         new_descriptor->blobs                 = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor*[1];
 
-        ASSERT_DEBUG_SYNC(new_descriptor != NULL, "Could not allocate blobs table.");
+        ASSERT_DEBUG_SYNC(new_descriptor != NULL,
+                          "Could not allocate blobs table.");
+
         if (new_descriptor->blobs != NULL)
         {
             new_descriptor->blobs[0] = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor;
 
-            ASSERT_DEBUG_SYNC(new_descriptor->blobs[0] != NULL, "Could not allocate a blob.");
+            ASSERT_DEBUG_SYNC(new_descriptor->blobs[0] != NULL,
+                              "Could not allocate a blob.");
+
             if (new_descriptor->blobs[0] != NULL)
             {
                 /* Alloc the blob */
                 _system_linear_alloc_pin_blob_descriptor* blob_descriptor = new_descriptor->blobs[0];
 
-                ASSERT_DEBUG_SYNC(blob_descriptor != NULL, "Could not allocate blob descriptor.");
+                ASSERT_DEBUG_SYNC(blob_descriptor != NULL,
+                                  "Could not allocate blob descriptor.");
+
                 if (blob_descriptor != NULL)
                 {
                     blob_descriptor->blob       = new (std::nothrow) char [new_descriptor->aligned_entry_size * n_entries_to_prealloc];
@@ -93,27 +103,31 @@ PUBLIC EMERALD_API system_linear_alloc_pin_handle system_linear_alloc_pin_create
                 /* Alloc pins */
                 new_descriptor->pins = new (std::nothrow) _system_linear_alloc_pin_pin_descriptor*[n_pins_to_prealloc];
 
-                ASSERT_DEBUG_SYNC(new_descriptor->pins != NULL, "Could not allocate new pins array");
+                ASSERT_DEBUG_SYNC(new_descriptor->pins != NULL,
+                                  "Could not allocate new pins array");
+
                 if (new_descriptor->pins != NULL)
                 {
                     new_descriptor->pins[0] = new (std::nothrow) _system_linear_alloc_pin_pin_descriptor;
 
-                    ASSERT_DEBUG_SYNC(new_descriptor->pins[0] != NULL, "Could not allocate pins table.");
+                    ASSERT_DEBUG_SYNC(new_descriptor->pins[0] != NULL,
+                                      "Could not allocate pins table.");
+
                     if (new_descriptor->pins[0] != NULL)
                     {
                         new_descriptor->pins[0]->next_alloc = blob_descriptor->blob;
                         new_descriptor->pins[0]->n_blob     = 0;
-                    }
-                }
-            }
-        }
-    }
+                    } /* if (new_descriptor->pins[0] != NULL) */
+                } /* if (new_descriptor->pins != NULL) */
+            } /* if (new_descriptor->blobs[0] != NULL) */
+        } /* if (new_descriptor->blobs != NULL) */
+    } /* if (new_descriptor != NULL) */
 
-    return (system_linear_alloc_pin_handle) new_descriptor;
+    return (system_linear_alloc_pin) new_descriptor;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_alloc_pin_handle handle)
+PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_alloc_pin handle)
 {
     _system_linear_alloc_pin_descriptor*      descriptor      = (_system_linear_alloc_pin_descriptor*)      handle;
     _system_linear_alloc_pin_blob_descriptor* blob_descriptor = (_system_linear_alloc_pin_blob_descriptor*) descriptor->blobs[descriptor->n_current_blob];
@@ -128,7 +142,7 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
 
             descriptor->n_current_blob                               ++;
             descriptor->blobs[descriptor->n_current_blob]->next_alloc = descriptor->blobs[descriptor->n_current_blob]->blob;
-        }
+        } /* if (descriptor->n_current_blob + 1 < descriptor->n_blobs) */
         else
         {
             LOG_TRACE("Pin-based linear allocator capacity exceeded! Need to expand.");
@@ -136,16 +150,24 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
             _system_linear_alloc_pin_blob_descriptor* new_blob_descriptor = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor;
             void*                                     new_raw_blob        = new (std::nothrow) char[descriptor->aligned_entry_size * descriptor->n_entries_per_blob];
 
-            ASSERT_DEBUG_SYNC(new_blob_descriptor != NULL && new_raw_blob != NULL, "Could not allocate new blob descriptor / raw blob.");
-            if (new_blob_descriptor != NULL && new_raw_blob != NULL)
+            ASSERT_DEBUG_SYNC(new_blob_descriptor != NULL &&
+                              new_raw_blob        != NULL,
+                              "Could not allocate new blob descriptor / raw blob.");
+
+            if (new_blob_descriptor != NULL &&
+                new_raw_blob        != NULL)
             {
                 /* Got to resize blobs array. */
                 _system_linear_alloc_pin_blob_descriptor** new_blobs = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor*[descriptor->n_blobs+1];
 
-                ASSERT_DEBUG_SYNC(new_blobs != NULL, "Could not allocate new blobs array.");
+                ASSERT_DEBUG_SYNC(new_blobs != NULL,
+                                  "Could not allocate new blobs array.");
+
                 if (new_blobs != NULL)
                 {
-                    memcpy(new_blobs, descriptor->blobs, sizeof(void*) * descriptor->n_blobs);
+                    memcpy(new_blobs,
+                           descriptor->blobs,
+                           sizeof(void*) * descriptor->n_blobs);
 
                     /* Insert new blob descriptor */
                     new_blob_descriptor->blob       = new_raw_blob;
@@ -161,10 +183,10 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
                     descriptor->n_current_blob++;
                     descriptor->blobs = new_blobs;
                     blob_descriptor   = new_blob_descriptor;
-                }
-            }
+                } /* if (new_blobs != NULL) */
+            } /* if (new_blob_descriptor != NULL && new_raw_blob != NULL) */
         }
-    }
+    } /* if (blob_descriptor->next_alloc >= blob_descriptor->last_alloc) */
 
     result                      =         blob_descriptor->next_alloc;
     blob_descriptor->next_alloc = (char*) result + descriptor->aligned_entry_size;
@@ -173,11 +195,13 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin_handle handle)
+PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin handle)
 {
     _system_linear_alloc_pin_descriptor* descriptor = (_system_linear_alloc_pin_descriptor*) handle;
 
-    ASSERT_DEBUG_SYNC(descriptor->pins != NULL, "Pins array is unavailable.");
+    ASSERT_DEBUG_SYNC(descriptor->pins != NULL,
+                      "Pins array is unavailable.");
+
     if (descriptor->pins != NULL)
     {
         if (descriptor->n_taken_pins >= descriptor->n_pins)
@@ -188,20 +212,28 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin_han
             size_t                                    new_n_pins_allocated = (cached_old_n_pins << 1);
             _system_linear_alloc_pin_pin_descriptor** new_pins             = new (std::nothrow) _system_linear_alloc_pin_pin_descriptor*[new_n_pins_allocated];
 
-            ASSERT_DEBUG_SYNC(new_pins != NULL, "Could not allocate new pins array");
+            ASSERT_DEBUG_SYNC(new_pins != NULL,
+                              "Could not allocate new pins array");
+
             if (new_pins != NULL)
             {
                 /* Zero all pointers */
-                memset(new_pins, 0, sizeof(_system_linear_alloc_pin_pin_descriptor*) * new_n_pins_allocated);
-                
+                memset(new_pins,
+                       0,
+                       sizeof(_system_linear_alloc_pin_pin_descriptor*) * new_n_pins_allocated);
+
                 /* First insert new pins. We'll copy the former pin pointers later on, because otherwise static analysis
                    gives us crap.
                  */
-                for (size_t n_pin = cached_old_n_pins; n_pin < new_n_pins_allocated; ++n_pin)
+                for (size_t n_pin = cached_old_n_pins;
+                            n_pin < new_n_pins_allocated;
+                          ++n_pin)
                 {
                     new_pins[n_pin] = new (std::nothrow) _system_linear_alloc_pin_pin_descriptor;
 
-                    ASSERT_DEBUG_SYNC(new_pins[n_pin] != NULL, "Could not allocate new pin descriptor");
+                    ASSERT_DEBUG_SYNC(new_pins[n_pin] != NULL,
+                                      "Could not allocate new pin descriptor");
+
                     if (new_pins[n_pin] != NULL)
                     {
                         new_pins[n_pin]->next_alloc = NULL;
@@ -214,15 +246,19 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin_han
                 descriptor->pins   = new_pins;
 
                 /* Finally, copy the former pointers */
-                memcpy(new_pins, cached_old_pins, sizeof(_system_linear_alloc_pin_pin_descriptor*) * cached_old_n_pins);
+                memcpy(new_pins,
+                       cached_old_pins,
+                       sizeof(_system_linear_alloc_pin_pin_descriptor*) * cached_old_n_pins);
 
                 /** Free the former pins array, leave the descriptors intact */
                 delete [] cached_old_pins;
-            }
-        }
+            } /* if (new_pins != NULL) */
+        } /* if (descriptor->n_taken_pins >= descriptor->n_pins) */
 
         /* Mark a new pin */
-        ASSERT_DEBUG_SYNC(descriptor->pins != NULL, "Pins array is NULL");
+        ASSERT_DEBUG_SYNC(descriptor->pins != NULL,
+                          "Pins array is NULL");
+
         if (descriptor->pins != NULL)
         {
             _system_linear_alloc_pin_blob_descriptor* blob_descriptor = descriptor->blobs[descriptor->n_current_blob];
@@ -232,12 +268,12 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_mark(system_linear_alloc_pin_han
             pin_descriptor->n_blob     = descriptor->n_current_blob;
 
             descriptor->n_taken_pins++;
-        }
-    }
+        } /* if (descriptor->pins != NULL) */
+    } /* if (descriptor->pins != NULL) */
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_linear_alloc_pin_release(__deallocate(mem) system_linear_alloc_pin_handle handle)
+PUBLIC EMERALD_API void system_linear_alloc_pin_release(__deallocate(mem) system_linear_alloc_pin handle)
 {
     _system_linear_alloc_pin_descriptor* descriptor = (_system_linear_alloc_pin_descriptor*) handle;
 
@@ -247,17 +283,19 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_release(__deallocate(mem) system
     descriptor->blobs = NULL;
 
     /* Pins */
-    for (size_t n_pin = 0; n_pin < descriptor->n_pins; ++n_pin)
+    for (size_t n_pin = 0;
+                n_pin < descriptor->n_pins;
+              ++n_pin)
     {
         delete descriptor->pins[n_pin];
     }
-    delete [] descriptor->pins;
 
-    delete  descriptor;
+    delete [] descriptor->pins;
+    delete    descriptor;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_linear_alloc_pin_return_all(system_linear_alloc_pin_handle pin)
+PUBLIC EMERALD_API void system_linear_alloc_pin_return_all(system_linear_alloc_pin pin)
 {
     _system_linear_alloc_pin_descriptor* pin_ptr = (_system_linear_alloc_pin_descriptor*) pin;
 
@@ -272,7 +310,7 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_return_all(system_linear_alloc_p
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_linear_alloc_pin_unmark(system_linear_alloc_pin_handle handle)
+PUBLIC EMERALD_API void system_linear_alloc_pin_unmark(system_linear_alloc_pin handle)
 {
     _system_linear_alloc_pin_descriptor* descriptor = (_system_linear_alloc_pin_descriptor*) handle;
 
@@ -285,5 +323,5 @@ PUBLIC EMERALD_API void system_linear_alloc_pin_unmark(system_linear_alloc_pin_h
         blob_descriptor->next_alloc = pin_descriptor->next_alloc;
 
         descriptor->n_taken_pins--;
-    }
+    } /* if (descriptor->n_taken_pins > 0) */
 }

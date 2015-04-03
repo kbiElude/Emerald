@@ -243,6 +243,9 @@ typedef void (*PFNSYSTEMRESOURCEPOOLINITBLOCK)(system_resource_pool_block);
  * and returned to the pool.
  */
 typedef void (*PFNSYSTEMRESOURCEPOOLDEINITBLOCK)(system_resource_pool_block);
+
+/******************** MEMORY MANAGER **********************************/
+DECLARE_HANDLE(system_memory_manager);
 /************************** DAG ******************************************/
 DECLARE_HANDLE(system_dag);
 
@@ -253,9 +256,13 @@ typedef void* system_dag_node_value;
 /******************** HASHED ANSI STRING *********************************/
 /* An instance of a hashed ansi string */
 DECLARE_HANDLE(system_hashed_ansi_string);
-/******************* UNROLLED LINKED LIST ********************************/
-/* An instance of unrolled linked list */
-DECLARE_HANDLE(system_unrolled_linked_list);
+/******************* BIDIRECTIONAL LINKED LIST ********************************/
+/* An instance of an bidirectional linked list */
+DECLARE_HANDLE(system_list_bidirectional);
+
+/* An instance of an bidirectional linked list item */
+DECLARE_HANDLE(system_list_bidirectional_item);
+
 /*********************** VARIANTS ****************************************/
 /** Supported variant types */
 typedef enum
@@ -272,7 +279,7 @@ typedef enum
 DECLARE_HANDLE(system_variant);
 /********************* LINEAR ALLOC **************************************/
 /** Linear alloc handle */
-DECLARE_HANDLE(system_linear_alloc_pin_handle);
+DECLARE_HANDLE(system_linear_alloc_pin);
 /********************** HASH64 MAP ***************************************/
 /** 64-bit hash type */
 typedef unsigned __int64 system_hash64;
@@ -282,11 +289,6 @@ DECLARE_HANDLE(system_hash64map);
 typedef void* _system_hash64map_on_remove_callback_argument;
 /** Hash64-based map on-removal call-back function pointer type */
 typedef void (*PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC)(_system_hash64map_on_remove_callback_argument);
-/******************** LOOKASIDE LIST *************************************/
-/* Lookaside list type */
-DECLARE_HANDLE(system_lookaside_list);
-/* Type of a single item stored in a lookaside list */
-DECLARE_HANDLE(system_lookaside_list_item);
 /******************** RESIZABLE VECTOR ***********************************/
 /** Represents a resizable vector instance */
 DECLARE_HANDLE(system_resizable_vector);
