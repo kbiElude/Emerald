@@ -3289,8 +3289,7 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &rendering_handler);
 
-    ASSERT_DEBUG_SYNC(rendering_handler != NULL,
-                      "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
+    LOG_ERROR("Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
 
     if (rendering_handler != NULL)
     {
