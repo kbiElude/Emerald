@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "gfx/gfx_image.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
 #include "ogl/ogl_context_state_cache.h"
@@ -106,6 +107,7 @@ typedef struct
     bool gl_ext_direct_state_access_support;
 
     ogl_context_bo_bindings         bo_bindings;
+    ogl_buffers                     buffers;
     ogl_materials                   materials;
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
@@ -2544,6 +2546,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->wgl_swap_control_tear_support              = false;
                             _result->pWGLSwapIntervalEXT                        = NULL;
 
+                            _result->buffers                                    = NULL;
                             _result->primitive_renderer                         = NULL;
                             _result->materials                                  = NULL; /* deferred till first query time */
                             _result->opengl32_dll_handle                        = NULL;
@@ -2809,6 +2812,20 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
         {
             *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_BUFFERS:
+        {
+            /* If there's no BO manager, create one now */
+            if (context_ptr->buffers == NULL)
+            {
+                context_ptr->buffers = ogl_buffers_create(context,
+                                                          system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
+            }
+
+            *((ogl_buffers*) out_result) = context_ptr->buffers;
 
             break;
         }
@@ -3081,6 +3098,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT:
         {
             *((bool*) out_result) = context_ptr->gl_arb_shader_storage_buffer_object_support;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS:
+        {
+            *((bool*) out_result) = context_ptr->gl_arb_sparse_buffer_support;
 
             break;
         }

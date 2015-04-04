@@ -22,10 +22,12 @@
 
 typedef void (*PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC)(__in system_memory_manager manager,
                                                      __in unsigned int          offset_aligned,
-                                                     __in unsigned int          size);
+                                                     __in unsigned int          size,
+                                                     __in void*                 user_arg);
 typedef void (*PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC) (__in system_memory_manager manager,
                                                      __in unsigned int          offset_aligned,
-                                                     __in unsigned int          size);
+                                                     __in unsigned int          size,
+                                                     __in void*                 user_arg);
 
 
 /** TODO

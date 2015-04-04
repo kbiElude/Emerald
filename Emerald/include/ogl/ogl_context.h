@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_CONTEXT_H
@@ -11,7 +11,8 @@
 #include "ogl/ogl_context_sampler_bindings.h"
 #include "ogl/ogl_context_texture_compression.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_context, ogl_context)
+REFCOUNT_INSERT_DECLARATIONS(ogl_context,
+                             ogl_context)
 
 /** Optimus: forces High Performance profile */
 #define INCLUDE_OPTIMUS_SUPPORT                                          \
@@ -24,6 +25,9 @@ typedef enum ogl_context_property
 {
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+
+    /* not settable, ogl_context_buffers. */
+    OGL_CONTEXT_PROPERTY_BUFFERS,
 
     /* not settable, ogl_context_es_entrypoints*.
      *
@@ -151,6 +155,9 @@ typedef enum ogl_context_property
 
     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT,
+
+    /* not settable, bool */
+    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
 
     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_TEXTURE_STORAGE_MULTISAMPLE,

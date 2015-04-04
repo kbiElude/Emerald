@@ -32,6 +32,15 @@ typedef struct _system_memory_manager
     PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed;
     void*                                user_arg;
 
+    /* Each item holds the number of blocks that are assigned to corresponding pages.
+     *
+     * A page should only be committed once if it has never been used before.
+     *
+     * A page can only be de-committed (hence, a "freed" call-back should be made) if
+     * it does not hold any content.
+     */
+    unsigned int* page_owners;
+
     explicit _system_memory_manager(__in bool                                 in_thread_safe,
                                     __in unsigned int                         in_memory_region_size,
                                     __in unsigned int                         in_page_size,
@@ -39,6 +48,8 @@ typedef struct _system_memory_manager
                                     __in PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC in_pfn_on_memory_block_alloced,
                                     __in PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  in_pfn_on_memory_block_freed)
     {
+        const unsigned int n_page_owners = in_memory_region_size / in_page_size + 1;
+
         if (in_thread_safe)
         {
             cs = system_critical_section_create();
@@ -55,10 +66,15 @@ typedef struct _system_memory_manager
                                                                        NULL,  /* init_fn */
                                                                        NULL); /* deinit_fn */
         memory_region_size          = in_memory_region_size;
+        page_owners                 = new (std::nothrow) unsigned int[n_page_owners];
         page_size                   = in_page_size;
         pfn_on_memory_block_alloced = in_pfn_on_memory_block_alloced;
         pfn_on_memory_block_freed   = in_pfn_on_memory_block_freed;
         user_arg                    = in_user_arg;
+
+        memset(page_owners,
+               0,
+               n_page_owners * sizeof(unsigned int) );
     }
 
     ~_system_memory_manager()
@@ -89,6 +105,13 @@ typedef struct _system_memory_manager
             system_critical_section_release(cs);
 
             cs = NULL;
+        }
+
+        if (page_owners != NULL)
+        {
+            delete [] page_owners;
+
+            page_owners = NULL;
         }
     }
 } _system_memory_manager;
@@ -150,17 +173,59 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
             system_list_bidirectional_push_at_end(manager_ptr->alloced_blocks,
                                                   left_memory_block_ptr);
 
-            /* Call back the owner. Note that we need to use the page-aligned offset and size here. */
+            /* Call back the owner. Note that:
+             *
+             * 1) we need to use the page-aligned offset and size here.
+             * 2) we need not call back the user for pages that have already been reported.
+             */
+            unsigned int callback_page_index_end   = -1;
+            unsigned int callback_page_index_mark  = -1;
+            unsigned int callback_page_index_start = -1;
+            unsigned int callback_page_offset      = left_memory_block_ptr->page_offset;
+            unsigned int callback_page_size        = left_memory_block_ptr->page_size;
+
             ASSERT_DEBUG_SYNC(left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size <= manager_ptr->memory_region_size,
                               "Allocation exceeding available pages!");
 
-            ASSERT_DEBUG_SYNC((left_memory_block_ptr->page_offset % manager_ptr->page_size) == 0 &&
-                              (left_memory_block_ptr->page_size   % manager_ptr->page_size) == 0,
+            ASSERT_DEBUG_SYNC((callback_page_offset % manager_ptr->page_size) == 0 &&
+                              (callback_page_size   % manager_ptr->page_size) == 0,
                               "Callback values are not rounded to page size.");
 
-            manager_ptr->pfn_on_memory_block_alloced(manager,
-                                                     left_memory_block_ptr->page_offset,
-                                                     left_memory_block_ptr->page_size);
+            callback_page_index_start =  callback_page_offset                       / manager_ptr->page_size;
+            callback_page_index_end   = (callback_page_offset + callback_page_size) / manager_ptr->page_size;
+            callback_page_index_mark  = callback_page_index_start; /* used to delimit the pages that have already been called back about */
+
+            for (unsigned int page_index = callback_page_index_start;
+                              page_index < callback_page_index_end;
+                            ++page_index)
+            {
+                manager_ptr->page_owners[page_index]++;
+
+                /* At this moment, if a given page uses a counter != 1, it can only mean that the page
+                 * has already been used in the past. In such case, do *not* issue the call-back for
+                 * the considered page. However, the call-back should still be issued for all the
+                 * pages we already traversed, which have not been committed earlier. */
+                if (manager_ptr->page_owners[page_index] != 1          &&
+                    callback_page_index_mark             != page_index)
+                {
+                    manager_ptr->pfn_on_memory_block_alloced(manager,
+                                                              callback_page_index_mark               * manager_ptr->page_size,
+                                                             (page_index - callback_page_index_mark) * manager_ptr->page_size,
+                                                             manager_ptr->user_arg);
+
+                    /* Update the marker index */
+                    callback_page_index_mark = callback_page_index_start;
+                }
+            } /* for (all affected pages) */
+
+            if (manager_ptr->page_owners[callback_page_index_end-1] == 1                       &&
+                callback_page_index_mark                            != callback_page_index_end)
+            {
+                manager_ptr->pfn_on_memory_block_alloced(manager,
+                                                         callback_page_index_mark                            * manager_ptr->page_size,
+                                                        (callback_page_index_end - callback_page_index_mark) * manager_ptr->page_size,
+                                                        manager_ptr->user_arg);
+            }
 
             /* Now for the right sub-region.. */
             if (right_memory_block_size > 0)
@@ -276,6 +341,41 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
             /* We have a find! */
             system_list_bidirectional_remove_item(manager_ptr->alloced_blocks,
                                                   current_item);
+
+            unsigned int callback_page_index_start =  current_block_ptr->block_offset                                 / manager_ptr->page_size;
+            unsigned int callback_page_index_end   = (current_block_ptr->block_offset + current_block_ptr->page_size) / manager_ptr->page_size;
+            unsigned int callback_page_index_mark  = callback_page_index_start; /* used to delimit the pages that have already been called back about */
+
+            for (unsigned int page_index = callback_page_index_start;
+                              page_index < callback_page_index_end;
+                            ++page_index)
+            {
+                ASSERT_DEBUG_SYNC(manager_ptr->page_owners[page_index] > 0,
+                                  "Zero counter detected!");
+
+                --manager_ptr->page_owners[page_index];
+
+                if (manager_ptr->page_owners[page_index] != 0          &&
+                    callback_page_index_mark             != page_index)
+                {
+                    manager_ptr->pfn_on_memory_block_freed(manager,
+                                                           callback_page_index_mark               * manager_ptr->page_size,
+                                                          (page_index - callback_page_index_mark) * manager_ptr->page_size,
+                                                           manager_ptr->user_arg);
+
+                    /* Update the marker index */
+                    callback_page_index_mark = callback_page_index_start;
+                }
+            } /* for (all affected pages) */
+
+            if (callback_page_index_mark                              != callback_page_index_end &&
+                manager_ptr->page_owners[callback_page_index_end - 1] == 0)
+            {
+                manager_ptr->pfn_on_memory_block_freed(manager,
+                                                       callback_page_index_mark                            * manager_ptr->page_size,
+                                                      (callback_page_index_end - callback_page_index_mark) * manager_ptr->page_size,
+                                                      manager_ptr->user_arg);
+            }
 
             current_block_ptr->block_offset = 0;
             has_found                       = true;

@@ -32,6 +32,9 @@ typedef enum
     OGL_PRIMITIVE_TYPE_UNDEFINED
 } ogl_primitive_type;
 
+/* Buffer object manager */
+DECLARE_HANDLE(ogl_buffers);
+
 /* Curve renderer */
 DECLARE_HANDLE(ogl_curve_renderer);
 
