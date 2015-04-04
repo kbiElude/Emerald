@@ -12,9 +12,11 @@
 
 typedef struct _system_memory_manager_block
 {
-    unsigned int aligned_offset; /* ALIGNED to page size. This value is reported via a call-back to the owner */
-    unsigned int offset;         /* NOT aligned to page size */
-    unsigned int size;
+    unsigned int block_offset; /* NOT aligned to page size */
+    unsigned int block_size;
+
+    unsigned int page_offset; /* tells the page-aligned offset, relative to the beginning of the manager's memory block */
+    unsigned int page_size;
 } _system_memory_manager_block;
 
 typedef struct _system_memory_manager
@@ -93,10 +95,10 @@ typedef struct _system_memory_manager
 
 
 /** Please see header for spec */
-PUBLIC bool system_memory_manager_alloc_block(__in  __notnull system_memory_manager manager,
-                                              __in            unsigned int          size,
-                                              __in            unsigned int          required_alignment,
-                                              __out __notnull unsigned int*         out_allocation_offset)
+PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system_memory_manager manager,
+                                                          __in            unsigned int          size,
+                                                          __in            unsigned int          required_alignment,
+                                                          __out __notnull unsigned int*         out_allocation_offset)
 {
     _system_memory_manager* manager_ptr = (_system_memory_manager*) manager;
     bool                    result      = false;
@@ -111,15 +113,24 @@ PUBLIC bool system_memory_manager_alloc_block(__in  __notnull system_memory_mana
 
     while (!result && current_memory_item != NULL)
     {
-        _system_memory_manager_block* current_memory_block_ptr = (_system_memory_manager_block*) current_memory_item;
-        const unsigned int            padding_required         = (required_alignment - current_memory_block_ptr->offset % required_alignment) % required_alignment;
-        const unsigned int            n_bytes_required         = size + padding_required; /* also count the n of bytes we need to move forward to adhere to the alignment requirements */
+        _system_memory_manager_block* current_memory_block_ptr = NULL;
+        unsigned int                  block_offset_padding     = 0;
+
+        system_list_bidirectional_get_item_data(current_memory_item,
+                                               (void**) &current_memory_block_ptr);
+
+        if (required_alignment != 0)
+        {
+            block_offset_padding = (required_alignment - current_memory_block_ptr->block_offset % required_alignment) % required_alignment;
+        }
+
+        const unsigned int n_bytes_required = size + block_offset_padding; /* also count the n of bytes we need to move forward to adhere to the alignment requirements */
 
         /* Does this block fit within the current region? */
-        if (current_memory_block_ptr->size >= n_bytes_required)
+        if (current_memory_block_ptr->block_size >= n_bytes_required)
         {
             const unsigned int left_memory_block_size  = n_bytes_required;
-            const unsigned int right_memory_block_size = current_memory_block_ptr->size - n_bytes_required;
+            const unsigned int right_memory_block_size = current_memory_block_ptr->block_size - n_bytes_required;
 
             /* Split the region into two sub-regions.
              *
@@ -129,40 +140,37 @@ PUBLIC bool system_memory_manager_alloc_block(__in  __notnull system_memory_mana
             _system_memory_manager_block* left_memory_block_ptr  = (_system_memory_manager_block*) system_resource_pool_get_from_pool(manager_ptr->block_descriptor_pool);
             _system_memory_manager_block* right_memory_block_ptr = NULL;
 
-            left_memory_block_ptr->aligned_offset = current_memory_block_ptr->offset + padding_required;
-            left_memory_block_ptr->offset         = current_memory_block_ptr->offset;
-            left_memory_block_ptr->size           = n_bytes_required;
+            left_memory_block_ptr->block_offset = current_memory_block_ptr->block_offset;
+            left_memory_block_ptr->block_size   = n_bytes_required;
+            left_memory_block_ptr->page_offset  =  (left_memory_block_ptr->block_offset                                                                                                        / manager_ptr->page_size) * manager_ptr->page_size;
+            left_memory_block_ptr->page_size    = ((left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size - left_memory_block_ptr->page_offset + manager_ptr->page_size - 1) / manager_ptr->page_size) * manager_ptr->page_size;
 
-            *out_allocation_offset = left_memory_block_ptr->aligned_offset;
+            *out_allocation_offset = left_memory_block_ptr->block_offset + block_offset_padding;
 
             system_list_bidirectional_push_at_end(manager_ptr->alloced_blocks,
                                                   left_memory_block_ptr);
 
             /* Call back the owner. Note that we need to use the page-aligned offset and size here. */
-            const unsigned int callback_offset = left_memory_block_ptr->offset - (manager_ptr->page_size - left_memory_block_ptr->offset % manager_ptr->page_size) % manager_ptr->page_size;
-                  unsigned int callback_size   = callback_offset               + (manager_ptr->page_size - callback_offset               % manager_ptr->page_size) % manager_ptr->page_size;
+            ASSERT_DEBUG_SYNC(left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size <= manager_ptr->memory_region_size,
+                              "Allocation exceeding available pages!");
 
-            ASSERT_DEBUG_SYNC(left_memory_block_ptr->aligned_offset >= callback_offset,
-                              "Callback offset precedes the actual memory allocation");
-            ASSERT_DEBUG_SYNC(left_memory_block_ptr->aligned_offset + left_memory_block_ptr->size < callback_offset + callback_size,
-                              "The allocated block exceeds the allocated memory region");
-
-            ASSERT_DEBUG_SYNC((callback_offset % manager_ptr->page_size) == 0 &&
-                              (callback_size   % manager_ptr->page_size) == 0,
+            ASSERT_DEBUG_SYNC((left_memory_block_ptr->page_offset % manager_ptr->page_size) == 0 &&
+                              (left_memory_block_ptr->page_size   % manager_ptr->page_size) == 0,
                               "Callback values are not rounded to page size.");
 
             manager_ptr->pfn_on_memory_block_alloced(manager,
-                                                     callback_offset,
-                                                     callback_size);
+                                                     left_memory_block_ptr->page_offset,
+                                                     left_memory_block_ptr->page_size);
 
             /* Now for the right sub-region.. */
             if (right_memory_block_size > 0)
             {
                 right_memory_block_ptr = (_system_memory_manager_block*) system_resource_pool_get_from_pool(manager_ptr->block_descriptor_pool);
 
-                right_memory_block_ptr->aligned_offset = 0;
-                right_memory_block_ptr->offset         = left_memory_block_ptr->offset + left_memory_block_ptr->size;
-                right_memory_block_ptr->size           = right_memory_block_size;
+                right_memory_block_ptr->block_offset = left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size;
+                right_memory_block_ptr->block_size   = right_memory_block_size;
+                right_memory_block_ptr->page_offset  = left_memory_block_ptr->page_offset - (manager_ptr->page_size + left_memory_block_ptr->page_offset % manager_ptr->page_size) % manager_ptr->page_size;
+                right_memory_block_ptr->page_size    = 0;
 
                 system_list_bidirectional_push_at_end(manager_ptr->available_blocks,
                                                       right_memory_block_ptr);
@@ -177,6 +185,9 @@ PUBLIC bool system_memory_manager_alloc_block(__in  __notnull system_memory_mana
             /* Done */
             result = true;
         } /* if (current_memory_block_ptr->size >= n_bytes_required) */
+
+        /* Move on.. */
+        current_memory_item = system_list_bidirectional_get_next_item(current_memory_item);
     } /* while (current_memory_item != NULL) */
 
     /* All done */
@@ -189,12 +200,12 @@ PUBLIC bool system_memory_manager_alloc_block(__in  __notnull system_memory_mana
 }
 
 /** Please see header for spec */
-PUBLIC system_memory_manager system_memory_manager_create(__in           unsigned int                         memory_region_size,
-                                                          __in           unsigned int                         page_size,
-                                                          __in __notnull PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced,
-                                                          __in __notnull PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed,
-                                                          __in_opt       void*                                user_arg,
-                                                          __in           bool                                 should_be_thread_safe)
+PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(__in           unsigned int                         memory_region_size,
+                                                                      __in           unsigned int                         page_size,
+                                                                      __in __notnull PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced,
+                                                                      __in __notnull PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed,
+                                                                      __in_opt       void*                                user_arg,
+                                                                      __in           bool                                 should_be_thread_safe)
 {
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(memory_region_size != 0,
@@ -224,9 +235,10 @@ PUBLIC system_memory_manager system_memory_manager_create(__in           unsigne
         /* Create a descriptor for the memory region we are responsible for */
         _system_memory_manager_block* new_block_ptr = (_system_memory_manager_block*) system_resource_pool_get_from_pool(new_manager->block_descriptor_pool);
 
-        new_block_ptr->aligned_offset = 0;
-        new_block_ptr->offset         = 0;
-        new_block_ptr->size           = memory_region_size;
+        new_block_ptr->block_offset = 0;
+        new_block_ptr->block_size   = memory_region_size;
+        new_block_ptr->page_offset  = 0;
+        new_block_ptr->page_size    = 0; /* block does not use any committed pages */
 
         /* ..and store it */
         system_list_bidirectional_push_at_end(new_manager->available_blocks,
@@ -238,8 +250,8 @@ PUBLIC system_memory_manager system_memory_manager_create(__in           unsigne
 }
 
 /** Please see header for spec */
-PUBLIC void system_memory_manager_free_block(__in __notnull system_memory_manager manager,
-                                             __in           unsigned int          alloc_offset)
+PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_memory_manager manager,
+                                                         __in           unsigned int          alloc_offset)
 {
     _system_memory_manager* manager_ptr = (_system_memory_manager*) manager;
 
@@ -259,17 +271,17 @@ PUBLIC void system_memory_manager_free_block(__in __notnull system_memory_manage
         system_list_bidirectional_get_item_data(current_item,
                                                (void**) &current_block_ptr);
 
-        if (current_block_ptr->aligned_offset == alloc_offset)
+        if (current_block_ptr->block_offset == alloc_offset)
         {
             /* We have a find! */
             system_list_bidirectional_remove_item(manager_ptr->alloced_blocks,
                                                   current_item);
 
-            current_block_ptr->aligned_offset = 0;
-            current_block_ptr->offset         = 0;
+            current_block_ptr->block_offset = 0;
+            has_found                       = true;
 
             system_list_bidirectional_push_at_front(manager_ptr->available_blocks,
-                                                    current_item);
+                                                    current_block_ptr);
 
             /* Bail out of the loop */
             break;
@@ -289,7 +301,7 @@ PUBLIC void system_memory_manager_free_block(__in __notnull system_memory_manage
 }
 
 /** Please see header for spec */
-PUBLIC void system_memory_manager_release(__in __notnull system_memory_manager manager)
+PUBLIC EMERALD_API void system_memory_manager_release(__in __notnull system_memory_manager manager)
 {
     _system_memory_manager* manager_ptr = (_system_memory_manager*) manager;
 
