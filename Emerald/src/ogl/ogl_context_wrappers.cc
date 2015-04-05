@@ -1256,6 +1256,12 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferStorage(GLenum        target,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
                             &bo_bindings);
 
+    /* NOTE: This code-path is broken. The ogl_context_bo_bindings_get_general_binding() call fails
+     *       because we're currently not caching VAO state at all. TODO ASAP.
+     */
+    ASSERT_DEBUG_SYNC(target != GL_ELEMENT_ARRAY_BUFFER,
+                      "TODO");
+
     if (target != GL_ELEMENT_ARRAY_BUFFER)
     {
         ogl_context_bo_bindings_sync(bo_bindings,

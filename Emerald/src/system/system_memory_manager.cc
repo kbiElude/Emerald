@@ -17,6 +17,8 @@ typedef struct _system_memory_manager_block
 
     unsigned int page_offset; /* tells the page-aligned offset, relative to the beginning of the manager's memory block */
     unsigned int page_size;
+
+    unsigned int result_offset; /* the offset returned by the alloc() function. takes user-specified alignment into consideration */
 } _system_memory_manager_block;
 
 typedef struct _system_memory_manager
@@ -163,12 +165,13 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
             _system_memory_manager_block* left_memory_block_ptr  = (_system_memory_manager_block*) system_resource_pool_get_from_pool(manager_ptr->block_descriptor_pool);
             _system_memory_manager_block* right_memory_block_ptr = NULL;
 
-            left_memory_block_ptr->block_offset = current_memory_block_ptr->block_offset;
-            left_memory_block_ptr->block_size   = n_bytes_required;
-            left_memory_block_ptr->page_offset  =  (left_memory_block_ptr->block_offset                                                                                                        / manager_ptr->page_size) * manager_ptr->page_size;
-            left_memory_block_ptr->page_size    = ((left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size - left_memory_block_ptr->page_offset + manager_ptr->page_size - 1) / manager_ptr->page_size) * manager_ptr->page_size;
+            left_memory_block_ptr->block_offset  = current_memory_block_ptr->block_offset;
+            left_memory_block_ptr->block_size    = n_bytes_required;
+            left_memory_block_ptr->page_offset   =  (left_memory_block_ptr->block_offset                                                                                                        / manager_ptr->page_size) * manager_ptr->page_size;
+            left_memory_block_ptr->page_size     = ((left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size - left_memory_block_ptr->page_offset + manager_ptr->page_size - 1) / manager_ptr->page_size) * manager_ptr->page_size;
+            left_memory_block_ptr->result_offset = left_memory_block_ptr->block_offset + block_offset_padding;
 
-            *out_allocation_offset = left_memory_block_ptr->block_offset + block_offset_padding;
+            *out_allocation_offset = left_memory_block_ptr->result_offset;
 
             system_list_bidirectional_push_at_end(manager_ptr->alloced_blocks,
                                                   left_memory_block_ptr);
@@ -234,10 +237,11 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
             {
                 right_memory_block_ptr = (_system_memory_manager_block*) system_resource_pool_get_from_pool(manager_ptr->block_descriptor_pool);
 
-                right_memory_block_ptr->block_offset = left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size;
-                right_memory_block_ptr->block_size   = right_memory_block_size;
-                right_memory_block_ptr->page_offset  = left_memory_block_ptr->page_offset - (manager_ptr->page_size + left_memory_block_ptr->page_offset % manager_ptr->page_size) % manager_ptr->page_size;
-                right_memory_block_ptr->page_size    = 0;
+                right_memory_block_ptr->block_offset  = left_memory_block_ptr->block_offset + left_memory_block_ptr->block_size;
+                right_memory_block_ptr->block_size    = right_memory_block_size;
+                right_memory_block_ptr->page_offset   = left_memory_block_ptr->page_offset - (manager_ptr->page_size + left_memory_block_ptr->page_offset % manager_ptr->page_size) % manager_ptr->page_size;
+                right_memory_block_ptr->page_size     = 0;
+                right_memory_block_ptr->result_offset = 0;
 
                 system_list_bidirectional_push_at_end(manager_ptr->available_blocks,
                                                       right_memory_block_ptr);
@@ -302,10 +306,11 @@ PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(__in      
         /* Create a descriptor for the memory region we are responsible for */
         _system_memory_manager_block* new_block_ptr = (_system_memory_manager_block*) system_resource_pool_get_from_pool(new_manager->block_descriptor_pool);
 
-        new_block_ptr->block_offset = 0;
-        new_block_ptr->block_size   = memory_region_size;
-        new_block_ptr->page_offset  = 0;
-        new_block_ptr->page_size    = 0; /* block does not use any committed pages */
+        new_block_ptr->block_offset  = 0;
+        new_block_ptr->block_size    = memory_region_size;
+        new_block_ptr->page_offset   = 0;
+        new_block_ptr->page_size     = 0; /* block does not use any committed pages */
+        new_block_ptr->result_offset = 0;
 
         /* ..and store it */
         system_list_bidirectional_push_at_end(new_manager->available_blocks,
@@ -338,7 +343,7 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
         system_list_bidirectional_get_item_data(current_item,
                                                (void**) &current_block_ptr);
 
-        if (current_block_ptr->block_offset == alloc_offset)
+        if (current_block_ptr->result_offset == alloc_offset)
         {
             /* We have a find! */
             system_list_bidirectional_remove_item(manager_ptr->alloced_blocks,

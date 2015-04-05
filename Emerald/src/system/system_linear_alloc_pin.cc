@@ -147,8 +147,6 @@ PUBLIC EMERALD_API void* system_linear_alloc_pin_get_from_pool(system_linear_all
         } /* if (descriptor->n_current_blob + 1 < descriptor->n_blobs) */
         else
         {
-            LOG_ERROR("Pin-based linear allocator capacity exceeded! Need to expand.");
-
             _system_linear_alloc_pin_blob_descriptor* new_blob_descriptor = new (std::nothrow) _system_linear_alloc_pin_blob_descriptor;
             void*                                     new_raw_blob        = new (std::nothrow) char[descriptor->aligned_entry_size * descriptor->n_entries_per_blob];
 

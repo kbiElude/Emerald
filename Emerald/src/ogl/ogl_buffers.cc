@@ -272,7 +272,7 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
     /* Check if the request was successful */
     GLint64 reported_bo_size = 0;
 
-    buffers_ptr->entry_points->pGLGetBufferParameteri64v(new_buffer_ptr->bo_id,
+    buffers_ptr->entry_points->pGLGetBufferParameteri64v(bo_target,
                                                          GL_BUFFER_SIZE,
                                                         &reported_bo_size);
 
@@ -326,7 +326,7 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(__in __notnull
     /* Check if the request was successful */
     GLint64 reported_bo_size = 0;
 
-    buffers_ptr->entry_points->pGLGetBufferParameteri64v(new_buffer_ptr->bo_id,
+    buffers_ptr->entry_points->pGLGetBufferParameteri64v(GL_ARRAY_BUFFER,
                                                          GL_BUFFER_SIZE,
                                                         &reported_bo_size);
 

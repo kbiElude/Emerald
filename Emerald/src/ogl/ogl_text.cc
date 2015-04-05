@@ -18,6 +18,7 @@
  */
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -51,12 +52,15 @@ typedef FontTable::const_iterator                            FontTableConstItera
 
 typedef struct
 {
-    void*       data_buffer_contents;
-    uint32_t    data_buffer_contents_length;
-    uint32_t    data_buffer_contents_size;
-    GLuint      data_buffer_id;
-    ogl_texture data_buffer_to;
-    bool        dirty;
+    void*        data_buffer_contents;
+    uint32_t     data_buffer_contents_length;
+    uint32_t     data_buffer_contents_size;
+    ogl_texture  data_buffer_to;
+    bool         dirty;
+    unsigned int texture_buffer_offset_alignment;
+
+    GLuint      data_buffer_id; /* managed by ogl_buffers */
+    GLuint      data_buffer_offset;
 
     float default_color[3];
     float default_scale;
@@ -69,43 +73,41 @@ typedef struct
     uint32_t                  screen_width;
     system_resizable_vector   strings;
 
+    ogl_buffers buffers;
     ogl_context context;
 
     /* GL function pointers cache */
-    PFNWRAPPEDGLBINDTEXTUREPROC          gl_pGLBindTexture;
-    PFNGLNAMEDBUFFERDATAEXTPROC          gl_pGLNamedBufferDataEXT;
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC       gl_pGLNamedBufferSubDataEXT;
-    PFNGLPOLYGONMODEPROC                 gl_pGLPolygonMode;
-    PFNWRAPPEDGLTEXTUREBUFFEREXTPROC     gl_pGLTextureBufferEXT;
-    PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC gl_pGLTextureParameteriEXT;
-    PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC  gl_pGLTextureStorage2DEXT;
-    PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC gl_pGLTextureSubImage2DEXT;
-    PFNGLACTIVETEXTUREPROC               pGLActiveTexture;
-    PFNGLBINDBUFFERPROC                  pGLBindBuffer;
-    PFNGLBINDTEXTUREPROC                 pGLBindTexture;
-    PFNGLBINDVERTEXARRAYPROC             pGLBindVertexArray;
-    PFNGLBLENDEQUATIONPROC               pGLBlendEquation;
-    PFNGLBLENDFUNCPROC                   pGLBlendFunc;
-    PFNGLBUFFERDATAPROC                  pGLBufferData;
-    PFNGLBUFFERSUBDATAPROC               pGLBufferSubData;
-    PFNGLDELETEBUFFERSPROC               pGLDeleteBuffers;
-    PFNGLDELETEVERTEXARRAYSPROC          pGLDeleteVertexArrays;
-    PFNGLDISABLEPROC                     pGLDisable;
-    PFNGLDRAWARRAYSPROC                  pGLDrawArrays;
-    PFNGLENABLEPROC                      pGLEnable;
-    PFNGLGENBUFFERSPROC                  pGLGenBuffers;
-    PFNGLGENVERTEXARRAYSPROC             pGLGenVertexArrays;
-    PFNGLGENERATEMIPMAPPROC              pGLGenerateMipmap;
-    PFNGLGETERRORPROC                    pGLGetError;
-    PFNGLPROGRAMUNIFORM1FPROC            pGLProgramUniform1f;
-    PFNGLPROGRAMUNIFORM1IPROC            pGLProgramUniform1i;
-    PFNGLPROGRAMUNIFORM3FVPROC           pGLProgramUniform3fv;
-    PFNGLSCISSORPROC                     pGLScissor;
-    PFNGLTEXBUFFERPROC                   pGLTexBuffer;
-    PFNGLTEXPARAMETERIPROC               pGLTexParameteri;
-    PFNGLTEXSTORAGE2DPROC                pGLTexStorage2D;
-    PFNGLTEXSUBIMAGE2DPROC               pGLTexSubImage2D;
-    PFNGLUSEPROGRAMPROC                  pGLUseProgram;
+    PFNWRAPPEDGLBINDTEXTUREPROC           gl_pGLBindTexture;
+    PFNGLNAMEDBUFFERSUBDATAEXTPROC        gl_pGLNamedBufferSubDataEXT;
+    PFNGLPOLYGONMODEPROC                  gl_pGLPolygonMode;
+    PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC gl_pGLTextureBufferRangeEXT;
+    PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC  gl_pGLTextureParameteriEXT;
+    PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC   gl_pGLTextureStorage2DEXT;
+    PFNWRAPPEDGLTEXTURESUBIMAGE2DEXTPROC  gl_pGLTextureSubImage2DEXT;
+    PFNGLACTIVETEXTUREPROC                pGLActiveTexture;
+    PFNGLBINDBUFFERPROC                   pGLBindBuffer;
+    PFNGLBINDTEXTUREPROC                  pGLBindTexture;
+    PFNGLBINDVERTEXARRAYPROC              pGLBindVertexArray;
+    PFNGLBLENDEQUATIONPROC                pGLBlendEquation;
+    PFNGLBLENDFUNCPROC                    pGLBlendFunc;
+    PFNGLBUFFERDATAPROC                   pGLBufferData;
+    PFNGLBUFFERSUBDATAPROC                pGLBufferSubData;
+    PFNGLDELETEVERTEXARRAYSPROC           pGLDeleteVertexArrays;
+    PFNGLDISABLEPROC                      pGLDisable;
+    PFNGLDRAWARRAYSPROC                   pGLDrawArrays;
+    PFNGLENABLEPROC                       pGLEnable;
+    PFNGLGENVERTEXARRAYSPROC              pGLGenVertexArrays;
+    PFNGLGENERATEMIPMAPPROC               pGLGenerateMipmap;
+    PFNGLGETERRORPROC                     pGLGetError;
+    PFNGLPROGRAMUNIFORM1FPROC             pGLProgramUniform1f;
+    PFNGLPROGRAMUNIFORM1IPROC             pGLProgramUniform1i;
+    PFNGLPROGRAMUNIFORM3FVPROC            pGLProgramUniform3fv;
+    PFNGLSCISSORPROC                      pGLScissor;
+    PFNGLTEXBUFFERRANGEPROC               pGLTexBufferRange;
+    PFNGLTEXPARAMETERIPROC                pGLTexParameteri;
+    PFNGLTEXSTORAGE2DPROC                 pGLTexStorage2D;
+    PFNGLTEXSUBIMAGE2DPROC                pGLTexSubImage2D;
+    PFNGLUSEPROGRAMPROC                   pGLUseProgram;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_text;
@@ -329,28 +331,51 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
         if (context_type == OGL_CONTEXT_TYPE_GL)
         {
             /* This implies we also need to resize the buffer object */
-            text_ptr->gl_pGLNamedBufferDataEXT(text_ptr->data_buffer_id,
-                                               text_ptr->data_buffer_contents_size,
-                                               NULL,
-                                               GL_DYNAMIC_DRAW);
+            if (text_ptr->data_buffer_id != 0)
+            {
+                /* Since we're using ogl_buffers, we need to free the region first */
+                ogl_buffers_free_buffer_memory(text_ptr->buffers,
+                                               text_ptr->data_buffer_id,
+                                               text_ptr->data_buffer_offset);
+
+                text_ptr->data_buffer_id     = 0;
+                text_ptr->data_buffer_offset = 0;
+            }
+
+            bool alloc_result = ogl_buffers_allocate_buffer_memory(text_ptr->buffers,
+                                                                   text_ptr->data_buffer_contents_size,
+                                                                   text_ptr->texture_buffer_offset_alignment,
+                                                                   OGL_BUFFERS_MAPPABILITY_NONE,
+                                                                   OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                                                  &text_ptr->data_buffer_id,
+                                                                  &text_ptr->data_buffer_offset);
+
+            LOG_INFO("Alloc: BO id:[%d] offset:[%d]", text_ptr->data_buffer_id, text_ptr->data_buffer_offset);
+
+            ASSERT_DEBUG_SYNC(alloc_result,
+                              "Text data buffer allocation failed.");
 
             /* Set it up */
-            text_ptr->gl_pGLTextureBufferEXT(text_ptr->data_buffer_to,
-                                             GL_TEXTURE_BUFFER,
-                                             GL_RGBA32F,
-                                             text_ptr->data_buffer_id);
+            text_ptr->gl_pGLTextureBufferRangeEXT(text_ptr->data_buffer_to,
+                                                  GL_TEXTURE_BUFFER,
+                                                  GL_RGBA32F,
+                                                  text_ptr->data_buffer_id,
+                                                  text_ptr->data_buffer_offset,
+                                                  text_ptr->data_buffer_contents_size);
         }
         else
         {
-            text_ptr->pGLBindBuffer(GL_ARRAY_BUFFER,
-                                   text_ptr->data_buffer_id);
-            text_ptr->pGLBufferData(GL_ARRAY_BUFFER,
-                                   text_ptr->data_buffer_contents_size,
-                                   NULL,
-                                   GL_DYNAMIC_DRAW);
-            text_ptr->pGLTexBuffer(GL_TEXTURE_BUFFER,
-                                   GL_RGBA32F,
-                                   text_ptr->data_buffer_id);
+            text_ptr->pGLBindBuffer    (GL_ARRAY_BUFFER,
+                                        text_ptr->data_buffer_id);
+            text_ptr->pGLBufferData    (GL_ARRAY_BUFFER,
+                                        text_ptr->data_buffer_contents_size,
+                                        NULL,
+                                        GL_DYNAMIC_DRAW);
+            text_ptr->pGLTexBufferRange(GL_TEXTURE_BUFFER,
+                                        GL_RGBA32F,
+                                        text_ptr->data_buffer_id,
+                                        text_ptr->data_buffer_offset,
+                                        text_ptr->data_buffer_contents_size);
         }
 
         ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
@@ -411,7 +436,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
     if (context_type == OGL_CONTEXT_TYPE_GL)
     {
         text_ptr->gl_pGLNamedBufferSubDataEXT(text_ptr->data_buffer_id,
-                                              0,
+                                              text_ptr->data_buffer_offset,
                                               text_ptr->data_buffer_contents_size,
                                               text_ptr->data_buffer_contents);
     }
@@ -432,13 +457,6 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                            __in __notnull void*       text)
 {
     _ogl_text* text_ptr = (_ogl_text*) text;
-
-    /* Generate data buffer object */
-    text_ptr->pGLGenBuffers(1,
-                           &text_ptr->data_buffer_id);
-
-    ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
-                      "Could not create a buffer object to be used for VRAM data storage");
 
     /* If this is the first text object instance we are dealing with, we need to create all the shaders and programs to do
      * the dirty work
@@ -677,8 +695,15 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
     _ogl_text* text_ptr = (_ogl_text*) text;
 
     /* First, free all objects that are not global */
-    text_ptr->pGLDeleteBuffers (1,
-                               &text_ptr->data_buffer_id);
+    if (text_ptr->data_buffer_id != 0)
+    {
+        ogl_buffers_free_buffer_memory(text_ptr->buffers,
+                                       text_ptr->data_buffer_id,
+                                       text_ptr->data_buffer_offset);
+
+        text_ptr->data_buffer_id     = 0;
+        text_ptr->data_buffer_offset = 0;
+    }
 
     if (text_ptr->data_buffer_to != NULL)
     {
@@ -964,7 +989,9 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
     {
         /* Now that we have place to store OGL-specific ids, we can request a call-back from context thread to fill them up.
          * Before that, however, fill the structure with data that is necessary for that to happen. */
-        memset(result, 0, sizeof(_ogl_text) );
+        memset(result,
+               0,
+               sizeof(_ogl_text) );
 
         result->context          = context;
         result->default_color[0] = DEFAULT_COLOR_R;
@@ -979,6 +1006,20 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
         result->screen_height    = screen_height;
         result->strings          = system_resizable_vector_create(4 /* default capacity */,
                                                                   sizeof(_ogl_text_string*) );
+
+        /* Cache the buffer manager */
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                &result->buffers);
+
+        /* Retrieve TBO alignment requirement */
+        const ogl_context_gl_limits* limits_ptr = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_LIMITS,
+                                &limits_ptr);
+
+        result->texture_buffer_offset_alignment = limits_ptr->texture_buffer_offset_alignment;
 
         /* Initialize GL func pointers */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -1007,12 +1048,10 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLBlendFunc          = entry_points->pGLBlendFunc;
             result->pGLBufferData         = entry_points->pGLBufferData;
             result->pGLBufferSubData      = entry_points->pGLBufferSubData;
-            result->pGLDeleteBuffers      = entry_points->pGLDeleteBuffers;
             result->pGLDeleteVertexArrays = entry_points->pGLDeleteVertexArrays;
             result->pGLDisable            = entry_points->pGLDisable;
             result->pGLDrawArrays         = entry_points->pGLDrawArrays;
             result->pGLEnable             = entry_points->pGLEnable;
-            result->pGLGenBuffers         = entry_points->pGLGenBuffers;
             result->pGLGenVertexArrays    = entry_points->pGLGenVertexArrays;
             result->pGLGenerateMipmap     = entry_points->pGLGenerateMipmap;
             result->pGLGetError           = entry_points->pGLGetError;
@@ -1020,7 +1059,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLProgramUniform1i   = entry_points->pGLProgramUniform1i;
             result->pGLProgramUniform3fv  = entry_points->pGLProgramUniform3fv;
             result->pGLScissor            = entry_points->pGLScissor;
-            result->pGLTexBuffer          = ts_entry_points->pGLTexBufferEXT;
+            result->pGLTexBufferRange     = ts_entry_points->pGLTexBufferRangeEXT;
             result->pGLTexParameteri      = entry_points->pGLTexParameteri;
             result->pGLTexStorage2D       = entry_points->pGLTexStorage2D;
             result->pGLTexSubImage2D      = entry_points->pGLTexSubImage2D;
@@ -1042,10 +1081,9 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
                                     &dsa_entry_points);
 
             result->gl_pGLBindTexture              = entry_points->pGLBindTexture;
-            result->gl_pGLNamedBufferDataEXT       = dsa_entry_points->pGLNamedBufferDataEXT;
             result->gl_pGLNamedBufferSubDataEXT    = dsa_entry_points->pGLNamedBufferSubDataEXT;
             result->gl_pGLPolygonMode              = entry_points->pGLPolygonMode;
-            result->gl_pGLTextureBufferEXT         = dsa_entry_points->pGLTextureBufferEXT;
+            result->gl_pGLTextureBufferRangeEXT    = dsa_entry_points->pGLTextureBufferRangeEXT;
             result->gl_pGLTextureParameteriEXT     = dsa_entry_points->pGLTextureParameteriEXT;
             result->gl_pGLTextureStorage2DEXT      = dsa_entry_points->pGLTextureStorage2DEXT;
             result->gl_pGLTextureSubImage2DEXT     = dsa_entry_points->pGLTextureSubImage2DEXT;
@@ -1056,12 +1094,10 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLBlendFunc                   = entry_points->pGLBlendFunc;
             result->pGLBufferData                  = entry_points->pGLBufferData;
             result->pGLBufferSubData               = entry_points->pGLBufferSubData;
-            result->pGLDeleteBuffers               = entry_points->pGLDeleteBuffers;
             result->pGLDeleteVertexArrays          = entry_points->pGLDeleteVertexArrays;
             result->pGLDisable                     = entry_points->pGLDisable;
             result->pGLDrawArrays                  = entry_points->pGLDrawArrays;
             result->pGLEnable                      = entry_points->pGLEnable;
-            result->pGLGenBuffers                  = entry_points->pGLGenBuffers;
             result->pGLGenVertexArrays             = entry_points->pGLGenVertexArrays;
             result->pGLGenerateMipmap              = entry_points->pGLGenerateMipmap;
             result->pGLGetError                    = entry_points->pGLGetError;
@@ -1069,7 +1105,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLProgramUniform1i            = entry_points->pGLProgramUniform1i;
             result->pGLProgramUniform3fv           = entry_points->pGLProgramUniform3fv;
             result->pGLScissor                     = entry_points->pGLScissor;
-            result->pGLTexBuffer                   = entry_points->pGLTexBuffer;
+            result->pGLTexBufferRange              = entry_points->pGLTexBufferRange;
             result->pGLTexParameteri               = entry_points->pGLTexParameteri;
             result->pGLTexStorage2D                = entry_points->pGLTexStorage2D;
             result->pGLTexSubImage2D               = entry_points->pGLTexSubImage2D;
