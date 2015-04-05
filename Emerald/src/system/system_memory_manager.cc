@@ -205,8 +205,9 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
                  * has already been used in the past. In such case, do *not* issue the call-back for
                  * the considered page. However, the call-back should still be issued for all the
                  * pages we already traversed, which have not been committed earlier. */
-                if (manager_ptr->page_owners[page_index] != 1          &&
-                    callback_page_index_mark             != page_index)
+                if (manager_ptr->pfn_on_memory_block_alloced != NULL       &&
+                    manager_ptr->page_owners[page_index]     != 1          &&
+                    callback_page_index_mark                 != page_index)
                 {
                     manager_ptr->pfn_on_memory_block_alloced(manager,
                                                               callback_page_index_mark               * manager_ptr->page_size,
@@ -218,7 +219,8 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
                 }
             } /* for (all affected pages) */
 
-            if (manager_ptr->page_owners[callback_page_index_end-1] == 1                       &&
+            if (manager_ptr->pfn_on_memory_block_alloced            != NULL                    &&
+                manager_ptr->page_owners[callback_page_index_end-1] == 1                       &&
                 callback_page_index_mark                            != callback_page_index_end)
             {
                 manager_ptr->pfn_on_memory_block_alloced(manager,
@@ -355,8 +357,9 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
 
                 --manager_ptr->page_owners[page_index];
 
-                if (manager_ptr->page_owners[page_index] != 0          &&
-                    callback_page_index_mark             != page_index)
+                if (manager_ptr->pfn_on_memory_block_freed != NULL       &&
+                    manager_ptr->page_owners[page_index]   != 0          &&
+                    callback_page_index_mark               != page_index)
                 {
                     manager_ptr->pfn_on_memory_block_freed(manager,
                                                            callback_page_index_mark               * manager_ptr->page_size,
@@ -368,7 +371,8 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
                 }
             } /* for (all affected pages) */
 
-            if (callback_page_index_mark                              != callback_page_index_end &&
+            if (manager_ptr->pfn_on_memory_block_freed                != NULL                    &&
+                callback_page_index_mark                              != callback_page_index_end &&
                 manager_ptr->page_owners[callback_page_index_end - 1] == 0)
             {
                 manager_ptr->pfn_on_memory_block_freed(manager,

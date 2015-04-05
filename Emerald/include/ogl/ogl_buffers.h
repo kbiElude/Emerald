@@ -23,6 +23,7 @@
  * a) committed buffer memory (if sparse buffers are supported)
  * b) reserved buffer memory  (otherwise)
  *
+ * TODO: Buffer coherency is currently not taken into consideration. Add if needed.
  */
 #ifndef OGL_BUFFERS_H
 #define OGL_BUFFERS_H
@@ -41,11 +42,23 @@ typedef enum
     OGL_BUFFERS_MAPPABILITY_UNDEFINED
 } _ogl_buffers_mappability;
 
+typedef enum
+{
+    OGL_BUFFERS_USAGE_IBO,
+    OGL_BUFFERS_USAGE_MISCELLANEOUS,
+    OGL_BUFFERS_USAGE_UBO,
+    OGL_BUFFERS_USAGE_VBO,
+
+    /* Always last */
+    OGL_BUFFERS_USAGE_COUNT
+} _ogl_buffers_usage;
+
 /** TODO */
 PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_buffers              buffers,
                                                            __in            unsigned int             size,
                                                            __in            unsigned int             alignment_requirement,
                                                            __in            _ogl_buffers_mappability mappability,
+                                                           __in            _ogl_buffers_usage       usage,
                                                            __out __notnull unsigned int*            out_bo_id_ptr,
                                                            __out __notnull unsigned int*            out_bo_offset_ptr);
 
@@ -60,6 +73,7 @@ PUBLIC ogl_buffers ogl_buffers_create(__in __notnull ogl_context               c
 PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(__in __notnull ogl_buffers  buffers,
                                                        __in           unsigned int bo_id,
                                                        __in           unsigned int bo_offset);
+
 /** TODO.
  *
  *  Internal usage only.
