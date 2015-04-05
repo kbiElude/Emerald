@@ -48,10 +48,10 @@ typedef struct _scene_descriptor
 /* Array of scene filenames to use for the demo */
 system_hashed_ansi_string _scene_filenames[] =
 {
-      system_hashed_ansi_string_create("blob/scene1/test.packed"),
-      system_hashed_ansi_string_create("blob/scene2/test.packed"),
-      system_hashed_ansi_string_create("blob/scene3/test.packed"),
-      system_hashed_ansi_string_create("blob/scene4/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene1/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene2/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene3/test.packed"),
+      //system_hashed_ansi_string_create("blob/scene4/test.packed"),
       system_hashed_ansi_string_create("blob/scene5/test.packed")
 };
 const unsigned int _n_scene_filenames = sizeof(_scene_filenames) /
