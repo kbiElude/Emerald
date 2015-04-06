@@ -597,6 +597,12 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
         } /* if (!result) */
     } /* if (!result) */
 
+    LOG_ERROR("ogl_buffers_allocate_buffer_memory(): size:[%d] alignment_requirement:[%d] => BO id:[%d] offset:[%d]",
+              size,
+              alignment_requirement,
+              result_id,
+              result_offset);
+
     if (result)
     {
         ASSERT_DEBUG_SYNC(result_id     != 0 &&
@@ -662,6 +668,10 @@ PUBLIC EMERALD_API void ogl_buffers_free_buffer_memory(__in __notnull ogl_buffer
     _ogl_buffers_buffer* buffer_ptr  = NULL;
     _ogl_buffers*        buffers_ptr = (_ogl_buffers*) buffers;
     const system_hash64  bo_hash     = MAKE_BO_HASHMAP_KEY(bo_id, bo_offset);
+
+    LOG_ERROR("ogl_buffers_free_buffer_memory(): BO id:[%d] offset:[%d]",
+              bo_id,
+              bo_offset);
 
     if (system_hash64map_get(buffers_ptr->bo_id_offset_hash_to_buffer_map,
                              bo_hash,

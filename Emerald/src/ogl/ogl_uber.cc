@@ -422,7 +422,9 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
     {
         vao_ptr = new (std::nothrow) _ogl_uber_vao;
 
-        ASSERT_ALWAYS_SYNC(vao_ptr != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(vao_ptr != NULL,
+                           "Out of memory");
+
         if (vao_ptr == NULL)
         {
             goto end;

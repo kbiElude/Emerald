@@ -1400,8 +1400,6 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
 
             goto end;
         }
-
-        LOG_INFO("Performance degradation: text string reallocation");
     }
 
     if (text_string_ptr->string != NULL)

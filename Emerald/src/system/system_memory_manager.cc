@@ -386,8 +386,7 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
                                                       manager_ptr->user_arg);
             }
 
-            current_block_ptr->block_offset = 0;
-            has_found                       = true;
+            has_found = true;
 
             system_list_bidirectional_push_at_front(manager_ptr->available_blocks,
                                                     current_block_ptr);
