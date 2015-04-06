@@ -876,6 +876,7 @@ typedef struct
     GLfloat point_fade_threshold_size;
     GLint   point_size_range[2];
     GLint*  program_binary_formats;
+    GLint   shader_storage_buffer_offset_alignment;
     GLint   subpixel_bits;
     GLint   texture_buffer_offset_alignment;
     GLint   uniform_buffer_offset_alignment;

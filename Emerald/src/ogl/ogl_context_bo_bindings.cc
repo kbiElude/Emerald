@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -109,6 +109,7 @@ typedef struct _ogl_context_bo_bindings
     bool        is_arb_multi_bind_supported;
 
     const ogl_context_gl_entrypoints_private* entrypoints_private_ptr;
+    const ogl_context_gl_limits*              limits_ptr; /* used for sanity checks */
 } _ogl_context_bo_bindings;
 
 
@@ -339,11 +340,17 @@ PUBLIC ogl_context_bo_bindings ogl_context_bo_bindings_create(__in __notnull ogl
 {
     _ogl_context_bo_bindings* new_bindings = new (std::nothrow) _ogl_context_bo_bindings;
 
-    ASSERT_ALWAYS_SYNC(new_bindings != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_bindings != NULL,
+                       "Out of memory");
+
     if (new_bindings != NULL)
     {
         new_bindings->context              = context;
         new_bindings->bo_id_to_bo_info_map = system_hash64map_create(sizeof(_ogl_context_bo_bindings_bo_info*));
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_LIMITS,
+                                &new_bindings->limits_ptr);
     } /* if (new_bindings != NULL) */
 
     return (ogl_context_bo_bindings) new_bindings;
@@ -359,6 +366,7 @@ PUBLIC GLuint ogl_context_bo_bindings_get_general_binding(__in __notnull const o
 
     ASSERT_DEBUG_SYNC(internal_target < BINDING_TARGET_COUNT,
                       "Invalid binding target requested");
+
     if (internal_target < BINDING_TARGET_COUNT)
     {
         result = bindings_ptr->bindings_general_local[internal_target].bo_id;
@@ -420,12 +428,6 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
                                                                                    system_hashed_ansi_string_create("GL_ARB_multi_bind") );
 
     /* Initialize general binding descriptors */
-    const ogl_context_gl_limits* limits_ptr = NULL;
-
-    ogl_context_get_property(bindings_ptr->context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
     for (unsigned int n_binding_target = 0;
                       n_binding_target < BINDING_TARGET_COUNT;
                     ++n_binding_target)
@@ -438,24 +440,23 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
     }
 
     /* Initialize indiced binding descriptors */
-
-    ASSERT_ALWAYS_SYNC(limits_ptr->max_atomic_counter_buffer_bindings != 0,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->limits_ptr->max_atomic_counter_buffer_bindings != 0,
                        "GL_MAX_ATOMIC_COUNTER_BUFFER_BINDINGS is 0, crash imminent.");
-    ASSERT_ALWAYS_SYNC(limits_ptr->max_shader_storage_buffer_bindings != 0,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->limits_ptr->max_shader_storage_buffer_bindings != 0,
                        "GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS is 0, crash imminent.");
-    ASSERT_ALWAYS_SYNC(limits_ptr->max_transform_feedback_buffers != 0,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->limits_ptr->max_transform_feedback_buffers != 0,
                        "GL_MAX_TRANSFORM_FEEDBACK_BUFFERS is 0, crash imminent.");
-    ASSERT_ALWAYS_SYNC(limits_ptr->max_uniform_buffer_bindings != 0,
+    ASSERT_ALWAYS_SYNC(bindings_ptr->limits_ptr->max_uniform_buffer_bindings != 0,
                        "GL_MAX_UNIFORM_BUFFERS is 0, crash imminent.");
 
-    bindings_ptr->bindings_indiced_context[BINDING_TARGET_ATOMIC_COUNTER_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_atomic_counter_buffer_bindings];
-    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_ATOMIC_COUNTER_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_atomic_counter_buffer_bindings];
-    bindings_ptr->bindings_indiced_context[BINDING_TARGET_SHADER_STORAGE_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_shader_storage_buffer_bindings];
-    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_SHADER_STORAGE_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_shader_storage_buffer_bindings];
-    bindings_ptr->bindings_indiced_context[BINDING_TARGET_TRANSFORM_FEEDBACK_BUFFER] = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_transform_feedback_buffers];
-    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_TRANSFORM_FEEDBACK_BUFFER] = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_transform_feedback_buffers];
-    bindings_ptr->bindings_indiced_context[BINDING_TARGET_UNIFORM_BUFFER]            = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_uniform_buffer_bindings];
-    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_UNIFORM_BUFFER]            = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[limits_ptr->max_uniform_buffer_bindings];
+    bindings_ptr->bindings_indiced_context[BINDING_TARGET_ATOMIC_COUNTER_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_atomic_counter_buffer_bindings];
+    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_ATOMIC_COUNTER_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_atomic_counter_buffer_bindings];
+    bindings_ptr->bindings_indiced_context[BINDING_TARGET_SHADER_STORAGE_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_shader_storage_buffer_bindings];
+    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_SHADER_STORAGE_BUFFER]     = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_shader_storage_buffer_bindings];
+    bindings_ptr->bindings_indiced_context[BINDING_TARGET_TRANSFORM_FEEDBACK_BUFFER] = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_transform_feedback_buffers];
+    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_TRANSFORM_FEEDBACK_BUFFER] = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_transform_feedback_buffers];
+    bindings_ptr->bindings_indiced_context[BINDING_TARGET_UNIFORM_BUFFER]            = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_uniform_buffer_bindings];
+    bindings_ptr->bindings_indiced_local  [BINDING_TARGET_UNIFORM_BUFFER]            = new (std::nothrow) _ogl_context_bo_bindings_indiced_binding[bindings_ptr->limits_ptr->max_uniform_buffer_bindings];
 
     /* Make sure all allocations succeeded */
     for (unsigned int n_binding_target = 0;
@@ -471,7 +472,7 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
 
     /* Set up GL targets */
     for (int n_binding = 0;
-             n_binding < limits_ptr->max_atomic_counter_buffer_bindings;
+             n_binding < bindings_ptr->limits_ptr->max_atomic_counter_buffer_bindings;
            ++n_binding)
     {
         bindings_ptr->bindings_indiced_context[BINDING_TARGET_ATOMIC_COUNTER_BUFFER][n_binding].gl_bo_binding_point = GL_ATOMIC_COUNTER_BUFFER;
@@ -479,7 +480,7 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
     }
 
     for (int n_binding = 0;
-             n_binding < limits_ptr->max_shader_storage_buffer_bindings;
+             n_binding < bindings_ptr->limits_ptr->max_shader_storage_buffer_bindings;
            ++n_binding)
     {
         bindings_ptr->bindings_indiced_context[BINDING_TARGET_SHADER_STORAGE_BUFFER][n_binding].gl_bo_binding_point = GL_SHADER_STORAGE_BUFFER;
@@ -487,7 +488,7 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
     }
 
     for (int n_binding = 0;
-             n_binding < limits_ptr->max_transform_feedback_buffers;
+             n_binding < bindings_ptr->limits_ptr->max_transform_feedback_buffers;
            ++n_binding)
     {
         bindings_ptr->bindings_indiced_context[BINDING_TARGET_TRANSFORM_FEEDBACK_BUFFER][n_binding].gl_bo_binding_point = GL_TRANSFORM_FEEDBACK_BUFFER;
@@ -495,7 +496,7 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
     }
 
     for (int n_binding = 0;
-             n_binding < limits_ptr->max_uniform_buffer_bindings;
+             n_binding < bindings_ptr->limits_ptr->max_uniform_buffer_bindings;
            ++n_binding)
     {
         bindings_ptr->bindings_indiced_context[BINDING_TARGET_UNIFORM_BUFFER][n_binding].gl_bo_binding_point = GL_UNIFORM_BUFFER;
@@ -503,21 +504,21 @@ PUBLIC void ogl_context_bo_bindings_init(__in __notnull ogl_context_bo_bindings 
     }
 
     /* Allocate arrays used by sync() */
-    unsigned int n_indiced_bindings_max = limits_ptr->max_atomic_counter_buffer_bindings;
+    unsigned int n_indiced_bindings_max = bindings_ptr->limits_ptr->max_atomic_counter_buffer_bindings;
 
-    if (n_indiced_bindings_max < (GLuint) limits_ptr->max_shader_storage_buffer_bindings)
+    if (n_indiced_bindings_max < (GLuint) bindings_ptr->limits_ptr->max_shader_storage_buffer_bindings)
     {
-        n_indiced_bindings_max = (GLuint) limits_ptr->max_shader_storage_buffer_bindings;
+        n_indiced_bindings_max = (GLuint) bindings_ptr->limits_ptr->max_shader_storage_buffer_bindings;
     }
 
-    if (n_indiced_bindings_max < (GLuint) limits_ptr->max_transform_feedback_buffers)
+    if (n_indiced_bindings_max < (GLuint) bindings_ptr->limits_ptr->max_transform_feedback_buffers)
     {
-        n_indiced_bindings_max = (GLuint) limits_ptr->max_transform_feedback_buffers;
+        n_indiced_bindings_max = (GLuint) bindings_ptr->limits_ptr->max_transform_feedback_buffers;
     }
 
-    if (n_indiced_bindings_max < (GLuint) limits_ptr->max_uniform_buffer_bindings)
+    if (n_indiced_bindings_max < (GLuint) bindings_ptr->limits_ptr->max_uniform_buffer_bindings)
     {
-        n_indiced_bindings_max = (GLuint) limits_ptr->max_uniform_buffer_bindings;
+        n_indiced_bindings_max = (GLuint) bindings_ptr->limits_ptr->max_uniform_buffer_bindings;
     }
 
     bindings_ptr->sync_indiced_bindings_data_buffers = new (std::nothrow) GLuint    [n_indiced_bindings_max];
@@ -725,6 +726,7 @@ PUBLIC void ogl_context_bo_bindings_set_binding_base(__in __notnull ogl_context_
 
     ASSERT_DEBUG_SYNC(binding_target < BINDING_TARGET_COUNT_INDICED,
                       "Invalid binding target requested");
+
     if (binding_target < BINDING_TARGET_COUNT_INDICED)
     {
         bindings_ptr->bindings_indiced_local[binding_target][binding_index].bo_id            = bo_id;
@@ -779,6 +781,43 @@ PUBLIC void ogl_context_bo_bindings_set_binding_range(__in __notnull ogl_context
             bindings_ptr->bindings_indiced_local[binding_target][binding_index].dirty = false;
         }
     } /* if (binding_target < BINDING_TARGET_COUNT_INDICED) */
+
+    #ifdef _DEBUG
+    {
+        /* Perform alignment sanity checks.
+         *
+         * TODO: These checks should actually be executed upon a draw call as a part of the validation.
+         *       However, that would be too costly. Since we're doing this specifically for early-debugging
+         *       purposes, please improve when necessary.
+         */
+        switch (binding_point)
+        {
+            case GL_SHADER_STORAGE_BUFFER:
+            {
+                ASSERT_DEBUG_SYNC( (offset % bindings_ptr->limits_ptr->shader_storage_buffer_offset_alignment) == 0,
+                                  "A misaligned SSBO ranged binding was detected.");
+
+                break;
+            }
+
+            case GL_TEXTURE_BUFFER:
+            {
+                ASSERT_DEBUG_SYNC( (offset % bindings_ptr->limits_ptr->texture_buffer_offset_alignment) == 0,
+                                  "A misaligned TBO ranged binding was detected.");
+
+                break;
+            }
+
+            case GL_UNIFORM_BUFFER:
+            {
+                ASSERT_DEBUG_SYNC( (offset % bindings_ptr->limits_ptr->uniform_buffer_offset_alignment) == 0,
+                                  "A misaligned UBO ranged binding was detected.");
+
+                break;
+            }
+        } /* switch (binding_point) */
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -791,13 +830,16 @@ PUBLIC void ogl_context_bo_bindings_set_bo_storage_size(__in __notnull ogl_conte
     /* Is the BO already recognized? */
     _ogl_context_bo_bindings_bo_info* bo_ptr = NULL;
 
-    if (!system_hash64map_get(bindings_ptr->bo_id_to_bo_info_map, bo_id, &bo_ptr) )
+    if (!system_hash64map_get(bindings_ptr->bo_id_to_bo_info_map,
+                              bo_id,
+                             &bo_ptr) )
     {
         /* Nope. Allocate a new descriptor */
         bo_ptr = new (std::nothrow) _ogl_context_bo_bindings_bo_info;
 
         ASSERT_ALWAYS_SYNC(bo_ptr != NULL,
                            "Out of memory");
+
         if (bo_ptr == NULL)
         {
             goto end;

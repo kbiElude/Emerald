@@ -1322,6 +1322,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(__inout __notnull _ogl_context* con
                                                         &context_ptr->limits.point_fade_threshold_size);
         context_ptr->entry_points_private.pGLGetIntegerv(GL_POINT_SIZE_RANGE,
                                                         context_ptr->limits.point_size_range);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+                                                        &context_ptr->limits.shader_storage_buffer_offset_alignment);
         context_ptr->entry_points_private.pGLGetIntegerv(GL_SUBPIXEL_BITS,
                                                         &context_ptr->limits.subpixel_bits);
         context_ptr->entry_points_private.pGLGetIntegerv(GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT,
