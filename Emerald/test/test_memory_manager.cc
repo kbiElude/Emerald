@@ -431,11 +431,11 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
         1024,
         4096
     };
-    system_resizable_vector alloc_offsets = system_resizable_vector_create(4, /* capacity */
-                                                                           sizeof(unsigned int) );
-    const unsigned int      memory_size   = 4096 * 2 + 1024;
-    const unsigned int      n_allocations = sizeof(allocations) / sizeof(allocations[0]);
-    const unsigned int      page_size     = 4096;
+    system_resizable_vector alloc_offsets      = system_resizable_vector_create(4, /* capacity */
+                                                                                sizeof(unsigned int) );
+    const unsigned int      memory_size        = 4096 * 2 + 1024;
+    const unsigned int      n_allocations      = sizeof(allocations) / sizeof(allocations[0]);
+    const unsigned int      page_size          = 4096;
 
     system_memory_manager manager = system_memory_manager_create(memory_size,
                                                                  page_size,
@@ -524,6 +524,63 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
         } /* switch (n_block) */
     } /* for (all blocks) */
 
+    /* All done */
+    _free_memory_blocks();
+
+    system_memory_manager_release(manager);
+}
+
+TEST(MemoryManagerTest, AlignedRegionDealloc)
+{
+    /* A regression test which verifies that an aligned alloc is recognized
+     * can be correctly released by a following free call.
+     */
+          unsigned int alloc_offset_1 = 0;
+          unsigned int alloc_offset_2 = 0;
+    const unsigned int memory_size    = 4096;
+    const unsigned int page_size      = 4096 / 4;
+          bool         result         = false;
+
+    system_memory_manager manager = system_memory_manager_create(memory_size,
+                                                                 page_size,
+                                                                 _mmanager_block_alloc_callback,
+                                                                 _mmanager_block_freed_callback,
+                                                                 NULL,                           /* user_arg */
+                                                                 false);                         /* should_be_thread_safe */
+
+    memory_blocks = system_resizable_vector_create(4, /* capacity */
+                                                   sizeof(_memory_block*) );
+
+    /* Make two alloc requests. If we had only issued one request, the result block
+     * would have always ended up aligned to an offset of 0, which is not the case
+     * we're really trying to test here.
+     */
+    result = system_memory_manager_alloc_block(manager,
+                                               1024, /* size */
+                                               64,   /* required_alignment */
+                                              &alloc_offset_1);
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 1);
+
+    result = system_memory_manager_alloc_block(manager,
+                                               1024, /* size */
+                                               32,   /* required_alignment */
+                                              &alloc_offset_2);
+
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 2);
+
+    /* Try to release the block under the reported offset. */
+    system_memory_manager_free_block(manager,
+                                     alloc_offset_1);
+
+    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 1);
+
+    system_memory_manager_free_block(manager,
+                                     alloc_offset_2);
+
+    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 0);
 
     /* All done */
     _free_memory_blocks();
