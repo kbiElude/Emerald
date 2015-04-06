@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_program.h"
@@ -118,7 +119,9 @@ static const char* vs_body =     "#version 420 core\n"
 /** Internal type definition */
 typedef struct _postprocessing_blur_gaussian
 {
-    GLuint                    coeff_bo_id;
+    ogl_buffers               buffers; /* owned by ogl_context - do NOT release */
+    GLuint                    coeff_bo_id; /* owned by ogl_buffers - do NOT release */
+    unsigned int              coeff_bo_start_offset;
     unsigned int              coeff_buffer_offset_for_value_1; /* holds offset to where 1.0 is stored in BO with id coeff_bo_id */
     unsigned int*             coeff_buffer_offsets; // [0] for n_min_taps, [1] for n_min_taps+1, etc..
     ogl_context               context;
@@ -138,7 +141,9 @@ typedef struct _postprocessing_blur_gaussian
         ASSERT_DEBUG_SYNC(in_n_min_taps <= in_n_max_taps,
                           "Invalid min/max tap argument values");
 
+        buffers                         = NULL;
         coeff_bo_id                     = 0;
+        coeff_bo_start_offset           = -1;
         coeff_buffer_offset_for_value_1 = 0; /* always zero */
         coeff_buffer_offsets            = NULL;
         context                         = in_context;
@@ -149,6 +154,10 @@ typedef struct _postprocessing_blur_gaussian
         po                              = NULL;
         sampler                         = NULL;
 
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                &buffers);
+
         memset(fbo_ids,
                0,
                sizeof(fbo_ids) );
@@ -158,8 +167,6 @@ typedef struct _postprocessing_blur_gaussian
 
     ~_postprocessing_blur_gaussian()
     {
-        ASSERT_DEBUG_SYNC(coeff_bo_id == 0,
-                          "Coefficients BO id is not 0");
         ASSERT_DEBUG_SYNC(fbo_ids[0] == 0 &&
                           fbo_ids[1] == 0,
                           "Ping/pong FBOs not released");
@@ -211,10 +218,12 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(__in
 
     if (instance_ptr->coeff_bo_id != 0)
     {
-        entrypoints_ptr->pGLDeleteBuffers(1,
-                                         &instance_ptr->coeff_bo_id);
+        ogl_buffers_free_buffer_memory(instance_ptr->buffers,
+                                       instance_ptr->coeff_bo_id,
+                                       instance_ptr->coeff_bo_start_offset);
 
-        instance_ptr->coeff_bo_id = 0;
+        instance_ptr->coeff_bo_id           = 0;
+        instance_ptr->coeff_bo_start_offset = -1;
     } /* if (instance_ptr->coeff_bo_id != 0) */
 
     if (instance_ptr->fbo_ids[0] != 0 ||
@@ -405,11 +414,6 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
                               "Sanity check failed");
         }
 
-        if (n_taps == 12)
-        {
-            int a = 1; a++;
-        }
-
         /* Calculate the tap offsets */
         for (unsigned int n_tap_offset = 0;
                           n_tap_offset < n_tap_weights;
@@ -554,12 +558,18 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
     } /* for (both iterations) */
 
     /* Set up the BO */
-    entrypoints_ptr->pGLGenBuffers               (1,
-                                                 &instance_ptr->coeff_bo_id);
-    dsa_entrypoints_ptr->pGLNamedBufferStorageEXT(instance_ptr->coeff_bo_id,
+    ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
+                                       final_data_bo_size,
+                                       limits_ptr->uniform_buffer_offset_alignment, /* alignment_requirement */
+                                       OGL_BUFFERS_MAPPABILITY_NONE,
+                                       OGL_BUFFERS_USAGE_UBO,
+                                      &instance_ptr->coeff_bo_id,
+                                      &instance_ptr->coeff_bo_start_offset);
+
+    dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(instance_ptr->coeff_bo_id,
+                                                  instance_ptr->coeff_bo_start_offset,
                                                   final_data_bo_size,
-                                                  final_data_bo_raw_ptr,
-                                                  0); /* flags */
+                                                  final_data_bo_raw_ptr); /* flags */
 
     /* Set up the PO */
     ogl_shader                      fs       = NULL;
@@ -1042,7 +1052,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         entrypoints_ptr->pGLBindBufferRange (GL_UNIFORM_BUFFER,
                                              COEFFS_DATA_UB_BP,
                                              blur_ptr->coeff_bo_id,
-                                             blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
+                                             blur_ptr->coeff_bo_start_offset + blur_ptr->coeff_buffer_offsets[n_taps - blur_ptr->n_min_taps],
                                              blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
         /* Copy the layer to blur */
@@ -1168,7 +1178,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
             entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                                 COEFFS_DATA_UB_BP,
                                                 blur_ptr->coeff_bo_id,
-                                                blur_ptr->coeff_buffer_offset_for_value_1,
+                                                blur_ptr->coeff_bo_start_offset + blur_ptr->coeff_buffer_offset_for_value_1,
                                                 blur_ptr->n_max_data_coeffs * 4 /* padding */ * sizeof(float) );
 
             entrypoints_ptr->pGLProgramUniform1i(po_id,
