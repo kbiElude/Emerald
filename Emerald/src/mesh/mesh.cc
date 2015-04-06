@@ -1138,7 +1138,8 @@ PRIVATE void _mesh_release_renderer_callback(ogl_context context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    if (mesh->gl_bo_id != -1)
+    if (mesh->gl_bo_id != -1 &&
+        mesh->gl_bo_id != 0)
     {
         ogl_buffers buffers = NULL;
 

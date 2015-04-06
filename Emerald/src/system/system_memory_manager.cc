@@ -251,7 +251,7 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
             system_list_bidirectional_remove_item(manager_ptr->available_blocks,
                                                   current_memory_item);
             system_resource_pool_return_to_pool  (manager_ptr->block_descriptor_pool,
-                                                  (system_resource_pool_block) current_memory_item);
+                                                  (system_resource_pool_block) current_memory_block_ptr);
 
             /* Done */
             result = true;
