@@ -563,15 +563,19 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(__in _
                                             mesh_id,
                                            &model);
 
-    preview_ptr->pGLProgramUniformMatrix4fv(program_id,
-                                            preview_ptr->preview_program_model_location,
-                                            1, /* count */
-                                            GL_TRUE,
-                                            system_matrix4x4_get_row_major_data(model) );
+    /* NOTE: model may be null at this point if the item was culled out. */
+    if (model != NULL)
+    {
+        preview_ptr->pGLProgramUniformMatrix4fv(program_id,
+                                                preview_ptr->preview_program_model_location,
+                                                1, /* count */
+                                                GL_TRUE,
+                                                system_matrix4x4_get_row_major_data(model) );
 
-    preview_ptr->pGLDrawArrays(GL_POINTS,
-                               mesh_id, /* first */
-                               1);      /* count */
+        preview_ptr->pGLDrawArrays(GL_POINTS,
+                                   mesh_id, /* first */
+                                   1);      /* count */
+    }
 }
 
 /** Please see header for spec */
