@@ -23,14 +23,14 @@ struct _system_bst_node
 /** TODO */
 typedef struct
 {
-    system_linear_alloc_pin_handle key_allocator;
-    system_bst_value_equals_func   key_equals_func;
-    system_bst_value_lower_func    key_lower_func;
-    size_t                         key_size;
-    system_linear_alloc_pin_handle node_allocator;
-    _system_bst_node               root;
-    system_linear_alloc_pin_handle value_allocator;
-    size_t                         value_size;
+    system_linear_alloc_pin      key_allocator;
+    system_bst_value_equals_func key_equals_func;
+    system_bst_value_lower_func  key_lower_func;
+    size_t                       key_size;
+    system_linear_alloc_pin      node_allocator;
+    _system_bst_node             root;
+    system_linear_alloc_pin      value_allocator;
+    size_t                       value_size;
 } _system_bst;
 
 /** TODO */

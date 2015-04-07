@@ -1,14 +1,15 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "procedural/procedural_mesh_box.h"
 #include "system/system_log.h"
 
-/** BUFFER OBJECT STRUCTURE:
+/** RESULT BUFFER DATA STRUCTURE:
  *
  * 1) Vertex model-space locations
  * 2) Indexes
@@ -17,22 +18,25 @@
 /* Internal type definitions */
 typedef struct
 {
+    ogl_buffers                   buffers; /* owned by ogl_context */
     ogl_context                   context;
     _procedural_mesh_data_bitmask data;
     uint32_t                      n_horizontal;
     uint32_t                      n_vertical;
     system_hashed_ansi_string     name;
 
-    GLuint arrays_bo_id;
-    GLuint elements_bo_id;
+    GLuint       arrays_bo_id;             /* maintained by ogl_buffers, do NOT release with glDeleteBuffers() */
+    GLuint       arrays_bo_normals_offset; /* does NOT include start offset */
+    unsigned int arrays_bo_start_offset;
+
+    GLuint       elements_bo_id;             /* maintained by ogl_buffers, do NOT release with glDeleteBuffers() */
+    unsigned int elements_bo_indexes_offset; /* does NOT include start offset */
+    unsigned int elements_bo_normals_offset; /* does NOT include start offset */
+    unsigned int elements_bo_start_offset;
+
     GLuint n_points; /* elements only */
     GLuint n_triangles; /* arrays only */
     GLuint primitive_restart_index;
-
-    GLuint arrays_normals_offset;
-
-    GLuint elements_indexes_offset;
-    GLuint elements_normals_offset;
 
     REFCOUNT_INSERT_VARIABLES
 } _procedural_mesh_box;
@@ -44,21 +48,24 @@ typedef struct
 #endif
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(procedural_mesh_box, procedural_mesh_box, _procedural_mesh_box);
+REFCOUNT_INSERT_IMPLEMENTATION(procedural_mesh_box,
+                               procedural_mesh_box,
+                              _procedural_mesh_box);
 
 
 /* Private functions */
 PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, void* arg)
 {
-    const ogl_context_gl_entrypoints* entry_points = NULL;
-    _procedural_mesh_box*             mesh_box     = (_procedural_mesh_box*) arg;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* entry_points_dsa = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    _procedural_mesh_box*                                     mesh_box         = (_procedural_mesh_box*) arg;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
-
-    /* Generate a buffer object to hold all data */
-    entry_points->pGLGenBuffers(1, &mesh_box->elements_bo_id);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &entry_points_dsa);
 
     /* Prepare point data. Points are organised, starting from top plane to bottom (Y axis corresponds to height). 2 points
      * correspond to borders. */
@@ -67,22 +74,31 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
     float*   nonindexed_points  = new (std::nothrow) float[n_points * 3];
     float*   nonindexed_normals = new (std::nothrow) float[n_points * 3];
 
-    ASSERT_ALWAYS_SYNC(nonindexed_points != NULL && nonindexed_normals != NULL, "Could not generate buffers for %d points", n_points);
-    if (nonindexed_points != NULL && nonindexed_normals != NULL)
+    ASSERT_ALWAYS_SYNC(nonindexed_points  != NULL &&
+                       nonindexed_normals != NULL,
+                       "Could not generate buffers for %d points",
+                       n_points);
+
+    if (nonindexed_points != NULL &&
+        nonindexed_normals != NULL)
     {
         float* nonindexed_normals_traveller = nonindexed_normals;
         float* nonindexed_points_traveller  = nonindexed_points;
 
         /* Bottom plane:
          *
-         * B-----C       +---->x    
+         * B-----C       +---->x
          * |     |       |
          * |     |       |
          * A-----D       v z
          */
-        for (uint32_t z = 0; z < mesh_box->n_vertical + 2; ++z)
+        for (uint32_t z = 0;
+                      z < mesh_box->n_vertical + 2;
+                    ++z)
         {
-            for (uint32_t x = 0; x < mesh_box->n_horizontal + 2; ++x)
+            for (uint32_t x = 0;
+                          x < mesh_box->n_horizontal + 2;
+                        ++x)
             {
                 float px = float(x) / float(mesh_box->n_horizontal + 1);
                 float pz = float(z) / float(mesh_box->n_vertical   + 1);
@@ -104,9 +120,13 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
          * |    |       |
          * E----H       v z
          */
-        for (uint32_t z = 0; z < mesh_box->n_vertical + 2; ++z)
+        for (uint32_t z = 0;
+                      z < mesh_box->n_vertical + 2;
+                    ++z)
         {
-            for (uint32_t x = 0; x < mesh_box->n_horizontal + 2; ++x)
+            for (uint32_t x = 0;
+                          x < mesh_box->n_horizontal + 2;
+                        ++x)
             {
                 float px = float(x) / float(mesh_box->n_horizontal + 1);
                 float pz = float(z) / float(mesh_box->n_vertical   + 1);
@@ -114,7 +134,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                 *nonindexed_points_traveller = px; nonindexed_points_traveller ++;
                 *nonindexed_points_traveller = 1;  nonindexed_points_traveller ++;
                 *nonindexed_points_traveller = pz; nonindexed_points_traveller ++;
-                
+
                 *nonindexed_normals_traveller = 0;  nonindexed_normals_traveller ++;
                 *nonindexed_normals_traveller = 1;  nonindexed_normals_traveller ++;
                 *nonindexed_normals_traveller = 0;  nonindexed_normals_traveller ++;
@@ -128,9 +148,13 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
          * |     |     |
          * E-----F     v y
          */
-        for (uint32_t y = 0; y < mesh_box->n_vertical + 2; ++y)
+        for (uint32_t y = 0;
+                      y < mesh_box->n_vertical + 2;
+                    ++y)
         {
-            for (uint32_t z = 0; z < mesh_box->n_horizontal + 2; ++z)
+            for (uint32_t z = 0;
+                          z < mesh_box->n_horizontal + 2;
+                        ++z)
             {
                 float pz = float(z) / float(mesh_box->n_horizontal + 1);
                 float py = float(y) / float(mesh_box->n_vertical   + 1);
@@ -152,9 +176,13 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
          * |     |  |
          * H-----G  v y
          */
-        for (uint32_t y = 0; y < mesh_box->n_vertical + 2; ++y)
+        for (uint32_t y = 0;
+                      y < mesh_box->n_vertical + 2;
+                    ++y)
         {
-            for (uint32_t z = 0; z < mesh_box->n_horizontal + 2; ++z)
+            for (uint32_t z = 0;
+                          z < mesh_box->n_horizontal + 2;
+                        ++z)
             {
                 float pz = float(z) / float(mesh_box->n_horizontal + 1);
                 float py = float(y) / float(mesh_box->n_vertical   + 1);
@@ -176,9 +204,13 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
          * |     |  |
          * E-----H  v y
          */
-        for (uint32_t y = 0; y < mesh_box->n_vertical + 2; ++y)
+        for (uint32_t y = 0;
+                      y < mesh_box->n_vertical + 2;
+                    ++y)
         {
-            for (uint32_t x = 0; x < mesh_box->n_horizontal + 2; ++x)
+            for (uint32_t x = 0;
+                          x < mesh_box->n_horizontal + 2;
+                        ++x)
             {
                 float px = float(x) / float(mesh_box->n_horizontal + 1);
                 float py = float(y) / float(mesh_box->n_vertical   + 1);
@@ -201,9 +233,13 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
          * |     |  |
          * F-----G  v y
          */
-        for (uint32_t y = 0; y < mesh_box->n_vertical + 2; ++y)
+        for (uint32_t y = 0;
+                      y < mesh_box->n_vertical + 2;
+                    ++y)
         {
-            for (uint32_t x = 0; x < mesh_box->n_horizontal + 2; ++x)
+            for (uint32_t x = 0;
+                          x < mesh_box->n_horizontal + 2;
+                        ++x)
             {
                 float px = float(x) / float(mesh_box->n_horizontal + 1);
                 float py = float(y) / float(mesh_box->n_vertical   + 1);
@@ -232,27 +268,39 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
      * |\ |\ |  is: D, A, E | B | F | C
      * D-\E-\F
      */
-    ASSERT_ALWAYS_SYNC(n_points + 1 /* restart index */ <= 65535, "Too many points for BO to hold!");
+    ASSERT_ALWAYS_SYNC(n_points + 1 /* restart index */ <= 65535,
+                       "Too many points for BO to hold!");
 
-    uint32_t  n_ordered_indexes         = 6 * (mesh_box->n_vertical + 1) * (mesh_box->n_horizontal + 2) * 2 + 6 * (mesh_box->n_vertical + 1); /* vertical restarts */
+    uint32_t  n_ordered_indexes         = 6 * (mesh_box->n_vertical + 1) * (mesh_box->n_horizontal + 2) * 2 +
+                                          6 * (mesh_box->n_vertical + 1); /* vertical restarts */
     GLushort* ordered_indexes           = new (std::nothrow) GLushort[n_ordered_indexes];
     GLushort* ordered_indexes_traveller = ordered_indexes;
     GLfloat*  ordered_normals           = new (std::nothrow) GLfloat [n_ordered_indexes * 3];
     GLfloat*  ordered_normals_traveller = ordered_normals;
 
-    ASSERT_ALWAYS_SYNC(ordered_indexes != NULL, "Out of memory while allocating index array");
-    ASSERT_ALWAYS_SYNC(ordered_normals != NULL, "Out of memory whiel allocating normals array");
-    if (ordered_indexes != NULL && ordered_normals != NULL)
+    ASSERT_ALWAYS_SYNC(ordered_indexes != NULL,
+                       "Out of memory while allocating index array");
+    ASSERT_ALWAYS_SYNC(ordered_normals != NULL,
+                       "Out of memory whiel allocating normals array");
+
+    if (ordered_indexes != NULL &&
+        ordered_normals != NULL)
     {
         uint32_t assertion_check_cnt = 0;
 
-        for (int n_plane = 0; n_plane < 6; ++n_plane)
+        for (int n_plane = 0;
+                 n_plane < 6;
+               ++n_plane)
         {
-            for (uint32_t y = 0; y < mesh_box->n_vertical + 1; ++y)
+            for (uint32_t y = 0;
+                          y < mesh_box->n_vertical + 1;
+                        ++y)
             {
                 int n_horizontal_indexes = (mesh_box->n_horizontal + 2);
 
-                for (uint32_t n_patch = 0; n_patch < mesh_box->n_horizontal + 2; ++n_patch)
+                for (uint32_t n_patch = 0;
+                              n_patch < mesh_box->n_horizontal + 2;
+                            ++n_patch)
                 {
                     *ordered_indexes_traveller = y * n_horizontal_indexes + n_patch + n_plane * n_points_per_plane + n_horizontal_indexes; ordered_indexes_traveller++;
                     *ordered_indexes_traveller = y * n_horizontal_indexes + n_patch + n_plane * n_points_per_plane;                        ordered_indexes_traveller++;
@@ -273,7 +321,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                         {
                             ordered_normals_traveller[0] = 0;  ordered_normals_traveller[1] = -1; ordered_normals_traveller[2] = 0;  ordered_normals_traveller += 3;
                             ordered_normals_traveller[0] = 0;  ordered_normals_traveller[1] = -1; ordered_normals_traveller[2] = 0;  ordered_normals_traveller += 3;
-                            
+
                             break;
                         }
 
@@ -281,7 +329,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                         {
                             ordered_normals_traveller[0] = -1;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = 0;  ordered_normals_traveller += 3;
                             ordered_normals_traveller[0] = -1;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = 0;  ordered_normals_traveller += 3;
-                            
+
                             break;
                         }
 
@@ -289,7 +337,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                         {
                             ordered_normals_traveller[0] = 1;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = 0;  ordered_normals_traveller += 3;
                             ordered_normals_traveller[0] = 1;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = 0;  ordered_normals_traveller += 3;
-                            
+
                             break;
                         }
 
@@ -297,7 +345,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                         {
                             ordered_normals_traveller[0] = 0;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = -1;  ordered_normals_traveller += 3;
                             ordered_normals_traveller[0] = 0;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = -1;  ordered_normals_traveller += 3;
-                            
+
                             break;
                         }
 
@@ -305,25 +353,26 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                         {
                             ordered_normals_traveller[0] = 0;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = 1;  ordered_normals_traveller += 3;
                             ordered_normals_traveller[0] = 0;  ordered_normals_traveller[1] = 0; ordered_normals_traveller[2] = 1;  ordered_normals_traveller += 3;
-                            
+
                             break;
                         }
 
-                        default:ASSERT_DEBUG_SYNC(false, "");
+                        default:ASSERT_DEBUG_SYNC(false,
+                                                  "");
                     }
                 }
-                
+
                 *ordered_indexes_traveller = mesh_box->primitive_restart_index; 
 
                 ordered_indexes_traveller++;
                 ordered_normals_traveller += 3;
-                
+
                 assertion_check_cnt++;
             }
-
         } /* for(n_plane) */
 
-        ASSERT_DEBUG_SYNC(assertion_check_cnt == n_ordered_indexes, "Element indices counter is wrong!");
+        ASSERT_DEBUG_SYNC(assertion_check_cnt == n_ordered_indexes,
+                          "Element indices counter is wrong!");
     }
 
     if (mesh_box->data & DATA_BO_ARRAYS)
@@ -338,9 +387,12 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
         float    local_normals [9]   = {0};
         uint32_t n_vertexes          = 0;
 
-        if (triangles != NULL)
+        if (normals   != NULL &&
+            triangles != NULL)
         {
-            for (uint32_t n_index = 0; n_index < n_ordered_indexes; ++n_index)
+            for (uint32_t n_index = 0;
+                          n_index < n_ordered_indexes;
+                        ++n_index)
             {
                 if (ordered_indexes[n_index] == mesh_box->primitive_restart_index)
                 {
@@ -365,7 +417,8 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                     }
                     else
                     {
-                        ASSERT_DEBUG_SYNC(n_vertexes == 2, "");
+                        ASSERT_DEBUG_SYNC(n_vertexes == 2,
+                                          "");
 
                         /* Insert new vertex */
                         local_vertexes[6] = nonindexed_points[new_index*3  ];
@@ -377,56 +430,86 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                         local_normals[8] = nonindexed_normals[new_index*3+2];
 
                         /* Append a triangle */
-                        memcpy(triangles_traveller, local_vertexes, 9 * sizeof(GLfloat) );
-                        memcpy(normals_traveller,   local_normals,  9 * sizeof(GLfloat) );
+                        memcpy(triangles_traveller,
+                               local_vertexes,
+                               9 * sizeof(GLfloat) );
+                        memcpy(normals_traveller,
+                               local_normals,
+                               9 * sizeof(GLfloat) );
 
                         triangles_traveller += 9;
                         normals_traveller   += 9;
                         n_triangles         ++;
 
                         /* Drop the oldest vertex to make space for the new one */
-                        for (int n = 3; n < 9; ++n)
+                        for (int n = 3;
+                                 n < 9;
+                               ++n)
                         {
                             local_vertexes[n - 3] = local_vertexes[n];
                             local_normals [n - 3] = local_normals [n];
                         }
-                    }                   
+                    }
                 }
             } /* for (uint32_t n_index = 0; n_index < n_ordered_indexes; ++n_index)*/
 
             /* Store the data. */
-            mesh_box->arrays_normals_offset = n_triangles * 9 * sizeof(GLfloat);
-            mesh_box->n_triangles           = n_triangles;
+            mesh_box->arrays_bo_normals_offset = n_triangles * 9 * sizeof(GLfloat);
+            mesh_box->n_triangles              = n_triangles;
 
-            /* Set buffer object contents */
-            entry_points->pGLBindBuffer(GL_ARRAY_BUFFER, mesh_box->arrays_bo_id);
-            entry_points->pGLBufferData(GL_ARRAY_BUFFER, mesh_box->arrays_normals_offset * 2, NULL, GL_STATIC_DRAW);
+            ogl_buffers_allocate_buffer_memory(mesh_box->buffers,
+                                               mesh_box->arrays_bo_normals_offset * 2, /* size */
+                                               1,                                      /* alignment_requirement */
+                                               OGL_BUFFERS_MAPPABILITY_NONE,
+                                               OGL_BUFFERS_USAGE_VBO,
+                                              &mesh_box->arrays_bo_id,
+                                              &mesh_box->arrays_bo_start_offset);
 
-            entry_points->pGLBufferSubData(GL_ARRAY_BUFFER, 0,                               mesh_box->arrays_normals_offset, triangles);
-            entry_points->pGLBufferSubData(GL_ARRAY_BUFFER, mesh_box->arrays_normals_offset, mesh_box->arrays_normals_offset, normals);
+            entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->arrays_bo_id,
+                                                       mesh_box->arrays_bo_start_offset + 0,
+                                                       mesh_box->arrays_bo_normals_offset, /* size */
+                                                       triangles);
+            entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->arrays_bo_id,
+                                                       mesh_box->arrays_bo_start_offset + mesh_box->arrays_bo_normals_offset,
+                                                       mesh_box->arrays_bo_normals_offset, /* size */
+                                                       normals);
 
             /* Fine to release the buffers now */
             delete [] normals;
             delete [] triangles;
-        }
-    }
+        } /* if (normals != NULL && triangles != NULL) */
+    } /* if (mesh_box->data & DATA_BO_ARRAYS) */
 
     if (mesh_box->data & DATA_BO_ELEMENTS)
     {
-        /* Set offsets. */
-        mesh_box->elements_indexes_offset =                                     n_points      * 3 * sizeof(GLfloat);
-        mesh_box->elements_normals_offset = mesh_box->elements_indexes_offset + n_ordered_indexes * sizeof(GLushort);
-
-        /* Set buffer object contents */
         uint32_t ordered_normals_size = n_ordered_indexes * 3 * sizeof(GLfloat);
 
-        entry_points->pGLBindBuffer   (GL_ARRAY_BUFFER, mesh_box->elements_bo_id);
-        entry_points->pGLBufferData   (GL_ARRAY_BUFFER, mesh_box->elements_normals_offset + ordered_normals_size, NULL, GL_STATIC_DRAW);
+        /* Set offsets. */
+        ogl_buffers_allocate_buffer_memory(mesh_box->buffers,
+                                           mesh_box->elements_bo_normals_offset + ordered_normals_size, /* size */
+                                           1,                                                           /* alignment_requirement */
+                                           OGL_BUFFERS_MAPPABILITY_NONE,
+                                           OGL_BUFFERS_USAGE_VBO,
+                                          &mesh_box->elements_bo_id,
+                                          &mesh_box->elements_bo_start_offset);
 
-        entry_points->pGLBufferSubData(GL_ARRAY_BUFFER, 0,                                  mesh_box->elements_indexes_offset,                                      nonindexed_points);
-        entry_points->pGLBufferSubData(GL_ARRAY_BUFFER, mesh_box->elements_indexes_offset, (mesh_box->elements_normals_offset - mesh_box->elements_indexes_offset), ordered_indexes);
-        entry_points->pGLBufferSubData(GL_ARRAY_BUFFER, mesh_box->elements_normals_offset,  ordered_normals_size,                                                   ordered_normals);
-    }
+        mesh_box->elements_bo_indexes_offset =                                        n_points      * 3 * sizeof(GLfloat);
+        mesh_box->elements_bo_normals_offset = mesh_box->elements_bo_indexes_offset + n_ordered_indexes * sizeof(GLushort);
+
+        /* Set buffer object contents */
+        entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->elements_bo_id,
+                                                   mesh_box->elements_bo_start_offset + 0,
+                                                   mesh_box->elements_bo_indexes_offset, /* size */
+                                                   nonindexed_points);
+        entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->elements_bo_id,
+                                                   mesh_box->elements_bo_start_offset + mesh_box->elements_bo_indexes_offset,
+                                                   (mesh_box->elements_bo_normals_offset - mesh_box->elements_bo_indexes_offset), /* size */
+                                                   ordered_indexes);
+        entry_points_dsa->pGLNamedBufferSubDataEXT(mesh_box->elements_bo_id,
+                                                   mesh_box->elements_bo_start_offset + mesh_box->elements_bo_normals_offset,
+                                                   ordered_normals_size,
+                                                   ordered_normals);
+    } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 
     /* Update "number of points" to a value that will make sense to end-user */
     mesh_box->n_points = n_ordered_indexes;
@@ -450,13 +533,26 @@ PRIVATE void _procedural_mesh_box_release_renderer_callback(ogl_context context,
 
     if (mesh_box->data & DATA_BO_ARRAYS)
     {
-        entry_points->pGLDeleteBuffers(1, &mesh_box->arrays_bo_id);
-    }
+        ogl_buffers_free_buffer_memory(mesh_box->buffers,
+                                       mesh_box->arrays_bo_id,
+                                       mesh_box->arrays_bo_start_offset);
+
+        mesh_box->arrays_bo_id             = 0;
+        mesh_box->arrays_bo_normals_offset = -1;
+        mesh_box->arrays_bo_start_offset   = -1;
+    } /* if (mesh_box->data & DATA_BO_ARRAYS) */
 
     if (mesh_box->data & DATA_BO_ELEMENTS)
     {
-        entry_points->pGLDeleteBuffers(1, &mesh_box->elements_bo_id);
-    }
+        ogl_buffers_free_buffer_memory(mesh_box->buffers,
+                                       mesh_box->elements_bo_id,
+                                       mesh_box->elements_bo_start_offset);
+
+        mesh_box->elements_bo_id             = 0;
+        mesh_box->elements_bo_indexes_offset = -1;
+        mesh_box->elements_bo_start_offset   = -1;
+        mesh_box->elements_bo_normals_offset = -1;
+    } /* if (mesh_box->data & DATA_BO_ELEMENTS) */
 }
 
 /** TODO */
@@ -464,7 +560,9 @@ PRIVATE void _procedural_mesh_box_release(void* arg)
 {
     _procedural_mesh_box* instance = (_procedural_mesh_box*) arg;
 
-    ogl_context_request_callback_from_context_thread(instance->context, _procedural_mesh_box_release_renderer_callback, instance);
+    ogl_context_request_callback_from_context_thread(instance->context,
+                                                     _procedural_mesh_box_release_renderer_callback,
+                                                     instance);
 }
 
 /** TODO */
@@ -496,7 +594,10 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(__in __notnull
     /* Create the instance */
     _procedural_mesh_box* new_instance = new (std::nothrow) _procedural_mesh_box;
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL, "Out of memory while allocating space for box instance [%s]", system_hashed_ansi_string_get_buffer(name) );
+    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+                       "Out of memory while allocating space for box instance [%s]",
+                       system_hashed_ansi_string_get_buffer(name) );
+
     if (new_instance != NULL)
     {
         /* Cache input arguments */
@@ -506,81 +607,119 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(__in __notnull
         new_instance->n_vertical   = n_vertical;
         new_instance->name         = name;
 
-        new_instance->arrays_bo_id            = -1;
-        new_instance->elements_bo_id          = -1;
-        new_instance->n_points                = -1;
-        new_instance->n_triangles             = -1;
-        new_instance->primitive_restart_index = -1;
-        new_instance->arrays_normals_offset   = -1;
-        new_instance->elements_indexes_offset = -1;
-        new_instance->elements_normals_offset = -1;
+        new_instance->arrays_bo_id               = -1;
+        new_instance->arrays_bo_normals_offset   = -1;
+        new_instance->arrays_bo_start_offset     = -1;
+        new_instance->elements_bo_id             = -1;
+        new_instance->elements_bo_indexes_offset = -1;
+        new_instance->elements_bo_normals_offset = -1;
+        new_instance->elements_bo_start_offset   = -1;
+        new_instance->n_points                   = -1;
+        new_instance->n_triangles                = -1;
+        new_instance->primitive_restart_index    = -1;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                &new_instance->buffers);
 
         /* Call back renderer to continue */
-        ogl_context_request_callback_from_context_thread(context, _procedural_mesh_box_create_renderer_callback, new_instance);
+        ogl_context_request_callback_from_context_thread(context,
+                                                         _procedural_mesh_box_create_renderer_callback,
+                                                         new_instance);
 
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_instance, 
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_instance,
                                                        _procedural_mesh_box_release,
                                                        OBJECT_TYPE_PROCEDURAL_MESH_BOX,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Procedural meshes (box)\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Procedural meshes (box)\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (procedural_mesh_box) new_instance;
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_arrays_bo_id(__in __notnull procedural_mesh_box mesh_box)
-{
-    return ((_procedural_mesh_box*) mesh_box)->arrays_bo_id;
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_elements_bo_id(__in __notnull procedural_mesh_box mesh_box)
-{
-    return ((_procedural_mesh_box*) mesh_box)->elements_bo_id;
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API void procedural_mesh_box_get_arrays_bo_offsets(__in  __notnull procedural_mesh_box mesh_box,
-                                                                  __out __notnull GLuint*             out_vertex_data_offset,
-                                                                  __out __notnull GLuint*             out_normals_data_offset)
-{
-    _procedural_mesh_box* mesh_box_ptr = (_procedural_mesh_box*) mesh_box;
-
-    *out_vertex_data_offset  = 0;
-    *out_normals_data_offset = mesh_box_ptr->arrays_normals_offset;
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API void procedural_mesh_box_get_elements_bo_offsets(__in  __notnull procedural_mesh_box mesh_box,
-                                                                    __out __notnull GLuint* out_vertex_data_offset,
-                                                                    __out __notnull GLuint* out_elements_data_offset,
-                                                                    __out __notnull GLuint* out_normals_data_offset)
-{
-    _procedural_mesh_box* mesh_box_ptr = (_procedural_mesh_box*) mesh_box;
-
-    *out_vertex_data_offset   = 0;
-    *out_elements_data_offset = mesh_box_ptr->elements_indexes_offset;
-    *out_normals_data_offset  = mesh_box_ptr->elements_normals_offset;
-}
-
-/* Please see header for specification */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_number_of_points(__in __notnull procedural_mesh_box box)
+PUBLIC EMERALD_API void procedural_mesh_box_get_property(__in  __notnull procedural_mesh_box          box,
+                                                         __in            procedural_mesh_box_property property,
+                                                         __out __notnull void*                        out_result)
 {
     _procedural_mesh_box* mesh_box_ptr = (_procedural_mesh_box*) box;
 
-    return mesh_box_ptr->n_points;
-}
+    switch (property)
+    {
+        case PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_ID:
+        {
+            *(GLuint*) out_result = mesh_box_ptr->arrays_bo_id;
 
-/* Please see header for specification */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_number_of_triangles(__in __notnull procedural_mesh_box box)
-{
-    _procedural_mesh_box* mesh_box_ptr = (_procedural_mesh_box*) box;
+            break;
+        }
 
-    return mesh_box_ptr->n_triangles;
-}
+        case PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->arrays_bo_start_offset + mesh_box_ptr->arrays_bo_normals_offset;
 
-/* Please see header for specification */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_restart_index(__in __notnull procedural_mesh_box box)
-{
-    return ((_procedural_mesh_box*) box)->primitive_restart_index;
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->arrays_bo_start_offset + 0;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_ID:
+        {
+            *(GLuint*) out_result = mesh_box_ptr->elements_bo_id;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_INDICES_DATA_OFFSET:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->elements_bo_start_offset + mesh_box_ptr->elements_bo_indexes_offset;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_NORMALS_DATA_OFFSET:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->elements_bo_start_offset + mesh_box_ptr->elements_bo_normals_offset;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_VERTEX_DATA_OFFSET:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->elements_bo_start_offset + 0;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_N_POINTS:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->n_points;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES:
+        {
+            *(unsigned int*) out_result = mesh_box_ptr->n_triangles;
+
+            break;
+        }
+
+        case PROCEDURAL_MESH_BOX_PROPERTY_RESTART_INDEX:
+        {
+            *(GLuint*) out_result = mesh_box_ptr->primitive_restart_index;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized procedural_mesh_box_property value");
+        }
+    } /* switch (property) */
 }

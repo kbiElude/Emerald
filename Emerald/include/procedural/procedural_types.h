@@ -13,10 +13,10 @@ DECLARE_HANDLE(procedural_mesh_sphere);
 
 typedef enum
 {
-    /* Bakes a BO with data that can be used for a glDrawArrays() call */
+    /* Bakes a BO region with data that can be used for a glDrawArrays() call */
     DATA_BO_ARRAYS   = 1 << 0,
 
-    /* Bakes a BO with data that can be used for a glDrawElements() call */
+    /* Bakes a BO region with data that can be used for a glDrawElements() call */
     DATA_BO_ELEMENTS = 1 << 1,
 
     /* Exposes raw data, as prepared for DATA_BO_ARRAYS */

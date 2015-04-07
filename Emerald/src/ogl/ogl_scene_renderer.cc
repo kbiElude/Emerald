@@ -1534,7 +1534,7 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(__in  __notnull const ogl_sc
 
             if (system_hash64map_get(renderer_ptr->mesh_id_map,
                                      index,
-                                     &entry_data_ptr) )
+                                    &entry_data_ptr) )
             {
                 *((mesh*) out_result) = entry_data_ptr->mesh_instance;
             }
@@ -1557,12 +1557,6 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(__in  __notnull const ogl_sc
                                      &entry_data_ptr) )
             {
                 *((system_matrix4x4*) out_result) = entry_data_ptr->model_matrix;
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Could not retrieve model matrix for mesh id [%d]",
-                                  index);
             }
 
             break;
@@ -1752,9 +1746,10 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
          * projection, view & vp matrices we set up.
          *
          * Revert the original settings */
-        renderer_ptr->current_projection = projection;
-        renderer_ptr->current_view       = view;
-        renderer_ptr->current_vp         = vp;
+        renderer_ptr->current_helper_visualization = helper_visualization;
+        renderer_ptr->current_projection           = projection;
+        renderer_ptr->current_view                 = view;
+        renderer_ptr->current_vp                   = vp;
     } /* if (shadow_mapping != SHADOW_MAPPING_DISABLED) */
 
     /* 1. Traverse the scene graph and:

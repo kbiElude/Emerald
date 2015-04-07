@@ -68,14 +68,32 @@ typedef enum
 
 typedef enum
 {
-    OGL_SCENE_RENDERER_PROPERTY_CONTEXT,                   /*         property,                 value: ogl_context      */
-    OGL_SCENE_RENDERER_PROPERTY_GRAPH,                     /*         property,                 value: scene_graph      */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,             /* indexed property, key: mesh id // value: mesh             */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,         /* indexed property, key: mesh id // value: system_matrix4x4 */
-    OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,        /* indexed property, key: mesh id // value: system_matrix4x4 */
-    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,    /*         property,                 value: float[3]         */
-    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,    /*         property,                 value: float[3]         */
-    OGL_SCENE_RENDERER_PROPERTY_VP,                        /*         property,                 value: system_matrix4x4 */
+    /* general property, value: ogl_context */
+    OGL_SCENE_RENDERER_PROPERTY_CONTEXT,
+
+    /* general property, value: scene_graph */
+    OGL_SCENE_RENDERER_PROPERTY_GRAPH,
+
+    /* indexed property, key: mesh id // value: mesh */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_INSTANCE,
+
+    /* indexed property, key: mesh id // value: system_matrix4x4.
+     *
+     * May not return any value if the model was frustum-culled out.
+     */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_MODEL_MATRIX,
+
+    /* indexed property, key: mesh id // value: system_matrix4x4 */
+    OGL_SCENE_RENDERER_PROPERTY_MESH_NORMAL_MATRIX,
+
+    /* general property, value: float[3] */
+    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MAX,
+
+    /* general property, value: float[3] */
+    OGL_SCENE_RENDERER_PROPERTY_VISIBLE_WORLD_AABB_MIN,
+
+    /* general property, value: system_matrix4x4 */
+    OGL_SCENE_RENDERER_PROPERTY_VP,
 } ogl_scene_renderer_property;
 
 

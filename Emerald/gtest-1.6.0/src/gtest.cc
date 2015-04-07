@@ -271,7 +271,7 @@ GTEST_DEFINE_string_(
 
 GTEST_DEFINE_bool_(
     throw_on_failure,
-    internal::BoolFromGTestEnv("throw_on_failure", false),
+    internal::BoolFromGTestEnv("throw_on_failure", true),
     "When this flag is specified, a failed assertion will throw an exception "
     "if exceptions are enabled or exit the program with a non-zero code "
     "otherwise.");

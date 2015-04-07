@@ -7,6 +7,7 @@
  */
 #include "shared.h"
 #include "mesh/mesh.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_scene_renderer.h"
@@ -111,12 +112,17 @@ static const char* preview_vertex_shader   = "#version 420\n"
 /** TODO */
 typedef struct _ogl_scene_renderer_bbox_preview
 {
+    /* Owned by ogl_context. DO NOT release. */
+    ogl_buffers buffers;
+
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
      */
     ogl_context context;
 
-    GLuint             data_bo_id;
+    GLuint             data_bo_id; /* owned by ogl_buffers - do NOT release with glDeleteBuffers() */
+    unsigned int       data_bo_size;
+    unsigned int       data_bo_start_offset;
     uint32_t           data_n_meshes;
     ogl_scene_renderer owner;
     ogl_program        preview_program;
@@ -124,15 +130,11 @@ typedef struct _ogl_scene_renderer_bbox_preview
     GLint              preview_program_vp_location;
     scene              scene;
 
-    bool is_bs_supported; /* GL only */
-
     /* Cached func ptrs */
     PFNGLBINDBUFFERPROC              pGLBindBuffer;
-    PFNGLBINDBUFFERBASEPROC          pGLBindBufferBase;
+    PFNGLBINDBUFFERRANGEPROC         pGLBindBufferRange;
     PFNGLBINDVERTEXARRAYPROC         pGLBindVertexArray;
-    PFNGLBUFFERDATAPROC              pGLBufferData;
-    PFNGLBUFFERSTORAGEPROC           pGLBufferStorage;
-    PFNGLDELETEBUFFERSPROC           pGLDeleteBuffers;
+    PFNGLBUFFERSUBDATAPROC           pGLBufferSubData;
     PFNGLDELETEVERTEXARRAYSPROC      pGLDeleteVertexArrays;
     PFNGLDRAWARRAYSPROC              pGLDrawArrays;
     PFNGLGENBUFFERSPROC              pGLGenBuffers;
@@ -369,26 +371,50 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
         } /* for (all meshes) */
     } /* for (both iterations) */
 
-    /* Initialize UBO storage */
-    preview_ptr->pGLGenBuffers(1,
-                              &preview_ptr->data_bo_id);
-    preview_ptr->pGLBindBuffer(GL_ARRAY_BUFFER,
-                               preview_ptr->data_bo_id);
+    /* Retrieve UB offset alignment */
+    ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
+    GLuint           uniform_buffer_offset_alignment = -1;
 
-    if (preview_ptr->is_bs_supported)
+    ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_TYPE,
+                            &context_type);
+
+    if (context_type == OGL_CONTEXT_TYPE_ES)
     {
-        preview_ptr->pGLBufferStorage(GL_ARRAY_BUFFER,
-                                      ub_data_size,
-                                      ub_data,
-                                      0); /* flags - contents set once and never modified */
-    }
+        ASSERT_DEBUG_SYNC(false,
+                          "TODO: ES limits");
+    } /* if (context_type == OGL_CONTEXT_TYPE_ES) */
     else
     {
-        preview_ptr->pGLBufferData(GL_ARRAY_BUFFER,
-                                   ub_data_size,
-                                   ub_data,
-                                   GL_STATIC_DRAW);
+        ogl_context_gl_limits* limits_ptr = NULL;
+
+        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
+                          "Unrecognized rendering context type.");
+
+        ogl_context_get_property(preview_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_LIMITS,
+                                &limits_ptr);
+
+        uniform_buffer_offset_alignment = limits_ptr->uniform_buffer_offset_alignment;
     }
+
+    /* Initialize UBO storage */
+    preview_ptr->data_bo_size = ub_data_size;
+
+    ogl_buffers_allocate_buffer_memory(preview_ptr->buffers,
+                                       preview_ptr->data_bo_size,
+                                       uniform_buffer_offset_alignment,
+                                       OGL_BUFFERS_MAPPABILITY_NONE,
+                                       OGL_BUFFERS_USAGE_UBO,
+                                      &preview_ptr->data_bo_id,
+                                      &preview_ptr->data_bo_start_offset);
+
+    preview_ptr->pGLBindBuffer   (GL_ARRAY_BUFFER,
+                                  preview_ptr->data_bo_id);
+    preview_ptr->pGLBufferSubData(GL_ARRAY_BUFFER,
+                                  preview_ptr->data_bo_start_offset,
+                                  preview_ptr->data_bo_size,
+                                  ub_data);
 
     /* All set! */
 end:
@@ -408,10 +434,12 @@ PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(__in __n
 
     if (preview_ptr->data_bo_id != 0)
     {
-        preview_ptr->pGLDeleteBuffers(1,
-                                     &preview_ptr->data_bo_id);
+        ogl_buffers_free_buffer_memory(preview_ptr->buffers,
+                                       preview_ptr->data_bo_id,
+                                       preview_ptr->data_bo_start_offset);
 
-        preview_ptr->data_bo_id = 0;
+        preview_ptr->data_bo_id           = 0;
+        preview_ptr->data_bo_start_offset = -1;
     }
 
     if (preview_ptr->preview_program != NULL)
@@ -437,13 +465,18 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
          */
         new_instance->context                        = context;
         new_instance->data_bo_id                     = 0;
+        new_instance->data_bo_size                   = 0;
+        new_instance->data_bo_start_offset           = -1;
         new_instance->data_n_meshes                  = 0;
-        new_instance->is_bs_supported                = false;
         new_instance->owner                          = owner;
         new_instance->preview_program                = NULL;
         new_instance->preview_program_model_location = -1;
         new_instance->preview_program_vp_location    = -1;
         new_instance->scene                          = scene;
+
+        ogl_context_get_property(new_instance->context,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                &new_instance->buffers);
 
         /* Is buffer_storage supported? */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -451,13 +484,6 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_TYPE,
                                 &context_type);
-
-        if (context_type == OGL_CONTEXT_TYPE_GL)
-        {
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
-                                    &new_instance->is_bs_supported);
-        }
 
         if (context_type == OGL_CONTEXT_TYPE_ES)
         {
@@ -468,11 +494,9 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
                                     &entry_points);
 
             new_instance->pGLBindBuffer              = entry_points->pGLBindBuffer;
-            new_instance->pGLBindBufferBase          = entry_points->pGLBindBufferBase;
+            new_instance->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
             new_instance->pGLBindVertexArray         = entry_points->pGLBindVertexArray;
-            new_instance->pGLBufferData              = entry_points->pGLBufferData;
-            new_instance->pGLBufferStorage           = NULL;
-            new_instance->pGLDeleteBuffers           = entry_points->pGLDeleteBuffers;
+            new_instance->pGLBufferSubData           = entry_points->pGLBufferSubData;
             new_instance->pGLDeleteVertexArrays      = entry_points->pGLDeleteVertexArrays;
             new_instance->pGLDrawArrays              = entry_points->pGLDrawArrays;
             new_instance->pGLGenBuffers              = entry_points->pGLGenBuffers;
@@ -493,11 +517,9 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
                                     &entry_points);
 
             new_instance->pGLBindBuffer              = entry_points->pGLBindBuffer;
-            new_instance->pGLBindBufferBase          = entry_points->pGLBindBufferBase;
+            new_instance->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
             new_instance->pGLBindVertexArray         = entry_points->pGLBindVertexArray;
-            new_instance->pGLBufferData              = entry_points->pGLBufferData;
-            new_instance->pGLBufferStorage           = NULL;
-            new_instance->pGLDeleteBuffers           = entry_points->pGLDeleteBuffers;
+            new_instance->pGLBufferSubData           = entry_points->pGLBufferSubData;
             new_instance->pGLDeleteVertexArrays      = entry_points->pGLDeleteVertexArrays;
             new_instance->pGLDrawArrays              = entry_points->pGLDrawArrays;
             new_instance->pGLGenBuffers              = entry_points->pGLGenBuffers;
@@ -505,17 +527,6 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
             new_instance->pGLProgramUniformMatrix4fv = entry_points->pGLProgramUniformMatrix4fv;
             new_instance->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
             new_instance->pGLUseProgram              = entry_points->pGLUseProgram;
-
-            if (new_instance->is_bs_supported)
-            {
-                const ogl_context_gl_entrypoints_arb_buffer_storage* bs_entry_points = NULL;
-
-                ogl_context_get_property(new_instance->context,
-                                         OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
-                                        &bs_entry_points);
-
-                new_instance->pGLBufferStorage = bs_entry_points->pGLBufferStorage;
-            }
         }
 
         /* Wrap up */
@@ -563,15 +574,19 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(__in _
                                             mesh_id,
                                            &model);
 
-    preview_ptr->pGLProgramUniformMatrix4fv(program_id,
-                                            preview_ptr->preview_program_model_location,
-                                            1, /* count */
-                                            GL_TRUE,
-                                            system_matrix4x4_get_row_major_data(model) );
+    /* NOTE: model may be null at this point if the item was culled out. */
+    if (model != NULL)
+    {
+        preview_ptr->pGLProgramUniformMatrix4fv(program_id,
+                                                preview_ptr->preview_program_model_location,
+                                                1, /* count */
+                                                GL_TRUE,
+                                                system_matrix4x4_get_row_major_data(model) );
 
-    preview_ptr->pGLDrawArrays(GL_POINTS,
-                               mesh_id, /* first */
-                               1);      /* count */
+        preview_ptr->pGLDrawArrays(GL_POINTS,
+                                   mesh_id, /* first */
+                                   1);      /* count */
+    }
 }
 
 /** Please see header for spec */
@@ -610,9 +625,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(__in __
                                             GL_TRUE,
                                             system_matrix4x4_get_row_major_data(vp) );
 
-    preview_ptr->pGLBindBufferBase (GL_UNIFORM_BUFFER,
+    preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
-                                    preview_ptr->data_bo_id);
+                                    preview_ptr->data_bo_id,
+                                    preview_ptr->data_bo_start_offset,
+                                    preview_ptr->data_bo_size);
 
     preview_ptr->pGLBindVertexArray(vao_id);
 }

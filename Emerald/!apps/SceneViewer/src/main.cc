@@ -244,7 +244,7 @@ PUBLIC void _render_scene(ogl_context          context,
 #ifdef ENABLE_BB_VISUALIZATION
                                           HELPER_VISUALIZATION_BOUNDING_BOXES,
 #else
-                                          HELPER_VISUALIZATION_LIGHTS,
+                                          HELPER_VISUALIZATION_NONE,
 #endif
                                           frame_time
                                          );

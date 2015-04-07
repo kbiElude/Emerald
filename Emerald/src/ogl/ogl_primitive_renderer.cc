@@ -1,9 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_program.h"
@@ -68,7 +69,9 @@ typedef struct _ogl_primitive_renderer_dataset
         primitive_type       = OGL_PRIMITIVE_TYPE_UNDEFINED;
         vertex_data          = NULL;
 
-        memset(color_data, 0, sizeof(color_data) );
+        memset(color_data,
+               0,
+               sizeof(color_data) );
     }
 
     ~_ogl_primitive_renderer_dataset()
@@ -94,9 +97,10 @@ typedef struct
     GLuint           bo_color_offset;
     void*            bo_data;
     unsigned int     bo_data_size;
-    GLuint           bo_id;
+    GLuint           bo_id;             /* owned by ogl_buffers */
     system_matrix4x4 bo_mvp;
     GLuint           bo_mvp_offset;
+    unsigned int     bo_start_offset;
     GLuint           bo_storage_size;
     unsigned int     bo_vertex_offset;
 
@@ -123,6 +127,9 @@ typedef struct
 
     /* Rendering program */
     ogl_program program;
+
+    /* Buffer memory manager */
+    ogl_buffers buffers;
 
     /* Rendering context */
     ogl_context context;
@@ -151,7 +158,9 @@ PRIVATE void _ogl_primitive_renderer_update_vao                        (ogl_cont
                                                                         _ogl_primitive_renderer* renderer_ptr);
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_primitive_renderer, ogl_primitive_renderer, _ogl_primitive_renderer);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_primitive_renderer,
+                               ogl_primitive_renderer,
+                              _ogl_primitive_renderer);
 
 
 /** TODO */
@@ -174,8 +183,10 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
 
     if (renderer_ptr->dirty)
     {
-        _ogl_primitive_renderer_update_bo_storage(context, renderer_ptr);
-        _ogl_primitive_renderer_update_vao       (context, renderer_ptr);
+        _ogl_primitive_renderer_update_bo_storage(context,
+                                                  renderer_ptr);
+        _ogl_primitive_renderer_update_vao       (context,
+                                                  renderer_ptr);
 
         ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
                           "Renderer's BO storage is still marked as dirty");
@@ -186,7 +197,7 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
                                    renderer_ptr->draw_mvp) )
     {
         dsa_entry_points->pGLNamedBufferSubDataEXT(renderer_ptr->bo_id,
-                                                   renderer_ptr->bo_mvp_offset,
+                                                   renderer_ptr->bo_start_offset + renderer_ptr->bo_mvp_offset,
                                                    sizeof(float) * 16,
                                                    system_matrix4x4_get_row_major_data(renderer_ptr->draw_mvp) );
 
@@ -195,9 +206,11 @@ PRIVATE void _ogl_primitive_renderer_draw_rendering_thread_callback(ogl_context 
     }
 
     /* Draw line strips as requested */
-    entry_points->pGLBindBufferBase (GL_UNIFORM_BUFFER,
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                      VS_UB_BINDING_ID,
-                                     renderer_ptr->bo_id);
+                                     renderer_ptr->bo_id,
+                                     renderer_ptr->bo_start_offset,
+                                     renderer_ptr->bo_storage_size);
     entry_points->pGLBindVertexArray(renderer_ptr->vao_id);
     entry_points->pGLUseProgram     (ogl_program_get_id(renderer_ptr->program) );
 
@@ -297,7 +310,8 @@ PRIVATE void _ogl_primitive_renderer_init_vao_rendering_thread_callback(ogl_cont
                             &entry_points);
 
     /* Generate the VAO. */
-    entry_points->pGLGenVertexArrays(1, &renderer_ptr->vao_id);
+    entry_points->pGLGenVertexArrays(1,
+                                    &renderer_ptr->vao_id);
 
     /* We cannot configure the object at this point because the storage is not set up. */
 }
@@ -307,7 +321,7 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
                                                                        void*       user_arg)
 {
     ogl_context_gl_entrypoints* entrypoints  = NULL;
-    _ogl_primitive_renderer*   instance_ptr = (_ogl_primitive_renderer*) user_arg;
+    _ogl_primitive_renderer*    instance_ptr = (_ogl_primitive_renderer*) user_arg;
 
     ogl_context_get_property(instance_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -315,9 +329,12 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
 
     if (instance_ptr->bo_id != 0)
     {
-        entrypoints->pGLDeleteBuffers(1, &instance_ptr->bo_id);
+        ogl_buffers_free_buffer_memory(instance_ptr->buffers,
+                                       instance_ptr->bo_id,
+                                       instance_ptr->bo_start_offset);
 
-        instance_ptr->bo_id = 0;
+        instance_ptr->bo_id           = 0;
+        instance_ptr->bo_start_offset = -1;
     }
 
     if (instance_ptr->program != NULL)
@@ -329,7 +346,8 @@ PRIVATE void _ogl_primitive_renderer_release_rendering_thread_callback(ogl_conte
 
     if (instance_ptr->vao_id != 0)
     {
-        entrypoints->pGLDeleteVertexArrays(1, &instance_ptr->vao_id);
+        entrypoints->pGLDeleteVertexArrays(1,
+                                          &instance_ptr->vao_id);
 
         instance_ptr->vao_id = 0;
     }
@@ -343,13 +361,6 @@ PRIVATE void _ogl_primitive_renderer_release(void* line_strip_renderer)
     ogl_context_request_callback_from_context_thread(instance_ptr->context,
                                                      _ogl_primitive_renderer_release_rendering_thread_callback,
                                                      instance_ptr);
-
-    if (instance_ptr->bo_mvp != NULL)
-    {
-        system_matrix4x4_release(instance_ptr->bo_mvp);
-
-        instance_ptr->bo_mvp = NULL;
-    }
 
     if (instance_ptr->datasets != NULL)
     {
@@ -386,6 +397,7 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
 {
     ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    ogl_context_gl_limits*                              limits_ptr       = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -393,6 +405,9 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
 
     /* If the data buffer is dirty, we need to update it at this point */
     if (renderer_ptr->dirty)
@@ -405,42 +420,41 @@ PRIVATE void _ogl_primitive_renderer_update_bo_storage(ogl_context              
                           "Data buffer is still dirty after flushing");
     }
 
-    /* Make sure we have a BO available */
-    bool is_generated = false;
+    /* Make sure we have a BO available and that it is capacious enough. */
+    if (renderer_ptr->bo_id           != 0 &&
+        renderer_ptr->bo_storage_size <  renderer_ptr->bo_data_size)
+    {
+        ogl_buffers_free_buffer_memory(renderer_ptr->buffers,
+                                       renderer_ptr->bo_id,
+                                       renderer_ptr->bo_start_offset);
+
+        renderer_ptr->bo_id           = 0;
+        renderer_ptr->bo_start_offset = -1;
+    }
 
     if (renderer_ptr->bo_id == 0)
     {
-        entry_points->pGLGenBuffers(1, &renderer_ptr->bo_id);
-
-        ASSERT_DEBUG_SYNC(renderer_ptr->bo_id != 0,
-                          "BO id is 0");
-
-        is_generated = true;
-    } /* if (renderer_ptr->bo_id == 0) */
-
-    /* Is it capacious enough? */
-    if (renderer_ptr->bo_storage_size < renderer_ptr->bo_data_size ||
-        is_generated)
-    {
         LOG_INFO("Performance warning: Need to reallocate data BO storage");
 
-        dsa_entry_points->pGLNamedBufferDataEXT(renderer_ptr->bo_id,
-                                                renderer_ptr->bo_data_size,
-                                                renderer_ptr->bo_data,
-                                                GL_STATIC_DRAW);
+        ogl_buffers_allocate_buffer_memory(renderer_ptr->buffers,
+                                           renderer_ptr->bo_data_size,
+                                           limits_ptr->uniform_buffer_offset_alignment,
+                                           OGL_BUFFERS_MAPPABILITY_NONE,
+                                           OGL_BUFFERS_USAGE_UBO,
+                                          &renderer_ptr->bo_id,
+                                          &renderer_ptr->bo_start_offset);
+    }
 
-        renderer_ptr->bo_storage_size = renderer_ptr->bo_data_size;
-    }
-    else
-    {
-        dsa_entry_points->pGLNamedBufferSubDataEXT(renderer_ptr->bo_id,
-                                                   0, /* offset */
-                                                   renderer_ptr->bo_data_size,
-                                                   renderer_ptr->bo_data);
-    }
+    dsa_entry_points->pGLNamedBufferSubDataEXT(renderer_ptr->bo_id,
+                                               renderer_ptr->bo_start_offset,
+                                               renderer_ptr->bo_data_size,
+                                               renderer_ptr->bo_data);
+
+    renderer_ptr->bo_storage_size = renderer_ptr->bo_data_size;
 
     /* The calls above reset the cached MVP */
-    system_matrix4x4_set_to_float(renderer_ptr->bo_mvp, 0.0f);
+    system_matrix4x4_set_to_float(renderer_ptr->bo_mvp,
+                                  0.0f);
 }
 
 /** Please see header for specification */
@@ -544,7 +558,8 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
                             &entry_points);
 
     /* Sanity check */
-    ASSERT_DEBUG_SYNC(renderer_ptr->vao_id != 0, "VAO is not generated");
+    ASSERT_DEBUG_SYNC(renderer_ptr->vao_id != 0,
+                      "VAO is not generated");
 
     entry_points->pGLBindBuffer     (GL_ARRAY_BUFFER,
                                      renderer_ptr->bo_id);
@@ -558,13 +573,13 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) renderer_ptr->bo_color_offset);
+                                         (const GLvoid*) (renderer_ptr->bo_start_offset + renderer_ptr->bo_color_offset) );
     entry_points->pGLVertexAttribPointer(VS_VERTEX_DATA_VAA_ID,
                                          3, /* size */
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) renderer_ptr->bo_vertex_offset);
+                                         (const GLvoid*) (renderer_ptr->bo_start_offset + renderer_ptr->bo_vertex_offset) );
 
     entry_points->pGLVertexAttribDivisor(VS_COLOR_DATA_VAA_ID,
                                          1);
@@ -583,7 +598,9 @@ PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_
     /* Allocate new descriptor */
     _ogl_primitive_renderer_dataset* new_dataset_ptr = new (std::nothrow) _ogl_primitive_renderer_dataset;
 
-    ASSERT_ALWAYS_SYNC(new_dataset_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_dataset_ptr != NULL,
+                       "Out of memory");
+
     if (new_dataset_ptr == NULL)
     {
         goto end;
@@ -597,6 +614,7 @@ PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_
 
     ASSERT_ALWAYS_SYNC(new_dataset_ptr->vertex_data != NULL,
                        "Out of memory");
+
     if (new_dataset_ptr->vertex_data == NULL)
     {
         goto end;
@@ -686,6 +704,7 @@ PUBLIC EMERALD_API void ogl_primitive_renderer_change_dataset_data(__in         
 
         ASSERT_ALWAYS_SYNC(dataset_ptr->vertex_data != NULL,
                            "Out of memory");
+
         if (dataset_ptr->vertex_data == NULL)
         {
             goto end;
@@ -727,18 +746,23 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
 
     ASSERT_ALWAYS_SYNC(renderer_ptr != NULL,
                        "Out of memory while allocating line strip renderer.");
+
     if (renderer_ptr != NULL)
     {
         memset(renderer_ptr,
                0,
                sizeof(*renderer_ptr) );
 
-        renderer_ptr->bo_mvp                          = system_matrix4x4_create();
-        renderer_ptr->context                         = context; /* DO NOT retain the context - otherwise you'll get a circular dependency! */
-        renderer_ptr->datasets                        = system_resizable_vector_create(4, /* capacity */
-                                                        sizeof(_ogl_primitive_renderer_dataset*) );
-        renderer_ptr->dirty                           = true;
-        renderer_ptr->name                            = name;
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                &renderer_ptr->buffers);
+
+        renderer_ptr->bo_mvp   = system_matrix4x4_create       ();
+        renderer_ptr->context  = context; /* DO NOT retain the context - otherwise you'll get a circular dependency! */
+        renderer_ptr->datasets = system_resizable_vector_create(4, /* capacity */
+                                                                sizeof(_ogl_primitive_renderer_dataset*) );
+        renderer_ptr->dirty    = true;
+        renderer_ptr->name     = name;
 
         _ogl_primitive_renderer_init_program(renderer_ptr);
         _ogl_primitive_renderer_init_vao    (renderer_ptr);

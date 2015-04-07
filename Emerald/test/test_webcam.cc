@@ -1,13 +1,16 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015
  *
  */
 #include "test_webcam.h"
+#include "shared.h"
+#include "config.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
+#include "ogl/ogl_texture.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_time.h"
@@ -17,9 +20,11 @@
 #include "webcam/webcam_device_streamer.h"
 #include "gtest/gtest.h"
 
+#ifdef INCLUDE_WEBCAM_MANAGER
+
 uint32_t              cam_data_width                             = 0;
 uint32_t              cam_data_height                            = 0;
-GLuint                cam_to_id                                  = 0;
+ogl_texture           cam_to                                     = 0;
 uint32_t              n_frames_rendered                          = 0;
 GLint                 fullscreen_quad_cam_texture_location       = -1;
 GLuint                fullscreen_quad_position_bo_id             = -1;
@@ -35,11 +40,11 @@ GLint                 fullscreen_quad_view_matrix_location       = -1;
 ogl_rendering_handler rendering_handler                          = NULL;
 
 GLfloat fullscreen_quad_position_data[] = { 0.0f,   0.0f,   0.0f, 1.0f,
-                                            320.0f, 0.0f,   0.0f, 1.0f, 
+                                            320.0f, 0.0f,   0.0f, 1.0f,
                                             320.0f, 240.0f, 0.0f, 1.0f,
                                             0.0f,   240.0f, 0.0f, 1.0f};
 GLfloat fullscreen_quad_uv_data[]       = { 0.0f, 0.0f,
-                                            1.0f, 0.0f, 
+                                            1.0f, 0.0f,
                                             1.0f, 1.0f,
                                             0.0f, 1.0f};
 
@@ -51,98 +56,178 @@ typedef struct
 } _creation_test_on_new_frame_data_callback_arg;
 
 
-static void _creation_test_on_new_texture_data_available(ogl_context context, void* in_arg)
+static void _creation_test_on_new_texture_data_available(ogl_context context,
+                                                         void*       in_arg)
 {
     _creation_test_on_new_frame_data_callback_arg* arg          = (_creation_test_on_new_frame_data_callback_arg*) in_arg;
     const ogl_context_gl_entrypoints*              entry_points = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLBindTexture  (GL_TEXTURE_2D, cam_to_id);
-    entry_points->pGLTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, cam_data_width, cam_data_height, GL_RGB, GL_UNSIGNED_BYTE, arg->buffer_ptr); 
-    ASSERT_EQ(entry_points->pGLGetError(), GL_NO_ERROR);
+    entry_points->pGLBindTexture  (GL_TEXTURE_2D,
+                                   cam_to); /* texture */
+    entry_points->pGLTexSubImage2D(GL_TEXTURE_2D,
+                                   0, /* level */
+                                   0, /* xoffset */
+                                   0, /* yoffset */
+                                   cam_data_width,
+                                   cam_data_height,
+                                   GL_RGB,
+                                   GL_UNSIGNED_BYTE,
+                                   arg->buffer_ptr);
+
+    ASSERT_EQ(entry_points->pGLGetError(),
+              GL_NO_ERROR);
 }
 
-static void _creation_test_on_render_frame_callback(ogl_context context, uint32_t n_frames_rendered, system_timeline_time frame_time, void*)
+static void _creation_test_on_render_frame_callback(ogl_context          context,
+                                                    uint32_t             n_frames_rendered,
+                                                    system_timeline_time frame_time,
+                                                    void*)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
     if (n_frames_rendered == 0)
     {
         /* first frame. Set up textuer object for the frame. */
-        entry_points->pGLGenTextures(1, &cam_to_id);
+        cam_to = ogl_texture_create_empty(context,
+                                          system_hashed_ansi_string_create("cam to") );
 
-        entry_points->pGLBindTexture  (GL_TEXTURE_2D, cam_to_id);
-        entry_points->pGLTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB, cam_data_width, cam_data_height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        entry_points->pGLTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        entry_points->pGLBindTexture  (GL_TEXTURE_2D,
+                                       cam_to);
+        entry_points->pGLTexImage2D   (GL_TEXTURE_2D,
+                                       0, /* level */
+                                       GL_RGB,
+                                       cam_data_width,
+                                       cam_data_height,
+                                       0, /* border */
+                                       GL_RGB,
+                                       GL_UNSIGNED_BYTE,
+                                       0); /* pixels */
+        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_WRAP_S,
+                                       GL_CLAMP_TO_EDGE);
+        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_WRAP_T,
+                                       GL_CLAMP_TO_EDGE);
+        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_MAG_FILTER,
+                                       GL_LINEAR);
+        entry_points->pGLTexParameteri(GL_TEXTURE_2D,
+                                       GL_TEXTURE_MIN_FILTER,
+                                       GL_LINEAR);
 
         /* Set up rectangle VAAs */
         entry_points->pGLUseProgram(fullscreen_quad_program_id);
 
         /* Set up the uniforms */
-        entry_points->pGLUniformMatrix4fv(fullscreen_quad_projection_matrix_location, 1, false, system_matrix4x4_get_row_major_data(fullscreen_quad_projection_matrix) );
-        entry_points->pGLUniformMatrix4fv(fullscreen_quad_view_matrix_location,       1, true,  system_matrix4x4_get_row_major_data(fullscreen_quad_view_matrix) );
-        ASSERT_EQ(entry_points->pGLGetError(), GL_NO_ERROR);
+        entry_points->pGLProgramUniformMatrix4fv(fullscreen_quad_program_id,
+                                                 fullscreen_quad_projection_matrix_location,
+                                                 1,     /* count */
+                                                 false, /* transpose */
+                                                 system_matrix4x4_get_row_major_data(fullscreen_quad_projection_matrix) );
+        entry_points->pGLProgramUniformMatrix4fv(fullscreen_quad_program_id,
+                                                 fullscreen_quad_view_matrix_location,
+                                                 1,    /* count */
+                                                 true, /* transpose */
+                                                 system_matrix4x4_get_row_major_data(fullscreen_quad_view_matrix) );
+
+        ASSERT_EQ(entry_points->pGLGetError(),
+                  GL_NO_ERROR);
 
         /* Set up buffer object for position data */
         GLuint bo_ids[2] = {0, 0};
 
-        entry_points->pGLGenBuffers(2, bo_ids);
+        entry_points->pGLGenBuffers(2,
+                                    bo_ids);
 
         fullscreen_quad_position_bo_id = bo_ids[0];
         fullscreen_quad_uv_bo_id       = bo_ids[1];
 
-        ASSERT_NE(fullscreen_quad_position_bo_id, -1);
-        ASSERT_NE(fullscreen_quad_uv_bo_id,       -1);
-        ASSERT_EQ(entry_points->pGLGetError(),  GL_NO_ERROR);
+        ASSERT_NE(fullscreen_quad_position_bo_id,
+                  -1);
+        ASSERT_NE(fullscreen_quad_uv_bo_id,
+                  -1);
+        ASSERT_EQ(entry_points->pGLGetError(),
+                  GL_NO_ERROR);
 
         /* Set up VAOs */
-        entry_points->pGLGenVertexArrays(1, &fullscreen_quad_vao_id);
-        ASSERT_NE(fullscreen_quad_vao_id, -1);
+        entry_points->pGLGenVertexArrays(1,
+                                        &fullscreen_quad_vao_id);
+
+        ASSERT_NE(fullscreen_quad_vao_id,
+                  -1);
+
         entry_points->pGLBindVertexArray(fullscreen_quad_vao_id);
 
-        entry_points->pGLBindBuffer             (GL_ARRAY_BUFFER, fullscreen_quad_position_bo_id);
-        entry_points->pGLBufferData             (GL_ARRAY_BUFFER, sizeof(fullscreen_quad_position_data), fullscreen_quad_position_data, GL_STATIC_DRAW);
-        entry_points->pGLVertexAttribPointer    (fullscreen_quad_position_location, 4, GL_FLOAT, 0, 0, 0);
+        entry_points->pGLBindBuffer             (GL_ARRAY_BUFFER,
+                                                 fullscreen_quad_position_bo_id);
+        entry_points->pGLBufferData             (GL_ARRAY_BUFFER,
+                                                 sizeof(fullscreen_quad_position_data),
+                                                 fullscreen_quad_position_data,
+                                                 GL_STATIC_DRAW);
+        entry_points->pGLVertexAttribPointer    (fullscreen_quad_position_location,
+                                                 4,        /* size */
+                                                 GL_FLOAT,
+                                                 0,        /* normalized */
+                                                 0,        /* stride */
+                                                 0);       /* pointer */
         entry_points->pGLEnableVertexAttribArray(fullscreen_quad_position_location);
 
-        ASSERT_EQ(entry_points->pGLGetError(), GL_NO_ERROR);
+        ASSERT_EQ(entry_points->pGLGetError(),
+                  GL_NO_ERROR);
 
-        entry_points->pGLBindBuffer(GL_ARRAY_BUFFER, fullscreen_quad_uv_bo_id);
-        entry_points->pGLBufferData(GL_ARRAY_BUFFER, sizeof(fullscreen_quad_uv_data), fullscreen_quad_uv_data, GL_STATIC_DRAW);
-        entry_points->pGLVertexAttribPointer    (fullscreen_quad_uv_location, 2, GL_FLOAT, 0, 0, 0);
+        entry_points->pGLBindBuffer             (GL_ARRAY_BUFFER,
+                                                 fullscreen_quad_uv_bo_id);
+        entry_points->pGLBufferData             (GL_ARRAY_BUFFER,
+                                                 sizeof(fullscreen_quad_uv_data),
+                                                 fullscreen_quad_uv_data,
+                                                 GL_STATIC_DRAW);
+        entry_points->pGLVertexAttribPointer    (fullscreen_quad_uv_location,
+                                                 2,        /* size */
+                                                 GL_FLOAT,
+                                                 0,        /* normalized */
+                                                 0,        /* stride */
+                                                 0);       /* pointer */
         entry_points->pGLEnableVertexAttribArray(fullscreen_quad_uv_location);
 
-        entry_points->pGLActiveTexture(GL_TEXTURE0);
-        entry_points->pGLBindTexture  (GL_TEXTURE_2D,                        cam_to_id);
-        entry_points->pGLUniform1i    (fullscreen_quad_cam_texture_location, 0);
+        entry_points->pGLActiveTexture   (GL_TEXTURE0);
+        entry_points->pGLBindTexture     (GL_TEXTURE_2D,
+                                          cam_to);
+        entry_points->pGLProgramUniform1i(fullscreen_quad_program_id,
+                                          fullscreen_quad_cam_texture_location,
+                                          0);
 
-        ASSERT_EQ(entry_points->pGLGetError(), GL_NO_ERROR);
+        ASSERT_EQ(entry_points->pGLGetError(),
+                  GL_NO_ERROR);
     }
 
     entry_points->pGLBindVertexArray(fullscreen_quad_vao_id);
-    entry_points->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    entry_points->pGLDrawArrays     (GL_TRIANGLE_FAN,
+                                     0,  /* first */
+                                     4); /* count */
 
     ASSERT_TRUE(entry_points->pGLGetError() == GL_NO_ERROR);
 }
 
-static void _creation_test_on_new_frame_data_callback(double sample_time, const BYTE* buffer_ptr, long buffer_length)
+static void _creation_test_on_new_frame_data_callback(double      sample_time,
+                                                      const BYTE* buffer_ptr,
+                                                            long  buffer_length)
 {
     _creation_test_on_new_frame_data_callback_arg arg;
 
     arg.buffer_length = buffer_length;
     arg.buffer_ptr    = buffer_ptr;
 
-    ogl_rendering_handler_request_callback_from_context_thread(rendering_handler, _creation_test_on_new_texture_data_available, &arg);
+    ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
+                                                               _creation_test_on_new_texture_data_available,
+                                                              &arg);
 }
 
 TEST(WebcamTest, CreationTest)
@@ -333,3 +418,4 @@ TEST(WebcamTest, CreationTest)
     }
 }
 
+#endif /* INCLUDE_WEBCAM_MANAGER */

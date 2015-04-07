@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include "gfx/gfx_image.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
 #include "ogl/ogl_context_state_cache.h"
@@ -106,6 +107,7 @@ typedef struct
     bool gl_ext_direct_state_access_support;
 
     ogl_context_bo_bindings         bo_bindings;
+    ogl_buffers                     buffers;
     ogl_materials                   materials;
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
@@ -1320,6 +1322,8 @@ PRIVATE void _ogl_context_retrieve_GL_limits(__inout __notnull _ogl_context* con
                                                         &context_ptr->limits.point_fade_threshold_size);
         context_ptr->entry_points_private.pGLGetIntegerv(GL_POINT_SIZE_RANGE,
                                                         context_ptr->limits.point_size_range);
+        context_ptr->entry_points_private.pGLGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT,
+                                                        &context_ptr->limits.shader_storage_buffer_offset_alignment);
         context_ptr->entry_points_private.pGLGetIntegerv(GL_SUBPIXEL_BITS,
                                                         &context_ptr->limits.subpixel_bits);
         context_ptr->entry_points_private.pGLGetIntegerv(GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT,
@@ -2544,6 +2548,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->wgl_swap_control_tear_support              = false;
                             _result->pWGLSwapIntervalEXT                        = NULL;
 
+                            _result->buffers                                    = NULL;
                             _result->primitive_renderer                         = NULL;
                             _result->materials                                  = NULL; /* deferred till first query time */
                             _result->opengl32_dll_handle                        = NULL;
@@ -2809,6 +2814,20 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
         {
             *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_BUFFERS:
+        {
+            /* If there's no BO manager, create one now */
+            if (context_ptr->buffers == NULL)
+            {
+                context_ptr->buffers = ogl_buffers_create(context,
+                                                          system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
+            }
+
+            *((ogl_buffers*) out_result) = context_ptr->buffers;
 
             break;
         }
@@ -3085,6 +3104,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS:
+        {
+            *((bool*) out_result) = context_ptr->gl_arb_sparse_buffer_support;
+
+            break;
+        }
+
         case OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_TEXTURE_STORAGE_MULTISAMPLE:
         {
             *((bool*) out_result) = context_ptr->gl_arb_texture_storage_multisample_support;
@@ -3289,15 +3315,16 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __
                                SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                               &rendering_handler);
 
-    ASSERT_DEBUG_SYNC(rendering_handler != NULL,
-                      "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
-
     if (rendering_handler != NULL)
     {
         result = ogl_rendering_handler_request_callback_from_context_thread(rendering_handler,
                                                                             pfn_callback,
                                                                             user_arg,
                                                                             block_until_available);
+    }
+    else
+    {
+        LOG_ERROR("Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
     }
 
     return result;

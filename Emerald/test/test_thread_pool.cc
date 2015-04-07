@@ -1,9 +1,10 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "test_thread_pool.h"
+#include "shared.h"
 #include "system/system_event.h"
 #include "system/system_threads.h"
 #include "system/system_thread_pool.h"
@@ -16,6 +17,7 @@ struct few_simple_tasks_submitted_separately_argument
     system_event     wait_event;
     system_thread_id worker_thread_id;
 };
+
 struct few_complex_tasks_submitted_separately_argument
 {
     system_event     wait_event;
@@ -28,7 +30,9 @@ THREAD_POOL_TASK_HANDLER void _few_simple_tasks_submitted_separately_worker(void
 {
     few_simple_tasks_submitted_separately_argument* input = (few_simple_tasks_submitted_separately_argument*) arg;
 
-    for (unsigned int index = input->n * 64; index < (input->n+1)*64; ++index)
+    for (unsigned int index = input->n * 64;
+                      index < (input->n+1)*64;
+                    ++index)
     {
         input->test_buffer[index] = index;
     }
@@ -37,6 +41,7 @@ THREAD_POOL_TASK_HANDLER void _few_simple_tasks_submitted_separately_worker(void
 
     system_event_set(input->wait_event);
 }
+
 THREAD_POOL_TASK_HANDLER void _few_complex_tasks_submitted_separately_worker(void* arg)
 {
     few_complex_tasks_submitted_separately_argument* input = (few_complex_tasks_submitted_separately_argument*) arg;
@@ -57,15 +62,21 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
     system_event  wait_events[4]   = {0};
 
     /* set up */
-    ZeroMemory(test_buffer, 256);
+    ZeroMemory(test_buffer,
+               256);
 
-    for (unsigned int n = 0; n < 4; n++)
+    for (unsigned int n = 0;
+                      n < 4;
+                      n++)
     {
-        wait_events[n] = system_event_create(true, false);
+        wait_events[n] = system_event_create(true,   /* manual_reset */
+                                             false); /* start_state */
     }
 
     /* go */
-    for (unsigned int n = 0; n < 4; n++)
+    for (unsigned int n = 0;
+                      n < 4;
+                      n++)
     {
         /* Alloc input */
         few_simple_tasks_submitted_separately_argument* input = new few_simple_tasks_submitted_separately_argument;
@@ -75,22 +86,31 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
         input->wait_event  = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL, _few_simple_tasks_submitted_separately_worker, input);
+        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                                    _few_simple_tasks_submitted_separately_worker,
+                                                                                                                    input);
+
         ASSERT_TRUE(task_descriptor != NULL);
 
         system_thread_pool_submit_single_task(task_descriptor);
     }
 
     /* wait till all tasks finish */
-    system_event_wait_multiple_infinite(wait_events, 4, true);
+    system_event_wait_multiple_infinite(wait_events,
+                                        4,     /* n_elements */
+                                        true); /* wait_on_all_objects */
 
-    for (unsigned int n = 0; n < 256; n++)
+    for (unsigned int n = 0;
+                      n < 256;
+                      n++)
     {
         ASSERT_TRUE(test_buffer[n] == n);
     }
 
     /* clean up */
-    for (unsigned int n = 0; n < 4; ++n)
+    for (unsigned int n = 0;
+                      n < 4;
+                    ++n)
     {
         system_event_release(wait_events[n]);
     }
@@ -101,35 +121,48 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
     system_event wait_events[16] = {0};
 
     /* set up */
-    for (unsigned int n = 0; n < 16; n++)
+    for (unsigned int n = 0;
+                      n < 16;
+                      n++)
     {
-        wait_events[n] = system_event_create(true, false);
+        wait_events[n] = system_event_create(true,   /* manual_reset */
+                                             false); /* start_state */
     }
 
     /* go */
     few_complex_tasks_submitted_separately_argument inputs[16];
 
-    for (unsigned int n = 0; n < 16; n++)
+    for (unsigned int n = 0;
+                      n < 16;
+                      n++)
     {
         /* Alloc input */
         inputs[n].cnt_executions = 0;
         inputs[n].wait_event     = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL, _few_complex_tasks_submitted_separately_worker, inputs + n);
+        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                                    _few_complex_tasks_submitted_separately_worker,
+                                                                                                                    inputs + n);
+
         ASSERT_TRUE(task_descriptor != NULL);
 
         system_thread_pool_submit_single_task(task_descriptor);
     }
 
     /* wait till all tasks finish */
-    system_event_wait_multiple_infinite(wait_events, 16, true);
+    system_event_wait_multiple_infinite(wait_events,
+                                        16,          /* n_elements */
+                                        true);       /* wait_on_all_objects */
 
-    for (unsigned int n = 0; n < 16; ++n)
+    for (unsigned int n = 0;
+                      n < 16;
+                    ++n)
     {
         ASSERT_EQ(inputs[n].cnt_executions, 1);
 
-        printf("[n]: thread=%d\n", inputs[n].worker_thread_id);
+        printf("[n]: thread=%d\n",
+               inputs[n].worker_thread_id);
     }
 
     /* clean up */

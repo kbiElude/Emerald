@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -11,13 +11,13 @@
 #include "system/system_resource_pool.h"
 
 /** Internal type definitions */
-typedef struct 
+typedef struct
 {
     /* Allocator is used to obtain variants in a cache-line friendly manner.
      *  If a variant is released by caller, it is transferred to released_variants_pool to be
      *  provided for next create() call. Hence, we do not use pins.
      */
-    system_linear_alloc_pin_handle allocator;
+    system_linear_alloc_pin allocator;
     /* Critical section is used to make the implementation multithread-safe */
     system_critical_section cs;
     /* Please see system_resource_pool_create() documentation for details. */
@@ -41,18 +41,26 @@ PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(__in size_t 
 {
     _system_resource_pool_internals* result = new (std::nothrow) _system_resource_pool_internals;
 
-    ASSERT_ALWAYS_SYNC(result != NULL, "Could not create resource pool.");
+    ASSERT_ALWAYS_SYNC(result != NULL,
+                       "Could not create resource pool.");
+
     if (result != NULL)
     {
-        result->allocator       = system_linear_alloc_pin_create(element_size, n_elements_per_blob, 1);
+        result->allocator       = system_linear_alloc_pin_create(element_size,
+                                                                 n_elements_per_blob,
+                                                                 1); /* n_pins_to_prealloc */
         result->cs              = system_critical_section_create();
         result->deinit_block_fn = deinit_block_fn;
         result->init_block_fn   = init_block_fn;
-        result->released_blocks = system_resizable_vector_create(n_elements_per_blob, sizeof(void*) );
+        result->released_blocks = system_resizable_vector_create(n_elements_per_blob,
+                                                                 sizeof(void*) );
 
-        ASSERT_ALWAYS_SYNC(result->allocator       != NULL, "Allocator could not have been created.");
-        ASSERT_ALWAYS_SYNC(result->cs              != NULL, "Could not create critical section");
-        ASSERT_ALWAYS_SYNC(result->released_blocks != NULL, "Released blocks vector could not have been created.");
+        ASSERT_ALWAYS_SYNC(result->allocator != NULL,
+                           "Allocator could not have been created.");
+        ASSERT_ALWAYS_SYNC(result->cs != NULL,
+                           "Could not create critical section");
+        ASSERT_ALWAYS_SYNC(result->released_blocks != NULL,
+                           "Released blocks vector could not have been created.");
     }
     
     return (system_resource_pool) result;
@@ -70,9 +78,11 @@ PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool
 
         if (n_cached_released_blocks > 0)
         {
-            bool result_get = system_resizable_vector_pop(descriptor->released_blocks, &result);
+            bool result_get = system_resizable_vector_pop(descriptor->released_blocks,
+                                                         &result);
 
-            ASSERT_DEBUG_SYNC(result_get, "Could not retrieve resource pool block.");
+            ASSERT_DEBUG_SYNC(result_get,
+                              "Could not retrieve resource pool block.");
         }
         else
         {
@@ -89,6 +99,7 @@ PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool
 
     ASSERT_DEBUG_SYNC(result != NULL,
                       "NULL blob returned by system_resource_pool");
+
     return result;
 }
 
@@ -124,7 +135,8 @@ PUBLIC EMERALD_API void system_resource_pool_return_to_pool(__in __notnull syste
                       "NULL block returned to the pool!");
     system_critical_section_enter(descriptor->cs);
     {
-        system_resizable_vector_push(descriptor->released_blocks, block);
+        system_resizable_vector_push(descriptor->released_blocks,
+                                     block);
     }
     system_critical_section_leave(descriptor->cs);
 }
@@ -134,7 +146,9 @@ PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate
 {
     _system_resource_pool_internals* descriptor = (_system_resource_pool_internals*) pool;
 
-    ASSERT_ALWAYS_SYNC(descriptor != NULL, "Pool cannot be null");
+    ASSERT_ALWAYS_SYNC(descriptor != NULL,
+                       "Pool cannot be null");
+
     if (descriptor != NULL)
     {
         /* Deinit all returned blocks before we continue */
@@ -142,13 +156,19 @@ PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate
         {
             unsigned int n_elements = system_resizable_vector_get_amount_of_elements(descriptor->released_blocks);
 
-            for (unsigned int n_element = 0; n_element < n_elements; ++n_element)
+            for (unsigned int n_element = 0;
+                              n_element < n_elements;
+                            ++n_element)
             {
                 system_resource_pool_block item       = NULL;
                 bool                       result_get = false;
 
-                result_get = system_resizable_vector_get_element_at(descriptor->released_blocks, n_element, &item);
-                ASSERT_DEBUG_SYNC(result_get, "Could not retrieve block item to release.");
+                result_get = system_resizable_vector_get_element_at(descriptor->released_blocks,
+                                                                    n_element,
+                                                                   &item);
+
+                ASSERT_DEBUG_SYNC(result_get,
+                                  "Could not retrieve block item to release.");
 
                 descriptor->deinit_block_fn(item);
             }

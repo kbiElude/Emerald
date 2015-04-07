@@ -1,6 +1,6 @@
 /**
  *
- *  Emerald (kbi/elude @2012)
+ *  Emerald (kbi/elude @2012-2015)
  *
  *  @brief Resource pool is a structure that pre-allocates user-defined amount of elements in blobs.
  *         First get() call retrieves the element from the array. If the element is returned to the

@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_programs.h"
@@ -117,12 +118,14 @@ typedef struct _ogl_scene_renderer_frustum_preview
     system_resizable_vector assigned_cameras; /* holds _ogl_scene_renderer_frustum_preview_camera instances */
     ogl_text_string_id      test_text_id;
 
+    ogl_buffers             buffers; /* owned by context, do NOT release */
     ogl_context             context;
     unsigned char*          data_bo_buffer;
     system_timeline_time    data_bo_buffer_last_update_time;
     unsigned int            data_bo_buffer_size;
-    GLuint                  data_bo_id;
+    GLuint                  data_bo_id; /* owned by ogl_buffers - do NOT release */
     unsigned int            data_bo_size;
+    unsigned int            data_bo_start_offset;
     ogl_program             po;
     GLint                   po_vp_location;
     scene                   scene;
@@ -146,6 +149,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
         data_bo_buffer_last_update_time = -1;
         data_bo_id                      = 0;
         data_bo_size                    = 0;
+        data_bo_start_offset            = -1;
         mdebv_array_size                = 0;
         mdebv_basevertex_array          = NULL;
         mdebv_count_array               = NULL;
@@ -161,6 +165,9 @@ typedef struct _ogl_scene_renderer_frustum_preview
 
     ~_ogl_scene_renderer_frustum_preview()
     {
+        ASSERT_DEBUG_SYNC(data_bo_id == 0,
+                          "Data BO not released at the time ogl_scene_renderer_frustum_preview destructor was called.");
+
         if (assigned_cameras != NULL)
         {
             _ogl_scene_renderer_frustum_preview_camera* current_camera_ptr = NULL;
@@ -270,10 +277,12 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_deinit_rendering_thread_callbac
     /* Release data BO */
     if (preview_ptr->data_bo_id != 0)
     {
-        entry_points->pGLDeleteBuffers(1,
-                                      &preview_ptr->data_bo_id);
+        ogl_buffers_free_buffer_memory(preview_ptr->buffers,
+                                       preview_ptr->data_bo_id,
+                                       preview_ptr->data_bo_start_offset);
 
-        preview_ptr->data_bo_id = 0;
+        preview_ptr->data_bo_id           = 0;
+        preview_ptr->data_bo_start_offset = -1;
     }
 
     /* Release PO */
@@ -304,6 +313,10 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+
+    /* Instantiate the VAO */
+    entry_points->pGLGenVertexArrays(1,
+                                    &preview_ptr->vao_id);
 
     /* Create text renderer instance name */
     const char*               limiter    = "/";
@@ -349,27 +362,6 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                       TEXT_STRING_ID_DEFAULT,
                                       OGL_TEXT_STRING_PROPERTY_SCALE,
                                      &text_scale);
-
-    /* Generate data BO. Actual storage will be initialized at a later time. */
-    entry_points->pGLGenBuffers(1,
-                                &preview_ptr->data_bo_id);
-
-    /* Generate VAO and assign the data BO as its IBO */
-    entry_points->pGLGenVertexArrays(1,
-                                    &preview_ptr->vao_id);
-    entry_points->pGLBindVertexArray(preview_ptr->vao_id);
-    entry_points->pGLBindBuffer     (GL_ARRAY_BUFFER,
-                                     preview_ptr->data_bo_id);
-    entry_points->pGLBindBuffer     (GL_ELEMENT_ARRAY_BUFFER,
-                                     preview_ptr->data_bo_id);
-
-    entry_points->pGLEnableVertexAttribArray(0);       /* index */
-    entry_points->pGLVertexAttribPointer    (0,        /* index */
-                                             4,        /* size */
-                                             GL_FLOAT,
-                                             GL_FALSE, /* normalized */
-                                             0,        /* stride */
-                                             (const GLvoid*) BO_DATA_VERTEX_DATA_OFFSET);
 
     /* Is the PO already registered? */
     static const char*  po_name  = "Frustum preview renderer program";
@@ -460,7 +452,8 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
            sizeof(index_data_array) );
 
     /* Reallocate MDEBV argument space if necessary */
-    const uint32_t n_cameras = system_resizable_vector_get_amount_of_elements(preview_ptr->assigned_cameras);
+    const uint32_t n_cameras      = system_resizable_vector_get_amount_of_elements(preview_ptr->assigned_cameras);
+    bool           realloc_needed = false;
 
     if (preview_ptr->mdebv_array_size < n_cameras)
     {
@@ -495,6 +488,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
                            "Out of memory");
 
         preview_ptr->mdebv_array_size = n_cameras;
+        realloc_needed                = true;
     } /* if (preview_ptr->mdebv_array_size < n_cameras) */
 
     /* Iterate over all assigned cameras */
@@ -657,8 +651,76 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
         /* Update MDEBV draw call arguments */
         preview_ptr->mdebv_basevertex_array[n_camera] = (BO_DATA_INDEX_MAX + 1) * n_camera;
         preview_ptr->mdebv_count_array     [n_camera] = sizeof(index_data_array) / sizeof(index_data_array[0]);
-        preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) 0;
+        preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) preview_ptr->data_bo_start_offset;
     } /* for (all assigned cameras) */
+
+    /* Set up the data BO */
+    GLuint                                                    data_dst_offset     = 0;
+    GLuint                                                    data_src_offset     = 0;
+    GLuint                                                    data_size           = 0;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints_ptr     = NULL;
+
+    ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
+    ogl_context_get_property(preview_ptr->context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                            &dsa_entrypoints_ptr);
+
+    if (preview_ptr->data_bo_id != 0 && realloc_needed||
+        preview_ptr->data_bo_id == 0)
+    {
+        if (preview_ptr->data_bo_id != 0)
+        {
+            ogl_buffers_free_buffer_memory(preview_ptr->buffers,
+                                           preview_ptr->data_bo_id,
+                                           preview_ptr->data_bo_start_offset);
+
+            preview_ptr->data_bo_id           = 0;
+            preview_ptr->data_bo_start_offset = -1;
+        } /* if (preview_ptr->data_bo_id != 0) */
+
+        ogl_buffers_allocate_buffer_memory(preview_ptr->buffers,
+                                           preview_ptr->data_bo_buffer_size,
+                                           1, /* alignment_requirement */
+                                           OGL_BUFFERS_MAPPABILITY_NONE,
+                                           OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                          &preview_ptr->data_bo_id,
+                                          &preview_ptr->data_bo_start_offset);
+
+        data_dst_offset = preview_ptr->data_bo_start_offset;
+        data_src_offset = 0;
+        data_size       = preview_ptr->data_bo_buffer_size;
+    } /* if (data BO needs to be realloced) */
+    else
+    {
+        data_dst_offset = preview_ptr->data_bo_start_offset + BO_DATA_VERTEX_DATA_OFFSET;
+        data_src_offset = BO_DATA_VERTEX_DATA_OFFSET;
+        data_size       = preview_ptr->data_bo_buffer_size - BO_DATA_VERTEX_DATA_OFFSET;
+    }
+
+    dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(preview_ptr->data_bo_id,
+                                                  data_dst_offset,
+                                                  data_size,
+                                                  preview_ptr->data_bo_buffer + data_src_offset);
+
+    preview_ptr->data_bo_buffer_last_update_time = frame_time;
+
+    /* Set up the VAO */
+    entrypoints_ptr->pGLBindVertexArray(preview_ptr->vao_id);
+    entrypoints_ptr->pGLBindBuffer     (GL_ARRAY_BUFFER,
+                                        preview_ptr->data_bo_id);
+    entrypoints_ptr->pGLBindBuffer     (GL_ELEMENT_ARRAY_BUFFER,
+                                        preview_ptr->data_bo_id);
+
+    entrypoints_ptr->pGLEnableVertexAttribArray(0);       /* index */
+    entrypoints_ptr->pGLVertexAttribPointer    (0,        /* index */
+                                                4,        /* size */
+                                                GL_FLOAT,
+                                                GL_FALSE, /* normalized */
+                                                0,        /* stride */
+                                                (const GLvoid*) (preview_ptr->data_bo_start_offset + BO_DATA_VERTEX_DATA_OFFSET) );
 }
 
 /** TODO */
@@ -766,6 +828,10 @@ PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_cre
 
     if (new_instance != NULL)
     {
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BUFFERS,
+                                &new_instance->buffers);
+
         new_instance->context = context;
         new_instance->scene   = scene;
 
@@ -808,6 +874,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
                             &entrypoints_ptr);
 
     /* Bind the renderer's VAO */
+    ASSERT_DEBUG_SYNC(preview_ptr->vao_id != 0,
+                      "VAO ID is 0");
+
     entrypoints_ptr->pGLBindVertexArray(preview_ptr->vao_id);
 
     /* Update the data BO contents if needed */
@@ -816,29 +885,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
         _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(preview_ptr,
                                                                   time,
                                                                   vp);
-
-        if (preview_ptr->data_bo_size < preview_ptr->data_bo_buffer_size)
-        {
-            /* Need to realloc the data buffer storage. Owing to the fact the amount of BO storage
-             * we may need may change in time, we do not use immutable buffers.
-             *
-             * This call initializes the BO with complete data set required for the draw calls.
-             */
-            dsa_entrypoints_ptr->pGLNamedBufferDataEXT(preview_ptr->data_bo_id,
-                                                       preview_ptr->data_bo_buffer_size,
-                                                       preview_ptr->data_bo_buffer,
-                                                       GL_DYNAMIC_DRAW);
-        }
-        else
-        {
-            /* Update the vertex data set */
-            dsa_entrypoints_ptr->pGLNamedBufferSubDataEXT(preview_ptr->data_bo_id,
-                                                          BO_DATA_VERTEX_DATA_OFFSET,
-                                                          preview_ptr->data_bo_buffer_size - BO_DATA_VERTEX_DATA_OFFSET,
-                                                          preview_ptr->data_bo_buffer + BO_DATA_VERTEX_DATA_OFFSET);
-        }
-
-        preview_ptr->data_bo_buffer_last_update_time = time;
     } /* if (preview_ptr->data_bo_buffer_last_update_time != time) */
 
     /* Update line width */

@@ -1,8 +1,8 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  * 
- * TODO.
+ * TODO: The generated data sets should be stride-based.
  *
  * Implementation is NOT culling-aware.
  */
@@ -12,8 +12,44 @@
 #include "ogl/ogl_types.h"
 #include "procedural/procedural_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_box, procedural_mesh_box)
+REFCOUNT_INSERT_DECLARATIONS(procedural_mesh_box,
+                             procedural_mesh_box)
 
+
+typedef enum
+{
+    /* GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_ID,
+
+    /* unsigned int */
+    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET,
+
+    /* unsigned int */
+    PROCEDURAL_MESH_BOX_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,
+
+
+    /* GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_ID,
+
+    /* GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_INDICES_DATA_OFFSET,
+
+    /* GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_NORMALS_DATA_OFFSET,
+
+    /* GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_ELEMENTS_BO_VERTEX_DATA_OFFSET,
+
+
+    /* unsigned int */
+    PROCEDURAL_MESH_BOX_PROPERTY_N_POINTS,
+
+    /* unsigned int */
+    PROCEDURAL_MESH_BOX_PROPERTY_N_TRIANGLES,
+
+    /* GLuint */
+    PROCEDURAL_MESH_BOX_PROPERTY_RESTART_INDEX
+} procedural_mesh_box_property;
 
 /** TODO.
  *
@@ -25,29 +61,8 @@ PUBLIC EMERALD_API procedural_mesh_box procedural_mesh_box_create(__in __notnull
                                                                   __in __notnull system_hashed_ansi_string);
 
 /** TODO */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_arrays_bo_id(__in __notnull procedural_mesh_box);
-
-/** TODO */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_elements_bo_id(__in __notnull procedural_mesh_box);
-
-/** TODO */
-PUBLIC EMERALD_API void procedural_mesh_box_get_arrays_bo_offsets(__in  __notnull procedural_mesh_box,
-                                                                  __out __notnull GLuint* out_vertex_data_offset,
-                                                                  __out __notnull GLuint* out_normals_data_offset);
-
-/** TODO */
-PUBLIC EMERALD_API void procedural_mesh_box_get_elements_bo_offsets(__in  __notnull procedural_mesh_box,
-                                                                    __out __notnull GLuint* out_vertex_data_offset,
-                                                                    __out __notnull GLuint* out_elements_data_offset,
-                                                                    __out __notnull GLuint* out_normals_data_offset);
-
-/** TODO */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_number_of_points(__in __notnull procedural_mesh_box);
-
-/** TODO */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_number_of_triangles(__in __notnull procedural_mesh_box);
-
-/** TODO */
-PUBLIC EMERALD_API GLuint procedural_mesh_box_get_restart_index(__in __notnull procedural_mesh_box);
+PUBLIC EMERALD_API void procedural_mesh_box_get_property(__in  __notnull procedural_mesh_box          box,
+                                                         __in            procedural_mesh_box_property property,
+                                                         __out __notnull void*                        out_result);
 
 #endif /* PROCEDURAL_MESH_BOX_H */

@@ -32,6 +32,9 @@ typedef enum
     OGL_PRIMITIVE_TYPE_UNDEFINED
 } ogl_primitive_type;
 
+/* Buffer object manager */
+DECLARE_HANDLE(ogl_buffers);
+
 /* Curve renderer */
 DECLARE_HANDLE(ogl_curve_renderer);
 
@@ -873,6 +876,7 @@ typedef struct
     GLfloat point_fade_threshold_size;
     GLint   point_size_range[2];
     GLint*  program_binary_formats;
+    GLint   shader_storage_buffer_offset_alignment;
     GLint   subpixel_bits;
     GLint   texture_buffer_offset_alignment;
     GLint   uniform_buffer_offset_alignment;

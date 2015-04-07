@@ -7,6 +7,7 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
+#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_sampler.h"
@@ -219,6 +220,7 @@ typedef struct __ogl_uber_vao
 
 typedef struct _ogl_uber
 {
+    ogl_buffers               buffers;
     ogl_context               context;
     system_hashed_ansi_string name;
 
@@ -256,14 +258,16 @@ typedef struct _ogl_uber
     uint32_t                     vp_ub_offset;
     uint32_t                     world_camera_ub_offset;
 
-    void*                        bo_data;
-    uint32_t                     bo_data_size;
-    uint32_t                     bo_data_vertex_offset;
-    GLuint                       bo_id;
     bool                         is_rendering;
     uint32_t                     n_texture_units_assigned;
     ogl_program_uniform_block_id ub_fs_id;
     ogl_program_uniform_block_id ub_vs_id;
+    void*                        ubo_data;
+    uint32_t                     ubo_data_fragment_offset; /* start offset to FS UB data; does NOT include ubo_start_offset */
+    uint32_t                     ubo_data_size;
+    uint32_t                     ubo_data_vertex_offset; /* start offset to VS UB data; does NOT include ubo_start_offset */
+    GLuint                       ubo_id;
+    unsigned int                 ubo_start_offset;
 
     float                     current_camera_location[4];
     bool                      current_camera_location_dirty;
@@ -302,8 +306,6 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_uber,
 PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(                                 _shaders_fragment_uber_parent_callback_type type,
                                                                   __in_opt                         void*                                       data,
                                                                   __in                             void*                                       uber);
-PRIVATE void _ogl_uber_create_renderer_callback                  (                                 ogl_context                                 context,
-                                                                                                   void*                                       arg);
 PRIVATE void _ogl_uber_link_renderer_callback                    (                                 ogl_context                                 context,
                                                                                                    void*                                       arg);
 PRIVATE void _ogl_uber_release                                   (__in __notnull __deallocate(mem) void*                                       uber);
@@ -326,9 +328,6 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
 {
     added_items                       = system_resizable_vector_create(4 /* capacity */,
                                                                        sizeof(_ogl_uber_item*) );
-    bo_data                           = NULL;
-    bo_data_size                      = -1;
-    bo_data_vertex_offset             = -1;
     context                           = in_context;    /* DO NOT retain, or face circular dependencies! */
     current_camera_location_dirty     = true;
     current_far_near_plane_diff_dirty = true;
@@ -347,6 +346,16 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
     shader_fragment                   = NULL;
     shader_vertex                     = NULL;
     type                              = in_type;
+    ubo_data                          = NULL;
+    ubo_data_fragment_offset          = -1;
+    ubo_data_size                     = -1;
+    ubo_data_vertex_offset            = -1;
+    ubo_id                            = 0;
+    ubo_start_offset                  = 0;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BUFFERS,
+                            &buffers);
 
     _ogl_uber_reset_attribute_uniform_locations(this);
 }
@@ -413,13 +422,16 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
     {
         vao_ptr = new (std::nothrow) _ogl_uber_vao;
 
-        ASSERT_ALWAYS_SYNC(vao_ptr != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(vao_ptr != NULL,
+                           "Out of memory");
+
         if (vao_ptr == NULL)
         {
             goto end;
         }
 
-        entrypoints->pGLGenVertexArrays(1, &vao_ptr->vao_id);
+        entrypoints->pGLGenVertexArrays(1,
+                                       &vao_ptr->vao_id);
     }
 
     /* Retrieve buffer object storage data. All data streams are stored inside the BO */
@@ -674,27 +686,12 @@ end:
 }
 
 /** TODO */
-PRIVATE void _ogl_uber_create_renderer_callback(ogl_context context,
-                                                void*       arg)
-{
-    _ogl_uber*                        uber_ptr     = (_ogl_uber*) arg;
-    const ogl_context_gl_entrypoints* entry_points = NULL;
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-
-    /* Generate buffer object we will use for feeding the data to the uber program */
-    entry_points->pGLGenBuffers(1,
-                               &uber_ptr->bo_id);
-}
-
-/** TODO */
 PRIVATE void _ogl_uber_link_renderer_callback(ogl_context context, void* arg)
 {
-    _ogl_uber*                                                uber_ptr         = (_ogl_uber*) arg;
-    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
+    const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+    const ogl_context_gl_limits*                              limits_ptr       = NULL;
+    _ogl_uber*                                                uber_ptr         = (_ogl_uber*) arg;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -702,6 +699,9 @@ PRIVATE void _ogl_uber_link_renderer_callback(ogl_context context, void* arg)
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
 
     LOG_INFO("Relinking an uber object instance");
 
@@ -729,13 +729,13 @@ PRIVATE void _ogl_uber_link_renderer_callback(ogl_context context, void* arg)
                       "Could not set up uniform block bindings");
 
     /* Set up storage for buffer object that will be used for feeding the data to the uber program */
-    dsa_entry_points->pGLNamedBufferDataEXT(uber_ptr->bo_id,
-                                            uber_ptr->bo_data_size,
-                                            NULL,
-                                            GL_DYNAMIC_DRAW);
-
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not generate BO");
+    ogl_buffers_allocate_buffer_memory(uber_ptr->buffers,
+                                       uber_ptr->ubo_data_size,
+                                       limits_ptr->uniform_buffer_offset_alignment,
+                                       OGL_BUFFERS_MAPPABILITY_NONE,
+                                       OGL_BUFFERS_USAGE_UBO,
+                                      &uber_ptr->ubo_id,
+                                      &uber_ptr->ubo_start_offset);
 }
 
 /** TODO */
@@ -759,6 +759,16 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
 
             system_resizable_vector_release(uber_ptr->added_items);
             uber_ptr->added_items = NULL;
+        }
+
+        if (uber_ptr->ubo_id != 0)
+        {
+            ogl_buffers_free_buffer_memory(uber_ptr->buffers,
+                                           uber_ptr->ubo_id,
+                                           uber_ptr->ubo_start_offset);
+
+            uber_ptr->ubo_id           = 0;
+            uber_ptr->ubo_start_offset = -1;
         }
 
         if (uber_ptr->current_vp != NULL)
@@ -796,11 +806,11 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
             uber_ptr->program = NULL;
         }
 
-        if (uber_ptr->bo_data != NULL)
+        if (uber_ptr->ubo_data != NULL)
         {
-            delete [] uber_ptr->bo_data;
+            delete [] uber_ptr->ubo_data;
 
-            uber_ptr->bo_data = NULL;
+            uber_ptr->ubo_data = NULL;
         }
 
         if (uber_ptr->mesh_to_vao_descriptor_map != NULL)
@@ -1154,13 +1164,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
                 ASSERT_ALWAYS_SYNC(false,
                                    "Cannot attach shader(s) to uber program");
             }
-
-            /* Request renderer thread call-back to do the other part of the initialization */
-            ogl_context_request_callback_from_context_thread(context,
-                                                             _ogl_uber_create_renderer_callback,
-                                                             result);
-        }
-    }
+        } /* if (result->program != NULL) */
+    } /* if (result != NULL) */
 
     return (ogl_uber) result;
 }
@@ -1195,11 +1200,6 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create_from_ogl_program(__in __notnull ogl_
                                                        OBJECT_TYPE_OGL_UBER,
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Ubers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
-
-        /* Request renderer thread call-back to do the other part of the initialization */
-        ogl_context_request_callback_from_context_thread(context,
-                                                         _ogl_uber_create_renderer_callback,
-                                                         result);
     } /* if (result != NULL) */
 
     return (ogl_uber) result;
@@ -2086,6 +2086,8 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     const ogl_context_gl_limits* limits_ptr =NULL;
     uint32_t                     n_bytes    = fs_ub_size;
 
+    uber_ptr->ubo_data_fragment_offset = 0; /* always zero for the time being */
+
     ogl_context_get_property(uber_ptr->context,
                              OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
@@ -2096,19 +2098,20 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
         n_bytes += (limits_ptr->uniform_buffer_offset_alignment - (n_bytes % limits_ptr->uniform_buffer_offset_alignment) );
     }
 
-    uber_ptr->bo_data_vertex_offset  = n_bytes;
-    n_bytes                       += vs_ub_size;
-    uber_ptr->bo_data_size           = n_bytes;
+    uber_ptr->ubo_data_vertex_offset  = n_bytes;
+    n_bytes                        += vs_ub_size;
+    uber_ptr->ubo_data_size           = n_bytes;
 
-    if (uber_ptr->bo_data != NULL)
+    if (uber_ptr->ubo_data != NULL)
     {
-        delete [] uber_ptr->bo_data;
+        delete [] uber_ptr->ubo_data;
 
-        uber_ptr->bo_data = NULL;
+        uber_ptr->ubo_data = NULL;
     }
 
-    uber_ptr->bo_data = new (std::nothrow) char[n_bytes];
-    ASSERT_ALWAYS_SYNC(uber_ptr->bo_data != NULL,
+    uber_ptr->ubo_data = new (std::nothrow) char[n_bytes];
+
+    ASSERT_ALWAYS_SYNC(uber_ptr->ubo_data != NULL,
                        "Out of memory");
 
     /* Request renderer thread call-back to do the other part of the initialization */
@@ -2596,7 +2599,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.ambient_color_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.ambient_color_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.ambient_color_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.ambient_color_ub_offset,
                                        item_ptr->fragment_shader_item.ambient_color_linear,
                                        sizeof(float) * 3);
 
@@ -2607,7 +2610,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_attenuations_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
                                        item_ptr->fragment_shader_item.current_light_attenuations,
                                        sizeof(float) * 3);
 
@@ -2618,7 +2621,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset,
                                item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
                                sizeof(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye) );
 
@@ -2629,7 +2632,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_cone_angle_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset) = item_ptr->fragment_shader_item.current_light_cone_angle;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset) = item_ptr->fragment_shader_item.current_light_cone_angle;
 
                         has_modified_bo_data                                          = true;
                         item_ptr->fragment_shader_item.current_light_cone_angle_dirty = false;
@@ -2638,7 +2641,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_diffuse_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
                                        item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
                                        sizeof(float) * 4);
 
@@ -2649,7 +2652,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_direction_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_direction_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_direction_ub_offset,
                                        item_ptr->fragment_shader_item.current_light_direction,
                                        sizeof(float) * 3);
 
@@ -2660,7 +2663,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_edge_angle_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset) = item_ptr->fragment_shader_item.current_light_edge_angle;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset) = item_ptr->fragment_shader_item.current_light_edge_angle;
 
                         has_modified_bo_data                                          = true;
                         item_ptr->fragment_shader_item.current_light_edge_angle_dirty = false;
@@ -2669,7 +2672,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_far_near_diff_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset) = item_ptr->fragment_shader_item.current_light_far_near_diff;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset) = item_ptr->fragment_shader_item.current_light_far_near_diff;
 
                         has_modified_bo_data                                             = true;
                         item_ptr->fragment_shader_item.current_light_far_near_diff_dirty = false;
@@ -2678,7 +2681,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_location_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_location_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_location_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_location_ub_offset,
                                        item_ptr->fragment_shader_item.current_light_location,
                                        sizeof(float) * 4);
 
@@ -2689,7 +2692,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_near_plane_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_near_plane_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_near_plane_ub_offset) = item_ptr->fragment_shader_item.current_light_near_plane;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_near_plane_ub_offset) = item_ptr->fragment_shader_item.current_light_near_plane;
 
                         has_modified_bo_data                                          = true;
                         item_ptr->fragment_shader_item.current_light_near_plane_dirty = false;
@@ -2698,7 +2701,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_projection_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_projection_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_projection_ub_offset,
                                item_ptr->fragment_shader_item.current_light_projection,
                                sizeof(item_ptr->fragment_shader_item.current_light_projection) );
 
@@ -2709,7 +2712,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_range_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_range_ub_offset) = item_ptr->fragment_shader_item.current_light_range;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_range_ub_offset) = item_ptr->fragment_shader_item.current_light_range;
 
                         has_modified_bo_data                                     = true;
                         item_ptr->fragment_shader_item.current_light_range_dirty = false;
@@ -2764,7 +2767,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff;
 
                         has_modified_bo_data                                                      = true;
                         item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = false;
@@ -2773,7 +2776,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty)
                     {
-                        *(float*) ((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance;
+                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance;
 
                         has_modified_bo_data                                                           = true;
                         item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty = false;
@@ -2782,7 +2785,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1 &&
                         item_ptr->fragment_shader_item.current_light_view_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + item_ptr->fragment_shader_item.current_light_view_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_view_ub_offset,
                                item_ptr->fragment_shader_item.current_light_view,
                                sizeof(item_ptr->fragment_shader_item.current_light_view) );
 
@@ -2794,7 +2797,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                     if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1 &&
                         item_ptr->vertex_shader_item.current_light_depth_vp_dirty)
                     {
-                        memcpy((char*) uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
+                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
                                item_ptr->vertex_shader_item.current_light_depth_vp,
                                sizeof(item_ptr->vertex_shader_item.current_light_depth_vp) );
 
@@ -2822,7 +2825,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     if (uber_ptr->far_near_plane_diff_ub_offset != -1 &&
         uber_ptr->current_far_near_plane_diff_dirty)
     {
-        *(float*) ((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->far_near_plane_diff_ub_offset) = uber_ptr->current_far_near_plane_diff;
+        *(float*) ((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->far_near_plane_diff_ub_offset) = uber_ptr->current_far_near_plane_diff;
 
         has_modified_bo_data                        = true;
         uber_ptr->current_far_near_plane_diff_dirty = false;
@@ -2831,7 +2834,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     if (uber_ptr->flip_z_ub_offset != -1 &&
         uber_ptr->current_flip_z_dirty)
     {
-        *(float*) ((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->flip_z_ub_offset) = uber_ptr->current_flip_z;
+        *(float*) ((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->flip_z_ub_offset) = uber_ptr->current_flip_z;
 
         has_modified_bo_data           = true;
         uber_ptr->current_flip_z_dirty = false;
@@ -2840,7 +2843,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     if (uber_ptr->near_plane_ub_offset != -1 &&
         uber_ptr->current_near_plane_dirty)
     {
-        *(float*) ((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->near_plane_ub_offset) = uber_ptr->current_near_plane;
+        *(float*) ((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->near_plane_ub_offset) = uber_ptr->current_near_plane;
 
         has_modified_bo_data               = true;
         uber_ptr->current_near_plane_dirty = false;
@@ -2849,7 +2852,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     if (uber_ptr->vp_ub_offset != -1 &&
         uber_ptr->current_vp_dirty)
     {
-        memcpy((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->vp_ub_offset,
+        memcpy((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->vp_ub_offset,
                system_matrix4x4_get_row_major_data(uber_ptr->current_vp),
                sizeof(float) * 16);
 
@@ -2863,7 +2866,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         ASSERT_DEBUG_SYNC(uber_ptr->world_camera_ub_offset != -1,
                           "World camera location uniform error");
 
-        memcpy((char*)uber_ptr->bo_data + uber_ptr->bo_data_vertex_offset + uber_ptr->world_camera_ub_offset,
+        memcpy((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->world_camera_ub_offset,
                uber_ptr->current_camera_location,
                sizeof(float) * 4);
 
@@ -2876,10 +2879,10 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
      */
     if (has_modified_bo_data)
     {
-        dsa_entry_points->pGLNamedBufferSubDataEXT(uber_ptr->bo_id,
-                                                   0, /* offset */
-                                                   (GLsizeiptr) uber_ptr->bo_data_size,
-                                                   uber_ptr->bo_data);
+        dsa_entry_points->pGLNamedBufferSubDataEXT(uber_ptr->ubo_id,
+                                                   uber_ptr->ubo_start_offset,
+                                                   (GLsizeiptr) uber_ptr->ubo_data_size,
+                                                   uber_ptr->ubo_data);
     }
 
     /* If any part of the SH data comes from a BO, copy it now */
@@ -2928,9 +2931,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                                                                                                    : 4 * sizeof(float) * 12;
 
                             dsa_entry_points->pGLNamedCopyBufferSubDataEXT(item_ptr->vertex_shader_item.current_light_sh_data.bo_id,
-                                                                           uber_ptr->bo_id,
+                                                                           uber_ptr->ubo_id,
                                                                            item_ptr->vertex_shader_item.current_light_sh_data.bo_offset,
-                                                                           uber_ptr->bo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_sh_data_ub_offset,
+                                                                           uber_ptr->ubo_start_offset + uber_ptr->ubo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_sh_data_ub_offset,
                                                                            sh_data_size);
                             break;
                         }
@@ -2980,8 +2983,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         {
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                             uber_ptr->bo_id,
-                                             0, /* offset */
+                                             uber_ptr->ubo_id,
+                                             uber_ptr->ubo_start_offset,
                                              fs_ub_size);
         }
     } /* if (uber_ptr->ub_fs_id != -1) */
@@ -2998,8 +3001,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         {
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                             uber_ptr->bo_id,
-                                             uber_ptr->bo_data_vertex_offset,
+                                             uber_ptr->ubo_id,
+                                             uber_ptr->ubo_start_offset + uber_ptr->ubo_data_vertex_offset,
                                              vs_ub_size);
         }
     }
