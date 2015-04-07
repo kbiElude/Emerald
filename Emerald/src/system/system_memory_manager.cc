@@ -285,10 +285,6 @@ PUBLIC EMERALD_API system_memory_manager system_memory_manager_create(__in      
                       "Input page size is zero");
     ASSERT_DEBUG_SYNC(memory_region_size >= page_size,
                       "Page size is smaller than the manageable memory region size");
-    ASSERT_DEBUG_SYNC(pfn_on_memory_block_alloced != NULL,
-                      "'On memory block allocated' call-back func ptr is NULL");
-    ASSERT_DEBUG_SYNC(pfn_on_memory_block_freed != NULL,
-                      "'On memory block freed' call-back func ptr is NULL");
 
     /* Spawn the allocator */
     _system_memory_manager* new_manager = new (std::nothrow) _system_memory_manager(should_be_thread_safe,

@@ -40,9 +40,13 @@ typedef struct _ogl_buffers
     system_hash64map                               bo_id_offset_hash_to_buffer_map;
     system_resource_pool                           buffer_descriptor_pool;
     ogl_context                                    context; /* do not retain - else face circular dependencies */
-    ogl_context_gl_entrypoints*                    entry_points;
-    ogl_context_gl_entrypoints_arb_buffer_storage* entry_points_bs;
-    ogl_context_gl_entrypoints_arb_sparse_buffer*  entry_points_sb;
+
+    ogl_context_es_entrypoints*                    entry_points_es;
+
+    ogl_context_gl_entrypoints*                    entry_points_gl;
+    ogl_context_gl_entrypoints_arb_buffer_storage* entry_points_gl_bs;
+    ogl_context_gl_entrypoints_arb_sparse_buffer*  entry_points_gl_sb;
+
     system_hashed_ansi_string                      name;
     system_resizable_vector                        nonsparse_buffers[OGL_BUFFERS_USAGE_COUNT];
     unsigned int                                   page_size;
@@ -58,9 +62,10 @@ typedef struct _ogl_buffers
                                                                       NULL,  /* init_fn */
                                                                       NULL); /* deinit_fn */
         context                         = in_context;
-        entry_points                    = NULL;
-        entry_points_bs                 = NULL;
-        entry_points_sb                 = NULL;
+        entry_points_es                 = NULL;
+        entry_points_gl                 = NULL;
+        entry_points_gl_bs              = NULL;
+        entry_points_gl_sb              = NULL;
         name                            = in_name;
         page_size                       = 0;
         sparse_buffers                  = system_resizable_vector_create(16, /* capacity */
@@ -76,17 +81,33 @@ typedef struct _ogl_buffers
         } /* for (all buffer usage types) */
 
         /* Cache the entry-points */
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                &entry_points);
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
-                                &entry_points_bs);
+        ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
 
-        /* Are sparse buffers supported? */
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
-                                &are_sparse_buffers_in);
+                                 OGL_CONTEXT_PROPERTY_TYPE,
+                                &context_type);
+
+        if (context_type == OGL_CONTEXT_TYPE_ES)
+        {
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
+                                    &entry_points_es);
+        } /* if (context_type == OGL_CONTEXT_TYPE_ES) */
+        else
+        {
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                                    &entry_points_gl);
+
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
+                                    &entry_points_gl_bs);
+
+            /* Are sparse buffers supported? */
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
+                                    &are_sparse_buffers_in);
+        }
 
         if (are_sparse_buffers_in)
         {
@@ -95,7 +116,7 @@ typedef struct _ogl_buffers
 
             ogl_context_get_property(context,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER,
-                                    &entry_points_sb);
+                                    &entry_points_gl_sb);
             ogl_context_get_property(context,
                                      OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER,
                                     &limits_sb);
@@ -184,8 +205,19 @@ _ogl_buffers_buffer::~_ogl_buffers_buffer()
 {
     if (bo_id != 0)
     {
-        buffers_ptr->entry_points->pGLDeleteBuffers(1,
-                                                   &bo_id);
+        if (buffers_ptr->entry_points_gl != NULL)
+        {
+            buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
+                                                          &bo_id);
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_es != NULL,
+                              "ES and GL entry-point descriptors are unavailable.");
+
+            buffers_ptr->entry_points_es->pGLDeleteBuffers(1,
+                                                          &bo_id);
+        }
 
         bo_id = 0;
     }
@@ -260,21 +292,47 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
         bo_size = required_size;
     }
 
-    buffers_ptr->entry_points->pGLGenBuffers      (1,
-                                                  &new_buffer_ptr->bo_id);
-    buffers_ptr->entry_points->pGLBindBuffer      (bo_target,
-                                                   new_buffer_ptr->bo_id);
-    buffers_ptr->entry_points_bs->pGLBufferStorage(bo_target,
-                                                   bo_size,
-                                                   NULL, /* data */
-                                                   bo_flags);
+    if (buffers_ptr->entry_points_gl != NULL)
+    {
+        ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_gl_bs != NULL,
+                          "Immutable buffer support is missing. Crash ahead.");
+
+        buffers_ptr->entry_points_gl->pGLGenBuffers      (1,
+                                                         &new_buffer_ptr->bo_id);
+        buffers_ptr->entry_points_gl->pGLBindBuffer      (bo_target,
+                                                          new_buffer_ptr->bo_id);
+        buffers_ptr->entry_points_gl_bs->pGLBufferStorage(bo_target,
+                                                          bo_size,
+                                                          NULL, /* data */
+                                                          bo_flags);
+    }
+    else
+    {
+        buffers_ptr->entry_points_es->pGLGenBuffers(1,
+                                                   &new_buffer_ptr->bo_id);
+        buffers_ptr->entry_points_es->pGLBindBuffer(bo_target,
+                                                    new_buffer_ptr->bo_id);
+        buffers_ptr->entry_points_es->pGLBufferData(bo_target,
+                                                    bo_size,
+                                                    NULL,           /* data */
+                                                    GL_STATIC_DRAW);
+    }
 
     /* Check if the request was successful */
     GLint64 reported_bo_size = 0;
 
-    buffers_ptr->entry_points->pGLGetBufferParameteri64v(bo_target,
-                                                         GL_BUFFER_SIZE,
-                                                        &reported_bo_size);
+    if (buffers_ptr->entry_points_gl != NULL)
+    {
+        buffers_ptr->entry_points_gl->pGLGetBufferParameteri64v(bo_target,
+                                                                GL_BUFFER_SIZE,
+                                                               &reported_bo_size);
+    }
+    else
+    {
+        buffers_ptr->entry_points_es->pGLGetBufferParameteri64v(bo_target,
+                                                                GL_BUFFER_SIZE,
+                                                               &reported_bo_size);
+    }
 
     if (reported_bo_size >= bo_size)
     {
@@ -296,8 +354,16 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
         ASSERT_DEBUG_SYNC(false,
                           "Failed to allocate storage for an immutable buffer object.");
 
-        buffers_ptr->entry_points->pGLDeleteBuffers(1,
-                                                   &new_buffer_ptr->bo_id);
+        if (buffers_ptr->entry_points_gl != NULL)
+        {
+            buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
+                                                          &new_buffer_ptr->bo_id);
+        }
+        else
+        {
+            buffers_ptr->entry_points_es->pGLDeleteBuffers(1,
+                                                          &new_buffer_ptr->bo_id);
+        }
 
         system_resource_pool_return_to_pool(buffers_ptr->buffer_descriptor_pool,
                                             (system_resource_pool_block) new_buffer_ptr);
@@ -313,22 +379,26 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(__in __notnull
 {
     _ogl_buffers_buffer* new_buffer_ptr = (_ogl_buffers_buffer*) system_resource_pool_get_from_pool(buffers_ptr->buffer_descriptor_pool);
 
-    buffers_ptr->entry_points->pGLGenBuffers      (1,
-                                                  &new_buffer_ptr->bo_id);
-    buffers_ptr->entry_points->pGLBindBuffer      (GL_ARRAY_BUFFER,
-                                                   new_buffer_ptr->bo_id);
-    buffers_ptr->entry_points_bs->pGLBufferStorage(GL_ARRAY_BUFFER,
-                                                   SPARSE_BUFFER_SIZE,
-                                                   NULL, /* data */
-                                                   GL_SPARSE_STORAGE_BIT_ARB |
-                                                   GL_DYNAMIC_STORAGE_BIT);
+    ASSERT_DEBUG_SYNC(buffers_ptr->entry_points_gl    != NULL &&
+                      buffers_ptr->entry_points_gl_bs != NULL,
+                      "GL_ARB_buffer_storage and/or GL entry-points are unavailable.");
+
+    buffers_ptr->entry_points_gl->pGLGenBuffers      (1,
+                                                      &new_buffer_ptr->bo_id);
+    buffers_ptr->entry_points_gl->pGLBindBuffer      (GL_ARRAY_BUFFER,
+                                                      new_buffer_ptr->bo_id);
+    buffers_ptr->entry_points_gl_bs->pGLBufferStorage(GL_ARRAY_BUFFER,
+                                                      SPARSE_BUFFER_SIZE,
+                                                      NULL, /* data */
+                                                      GL_SPARSE_STORAGE_BIT_ARB |
+                                                      GL_DYNAMIC_STORAGE_BIT);
 
     /* Check if the request was successful */
     GLint64 reported_bo_size = 0;
 
-    buffers_ptr->entry_points->pGLGetBufferParameteri64v(GL_ARRAY_BUFFER,
-                                                         GL_BUFFER_SIZE,
-                                                        &reported_bo_size);
+    buffers_ptr->entry_points_gl->pGLGetBufferParameteri64v(GL_ARRAY_BUFFER,
+                                                            GL_BUFFER_SIZE,
+                                                           &reported_bo_size);
 
     if (reported_bo_size >= SPARSE_BUFFER_SIZE)
     {
@@ -350,8 +420,8 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(__in __notnull
         ASSERT_DEBUG_SYNC(false,
                           "Failed to allocate storage for an immutable buffer object.");
 
-        buffers_ptr->entry_points->pGLDeleteBuffers(1,
-                                                   &new_buffer_ptr->bo_id);
+        buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
+                                                      &new_buffer_ptr->bo_id);
 
         system_resource_pool_return_to_pool(buffers_ptr->buffer_descriptor_pool,
                                             (system_resource_pool_block) new_buffer_ptr);
@@ -417,10 +487,13 @@ PRIVATE void _ogl_buffers_on_sparse_memory_block_alloced(__in __notnull system_m
     _ogl_buffers_buffer* buffer_ptr = (_ogl_buffers_buffer*) user_arg;
 
     /* Commit the pages the caller will later fill with data. */
-    buffer_ptr->buffers_ptr->entry_points_sb->pGLNamedBufferPageCommitmentEXT(buffer_ptr->bo_id,
-                                                                              offset_aligned,
-                                                                              size,
-                                                                              GL_TRUE); /* commit */
+    ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_gl_sb != NULL,
+                      "GL_ARB_sparse_buffer entry-points are unavailable.");
+
+    buffer_ptr->buffers_ptr->entry_points_gl_sb->pGLNamedBufferPageCommitmentEXT(buffer_ptr->bo_id,
+                                                                                 offset_aligned,
+                                                                                 size,
+                                                                                 GL_TRUE); /* commit */
 }
 
 /** TODO */
@@ -436,10 +509,13 @@ PRIVATE void _ogl_buffers_on_sparse_memory_block_freed(__in __notnull system_mem
      * Note: system_memory_manager ensures the pages that we are told to release no longer hold
      *       any other data, so we need not worry about damaging data owned by other allocations.
      */
-    buffer_ptr->buffers_ptr->entry_points_sb->pGLNamedBufferPageCommitmentEXT(buffer_ptr->bo_id,
-                                                                              offset_aligned,
-                                                                              size,
-                                                                              GL_FALSE); /* commit */
+    ASSERT_DEBUG_SYNC(buffer_ptr->buffers_ptr->entry_points_gl_sb != NULL,
+                      "GL_ARB_sparse_buffer entry-points are unavailable.");
+
+    buffer_ptr->buffers_ptr->entry_points_gl_sb->pGLNamedBufferPageCommitmentEXT(buffer_ptr->bo_id,
+                                                                                 offset_aligned,
+                                                                                 size,
+                                                                                 GL_FALSE); /* commit */
 }
 
 
