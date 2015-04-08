@@ -7,8 +7,8 @@
 #include "shared.h"
 #include "gfx/gfx_image.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_texture.h"
-#include "ogl/ogl_textures.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
@@ -107,14 +107,14 @@ PRIVATE ogl_texture _ogl_texture_create_base(__in __notnull ogl_context         
         new_texture->src_filename = file_name;
 
         /* Add the texture object to texture manager */
-        ogl_textures textures = NULL;
+        ogl_context_textures textures = NULL;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_TEXTURES,
                                 &textures);
 
-        ogl_textures_add_texture(textures,
-                                 (ogl_texture) new_texture);
+        ogl_context_textures_add_texture(textures,
+                                         (ogl_texture) new_texture);
 
         /* Initialize reference counting */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_texture,
@@ -540,14 +540,14 @@ PRIVATE void _ogl_texture_release(__in __notnull __post_invalid void* arg)
                                                      texture_ptr);
 
     /* Inform the textures manager that we're about to go down */
-    ogl_textures textures = NULL;
+    ogl_context_textures textures = NULL;
 
     ogl_context_get_property(texture_ptr->context,
                              OGL_CONTEXT_PROPERTY_TEXTURES,
                             &textures);
 
-    ogl_textures_delete_texture(textures,
-                                texture_ptr->name);
+    ogl_context_textures_delete_texture(textures,
+                                        texture_ptr->name);
 
     /* Release other sub-instances */
     system_resizable_vector_release(texture_ptr->mipmaps);

@@ -7,13 +7,13 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_samplers.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_sampler.h"
-#include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
-#include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
 #include "scene/scene_light.h"
@@ -476,7 +476,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                                                           __in_opt           ogl_context    context)
 {
     /* Create a new mesh_material instance */
-    ogl_textures              context_textures                 = NULL;
+    ogl_context_textures      context_textures                 = NULL;
     system_hashed_ansi_string src_material_object_manager_path = NULL;
     mesh_material             result_material                  = NULL;
     system_hashed_ansi_string src_material_name                = NULL;
@@ -730,8 +730,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                 {
                     ogl_texture texture = NULL;
 
-                    texture = ogl_textures_get_texture_by_filename(context_textures,
-                                                                   config.texture_filename);
+                    texture = ogl_context_textures_get_texture_by_filename(context_textures,
+                                                                           config.texture_filename);
 
                     if (texture == NULL)
                     {
@@ -1821,25 +1821,25 @@ PUBLIC EMERALD_API void mesh_material_set_shading_property_to_texture(__in __not
      * Pass NULL to all irrelevant arguments - we will use default GL state values
      * for these attributes.
      **/
-    GLenum       mag_filter_gl = _mesh_material_get_glenum_for_mesh_material_texture_filtering(mag_filter);
-    GLenum       min_filter_gl = _mesh_material_get_glenum_for_mesh_material_texture_filtering(min_filter);
-    ogl_samplers samplers      = NULL;
+    GLenum               mag_filter_gl = _mesh_material_get_glenum_for_mesh_material_texture_filtering(mag_filter);
+    GLenum               min_filter_gl = _mesh_material_get_glenum_for_mesh_material_texture_filtering(min_filter);
+    ogl_context_samplers samplers      = NULL;
 
     ogl_context_get_property(material_ptr->context,
                              OGL_CONTEXT_PROPERTY_SAMPLERS,
                             &samplers);
 
-    material_ptr->shading_properties[property].texture_data.sampler = ogl_samplers_get_sampler(samplers,
-                                                                                               NULL,  /* border_color */
-                                                                                               &mag_filter_gl,
-                                                                                               NULL,  /* max_lod_ptr */
-                                                                                               &min_filter_gl,
-                                                                                               NULL,  /* min_lod_ptr */
-                                                                                               NULL,  /* texture_compare_func_ptr */
-                                                                                               NULL,  /* texture_compare_mode_ptr */
-                                                                                               NULL,  /* wrap_r_ptr */
-                                                                                               NULL,  /* wrap_s_ptr */
-                                                                                               NULL); /* wrap_t_ptr */
+    material_ptr->shading_properties[property].texture_data.sampler = ogl_context_samplers_get_sampler(samplers,
+                                                                                                       NULL,  /* border_color */
+                                                                                                       &mag_filter_gl,
+                                                                                                       NULL,  /* max_lod_ptr */
+                                                                                                       &min_filter_gl,
+                                                                                                       NULL,  /* min_lod_ptr */
+                                                                                                       NULL,  /* texture_compare_func_ptr */
+                                                                                                       NULL,  /* texture_compare_mode_ptr */
+                                                                                                       NULL,  /* wrap_r_ptr */
+                                                                                                       NULL,  /* wrap_s_ptr */
+                                                                                                       NULL); /* wrap_t_ptr */
 
     ogl_sampler_retain(material_ptr->shading_properties[property].texture_data.sampler);
     ogl_texture_retain(texture);

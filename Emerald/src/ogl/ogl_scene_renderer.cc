@@ -7,6 +7,7 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
@@ -14,7 +15,6 @@
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shadow_mapping.h"
-#include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -602,7 +602,7 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(__in __notnull ogl_s
     uint32_t             n_lights       = 0;
     _ogl_scene_renderer* renderer_ptr   = (_ogl_scene_renderer*) renderer;
     ogl_shadow_mapping   shadow_mapping = NULL;
-    ogl_textures         texture_pool   = NULL;
+    ogl_context_textures texture_pool   = NULL;
 
     ogl_context_get_property(renderer_ptr->context,
                              OGL_CONTEXT_PROPERTY_SHADOW_MAPPING,
@@ -638,14 +638,14 @@ PRIVATE void _ogl_scene_renderer_return_shadow_maps_to_pool(__in __notnull ogl_s
 
         if (current_light_sm_texture_color != NULL)
         {
-            ogl_textures_return_reusable(renderer_ptr->context,
-                                         current_light_sm_texture_color);
+            ogl_context_textures_return_reusable(renderer_ptr->context,
+                                                 current_light_sm_texture_color);
         } /* if (current_light_sm_texture_color != NULL) */
 
         if (current_light_sm_texture_depth != NULL)
         {
-            ogl_textures_return_reusable(renderer_ptr->context,
-                                         current_light_sm_texture_depth);
+            ogl_context_textures_return_reusable(renderer_ptr->context,
+                                                 current_light_sm_texture_depth);
         } /* if (current_light_sm_texture_depth != NULL) */
     } /* for (all scene lights) */
 }

@@ -129,7 +129,7 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
 
-    /* not settable, ogl_samplers */
+    /* not settable, ogl_context_samplers */
     OGL_CONTEXT_PROPERTY_SAMPLERS,
 
     /* not settable, ogl_shaders */
@@ -171,7 +171,7 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_texture_compression */
     OGL_CONTEXT_PROPERTY_TEXTURE_COMPRESSION,
 
-    /* not settable, ogl_textures */
+    /* not settable, ogl_context_textures */
     OGL_CONTEXT_PROPERTY_TEXTURES,
 
     /* not settable, ogl_context_to_bindings */

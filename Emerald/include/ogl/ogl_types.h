@@ -44,12 +44,12 @@ typedef unsigned int ogl_curve_item_id;
 DECLARE_HANDLE(ogl_scene_renderer);
 
 /** Sampler manager handle */
+DECLARE_HANDLE(ogl_context_samplers);
 DECLARE_HANDLE(ogl_sampler);
-DECLARE_HANDLE(ogl_samplers);
 
 /** Texture handle */
+DECLARE_HANDLE(ogl_context_textures);
 DECLARE_HANDLE(ogl_texture);
-DECLARE_HANDLE(ogl_textures);
 
 /* Vertex array object handles */
 DECLARE_HANDLE(ogl_context_vaos);

@@ -16,37 +16,37 @@
  *
  * NOTE: Current implementation is NOT thread-safe.
  */
-#ifndef OGL_TEXTURES_H
-#define OGL_TEXTURES_H
+#ifndef OGL_CONTEXT_TEXTURES_H
+#define OGL_CONTEXT_TEXTURES_H
 
 #include "ogl/ogl_types.h"
 
 /** TODO.
  *
  *  This function is not exported */
-PUBLIC void ogl_textures_add_texture(__in __notnull ogl_textures textures,
-                                     __in __notnull ogl_texture  texture);
+PUBLIC void ogl_context_textures_add_texture(__in __notnull ogl_context_textures textures,
+                                             __in __notnull ogl_texture          texture);
 
 /** TODO.
  *
  *  This function is not exported.
  **/
-PUBLIC ogl_textures ogl_textures_create(__in __notnull ogl_context context);
+PUBLIC ogl_context_textures ogl_context_textures_create(__in __notnull ogl_context context);
 
 /** TODO.
  *
  *  This function is not exported.
  **/
-PUBLIC void ogl_textures_delete_texture(__in __notnull ogl_textures              textures,
-                                        __in __notnull system_hashed_ansi_string texture_name);
+PUBLIC void ogl_context_textures_delete_texture(__in __notnull ogl_context_textures      textures,
+                                                __in __notnull system_hashed_ansi_string texture_name);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_textures_get_texture_by_filename(__in __notnull ogl_textures              textures,
-                                                                    __in __notnull system_hashed_ansi_string texture_filename);
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_filename(__in __notnull ogl_context_textures      textures,
+                                                                            __in __notnull system_hashed_ansi_string texture_filename);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_texture ogl_textures_get_texture_by_name(__in __notnull ogl_textures              textures,
-                                                                __in __notnull system_hashed_ansi_string texture_name);
+PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_by_name(__in __notnull ogl_context_textures      textures,
+                                                                        __in __notnull system_hashed_ansi_string texture_name);
 
 /** This function checks if a texture of requested parameter is already available
  *  in the texture pool:
@@ -79,24 +79,24 @@ PUBLIC EMERALD_API ogl_texture ogl_textures_get_texture_by_name(__in __notnull o
  *  @return An ogl_texture instance wrapping the texture object or NULL, if the request
  *          failed for whatever reason.
  **/
-PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_textures_get_texture_from_pool(__in __notnull ogl_context                context,
-                                                                                         __in           ogl_texture_dimensionality dimensionality,
-                                                                                         __in           unsigned int               n_mipmaps,
-                                                                                         __in           GLenum                     internalformat,
-                                                                                         __in           unsigned int               base_mipmap_width,
-                                                                                         __in           unsigned int               base_mipmap_height,
-                                                                                         __in           unsigned int               base_mipmap_depth,
-                                                                                         __in           unsigned int               n_samples,
-                                                                                         __in           bool                       fixed_sample_locations);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(__in __notnull ogl_context                context,
+                                                                                                 __in           ogl_texture_dimensionality dimensionality,
+                                                                                                 __in           unsigned int               n_mipmaps,
+                                                                                                 __in           GLenum                     internalformat,
+                                                                                                 __in           unsigned int               base_mipmap_width,
+                                                                                                 __in           unsigned int               base_mipmap_height,
+                                                                                                 __in           unsigned int               base_mipmap_depth,
+                                                                                                 __in           unsigned int               n_samples,
+                                                                                                 __in           bool                       fixed_sample_locations);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_textures_return_reusable(__in __notnull ogl_context context,
-                                                     __in __notnull ogl_texture released_texture);
+PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_context context,
+                                                             __in __notnull ogl_texture released_texture);
 
 /** TODO.
  *
  *  This function is not exported.
  **/
-PUBLIC void ogl_textures_release(__in __notnull ogl_textures materials);
+PUBLIC void ogl_context_textures_release(__in __notnull ogl_context_textures materials);
 
-#endif /* OGL_TEXTURES_H */
+#endif /* OGL_CONTEXT_TEXTURES_H */

@@ -8,8 +8,8 @@
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_texture.h"
-#include "ogl/ogl_textures.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
 #include "scene/scene_curve.h"
@@ -347,7 +347,7 @@ PRIVATE  bool _scene_multiloader_load_scene_internal_get_mesh_instances_data    
 PRIVATE  bool _scene_multiloader_load_scene_internal_get_texture_data                (__in  __notnull _scene_multiloader_scene*            scene_ptr,
                                                                                       __in            system_hashed_ansi_string            object_manager_path,
                                                                                       __in            unsigned int                         n_scene_textures,
-                                                                                      __in  __notnull ogl_textures                         context_textures,
+                                                                                      __in  __notnull ogl_context_textures                 context_textures,
                                                                                       __in  __notnull system_hash64map                     texture_id_to_ogl_texture_map);
 volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint       (                system_thread_pool_callback_argument op);
 PRIVATE  void _scene_multiloader_load_scene_internal                                 (__in  __notnull _scene_multiloader_scene*            scene_ptr);
@@ -836,7 +836,7 @@ end:
 PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notnull _scene_multiloader_scene* scene_ptr,
                                                                      __in           system_hashed_ansi_string object_manager_path,
                                                                      __in           unsigned int              n_scene_textures,
-                                                                     __in __notnull ogl_textures              context_textures,
+                                                                     __in __notnull ogl_context_textures      context_textures,
                                                                      __in __notnull system_hash64map          texture_id_to_ogl_texture_map)
 {
     /*
@@ -956,8 +956,8 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notn
         while (system_resizable_vector_pop(scene_ptr->enqueued_gfx_image_to_scene_texture_assignment_ops,
                                           &op_ptr) )
         {
-            ogl_texture texture = ogl_textures_get_texture_by_filename(context_textures,
-                                                                       op_ptr->filename);
+            ogl_texture texture = ogl_context_textures_get_texture_by_filename(context_textures,
+                                                                               op_ptr->filename);
 
             ASSERT_DEBUG_SYNC(texture != NULL,
                               "Could not retrieve an ogl_texture instance for filename [%s]",
@@ -1077,7 +1077,7 @@ volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint(s
 /** TODO */
 PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multiloader_scene* scene_ptr)
 {
-    ogl_textures            context_textures                  = NULL;
+    ogl_context_textures    context_textures                  = NULL;
     system_hash64map        material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material));
     system_hash64map        material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*)         );
     system_hash64map        mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*)         );

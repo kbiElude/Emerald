@@ -8,8 +8,10 @@
 #include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
+#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_context_texture_compression.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
@@ -18,11 +20,9 @@
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_rendering_handler.h"
-#include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_shadow_mapping.h"
 #include "ogl/ogl_text.h"
-#include "ogl/ogl_textures.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
 #include "system/system_event.h"
@@ -113,13 +113,13 @@ typedef struct
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
     ogl_context_sampler_bindings    sampler_bindings;
-    ogl_samplers                    samplers;
+    ogl_context_samplers            samplers;
     ogl_shaders                     shaders;
     ogl_shadow_mapping              shadow_mapping;
     ogl_context_state_cache         state_cache;
     ogl_text                        text_renderer;
     ogl_context_texture_compression texture_compression;
-    ogl_textures                    textures;
+    ogl_context_textures            textures;
     ogl_context_to_bindings         to_bindings;
     ogl_context_vaos                vaos;
 
@@ -2572,12 +2572,12 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->programs                                   = ogl_programs_create();
                             _result->sampler_bindings                           = NULL;
                             _result->state_cache                                = NULL;
-                            _result->samplers                                   = ogl_samplers_create( (ogl_context) _result);
-                            _result->shaders                                    = ogl_shaders_create();
+                            _result->samplers                                   = ogl_context_samplers_create( (ogl_context) _result);
+                            _result->shaders                                    = ogl_shaders_create         ();
                             _result->shadow_mapping                             = NULL;
                             _result->text_renderer                              = NULL;
                             _result->texture_compression                        = NULL;
-                            _result->textures                                   = ogl_textures_create( (ogl_context) _result);
+                            _result->textures                                   = ogl_context_textures_create( (ogl_context) _result);
                             _result->to_bindings                                = NULL;
                             _result->vao_no_vaas_id                             = 0;
                             _result->vsync_enabled                              = vsync_enabled;
@@ -3052,7 +3052,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_SAMPLERS:
         {
-            *((ogl_samplers*) out_result) = context_ptr->samplers;
+            *((ogl_context_samplers*) out_result) = context_ptr->samplers;
 
             break;
         }
@@ -3193,7 +3193,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_TEXTURES:
         {
-            *((ogl_textures*) out_result) = context_ptr->textures;
+            *((ogl_context_textures*) out_result) = context_ptr->textures;
 
             break;
         }
@@ -3301,7 +3301,7 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
 
     if (context_ptr->samplers != NULL)
     {
-        ogl_samplers_release(context_ptr->samplers);
+        ogl_context_samplers_release(context_ptr->samplers);
 
         context_ptr->samplers = NULL;
     }
@@ -3315,7 +3315,7 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
 
     if (context_ptr->textures != NULL)
     {
-        ogl_textures_release(context_ptr->textures);
+        ogl_context_textures_release(context_ptr->textures);
 
         context_ptr->textures = NULL;
     }

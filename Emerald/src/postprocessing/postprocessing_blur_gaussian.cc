@@ -6,15 +6,15 @@
 #include "shared.h"
 #include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_context_state_cache.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_sampler.h"
-#include "ogl/ogl_samplers.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shaders.h"
 #include "ogl/ogl_texture.h"
-#include "ogl/ogl_textures.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -654,25 +654,25 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
     }
 
     /* Retrieve the sampler object we will use to perform the blur operation */
-    ogl_samplers context_samplers        = NULL;
-    const GLenum filter_gl_clamp_to_edge = GL_CLAMP_TO_EDGE;
-    const GLenum filter_gl_linear        = GL_LINEAR;
+    ogl_context_samplers context_samplers        = NULL;
+    const GLenum         filter_gl_clamp_to_edge = GL_CLAMP_TO_EDGE;
+    const GLenum         filter_gl_linear        = GL_LINEAR;
 
     ogl_context_get_property(instance_ptr->context,
                              OGL_CONTEXT_PROPERTY_SAMPLERS,
                             &context_samplers);
 
-    instance_ptr->sampler = ogl_samplers_get_sampler(context_samplers,
-                                                     NULL,                    /* border_color */
-                                                     &filter_gl_linear,       /* mag_filter_ptr */
-                                                     NULL,                    /* max_lod_ptr*/
-                                                     &filter_gl_linear,       /* min_filter_ptr */
-                                                     NULL,                    /* min_lod_ptr */
-                                                     NULL,                    /* texture_compare_func_ptr */
-                                                     NULL,                    /* texture_compare_mode_ptr */
-                                                     NULL,                    /* wrap_r_ptr */
-                                                    &filter_gl_clamp_to_edge, /* wrap_s_ptr */
-                                                    &filter_gl_clamp_to_edge);/* wrap_t_ptr */
+    instance_ptr->sampler = ogl_context_samplers_get_sampler(context_samplers,
+                                                             NULL,                    /* border_color */
+                                                             &filter_gl_linear,       /* mag_filter_ptr */
+                                                             NULL,                    /* max_lod_ptr*/
+                                                             &filter_gl_linear,       /* min_filter_ptr */
+                                                             NULL,                    /* min_lod_ptr */
+                                                             NULL,                    /* texture_compare_func_ptr */
+                                                             NULL,                    /* texture_compare_mode_ptr */
+                                                             NULL,                    /* wrap_r_ptr */
+                                                            &filter_gl_clamp_to_edge, /* wrap_s_ptr */
+                                                            &filter_gl_clamp_to_edge);/* wrap_t_ptr */
 
     ASSERT_DEBUG_SYNC(instance_ptr->sampler != NULL,
                       "Could not retrieve a sampler object from ogl_samplers");
@@ -955,15 +955,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     } /* switch (blur_resolution) */
 
     /* Retrieve a 2D Array texture we will use for execution of the iterations */
-    temp_2d_array_texture = ogl_textures_get_texture_from_pool(blur_ptr->context,
-                                                               OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY,
-                                                               1, /* n_mipmaps */
-                                                               src_texture_internalformat,
-                                                               target_width,
-                                                               target_height,
-                                                               3,      /* base_mipmap_depth */
-                                                               1,      /* n_samples */
-                                                               false); /* fixed_sample_locations */
+    temp_2d_array_texture = ogl_context_textures_get_texture_from_pool(blur_ptr->context,
+                                                                       OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D_ARRAY,
+                                                                       1, /* n_mipmaps */
+                                                                       src_texture_internalformat,
+                                                                       target_width,
+                                                                       target_height,
+                                                                       3,      /* base_mipmap_depth */
+                                                                       1,      /* n_samples */
+                                                                       false); /* fixed_sample_locations */
 
     /* Step 2): Set-up
      *
@@ -1252,6 +1252,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
         entrypoints_ptr->pGLEnable(GL_CULL_FACE);
     }
 
-    ogl_textures_return_reusable(blur_ptr->context,
-                                 temp_2d_array_texture);
+    ogl_context_textures_return_reusable(blur_ptr->context,
+                                         temp_2d_array_texture);
 }

@@ -7,6 +7,7 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_scene_renderer.h"
@@ -14,7 +15,6 @@
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
 #include "ogl/ogl_texture.h"
-#include "ogl/ogl_textures.h"
 #include "ogl/ogl_uber.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene.h"
@@ -2877,7 +2877,7 @@ PUBLIC void ogl_shadow_mapping_render_shadow_maps(__in __notnull ogl_shadow_mapp
     scene_graph                                               graph              = NULL;
     uint32_t                                                  n_lights           = 0;
     _ogl_shadow_mapping*                                      shadow_mapping_ptr = (_ogl_shadow_mapping*) shadow_mapping;
-    ogl_textures                                              texture_pool       = NULL;
+    ogl_context_textures                                      texture_pool       = NULL;
 
     ogl_context_get_property(shadow_mapping_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -3276,15 +3276,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                               handler_ptr->current_sm_depth_texture  == NULL,
                               "SM texture(s) are already active");
 
-            handler_ptr->current_sm_depth_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
-                                                                                       light_shadow_map_dimensionality,
-                                                                                       1, /* n_mipmaps */
-                                                                                       light_shadow_map_internalformat_depth,
-                                                                                       light_shadow_map_size[0],
-                                                                                       light_shadow_map_size[1],
-                                                                                       light_shadow_map_size[2],
-                                                                                       0,      /* n_samples */
-                                                                                       false); /* fixed_samples_location */
+            handler_ptr->current_sm_depth_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
+                                                                                               light_shadow_map_dimensionality,
+                                                                                               1, /* n_mipmaps */
+                                                                                               light_shadow_map_internalformat_depth,
+                                                                                               light_shadow_map_size[0],
+                                                                                               light_shadow_map_size[1],
+                                                                                               light_shadow_map_size[2],
+                                                                                               0,      /* n_samples */
+                                                                                               false); /* fixed_samples_location */
 
             if (light_shadow_map_algorithm == SCENE_LIGHT_SHADOW_MAP_ALGORITHM_VSM)
             {
@@ -3295,15 +3295,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_shadow_mapping_toggle(__in __notnull ogl_
                                   light_shadow_map_dimensionality == OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_CUBE_MAP && light_shadow_map_size[2] == 1,
                                   "Sanity check failed");
 
-                handler_ptr->current_sm_color0_texture = ogl_textures_get_texture_from_pool(handler_ptr->context,
-                                                                                            light_shadow_map_dimensionality,
-                                                                                            log2_uint32(light_shadow_map_size[0]),
-                                                                                            light_shadow_map_internalformat_color,
-                                                                                            light_shadow_map_size[0],
-                                                                                            light_shadow_map_size[1],
-                                                                                            light_shadow_map_size[2],
-                                                                                            0,      /* n_samples */
-                                                                                            false); /* fixed_samples_location */
+                handler_ptr->current_sm_color0_texture = ogl_context_textures_get_texture_from_pool(handler_ptr->context,
+                                                                                                    light_shadow_map_dimensionality,
+                                                                                                    log2_uint32(light_shadow_map_size[0]),
+                                                                                                    light_shadow_map_internalformat_color,
+                                                                                                    light_shadow_map_size[0],
+                                                                                                    light_shadow_map_size[1],
+                                                                                                    light_shadow_map_size[2],
+                                                                                                    0,      /* n_samples */
+                                                                                                    false); /* fixed_samples_location */
 
                 ASSERT_DEBUG_SYNC(handler_ptr->current_sm_color0_texture != NULL,
                                   "Could not retrieve a shadow map color texture from the texture pool.");

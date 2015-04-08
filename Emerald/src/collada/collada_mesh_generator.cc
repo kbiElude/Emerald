@@ -15,7 +15,7 @@
 #include "collada/collada_data_source.h"
 #include "collada/collada_mesh_generator.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_textures.h"
+#include "ogl/ogl_context_textures.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
 #include "system/system_assertions.h"
@@ -243,7 +243,7 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __
                                                           NULL); /* out_requires_mipmaps */
 
                         /* Identify ogl_texture with the specified name */
-                        ogl_textures current_context_textures = NULL;
+                        ogl_context_textures current_context_textures = NULL;
 
                         ogl_context_get_property(context,
                                                  OGL_CONTEXT_PROPERTY_TEXTURES,
@@ -251,8 +251,8 @@ PRIVATE void _collada_mesh_generator_configure_mesh_material_from_effect(__in __
 
                         ASSERT_ALWAYS_SYNC(current_context_textures != NULL, "Texture manager is NULL");
 
-                        shading_factor_texture = ogl_textures_get_texture_by_name(current_context_textures,
-                                                                                  shading_factor_image_file_name);
+                        shading_factor_texture = ogl_context_textures_get_texture_by_name(current_context_textures,
+                                                                                          shading_factor_image_file_name);
                         ASSERT_ALWAYS_SYNC(shading_factor_texture != NULL,
                                            "Could not retrieve ogl_texture instance for image [%s]",
                                            system_hashed_ansi_string_get_buffer(shading_factor_image_name) );

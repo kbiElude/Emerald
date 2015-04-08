@@ -5,8 +5,8 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_samplers.h"
 #include "ogl/ogl_sampler.h"
-#include "ogl/ogl_samplers.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include <sstream>
@@ -14,19 +14,19 @@
 /* Private type definitions */
 
 /** TODO */
-typedef struct _ogl_samplers
+typedef struct _ogl_context_samplers
 {
     ogl_context             context;
     system_resizable_vector samplers;
 
-    _ogl_samplers()
+    _ogl_context_samplers()
     {
         context  = NULL;
         samplers = system_resizable_vector_create(4 /* capacity */,
                                                   sizeof(ogl_sampler) );
     }
 
-    ~_ogl_samplers()
+    ~_ogl_context_samplers()
     {
         LOG_INFO("Sampler manager deallocating..");
 
@@ -47,11 +47,11 @@ typedef struct _ogl_samplers
             samplers = NULL;
         }
     }
-} _ogl_samplers;
+} _ogl_context_samplers;
 
 
 /** TODO */
-typedef struct _ogl_samplers_create_renderer_callback_user_arg
+typedef struct _ogl_context_samplers_create_renderer_callback_user_arg
 {
     const GLfloat* border_color;
     const GLenum*  mag_filter_ptr;
@@ -64,17 +64,17 @@ typedef struct _ogl_samplers_create_renderer_callback_user_arg
     const GLenum*  wrap_s_ptr;
     const GLenum*  wrap_t_ptr;
 
-    ogl_sampler  result;
-    ogl_samplers samplers;
-} _ogl_samplers_create_renderer_callback_user_arg;
+    ogl_sampler          result;
+    ogl_context_samplers samplers;
+} _ogl_context_samplers_create_renderer_callback_user_arg;
 
 
 /** TODO */
-PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(__in __notnull ogl_samplers samplers)
+PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(__in __notnull ogl_context_samplers samplers)
 {
     std::stringstream         name_sstream;
     system_hashed_ansi_string result       = NULL;
-    _ogl_samplers*            samplers_ptr = (_ogl_samplers*) samplers;
+    _ogl_context_samplers*    samplers_ptr = (_ogl_context_samplers*) samplers;
 
     name_sstream << "Sampler "
                  << system_resizable_vector_get_amount_of_elements(samplers_ptr->samplers);
@@ -85,10 +85,10 @@ PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(__in __notnu
 }
 
 /** TODO */
-PRIVATE void _ogl_samplers_create_renderer_callback(__in __notnull ogl_context context,
-                                                    __in __notnull void*       user_arg)
+PRIVATE void _ogl_context_samplers_create_renderer_callback(__in __notnull ogl_context context,
+                                                            __in __notnull void*       user_arg)
 {
-    _ogl_samplers_create_renderer_callback_user_arg* user_arg_ptr = (_ogl_samplers_create_renderer_callback_user_arg*) user_arg;
+    _ogl_context_samplers_create_renderer_callback_user_arg* user_arg_ptr = (_ogl_context_samplers_create_renderer_callback_user_arg*) user_arg;
 
     user_arg_ptr->result = ogl_sampler_create(context,
                                               _ogl_sampler_get_new_sampler_name(user_arg_ptr->samplers) );
@@ -176,9 +176,9 @@ PRIVATE void _ogl_samplers_create_renderer_callback(__in __notnull ogl_context c
 }
 
 /** Please see header for specification */
-PUBLIC ogl_samplers ogl_samplers_create(__in __notnull ogl_context context)
+PUBLIC ogl_context_samplers ogl_context_samplers_create(__in __notnull ogl_context context)
 {
-    _ogl_samplers* samplers_ptr = new (std::nothrow) _ogl_samplers;
+    _ogl_context_samplers* samplers_ptr = new (std::nothrow) _ogl_context_samplers;
 
     ASSERT_ALWAYS_SYNC(samplers_ptr != NULL,
                        "Out of memory");
@@ -190,25 +190,25 @@ PUBLIC ogl_samplers ogl_samplers_create(__in __notnull ogl_context context)
                                                                 sizeof(ogl_sampler) );
     }
 
-    return (ogl_samplers) samplers_ptr;
+    return (ogl_context_samplers) samplers_ptr;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __notnull ogl_samplers   samplers,
-                                                        __in_ecount_opt(4)           const GLfloat* border_color,
-                                                        __in_opt                     const GLenum*  mag_filter_ptr,
-                                                        __in_opt                     const GLfloat* max_lod_ptr,
-                                                        __in_opt                     const GLenum*  min_filter_ptr,
-                                                        __in_opt                     const GLfloat* min_lod_ptr,
-                                                        __in_opt                     const GLenum*  texture_compare_func_ptr,
-                                                        __in_opt                     const GLenum*  texture_compare_mode_ptr,
-                                                        __in_opt                     const GLenum*  wrap_r_ptr,
-                                                        __in_opt                     const GLenum*  wrap_s_ptr,
-                                                        __in_opt                     const GLenum*  wrap_t_ptr)
+PUBLIC EMERALD_API ogl_sampler ogl_context_samplers_get_sampler(__in               __notnull ogl_context_samplers samplers,
+                                                                __in_ecount_opt(4)           const GLfloat*       border_color,
+                                                                __in_opt                     const GLenum*        mag_filter_ptr,
+                                                                __in_opt                     const GLfloat*       max_lod_ptr,
+                                                                __in_opt                     const GLenum*        min_filter_ptr,
+                                                                __in_opt                     const GLfloat*       min_lod_ptr,
+                                                                __in_opt                     const GLenum*        texture_compare_func_ptr,
+                                                                __in_opt                     const GLenum*        texture_compare_mode_ptr,
+                                                                __in_opt                     const GLenum*        wrap_r_ptr,
+                                                                __in_opt                     const GLenum*        wrap_s_ptr,
+                                                                __in_opt                     const GLenum*        wrap_t_ptr)
 {
-    const _ogl_samplers* samplers_ptr = (const _ogl_samplers*) samplers;
-    const uint32_t       n_samplers   = system_resizable_vector_get_amount_of_elements(samplers_ptr->samplers);
-    ogl_sampler          result       = NULL;
+    const _ogl_context_samplers* samplers_ptr = (const _ogl_context_samplers*) samplers;
+    const uint32_t               n_samplers   = system_resizable_vector_get_amount_of_elements(samplers_ptr->samplers);
+    ogl_sampler                  result       = NULL;
 
     LOG_INFO("Performance warning: slow code-path call: ogl_samplers_get_sampler()");
 
@@ -314,7 +314,7 @@ PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __not
     {
         LOG_INFO("Requested sampler object has not been cached yet. Creating a new ogl_sampler instance..");
 
-        _ogl_samplers_create_renderer_callback_user_arg callback_user_arg;
+        _ogl_context_samplers_create_renderer_callback_user_arg callback_user_arg;
 
         callback_user_arg.border_color             = border_color;
         callback_user_arg.mag_filter_ptr           = mag_filter_ptr;
@@ -329,7 +329,7 @@ PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __not
         callback_user_arg.wrap_t_ptr               = wrap_t_ptr;
 
         ogl_context_request_callback_from_context_thread(samplers_ptr->context,
-                                                         _ogl_samplers_create_renderer_callback,
+                                                         _ogl_context_samplers_create_renderer_callback,
                                                         &callback_user_arg);
 
         result = callback_user_arg.result;
@@ -345,11 +345,11 @@ PUBLIC EMERALD_API ogl_sampler ogl_samplers_get_sampler(__in               __not
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_samplers_release(__in __notnull ogl_samplers samplers)
+PUBLIC void ogl_context_samplers_release(__in __notnull ogl_context_samplers samplers)
 {
     if (samplers != NULL)
     {
-        delete (_ogl_samplers*) samplers;
+        delete (_ogl_context_samplers*) samplers;
 
         samplers = NULL;
     }

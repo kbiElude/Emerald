@@ -7,8 +7,8 @@
 #include "shared.h"
 #include "gfx/gfx_image.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_texture.h"
-#include "ogl/ogl_textures.h"
 #include "scene/scene_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
@@ -125,7 +125,7 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnu
                                                                     __in_opt       PFNSETOGLTEXTUREBACKINGPROC pGLSetOGLTextureBacking_callback,
                                                                     __in_opt       void*                       callback_user_data)
 {
-    ogl_textures              context_textures = NULL;
+    ogl_context_textures      context_textures = NULL;
     system_hashed_ansi_string filename         = NULL;
     system_hashed_ansi_string name             = NULL;
     scene_texture             result           = 0;
@@ -158,8 +158,8 @@ PUBLIC EMERALD_API scene_texture scene_texture_load_with_serializer(__in __notnu
                                      OGL_CONTEXT_PROPERTY_TEXTURES,
                                     &context_textures);
 
-            if ( (gl_texture = ogl_textures_get_texture_by_filename(context_textures,
-                                                                    filename) ) == NULL)
+            if ( (gl_texture = ogl_context_textures_get_texture_by_filename(context_textures,
+                                                                            filename) ) == NULL)
             {
                 if (pGLSetOGLTextureBacking_callback != NULL)
                 {
