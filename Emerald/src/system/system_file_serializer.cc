@@ -262,6 +262,12 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writ
 }
 
 /** Please see header file for specification */
+PUBLIC EMERALD_API void system_file_serializer_flush_writes(__in __notnull system_file_serializer serializer)
+{
+    _system_file_serializer_write_down_data_to_file( (_system_file_serializer_descriptor*) serializer);
+}
+
+/** Please see header file for specification */
 PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull system_file_serializer          serializer,
                                                             __in            system_file_serializer_property property,
                                                             __out __notnull void*                           out_data)

@@ -84,6 +84,12 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
  */
 PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writing(__in __notnull system_hashed_ansi_string);
 
+/** TODO.
+ *
+ *  Should only be issued against write serializers.
+ */
+PUBLIC EMERALD_API void system_file_serializer_flush_writes(__in __notnull system_file_serializer);
+
 /** TODO */
 PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull system_file_serializer          serializer,
                                                             __in            system_file_serializer_property property,

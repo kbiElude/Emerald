@@ -5,10 +5,16 @@
  */
 #include "shared.h"
 #include "system/system_critical_section.h"
+#include "system/system_file_serializer.h"
 #include "system/system_list_bidirectional.h"
 #include "system/system_memory_manager.h"
 #include "system/system_resource_pool.h"
 
+/* If this is defined, alloc and free operations will be logged to a text file.
+ * This is useful for hunting down bugs in the memory manager layer */
+#ifdef _DEBUG
+    #define LOG_ALLOC_HISTORY
+#endif /* _DEBUG */
 
 typedef struct _system_memory_manager_block
 {
@@ -33,6 +39,11 @@ typedef struct _system_memory_manager
     PFNSYSTEMMEMORYMANAGERALLOCBLOCKPROC pfn_on_memory_block_alloced;
     PFNSYSTEMMEMORYMANAGERFREEBLOCKPROC  pfn_on_memory_block_freed;
     void*                                user_arg;
+
+    #ifdef LOG_ALLOC_HISTORY
+        system_file_serializer alloc_log_serializer;
+    #endif
+
 
     /* Each item holds the number of blocks that are assigned to corresponding pages.
      *
@@ -74,6 +85,25 @@ typedef struct _system_memory_manager
         pfn_on_memory_block_freed   = in_pfn_on_memory_block_freed;
         user_arg                    = in_user_arg;
 
+        #ifdef LOG_ALLOC_HISTORY
+        {
+            char temp[1024];
+
+            alloc_log_serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create("log_memory_manager.txt") );
+
+            sprintf_s(temp,
+                      sizeof(temp),
+                      "constructor(in_memory_region_size:%d in_page_size:%d)\n",
+                      in_memory_region_size,
+                      in_page_size);
+
+            system_file_serializer_write       (alloc_log_serializer,
+                                                strlen(temp),
+                                                temp);
+            system_file_serializer_flush_writes(alloc_log_serializer);
+        }
+        #endif /* LOG_ALLOC_HISTORY */
+
         memset(page_owners,
                0,
                n_page_owners * sizeof(unsigned int) );
@@ -87,6 +117,14 @@ typedef struct _system_memory_manager
 
             alloced_blocks = NULL;
         }
+
+        #ifdef LOG_ALLOC_HISTORY
+        {
+            system_file_serializer_release(alloc_log_serializer);
+
+            alloc_log_serializer = NULL;
+        }
+        #endif /* LOG_ALLOC_HISTORY */
 
         if (available_blocks != NULL)
         {
@@ -132,6 +170,23 @@ PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system
     {
         system_critical_section_enter(manager_ptr->cs);
     }
+
+    #ifdef LOG_ALLOC_HISTORY
+    {
+        char temp[1024];
+
+        sprintf_s(temp,
+                  sizeof(temp),
+                  "system_memory_manager_alloc_block(size:%d required_alignment:%d)\n",
+                  size,
+                  required_alignment);
+
+        system_file_serializer_write       (manager_ptr->alloc_log_serializer,
+                                            strlen(temp),
+                                            temp);
+        system_file_serializer_flush_writes(manager_ptr->alloc_log_serializer);
+    }
+    #endif /* LOG_ALLOC_HISTORY */
 
     /* Check if there's any memory region that can fit the requested block */
     system_list_bidirectional_item current_memory_item = system_list_bidirectional_get_head_item(manager_ptr->available_blocks);
@@ -327,6 +382,22 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
     {
         system_critical_section_enter(manager_ptr->cs);
     }
+
+    #ifdef LOG_ALLOC_HISTORY
+    {
+        char temp[1024];
+
+        sprintf_s(temp,
+                  sizeof(temp),
+                  "system_memory_manager_free_block(alloc_offset:%d)\n",
+                  alloc_offset);
+
+        system_file_serializer_write       (manager_ptr->alloc_log_serializer,
+                                            strlen(temp),
+                                            temp);
+        system_file_serializer_flush_writes(manager_ptr->alloc_log_serializer);
+    }
+    #endif /* LOG_ALLOC_HISTORY */
 
     /* We could optimize this, but, for simplicity's sake, let's do a linear search here for now. */
     system_list_bidirectional_item current_item = system_list_bidirectional_get_head_item(manager_ptr->alloced_blocks);
