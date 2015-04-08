@@ -1587,48 +1587,15 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBuffer(GLenum target,
 {
     ogl_context context = ogl_context_get_current_context();
 
-    if (target != GL_ELEMENT_ARRAY_BUFFER)
-    {
-        ogl_context_bo_bindings bo_bindings = NULL;
+    ogl_context_bo_bindings bo_bindings = NULL;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
 
-        ogl_context_bo_bindings_set_binding(bo_bindings,
-                                            target,
-                                            buffer);
-    }
-    else
-    {
-        ogl_context_bo_bindings bo_bindings    = NULL;
-        ogl_vao                 current_vao    = NULL;
-        GLuint                  current_vao_id = -1;
-        ogl_context_state_cache state_cache    = NULL;
-        ogl_context_vaos        vaos           = NULL;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
-                                &bo_bindings);
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
-                                &state_cache);
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_VAOS,
-                                &vaos);
-
-        /* Update the indexed binding of the currently active VAO */
-        ogl_context_state_cache_get_property(state_cache,
-                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
-                                            &current_vao_id);
-
-        current_vao = ogl_context_vaos_get_vao(vaos,
-                                               current_vao_id);
-
-        ogl_vao_set_property(current_vao,
-                             OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL,
-                            &buffer);
-    }
+    ogl_context_bo_bindings_set_binding(bo_bindings,
+                                        target,
+                                        buffer);
 }
 
 /** Please see header for spec */
@@ -1736,11 +1703,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferData(GLenum        target,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
                             &bo_bindings);
 
-    if (target != GL_ELEMENT_ARRAY_BUFFER)
-    {
-        ogl_context_bo_bindings_sync(bo_bindings,
-                                     ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
-    }
+    ogl_context_bo_bindings_sync(bo_bindings,
+                                 ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
     _private_entrypoints_ptr->pGLBufferData(target,
                                             size,
@@ -1765,17 +1729,8 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferStorage(GLenum        target,
                              OGL_CONTEXT_PROPERTY_BO_BINDINGS,
                             &bo_bindings);
 
-    /* NOTE: This code-path is broken. The ogl_context_bo_bindings_get_general_binding() call fails
-     *       because we're currently not caching VAO state at all. TODO ASAP.
-     */
-    ASSERT_DEBUG_SYNC(target != GL_ELEMENT_ARRAY_BUFFER,
-                      "TODO");
-
-    if (target != GL_ELEMENT_ARRAY_BUFFER)
-    {
-        ogl_context_bo_bindings_sync(bo_bindings,
-                                     ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
-    }
+    ogl_context_bo_bindings_sync(bo_bindings,
+                                 ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(target) );
 
     _private_entrypoints_ptr->pGLBufferStorage(target,
                                                size,
