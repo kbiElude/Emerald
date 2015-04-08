@@ -13,6 +13,7 @@
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_vao.h"
+#include "system/system_log.h"
 #include <math.h>
 
 __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
@@ -1600,18 +1601,33 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindBuffer(GLenum target,
     }
     else
     {
-        ogl_context_state_cache state_cache = NULL;
-        ogl_context_vaos        vaos        = NULL;
+        ogl_context_bo_bindings bo_bindings    = NULL;
+        ogl_vao                 current_vao    = NULL;
+        GLuint                  current_vao_id = -1;
+        ogl_context_state_cache state_cache    = NULL;
+        ogl_context_vaos        vaos           = NULL;
 
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                                &bo_bindings);
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_STATE_CACHE,
                                 &state_cache);
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_VAOS,
+                                &vaos);
 
-        ogl_context_state_cache_sync(state_cache,
-                                     STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
+        /* Update the indexed binding of the currently active VAO */
+        ogl_context_state_cache_get_property(state_cache,
+                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+                                            &current_vao_id);
 
-        _private_entrypoints_ptr->pGLBindBuffer(target,
-                                                buffer);
+        current_vao = ogl_context_vaos_get_vao(vaos,
+                                               current_vao_id);
+
+        ogl_vao_set_property(current_vao,
+                             OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL,
+                            &buffer);
     }
 }
 

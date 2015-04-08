@@ -15,7 +15,6 @@
 
 enum ogl_context_bo_bindings_sync_bit
 {
-    /* NOTE: element_array_buffer binding is not cached because it's a VAO state */
     BO_BINDINGS_SYNC_BIT_ARRAY_BUFFER              = 1 << 0,
     BO_BINDINGS_SYNC_BIT_ATOMIC_COUNTER_BUFFER     = 1 << 1,
     BO_BINDINGS_SYNC_BIT_COPY_READ_BUFFER          = 1 << 2,

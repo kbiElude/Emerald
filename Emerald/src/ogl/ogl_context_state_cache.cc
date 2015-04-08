@@ -5,9 +5,12 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_sampler.h"
+#include "ogl/ogl_vao.h"
 #include "system/system_hash64map.h"
+#include "system/system_log.h"
 
 /** TODO */
 typedef struct _ogl_context_state_cache
@@ -1366,9 +1369,40 @@ PUBLIC void ogl_context_state_cache_sync(__in __notnull ogl_context_state_cache 
         if ((sync_bits & STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT)                                 &&
             cache_ptr->active_vertex_array_object_context != cache_ptr->active_vertex_array_object_local)
         {
+            /* Bind the VAO */
             cache_ptr->entrypoints_private_ptr->pGLBindVertexArray(cache_ptr->active_vertex_array_object_local);
 
             cache_ptr->active_vertex_array_object_context = cache_ptr->active_vertex_array_object_local;
+
+            /* Make sure the indexed binding is up-to-date */
+            ogl_vao          current_vao             = NULL;
+            GLuint           indexed_binding_context = -1;
+            GLuint           indexed_binding_local   = -1;
+            ogl_context_vaos vaos                    = NULL;
+
+            ogl_context_get_property(cache_ptr->context,
+                                     OGL_CONTEXT_PROPERTY_VAOS,
+                                    &vaos);
+
+            current_vao = ogl_context_vaos_get_vao(vaos,
+                                                   cache_ptr->active_vertex_array_object_local);
+
+            ogl_vao_get_property(current_vao,
+                                 OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
+                                &indexed_binding_context);
+            ogl_vao_get_property(current_vao,
+                                 OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL,
+                                &indexed_binding_local);
+
+            if (indexed_binding_context != indexed_binding_local)
+            {
+                cache_ptr->entrypoints_private_ptr->pGLBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+                                                                  indexed_binding_local);
+
+                ogl_vao_set_property(current_vao,
+                                     OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
+                                    &indexed_binding_local);
+            } /* if (indexed_binding_context != indexed_binding_local) */
         }
 
         /* Viewport */

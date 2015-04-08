@@ -41,7 +41,8 @@ typedef struct _ogl_vao
     ogl_context context;
 
     GLuint        gl_id;
-    GLuint        index_buffer_binding;
+    GLuint        index_buffer_binding_context;
+    GLuint        index_buffer_binding_local;
     unsigned int  n_vaas;
     _ogl_vao_vaa* vaas;
 
@@ -77,10 +78,12 @@ typedef struct _ogl_vao
         ASSERT_DEBUG_SYNC(n_max_vertex_attribs != 0,
                           "GL_MAX_VERTEX_ATTRIBS GL constant value is 0");
 
-        context = in_context;
-        gl_id   = in_gl_id;
-        n_vaas  = n_max_vertex_attribs;
-        vaas    = new (std::nothrow) _ogl_vao_vaa[n_vaas];
+        context                      = in_context;
+        gl_id                        = in_gl_id;
+        index_buffer_binding_context = 0;
+        index_buffer_binding_local   = 0;
+        n_vaas                       = n_max_vertex_attribs;
+        vaas                         = new (std::nothrow) _ogl_vao_vaa[n_vaas];
 
         ASSERT_DEBUG_SYNC(vaas != NULL,
                           "Out of memory");
@@ -131,9 +134,16 @@ PUBLIC void ogl_vao_get_property(__in  __notnull const ogl_vao    vao,
 
     switch (property)
     {
-        case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING:
+        case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT:
         {
-            *(GLuint*) out_result = vao_ptr->index_buffer_binding;
+            *(GLuint*) out_result = vao_ptr->index_buffer_binding_context;
+
+            break;
+        }
+
+        case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL:
+        {
+            *(GLuint*) out_result = vao_ptr->index_buffer_binding_local;
 
             break;
         }
@@ -248,9 +258,16 @@ PUBLIC void ogl_vao_set_property(__in __notnull ogl_vao          vao,
 
     switch (property)
     {
-        case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING:
+        case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT:
         {
-            vao_ptr->index_buffer_binding = *(GLuint*) data;
+            vao_ptr->index_buffer_binding_context = *(GLuint*) data;
+
+            break;
+        }
+
+        case OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL:
+        {
+            vao_ptr->index_buffer_binding_local = *(GLuint*) data;
 
             break;
         }

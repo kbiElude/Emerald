@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
+#include "ogl/ogl_context_vaos.h"
 #include "system/system_hash64map.h"
 
 /** TODO.
@@ -105,8 +106,9 @@ typedef struct _ogl_context_bo_bindings
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
      */
-    ogl_context context;
-    bool        is_arb_multi_bind_supported;
+    ogl_context      context;
+    bool             is_arb_multi_bind_supported;
+    ogl_context_vaos vaos;
 
     const ogl_context_gl_entrypoints_private* entrypoints_private_ptr;
     const ogl_context_gl_limits*              limits_ptr; /* used for sanity checks */
@@ -221,7 +223,8 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(_
                  n_binding < n_bindings_to_update;
                ++n_binding)
         {
-            const _ogl_context_bo_bindings_indiced_binding* local_binding_ptr = bindings_ptr->bindings_indiced_local[internal_target] + (dirty_start_index + n_binding);
+            const _ogl_context_bo_bindings_indiced_binding* local_binding_ptr = bindings_ptr->bindings_indiced_local[internal_target] +
+                                                                                (dirty_start_index + n_binding);
 
             sync_data_buffers[n_binding] = local_binding_ptr->bo_id;
 
@@ -269,8 +272,10 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(_
                  n_binding < n_bindings_to_update;
                ++n_binding)
         {
-            _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] + (dirty_start_index + n_binding);
-            _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] + (dirty_start_index + n_binding);
+            _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] +
+                                                                            (dirty_start_index + n_binding);
+            _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] +
+                                                                            (dirty_start_index + n_binding);
 
             local_binding_ptr->dirty = false;
             *context_binding_ptr     = *local_binding_ptr;
@@ -289,8 +294,10 @@ PRIVATE void _ogl_context_bo_bindings_sync_non_multi_bind_process_indiced_sync_b
              n_binding < n_gl_max_bindings;
            ++n_binding)
     {
-        _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] + n_binding;
-        _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] + n_binding;
+        _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] +
+                                                                        n_binding;
+        _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] +
+                                                                        n_binding;
 
         if (local_binding_ptr->dirty)
         {

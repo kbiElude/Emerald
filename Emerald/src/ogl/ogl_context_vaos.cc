@@ -106,8 +106,8 @@ PUBLIC ogl_context_vaos ogl_context_vaos_create(__in __notnull ogl_context conte
 }
 
 /** Please see header for specification */
-PUBLIC void ogl_vaos_delete_vao(__in __notnull ogl_context_vaos vaos,
-                                __in           GLuint           gl_id)
+PUBLIC void ogl_context_vaos_delete_vao(__in __notnull ogl_context_vaos vaos,
+                                        __in           GLuint           gl_id)
 {
     _ogl_context_vaos* vaos_ptr = (_ogl_context_vaos*) vaos;
 

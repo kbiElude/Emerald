@@ -14,8 +14,16 @@
 
 typedef enum
 {
-    /* GLuint */
-    OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING
+    /* GLuint. Rendering context setting.
+     *
+     * This state must be synchronized with the local value before
+     * a VAO-dependent ES/GL call is made. The synchronization is
+     * handled by ogl_context_state_cache.
+     */
+    OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
+
+    /* GLuint. Local setting. */
+    OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL,
 } ogl_vao_property;
 
 typedef enum
