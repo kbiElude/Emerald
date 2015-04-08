@@ -6,6 +6,9 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_bo_bindings.h"
+#include "ogl/ogl_context_state_cache.h"
+#include "ogl/ogl_context_vaos.h"
+#include "ogl/ogl_vao.h"
 #include "system/system_hash64map.h"
 
 /** TODO.
@@ -27,15 +30,13 @@ typedef enum
     BINDING_TARGET_COPY_WRITE_BUFFER,                           /* general */
     BINDING_TARGET_DISPATCH_INDIRECT_BUFFER,                    /* general */
     BINDING_TARGET_DRAW_INDIRECT_BUFFER,                        /* general */
+    BINDING_TARGET_ELEMENT_ARRAY_BUFFER,                        /* general */
     BINDING_TARGET_PIXEL_PACK_BUFFER,                           /* general */
     BINDING_TARGET_PIXEL_UNPACK_BUFFER,                         /* general */
     BINDING_TARGET_QUERY_BUFFER,                                /* general */
     BINDING_TARGET_TEXTURE_BUFFER,                              /* general */
 
     BINDING_TARGET_COUNT,
-
-    /* Special binding that should never be deferred */
-    BINDING_TARGET_ELEMENT_ARRAY_BUFFER,
 
     BINDING_TARGET_UNKNOWN = BINDING_TARGET_COUNT
 } _ogl_context_bo_binding_target;
@@ -105,8 +106,9 @@ typedef struct _ogl_context_bo_bindings
     /* DO NOT retain/release, as this object is managed by ogl_context and retaining it
      * will cause the rendering context to never release itself.
      */
-    ogl_context context;
-    bool        is_arb_multi_bind_supported;
+    ogl_context      context;
+    bool             is_arb_multi_bind_supported;
+    ogl_context_vaos vaos;
 
     const ogl_context_gl_entrypoints_private* entrypoints_private_ptr;
     const ogl_context_gl_limits*              limits_ptr; /* used for sanity checks */
@@ -221,7 +223,8 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(_
                  n_binding < n_bindings_to_update;
                ++n_binding)
         {
-            const _ogl_context_bo_bindings_indiced_binding* local_binding_ptr = bindings_ptr->bindings_indiced_local[internal_target] + (dirty_start_index + n_binding);
+            const _ogl_context_bo_bindings_indiced_binding* local_binding_ptr = bindings_ptr->bindings_indiced_local[internal_target] +
+                                                                                (dirty_start_index + n_binding);
 
             sync_data_buffers[n_binding] = local_binding_ptr->bo_id;
 
@@ -269,8 +272,10 @@ PRIVATE void _ogl_context_bo_bindings_sync_multi_bind_process_indiced_sync_bit(_
                  n_binding < n_bindings_to_update;
                ++n_binding)
         {
-            _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] + (dirty_start_index + n_binding);
-            _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] + (dirty_start_index + n_binding);
+            _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] +
+                                                                            (dirty_start_index + n_binding);
+            _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] +
+                                                                            (dirty_start_index + n_binding);
 
             local_binding_ptr->dirty = false;
             *context_binding_ptr     = *local_binding_ptr;
@@ -289,8 +294,10 @@ PRIVATE void _ogl_context_bo_bindings_sync_non_multi_bind_process_indiced_sync_b
              n_binding < n_gl_max_bindings;
            ++n_binding)
     {
-        _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] + n_binding;
-        _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] + n_binding;
+        _ogl_context_bo_bindings_indiced_binding* context_binding_ptr = bindings_ptr->bindings_indiced_context[internal_target] +
+                                                                        n_binding;
+        _ogl_context_bo_bindings_indiced_binding* local_binding_ptr   = bindings_ptr->bindings_indiced_local  [internal_target] +
+                                                                        n_binding;
 
         if (local_binding_ptr->dirty)
         {
@@ -388,6 +395,7 @@ PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_
         case GL_COPY_WRITE_BUFFER:         result = BO_BINDINGS_SYNC_BIT_COPY_WRITE_BUFFER;         break;
         case GL_DISPATCH_INDIRECT_BUFFER:  result = BO_BINDINGS_SYNC_BIT_DISPATCH_INDIRECT_BUFFER;  break;
         case GL_DRAW_INDIRECT_BUFFER:      result = BO_BINDINGS_SYNC_BIT_DRAW_INDIRECT_BUFFER;      break;
+        case GL_ELEMENT_ARRAY_BUFFER:      result = BO_BINDINGS_SYNC_BIT_ELEMENT_ARRAY_BUFFER;      break;
         case GL_PIXEL_PACK_BUFFER:         result = BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER;         break;
         case GL_PIXEL_UNPACK_BUFFER:       result = BO_BINDINGS_SYNC_BIT_PIXEL_UNPACK_BUFFER;       break;
         case GL_QUERY_BUFFER:              result = BO_BINDINGS_SYNC_BIT_QUERY_BUFFER;              break;
@@ -395,14 +403,6 @@ PUBLIC ogl_context_bo_bindings_sync_bit ogl_context_bo_bindings_get_ogl_context_
         case GL_TEXTURE_BUFFER:            result = BO_BINDINGS_SYNC_BIT_TEXTURE_BUFFER;            break;
         case GL_TRANSFORM_FEEDBACK_BUFFER: result = BO_BINDINGS_SYNC_BIT_TRANSFORM_FEEDBACK_BUFFER; break;
         case GL_UNIFORM_BUFFER:            result = BO_BINDINGS_SYNC_BIT_UNIFORM_BUFFER;            break;
-
-        case GL_ELEMENT_ARRAY_BUFFER:
-        {
-            /* No syncing should ever be done for ELEMENT_ARRAY_BUFFER */
-            result = (ogl_context_bo_bindings_sync_bit) 0;
-
-            break;
-        }
 
         default:
         {
@@ -705,14 +705,43 @@ PUBLIC void ogl_context_bo_bindings_set_binding(__in __notnull ogl_context_bo_bi
     _ogl_context_bo_bindings*      bindings_ptr   = (_ogl_context_bo_bindings*) bindings;
     _ogl_context_bo_binding_target binding_target = _ogl_context_bo_bindings_get_ogl_context_bo_binding_target_from_glenum(binding_point);
 
-    ASSERT_DEBUG_SYNC(binding_target < BINDING_TARGET_COUNT,
+    ASSERT_DEBUG_SYNC(binding_target <  BINDING_TARGET_COUNT                ||
+                      binding_target == BINDING_TARGET_ELEMENT_ARRAY_BUFFER,
                       "Invalid binding target requested");
 
-    if (binding_target  < BINDING_TARGET_COUNT                 &&
-        binding_target != BINDING_TARGET_ELEMENT_ARRAY_BUFFER) /* do not cache IB BP binding! this is a VAO state! */
+    if (binding_target == BINDING_TARGET_ELEMENT_ARRAY_BUFFER)
+    {
+        ogl_vao current_vao    = NULL;
+        GLuint  current_vao_id = -1;
+
+        /* This is a VAO state - update the local binding managed by corresponding ogl_vao instance */
+        ogl_context_state_cache state_cache = NULL;
+        ogl_context_vaos        vaos        = NULL;
+
+        ogl_context_get_property(bindings_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                &state_cache);
+        ogl_context_get_property(bindings_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_VAOS,
+                                &vaos);
+
+        ogl_context_state_cache_get_property(state_cache,
+                                             OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+                                            &current_vao_id);
+
+        current_vao = ogl_context_vaos_get_vao(vaos,
+                                               current_vao_id);
+
+        ogl_vao_set_property(current_vao,
+                             OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL,
+                            &bo_id);
+    }
+    else
+    if (binding_target  < BINDING_TARGET_COUNT)
     {
         bindings_ptr->bindings_general_local[binding_target].bo_id = bo_id;
     } /* if (binding_target != BINDING_TARGET_UNKNOWN) */
+
 }
 
 /** Please see header for spec */
@@ -978,6 +1007,53 @@ PUBLIC void ogl_context_bo_bindings_sync(__in __notnull ogl_context_bo_bindings 
             _ogl_context_bo_bindings_sync_process_general_sync_bit(bindings,
                                                                    BINDING_TARGET_DRAW_INDIRECT_BUFFER);
         }
+
+        if (sync_bits & BO_BINDINGS_SYNC_BIT_ELEMENT_ARRAY_BUFFER)
+        {
+            /* Indexed binding is a VAO state, so make sure VAO binding is up-to-date before proceeding */
+            ogl_vao                 current_vao    = NULL;
+            GLuint                  current_vao_id = -1;
+            ogl_context_state_cache state_cache    = NULL;
+            ogl_context_vaos        vaos           = NULL;
+
+            ogl_context_get_property(bindings_ptr->context,
+                                     OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                                    &state_cache);
+            ogl_context_get_property(bindings_ptr->context,
+                                     OGL_CONTEXT_PROPERTY_VAOS,
+                                    &vaos);
+
+            ogl_context_state_cache_get_property(state_cache,
+                                                 OGL_CONTEXT_STATE_CACHE_PROPERTY_VERTEX_ARRAY_OBJECT,
+                                                &current_vao_id);
+
+            current_vao = ogl_context_vaos_get_vao(vaos,
+                                                   current_vao_id);
+
+            /* Retrieve context & local binding properties */
+            GLuint binding_context = 0;
+            GLuint binding_local   = -1;
+
+            ogl_vao_get_property(current_vao,
+                                 OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
+                                &binding_context);
+            ogl_vao_get_property(current_vao,
+                                 OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_LOCAL,
+                                &binding_local);
+
+            if (binding_context != binding_local)
+            {
+                ogl_context_state_cache_sync(state_cache,
+                                             STATE_CACHE_SYNC_BIT_ACTIVE_VERTEX_ARRAY_OBJECT);
+
+                bindings_ptr->entrypoints_private_ptr->pGLBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+                                                                     binding_local);
+
+                ogl_vao_set_property(current_vao,
+                                     OGL_VAO_PROPERTY_INDEX_BUFFER_BINDING_CONTEXT,
+                                    &binding_local);
+            } /* if (binding_context != binding_local) */
+        } /* if (sync_bits & BO_BINDINGS_SYNC_BIT_ELEMENT_ARRAY_BUFFER) */
 
         if (sync_bits & BO_BINDINGS_SYNC_BIT_PIXEL_PACK_BUFFER)
         {

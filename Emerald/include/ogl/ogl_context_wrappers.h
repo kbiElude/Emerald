@@ -119,6 +119,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDisableVertexAttribArray(GLuint inde
 PUBLIC void APIENTRY ogl_context_wrappers_glEnableVertexAttribArray(GLuint index);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glGenVertexArrays(GLsizei n,
+                                                            GLuint* arrays);
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetVertexAttribdv(GLuint    index,
                                                               GLenum    pname,
                                                               GLdouble* params);
