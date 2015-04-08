@@ -6,7 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_vao.h"
-
+#include "ogl/ogl_vaos.h"
 
 
 /** TODO */
@@ -40,11 +40,13 @@ typedef struct _ogl_vao
     /* Do NOT retain */
     ogl_context context;
 
+    GLuint        gl_id;
     GLuint        index_buffer_binding;
     unsigned int  n_vaas;
     _ogl_vao_vaa* vaas;
 
-    explicit _ogl_vao(__in __notnull ogl_context in_context)
+    explicit _ogl_vao(__in __notnull ogl_context  in_context,
+                      __in           unsigned int in_gl_id)
     {
         ogl_context_type context_type         = OGL_CONTEXT_TYPE_UNDEFINED;
         unsigned int     n_max_vertex_attribs = 0;
@@ -57,7 +59,7 @@ typedef struct _ogl_vao
         {
             const ogl_context_gl_limits* limits_ptr = NULL;
 
-            ogl_context_get_property(context,
+            ogl_context_get_property(in_context,
                                      OGL_CONTEXT_PROPERTY_LIMITS,
                                     &limits_ptr);
 
@@ -76,6 +78,7 @@ typedef struct _ogl_vao
                           "GL_MAX_VERTEX_ATTRIBS GL constant value is 0");
 
         context = in_context;
+        gl_id   = in_gl_id;
         n_vaas  = n_max_vertex_attribs;
         vaas    = new (std::nothrow) _ogl_vao_vaa[n_vaas];
 
@@ -85,6 +88,17 @@ typedef struct _ogl_vao
 
     ~_ogl_vao()
     {
+        /* Try to unregister the VAO from the VAO cache */
+        ogl_vaos vaos = NULL;
+
+        ogl_context_get_property(context,
+                                 OGL_CONTEXT_PROPERTY_VAOS,
+                                &vaos);
+
+        ogl_vaos_delete_vao(vaos,
+                            gl_id);
+
+        /* Release other stuff */
         if (vaas != NULL)
         {
             delete [] vaas;
@@ -96,17 +110,14 @@ typedef struct _ogl_vao
 
 
 /** Please see header for spec */
-PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context context)
+PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context  context,
+                              __in           unsigned int gl_id)
 {
-    _ogl_vao* new_instance = new (std::nothrow) _ogl_vao(context);
+    _ogl_vao* new_instance = new (std::nothrow) _ogl_vao(context,
+                                                         gl_id);
 
     ASSERT_ALWAYS_SYNC(new_instance != NULL,
                        "Out of memory");
-
-    if (new_instance != NULL)
-    {
-        new_instance->context = context;
-    } /* if (new_instance != NULL) */
 
     return (ogl_vao) new_instance;
 }

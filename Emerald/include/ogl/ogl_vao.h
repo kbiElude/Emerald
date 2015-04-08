@@ -38,12 +38,10 @@ typedef enum
     OGL_VAO_VAA_PROPERTY_TYPE
 } ogl_vao_vaa_property;
 
-/* Declare private handle */
-DECLARE_HANDLE(ogl_vao);
-
 
 /** TODO */
-PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context context);
+PUBLIC ogl_vao ogl_vao_create(__in __notnull ogl_context  context,
+                              __in           unsigned int gl_id);
 
 /** TODO */
 PUBLIC void ogl_vao_get_property(__in  __notnull const ogl_vao    vao,

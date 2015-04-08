@@ -51,6 +51,10 @@ DECLARE_HANDLE(ogl_samplers);
 DECLARE_HANDLE(ogl_texture);
 DECLARE_HANDLE(ogl_textures);
 
+/* Vertex array object handles */
+DECLARE_HANDLE(ogl_context_vaos);
+DECLARE_HANDLE(ogl_vao);
+
 typedef                 PFNGLACTIVETEXTUREPROC                          PFNWRAPPEDGLACTIVETEXTUREPROC;
 typedef                 PFNGLCOMPRESSEDTEXIMAGE1DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE1DPROC;
 typedef                 PFNGLCOMPRESSEDTEXIMAGE2DPROC                   PFNWRAPPEDGLCOMPRESSEDTEXIMAGE2DPROC;
@@ -1281,6 +1285,7 @@ typedef struct
     PFNGLFRAMEBUFFERTEXTURE3DPROC            pGLFramebufferTexture3D;
     PFNGLFRAMEBUFFERTEXTURELAYERPROC         pGLFramebufferTextureLayer;
     PFNGLFRONTFACEPROC                       pGLFrontFace;
+    PFNGLGENVERTEXARRAYSPROC                 pGLGenVertexArrays;
     PFNGLGETACTIVEATOMICCOUNTERBUFFERIVPROC  pGLGetActiveAtomicCounterBufferiv;
     PFNGLGETBOOLEANI_VPROC                   pGLGetBooleani_v;
     PFNGLGETBOOLEANVPROC                     pGLGetBooleanv;

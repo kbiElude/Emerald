@@ -34,7 +34,7 @@ typedef enum
 
     BINDING_TARGET_COUNT,
 
-    /* Special binding that should never be deferred */
+    /* Special binding that should be handled by ogl_context_vaos */
     BINDING_TARGET_ELEMENT_ARRAY_BUFFER,
 
     BINDING_TARGET_UNKNOWN = BINDING_TARGET_COUNT

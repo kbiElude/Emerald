@@ -11,6 +11,7 @@
 #include "ogl/ogl_context_state_cache.h"
 #include "ogl/ogl_context_texture_compression.h"
 #include "ogl/ogl_context_to_bindings.h"
+#include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pixel_format_descriptor.h"
@@ -120,6 +121,7 @@ typedef struct
     ogl_context_texture_compression texture_compression;
     ogl_textures                    textures;
     ogl_context_to_bindings         to_bindings;
+    ogl_vaos                        vaos;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_context;
@@ -1988,7 +1990,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_gl.pGLGenTextures,                         "glGenTextures"},
             {&context_ptr->entry_points_gl.pGLGenTransformFeedbacks,               "glGenTransformFeedbacks"},
             {&context_ptr->entry_points_gl.pGLGenQueries,                          "glGenQueries"},
-            {&context_ptr->entry_points_gl.pGLGenVertexArrays,                     "glGenVertexArrays"},
+            {&context_ptr->entry_points_private.pGLGenVertexArrays,                "glGenVertexArrays"},
             {&context_ptr->entry_points_private.pGLGetActiveAtomicCounterBufferiv, "glGetActiveAtomicCounterBufferiv"},
             {&context_ptr->entry_points_gl.pGLGetActiveAttrib,                     "glGetActiveAttrib"},
             {&context_ptr->entry_points_gl.pGLGetActiveUniform,                    "glGetActiveUniform"},
@@ -2284,6 +2286,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLFramebufferTexture3D            = ogl_context_wrappers_glFramebufferTexture3D;
         context_ptr->entry_points_gl.pGLFramebufferTextureLayer         = ogl_context_wrappers_glFramebufferTextureLayer;
         context_ptr->entry_points_gl.pGLFrontFace                       = ogl_context_wrappers_glFrontFace;
+        context_ptr->entry_points_gl.pGLGenVertexArrays                 = ogl_context_wrappers_glGenVertexArrays;
         context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv  = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
         context_ptr->entry_points_gl.pGLGetBooleani_v                   = ogl_context_wrappers_glGetBooleani_v;
         context_ptr->entry_points_gl.pGLGetBooleanv                     = ogl_context_wrappers_glGetBooleanv;
@@ -2362,11 +2365,21 @@ PUBLIC void ogl_context_bind_to_current_thread(__in __notnull ogl_context contex
 {
     _ogl_context* context_ptr = (_ogl_context*) context;
 
-    ::wglMakeCurrent(context_ptr->device_context_handle,
-                     context_ptr->wgl_rendering_context);
+    if (context_ptr != NULL)
+    {
+        ::wglMakeCurrent(context_ptr->device_context_handle,
+                         context_ptr->wgl_rendering_context);
+    }
+    else
+    {
+        ::wglMakeCurrent(NULL,  /* HDC */
+                         NULL); /* HGLRC */
+    }
 
     _current_context = context;
-    ogl_context_wrappers_set_private_functions( (context_ptr != NULL) ? &context_ptr->entry_points_private : NULL);
+
+    ogl_context_wrappers_set_private_functions( (context_ptr != NULL) ? &context_ptr->entry_points_private
+                                                                      : NULL);
 }
 
 /** Please see header for specification */
@@ -2585,6 +2598,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             ::wglMakeCurrent(window_dc,
                                              wgl_rendering_context);
 
+                            ogl_context_bind_to_current_thread( (ogl_context) _result);
+
                             /* OpenGL ES support is supposed to be low-level. For OpenGL, we use additional tools like
                              * state caching to improve rendering efficiency.
                              */
@@ -2610,18 +2625,19 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                 /* Retrieve function pointers for the context */
                                 _ogl_context_retrieve_GL_function_pointers(_result);
 
+                                /* Retrieve GL context limitations */
+                                _ogl_context_retrieve_GL_limits(_result);
+
+                                /* Retrieve GL context info */
+                                _ogl_context_retrieve_GL_info(_result);
+
                                 /* Initialize state caching mechanisms */
                                 _result->bo_bindings         = ogl_context_bo_bindings_create        ( (ogl_context) _result);
                                 _result->sampler_bindings    = ogl_context_sampler_bindings_create   ( (ogl_context) _result);
                                 _result->state_cache         = ogl_context_state_cache_create        ( (ogl_context) _result);
                                 _result->texture_compression = ogl_context_texture_compression_create( (ogl_context) _result);
                                 _result->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) _result);
-
-                                /* Retrieve GL context limitations */
-                                _ogl_context_retrieve_GL_limits(_result);
-
-                                /* Retrieve GL context info */
-                                _ogl_context_retrieve_GL_info(_result);
+                                _result->vaos                = ogl_vaos_create                       ( (ogl_context) _result);
 
                                 /* If GL_ARB_bufffer_storage is supported, initialize func pointers */
                                 if (ogl_context_is_extension_supported(result,
@@ -2780,8 +2796,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                 }
 
                 /* Unbind the thread from the context. It is to be picked up by rendering thread */
-                ::wglMakeCurrent(NULL,
-                                 NULL);
+                ogl_context_bind_to_current_thread(NULL);
 
                 /* Release the temporary context now. */
                 ::wglDeleteContext(temp_wgl_context);
@@ -3207,6 +3222,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_VAO_NO_VAAS:
         {
             *(GLuint*) out_result = context_ptr->vao_no_vaas_id;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_VAOS:
+        {
+            *(ogl_vaos*) out_result = context_ptr->vaos;
 
             break;
         }
