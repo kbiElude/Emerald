@@ -5,8 +5,8 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
+#include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_vao.h"
-#include "ogl/ogl_vaos.h"
 
 
 /** TODO */
@@ -89,14 +89,14 @@ typedef struct _ogl_vao
     ~_ogl_vao()
     {
         /* Try to unregister the VAO from the VAO cache */
-        ogl_vaos vaos = NULL;
+        ogl_context_vaos vaos = NULL;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_VAOS,
                                 &vaos);
 
-        ogl_vaos_delete_vao(vaos,
-                            gl_id);
+        ogl_context_vaos_delete_vao(vaos,
+                                    gl_id);
 
         /* Release other stuff */
         if (vaas != NULL)

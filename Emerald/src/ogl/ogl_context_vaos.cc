@@ -97,12 +97,12 @@ PUBLIC ogl_context_vaos ogl_context_vaos_create(__in __notnull ogl_context conte
         ogl_vao zero_vao = ogl_vao_create(context,
                                           0); /* gl_id */
 
-        ogl_context_vaos_add_vao((ogl_vaos) vaos_ptr,
+        ogl_context_vaos_add_vao((ogl_context_vaos) vaos_ptr,
                                  0,         /* gl_id */
                                  zero_vao);
     }
 
-    return (ogl_vaos) vaos_ptr;
+    return (ogl_context_vaos) vaos_ptr;
 }
 
 /** Please see header for specification */

@@ -121,7 +121,7 @@ typedef struct
     ogl_context_texture_compression texture_compression;
     ogl_textures                    textures;
     ogl_context_to_bindings         to_bindings;
-    ogl_vaos                        vaos;
+    ogl_context_vaos                vaos;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_context;
@@ -2637,7 +2637,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                 _result->state_cache         = ogl_context_state_cache_create        ( (ogl_context) _result);
                                 _result->texture_compression = ogl_context_texture_compression_create( (ogl_context) _result);
                                 _result->to_bindings         = ogl_context_to_bindings_create        ( (ogl_context) _result);
-                                _result->vaos                = ogl_vaos_create                       ( (ogl_context) _result);
+                                _result->vaos                = ogl_context_vaos_create               ( (ogl_context) _result);
 
                                 /* If GL_ARB_bufffer_storage is supported, initialize func pointers */
                                 if (ogl_context_is_extension_supported(result,
@@ -3228,7 +3228,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_VAOS:
         {
-            *(ogl_vaos*) out_result = context_ptr->vaos;
+            *(ogl_context_vaos*) out_result = context_ptr->vaos;
 
             break;
         }

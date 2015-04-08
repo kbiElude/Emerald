@@ -191,7 +191,7 @@ typedef enum ogl_context_property
      */
     OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
 
-    /* not settable, ogl_vaos */
+    /* not settable, ogl_context_vaos */
     OGL_CONTEXT_PROPERTY_VAOS,
 
 
