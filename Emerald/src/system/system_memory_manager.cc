@@ -42,6 +42,7 @@ typedef struct _system_memory_manager
 
     #ifdef LOG_ALLOC_HISTORY
         system_file_serializer alloc_log_serializer;
+        static unsigned int    n_alloc_log_serializers;
     #endif
 
 
@@ -89,7 +90,12 @@ typedef struct _system_memory_manager
         {
             char temp[1024];
 
-            alloc_log_serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create("log_memory_manager.txt") );
+            sprintf_s(temp,
+                      sizeof(temp),
+                      "log_memory_manager_%d.txt",
+                      (n_alloc_log_serializers++) );
+
+            alloc_log_serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(temp) );
 
             sprintf_s(temp,
                       sizeof(temp),
@@ -155,6 +161,8 @@ typedef struct _system_memory_manager
         }
     }
 } _system_memory_manager;
+
+unsigned int _system_memory_manager::n_alloc_log_serializers = 0;
 
 
 /** Please see header for spec */
