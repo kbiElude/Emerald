@@ -9,9 +9,12 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
-typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context, system_timeline_time, void*);
+typedef void (*PFNOGLPIPELINECALLBACKPROC)(ogl_context,
+                                           system_timeline_time,
+                                           void*);
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_pipeline, ogl_pipeline)
+REFCOUNT_INSERT_DECLARATIONS(ogl_pipeline,
+                             ogl_pipeline)
 
 /** TODO */
 PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(__in __notnull ogl_pipeline instance);

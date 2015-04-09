@@ -8,6 +8,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_query.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
@@ -24,6 +25,7 @@
 #define MAX_STAGE_STEP_NAME_LENGTH   (32)
 #define ONE_SECOND_IN_NANOSECONDS    (1000000000i64)
 #define N_SAMPLES_PER_UPDATE         (30)
+#define QO_RING_BUFFER_SIZE          (5)
 #define START_Y                      (50)
 
 /** Internal variable definitions */
@@ -72,8 +74,8 @@ typedef struct
     uint32_t                   text_string_index;
     uint32_t                   text_time_index;
 
-    GLuint primitives_generated_query_id;
-    GLuint timestamp_query_id;
+    ogl_query primitives_generated_qo;
+    ogl_query timestamp_qo;
 } _ogl_pipeline_stage_step;
 
 
@@ -174,45 +176,21 @@ PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step(__in __notnull _ogl_pipeli
 PRIVATE void _ogl_pipeline_deinit_pipeline_stage_step_renderer_callback(__in __notnull ogl_context context,
                                                                                        void*       user_arg)
 {
-    ogl_context_type          context_type     = OGL_CONTEXT_TYPE_UNDEFINED;
-    _ogl_pipeline_stage_step* step_ptr         = (_ogl_pipeline_stage_step*) user_arg;
-    PFNGLDELETEQUERIESPROC    pGLDeleteQueries = NULL;
-    PFNGLGETERRORPROC         pGLGetError      = NULL;
+    _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
-
-    if (context_type == OGL_CONTEXT_TYPE_ES)
+    if (step_ptr->primitives_generated_qo != NULL)
     {
-        const ogl_context_es_entrypoints* entry_points = NULL;
+        ogl_query_release(step_ptr->primitives_generated_qo);
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                &entry_points);
-
-        pGLDeleteQueries = entry_points->pGLDeleteQueries;
-        pGLGetError      = entry_points->pGLGetError;
-    }
-    else
-    {
-        const ogl_context_gl_entrypoints* entry_points = NULL;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                &entry_points);
-
-        pGLDeleteQueries = entry_points->pGLDeleteQueries;
-        pGLGetError      = entry_points->pGLGetError;
+        step_ptr->primitives_generated_qo = NULL;
     }
 
-    pGLDeleteQueries(1,
-                    &step_ptr->timestamp_query_id);
-    pGLDeleteQueries(1,
-                    &step_ptr->primitives_generated_query_id);
+    if (step_ptr->timestamp_qo != NULL)
+    {
+        ogl_query_release(step_ptr->timestamp_qo);
 
-    ASSERT_DEBUG_SYNC(pGLGetError() == GL_NO_ERROR,
-                      "Could not delete query objects");
+        step_ptr->timestamp_qo = NULL;
+    }
 }
 
 /** TODO */
@@ -296,8 +274,8 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(__in __notnull   _ogl_pipeli
     step_ptr->n_primitives_generated        = 0;
     step_ptr->n_samples_gathered            = 0;
     step_ptr->pfn_step_callback             = pfn_step_callback;
-    step_ptr->primitives_generated_query_id = -1;
-    step_ptr->timestamp_query_id            = -1;
+    step_ptr->primitives_generated_qo       = NULL;
+    step_ptr->timestamp_qo                  = NULL;
     step_ptr->step_callback_user_arg        = step_callback_user_arg;
 
     /* Zero out gathered execution times */
@@ -315,48 +293,14 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage_step(__in __notnull   _ogl_pipeli
 PRIVATE void _ogl_pipeline_init_pipeline_stage_step_renderer_callback(__in __notnull ogl_context context,
                                                                                      void*       user_arg)
 {
-    ogl_context_type                  context_type  = OGL_CONTEXT_TYPE_UNDEFINED;
-    PFNGLGENQUERIESPROC               pGLGenQueries = NULL;
-    PFNGLGETERRORPROC                 pGLGetError   = NULL;
-    _ogl_pipeline_stage_step*         step_ptr      = (_ogl_pipeline_stage_step*) user_arg;
+    _ogl_pipeline_stage_step* step_ptr = (_ogl_pipeline_stage_step*) user_arg;
 
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_TYPE,
-                            &context_type);
-
-    if (context_type == OGL_CONTEXT_TYPE_ES)
-    {
-        const ogl_context_es_entrypoints* entrypoints = NULL;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
-                                &entrypoints);
-
-        pGLGenQueries = entrypoints->pGLGenQueries;
-        pGLGetError   = entrypoints->pGLGetError;
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "Unrecognized context type");
-
-        const ogl_context_gl_entrypoints* entrypoints = NULL;
-
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                                &entrypoints);
-
-        pGLGenQueries = entrypoints->pGLGenQueries;
-        pGLGetError   = entrypoints->pGLGetError;
-    }
-
-    pGLGenQueries(1,
-                 &step_ptr->primitives_generated_query_id);
-    pGLGenQueries(1,
-                 &step_ptr->timestamp_query_id);
-
-    ASSERT_DEBUG_SYNC(pGLGetError() == GL_NO_ERROR,
-                      "Could not generate query objects");
+    step_ptr->primitives_generated_qo = ogl_query_create(context,
+                                                         QO_RING_BUFFER_SIZE,
+                                                         GL_PRIMITIVES_GENERATED);
+    step_ptr->timestamp_qo            = ogl_query_create(context,
+                                                         QO_RING_BUFFER_SIZE,
+                                                         GL_TIME_ELAPSED);
 }
 
 /** TODO */
@@ -637,29 +581,28 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
                                                       &step_ptr) )
             {
                 /* Kick off the timer and call user's code */
-                entry_points->pGLBeginQuery(GL_PRIMITIVES_GENERATED,
-                                            step_ptr->primitives_generated_query_id);
-                entry_points->pGLBeginQuery(GL_TIME_ELAPSED,
-                                            step_ptr->timestamp_query_id);
+                ogl_query_begin(step_ptr->primitives_generated_qo);
+                ogl_query_begin(step_ptr->timestamp_qo);
                 {
                     step_ptr->pfn_step_callback(step_ptr->context,
                                                 time,
                                                 step_ptr->step_callback_user_arg);
                 }
-                entry_points->pGLEndQuery(GL_TIME_ELAPSED);
-                entry_points->pGLEndQuery(GL_PRIMITIVES_GENERATED);
+                ogl_query_end(step_ptr->timestamp_qo);
+                ogl_query_end(step_ptr->primitives_generated_qo);
             } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) ) */
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Could not retrieve step descriptor");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve step descriptor");
             }
         } /* for (uint32_t n_step = 0; n_step < n_steps; ++n_step) */
 
         /* If any UI controls are around, draw them now */
         ogl_ui_draw(pipeline_ptr->ui);
 
-        /* We only update timestamp step statistics AFTER a predefined amount of samples have been accumulated.
-         * Time to read next sample for every step.*/
+        /* We only update timestamp step statistics AFTER a predefined number of samples have been accumulated.
+         * Check if any samples are available, and - if so - update the internal storage */
         for (size_t n_step = 0;
                     n_step < n_steps;
                   ++n_step)
@@ -671,47 +614,51 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
                 /* Retrieve the query result */
                 GLuint64 execution_time = 0;
 
-                entry_points->pGLGetQueryObjectui64v(step_ptr->primitives_generated_query_id,
-                                                     GL_QUERY_RESULT,
-                                                    &step_ptr->n_primitives_generated);
-                entry_points->pGLGetQueryObjectui64v(step_ptr->timestamp_query_id,
-                                                     GL_QUERY_RESULT,
-                                                     &execution_time);
-
-                /* Store the result */
-                step_ptr->execution_times[step_ptr->n_samples_gathered++] = execution_time;
-
-                /* If enough samples are available, update the average */
-                if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE)
+                if (ogl_query_peek_result(step_ptr->primitives_generated_qo,
+                                         &step_ptr->n_primitives_generated) )
                 {
-                    GLuint64 summed_sample_time = 0;
-
-                    for (uint32_t n_sample = 0;
-                                  n_sample < N_SAMPLES_PER_UPDATE;
-                                ++n_sample)
+                    /* It may be a bold assumption, but at this point the timestamp data retrieval
+                     * process should not be that expensive to do..
+                     */
+                    while (!ogl_query_peek_result(step_ptr->timestamp_qo,
+                                                 &execution_time) )
                     {
-                        summed_sample_time += step_ptr->execution_times[n_sample];
-                    } /* for (uint32_t n_sample = 0; n_sample < N_SAMPLES_PER_UPDATE; ++n_sample) */
+                        /* Aw yiss, spin that lock. */
+                    }
 
-                    step_ptr->average_sample_time = summed_sample_time / N_SAMPLES_PER_UPDATE;
-                    step_ptr->n_samples_gathered  = 0;
+                    /* Store the result */
+                    step_ptr->execution_times[step_ptr->n_samples_gathered++] = execution_time;
 
-                    /* We have the average value! Now stash it in our internal storage */
-                    step_ptr->average_sample_time = (uint64_t) ((double) (step_ptr->average_sample_time) * 1000000.0) /
-                                                               ONE_SECOND_IN_NANOSECONDS;
+                    /* If enough samples are available, update the average */
+                    if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE)
+                    {
+                        GLuint64 summed_sample_time = 0;
 
-                    /* Average step time was updated - mark the stage as dirty */
-                    is_stage_dirty = true;
-                } /* if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE) */
+                        for (uint32_t n_sample = 0;
+                                      n_sample < N_SAMPLES_PER_UPDATE;
+                                    ++n_sample)
+                        {
+                            summed_sample_time += step_ptr->execution_times[n_sample];
+                        } /* for (uint32_t n_sample = 0; n_sample < N_SAMPLES_PER_UPDATE; ++n_sample) */
+
+                        step_ptr->average_sample_time = summed_sample_time / N_SAMPLES_PER_UPDATE;
+                        step_ptr->n_samples_gathered  = 0;
+
+                        /* We have the average value! Now stash it in our internal storage */
+                        step_ptr->average_sample_time = (uint64_t) ((double) (step_ptr->average_sample_time) * 1000000.0) /
+                                                                   ONE_SECOND_IN_NANOSECONDS;
+
+                        /* Average step time was updated - mark the stage as dirty */
+                        is_stage_dirty = true;
+                    } /* if (step_ptr->n_samples_gathered >= N_SAMPLES_PER_UPDATE) */
+                } /* if (primitives generated QO data available) */
             } /* if (system_resizable_vector_get_element_at(pipeline_stage_ptr->steps, n_step, &step_ptr) )*/
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Could not retrieve step descriptor");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve step descriptor");
             }
         } /* for (size_t n_step = 0; n_step < n_steps; ++n_step) */
-
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                          "Error gathering sample results");
 
         /* Update stage strings if marked as dirty */
         if (is_stage_dirty)
@@ -732,11 +679,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
                     step_ms = step_ptr->average_sample_time;
 
                     /* Clamp the step time */
-                    if (step_ms > 9999)
-                    {
-                        step_ms = 9999;
-                    }
-                    else
                     if (step_ms < 0)
                     {
                         step_ms = 0;
@@ -760,13 +702,15 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
         } /* if (is_stage_dirty) */
 
         /* Render the results as a final pass */
-        ogl_text_draw(pipeline_ptr->context, pipeline_ptr->text_renderer);
+        ogl_text_draw(pipeline_ptr->context,
+                      pipeline_ptr->text_renderer);
 
         result = true;
     }
 
     /* Done */
-    ASSERT_DEBUG_SYNC(result, "Stage execution failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "Stage execution failed");
 
     return result;
 }
