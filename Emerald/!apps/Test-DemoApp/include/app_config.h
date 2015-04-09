@@ -7,6 +7,7 @@
 #define APP_CONFIG_H
 
 #define CAMERA_SETTING_Z_FAR (100.0f)
+#define TARGET_FPS           (60)
 #define WINDOW_WIDTH         (1280)
 #define WINDOW_HEIGHT        (720)
 

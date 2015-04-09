@@ -3233,6 +3233,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
+        case OGL_CONTEXT_PROPERTY_VSYNC_ENABLED:
+        {
+            *(bool*) out_result = context_ptr->vsync_enabled;
+
+            break;
+        }
+
 #ifdef _WIN32
         case OGL_CONTEXT_PROPERTY_DC:
         {

@@ -190,11 +190,11 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                       system_hashed_ansi_string_create("Test window"),
                                                                       false,
                                                                       0,    /* n_multisampling_samples */
-                                                                      true, /* vsync_enabled           */
+                                                                      false, /* vsync_enabled           */
                                                                       true, /* multisampling_supported */
                                                                       true);
     _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
-                                                                      60,
+                                                                      TARGET_FPS,
                                                                       _rendering_handler_entrypoint,
                                                                       NULL);
 

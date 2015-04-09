@@ -228,17 +228,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             case RENDERING_HANDLER_POLICY_FPS:
                             {
-                                /* Take a ceil for the frame index */
-                                new_frame_time = curr_time - rendering_handler->playback_start_time; /* hz */
+                                new_frame_time = curr_time - rendering_handler->playback_start_time;
                                 frame_index    = new_frame_time * rendering_handler->fps / HZ_PER_SEC;
 
-                                if (frame_index == rendering_handler->last_frame_index)
-                                {
-                                    frame_index++;
-                                }
-
                                 new_frame_time = rendering_handler->playback_start_time +
-                                                 frame_index * HZ_PER_SEC / (1000 / rendering_handler->fps) /* s */;
+                                                 frame_index * HZ_PER_SEC * rendering_handler->fps / 1000;
 
                                 break;
                             }
@@ -256,7 +250,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                                 LOG_FATAL("Unrecognized rendering handler policy [%d]",
                                           rendering_handler->policy);
                             }
-                        }
+                        } /* switch (rendering_handler->policy) */
 
                         /* Call the user app's call-back */
                         system_timeline_time rendering_start_time = system_time_now();
@@ -313,31 +307,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             ogl_text_draw(rendering_handler->context,
                                           text_renderer);
-                        }
-
-                        if (rendering_handler->policy == RENDERING_HANDLER_POLICY_FPS)
-                        {
-                            /* Let's wait until it's time to do the swap */
-                            system_timeline_time expected_swap_time = rendering_handler->playback_start_time +
-                                                                      frame_index * HZ_PER_SEC / rendering_handler->fps;
-                            system_timeline_time now_time           = system_time_now();
-
-                            if (now_time < expected_swap_time)
-                            {
-                                /* Go back to the queue */
-                                uint32_t wait_time = 0;
-
-                                system_time_get_msec_for_timeline_time(expected_swap_time - now_time,
-                                                                      &wait_time);
-
-                                ::Sleep(wait_time);
-                            }
-
-                            /* Okay, let's roll */
-                            rendering_handler->last_frame_index = frame_index;
-                        }
+                        } /* if (rendering_handler->fps_counter_status) */
 
                         /* Swap back buffer with the front buffer now */
+                        rendering_handler->last_frame_index = frame_index;
+
                         ::SwapBuffers(context_dc);
 
                         if (rendering_handler->policy == RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST)
@@ -346,7 +320,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
 
                             system_event_reset(rendering_handler->playback_in_progress_event);
                         }
-                    }
+                    } /* if (rendering_handler->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED) */
                 }
                 system_critical_section_leave(rendering_handler->rendering_cs);
             }

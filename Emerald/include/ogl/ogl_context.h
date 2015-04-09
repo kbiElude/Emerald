@@ -194,6 +194,8 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_vaos */
     OGL_CONTEXT_PROPERTY_VAOS,
 
+    /* not settable, bool */
+    OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
 
 #ifdef _WIN32
     /* not settable, HDC */
