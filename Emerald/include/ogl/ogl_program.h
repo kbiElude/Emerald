@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_PROGRAM_H
@@ -9,7 +9,8 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_program, ogl_program)
+REFCOUNT_INSERT_DECLARATIONS(ogl_program,
+                             ogl_program)
 
 /** Attaches a fragment/geometry/vertex shader to a program object.
  *

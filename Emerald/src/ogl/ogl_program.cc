@@ -34,6 +34,7 @@ typedef struct
     system_resizable_vector   attached_shaders;
     ogl_context               context;
     GLuint                    id;
+    bool                      is_syncable; /* should uniform block data be synchronized? */
     bool                      link_status;
     system_hashed_ansi_string name;
     system_hashed_ansi_string program_info_log;
@@ -454,8 +455,18 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                     program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
                                                         1,
                                                         (const GLuint*) &n_active_uniform,
+                                                        GL_UNIFORM_ARRAY_STRIDE,
+                                                        &new_uniform->ub_array_stride);
+                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
+                                                        1,
+                                                        (const GLuint*) &n_active_uniform,
                                                         GL_UNIFORM_BLOCK_INDEX,
                                                         &new_uniform->ub_id);
+                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
+                                                        1,
+                                                        (const GLuint*) &n_active_uniform,
+                                                        GL_UNIFORM_MATRIX_STRIDE,
+                                                        &new_uniform->ub_matrix_stride);
                     program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
                                                         1,
                                                         (const GLuint*) &n_active_uniform,
@@ -500,7 +511,8 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                 ogl_program_ub new_ub = ogl_program_ub_create(program_ptr->context,
                                                               (ogl_program) program_ptr,
                                                               n_active_uniform_block,
-                                                              uniform_block_name_has);
+                                                              uniform_block_name_has,
+                                                              program_ptr->is_syncable);
 
                 ASSERT_ALWAYS_SYNC(new_ub != NULL,
                                    "ogl_program_ub_create() returned NULL.");
@@ -1135,6 +1147,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         result->attached_shaders      = NULL;
         result->context               = context;
         result->id                    = 0;
+        result->is_syncable           = false; /* TODO: hard-coded NO for now.. */
         result->link_status           = false;
         result->name                  = name;
         result->n_tf_varyings         = 0;

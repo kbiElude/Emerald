@@ -9,6 +9,7 @@
 #include "ogl/ogl_program_ub.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_hash64map.h"
 #include "system/system_log.h"
 #include "system/system_memory_manager.h"
 #include "system/system_resizable_vector.h"
@@ -20,24 +21,34 @@ typedef struct _ogl_program_ub
     unsigned int index;
     ogl_program  owner;
 
-    GLint                     block_data_size;
+    /* block_data holds a local cache of uniform data. This helps us avoid all the complex logic
+     * that would otherwise have to be used to store uniform values AND is pretty cache-friendly. */
+    unsigned char* block_data;
+    GLint          block_data_size;
+
     system_hashed_ansi_string name;
-    system_resizable_vector   members; /* pointers to const ogl_program_uniform_descriptor*. These are owned by owner - DO NOT release. */
+    system_resizable_vector   members;                          /* pointers to const ogl_program_uniform_descriptor*. These are owned by owner - DO NOT release. */
+    system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_uniform_descriptor*. Rules as above apply. */
+    bool                      syncable;
 
     PFNGLGETACTIVEUNIFORMBLOCKIVPROC pGLGetActiveUniformBlockiv;
 
     explicit _ogl_program_ub(__in __notnull ogl_context               in_context,
                              __in __notnull ogl_program               in_owner,
                              __in __notnull unsigned int              in_index,
-                             __in __notnull system_hashed_ansi_string in_name)
+                             __in __notnull system_hashed_ansi_string in_name,
+                             __in           bool                      in_syncable)
     {
-        block_data_size = 0;
-        context         = in_context;
-        index           = in_index;
-        name            = in_name;
-        members         = system_resizable_vector_create(4, /* capacity */
-                                                         sizeof(ogl_program_uniform_descriptor*) );
-        owner           = in_owner;
+        block_data                       = NULL;
+        block_data_size                  = 0;
+        context                          = in_context;
+        index                            = in_index;
+        name                             = in_name;
+        members                          = system_resizable_vector_create(4, /* capacity */
+                                                                          sizeof(ogl_program_uniform_descriptor*) );
+        offset_to_uniform_descriptor_map = system_hash64map_create       (sizeof(ogl_program_uniform_descriptor*) );
+        owner                            = in_owner;
+        syncable                         = in_syncable;
 
         pGLGetActiveUniformBlockiv = NULL;
 
@@ -47,12 +58,27 @@ typedef struct _ogl_program_ub
 
     ~_ogl_program_ub()
     {
+        if (block_data != NULL)
+        {
+            delete [] block_data;
+
+            block_data = NULL;
+        }
+
         if (members != NULL)
         {
             /* No need to release items - these are owned by ogl_program! */
             system_resizable_vector_release(members);
 
             members = NULL;
+        }
+
+        if (offset_to_uniform_descriptor_map != NULL)
+        {
+            /* No need to release the items, too */
+            system_hash64map_release(offset_to_uniform_descriptor_map);
+
+            offset_to_uniform_descriptor_map = NULL;
         }
     }
 } _ogl_program_ub;
@@ -97,7 +123,7 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
         ub_ptr->pGLGetActiveUniformBlockiv = entry_points->pGLGetActiveUniformBlockiv;
     }
 
-    /* Retrieve UB uniforrms */
+    /* Retrieve UB uniform block properties */
     GLint  n_active_uniform_blocks           = 0;
     GLint  n_active_uniform_block_max_length = 0;
     GLuint po_id                             = ogl_program_get_id(ub_ptr->owner);
@@ -106,6 +132,26 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
                                        ub_ptr->index,
                                        GL_UNIFORM_BLOCK_DATA_SIZE,
                                       &ub_ptr->block_data_size);
+
+    if (ub_ptr->block_data_size > 0)
+    {
+        ub_ptr->block_data = new (std::nothrow) unsigned char[ub_ptr->block_data_size];
+
+        if (ub_ptr->block_data == NULL)
+        {
+            ASSERT_DEBUG_SYNC(ub_ptr->block_data != NULL,
+                              "Out of memory");
+
+            result = false;
+
+            goto end;
+        }
+
+        /* All uniforms are set to zeroes by default. */
+        memset(ub_ptr->block_data,
+               0,
+               ub_ptr->block_data_size);
+    } /* if (ub_ptr->block_data_size > 0) */
 
     /* Determine all uniform members of the block */
     GLint* active_uniform_indices = NULL;
@@ -155,6 +201,18 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
                 }
                 else
                 {
+                    ASSERT_DEBUG_SYNC(uniform_ptr->ub_offset != -1,
+                                      "Uniform block member offset is -1!");
+                    ASSERT_DEBUG_SYNC(!system_hash64map_contains(ub_ptr->offset_to_uniform_descriptor_map,
+                                                                 (system_hash64) uniform_ptr->ub_offset),
+                                      "Uniform block offset [%d] is already occupied!",
+                                      uniform_ptr->ub_offset);
+
+                    system_hash64map_insert     (ub_ptr->offset_to_uniform_descriptor_map,
+                                                 (system_hash64) uniform_ptr->ub_offset,
+                                                 (void*) uniform_ptr,
+                                                 NULL,  /* on_remove_callback */
+                                                 NULL); /* on_remove_callback_user_arg */
                     system_resizable_vector_push(ub_ptr->members,
                                                  (void*) uniform_ptr);
                 }
@@ -175,12 +233,14 @@ end:
 PUBLIC ogl_program_ub ogl_program_ub_create(__in __notnull ogl_context               context,
                                             __in __notnull ogl_program               owner_program,
                                             __in __notnull unsigned int              ub_index,
-                                            __in __notnull system_hashed_ansi_string ub_name)
+                                            __in __notnull system_hashed_ansi_string ub_name,
+                                            __in           bool                      support_sync_behavior)
 {
     _ogl_program_ub* new_ub_ptr = new (std::nothrow) _ogl_program_ub(context,
                                                                      owner_program,
                                                                      ub_index,
-                                                                     ub_name);
+                                                                     ub_name,
+                                                                     support_sync_behavior);
 
     ASSERT_DEBUG_SYNC(new_ub_ptr != NULL,
                       "Out of memory");

@@ -2,6 +2,15 @@
  *
  * Emerald (kbi/elude @2015)
  *
+ * Module which does a couple of uniform block housekeeping duties:
+ *
+ * a) Enumerates embedded uniforms and exposes additional info for the
+ *    interested parties.
+ *
+ * b) If requested, allocates buffer memory space and keeps a cache
+ *    of values assigned to the embedded uniforms. Upon a sync request,
+ *    ogl_program_ub uses available ES/GL functionality to update the changed
+ *    regions in an optimal (coalesced) manner.
  */
 #ifndef OGL_PROGRAM_UB_H
 #define OGL_PROGRAM_UB_H
@@ -32,7 +41,8 @@ typedef enum
 PUBLIC RENDERING_CONTEXT_CALL ogl_program_ub ogl_program_ub_create(__in __notnull ogl_context               context,
                                                                    __in __notnull ogl_program               owner_program,
                                                                    __in __notnull unsigned int              ub_index,
-                                                                   __in __notnull system_hashed_ansi_string ub_name);
+                                                                   __in __notnull system_hashed_ansi_string ub_name,
+                                                                   __in           bool                      support_sync_behavior);
 
 /** TODO */
 PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    ub,
@@ -42,5 +52,13 @@ PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    
 /** TODO */
 PUBLIC void ogl_program_ub_release(__in __notnull ogl_program_ub ub);
 
+/** TODO */
+PUBLIC void ogl_program_ub_set_uniform_value(__in                       __notnull ogl_program_ub ub,
+                                             __in                                 GLuint         ub_uniform_offset,
+                                             __in_ecount(src_data_size) __notnull void*          src_data,
+                                             __in                                 unsigned int   src_data_size);
+
+/** TODO */
+PUBLIC RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_program_ub ub);
 
 #endif /* OGL_PROGRAM_UB_H */
