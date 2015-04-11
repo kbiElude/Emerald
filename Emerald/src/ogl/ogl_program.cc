@@ -12,6 +12,7 @@
 #include "system/system_assertions.h"
 #include "system/system_file_serializer.h"
 #include "system/system_hash64.h"
+#include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
@@ -40,6 +41,8 @@ typedef struct
     GLenum                    tf_mode;
     GLchar**                  tf_varyings;
     unsigned int              n_tf_varyings;
+
+    system_hash64map ub_name_to_ub_map; /* do NOT release the stored items */
 
     /* GL entry-point cache */
     PFNGLATTACHSHADERPROC              pGLAttachShader;
@@ -101,6 +104,7 @@ PRIVATE void _ogl_program_release_callback         (__in __notnull ogl_context  
 PRIVATE void _ogl_program_save_binary_blob         (__in __notnull ogl_context,
                                                     __in __notnull _ogl_program*           program_ptr);
 PRIVATE void _ogl_program_save_shader_sources      (__in __notnull _ogl_program*           program_ptr);
+
 
 /** TODO */
 PRIVATE void _ogl_program_attach_shader_callback(__in __notnull ogl_context context,
@@ -483,22 +487,35 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                        n_active_uniform_block < n_active_uniform_blocks;
                      ++n_active_uniform_block)
             {
+                system_hashed_ansi_string uniform_block_name_has = NULL;
+
                 program_ptr->pGLGetActiveUniformBlockName(program_ptr->id,
                                                           n_active_uniform_block,
                                                           n_active_uniform_block_max_length + 1,
                                                           NULL, /* length */
                                                           uniform_block_name);
 
+                uniform_block_name_has = system_hashed_ansi_string_create(uniform_block_name);
+
                 ogl_program_ub new_ub = ogl_program_ub_create(program_ptr->context,
                                                               (ogl_program) program_ptr,
                                                               n_active_uniform_block,
-                                                              system_hashed_ansi_string_create(uniform_block_name) );
+                                                              uniform_block_name_has);
 
                 ASSERT_ALWAYS_SYNC(new_ub != NULL,
                                    "ogl_program_ub_create() returned NULL.");
+                ASSERT_DEBUG_SYNC (!system_hash64map_contains(program_ptr->ub_name_to_ub_map,
+                                                              system_hashed_ansi_string_get_hash(uniform_block_name_has) ),
+                                   "UB name->descriptor map already recognizes UB named [%s]",
+                                   uniform_block_name);
 
                 system_resizable_vector_push(program_ptr->active_uniform_blocks,
                                              new_ub);
+                system_hash64map_insert     (program_ptr->ub_name_to_ub_map,
+                                             system_hashed_ansi_string_get_hash(uniform_block_name_has),
+                                             new_ub,
+                                             NULL,  /* on_remove_callback */
+                                             NULL); /* on_remove_callback_user_arg */
             } /* for (all uniform blocks) */;
         } /* if (attribute_name != NULL && uniform_name != NULL) */
 
@@ -1123,6 +1140,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         result->n_tf_varyings         = 0;
         result->tf_mode               = GL_NONE;
         result->tf_varyings           = NULL;
+        result->ub_name_to_ub_map     = system_hash64map_create(sizeof(ogl_program_ub) );
 
         /* Init GL entry-point cache */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -1437,36 +1455,12 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
                                                               __in  __notnull system_hashed_ansi_string name,
                                                               __out __notnull ogl_program_ub*           out_ub_ptr)
 {
-    _ogl_program*      program_ptr      = (_ogl_program*) program;
-    bool               result           = false;
-    const unsigned int n_uniform_blocks = system_resizable_vector_get_amount_of_elements(program_ptr->active_uniform_blocks);
+    _ogl_program* program_ptr = (_ogl_program*) program;
+    bool          result      = false;
 
-    for (unsigned int n_uniform_block = 0;
-                      n_uniform_block < n_uniform_blocks;
-                    ++n_uniform_block)
-    {
-        ogl_program_ub ub = NULL;
-
-        if (system_resizable_vector_get_element_at(program_ptr->active_uniform_blocks,
-                                                   n_uniform_block,
-                                                  &ub) )
-        {
-            system_hashed_ansi_string ub_name = NULL;
-
-            ogl_program_ub_get_property(ub,
-                                        OGL_PROGRAM_UB_PROPERTY_NAME,
-                                       &ub_name);
-
-            if (system_hashed_ansi_string_is_equal_to_hash_string(name,
-                                                                  ub_name) )
-            {
-                *out_ub_ptr = ub;
-
-                result = true;
-                break;
-            } /* if (names match) */
-        } /* if (ub instance retrieved successfully) */
-    } /* for (all uniform block descriptors) */
+    result = system_hash64map_get(program_ptr->ub_name_to_ub_map,
+                                  system_hashed_ansi_string_get_hash(name),
+                                  out_ub_ptr);
 
     return result;
 }
