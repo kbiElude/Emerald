@@ -120,16 +120,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
                                                         __out __notnull const ogl_program_uniform_descriptor**);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_index(__in  __notnull ogl_program,
-                                                            __in  __notnull system_hashed_ansi_string,
-                                                            __out __notnull ogl_program_uniform_block_id*);
-
-/** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_properties(__in      __notnull ogl_program,
-                                                                 __in                ogl_program_uniform_block_id,
-                                                                 __out_opt           unsigned int*                out_block_data_size,
-                                                                 __out_opt           system_hashed_ansi_string*   out_name,
-                                                                 __out_opt           unsigned int*                out_n_members);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull ogl_program               program,
+                                                              __in  __notnull system_hashed_ansi_string name,
+                                                              __out __notnull ogl_program_ub*           out_ub_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *

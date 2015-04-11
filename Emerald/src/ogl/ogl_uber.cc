@@ -10,6 +10,7 @@
 #include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
@@ -87,9 +88,9 @@ typedef struct _ogl_uber_fragment_shader_item
     bool  current_light_projection_dirty;
     GLint current_light_projection_ub_offset;
 
-    float            current_light_range;
-    bool             current_light_range_dirty;
-    GLint            current_light_range_ub_offset;
+    float current_light_range;
+    bool  current_light_range_dirty;
+    GLint current_light_range_ub_offset;
 
     ogl_texture current_light_shadow_map_texture_color;
     GLuint      current_light_shadow_map_texture_color_sampler_location;
@@ -260,8 +261,8 @@ typedef struct _ogl_uber
 
     bool                         is_rendering;
     uint32_t                     n_texture_units_assigned;
-    ogl_program_uniform_block_id ub_fs_id;
-    ogl_program_uniform_block_id ub_vs_id;
+    ogl_program_ub               ub_fs;
+    ogl_program_ub               ub_vs;
     void*                        ubo_data;
     uint32_t                     ubo_data_fragment_offset; /* start offset to FS UB data; does NOT include ubo_start_offset */
     uint32_t                     ubo_data_size;
@@ -1737,37 +1738,31 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Retrieve uniform block IDs and their properties*/
-    bool         fs_ub_size_retrieved = false;
-    unsigned int fs_ub_size           = 0;
-    bool         vs_ub_size_retrieved = false;
-    unsigned int vs_ub_size           = 0;
+    unsigned int fs_ub_size = 0;
+    unsigned int vs_ub_size = 0;
 
-    uber_ptr->ub_fs_id = -1;
-    uber_ptr->ub_vs_id = -1;
+    uber_ptr->ub_fs = NULL;
+    uber_ptr->ub_vs = NULL;
 
-    fs_ub_size_retrieved = ogl_program_get_uniform_block_index(uber_ptr->program,
-                                                               system_hashed_ansi_string_create("FragmentShaderProperties"),
-                                                              &uber_ptr->ub_fs_id);
-    vs_ub_size_retrieved = ogl_program_get_uniform_block_index(uber_ptr->program,
-                                                               system_hashed_ansi_string_create("VertexShaderProperties"),
-                                                              &uber_ptr->ub_vs_id);
+    ogl_program_get_uniform_block_by_name(uber_ptr->program,
+                                          system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                         &uber_ptr->ub_fs);
+    ogl_program_get_uniform_block_by_name(uber_ptr->program,
+                                          system_hashed_ansi_string_create("VertexShaderProperties"),
+                                         &uber_ptr->ub_vs);
 
-    if (fs_ub_size_retrieved)
+    if (uber_ptr->ub_fs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_fs_id,
-                                                &fs_ub_size,
-                                                 NULL,  /* out_name */
-                                                 NULL); /* out_n_members */
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &fs_ub_size);
     }
 
-    if (vs_ub_size_retrieved)
+    if (uber_ptr->ub_vs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_vs_id,
-                                                &vs_ub_size,
-                                                 NULL,  /* out_name */
-                                                 NULL); /* out_n_members */
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &vs_ub_size);
     }
 
     /* Create internal representation of uber shader items */
@@ -2971,13 +2966,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     uint32_t fs_ub_size = 0;
     uint32_t vs_ub_size = 0;
 
-    if (uber_ptr->ub_fs_id != -1)
+    if (uber_ptr->ub_fs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_fs_id,
-                                                &fs_ub_size,
-                                                 NULL,
-                                                 NULL);
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &fs_ub_size);
 
         if (fs_ub_size != 0)
         {
@@ -2987,15 +2980,13 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                              uber_ptr->ubo_start_offset,
                                              fs_ub_size);
         }
-    } /* if (uber_ptr->ub_fs_id != -1) */
+    } /* if (uber_ptr->ub_fs != NULL) */
 
-    if (uber_ptr->ub_vs_id != -1)
+    if (uber_ptr->ub_vs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_vs_id,
-                                                &vs_ub_size,
-                                                 NULL,
-                                                 NULL);
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &vs_ub_size);
 
         if (vs_ub_size != 0)
         {
