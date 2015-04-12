@@ -472,20 +472,20 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     /* Add model uniform */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE, /* global UB, so we must use column-major ordering */
+                                                      LAYOUT_QUALIFIER_ROW_MAJOR,
                                                       TYPE_MAT4,
                                                       0, /* array_size */
-                                                      0, /* uniform_block */
+                                                      ub_id,
                                                       system_hashed_ansi_string_create("model"),
                                                       NULL /* out_variable_id */);
 
     /* Add normal_matrix uniform */
     ogl_shader_constructor_add_general_variable_to_ub(shader_constructor,
                                                       VARIABLE_TYPE_UNIFORM,
-                                                      LAYOUT_QUALIFIER_NONE, /* default UB - must use column-major ordering */
+                                                      LAYOUT_QUALIFIER_ROW_MAJOR,
                                                       TYPE_MAT4,
                                                       0, /* array_size */
-                                                      0, /* uniform_block */
+                                                      ub_id,
                                                       system_hashed_ansi_string_create("normal_matrix"),
                                                       NULL /* out_variable_id */);
 

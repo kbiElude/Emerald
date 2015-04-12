@@ -165,49 +165,39 @@ typedef struct _ogl_uber
     shaders_vertex_uber       shader_vertex;
 
     uint32_t                  ambient_material_sampler_uniform_location;
-    uint32_t                  ambient_material_vec4_uniform_location;
     uint32_t                  diffuse_material_sampler_uniform_location;
-    uint32_t                  diffuse_material_vec4_uniform_location;
-    uint32_t                  glosiness_uniform_location;
     uint32_t                  luminosity_material_sampler_uniform_location;
-    uint32_t                  luminosity_material_float_uniform_location;
-    uint32_t                  max_variance_uniform_location;
-    uint32_t                  mesh_sh3_uniform_location;
-    uint32_t                  mesh_sh3_data_offset_uniform_location;
-    uint32_t                  mesh_sh4_uniform_location;
-    uint32_t                  mesh_sh4_data_offset_uniform_location;
-    uint32_t                  model_uniform_location;         /* column major ordering! */
-    uint32_t                  normal_matrix_uniform_location; /* column-major ordering! */
+    uint32_t                  mesh_sh3_uniform_location;             /* TODO: clean-up */
+    uint32_t                  mesh_sh3_data_offset_uniform_location; /* TODO: clean-up */
+    uint32_t                  mesh_sh4_uniform_location;             /* TODO: clean-up */
+    uint32_t                  mesh_sh4_data_offset_uniform_location; /* TODO: clean-up */
     uint32_t                  object_normal_attribute_location;
     uint32_t                  object_uv_attribute_location;
     uint32_t                  object_vertex_attribute_location;
     uint32_t                  shininess_material_sampler_uniform_location;
-    uint32_t                  shininess_material_float_uniform_location;
     uint32_t                  specular_material_sampler_uniform_location;
-    uint32_t                  specular_material_float_uniform_location;
 
     /* These are stored in UBs so we need to store UB offsets instead of locations */
+    uint32_t                  ambient_material_ub_offset;
+    uint32_t                  diffuse_material_ub_offset;
     uint32_t                  far_near_plane_diff_ub_offset;
     uint32_t                  flip_z_ub_offset;
+    uint32_t                  luminosity_material_ub_offset;
+    uint32_t                  max_variance_ub_offset;
+    uint32_t                  model_ub_offset;         /* column major ordering! */
     uint32_t                  near_plane_ub_offset;
-    uint32_t                  vp_ub_offset;
+    uint32_t                  normal_matrix_ub_offset; /* column-major ordering! */
+    uint32_t                  shininess_material_ub_offset;
+    uint32_t                  specular_material_ub_offset;
     uint32_t                  world_camera_ub_offset;
+    uint32_t                  vp_ub_offset;
 
     bool                      is_rendering;
     uint32_t                  n_texture_units_assigned;
     ogl_program_ub            ub_fs;
     ogl_program_ub            ub_vs;
 
-    float                     current_camera_location[4];
-    bool                      current_camera_location_dirty;
-    float                     current_far_near_plane_diff;
-    bool                      current_far_near_plane_diff_dirty;
-    float                     current_flip_z;
-    bool                      current_flip_z_dirty;
-    float                     current_near_plane;
-    bool                      current_near_plane_dirty;
     system_matrix4x4          current_vp;
-    bool                      current_vp_dirty;
     float                     current_vsm_max_variance;
 
     system_resizable_vector   added_items; /* holds _ogl_uber_item instances */
@@ -258,10 +248,6 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
     added_items                       = system_resizable_vector_create(4 /* capacity */,
                                                                        sizeof(_ogl_uber_item*) );
     context                           = in_context;    /* DO NOT retain, or face circular dependencies! */
-    current_camera_location_dirty     = true;
-    current_far_near_plane_diff_dirty = true;
-    current_flip_z_dirty              = true;
-    current_near_plane_dirty          = true;
     current_vp                        = system_matrix4x4_create();
     current_vp_dirty                  = true;
     dirty                             = true;
@@ -499,43 +485,31 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
             struct _attachment
             {
                 mesh_material_shading_property property;
-                int32_t                        shader_sampler_uniform_location;
-                int32_t                        shader_vec4_location;
                 int32_t                        shader_uv_attribute_location;
             } attachments[] =
             {
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
-                    uber_ptr->ambient_material_sampler_uniform_location,
-                    uber_ptr->ambient_material_vec4_uniform_location,
                     uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-                    uber_ptr->diffuse_material_sampler_uniform_location,
-                    uber_ptr->diffuse_material_vec4_uniform_location,
                     uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-                    uber_ptr->luminosity_material_sampler_uniform_location,
-                    uber_ptr->luminosity_material_float_uniform_location,
                     uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-                    uber_ptr->shininess_material_sampler_uniform_location,
-                    uber_ptr->shininess_material_float_uniform_location,
                     uber_ptr->object_uv_attribute_location
                 },
 
                 {
                     MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-                    uber_ptr->specular_material_sampler_uniform_location,
-                    uber_ptr->specular_material_float_uniform_location,
                     uber_ptr->object_uv_attribute_location
                 },
             };
@@ -786,29 +760,28 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
 PRIVATE void _ogl_uber_reset_attribute_uniform_locations(__in __notnull _ogl_uber* uber_ptr)
 {
     uber_ptr->ambient_material_sampler_uniform_location    = -1;
-    uber_ptr->ambient_material_vec4_uniform_location       = -1;
+    uber_ptr->ambient_material_ub_offset                   = -1;
     uber_ptr->diffuse_material_sampler_uniform_location    = -1;
-    uber_ptr->diffuse_material_vec4_uniform_location       = -1;
+    uber_ptr->diffuse_material_ub_offset                   = -1;
     uber_ptr->far_near_plane_diff_ub_offset                = -1;
     uber_ptr->flip_z_ub_offset                             = -1;
-    uber_ptr->glosiness_uniform_location                   = -1;
     uber_ptr->luminosity_material_sampler_uniform_location = -1;
-    uber_ptr->luminosity_material_float_uniform_location   = -1;
-    uber_ptr->max_variance_uniform_location                = -1;
+    uber_ptr->luminosity_material_ub_offset                = -1;
+    uber_ptr->max_variance_ub_offset                       = -1;
     uber_ptr->mesh_sh3_uniform_location                    = -1;
     uber_ptr->mesh_sh3_data_offset_uniform_location        = -1;
     uber_ptr->mesh_sh4_uniform_location                    = -1;
     uber_ptr->mesh_sh4_data_offset_uniform_location        = -1;
-    uber_ptr->model_uniform_location                       = -1;
+    uber_ptr->model_ub_offset                              = -1;
     uber_ptr->near_plane_ub_offset                         = -1;
-    uber_ptr->normal_matrix_uniform_location               = -1;
+    uber_ptr->normal_matrix_ub_offset                      = -1;
     uber_ptr->object_normal_attribute_location             = -1;
     uber_ptr->object_uv_attribute_location                 = -1;
     uber_ptr->object_vertex_attribute_location             = -1;
     uber_ptr->shininess_material_sampler_uniform_location  = -1;
-    uber_ptr->shininess_material_float_uniform_location    = -1;
+    uber_ptr->shininess_material_ub_offset                 = -1;
     uber_ptr->specular_material_sampler_uniform_location   = -1;
-    uber_ptr->specular_material_float_uniform_location     = -1;
+    uber_ptr->specular_material_ub_offset                  = -1;
     uber_ptr->vp_ub_offset                                 = -1;
     uber_ptr->world_camera_ub_offset                       = -1;
 }
@@ -1304,16 +1277,16 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* ambient_material_sampler_uniform_descriptor    = NULL;
-    const ogl_program_uniform_descriptor* ambient_material_vec4_uniform_descriptor       = NULL;
+    const ogl_program_uniform_descriptor* ambient_material_uniform_descriptor            = NULL;
     const ogl_program_uniform_descriptor* diffuse_material_sampler_uniform_descriptor    = NULL;
-    const ogl_program_uniform_descriptor* diffuse_material_vec4_uniform_descriptor       = NULL;
+    const ogl_program_uniform_descriptor* diffuse_material_uniform_descriptor            = NULL;
     const ogl_program_uniform_descriptor* emission_material_sampler_uniform_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* emission_material_vec4_uniform_descriptor      = NULL;
+    const ogl_program_uniform_descriptor* emission_material_uniform_descriptor           = NULL;
     const ogl_program_uniform_descriptor* far_near_plane_diff_uniform_descriptor         = NULL;
     const ogl_program_uniform_descriptor* flip_z_uniform_descriptor                      = NULL;
     const ogl_program_uniform_descriptor* glosiness_uniform_descriptor                   = NULL;
     const ogl_program_uniform_descriptor* luminosity_material_sampler_uniform_descriptor = NULL;
-    const ogl_program_uniform_descriptor* luminosity_material_float_uniform_descriptor   = NULL;
+    const ogl_program_uniform_descriptor* luminosity_material_uniform_descriptor         = NULL;
     const ogl_program_uniform_descriptor* max_variance_uniform_descriptor                = NULL;
     const ogl_program_uniform_descriptor* mesh_sh3_uniform_descriptor                    = NULL;
     const ogl_program_uniform_descriptor* mesh_sh3_data_offset_uniform_descriptor        = NULL;
@@ -1323,9 +1296,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     const ogl_program_uniform_descriptor* near_plane_uniform_descriptor                  = NULL;
     const ogl_program_uniform_descriptor* normal_matrix_uniform_descriptor               = NULL;
     const ogl_program_uniform_descriptor* shininess_material_sampler_uniform_descriptor  = NULL;
-    const ogl_program_uniform_descriptor* shininess_material_float_uniform_descriptor    = NULL;
+    const ogl_program_uniform_descriptor* shininess_material_uniform_descriptor          = NULL;
     const ogl_program_uniform_descriptor* specular_material_sampler_uniform_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* specular_material_float_uniform_descriptor     = NULL;
+    const ogl_program_uniform_descriptor* specular_material_uniform_descriptor           = NULL;
     const ogl_program_uniform_descriptor* vp_uniform_descriptor                          = NULL;
     const ogl_program_uniform_descriptor* world_camera_uniform_descriptor                = NULL;
 
@@ -1334,19 +1307,19 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                                    &ambient_material_sampler_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("ambient_material"),
-                                   &ambient_material_vec4_uniform_descriptor);
+                                   &ambient_material_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("diffuse_material_sampler"),
                                    &diffuse_material_sampler_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("diffuse_material"),
-                                   &diffuse_material_vec4_uniform_descriptor);
+                                   &diffuse_material_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("emission_material_sampler"),
                                    &emission_material_sampler_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("emission_material"),
-                                   &emission_material_vec4_uniform_descriptor);
+                                   &emission_material_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("far_near_plane_diff"),
                                    &far_near_plane_diff_uniform_descriptor);
@@ -1361,7 +1334,7 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                                    &luminosity_material_sampler_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("luminosity_material"),
-                                   &luminosity_material_float_uniform_descriptor);
+                                   &luminosity_material_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("max_variance"),
                                    &max_variance_uniform_descriptor);
@@ -1391,13 +1364,13 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                                    &shininess_material_sampler_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("shininess_material"),
-                                   &shininess_material_float_uniform_descriptor);
+                                   &shininess_material_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("specular_material_sampler"),
                                    &specular_material_sampler_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("specular_material"),
-                                   &specular_material_float_uniform_descriptor);
+                                   &specular_material_uniform_descriptor);
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("vp"),
                                    &vp_uniform_descriptor);
@@ -1410,9 +1383,12 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
         uber_ptr->ambient_material_sampler_uniform_location = ambient_material_sampler_uniform_descriptor->location;
     }
 
-    if (ambient_material_vec4_uniform_descriptor != NULL)
+    if (ambient_material_uniform_descriptor != NULL)
     {
-        uber_ptr->ambient_material_vec4_uniform_location = ambient_material_vec4_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(ambient_material_uniform_descriptor->ub_offset != -1,
+                          "Ambient material UB offset is -1");
+
+        uber_ptr->ambient_material_ub_offset = ambient_material_uniform_descriptor->ub_offset;
     }
 
     if (diffuse_material_sampler_uniform_descriptor != NULL)
@@ -1420,9 +1396,12 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
         uber_ptr->diffuse_material_sampler_uniform_location = diffuse_material_sampler_uniform_descriptor->location;
     }
 
-    if (diffuse_material_vec4_uniform_descriptor != NULL)
+    if (diffuse_material_uniform_descriptor != NULL)
     {
-        uber_ptr->diffuse_material_vec4_uniform_location = diffuse_material_vec4_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(diffuse_material_uniform_descriptor->ub_offset != -1,
+                          "Diffuse material UB offset is -1");
+
+        uber_ptr->diffuse_material_ub_offset = diffuse_material_uniform_descriptor->ub_offset;
     }
 
     if (far_near_plane_diff_uniform_descriptor != NULL)
@@ -1441,24 +1420,25 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
         uber_ptr->flip_z_ub_offset = flip_z_uniform_descriptor->ub_offset;
     }
 
-    if (glosiness_uniform_descriptor != NULL)
-    {
-        uber_ptr->glosiness_uniform_location = glosiness_uniform_descriptor->location;
-    }
-
     if (luminosity_material_sampler_uniform_descriptor != NULL)
     {
         uber_ptr->luminosity_material_sampler_uniform_location = luminosity_material_sampler_uniform_descriptor->location;
     }
 
-    if (luminosity_material_float_uniform_descriptor != NULL)
+    if (luminosity_material_uniform_descriptor != NULL)
     {
-        uber_ptr->luminosity_material_float_uniform_location = luminosity_material_float_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(luminosity_material_uniform_descriptor->ub_offset != -1,
+                          "Luminosity material UB offset is -1.");
+
+        uber_ptr->luminosity_material_ub_offset = luminosity_material_uniform_descriptor->ub_offset;
     }
 
     if (max_variance_uniform_descriptor != NULL)
     {
-        uber_ptr->max_variance_uniform_location = max_variance_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(max_variance_uniform_descriptor->ub_offset != -1,
+                          "Max variance UB offset is -1");
+
+        uber_ptr->max_variance_ub_offset = max_variance_uniform_descriptor->ub_offset;
     }
 
     if (mesh_sh3_uniform_descriptor != NULL)
@@ -1481,7 +1461,10 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (model_uniform_descriptor != NULL)
     {
-        uber_ptr->model_uniform_location = model_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(model_uniform_descriptor->ub_offset != -1,
+                          "Model matrix UB offset is -1");
+
+        uber_ptr->model_ub_offset = model_uniform_descriptor->ub_offset;
     }
 
     if (near_plane_uniform_descriptor != NULL)
@@ -1494,7 +1477,10 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (normal_matrix_uniform_descriptor != NULL)
     {
-        uber_ptr->normal_matrix_uniform_location = normal_matrix_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(normal_matrix_uniform_descriptor->ub_offset != -1,
+                          "Normal matrix UB offset is -1");
+
+        uber_ptr->normal_matrix_ub_offset = normal_matrix_uniform_descriptor->ub_offset;
     }
 
     if (shininess_material_sampler_uniform_descriptor != NULL)
@@ -1502,9 +1488,12 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
         uber_ptr->shininess_material_sampler_uniform_location = shininess_material_sampler_uniform_descriptor->location;
     }
 
-    if (shininess_material_float_uniform_descriptor != NULL)
+    if (shininess_material_uniform_descriptor != NULL)
     {
-        uber_ptr->shininess_material_float_uniform_location = shininess_material_float_uniform_descriptor->location;
+        ASSERT_DEBUG_SYNC(shininess_material_uniform_descriptor->ub_offset != -1,
+                          "Shininess material UB offset is -1");
+
+        uber_ptr->shininess_material_ub_offset = shininess_material_uniform_descriptor->ub_offset;
     }
 
     if (specular_material_sampler_uniform_descriptor != NULL)
@@ -1512,9 +1501,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
         uber_ptr->specular_material_sampler_uniform_location = specular_material_sampler_uniform_descriptor->location;
     }
 
-    if (specular_material_float_uniform_descriptor != NULL)
+    if (specular_material_uniform_descriptor != NULL)
     {
-        uber_ptr->specular_material_float_uniform_location = specular_material_float_uniform_descriptor->location;
+        uber_ptr->specular_material_ub_offset = specular_material_uniform_descriptor->ub_offset;
     }
 
     if (vp_uniform_descriptor != NULL)
@@ -1965,28 +1954,26 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
         entry_points->pGLBindVertexArray(vao_ptr->vao_id);
 
         /* Update model matrix */
-        ASSERT_DEBUG_SYNC(uber_ptr->model_uniform_location != -1,
+        ASSERT_DEBUG_SYNC(uber_ptr->model_ub_offset != -1,
                           "No model matrix uniform found");
 
-        entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
-                                                 uber_ptr->model_uniform_location,
-                                                 1,       /* count */
-                                                 GL_TRUE, /* transpose */
-                                                 system_matrix4x4_get_row_major_data(model)
-                                                );
+        ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                    uber_ptr->model_ub_offset,
+                                                    system_matrix4x4_get_row_major_data(model),
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) * 16);
 
         /* Update normal matrix */
-        if (uber_ptr->normal_matrix_uniform_location != -1)
+        if (uber_ptr->normal_matrix_ub_offset != -1)
         {
             ASSERT_DEBUG_SYNC(normal_matrix != NULL,
                               "Normal matrix is NULL but is required.");
 
-            entry_points->pGLProgramUniformMatrix4fv(ogl_program_get_id(uber_ptr->program),
-                                                     uber_ptr->normal_matrix_uniform_location,
-                                                     1,       /* count */
-                                                     GL_TRUE, /* transpose */
-                                                     system_matrix4x4_get_row_major_data(normal_matrix)
-                                                    );
+            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                        uber_ptr->normal_matrix_ub_offset,
+                                                        system_matrix4x4_get_row_major_data(normal_matrix),
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 16);
         }
 
         /* Retrieve mesh index type and convert it to GL equivalent */
@@ -2076,7 +2063,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                     {
                         mesh_material_shading_property property;
                         int32_t                        shader_sampler_uniform_location;
-                        int32_t                        shader_scalar_uniform_location;
+                        int32_t                        shader_scalar_ub_offset;
                         int32_t                        shader_uv_attribute_location;
                         bool                           convert_to_linear;
                     } attachments[] =
@@ -2084,7 +2071,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         {
                             MESH_MATERIAL_SHADING_PROPERTY_AMBIENT,
                             uber_ptr->ambient_material_sampler_uniform_location,
-                            uber_ptr->ambient_material_vec4_uniform_location,
+                            uber_ptr->ambient_material_ub_offset,
                             uber_ptr->object_uv_attribute_location,
                             true,
                         },
@@ -2092,7 +2079,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         {
                             MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
                             uber_ptr->diffuse_material_sampler_uniform_location,
-                            uber_ptr->diffuse_material_vec4_uniform_location,
+                            uber_ptr->diffuse_material_ub_offset,
                             uber_ptr->object_uv_attribute_location,
                             true,
                         },
@@ -2100,7 +2087,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         {
                             MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
                             uber_ptr->luminosity_material_sampler_uniform_location,
-                            uber_ptr->luminosity_material_float_uniform_location,
+                            uber_ptr->luminosity_material_ub_offset,
                             uber_ptr->object_uv_attribute_location,
                             false
                         },
@@ -2108,7 +2095,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         {
                             MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
                             uber_ptr->shininess_material_sampler_uniform_location,
-                            uber_ptr->shininess_material_float_uniform_location,
+                            uber_ptr->shininess_material_ub_offset,
                             uber_ptr->object_uv_attribute_location,
                             false
                         },
@@ -2116,7 +2103,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         {
                             MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
                             uber_ptr->specular_material_sampler_uniform_location,
-                            uber_ptr->specular_material_float_uniform_location,
+                            uber_ptr->specular_material_ub_offset,
                             uber_ptr->object_uv_attribute_location,
                             false
                         },
@@ -2146,7 +2133,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                 float        data_vec3[3];
                                 unsigned int n_components = 1;
 
-                                if (attachment.shader_scalar_uniform_location == -1)
+                                if (attachment.shader_scalar_ub_offset == -1)
                                 {
                                     continue;
                                 }
@@ -2188,16 +2175,19 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                 if (attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_FLOAT                  ||
                                     attachment_type == MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT)
                                 {
-                                    entry_points->pGLProgramUniform1f(po_id,
-                                                                      attachment.shader_scalar_uniform_location,
-                                                                      data_vec3[0]);
+                                    ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                                attachment.shader_scalar_ub_offset,
+                                                                                data_vec3,
+                                                                                0, /* src_data_flags */
+                                                                                sizeof(float) );
                                 }
                                 else
                                 {
-                                    entry_points->pGLProgramUniform3fv(po_id,
-                                                                       attachment.shader_scalar_uniform_location,
-                                                                       1, /* count */
-                                                                       data_vec3);
+                                    ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                                attachment.shader_scalar_ub_offset,
+                                                                                data_vec3,
+                                                                                0, /* src_data_flags */
+                                                                                sizeof(float) * 3);
                                 }
 
                                 break;
@@ -2240,7 +2230,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                             {
                                 float data_vec4[4];
 
-                                if (attachment.shader_scalar_uniform_location == -1)
+                                if (attachment.shader_scalar_ub_offset == -1)
                                 {
                                     continue;
                                 }
@@ -2259,10 +2249,11 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                     }
                                 } /* if (attachment.convert_to_linear) */
 
-                                entry_points->pGLProgramUniform4fv(po_id,
-                                                                   attachment.shader_scalar_uniform_location,
-                                                                   1, /* count */
-                                                                   data_vec4);
+                                ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                            attachment.shader_scalar_ub_offset,
+                                                                            data_vec4,
+                                                                            0, /* src_data_flags */
+                                                                            sizeof(float) * 4);
 
                                 break;
                             } /* case MESH_MATERIAL_PROPERTY_ATTACHMENT_VEC4: */
@@ -2274,6 +2265,16 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                         } /* switch (attachment_type) */
                     } /* for (all attachments) */
                 } /* if (material != NULL) */
+
+                if (uber_ptr->ub_fs != NULL)
+                {
+                    ogl_program_ub_sync(uber_ptr->ub_fs);
+                }
+
+                if (uber_ptr->ub_vs != NULL)
+                {
+                    ogl_program_ub_sync(uber_ptr->ub_vs);
+                }
 
                 /* Issue the draw call */
                 entry_points->pGLDrawRangeElements(GL_TRIANGLES,
@@ -2487,12 +2488,14 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
         }
     } /* for (all vertex shader items) */
 
-    /* Configure uniforms (yuck!) */
-    if (uber_ptr->max_variance_uniform_location != -1)
+    /* Configure other stuff */
+    if (uber_ptr->max_variance_ub_offset != -1)
     {
-        entry_points->pGLProgramUniform1f(ogl_program_get_id(uber_ptr->program),
-                                          uber_ptr->max_variance_uniform_location,
-                                          uber_ptr->current_vsm_max_variance);
+        ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                    uber_ptr->max_variance_ub_offset,
+                                                   &uber_ptr->current_vsm_max_variance,
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) );
     }
 
     /* Sync the UBOs */

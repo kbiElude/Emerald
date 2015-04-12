@@ -1133,7 +1133,7 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                   LAYOUT_QUALIFIER_NONE,
                                                                   iteration_data.shader_uniform_type,
                                                                   0, /* array_size */
-                                                                  0, /* uniform_block */
+                                                                  uber_ptr->fragment_shader_properties_ub,
                                                                   system_hashed_ansi_string_create(iteration_data.shader_uniform_name),
                                                                   NULL /* out_variable_id */);
             }
