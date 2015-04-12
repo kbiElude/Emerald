@@ -404,6 +404,12 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
                                            OGL_BUFFERS_USAGE_UBO,
                                           &ub_ptr->block_bo_id,
                                           &ub_ptr->block_bo_start_offset);
+
+        /* Force a data sync */
+        ub_ptr->dirty_offset_end   = ub_ptr->block_data_size;
+        ub_ptr->dirty_offset_start = 0;
+
+        ogl_program_ub_sync( (ogl_program_ub) ub_ptr);
     } /* if (ub_ptr->block_data_size > 0 && ub_ptr->syncable) */
 
     /* Determine all uniform members of the block */
@@ -541,7 +547,30 @@ PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    
     {
         case OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE:
         {
+            ASSERT_DEBUG_SYNC(ub_ptr->syncable,
+                              "OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE property only available for syncable ogl_program_ub instances.");
+
             *(unsigned int*) out_result = ub_ptr->block_data_size;
+
+            break;
+        }
+
+        case OGL_PROGRAM_UB_PROPERTY_BO_ID:
+        {
+            ASSERT_DEBUG_SYNC(ub_ptr->syncable,
+                              "OGL_PROGRAM_UB_PROPERTY_BO_ID property only available for syncable ogl_program_ub instances.");
+
+            *(GLuint*) out_result = ub_ptr->block_bo_id;
+
+            break;
+        }
+
+        case OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET:
+        {
+            ASSERT_DEBUG_SYNC(ub_ptr->syncable,
+                              "OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET property only available for syncable ogl_program_ub instances.");
+
+            *(GLuint*) out_result = ub_ptr->block_bo_start_offset;
 
             break;
         }
@@ -575,11 +604,11 @@ PUBLIC void ogl_program_ub_release(__in __notnull ogl_program_ub ub)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_ub_set_nonarrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
-                                                        __in                                 GLuint         ub_uniform_offset,
-                                                        __in_ecount(src_data_size) __notnull void*          src_data,
-                                                        __in                                 int            src_data_flags,
-                                                        __in                                 unsigned int   src_data_size)
+PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
+                                                                    __in                                 GLuint         ub_uniform_offset,
+                                                                    __in_ecount(src_data_size) __notnull const void*    src_data,
+                                                                    __in                                 int            src_data_flags,
+                                                                    __in                                 unsigned int   src_data_size)
 {
     _ogl_program_ub* ub_ptr = (_ogl_program_ub*) ub;
 
@@ -735,27 +764,31 @@ PUBLIC void ogl_program_ub_set_nonarrayed_uniform_value(__in                    
                    src_data,
                    src_data_size);
 
-            if (modified_region_start == DIRTY_OFFSET_UNUSED)
-            {
-                modified_region_start = uniform_ptr->ub_offset;
-            }
-
-            modified_region_end = uniform_ptr->ub_offset + src_data_size;
+            modified_region_start = uniform_ptr->ub_offset;
+            modified_region_end   = uniform_ptr->ub_offset + src_data_size;
         }
     }
 
     /* Update the dirty region delimiters if needed */
-    if (ub_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED        ||
-        modified_region_start      <  ub_ptr->dirty_offset_start)
-    {
-        ub_ptr->dirty_offset_start = modified_region_start;
-    }
+    ASSERT_DEBUG_SYNC(modified_region_start == DIRTY_OFFSET_UNUSED && modified_region_end == DIRTY_OFFSET_UNUSED ||
+                      modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED,
+                      "Sanity check failed.");
 
-    if (ub_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED ||
-        modified_region_end      >  ub_ptr->dirty_offset_end)
+    if (modified_region_start != DIRTY_OFFSET_UNUSED &&
+        modified_region_end   != DIRTY_OFFSET_UNUSED)
     {
-        ub_ptr->dirty_offset_end = modified_region_end;
-    }
+        if (ub_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED        ||
+            modified_region_start      <  ub_ptr->dirty_offset_start)
+        {
+            ub_ptr->dirty_offset_start = modified_region_start;
+        }
+
+        if (ub_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED ||
+            modified_region_end      >  ub_ptr->dirty_offset_end)
+        {
+            ub_ptr->dirty_offset_end = modified_region_end;
+        }
+    } /* if (modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED) */
 
     /* All done */
 end:
@@ -763,7 +796,7 @@ end:
 }
 
 /* Please see header for spec */
-PUBLIC RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_program_ub ub)
+PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_program_ub ub)
 {
     _ogl_program_ub* ub_ptr = (_ogl_program_ub*) ub;
 
@@ -794,7 +827,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_progra
         ub_ptr->pGLNamedBufferSubDataEXT(ub_ptr->block_bo_id,
                                          ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
                                          ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start,
-                                         ub_ptr->block_data + ub_ptr->block_bo_start_offset);
+                                         ub_ptr->block_data + ub_ptr->dirty_offset_start);
     }
     else
     {
@@ -807,12 +840,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_progra
         ub_ptr->pGLBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER,
                                  ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
                                  ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start,
-                                 ub_ptr->block_data + ub_ptr->block_bo_start_offset);
+                                 ub_ptr->block_data + ub_ptr->dirty_offset_start);
     }
 
     /* Reset the offsets */
     ub_ptr->dirty_offset_end   = DIRTY_OFFSET_UNUSED;
     ub_ptr->dirty_offset_start = DIRTY_OFFSET_UNUSED;
+
     /* All done */
 end:
     ;

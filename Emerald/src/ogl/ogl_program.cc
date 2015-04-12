@@ -1023,7 +1023,8 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program pro
 
 /** Please see header for specification */
 PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name)
+                                                  __in __notnull system_hashed_ansi_string name,
+                                                  __in           bool                      use_syncable_ubs)
 {
     _ogl_program* result = new (std::nothrow) _ogl_program;
 
@@ -1041,7 +1042,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         result->attached_shaders      = NULL;
         result->context               = context;
         result->id                    = 0;
-        result->is_syncable           = false; /* TODO: hard-coded NO for now.. */
+        result->is_syncable           = use_syncable_ubs;
         result->link_status           = false;
         result->name                  = name;
         result->n_tf_varyings         = 0;

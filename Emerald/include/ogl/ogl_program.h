@@ -30,10 +30,17 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program,
  *  Note: this function calls into rendering thread, so performance drop can be expected
  *        if the renderer is being used at the time of call.
  *
+ *  @param use_syncable_ubs If true, uniform block data will be synchronized by ogl_program_ub instances,
+ *                          each created for corresponding uniform blocks. When enabled, you should NOT
+ *                          use gl*Uniform*() API, but rather assign values to the uniform block members via
+ *                          ogl_program_ub_set_*() functions. Then, prior to a draw call, call ogl_program_ub_sync()
+ *                          to update dirty uniform block regions.
+ *
  *  @return New ogl_program instance.
  **/
 PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name);
+                                                  __in __notnull system_hashed_ansi_string name,
+                                                  __in           bool                      use_syncable_ubs = false);
 
 /** Detaches a fragment/geometry/vertex shader from a program object.
  *
