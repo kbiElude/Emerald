@@ -32,6 +32,9 @@ typedef enum
 
 } ogl_program_ub_property;
 
+/* Flags used for ogl_program_ub_set_nonarrayed_uniform_value() calls. */
+const unsigned int UB_SRC_DATA_FLAG_TRANSPOSED_MATRIX_DATA = 1 << 0;
+
 /** TODO
  *
  *  Internal use only
@@ -53,10 +56,11 @@ PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    
 PUBLIC void ogl_program_ub_release(__in __notnull ogl_program_ub ub);
 
 /** TODO */
-PUBLIC void ogl_program_ub_set_uniform_value(__in                       __notnull ogl_program_ub ub,
-                                             __in                                 GLuint         ub_uniform_offset,
-                                             __in_ecount(src_data_size) __notnull void*          src_data,
-                                             __in                                 unsigned int   src_data_size);
+PUBLIC void ogl_program_ub_set_nonarrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
+                                                        __in                                 GLuint         ub_uniform_offset,
+                                                        __in_ecount(src_data_size) __notnull void*          src_data,
+                                                        __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
+                                                        __in                                 unsigned int   src_data_size);
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_program_ub ub);

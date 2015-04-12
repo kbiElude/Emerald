@@ -18,9 +18,6 @@
 #include "system/system_resizable_vector.h"
 #include <sstream>
 
-/* Uncomment to enable GL error checks. */
-#define ENABLE_GL_ERROR_CHECKS
-
 /** Internal definitions */
 const char*    file_blob_prefix       = "temp_shader_blob_";
 const char*    file_sourcecode_prefix = "temp_shader_sourcecode_";
@@ -116,27 +113,12 @@ PRIVATE void _ogl_program_attach_shader_callback(__in __notnull ogl_context cont
     in_data->program_ptr->pGLAttachShader(in_data->program_ptr->id,
                                           ogl_shader_get_id(in_data->shader) );
 
-    /* If no error is reported, add the shader to internal storage */
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        bool is_successful = (in_data->program_ptr->pGLGetError() == GL_NO_ERROR);
+    /* Retain the shader object. */
+    ogl_shader_retain(in_data->shader);
 
-        ASSERT_DEBUG_SYNC(is_successful,
-                         "Could not attach shader [%d] to program [%d]",
-                         ogl_shader_get_id(in_data->shader),
-                         in_data->program_ptr->id);
-    #else
-        bool is_successful = true;
-    #endif
-
-    if (is_successful)
-    {
-        /* Retain the shader object. */
-        ogl_shader_retain(in_data->shader);
-
-        /* Store the handle */
-        system_resizable_vector_push(in_data->program_ptr->attached_shaders,
-                                     in_data->shader);
-    }
+    /* Store the handle */
+    system_resizable_vector_push(in_data->program_ptr->attached_shaders,
+                                 in_data->shader);
 }
 
 /** TODO */
@@ -155,11 +137,6 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
     program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER,
                                                                         sizeof(ogl_shader) );
 
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        ASSERT_DEBUG_SYNC (program_ptr->pGLGetError() == GL_NO_ERROR,
-                           "Could not create program.");
-    #endif
-
     ASSERT_ALWAYS_SYNC(program_ptr->active_attributes != NULL,
                        "Out of memory while allocating active attributes resizable vector");
     ASSERT_ALWAYS_SYNC(program_ptr->active_uniform_blocks != NULL,
@@ -173,11 +150,6 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
     program_ptr->pGLProgramParameteri(program_ptr->id,
                                       GL_PROGRAM_BINARY_RETRIEVABLE_HINT,
                                       GL_TRUE);
-
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Program binary retrievable hint could not have been set to GL_TRUE");
-    #endif
 }
 
 /** TODO */
@@ -189,28 +161,13 @@ PRIVATE void _ogl_program_detach_shader_callback(__in __notnull ogl_context cont
     in_data->program_ptr->pGLDetachShader(in_data->program_ptr->id,
                                           ogl_shader_get_id(in_data->shader) );
 
-    /* If no error is reported, add the shader to internal storage */
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        bool is_successful = (in_data->program_ptr->pGLGetError() == GL_NO_ERROR);
+    /* Release the shader object. */
+    ogl_shader_release(in_data->shader);
 
-        ASSERT_DEBUG_SYNC(is_successful,
-                         "Could not detach shader [%d] from program [%d]",
-                         ogl_shader_get_id(in_data->shader),
-                         in_data->program_ptr->id);
-    #else
-        bool is_successful = true;
-    #endif
-
-    if (is_successful)
-    {
-        /* Release the shader object. */
-        ogl_shader_release(in_data->shader);
-
-        /* Remove the handle */
-        system_resizable_vector_delete_element_at(in_data->program_ptr->attached_shaders,
-                                                  system_resizable_vector_find(in_data->program_ptr->attached_shaders,
-                                                                               in_data->shader) );
-    }
+    /* Remove the handle */
+    system_resizable_vector_delete_element_at(in_data->program_ptr->attached_shaders,
+                                              system_resizable_vector_find(in_data->program_ptr->attached_shaders,
+                                                                           in_data->shader) );
 }
 
 /** TODO */
@@ -279,22 +236,10 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                                       program_ptr->n_tf_varyings,
                                                       program_ptr->tf_varyings,
                                                       program_ptr->tf_mode);
-
-            #ifdef ENABLE_GL_ERROR_CHECKS
-                ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                                  "Error occurred while setting TF feedback for program [%d]",
-                                  program_ptr->id);
-            #endif
         }
 
         /* Okay, let's link */
         program_ptr->pGLLinkProgram(program_ptr->id);
-
-        #ifdef ENABLE_GL_ERROR_CHECKS
-            ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                              "Error occurred while linking program [%d]",
-                              program_ptr->id);
-        #endif
     }
 
     /* Retrieve link status */
@@ -303,12 +248,6 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
     program_ptr->pGLGetProgramiv(program_ptr->id,
                                  GL_LINK_STATUS,
                                 &link_status);
-
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Could not retrieve link status for program [%d]",
-                          program_ptr->id);
-    #endif
 
     program_ptr->link_status = (link_status == 1);
     if (program_ptr->link_status)
@@ -352,12 +291,6 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
         program_ptr->pGLGetProgramiv(program_ptr->id,
                                      GL_ACTIVE_UNIFORM_MAX_LENGTH,
                                     &n_active_uniform_max_length);
-
-        #ifdef ENABLE_GL_ERROR_CHECKS
-            ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                              "Could not retrieve attribute/uniform generic data for program [%d]",
-                              program_ptr->id);
-        #endif
 
         /* Allocate temporary name buffers */
         GLchar* attribute_name     = new (std::nothrow) GLchar[n_active_attribute_max_length     + 1];
@@ -404,20 +337,9 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                                     (GLenum*) &new_attribute->type,
                                                     attribute_name);
 
-                    #ifdef ENABLE_GL_ERROR_CHECKS
-                        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                                          "Could not retrieve active attribute properties.");
-                    #endif
-
                     new_attribute->name     = system_hashed_ansi_string_create (attribute_name);
                     new_attribute->location = program_ptr->pGLGetAttribLocation(program_ptr->id,
                                                                                 attribute_name);
-
-                    #ifdef ENABLE_GL_ERROR_CHECKS
-                        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                                          "Could not retrieve attribute [%s] location.",
-                                          attribute_name);
-                    #endif
                 }
 
                 system_resizable_vector_push(program_ptr->active_attributes,
@@ -448,45 +370,39 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                     program_ptr->pGLGetActiveUniform   (program_ptr->id,
                                                         n_active_uniform,
                                                         n_active_uniform_max_length + 1,
-                                                        &new_uniform->length,
-                                                        &new_uniform->size,
+                                                       &new_uniform->length,
+                                                       &new_uniform->size,
                                                         (GLenum*) &new_uniform->type,
                                                         uniform_name);
                     program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
                                                         1,
                                                         (const GLuint*) &n_active_uniform,
                                                         GL_UNIFORM_ARRAY_STRIDE,
-                                                        &new_uniform->ub_array_stride);
+                                                       &new_uniform->ub_array_stride);
                     program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
                                                         1,
                                                         (const GLuint*) &n_active_uniform,
                                                         GL_UNIFORM_BLOCK_INDEX,
-                                                        &new_uniform->ub_id);
+                                                       &new_uniform->ub_id);
+                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
+                                                        1,
+                                                        (const GLuint*) &n_active_uniform,
+                                                        GL_UNIFORM_IS_ROW_MAJOR,
+                                                       &new_uniform->is_row_major_matrix);
                     program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
                                                         1,
                                                         (const GLuint*) &n_active_uniform,
                                                         GL_UNIFORM_MATRIX_STRIDE,
-                                                        &new_uniform->ub_matrix_stride);
+                                                       &new_uniform->ub_matrix_stride);
                     program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
                                                         1,
                                                         (const GLuint*) &n_active_uniform,
                                                         GL_UNIFORM_OFFSET,
-                                                        &new_uniform->ub_offset);
-
-                    #ifdef ENABLE_GL_ERROR_CHECKS
-                        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                                          "Could not retrieve active uniform properties.");
-                    #endif
+                                                       &new_uniform->ub_offset);
 
                     new_uniform->name     = system_hashed_ansi_string_create  (uniform_name);
                     new_uniform->location = program_ptr->pGLGetUniformLocation(program_ptr->id,
                                                                                uniform_name);
-
-                    #ifdef ENABLE_GL_ERROR_CHECKS
-                        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                                          "Could not retrive uniform [%s] location",
-                                          uniform_name);
-                    #endif
                 }
 
                 system_resizable_vector_push(program_ptr->active_uniforms,
@@ -557,11 +473,6 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
     program_ptr->pGLGetProgramiv(program_ptr->id,
                                  GL_INFO_LOG_LENGTH,
                                 &program_info_log_length);
-
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Could not retrieve program info log length.");
-    #endif
 
     if (program_info_log_length != 0)
     {
@@ -698,12 +609,6 @@ PRIVATE bool _ogl_program_load_binary_blob(__in __notnull  ogl_context  context,
                                                       program_binary_format,
                                                       program_binary_ptr,
                                                       program_binary_length);
-
-                        #ifdef ENABLE_GL_ERROR_CHECKS
-                            result = (program_ptr->pGLGetError() == GL_NO_ERROR);
-
-                            ASSERT_ALWAYS_SYNC(result, "Could not set program binary!");
-                        #endif
 
                         /* Program binary is no longer needed */
                         delete [] program_binary_ptr;
@@ -853,12 +758,6 @@ PRIVATE void _ogl_program_release_callback(__in __notnull ogl_context context,
     program_ptr->pGLDeleteProgram(program_ptr->id);
 
     program_ptr->id = 0;
-
-    #ifdef ENABLE_GL_ERROR_CHECKS
-        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Error while deleting program [%d]",
-                          program_ptr->id);
-    #endif
 }
 
 /** TODO */
@@ -908,11 +807,6 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
                                                      NULL,
                                                     &blob_format,
                                                     blob);
-
-                    #ifdef ENABLE_GL_ERROR_CHECKS
-                        ASSERT_DEBUG_SYNC(program_ptr->pGLGetError() == GL_NO_ERROR,
-                                          "Could not retrieve program blob.");
-                    #endif
 
                     /* We have the blob now. Proceed and write to the file */
                     unsigned int n_attached_shaders = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);

@@ -275,6 +275,7 @@ typedef struct
  */
 typedef struct 
 {
+    GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
     system_hashed_ansi_string  name;
     GLsizei                    length;
     GLint                      location;
