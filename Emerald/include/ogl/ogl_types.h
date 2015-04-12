@@ -268,14 +268,21 @@ typedef struct
     ogl_program_attribute_type type;
 } ogl_program_attribute_descriptor;
 
-/** Structure that describes properties of a program uniform */
+/** Structure that describes properties of a program uniform.
+ *
+ *  This structure is used to describe both regular uniforms and
+ *  members of uniform blocks.
+ */
 typedef struct 
 {
+    GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
     system_hashed_ansi_string  name;
     GLsizei                    length;
     GLint                      location;
-    GLint                      size;
+    GLint                      size;             /* array size for arrayed uniforms or 1 otherwise */
     ogl_program_uniform_type   type;
+    GLint                      ub_array_stride;
+    GLint                      ub_matrix_stride;
     GLint                      ub_id;
     GLint                      ub_offset;
 } ogl_program_uniform_descriptor;
@@ -1738,9 +1745,8 @@ typedef enum
 
 /** Program handle */
 DECLARE_HANDLE(ogl_program);
+DECLARE_HANDLE(ogl_program_ub);
 DECLARE_HANDLE(ogl_programs);
-
-typedef unsigned int ogl_program_uniform_block_id;
 
 /** Shader handle & various related types from shaders module. */
 DECLARE_HANDLE(ogl_shader);

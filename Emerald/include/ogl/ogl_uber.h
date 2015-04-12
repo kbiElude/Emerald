@@ -69,48 +69,48 @@ typedef enum
 
 typedef enum
 {
-    /* settable, float[3]. Used by ambient light */
+    /* NOT gettable, settable, float[3]. Used by ambient light */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR,
 
 
-    /* settable, float[3]. Used by point lights */
+    /* NOT gettable, settable, float[3]. Used by point lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS,
 
-    /* settable, float, radians. Used by spot lights */
+    /* NOT gettable, settable, float, radians. Used by spot lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE,
 
-    /* settable, float[3]. Used by directional & point lights */
+    /* NOT gettable, settable, float[3]. Used by directional & point lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE,
 
-    /* settable, float[3]. Used by directional lights */
+    /* NOT gettable, settable, float[3]. Used by directional lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION,
 
-    /* settable, float, radians. Used by spot lights. */
+    /* NOT gettable, settable, float, radians. Used by spot lights. */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE,
 
-    /* settable, float, Used by point lights (>= 1 algo) */
+    /* NOT gettable, settable, float, Used by point lights (>= 1 algo) */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF,
 
-    /* settable, float[3]. Used by point lights */
+    /* NOT gettable, settable, float[3]. Used by point lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION,
 
-    /* settable, float. Used by point lights (>= 1 algo) */
+    /* NOT gettable, settable, float. Used by point lights (>= 1 algo) */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE,
 
-    /* settable, float[16], row-major. Used by point lights (>= 1 algo) */
+    /* NOT gettable, settable, float[16], row-major. Used by point lights (>= 1 algo) */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX,
 
-    /* settable, float. Used by point & spot lights */
+    /* NOT gettable, settable, float. Used by point & spot lights */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE,
 
-    /* settable, float[16], row-major. Used by point lights (>= 1 algo) */
+    /* NOT gettable, settable, float[16], row-major. Used by point lights (>= 1 algo) */
     OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX,
 
 
-    /* settable, float[16], row-major */
+    /* NOT gettable, settable, float[16], row-major */
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP,
 
-    /* settable, _ogl_uber_light_sh_data */
+    /* NOT gettable, settable, _ogl_uber_light_sh_data */
     OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_SH_DATA,
 
 
@@ -132,15 +132,16 @@ typedef enum
     /* not settable, scene_light_shadow_map_pointlight_algorithm */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM,
 
-    /* settable, float */
+    /* NOT gettable, settable, float */
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF,
 
-    /* settable, float.
+    /* NOT gettable, settable, float.
      *
      * This property is per-light, as opposed to _max_variance. The reason is that
      * min variance can theoretically be different for each light.
      **/
     OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE,
+
     OGL_UBER_ITEM_PROPERTY_LIGHT_USES_SHADOW_MAP,
     OGL_UBER_ITEM_PROPERTY_LIGHT_TYPE,
     OGL_UBER_ITEM_PROPERTY_TYPE,

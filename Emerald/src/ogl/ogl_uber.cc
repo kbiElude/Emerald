@@ -7,9 +7,9 @@
 #include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
-#include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_sampler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_shader_constructor.h"
@@ -41,77 +41,31 @@
 /* Holds all properties that may be used for a fragment shader item */
 typedef struct _ogl_uber_fragment_shader_item
 {
-    float ambient_color_linear[3]; /* used by renderer  */
-    float ambient_color_sRGB  [3]; /* provided by users */
-    bool  ambient_color_dirty;
     GLint ambient_color_ub_offset;
 
-    float current_light_attenuations[3];
-    bool  current_light_attenuations_dirty;
     GLint current_light_attenuations_ub_offset;
-
-    float current_light_camera_eye_to_light_eye[16];
-    bool  current_light_camera_eye_to_light_eye_dirty;
-    GLint current_light_camera_eye_to_light_eye_ub_offset;
-
-    float current_light_cone_angle;           /* cone angle: 1/2 total light cone. used for spot lights */
-    bool  current_light_cone_angle_dirty;
-    GLint current_light_cone_angle_ub_offset;
-
-    float current_light_diffuse_linear[4]; /* used by renderer */
-    float current_light_diffuse_sRGB  [4]; /* provided by users */
-    bool  current_light_diffuse_dirty;
+    GLint current_light_cone_angle_ub_offset; /* cone angle: 1/2 total light cone. used for spot lights */
     GLint current_light_diffuse_ub_offset;
-
-    float current_light_direction[3];
-    bool  current_light_direction_dirty;
     GLint current_light_direction_ub_offset;
-
-    float current_light_edge_angle;          /* angular width of the soft edge. used for spot lights */
-    bool  current_light_edge_angle_dirty;
-    GLint current_light_edge_angle_ub_offset;
-
-    float current_light_far_near_diff;
-    bool  current_light_far_near_diff_dirty;
+    GLint current_light_edge_angle_ub_offset; /* angular width of the soft edge. used for spot lights */
     GLint current_light_far_near_diff_ub_offset;
-
-    float current_light_location[4];
-    bool  current_light_location_dirty;
     GLint current_light_location_ub_offset;
-
-    float current_light_near_plane;
-    bool  current_light_near_plane_dirty;
     GLint current_light_near_plane_ub_offset;
-
-    float current_light_projection[16];
-    bool  current_light_projection_dirty;
     GLint current_light_projection_ub_offset;
-
-    float            current_light_range;
-    bool             current_light_range_dirty;
-    GLint            current_light_range_ub_offset;
+    GLint current_light_range_ub_offset;
+    GLint current_light_shadow_map_vsm_cutoff_ub_offset;
+    GLint current_light_shadow_map_vsm_min_variance_ub_offset;
+    GLint current_light_view_ub_offset;
 
     ogl_texture current_light_shadow_map_texture_color;
     GLuint      current_light_shadow_map_texture_color_sampler_location;
     ogl_texture current_light_shadow_map_texture_depth;
     GLuint      current_light_shadow_map_texture_depth_sampler_location;
-    float       current_light_shadow_map_vsm_cutoff;
-    bool        current_light_shadow_map_vsm_cutoff_dirty;
-    GLint       current_light_shadow_map_vsm_cutoff_ub_offset;
-    float       current_light_shadow_map_vsm_min_variance;
-    bool        current_light_shadow_map_vsm_min_variance_dirty;
-    GLint       current_light_shadow_map_vsm_min_variance_ub_offset;
-
-    float current_light_view[16];
-    bool  current_light_view_dirty;
-    GLint current_light_view_ub_offset;
-
 
     _ogl_uber_fragment_shader_item()
     {
         ambient_color_ub_offset                                 = -1;
         current_light_attenuations_ub_offset                    = -1;
-        current_light_camera_eye_to_light_eye_ub_offset         = -1;
         current_light_cone_angle_ub_offset                      = -1;
         current_light_diffuse_ub_offset                         = -1;
         current_light_direction_ub_offset                       = -1;
@@ -129,31 +83,13 @@ typedef struct _ogl_uber_fragment_shader_item
 
         current_light_shadow_map_texture_color = NULL;
         current_light_shadow_map_texture_depth = NULL;
-
-        ambient_color_dirty                             = true;
-        current_light_attenuations_dirty                = true;
-        current_light_camera_eye_to_light_eye_dirty     = true;
-        current_light_cone_angle_dirty                  = true;
-        current_light_diffuse_dirty                     = true;
-        current_light_direction_dirty                   = true;
-        current_light_edge_angle_dirty                  = true;
-        current_light_far_near_diff_dirty               = true;
-        current_light_location_dirty                    = true;
-        current_light_near_plane_dirty                  = true;
-        current_light_projection_dirty                  = true;
-        current_light_range_dirty                       = true;
-        current_light_shadow_map_vsm_cutoff_dirty       = true;
-        current_light_shadow_map_vsm_min_variance_dirty = true;
-        current_light_view_dirty                        = true;
     }
 } _ogl_uber_fragment_shader_item;
 
 /* Holds all properties that may be used for a vertex shader item */
 typedef struct _ogl_uber_vertex_shader_item
 {
-    float current_light_depth_vp[16]; /* row-major */
-    bool  current_light_depth_vp_dirty;
-    GLint current_light_depth_vp_ub_offset;
+    GLint current_light_depth_vp_ub_offset; /* row-major */
 
     _ogl_uber_light_sh_data current_light_sh_data;
     GLint                   current_light_sh_data_ub_offset;
@@ -161,7 +97,6 @@ typedef struct _ogl_uber_vertex_shader_item
     _ogl_uber_vertex_shader_item()
     {
         current_light_depth_vp_ub_offset = -1;
-        current_light_depth_vp_dirty     = true;
     }
 
 } _ogl_uber_vertex_shader_item;
@@ -252,22 +187,16 @@ typedef struct _ogl_uber
     uint32_t                  specular_material_float_uniform_location;
 
     /* These are stored in UBs so we need to store UB offsets instead of locations */
-    uint32_t                     far_near_plane_diff_ub_offset;
-    uint32_t                     flip_z_ub_offset;
-    uint32_t                     near_plane_ub_offset;
-    uint32_t                     vp_ub_offset;
-    uint32_t                     world_camera_ub_offset;
+    uint32_t                  far_near_plane_diff_ub_offset;
+    uint32_t                  flip_z_ub_offset;
+    uint32_t                  near_plane_ub_offset;
+    uint32_t                  vp_ub_offset;
+    uint32_t                  world_camera_ub_offset;
 
-    bool                         is_rendering;
-    uint32_t                     n_texture_units_assigned;
-    ogl_program_uniform_block_id ub_fs_id;
-    ogl_program_uniform_block_id ub_vs_id;
-    void*                        ubo_data;
-    uint32_t                     ubo_data_fragment_offset; /* start offset to FS UB data; does NOT include ubo_start_offset */
-    uint32_t                     ubo_data_size;
-    uint32_t                     ubo_data_vertex_offset; /* start offset to VS UB data; does NOT include ubo_start_offset */
-    GLuint                       ubo_id;
-    unsigned int                 ubo_start_offset;
+    bool                      is_rendering;
+    uint32_t                  n_texture_units_assigned;
+    ogl_program_ub            ub_fs;
+    ogl_program_ub            ub_vs;
 
     float                     current_camera_location[4];
     bool                      current_camera_location_dirty;
@@ -346,12 +275,8 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
     shader_fragment                   = NULL;
     shader_vertex                     = NULL;
     type                              = in_type;
-    ubo_data                          = NULL;
-    ubo_data_fragment_offset          = -1;
-    ubo_data_size                     = -1;
-    ubo_data_vertex_offset            = -1;
-    ubo_id                            = 0;
-    ubo_start_offset                  = 0;
+    ub_fs                             = NULL;
+    ub_vs                             = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BUFFERS,
@@ -724,18 +649,6 @@ PRIVATE void _ogl_uber_link_renderer_callback(ogl_context context, void* arg)
                                              vertex_shader_properties_block_index,
                                              VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID);
     }
-
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "Could not set up uniform block bindings");
-
-    /* Set up storage for buffer object that will be used for feeding the data to the uber program */
-    ogl_buffers_allocate_buffer_memory(uber_ptr->buffers,
-                                       uber_ptr->ubo_data_size,
-                                       limits_ptr->uniform_buffer_offset_alignment,
-                                       OGL_BUFFERS_MAPPABILITY_NONE,
-                                       OGL_BUFFERS_USAGE_UBO,
-                                      &uber_ptr->ubo_id,
-                                      &uber_ptr->ubo_start_offset);
 }
 
 /** TODO */
@@ -759,16 +672,6 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
 
             system_resizable_vector_release(uber_ptr->added_items);
             uber_ptr->added_items = NULL;
-        }
-
-        if (uber_ptr->ubo_id != 0)
-        {
-            ogl_buffers_free_buffer_memory(uber_ptr->buffers,
-                                           uber_ptr->ubo_id,
-                                           uber_ptr->ubo_start_offset);
-
-            uber_ptr->ubo_id           = 0;
-            uber_ptr->ubo_start_offset = -1;
         }
 
         if (uber_ptr->current_vp != NULL)
@@ -804,13 +707,6 @@ PRIVATE void _ogl_uber_release(__in __notnull __deallocate(mem) void* uber)
             ogl_program_release(uber_ptr->program);
 
             uber_ptr->program = NULL;
-        }
-
-        if (uber_ptr->ubo_data != NULL)
-        {
-            delete [] uber_ptr->ubo_data;
-
-            uber_ptr->ubo_data = NULL;
         }
 
         if (uber_ptr->mesh_to_vao_descriptor_map != NULL)
@@ -1148,7 +1044,8 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
 
         /* Create a program with the shaders we were provided */
         result->program = ogl_program_create(context,
-                                             name);
+                                             name,
+                                             true); /* use_syncable_ubs */
         result->type    = OGL_UBER_TYPE_REGULAR;
 
         ASSERT_ALWAYS_SYNC(result->program != NULL,
@@ -1257,86 +1154,6 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
     {
         switch (property)
         {
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.ambient_color_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR requested but the underlying shader does not use the property");
-
-                *((float**) result) = item_ptr->fragment_shader_item.ambient_color_sRGB;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS requested but the underlying shader does not use the property");
-
-                *((float**) result) = item_ptr->fragment_shader_item.current_light_attenuations;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE requested but the underlying shader does not use the property");
-
-                *((float*) result) = item_ptr->fragment_shader_item.current_light_cone_angle;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE requested but the underlying shader does not use the property");
-
-                *((float**) result) = item_ptr->fragment_shader_item.current_light_diffuse_sRGB;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION requested but the underlying shader does not use the property");
-
-                *((float**) result) = item_ptr->fragment_shader_item.current_light_direction;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE requested but the underlying shader does not use the property");
-
-                *((float*) result) = item_ptr->fragment_shader_item.current_light_edge_angle;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_location_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION requested but the underlying shader does not use the property");
-
-                *((float**) result) = item_ptr->fragment_shader_item.current_light_location;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_range_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE requested but the underlying shader does not use the property");
-
-                *((float*) result) = item_ptr->fragment_shader_item.current_light_range;
-
-                break;
-            }
-
             case OGL_UBER_ITEM_PROPERTY_LIGHT_FALLOFF:
             {
                 ASSERT_DEBUG_SYNC(item_ptr->type == OGL_UBER_ITEM_LIGHT,
@@ -1373,26 +1190,6 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
                                   "Invalid OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_POINTLIGHT_ALGORITHM request");
 
                 *(scene_light_shadow_map_pointlight_algorithm*) result = item_ptr->shadow_map_pointlight_algorithm;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF requested but the underlying shader does not use the property");
-
-                *((float*) result) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff;
-
-                break;
-            }
-
-            case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE:
-            {
-                ASSERT_DEBUG_SYNC(item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1,
-                                  "OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE requested but the underlying shader does not use the property");
-
-                *((float*) result) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance;
 
                 break;
             }
@@ -1737,37 +1534,31 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Retrieve uniform block IDs and their properties*/
-    bool         fs_ub_size_retrieved = false;
-    unsigned int fs_ub_size           = 0;
-    bool         vs_ub_size_retrieved = false;
-    unsigned int vs_ub_size           = 0;
+    unsigned int fs_ub_size = 0;
+    unsigned int vs_ub_size = 0;
 
-    uber_ptr->ub_fs_id = -1;
-    uber_ptr->ub_vs_id = -1;
+    uber_ptr->ub_fs = NULL;
+    uber_ptr->ub_vs = NULL;
 
-    fs_ub_size_retrieved = ogl_program_get_uniform_block_index(uber_ptr->program,
-                                                               system_hashed_ansi_string_create("FragmentShaderProperties"),
-                                                              &uber_ptr->ub_fs_id);
-    vs_ub_size_retrieved = ogl_program_get_uniform_block_index(uber_ptr->program,
-                                                               system_hashed_ansi_string_create("VertexShaderProperties"),
-                                                              &uber_ptr->ub_vs_id);
+    ogl_program_get_uniform_block_by_name(uber_ptr->program,
+                                          system_hashed_ansi_string_create("FragmentShaderProperties"),
+                                         &uber_ptr->ub_fs);
+    ogl_program_get_uniform_block_by_name(uber_ptr->program,
+                                          system_hashed_ansi_string_create("VertexShaderProperties"),
+                                         &uber_ptr->ub_vs);
 
-    if (fs_ub_size_retrieved)
+    if (uber_ptr->ub_fs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_fs_id,
-                                                &fs_ub_size,
-                                                 NULL,  /* out_name */
-                                                 NULL); /* out_n_members */
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &fs_ub_size);
     }
 
-    if (vs_ub_size_retrieved)
+    if (uber_ptr->ub_vs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_vs_id,
-                                                &vs_ub_size,
-                                                 NULL,  /* out_name */
-                                                 NULL); /* out_n_members */
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &vs_ub_size);
     }
 
     /* Create internal representation of uber shader items */
@@ -1803,8 +1594,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 const ogl_program_uniform_descriptor* light_ambient_color_uniform_ptr = NULL;
                 std::stringstream                     light_attenuations_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_attenuations_uniform_ptr = NULL;
-                std::stringstream                     light_camera_eye_to_light_eye_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_camera_eye_to_light_eye_uniform_ptr = NULL;
                 std::stringstream                     light_cone_angle_uniform_name_sstream;
                 const ogl_program_uniform_descriptor* light_cone_angle_uniform_ptr = NULL;
                 std::stringstream                     light_diffuse_uniform_name_sstream;
@@ -1837,9 +1626,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 light_attenuations_uniform_name_sstream                << "light"
                                                                        << n_item
                                                                        << "_attenuations";
-                light_camera_eye_to_light_eye_uniform_name_sstream     << "light"
-                                                                       << n_item
-                                                                       << "_camera_eye_to_light_eye";
                 light_cone_angle_uniform_name_sstream                  << "light"
                                                                        << n_item
                                                                        << "_cone_angle";
@@ -1889,9 +1675,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_attenuations_uniform_name_sstream.str().c_str() ),
                                                &light_attenuations_uniform_ptr);
-                ogl_program_get_uniform_by_name(uber_ptr->program,
-                                                system_hashed_ansi_string_create(light_camera_eye_to_light_eye_uniform_name_sstream.str().c_str() ),
-                                               &light_camera_eye_to_light_eye_uniform_ptr);
                 ogl_program_get_uniform_by_name(uber_ptr->program,
                                                 system_hashed_ansi_string_create(light_cone_angle_uniform_name_sstream.str().c_str() ),
                                                &light_cone_angle_uniform_ptr);
@@ -1943,11 +1726,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 if (light_attenuations_uniform_ptr != NULL)
                 {
                     item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ptr->ub_offset;
-                }
-
-                if (light_camera_eye_to_light_eye_uniform_ptr != NULL)
-                {
-                    item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset = light_camera_eye_to_light_eye_uniform_ptr->ub_offset;
                 }
 
                 if (light_cone_angle_uniform_ptr != NULL)
@@ -2080,39 +1858,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
             }
         } /* switch (item_type) */
     } /* for (all uber items) */
-
-    /* Preallocate space for process-side storage of UB data. Since we are going to use one BO for two separate
-     * UB bindings, we need to make sure the vetex shader data is aligned as required by underlying GL impl */
-    const ogl_context_gl_limits* limits_ptr =NULL;
-    uint32_t                     n_bytes    = fs_ub_size;
-
-    uber_ptr->ubo_data_fragment_offset = 0; /* always zero for the time being */
-
-    ogl_context_get_property(uber_ptr->context,
-                             OGL_CONTEXT_PROPERTY_LIMITS,
-                            &limits_ptr);
-
-    if (n_bytes % limits_ptr->uniform_buffer_offset_alignment != 0)
-    {
-        /* Align! */
-        n_bytes += (limits_ptr->uniform_buffer_offset_alignment - (n_bytes % limits_ptr->uniform_buffer_offset_alignment) );
-    }
-
-    uber_ptr->ubo_data_vertex_offset  = n_bytes;
-    n_bytes                        += vs_ub_size;
-    uber_ptr->ubo_data_size           = n_bytes;
-
-    if (uber_ptr->ubo_data != NULL)
-    {
-        delete [] uber_ptr->ubo_data;
-
-        uber_ptr->ubo_data = NULL;
-    }
-
-    uber_ptr->ubo_data = new (std::nothrow) char[n_bytes];
-
-    ASSERT_ALWAYS_SYNC(uber_ptr->ubo_data != NULL,
-                       "Out of memory");
 
     /* Request renderer thread call-back to do the other part of the initialization */
     ogl_context_request_callback_from_context_thread(uber_ptr->context,
@@ -2572,8 +2317,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     }
 
     /* Set up UB contents & texture samplers */
-    bool               has_modified_bo_data = false;
-    const unsigned int n_items              = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    const unsigned int n_items = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
 
     for (unsigned int n_item = 0;
                       n_item < n_items;
@@ -2595,129 +2339,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
 
                 case OGL_UBER_ITEM_LIGHT:
                 {
-                    /* Fragment shader part */
-                    if (item_ptr->fragment_shader_item.ambient_color_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.ambient_color_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.ambient_color_ub_offset,
-                                       item_ptr->fragment_shader_item.ambient_color_linear,
-                                       sizeof(float) * 3);
-
-                        has_modified_bo_data                               = true;
-                        item_ptr->fragment_shader_item.ambient_color_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_attenuations_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
-                                       item_ptr->fragment_shader_item.current_light_attenuations,
-                                       sizeof(float) * 3);
-
-                        has_modified_bo_data                                            = true;
-                        item_ptr->fragment_shader_item.current_light_attenuations_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_ub_offset,
-                               item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye,
-                               sizeof(item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye) );
-
-                        has_modified_bo_data                                                       = true;
-                        item_ptr->fragment_shader_item.current_light_camera_eye_to_light_eye_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_cone_angle_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset) = item_ptr->fragment_shader_item.current_light_cone_angle;
-
-                        has_modified_bo_data                                          = true;
-                        item_ptr->fragment_shader_item.current_light_cone_angle_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_diffuse_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
-                                       item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
-                                       sizeof(float) * 4);
-
-                        has_modified_bo_data                                       = true;
-                        item_ptr->fragment_shader_item.current_light_diffuse_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_direction_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_direction_ub_offset,
-                                       item_ptr->fragment_shader_item.current_light_direction,
-                                       sizeof(float) * 3);
-
-                        has_modified_bo_data                                         = true;
-                        item_ptr->fragment_shader_item.current_light_direction_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_edge_angle_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset) = item_ptr->fragment_shader_item.current_light_edge_angle;
-
-                        has_modified_bo_data                                          = true;
-                        item_ptr->fragment_shader_item.current_light_edge_angle_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_far_near_diff_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset) = item_ptr->fragment_shader_item.current_light_far_near_diff;
-
-                        has_modified_bo_data                                             = true;
-                        item_ptr->fragment_shader_item.current_light_far_near_diff_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_location_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_location_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_location_ub_offset,
-                                       item_ptr->fragment_shader_item.current_light_location,
-                                       sizeof(float) * 4);
-
-                        has_modified_bo_data                                        = true;
-                        item_ptr->fragment_shader_item.current_light_location_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_near_plane_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_near_plane_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_near_plane_ub_offset) = item_ptr->fragment_shader_item.current_light_near_plane;
-
-                        has_modified_bo_data                                          = true;
-                        item_ptr->fragment_shader_item.current_light_near_plane_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_projection_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_projection_ub_offset,
-                               item_ptr->fragment_shader_item.current_light_projection,
-                               sizeof(item_ptr->fragment_shader_item.current_light_projection) );
-
-                        has_modified_bo_data                                          = true;
-                        item_ptr->fragment_shader_item.current_light_projection_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_range_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_range_ub_offset) = item_ptr->fragment_shader_item.current_light_range;
-
-                        has_modified_bo_data                                     = true;
-                        item_ptr->fragment_shader_item.current_light_range_dirty = false;
-                    }
-
                     if (item_ptr->fragment_shader_item.current_light_shadow_map_texture_color_sampler_location != -1)
                     {
                         /* Bind the shadow map */
@@ -2764,47 +2385,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                                                  n_texture_unit);
                     }
 
-                    if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff;
-
-                        has_modified_bo_data                                                      = true;
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty)
-                    {
-                        *(float*) ((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset) = item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance;
-
-                        has_modified_bo_data                                                           = true;
-                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty = false;
-                    }
-
-                    if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1 &&
-                        item_ptr->fragment_shader_item.current_light_view_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_fragment_offset + item_ptr->fragment_shader_item.current_light_view_ub_offset,
-                               item_ptr->fragment_shader_item.current_light_view,
-                               sizeof(item_ptr->fragment_shader_item.current_light_view) );
-
-                        has_modified_bo_data                                    = true;
-                        item_ptr->fragment_shader_item.current_light_view_dirty = false;
-                    }
-
-                    /* Vertex shader part */
-                    if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1 &&
-                        item_ptr->vertex_shader_item.current_light_depth_vp_dirty)
-                    {
-                        memcpy((char*) uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
-                               item_ptr->vertex_shader_item.current_light_depth_vp,
-                               sizeof(item_ptr->vertex_shader_item.current_light_depth_vp) );
-
-                        has_modified_bo_data                                      = true;
-                        item_ptr->vertex_shader_item.current_light_depth_vp_dirty = false;
-                    }
-
                     break;
                 }
 
@@ -2821,69 +2401,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                               "Could not retrieve uber item descriptor at index [%d]", n_item);
         }
     } /* for (all fragment shader items) */
-
-    if (uber_ptr->far_near_plane_diff_ub_offset != -1 &&
-        uber_ptr->current_far_near_plane_diff_dirty)
-    {
-        *(float*) ((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->far_near_plane_diff_ub_offset) = uber_ptr->current_far_near_plane_diff;
-
-        has_modified_bo_data                        = true;
-        uber_ptr->current_far_near_plane_diff_dirty = false;
-    }
-
-    if (uber_ptr->flip_z_ub_offset != -1 &&
-        uber_ptr->current_flip_z_dirty)
-    {
-        *(float*) ((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->flip_z_ub_offset) = uber_ptr->current_flip_z;
-
-        has_modified_bo_data           = true;
-        uber_ptr->current_flip_z_dirty = false;
-    }
-
-    if (uber_ptr->near_plane_ub_offset != -1 &&
-        uber_ptr->current_near_plane_dirty)
-    {
-        *(float*) ((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->near_plane_ub_offset) = uber_ptr->current_near_plane;
-
-        has_modified_bo_data               = true;
-        uber_ptr->current_near_plane_dirty = false;
-    }
-
-    if (uber_ptr->vp_ub_offset != -1 &&
-        uber_ptr->current_vp_dirty)
-    {
-        memcpy((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->vp_ub_offset,
-               system_matrix4x4_get_row_major_data(uber_ptr->current_vp),
-               sizeof(float) * 16);
-
-        has_modified_bo_data       = true;
-        uber_ptr->current_vp_dirty = false;
-    }
-
-    if (uber_ptr->world_camera_ub_offset != -1 &&
-        uber_ptr->current_camera_location_dirty)
-    {
-        ASSERT_DEBUG_SYNC(uber_ptr->world_camera_ub_offset != -1,
-                          "World camera location uniform error");
-
-        memcpy((char*)uber_ptr->ubo_data + uber_ptr->ubo_data_vertex_offset + uber_ptr->world_camera_ub_offset,
-               uber_ptr->current_camera_location,
-               sizeof(float) * 4);
-
-        has_modified_bo_data                    = true;
-        uber_ptr->current_camera_location_dirty = false;
-    }
-
-    /* Copy the data to VRAM *ONLY* if necessary. This call is HEAVY - makes sense given
-     * we will follow it with at least one dependent draw call.
-     */
-    if (has_modified_bo_data)
-    {
-        dsa_entry_points->pGLNamedBufferSubDataEXT(uber_ptr->ubo_id,
-                                                   uber_ptr->ubo_start_offset,
-                                                   (GLsizeiptr) uber_ptr->ubo_data_size,
-                                                   uber_ptr->ubo_data);
-    }
 
     /* If any part of the SH data comes from a BO, copy it now */
     for (unsigned int n_item = 0;
@@ -2927,6 +2444,10 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                         case SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS:
                         case SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS:
                         {
+                            /* TODO: This code has deprecated. */
+                            ASSERT_DEBUG_SYNC(false,
+                                              "TODO");
+#if 0
                             const unsigned int sh_data_size = (light_type == SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS) ? 4 * sizeof(float) * 9
                                                                                                                    : 4 * sizeof(float) * 12;
 
@@ -2935,12 +2456,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                                                            item_ptr->vertex_shader_item.current_light_sh_data.bo_offset,
                                                                            uber_ptr->ubo_start_offset + uber_ptr->ubo_data_vertex_offset + item_ptr->vertex_shader_item.current_light_sh_data_ub_offset,
                                                                            sh_data_size);
+#endif
+
                             break;
                         }
 
                         default:
                         {
-                            ASSERT_DEBUG_SYNC(false, "Unrecognized light type at index [%d]", n_item);
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized light type at index [%d]",
+                                              n_item);
                         }
                     } /* switch (light_type) */
 
@@ -2949,13 +2474,16 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
 
                 default:
                 {
-                    ASSERT_DEBUG_SYNC(false, "Unrecognized vertex shader item type");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Unrecognized vertex shader item type");
                 }
             } /* switch (item_ptr->type) */
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve uber item descriptor at index [%d]", n_item);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve uber item descriptor at index [%d]",
+                              n_item);
         }
     } /* for (all vertex shader items) */
 
@@ -2967,45 +2495,68 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
                                           uber_ptr->current_vsm_max_variance);
     }
 
-    /* Configure uniform buffer bindings */
-    uint32_t fs_ub_size = 0;
-    uint32_t vs_ub_size = 0;
-
-    if (uber_ptr->ub_fs_id != -1)
+    /* Sync the UBOs */
+    if (uber_ptr->ub_fs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_fs_id,
-                                                &fs_ub_size,
-                                                 NULL,
-                                                 NULL);
+        ogl_program_ub_sync(uber_ptr->ub_fs);
+    }
+
+    if (uber_ptr->ub_vs != NULL)
+    {
+        ogl_program_ub_sync(uber_ptr->ub_vs);
+    }
+
+    /* Configure uniform buffer bindings */
+    GLuint   fs_ub_bo_id           =  0;
+    GLuint   fs_ub_bo_start_offset = -1;
+    uint32_t fs_ub_size            =  0;
+    GLuint   vs_ub_bo_id           =  0;
+    GLuint   vs_ub_bo_start_offset = -1;
+    uint32_t vs_ub_size            =  0;
+
+    if (uber_ptr->ub_fs != NULL)
+    {
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &fs_ub_size);
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &fs_ub_bo_id);
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &fs_ub_bo_start_offset);
 
         if (fs_ub_size != 0)
         {
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                             uber_ptr->ubo_id,
-                                             uber_ptr->ubo_start_offset,
+                                             fs_ub_bo_id,
+                                             fs_ub_bo_start_offset,
                                              fs_ub_size);
         }
-    } /* if (uber_ptr->ub_fs_id != -1) */
+    } /* if (uber_ptr->ub_fs != NULL) */
 
-    if (uber_ptr->ub_vs_id != -1)
+    if (uber_ptr->ub_vs != NULL)
     {
-        ogl_program_get_uniform_block_properties(uber_ptr->program,
-                                                 uber_ptr->ub_vs_id,
-                                                &vs_ub_size,
-                                                 NULL,
-                                                 NULL);
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &vs_ub_size);
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &vs_ub_bo_id);
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &vs_ub_bo_start_offset);
 
         if (vs_ub_size != 0)
         {
             entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                              VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
-                                             uber_ptr->ubo_id,
-                                             uber_ptr->ubo_start_offset + uber_ptr->ubo_data_vertex_offset,
+                                             vs_ub_bo_id,
+                                             vs_ub_bo_start_offset,
                                              vs_ub_size);
         }
-    }
+    } /* if (uber_ptr->ub_vs != NULL) */
 
     /* Activate the uber program */
     GLuint program_id = ogl_program_get_id(uber_ptr->program);
@@ -3023,43 +2574,51 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
 {
     _ogl_uber* uber_ptr = (_ogl_uber*) uber;
 
+    /* All properties below refer to the uniform block defined in uber vertex shader. */
+    if (uber_ptr->ub_vs == NULL)
+    {
+        goto end;
+    }
+
     switch (property)
     {
         case OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION:
         {
-            if (memcmp(uber_ptr->current_camera_location,
-                       data,
-                       sizeof(float) * 3) != 0)
+            const float location[4] =
             {
-                memcpy(uber_ptr->current_camera_location,
-                       data,
-                       sizeof(float) * 3);
+                ((float*) data)[0],
+                ((float*) data)[1],
+                ((float*) data)[2],
+                1.0f
+            };
 
-                uber_ptr->current_camera_location[3]    = 1.0f;
-                uber_ptr->current_camera_location_dirty = true;
-            }
+            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                        uber_ptr->world_camera_ub_offset,
+                                                        location,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
 
             break;
         }
 
         case OGL_UBER_GENERAL_PROPERTY_FAR_NEAR_PLANE_DIFF:
         {
-            if (uber_ptr->current_far_near_plane_diff != *(float*) data)
-            {
-                uber_ptr->current_far_near_plane_diff       = *(float*) data;
-                uber_ptr->current_far_near_plane_diff_dirty = true;
-            }
+            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                        uber_ptr->far_near_plane_diff_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) );
 
             break;
         }
 
         case OGL_UBER_GENERAL_PROPERTY_FLIP_Z:
         {
-            if (uber_ptr->current_flip_z != *(float*) data)
-            {
-                uber_ptr->current_flip_z       = *(float*) data;
-                uber_ptr->current_flip_z_dirty = true;
-            }
+            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                        uber_ptr->flip_z_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) );
 
             break;
         }
@@ -3075,25 +2634,22 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
 
         case OGL_UBER_GENERAL_PROPERTY_NEAR_PLANE:
         {
-            if (uber_ptr->current_near_plane != *(float*) data)
-            {
-                uber_ptr->current_near_plane       = *(float*) data;
-                uber_ptr->current_near_plane_dirty = true;
-            }
+            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                        uber_ptr->near_plane_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) );
 
             break;
         }
 
         case OGL_UBER_GENERAL_PROPERTY_VP:
         {
-            if (!system_matrix4x4_is_equal(uber_ptr->current_vp,
-                                           (system_matrix4x4) data) )
-            {
-                system_matrix4x4_set_from_matrix4x4(uber_ptr->current_vp,
-                                                    (system_matrix4x4) data);
-
-                uber_ptr->current_vp_dirty = true;
-            }
+            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                        uber_ptr->vp_ub_offset,
+                                                        system_matrix4x4_get_row_major_data( (system_matrix4x4) data),
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 16);
 
             break;
         }
@@ -3105,6 +2661,9 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
                               property);
         }
     } /* switch (property) */
+
+end:
+    ;
 }
 
 /* Please see header for specification */
@@ -3148,190 +2707,202 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
                 {
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_AMBIENT_COLOR:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.ambient_color_sRGB,
-                                   data,
-                                   sizeof(float) * 3) != 0)
+                        if (item_ptr->fragment_shader_item.ambient_color_ub_offset != -1)
                         {
                             /* We're rendering in linear space, so make sure to convert
                              * sRGB light color to linear space */
-                            float* data_ptr = (float*) data;
+                            float  linear_data[3];
+                            float* srgb_data_ptr = (float*) data;
 
                             for (unsigned int n_component = 0;
                                               n_component < 3;
                                             ++n_component)
                             {
-                                item_ptr->fragment_shader_item.ambient_color_linear[n_component] = convert_sRGB_to_linear(data_ptr[n_component]);
+                                linear_data[n_component] = convert_sRGB_to_linear(srgb_data_ptr[n_component]);
                             }
 
-                            memcpy(item_ptr->fragment_shader_item.ambient_color_sRGB,
-                                   data,
-                                   sizeof(float) * 3);
-
-                            item_ptr->fragment_shader_item.ambient_color_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.ambient_color_ub_offset,
+                                                                        linear_data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 3);
+                        } /* if (item_ptr->fragment_shader_item.ambient_color_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_ATTENUATIONS:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_attenuations,
-                                   data,
-                                   sizeof(float) * 3) != 0)
+                        if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_attenuations,
-                                   data,
-                                   sizeof(float) * 3);
-
-                            item_ptr->fragment_shader_item.current_light_attenuations_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_attenuations_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 3);
+                        } /* if (item_ptr->fragment_shader_item.current_light_attenuations_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_CONE_ANGLE:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_cone_angle != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_cone_angle       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_cone_angle_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIFFUSE:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
-                                   data,
-                                   sizeof(float) * 3) != 0)
+                        if (item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1)
                         {
                             /* We're rendering in linear space, so make sure to convert
                              * sRGB light color to linear space */
+                            float  linear_data[4];
+                            float* srgb_data_ptr = (float*) data;
+
                             for (unsigned int n_component = 0;
                                               n_component < 3;
                                             ++n_component)
                             {
-                                item_ptr->fragment_shader_item.current_light_diffuse_linear[n_component] = convert_sRGB_to_linear(((float*) data)[n_component]);
+                                linear_data[n_component] = convert_sRGB_to_linear(srgb_data_ptr[n_component]);
                             }
 
-                            item_ptr->fragment_shader_item.current_light_diffuse_linear[3] = 1.0f;
+                            linear_data[3] = 1.0f;
 
-                            memcpy(item_ptr->fragment_shader_item.current_light_diffuse_sRGB,
-                                   data,
-                                   sizeof(float) * 3);
-
-                            item_ptr->fragment_shader_item.current_light_diffuse_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_diffuse_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 4);
+                        } /* if (item_ptr->fragment_shader_item.current_light_diffuse_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_DIRECTION:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_direction,
-                                   data,
-                                   sizeof(float) * 3) != 0)
+                        if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_direction,
-                                   data,
-                                   sizeof(float) * 3);
-
-                            item_ptr->fragment_shader_item.current_light_direction_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_direction_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 3);
+                        } /* if (item_ptr->fragment_shader_item.current_light_direction_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_EDGE_ANGLE:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_edge_angle != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_edge_angle       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_edge_angle_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_FAR_NEAR_DIFF:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_far_near_diff != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_far_near_diff       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_far_near_diff_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_LOCATION:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_location,
-                                   data,
-                                   sizeof(float) * 3) != 0)
+                        if (item_ptr->fragment_shader_item.current_light_location_ub_offset != -1)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_location,
-                                   data,
-                                   sizeof(float) * 3);
+                            const float location[4] =
+                            {
+                                ((float*) data)[0],
+                                ((float*) data)[1],
+                                ((float*) data)[2],
+                                1.0f
+                            };
 
-                            item_ptr->fragment_shader_item.current_light_location[3]    = 1.0f;
-                            item_ptr->fragment_shader_item.current_light_location_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_location_ub_offset,
+                                                                        location,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 4);
+                        } /* if (item_ptr->fragment_shader_item.current_light_location_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_NEAR_PLANE:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_near_plane != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_near_plane_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_near_plane       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_near_plane_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_near_plane_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_near_plane_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_PROJECTION_MATRIX:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_projection,
-                                   data,
-                                   sizeof(float) * 16) != 0)
+                        if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_projection,
-                                   data,
-                                   sizeof(float) * 16);
-
-                            item_ptr->fragment_shader_item.current_light_projection_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_projection_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 16);
+                        } /* if (item_ptr->fragment_shader_item.current_light_projection_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_RANGE:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_range != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_range       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_range_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_range_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_range_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_FRAGMENT_LIGHT_VIEW_MATRIX:
                     {
-                        if (memcmp(item_ptr->fragment_shader_item.current_light_view,
-                                   data,
-                                   sizeof(float) * 16) != 0)
+                        if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1)
                         {
-                            memcpy(item_ptr->fragment_shader_item.current_light_view,
-                                   data,
-                                   sizeof(float) * 16);
-
-                            item_ptr->fragment_shader_item.current_light_view_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_view_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 16);
+                        } /* if (item_ptr->fragment_shader_item.current_light_view_ub_offset != -1) */
 
                         break;
                     }
@@ -3352,38 +2923,42 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_item_property(__in __notnull ogl_ube
 
                     case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_CUTOFF:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_LIGHT_SHADOW_MAP_VSM_MIN_VARIANCE:
                     {
-                        if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance != *(float*) data)
+                        if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1)
                         {
-                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance       = *(float*) data;
-                            item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_fs,
+                                                                        item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) );
+                        } /* if (item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset != -1) */
 
                         break;
                     }
 
                     case OGL_UBER_ITEM_PROPERTY_VERTEX_LIGHT_DEPTH_VP:
                     {
-                        if (memcmp(item_ptr->vertex_shader_item.current_light_depth_vp,
-                                   data,
-                                   sizeof(float) * 16) != 0)
+                        if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1)
                         {
-                            memcpy(item_ptr->vertex_shader_item.current_light_depth_vp,
-                                   data,
-                                   sizeof(float) * 16);
-
-                            item_ptr->vertex_shader_item.current_light_depth_vp_dirty = true;
-                        }
+                            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                                        item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset,
+                                                                        data,
+                                                                        0, /* src_data_flags */
+                                                                        sizeof(float) * 16);
+                        } /* if (item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset != -1) */
 
                         break;
                     }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_PROGRAM_H
@@ -9,7 +9,8 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_program, ogl_program)
+REFCOUNT_INSERT_DECLARATIONS(ogl_program,
+                             ogl_program)
 
 /** Attaches a fragment/geometry/vertex shader to a program object.
  *
@@ -29,10 +30,17 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program,
  *  Note: this function calls into rendering thread, so performance drop can be expected
  *        if the renderer is being used at the time of call.
  *
+ *  @param use_syncable_ubs If true, uniform block data will be synchronized by ogl_program_ub instances,
+ *                          each created for corresponding uniform blocks. When enabled, you should NOT
+ *                          use gl*Uniform*() API, but rather assign values to the uniform block members via
+ *                          ogl_program_ub_set_*() functions. Then, prior to a draw call, call ogl_program_ub_sync()
+ *                          to update dirty uniform block regions.
+ *
  *  @return New ogl_program instance.
  **/
 PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name);
+                                                  __in __notnull system_hashed_ansi_string name,
+                                                  __in           bool                      use_syncable_ubs = false);
 
 /** Detaches a fragment/geometry/vertex shader from a program object.
  *
@@ -120,16 +128,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
                                                         __out __notnull const ogl_program_uniform_descriptor**);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_index(__in  __notnull ogl_program,
-                                                            __in  __notnull system_hashed_ansi_string,
-                                                            __out __notnull ogl_program_uniform_block_id*);
-
-/** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_properties(__in      __notnull ogl_program,
-                                                                 __in                ogl_program_uniform_block_id,
-                                                                 __out_opt           unsigned int*                out_block_data_size,
-                                                                 __out_opt           system_hashed_ansi_string*   out_name,
-                                                                 __out_opt           unsigned int*                out_n_members);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull ogl_program               program,
+                                                              __in  __notnull system_hashed_ansi_string name,
+                                                              __out __notnull ogl_program_ub*           out_ub_ptr);
 
 /** Links a given GL program. After calling this function, you can retrieve attributes/uniform descriptors and program info log.
  *
