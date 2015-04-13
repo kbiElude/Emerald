@@ -11,7 +11,7 @@
 #define WINDOW_WIDTH         (1280)
 #define WINDOW_HEIGHT        (720)
 
-#define ENABLE_ANIMATION
+//#define ENABLE_ANIMATION
 #define ENABLE_SM
 
 #endif /* APP_CONFIG_H */

@@ -245,24 +245,23 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
                      __in __notnull system_hashed_ansi_string in_name,
                      __in           _ogl_uber_type            in_type)
 {
-    added_items                       = system_resizable_vector_create(4 /* capacity */,
-                                                                       sizeof(_ogl_uber_item*) );
-    context                           = in_context;    /* DO NOT retain, or face circular dependencies! */
-    current_vp                        = system_matrix4x4_create();
-    current_vp_dirty                  = true;
-    dirty                             = true;
-    graph_rendering_current_matrix    = system_matrix4x4_create();
-    is_rendering                      = false;
-    mesh_to_vao_descriptor_map        = system_hash64map_create(sizeof(_ogl_uber_vao*),
-                                                                false);
-    name                              = in_name;
-    n_texture_units_assigned          = 0;
-    program                           = NULL;
-    shader_fragment                   = NULL;
-    shader_vertex                     = NULL;
-    type                              = in_type;
-    ub_fs                             = NULL;
-    ub_vs                             = NULL;
+    added_items                    = system_resizable_vector_create(4 /* capacity */,
+                                                                    sizeof(_ogl_uber_item*) );
+    context                        = in_context;    /* DO NOT retain, or face circular dependencies! */
+    current_vp                     = system_matrix4x4_create();
+    dirty                          = true;
+    graph_rendering_current_matrix = system_matrix4x4_create();
+    is_rendering                   = false;
+    mesh_to_vao_descriptor_map     = system_hash64map_create(sizeof(_ogl_uber_vao*),
+                                                             false);
+    name                           = in_name;
+    n_texture_units_assigned       = 0;
+    program                        = NULL;
+    shader_fragment                = NULL;
+    shader_vertex                  = NULL;
+    type                           = in_type;
+    ub_fs                          = NULL;
+    ub_vs                          = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_BUFFERS,
