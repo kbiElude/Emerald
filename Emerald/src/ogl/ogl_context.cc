@@ -1933,6 +1933,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLCompressedTexSubImage1D,        "glCompressedTexSubImage1D"},
             {&context_ptr->entry_points_private.pGLCompressedTexSubImage2D,        "glCompressedTexSubImage2D"},
             {&context_ptr->entry_points_private.pGLCompressedTexSubImage3D,        "glCompressedTexSubImage3D"},
+            {&context_ptr->entry_points_private.pGLCopyBufferSubData,              "glCopyBufferSubData"},
             {&context_ptr->entry_points_private.pGLCopyTexImage1D,                 "glCopyTexImage1D"},
             {&context_ptr->entry_points_private.pGLCopyTexImage2D,                 "glCopyTexImage2D"},
             {&context_ptr->entry_points_private.pGLCopyTexSubImage1D,              "glCopyTexSubImage1D"},
@@ -2255,6 +2256,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLCompressedTexSubImage1D         = ogl_context_wrappers_glCompressedTexSubImage1D;
         context_ptr->entry_points_gl.pGLCompressedTexSubImage2D         = ogl_context_wrappers_glCompressedTexSubImage2D;
         context_ptr->entry_points_gl.pGLCompressedTexSubImage3D         = ogl_context_wrappers_glCompressedTexSubImage3D;
+        context_ptr->entry_points_gl.pGLCopyBufferSubData               = ogl_context_wrappers_glCopyBufferSubData;
         context_ptr->entry_points_gl.pGLCopyTexImage1D                  = ogl_context_wrappers_glCopyTexImage1D;
         context_ptr->entry_points_gl.pGLCopyTexImage2D                  = ogl_context_wrappers_glCopyTexImage2D;
         context_ptr->entry_points_gl.pGLCopyTexSubImage1D               = ogl_context_wrappers_glCopyTexSubImage1D;

@@ -1765,6 +1765,31 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
 }
 
 /** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glCopyBufferSubData(GLenum     readTarget,
+                                                              GLenum     writeTarget,
+                                                              GLintptr   readOffset,
+                                                              GLintptr   writeOffset,
+                                                              GLsizeiptr size)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_bo_bindings bo_bindings = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_BO_BINDINGS,
+                            &bo_bindings);
+
+    ogl_context_bo_bindings_sync(bo_bindings,
+                                 ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(readTarget)  |
+                                 ogl_context_bo_bindings_get_ogl_context_bo_bindings_sync_bit_for_gl_target(writeTarget) );
+
+    _private_entrypoints_ptr->pGLCopyBufferSubData(readTarget,
+                                                   writeTarget,
+                                                   readOffset,
+                                                   writeOffset,
+                                                   size);
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glDeleteBuffers(GLsizei       n,
                                                           const GLuint* buffers)
 {

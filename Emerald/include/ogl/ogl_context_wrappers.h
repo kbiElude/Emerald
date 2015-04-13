@@ -276,6 +276,13 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
                                                           const GLvoid* data);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glCopyBufferSubData(GLenum     readTarget,
+                                                              GLenum     writeTarget,
+                                                              GLintptr   readOffset,
+                                                              GLintptr   writeOffset,
+                                                              GLsizeiptr size);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDeleteBuffers(GLsizei       n,
                                                           const GLuint* buffers);
 
