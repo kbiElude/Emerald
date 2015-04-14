@@ -576,6 +576,13 @@ PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    
             break;
         }
 
+        case OGL_PROGRAM_UB_PROPERTY_INDEX:
+        {
+            *(GLuint*) out_result = ub_ptr->index;
+
+            break;
+        }
+
         case OGL_PROGRAM_UB_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = ub_ptr->name;

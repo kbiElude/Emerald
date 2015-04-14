@@ -30,6 +30,9 @@ typedef enum
     /* GLuint */
     OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
 
+    /* GLuint */
+    OGL_PROGRAM_UB_PROPERTY_INDEX,
+
     /* system_hashed_ansi_string */
     OGL_PROGRAM_UB_PROPERTY_NAME,
 

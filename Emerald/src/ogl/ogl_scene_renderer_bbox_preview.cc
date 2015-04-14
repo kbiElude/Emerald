@@ -439,16 +439,6 @@ PRIVATE void _ogl_scene_renderer_bbox_preview_release_renderer_callback(__in __n
 {
     _ogl_scene_renderer_bbox_preview* preview_ptr = (_ogl_scene_renderer_bbox_preview*) preview;
 
-    if (preview_ptr->data_bo_id != 0)
-    {
-        ogl_buffers_free_buffer_memory(preview_ptr->buffers,
-                                       preview_ptr->data_bo_id,
-                                       preview_ptr->data_bo_start_offset);
-
-        preview_ptr->data_bo_id           = 0;
-        preview_ptr->data_bo_start_offset = -1;
-    }
-
     if (preview_ptr->preview_program != NULL)
     {
         ogl_program_release(preview_ptr->preview_program);
