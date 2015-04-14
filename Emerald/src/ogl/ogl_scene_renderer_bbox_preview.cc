@@ -1,15 +1,14 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
- * TODO: Current implementation assumes scene is static. If you need the preview to workl
- *       with animated content, please improve existing implementation.
  */
 #include "shared.h"
 #include "mesh/mesh.h"
 #include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_bbox_preview.h"
 #include "ogl/ogl_shader.h"
@@ -36,19 +35,18 @@ static const char* preview_geometry_shader = "#version 420\n"
                                              "\n"
                                              "in uint vertex_id[];\n"
                                              "\n"
-                                             "uniform mat4 model;\n"
-                                             "uniform mat4 vp;\n"
-                                             "\n"
                                              "layout(std140) uniform data\n"
                                              "{\n"
-                                             "    vec4 aabb_max[N_MESHES];\n"
-                                             "    vec4 aabb_min[N_MESHES];\n"
-                                             "} ub_data;\n"
+                                             "                      vec4 aabb_max[N_MESHES];\n"
+                                             "                      vec4 aabb_min[N_MESHES];\n"
+                                             "    layout(row_major) mat4 model;\n"
+                                             "    layout(row_major) mat4 vp;\n"
+                                             "};\n"
                                              "\n"
                                              "void main()\n"
                                              "{\n"
-                                             "    vec4 aabb_max = ub_data.aabb_max[vertex_id[0] ];\n"
-                                             "    vec4 aabb_min = ub_data.aabb_min[vertex_id[0] ];\n"
+                                             "    vec4 aabb_max = aabb_max[vertex_id[0] ];\n"
+                                             "    vec4 aabb_min = aabb_min[vertex_id[0] ];\n"
                                              "    mat4 mvp      = vp * model;\n"
                                              "\n"
                                              /* Bottom plane */
@@ -126,8 +124,9 @@ typedef struct _ogl_scene_renderer_bbox_preview
     uint32_t           data_n_meshes;
     ogl_scene_renderer owner;
     ogl_program        preview_program;
-    GLint              preview_program_model_location;
-    GLint              preview_program_vp_location;
+    ogl_program_ub     preview_program_data_ub;
+    GLuint             preview_program_ub_offset_model;
+    GLuint             preview_program_ub_offset_vp;
     scene              scene;
 
     /* Cached func ptrs */
@@ -139,7 +138,6 @@ typedef struct _ogl_scene_renderer_bbox_preview
     PFNGLDRAWARRAYSPROC              pGLDrawArrays;
     PFNGLGENBUFFERSPROC              pGLGenBuffers;
     PFNGLGENVERTEXARRAYSPROC         pGLGenVertexArrays;
-    PFNGLPROGRAMUNIFORMMATRIX4FVPROC pGLProgramUniformMatrix4fv;
     PFNGLUNIFORMBLOCKBINDINGPROC     pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC              pGLUseProgram;
 } _ogl_scene_renderer_bbox_preview;
@@ -212,7 +210,8 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     /* Initialize the program object */
     preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer BB preview program ",
-                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)) );
+                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)),
+                                                      true); /* use_syncable_ubs */
 
     ogl_program_attach_shader(preview_ptr->preview_program,
                               fs_shader);
@@ -229,31 +228,34 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
         goto end_fail;
     }
 
-    /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* model_uniform_descriptor_ptr = NULL;
-    const ogl_program_uniform_descriptor* vp_uniform_descriptor_ptr    = NULL;
+    /* Retrieve uniform block manager */
+    const ogl_program_uniform_descriptor* model_uniform_ptr = NULL;
+    const ogl_program_uniform_descriptor* vp_uniform_ptr    = NULL;
 
-    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
-                                    system_hashed_ansi_string_create("model"),
-                                   &model_uniform_descriptor_ptr);
-    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
-                                    system_hashed_ansi_string_create("vp"),
-                                   &vp_uniform_descriptor_ptr);
+    ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &preview_ptr->preview_program_data_ub);
+    ogl_program_get_uniform_by_name      (preview_ptr->preview_program,
+                                          system_hashed_ansi_string_create("model"),
+                                         &model_uniform_ptr);
+    ogl_program_get_uniform_by_name      (preview_ptr->preview_program,
+                                          system_hashed_ansi_string_create("vp"),
+                                         &vp_uniform_ptr);
 
-    ASSERT_DEBUG_SYNC(model_uniform_descriptor_ptr != NULL,
-                      "VP uniform not recognized");
-    ASSERT_DEBUG_SYNC(vp_uniform_descriptor_ptr != NULL,
-                      "VP uniform not recognized");
+    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_data_ub != NULL,
+                      "Preview program's data uniform block is NULL");
+    ASSERT_DEBUG_SYNC(model_uniform_ptr != NULL,
+                      "Model uniform descriptor is NULL");
+    ASSERT_DEBUG_SYNC(vp_uniform_ptr != NULL,
+                      "Vp uniform descriptor is NULL");
 
-    if (model_uniform_descriptor_ptr != NULL)
-    {
-        preview_ptr->preview_program_model_location = model_uniform_descriptor_ptr->location;
-    }
+    ASSERT_DEBUG_SYNC(model_uniform_ptr->ub_offset != -1,
+                      "Model matrix UB offset is -1");
+    ASSERT_DEBUG_SYNC(vp_uniform_ptr->ub_offset != -1,
+                      "View matrix UB offset is -1");
 
-    if (vp_uniform_descriptor_ptr != NULL)
-    {
-        preview_ptr->preview_program_vp_location = vp_uniform_descriptor_ptr->location;
-    }
+    preview_ptr->preview_program_ub_offset_model = model_uniform_ptr->ub_offset;
+    preview_ptr->preview_program_ub_offset_vp    = vp_uniform_ptr->ub_offset;
 
     /* Set up UBO bindings */
     preview_ptr->pGLUniformBlockBinding(ogl_program_get_id(preview_ptr->preview_program),
@@ -293,10 +295,10 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
 {
     float* ub_data = NULL;
 
-    /* Allocate space */
-    const uint32_t ub_data_size = 4 /* vec4 */ * 2 /* max, min */ * preview_ptr->data_n_meshes * sizeof(float);
+    /* Allocate space for AABB data. */
+    const uint32_t matrix_data_size = 4 /* vec4 */ * 2 /* max, min */ * preview_ptr->data_n_meshes * sizeof(float);
 
-    ub_data = new (std::nothrow) float[ub_data_size / sizeof(float)];
+    ub_data = new (std::nothrow) float[matrix_data_size / sizeof(float)];
 
     ASSERT_ALWAYS_SYNC(ub_data != NULL,
                        "Out of memory");
@@ -398,23 +400,27 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
         uniform_buffer_offset_alignment = limits_ptr->uniform_buffer_offset_alignment;
     }
 
-    /* Initialize UBO storage */
-    preview_ptr->data_bo_size = ub_data_size;
-
-    ogl_buffers_allocate_buffer_memory(preview_ptr->buffers,
-                                       preview_ptr->data_bo_size,
-                                       uniform_buffer_offset_alignment,
-                                       OGL_BUFFERS_MAPPABILITY_NONE,
-                                       OGL_BUFFERS_USAGE_UBO,
-                                       OGL_BUFFERS_FLAGS_NONE,
-                                      &preview_ptr->data_bo_id,
-                                      &preview_ptr->data_bo_start_offset);
+    /* Initialize UBO storage.
+     *
+     * NOTE: Since ogl_program_ub does not provide arrayed uniform setters at the time of writing,
+     *       simply push the AABB data behind its back. This is OK, since AABB data is set in stone
+     *       and will not change later.
+     */
+    ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &preview_ptr->data_bo_size);
+    ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &preview_ptr->data_bo_id);
+    ogl_program_ub_get_property(preview_ptr->preview_program_data_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &preview_ptr->data_bo_start_offset);
 
     preview_ptr->pGLBindBuffer   (GL_ARRAY_BUFFER,
                                   preview_ptr->data_bo_id);
     preview_ptr->pGLBufferSubData(GL_ARRAY_BUFFER,
                                   preview_ptr->data_bo_start_offset,
-                                  preview_ptr->data_bo_size,
+                                  matrix_data_size,
                                   ub_data);
 
     /* All set! */
@@ -464,16 +470,17 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
         /* Do not allocate any GL objects at this point. We will only create GL objects if we
          * are asked to render the preview.
          */
-        new_instance->context                        = context;
-        new_instance->data_bo_id                     = 0;
-        new_instance->data_bo_size                   = 0;
-        new_instance->data_bo_start_offset           = -1;
-        new_instance->data_n_meshes                  = 0;
-        new_instance->owner                          = owner;
-        new_instance->preview_program                = NULL;
-        new_instance->preview_program_model_location = -1;
-        new_instance->preview_program_vp_location    = -1;
-        new_instance->scene                          = scene;
+        new_instance->context                         = context;
+        new_instance->data_bo_id                      = 0;
+        new_instance->data_bo_size                    = 0;
+        new_instance->data_bo_start_offset            = -1;
+        new_instance->data_n_meshes                   = 0;
+        new_instance->owner                           = owner;
+        new_instance->preview_program                 = NULL;
+        new_instance->preview_program_data_ub         = NULL;
+        new_instance->preview_program_ub_offset_model = -1;
+        new_instance->preview_program_ub_offset_vp    = -1;
+        new_instance->scene                           = scene;
 
         ogl_context_get_property(new_instance->context,
                                  OGL_CONTEXT_PROPERTY_BUFFERS,
@@ -494,17 +501,16 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_instance->pGLBindBuffer              = entry_points->pGLBindBuffer;
-            new_instance->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
-            new_instance->pGLBindVertexArray         = entry_points->pGLBindVertexArray;
-            new_instance->pGLBufferSubData           = entry_points->pGLBufferSubData;
-            new_instance->pGLDeleteVertexArrays      = entry_points->pGLDeleteVertexArrays;
-            new_instance->pGLDrawArrays              = entry_points->pGLDrawArrays;
-            new_instance->pGLGenBuffers              = entry_points->pGLGenBuffers;
-            new_instance->pGLGenVertexArrays         = entry_points->pGLGenVertexArrays;
-            new_instance->pGLProgramUniformMatrix4fv = entry_points->pGLProgramUniformMatrix4fv;
-            new_instance->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
-            new_instance->pGLUseProgram              = entry_points->pGLUseProgram;
+            new_instance->pGLBindBuffer          = entry_points->pGLBindBuffer;
+            new_instance->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_instance->pGLBindVertexArray     = entry_points->pGLBindVertexArray;
+            new_instance->pGLBufferSubData       = entry_points->pGLBufferSubData;
+            new_instance->pGLDeleteVertexArrays  = entry_points->pGLDeleteVertexArrays;
+            new_instance->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_instance->pGLGenBuffers          = entry_points->pGLGenBuffers;
+            new_instance->pGLGenVertexArrays     = entry_points->pGLGenVertexArrays;
+            new_instance->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_instance->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -517,17 +523,16 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_instance->pGLBindBuffer              = entry_points->pGLBindBuffer;
-            new_instance->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
-            new_instance->pGLBindVertexArray         = entry_points->pGLBindVertexArray;
-            new_instance->pGLBufferSubData           = entry_points->pGLBufferSubData;
-            new_instance->pGLDeleteVertexArrays      = entry_points->pGLDeleteVertexArrays;
-            new_instance->pGLDrawArrays              = entry_points->pGLDrawArrays;
-            new_instance->pGLGenBuffers              = entry_points->pGLGenBuffers;
-            new_instance->pGLGenVertexArrays         = entry_points->pGLGenVertexArrays;
-            new_instance->pGLProgramUniformMatrix4fv = entry_points->pGLProgramUniformMatrix4fv;
-            new_instance->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
-            new_instance->pGLUseProgram              = entry_points->pGLUseProgram;
+            new_instance->pGLBindBuffer          = entry_points->pGLBindBuffer;
+            new_instance->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_instance->pGLBindVertexArray     = entry_points->pGLBindVertexArray;
+            new_instance->pGLBufferSubData       = entry_points->pGLBufferSubData;
+            new_instance->pGLDeleteVertexArrays  = entry_points->pGLDeleteVertexArrays;
+            new_instance->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_instance->pGLGenBuffers          = entry_points->pGLGenBuffers;
+            new_instance->pGLGenVertexArrays     = entry_points->pGLGenVertexArrays;
+            new_instance->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_instance->pGLUseProgram          = entry_points->pGLUseProgram;
         }
 
         /* Wrap up */
@@ -578,11 +583,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_render(__in _
     /* NOTE: model may be null at this point if the item was culled out. */
     if (model != NULL)
     {
-        preview_ptr->pGLProgramUniformMatrix4fv(program_id,
-                                                preview_ptr->preview_program_model_location,
-                                                1, /* count */
-                                                GL_TRUE,
-                                                system_matrix4x4_get_row_major_data(model) );
+        ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_data_ub,
+                                                    preview_ptr->preview_program_ub_offset_model,
+                                                    system_matrix4x4_get_row_major_data(model),
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) * 16);
+
+        ogl_program_ub_sync(preview_ptr->preview_program_data_ub);
 
         preview_ptr->pGLDrawArrays(GL_POINTS,
                                    mesh_id, /* first */
@@ -619,12 +626,13 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_bbox_preview_start(__in __
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
                             &vao_id);
 
-    preview_ptr->pGLUseProgram             (program_id);
-    preview_ptr->pGLProgramUniformMatrix4fv(program_id,
-                                            preview_ptr->preview_program_vp_location,
-                                            1, /* count */
-                                            GL_TRUE,
-                                            system_matrix4x4_get_row_major_data(vp) );
+    preview_ptr->pGLUseProgram(program_id);
+
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_data_ub,
+                                                preview_ptr->preview_program_ub_offset_vp,
+                                                system_matrix4x4_get_row_major_data(vp),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
 
     preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
                                     0, /* index */
