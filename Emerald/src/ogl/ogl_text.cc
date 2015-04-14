@@ -651,6 +651,14 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
                                              _global.draw_text_program_ub_vsdata_index,
                                              _global.draw_text_program_ub_vsdata_index);
+
+            /* Set up samplers */
+            text_ptr->pGLProgramUniform1i(ogl_program_get_id(_global.draw_text_program),
+                                          _global.draw_text_fragment_shader_font_table_location,
+                                          1);
+            text_ptr->pGLProgramUniform1i(ogl_program_get_id(_global.draw_text_program),
+                                          _global.draw_text_vertex_shader_data_location,
+                                          0);
         }
 
         ++_n_global_owners;
@@ -886,14 +894,6 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
                     text_ptr->gl_pGLBindTexture(GL_TEXTURE_2D,
                                                 _global.font_tables[text_ptr->font_table].to);
                 }
-
-                /* Update sampler texture units. */
-                text_ptr->pGLProgramUniform1i(program_id,
-                                              _global.draw_text_fragment_shader_font_table_location,
-                                              1);
-                text_ptr->pGLProgramUniform1i(program_id,
-                                              _global.draw_text_vertex_shader_data_location,
-                                              0);
 
                 /* Draw! */
                 text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
