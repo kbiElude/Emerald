@@ -628,6 +628,7 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
                                        1, /* alignment_requirement */
                                        OGL_BUFFERS_MAPPABILITY_NONE,
                                        OGL_BUFFERS_USAGE_VBO,
+                                       OGL_BUFFERS_FLAGS_NONE,
                                       &mesh_ptr->gl_bo_id,
                                       &mesh_ptr->gl_bo_start_offset);
 

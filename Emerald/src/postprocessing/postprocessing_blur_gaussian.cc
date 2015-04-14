@@ -582,19 +582,33 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         } /* for (all tap datasets) */
     } /* for (both iterations) */
 
-    /* Set up the BOs */
+    /* Set up the BOs.
+     *
+     * NOTE: The other data BO must not come from sparse buffers under NV drivers. Please see GitHub#61
+     *       for more details. May be worth revisiting in the future.
+     */
+    bool is_nv_driver = false;
+
+    ogl_context_get_property(instance_ptr->context,
+                             OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
+                            &is_nv_driver);
+
     ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
                                        final_data_bo_size,
                                        limits_ptr->uniform_buffer_offset_alignment, /* alignment_requirement */
                                        OGL_BUFFERS_MAPPABILITY_NONE,
                                        OGL_BUFFERS_USAGE_UBO,
+                                       OGL_BUFFERS_FLAGS_NONE,
                                       &instance_ptr->coeff_bo_id,
                                       &instance_ptr->coeff_bo_start_offset);
+
     ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
                                        sizeof(int) * 3,                             /* other data = three integers */
                                        limits_ptr->uniform_buffer_offset_alignment, /* alignment_requirement */
                                        OGL_BUFFERS_MAPPABILITY_NONE,
                                        OGL_BUFFERS_USAGE_UBO,
+                                       (is_nv_driver) ? OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT :
+                                                        OGL_BUFFERS_FLAGS_NONE,
                                       &instance_ptr->other_data_bo_id,
                                       &instance_ptr->other_data_bo_start_offset);
 
@@ -1114,7 +1128,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                                         OTHER_DATA_UB_BP,
                                         blur_ptr->other_data_bo_id,
                                         blur_ptr->other_data_bo_start_offset,
-                                        sizeof(int) * 3 );
+                                        sizeof(int) * 3);
 
     for (unsigned int n_layer = 0;
                       n_layer < n_layers;

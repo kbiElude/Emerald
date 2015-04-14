@@ -406,6 +406,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
                                        uniform_buffer_offset_alignment,
                                        OGL_BUFFERS_MAPPABILITY_NONE,
                                        OGL_BUFFERS_USAGE_UBO,
+                                       OGL_BUFFERS_FLAGS_NONE,
                                       &preview_ptr->data_bo_id,
                                       &preview_ptr->data_bo_start_offset);
 

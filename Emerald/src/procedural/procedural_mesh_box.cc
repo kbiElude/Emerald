@@ -462,6 +462,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                                                1,                                      /* alignment_requirement */
                                                OGL_BUFFERS_MAPPABILITY_NONE,
                                                OGL_BUFFERS_USAGE_VBO,
+                                               OGL_BUFFERS_FLAGS_NONE,
                                               &mesh_box->arrays_bo_id,
                                               &mesh_box->arrays_bo_start_offset);
 
@@ -490,6 +491,7 @@ PRIVATE void _procedural_mesh_box_create_renderer_callback(ogl_context context, 
                                            1,                                                           /* alignment_requirement */
                                            OGL_BUFFERS_MAPPABILITY_NONE,
                                            OGL_BUFFERS_USAGE_VBO,
+                                           OGL_BUFFERS_FLAGS_NONE,
                                           &mesh_box->elements_bo_id,
                                           &mesh_box->elements_bo_start_offset);
 

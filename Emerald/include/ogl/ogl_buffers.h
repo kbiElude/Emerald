@@ -53,12 +53,20 @@ typedef enum
     OGL_BUFFERS_USAGE_COUNT
 } _ogl_buffers_usage;
 
+/* The buffer memory can come from a sparse buffer, or an immutable buffer object */
+const unsigned int OGL_BUFFERS_FLAGS_NONE                        = 0;
+/* The buffer memory must come from an immutable buffer object */
+const unsigned int OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT = 1 << 0;
+/* TODO: The buffer memory must come from a sparse buffer object */
+
+
 /** TODO */
 PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_buffers              buffers,
                                                            __in            unsigned int             size,
                                                            __in            unsigned int             alignment_requirement,
                                                            __in            _ogl_buffers_mappability mappability,
                                                            __in            _ogl_buffers_usage       usage,
+                                                           __in            int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
                                                            __out __notnull unsigned int*            out_bo_id_ptr,
                                                            __out __notnull unsigned int*            out_bo_offset_ptr);
 

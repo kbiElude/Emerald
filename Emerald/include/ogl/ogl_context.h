@@ -102,6 +102,11 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_info* */
     OGL_CONTEXT_PROPERTY_INFO,
 
+    /* not setatble, bool.
+     *
+     * True if the platform is using NVIDIA drivers, false otheriwse */
+    OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
+
     /* not settable, ogl_context_limits* */
     OGL_CONTEXT_PROPERTY_LIMITS,
 

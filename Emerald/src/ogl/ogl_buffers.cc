@@ -525,18 +525,21 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                            __in            unsigned int             alignment_requirement,
                                                            __in            _ogl_buffers_mappability mappability,
                                                            __in            _ogl_buffers_usage       usage,
+                                                           __in            int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
                                                            __out __notnull unsigned int*            out_bo_id_ptr,
                                                            __out __notnull unsigned int*            out_bo_offset_ptr)
 {
-    _ogl_buffers_buffer* buffer_ptr    = NULL;
-    _ogl_buffers*        buffers_ptr   = (_ogl_buffers*) buffers;
-    bool                 result        = false;
-    unsigned int         result_id     = 0;
-    unsigned int         result_offset = -1;
+    _ogl_buffers_buffer* buffer_ptr                 = NULL;
+    _ogl_buffers*        buffers_ptr                = (_ogl_buffers*) buffers;
+    const bool           must_be_immutable_bo_based = (flags & OGL_BUFFERS_FLAGS_IMMUTABLE_BUFFER_MEMORY_BIT) != 0;
+    bool                 result                     = false;
+    unsigned int         result_id                  = 0;
+    unsigned int         result_offset              = -1;
 
     /* Check the sparse buffers first, if these are supported and no mappability
      * was requested. */
     if (buffers_ptr->are_sparse_buffers_in                                 &&
+       !must_be_immutable_bo_based                                         &&
         mappability                        == OGL_BUFFERS_MAPPABILITY_NONE)
     {
         /* Try to find a suitable sparse buffer */
@@ -608,7 +611,7 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                   "Falling back to immutable buffer objects");
             }
         } /* if (!result) */
-    } /* if (buffers_ptr->are_sparse_buffers_in) */
+    } /* if (can use a sparse buffer) */
 
     if (!result)
     {

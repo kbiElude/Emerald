@@ -686,6 +686,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
                                            1, /* alignment_requirement */
                                            OGL_BUFFERS_MAPPABILITY_NONE,
                                            OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                           OGL_BUFFERS_FLAGS_NONE,
                                           &preview_ptr->data_bo_id,
                                           &preview_ptr->data_bo_start_offset);
 

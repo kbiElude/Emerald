@@ -344,6 +344,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
                                                                text_ptr->texture_buffer_offset_alignment,
                                                                OGL_BUFFERS_MAPPABILITY_NONE,
                                                                OGL_BUFFERS_USAGE_MISCELLANEOUS,
+                                                               OGL_BUFFERS_FLAGS_NONE,
                                                               &text_ptr->data_buffer_id,
                                                               &text_ptr->data_buffer_offset);
 

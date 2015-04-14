@@ -44,6 +44,7 @@ typedef struct
 {
     ogl_context_type            context_type;
     HDC                         device_context_handle;
+    bool                        is_nv_driver;
     HMODULE                     opengl32_dll_handle;
     ogl_pixel_format_descriptor pfd;
     HGLRC                       wgl_rendering_context;
@@ -2564,6 +2565,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->pWGLSwapIntervalEXT                        = NULL;
 
                             _result->buffers                                    = NULL;
+                            _result->is_nv_driver                               = false; /* determined later */
                             _result->primitive_renderer                         = NULL;
                             _result->materials                                  = NULL; /* deferred till first query time */
                             _result->opengl32_dll_handle                        = NULL;
@@ -2793,6 +2795,13 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                      _result->info.shading_language_version,
                                      _result->info.vendor,
                                      _result->info.version);
+
+                            /* Is this a NV driver? */
+                            if (strstr((const char*) _result->info.vendor,
+                                       "NV") != NULL)
+                            {
+                                _result->is_nv_driver = true;
+                            }
                         }
                     }
                 }
@@ -2972,6 +2981,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
         case OGL_CONTEXT_PROPERTY_INFO:
         {
             *((const ogl_context_gl_info**) out_result) = &context_ptr->info;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_IS_NV_DRIVER:
+        {
+            *(bool*) out_result = context_ptr->is_nv_driver;
 
             break;
         }

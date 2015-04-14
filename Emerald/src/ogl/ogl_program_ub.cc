@@ -402,6 +402,7 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
                                            uniform_buffer_offset_alignment,
                                            OGL_BUFFERS_MAPPABILITY_NONE,
                                            OGL_BUFFERS_USAGE_UBO,
+                                           OGL_BUFFERS_FLAGS_NONE,
                                           &ub_ptr->block_bo_id,
                                           &ub_ptr->block_bo_start_offset);
 

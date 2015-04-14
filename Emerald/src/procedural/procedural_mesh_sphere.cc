@@ -185,6 +185,7 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
                                                limits_ptr->texture_buffer_offset_alignment, /* this BO may be used as TBO */
                                                OGL_BUFFERS_MAPPABILITY_NONE,
                                                OGL_BUFFERS_USAGE_VBO,
+                                               OGL_BUFFERS_FLAGS_NONE,
                                                &mesh_sphere->arrays_bo_id,
                                                &mesh_sphere->arrays_bo_start_offset);
 
