@@ -589,9 +589,12 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
      */
     bool is_nv_driver = false;
 
+    /* We're on a debugging branch, so disable the work-around. */
+#if 0
     ogl_context_get_property(instance_ptr->context,
                              OGL_CONTEXT_PROPERTY_IS_NV_DRIVER,
                             &is_nv_driver);
+#endif
 
     ogl_buffers_allocate_buffer_memory(instance_ptr->buffers,
                                        final_data_bo_size,
