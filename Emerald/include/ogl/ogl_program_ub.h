@@ -69,6 +69,15 @@ PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    
 PUBLIC void ogl_program_ub_release(__in __notnull ogl_program_ub ub);
 
 /** TODO */
+PUBLIC EMERALD_API void ogl_program_ub_set_arrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
+                                                                 __in                                 GLuint         ub_uniform_offset,
+                                                                 __in_ecount(src_data_size) __notnull const void*    src_data,
+                                                                 __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
+                                                                 __in                                 unsigned int   src_data_size,
+                                                                 __in                                 unsigned int   dst_array_start_index,
+                                                                 __in                                 unsigned int   dst_array_item_count);
+
+/** TODO */
 PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
                                                                     __in                                 GLuint         ub_uniform_offset,
                                                                     __in_ecount(src_data_size) __notnull const void*    src_data,

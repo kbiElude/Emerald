@@ -133,7 +133,8 @@ typedef struct _ogl_program_ub
 
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_ub_get_expected_src_data_size(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr)
+PRIVATE unsigned int _ogl_program_ub_get_expected_src_data_size(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr,
+                                                                __in           unsigned int                          n_array_items)
 {
     unsigned int result = 0;
 
@@ -173,7 +174,7 @@ PRIVATE unsigned int _ogl_program_ub_get_expected_src_data_size(__in __notnull c
         }
     } /* switch (uniform_ptr->type) */
 
-    result *= uniform_ptr->size;
+    result *= n_array_items;
 
     /* All done */
     return result;
@@ -512,6 +513,254 @@ PRIVATE bool _ogl_program_ub_is_matrix_uniform(__in __notnull const ogl_program_
     return result;
 }
 
+/** TODO */
+PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notnull ogl_program_ub ub,
+                                               __in                                 GLuint         ub_uniform_offset,
+                                               __in_ecount(src_data_size) __notnull const void*    src_data,
+                                               __in                                 int            src_data_flags,
+                                               __in                                 unsigned int   src_data_size,
+                                               __in                                 unsigned int   dst_array_start_index,
+                                               __in                                 unsigned int   dst_array_item_count)
+{
+    _ogl_program_ub* ub_ptr = (_ogl_program_ub*) ub;
+
+    /* Sanity checks */
+    ASSERT_DEBUG_SYNC(ub_ptr != NULL,
+                      "Input UB is NULL - crash ahead.");
+
+    ASSERT_DEBUG_SYNC(ub_uniform_offset < (GLuint) ub_ptr->block_data_size,
+                      "Input UB uniform offset [%d] is larger than the preallocated UB data buffer! (size:%d)",
+                      ub_uniform_offset,
+                      ub_ptr->block_data_size);
+
+    if (!ub_ptr->syncable)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Uniform block at index [%d] has not been initialized in synchronizable mode.",
+                          ub_ptr->index);
+
+        goto end;
+    }
+
+    /* Retrieve uniform descriptor */
+    const ogl_program_uniform_descriptor* uniform_ptr = NULL;
+
+    if (!system_hash64map_get(ub_ptr->offset_to_uniform_descriptor_map,
+                              (system_hash64) ub_uniform_offset,
+                             &uniform_ptr) )
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Unrecognized uniform offset [%d].",
+                          ub_uniform_offset);
+
+        goto end;
+    }
+
+    /* Some further sanity checks.. */
+    ASSERT_DEBUG_SYNC((dst_array_start_index == 0 || dst_array_item_count == 1) && uniform_ptr->size == 1                                             ||
+                       dst_array_start_index >= 0 && dst_array_item_count >= 1  && (dst_array_start_index + dst_array_item_count <= uniform_ptr->size),
+                      "Invalid dst array start index or dst array item count.");
+
+    ASSERT_DEBUG_SYNC(uniform_ptr->ub_offset != -1,
+                      "Uniform offset is -1");
+
+    ASSERT_DEBUG_SYNC(uniform_ptr->size == 1                                       ||
+                      uniform_ptr->size != 1 && uniform_ptr->ub_array_stride != -1,
+                      "Uniform's array stride is -1 but the uniform is an array.");
+
+    /* Check if src_data_size is correct */
+    #ifdef _DEBUG
+    {
+        const unsigned int expected_src_data_size = _ogl_program_ub_get_expected_src_data_size(uniform_ptr,
+                                                                                               dst_array_item_count);
+
+        if (src_data_size != expected_src_data_size)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Number of bytes storing source data [%d] is not equal to the expected storage size [%d] for uniform at UB offset [%d]",
+                              src_data_size,
+                              expected_src_data_size,
+                              ub_uniform_offset);
+
+            goto end;
+        } /* if (src_data_size != expected_src_data_size) */
+    }
+    #endif
+
+    /* Proceed with updating the internal cache */
+    const bool   is_uniform_matrix     = _ogl_program_ub_is_matrix_uniform(uniform_ptr);
+    unsigned int modified_region_end   = DIRTY_OFFSET_UNUSED;
+    unsigned int modified_region_start = DIRTY_OFFSET_UNUSED;
+
+          unsigned char* dst_traveller_ptr = ub_ptr->block_data + uniform_ptr->ub_offset                                                       +
+                                             ((uniform_ptr->ub_array_stride != -1) ? uniform_ptr->ub_array_stride : 0) * dst_array_start_index;
+    const unsigned char* src_traveller_ptr = (const unsigned char*) src_data;
+
+    if (is_uniform_matrix)
+    {
+        /* Matrix uniforms, yay */
+        ASSERT_DEBUG_SYNC(src_data_flags == 0,
+                          "TODO: transposed matrix data setting");
+
+        if (_ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride)
+        {
+            /* NOTE: The following code may seem redundant but will be useful for code maintainability
+             *       when we introduce transposed data support. */
+            if (uniform_ptr->is_row_major_matrix)
+            {
+                /* Need to copy the data row-by-row */
+                const unsigned int n_matrix_rows = _ogl_program_ub_get_n_matrix_rows(uniform_ptr);
+                const unsigned int row_data_size = n_matrix_rows * sizeof(float);
+
+                for (unsigned int n_row = 0;
+                                  n_row < n_matrix_rows;
+                                ++n_row)
+                {
+                    /* TODO: Consider doing epsilon-based comparisons here */
+                    if (memcmp(dst_traveller_ptr,
+                               src_traveller_ptr,
+                               row_data_size) != 0)
+                    {
+                        memcpy(dst_traveller_ptr,
+                               src_traveller_ptr,
+                               row_data_size);
+
+                        if (modified_region_start == DIRTY_OFFSET_UNUSED)
+                        {
+                            modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
+                        }
+
+                        modified_region_end = dst_traveller_ptr - (ub_ptr->block_data + row_data_size);
+                    }
+
+                    dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
+                    src_traveller_ptr += row_data_size;
+                } /* for (all matrix rows) */
+            }
+            else
+            {
+                /* Need to copy the data column-by-column */
+                const unsigned int n_matrix_columns = _ogl_program_ub_get_n_matrix_columns(uniform_ptr);
+                const unsigned int column_data_size = sizeof(float) * n_matrix_columns;
+
+                for (unsigned int n_column = 0;
+                                  n_column < n_matrix_columns;
+                                ++n_column)
+                {
+                    /* TODO: Consider doing epsilon-based comparisons here */
+                    if (memcmp(dst_traveller_ptr,
+                               src_traveller_ptr,
+                               column_data_size) != 0)
+                    {
+                        memcpy(dst_traveller_ptr,
+                               src_traveller_ptr,
+                               column_data_size);
+
+                        if (modified_region_start == DIRTY_OFFSET_UNUSED)
+                        {
+                            modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
+                        }
+
+                        modified_region_end = dst_traveller_ptr - (ub_ptr->block_data + column_data_size);
+                    }
+
+                    dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
+                    src_traveller_ptr += column_data_size;
+                } /* for (all matrix columns) */
+            }
+        } /* if (_ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride) */
+        else
+        {
+            /* Good to use the good old memcpy(), since the data is laid out linearly
+             * without any padding in-between.
+             *
+             * TODO: Consider doing epsilon-based comparisons here */
+            if (memcmp(dst_traveller_ptr,
+                       src_traveller_ptr,
+                       src_data_size) != 0)
+            {
+                memcpy(dst_traveller_ptr,
+                       src_traveller_ptr,
+                       src_data_size);
+
+                modified_region_start = dst_traveller_ptr     - ub_ptr->block_data;
+                modified_region_end   = modified_region_start + src_data_size;
+            }
+        }
+    } /* if (is_uniform_matrix) */
+    else
+    {
+        /* Non-matrix uniforms */
+        ASSERT_DEBUG_SYNC(src_data_flags == 0,
+                          "Flags != 0 but the target uniform is not a matrix.");
+
+        if (uniform_ptr->ub_array_stride != 0  && /* no padding             */
+            uniform_ptr->ub_array_stride != -1)   /* not an arrayed uniform */
+        {
+            const unsigned int src_single_item_size = _ogl_program_ub_get_expected_src_data_size(uniform_ptr,
+                                                                                                 1);         /* n_array_items */
+
+            /* Not good, need to take the padding into account.. */
+            for (unsigned int n_item = 0;
+                              n_item < dst_array_item_count;
+                            ++n_item)
+            {
+                if (memcmp(dst_traveller_ptr,
+                           src_traveller_ptr,
+                           src_single_item_size) != 0)
+                {
+                    memcpy(dst_traveller_ptr,
+                           src_traveller_ptr,
+                           src_single_item_size);
+                }
+
+                dst_traveller_ptr += uniform_ptr->ub_array_stride;
+                src_traveller_ptr += src_single_item_size;
+            } /* for (all array items) */
+        }
+        else
+        {
+            /* Not an array! We can again go away with a single memcpy */
+            if (memcmp(dst_traveller_ptr,
+                       src_traveller_ptr,
+                       src_data_size) != 0)
+            {
+                memcpy(dst_traveller_ptr,
+                       src_traveller_ptr,
+                       src_data_size);
+
+                modified_region_start = dst_traveller_ptr     - ub_ptr->block_data;
+                modified_region_end   = modified_region_start + src_data_size;
+            }
+        }
+    }
+
+    /* Update the dirty region delimiters if needed */
+    ASSERT_DEBUG_SYNC(modified_region_start == DIRTY_OFFSET_UNUSED && modified_region_end == DIRTY_OFFSET_UNUSED ||
+                      modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED,
+                      "Sanity check failed.");
+
+    if (modified_region_start != DIRTY_OFFSET_UNUSED &&
+        modified_region_end   != DIRTY_OFFSET_UNUSED)
+    {
+        if (ub_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED        ||
+            modified_region_start      <  ub_ptr->dirty_offset_start)
+        {
+            ub_ptr->dirty_offset_start = modified_region_start;
+        }
+
+        if (ub_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED ||
+            modified_region_end      >  ub_ptr->dirty_offset_end)
+        {
+            ub_ptr->dirty_offset_end = modified_region_end;
+        }
+    } /* if (modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED) */
+
+    /* All done */
+end:
+    ;
+}
+
 
 /** Please see header for spec */
 PUBLIC ogl_program_ub ogl_program_ub_create(__in __notnull ogl_context               context,
@@ -611,196 +860,38 @@ PUBLIC void ogl_program_ub_release(__in __notnull ogl_program_ub ub)
     delete (_ogl_program_ub*) ub;
 }
 
-/** Please see header for spec */
+/* Please see header for spec */
+PUBLIC EMERALD_API void ogl_program_ub_set_arrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
+                                                                 __in                                 GLuint         ub_uniform_offset,
+                                                                 __in_ecount(src_data_size) __notnull const void*    src_data,
+                                                                 __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
+                                                                 __in                                 unsigned int   src_data_size,
+                                                                 __in                                 unsigned int   dst_array_start_index,
+                                                                 __in                                 unsigned int   dst_array_item_count)
+{
+    _ogl_program_ub_set_uniform_value(ub,
+                                      ub_uniform_offset,
+                                      src_data,
+                                      src_data_flags,
+                                      src_data_size,
+                                      dst_array_start_index,
+                                      dst_array_item_count);
+}
+
+/* Please see header for spec */
 PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in                       __notnull ogl_program_ub ub,
                                                                     __in                                 GLuint         ub_uniform_offset,
                                                                     __in_ecount(src_data_size) __notnull const void*    src_data,
-                                                                    __in                                 int            src_data_flags,
+                                                                    __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
                                                                     __in                                 unsigned int   src_data_size)
 {
-    _ogl_program_ub* ub_ptr = (_ogl_program_ub*) ub;
-
-    /* Sanity checks */
-    ASSERT_DEBUG_SYNC(ub_ptr != NULL,
-                      "Input UB is NULL - crash ahead.");
-
-    ASSERT_DEBUG_SYNC(ub_uniform_offset < (GLuint) ub_ptr->block_data_size,
-                      "Input UB uniform offset [%d] is larger than the preallocated UB data buffer! (size:%d)",
-                      ub_uniform_offset,
-                      ub_ptr->block_data_size);
-
-    if (!ub_ptr->syncable)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Uniform block at index [%d] has not been initialized in synchronizable mode.",
-                          ub_ptr->index);
-
-        goto end;
-    }
-
-    /* Retrieve uniform descriptor */
-    const ogl_program_uniform_descriptor* uniform_ptr = NULL;
-
-    if (!system_hash64map_get(ub_ptr->offset_to_uniform_descriptor_map,
-                              (system_hash64) ub_uniform_offset,
-                             &uniform_ptr) )
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Unrecognized uniform offset [%d].",
-                          ub_uniform_offset);
-
-        goto end;
-    }
-
-    /* Some further sanity checks.. */
-    ASSERT_DEBUG_SYNC(uniform_ptr->ub_offset != -1,
-                      "Uniform offset is -1");
-
-    ASSERT_DEBUG_SYNC(uniform_ptr->size == 1,
-                      "Uniform at a specified offset [%d] is arrayed but non-arrayed setter was called.",
-                      ub_uniform_offset);
-
-    /* Check if src_data_size is correct */
-    #ifdef _DEBUG
-    {
-        const unsigned int expected_src_data_size = _ogl_program_ub_get_expected_src_data_size(uniform_ptr);
-
-        if (src_data_size != expected_src_data_size)
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Number of bytes storing source data [%d] is not equal to the expected storage size [%d] for uniform at UB offset [%d]",
-                              src_data_size,
-                              expected_src_data_size,
-                              ub_uniform_offset);
-
-            goto end;
-        } /* if (src_data_size != expected_src_data_size) */
-    }
-    #endif
-
-    /* Proceed with updating the internal cache */
-    const bool   is_uniform_matrix     = _ogl_program_ub_is_matrix_uniform(uniform_ptr);
-    unsigned int modified_region_end   = DIRTY_OFFSET_UNUSED;
-    unsigned int modified_region_start = DIRTY_OFFSET_UNUSED;
-
-    if (is_uniform_matrix                                                                               &&
-        _ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride)
-    {
-        ASSERT_DEBUG_SYNC(src_data_flags == 0,
-                          "TODO: transposed matrix data setting");
-
-              unsigned char* dst_traveller_ptr = ub_ptr->block_data + uniform_ptr->ub_offset;;
-        const unsigned char* src_traveller_ptr = (const unsigned char*) src_data;
-
-        /* NOTE: The following code may seem redundant but will be useful for code maintainability
-         *       when we introduce transposed data support. */
-        if (uniform_ptr->is_row_major_matrix)
-        {
-            /* Need to copy the data row-by-row */
-            const unsigned int n_matrix_rows = _ogl_program_ub_get_n_matrix_rows(uniform_ptr);
-            const unsigned int row_data_size = n_matrix_rows * sizeof(float);
-
-            for (unsigned int n_row = 0;
-                              n_row < n_matrix_rows;
-                            ++n_row)
-            {
-                /* TODO: Consider doing epsilon-based comparisons here */
-                if (memcmp(dst_traveller_ptr,
-                           src_traveller_ptr,
-                           row_data_size) != 0)
-                {
-                    memcpy(dst_traveller_ptr,
-                           src_traveller_ptr,
-                           row_data_size);
-
-                    if (modified_region_start == DIRTY_OFFSET_UNUSED)
-                    {
-                        modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
-                    }
-
-                    modified_region_end = dst_traveller_ptr - (ub_ptr->block_data + row_data_size);
-                }
-
-                dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
-                src_traveller_ptr += row_data_size;
-            } /* for (all matrix rows) */
-        }
-        else
-        {
-            /* Need to copy the data column-by-column */
-            const unsigned int n_matrix_columns = _ogl_program_ub_get_n_matrix_columns(uniform_ptr);
-            const unsigned int column_data_size = sizeof(float) * n_matrix_columns;
-
-            for (unsigned int n_column = 0;
-                              n_column < n_matrix_columns;
-                            ++n_column)
-            {
-                /* TODO: Consider doing epsilon-based comparisons here */
-                if (memcmp(dst_traveller_ptr,
-                           src_traveller_ptr,
-                           column_data_size) != 0)
-                {
-                    memcpy(dst_traveller_ptr,
-                           src_traveller_ptr,
-                           column_data_size);
-
-                    if (modified_region_start == DIRTY_OFFSET_UNUSED)
-                    {
-                        modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
-                    }
-
-                    modified_region_end = dst_traveller_ptr - (ub_ptr->block_data + column_data_size);
-                }
-
-                dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
-                src_traveller_ptr += column_data_size;
-            } /* for (all matrix columns) */
-        }
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(src_data_flags == 0,
-                          "Flags != 0 but the target uniform is not a matrix.");
-
-        /* Good to use the good old memcpy() */
-        /* TODO: Consider doing epsilon-based comparisons here */
-        if (memcmp(ub_ptr->block_data + uniform_ptr->ub_offset,
-                   src_data,
-                   src_data_size) != 0)
-        {
-            memcpy(ub_ptr->block_data + uniform_ptr->ub_offset,
-                   src_data,
-                   src_data_size);
-
-            modified_region_start = uniform_ptr->ub_offset;
-            modified_region_end   = uniform_ptr->ub_offset + src_data_size;
-        }
-    }
-
-    /* Update the dirty region delimiters if needed */
-    ASSERT_DEBUG_SYNC(modified_region_start == DIRTY_OFFSET_UNUSED && modified_region_end == DIRTY_OFFSET_UNUSED ||
-                      modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED,
-                      "Sanity check failed.");
-
-    if (modified_region_start != DIRTY_OFFSET_UNUSED &&
-        modified_region_end   != DIRTY_OFFSET_UNUSED)
-    {
-        if (ub_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED        ||
-            modified_region_start      <  ub_ptr->dirty_offset_start)
-        {
-            ub_ptr->dirty_offset_start = modified_region_start;
-        }
-
-        if (ub_ptr->dirty_offset_end == DIRTY_OFFSET_UNUSED ||
-            modified_region_end      >  ub_ptr->dirty_offset_end)
-        {
-            ub_ptr->dirty_offset_end = modified_region_end;
-        }
-    } /* if (modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED) */
-
-    /* All done */
-end:
-    ;
+    _ogl_program_ub_set_uniform_value(ub,
+                                      ub_uniform_offset,
+                                      src_data,
+                                      src_data_flags,
+                                      src_data_size,
+                                      0,  /* dst_array_start */
+                                      1); /* dst_array_item_count */
 }
 
 /* Please see header for spec */

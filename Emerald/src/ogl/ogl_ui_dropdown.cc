@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
@@ -111,28 +112,28 @@ typedef struct
 
     ogl_context               context;
     ogl_program               program;
-    GLint                     program_border_width_uniform_location;
-    GLint                     program_button_start_u_uniform_location;
-    GLint                     program_brightness_uniform_location;
-    GLint                     program_stop_data_uniform_location;
-    GLint                     program_x1y1x2y2_uniform_location;
+    GLint                     program_border_width_ub_offset;
+    GLint                     program_button_start_u_ub_offset;
+    GLint                     program_brightness_ub_offset;
+    GLint                     program_stop_data_ub_offset;
+    ogl_program_ub            program_ub;
 
     ogl_program               program_bg;
-    GLint                     program_bg_border_width_uniform_location;
-    GLint                     program_bg_button_start_uv_uniform_location;
-    GLint                     program_bg_highlighted_v1v2_uniform_location;
-    GLint                     program_bg_selected_v1v2_uniform_location;
-    GLint                     program_bg_x1y1x2y2_uniform_location;
+    GLint                     program_bg_border_width_ub_offset;
+    GLint                     program_bg_button_start_uv_ub_offset;
+    GLint                     program_bg_highlighted_v1v2_ub_offset;
+    GLint                     program_bg_selected_v1v2_ub_offset;
+    ogl_program_ub            program_bg_ub;
 
     ogl_program               program_label_bg;
-    GLint                     program_label_bg_x1y1x2y2_uniform_location;
 
     ogl_program               program_separator;
-    GLint                     program_separator_x1_x2_y_uniform_location;
+    ogl_program_ub            program_separator_ub;
+    GLint                     program_separator_x1_x2_y_ub_offset;
 
     ogl_program               program_slider;
-    GLint                     program_slider_color_uniform_location;
-    GLint                     program_slider_x1y1x2y2_uniform_location;
+    GLint                     program_slider_color_ub_offset;
+    ogl_program_ub            program_slider_ub;
 
     ogl_text_string_id        current_entry_string_id;
     system_resizable_vector   entries;
@@ -149,10 +150,6 @@ typedef struct
     PFNGLDISABLEPROC           pGLDisable;
     PFNGLDRAWARRAYSPROC        pGLDrawArrays;
     PFNGLENABLEPROC            pGLEnable;
-    PFNGLPROGRAMUNIFORM1FPROC  pGLProgramUniform1f;
-    PFNGLPROGRAMUNIFORM2FVPROC pGLProgramUniform2fv;
-    PFNGLPROGRAMUNIFORM3FVPROC pGLProgramUniform3fv;
-    PFNGLPROGRAMUNIFORM4FVPROC pGLProgramUniform4fv;
     PFNGLUSEPROGRAMPROC        pGLUseProgram;
 } _ogl_ui_dropdown;
 
@@ -161,10 +158,14 @@ static const char* ui_dropdown_bg_fragment_shader_body        = "#version 330\n"
                                                                 "\n"
                                                                 "in      vec2 uv;\n"
                                                                 "out     vec3 result;\n"
-                                                                "uniform vec2 border_width;\n"
-                                                                "uniform vec2 button_start_uv;\n"
-                                                                "uniform vec2 highlighted_v1v2;\n"
-                                                                "uniform vec2 selected_v1v2;\n"
+                                                                "\n"
+                                                                "uniform data\n"
+                                                                "{\n"
+                                                                "    vec2 border_width;\n"
+                                                                "    vec2 button_start_uv;\n"
+                                                                "    vec2 highlighted_v1v2;\n"
+                                                                "    vec2 selected_v1v2;\n"
+                                                                "};\n"
                                                                 "\n"
                                                                 "void main()\n"
                                                                 "{\n"
@@ -208,11 +209,14 @@ static const char* ui_dropdown_fragment_shader_body           = "#version 330\n"
                                                                 "\n"
                                                                 "in  vec2 uv;\n"
                                                                 "out vec3 result;\n"
-                                                                /* stop, rgb */
-                                                                "uniform float brightness;\n"
-                                                                "uniform vec2  border_width;\n"
-                                                                "uniform float button_start_u;\n"
-                                                                "uniform vec4  stop_data[4];\n"
+                                                                "\n"
+                                                                "uniform data\n"
+                                                                "{\n"
+                                                                "    float brightness;\n"
+                                                                "    vec2  border_width;\n"
+                                                                "    float button_start_u;\n"
+                                                                "    vec4  stop_data[4];\n"
+                                                                "};\n"
                                                                 "\n"
                                                                 "void main()\n"
                                                                 "{\n"
@@ -247,7 +251,7 @@ static const char* ui_dropdown_label_bg_fragment_shader_body  = "#version 330\n"
 
 static const char* ui_dropdown_separator_fragment_shader_body = "#version 330\n"
                                                                 "\n"
-                                                                "out     vec3 result;\n"
+                                                                "out vec3 result;\n"
                                                                 "\n"
                                                                 "void main()\n"
                                                                 "{\n"
@@ -255,7 +259,10 @@ static const char* ui_dropdown_separator_fragment_shader_body = "#version 330\n"
                                                                 "}";
 static const char* ui_dropdown_separator_vertex_shader_body   = "#version 330\n"
                                                                 "\n"
-                                                                "uniform vec3 x1_x2_y;\n" /* TODO: This could really benefit from an UBO */
+                                                                "uniform data\n"
+                                                                "{\n"
+                                                                "    vec3 x1_x2_y;\n"
+                                                                "};\n"
                                                                 "\n"
                                                                 "void main()\n"
                                                                 "{\n"
@@ -271,8 +278,12 @@ static const char* ui_dropdown_separator_vertex_shader_body   = "#version 330\n"
 static const char* ui_dropdown_slider_fragment_shader_body    = "#version 330\n"
                                                                 "\n"
                                                                 "in      vec2 uv;\n"
-                                                                "uniform vec4 color;\n"
                                                                 "out     vec4 result;\n"
+                                                                "\n"
+                                                                "uniform data\n"
+                                                                "{\n"
+                                                                "    uniform vec4 color;\n"
+                                                                "};\n"
                                                                 "\n"
                                                                 "void main()\n"
                                                                 "{\n"
@@ -397,15 +408,20 @@ PRIVATE void _ogl_ui_dropdown_init_program(__in __notnull ogl_ui            ui,
                                                               system_hashed_ansi_string_create("UI dropdown vertex shader (separator)") );
 
     dropdown_ptr->program_bg        = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("UI dropdown program (bg)") );
+                                                         system_hashed_ansi_string_create("UI dropdown program (bg)"),
+                                                         true); /* use_syncable_ubs */
     dropdown_ptr->program_label_bg  = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("UI dropdown program (label bg)") );
+                                                         system_hashed_ansi_string_create("UI dropdown program (label bg)"),
+                                                         true); /* use_syncable_ubs */
     dropdown_ptr->program_separator = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("UI dropdown program (separator)") );
+                                                         system_hashed_ansi_string_create("UI dropdown program (separator)"),
+                                                         true); /* use_syncable_ubs */
     dropdown_ptr->program_slider    = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("UI dropdown program (slider)") );
+                                                         system_hashed_ansi_string_create("UI dropdown program (slider)"),
+                                                         true); /* use_syncable_ubs */
     dropdown_ptr->program           = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("UI dropdown program") );
+                                                         system_hashed_ansi_string_create("UI dropdown program"),
+                                                         true); /* use_syncable_ubs */
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,
@@ -464,7 +480,7 @@ PRIVATE void _ogl_ui_dropdown_init_program(__in __notnull ogl_ui            ui,
     ogl_program_link(dropdown_ptr->program_separator);
     ogl_program_link(dropdown_ptr->program_slider);
 
-    /* Register the prgorams with UI so following button instances will reuse the program */
+    /* Register the programs with UI so following button instances will reuse the program */
     ogl_ui_register_program(ui,
                             ui_dropdown_program_name,
                             dropdown_ptr->program);
@@ -520,6 +536,26 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     border_width   [0] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [2] - dropdown_ptr->x1y1x2y2     [0]) * window_size[0]);
     border_width   [1] =  1.0f / (float)((dropdown_ptr->x1y1x2y2     [3] - dropdown_ptr->x1y1x2y2     [1]) * window_size[1]);
 
+    /* Retrieve UBOs */
+    ogl_program_get_uniform_block_by_name(dropdown_ptr->program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &dropdown_ptr->program_ub);
+    ogl_program_get_uniform_block_by_name(dropdown_ptr->program_bg,
+                                          system_hashed_ansi_string_create("data"),
+                                         &dropdown_ptr->program_bg_ub);
+    ogl_program_get_uniform_block_by_name(dropdown_ptr->program_separator,
+                                          system_hashed_ansi_string_create("data"),
+                                         &dropdown_ptr->program_separator_ub);
+    ogl_program_get_uniform_block_by_name(dropdown_ptr->program_slider,
+                                          system_hashed_ansi_string_create("data"),
+                                         &dropdown_ptr->program_slider_ub);
+
+    ASSERT_DEBUG_SYNC(dropdown_ptr->program_bg_ub        != NULL &&
+                      dropdown_ptr->program_separator_ub != NULL &&
+                      dropdown_ptr->program_slider_ub    != NULL &&
+                      dropdown_ptr->program_ub           != NULL,
+                      "Returned program UB instances are NULL");
+
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform      = NULL;
     const ogl_program_uniform_descriptor* border_width_bg_uniform   = NULL;
@@ -530,10 +566,6 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     const ogl_program_uniform_descriptor* highlighted_v1v2_uniform  = NULL;
     const ogl_program_uniform_descriptor* selected_v1v2_uniform     = NULL;
     const ogl_program_uniform_descriptor* stop_data_uniform         = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_bg_uniform       = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_label_bg_uniform = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_slider_uniform   = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_uniform          = NULL;
     const ogl_program_uniform_descriptor* x1_x2_y_uniform           = NULL;
 
     ogl_program_get_uniform_by_name(dropdown_ptr->program,
@@ -563,36 +595,20 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     ogl_program_get_uniform_by_name(dropdown_ptr->program,
                                     system_hashed_ansi_string_create("stop_data[0]"),
                                    &stop_data_uniform);
-    ogl_program_get_uniform_by_name(dropdown_ptr->program,
-                                    system_hashed_ansi_string_create("x1y1x2y2"),
-                                   &x1y1x2y2_uniform);
-    ogl_program_get_uniform_by_name(dropdown_ptr->program_bg,
-                                    system_hashed_ansi_string_create("x1y1x2y2"),
-                                   &x1y1x2y2_bg_uniform);
-    ogl_program_get_uniform_by_name(dropdown_ptr->program_label_bg,
-                                    system_hashed_ansi_string_create("x1y1x2y2"),
-                                   &x1y1x2y2_label_bg_uniform);
-    ogl_program_get_uniform_by_name(dropdown_ptr->program_slider,
-                                    system_hashed_ansi_string_create("x1y1x2y2"),
-                                   &x1y1x2y2_slider_uniform);
     ogl_program_get_uniform_by_name(dropdown_ptr->program_separator,
                                     system_hashed_ansi_string_create("x1_x2_y"),
                                    &x1_x2_y_uniform);
 
-    dropdown_ptr->program_bg_border_width_uniform_location     = border_width_bg_uniform->location;
-    dropdown_ptr->program_bg_highlighted_v1v2_uniform_location = highlighted_v1v2_uniform->location;
-    dropdown_ptr->program_bg_selected_v1v2_uniform_location    = selected_v1v2_uniform->location;
-    dropdown_ptr->program_bg_x1y1x2y2_uniform_location         = x1y1x2y2_bg_uniform->location;
-    dropdown_ptr->program_border_width_uniform_location        = border_width_uniform->location;
-    dropdown_ptr->program_button_start_u_uniform_location      = button_start_u_uniform->location;
-    dropdown_ptr->program_bg_button_start_uv_uniform_location  = button_start_uv_uniform->location;
-    dropdown_ptr->program_brightness_uniform_location          = brightness_uniform->location;
-    dropdown_ptr->program_label_bg_x1y1x2y2_uniform_location   = x1y1x2y2_label_bg_uniform->location;
-    dropdown_ptr->program_slider_color_uniform_location        = color_uniform->location;
-    dropdown_ptr->program_slider_x1y1x2y2_uniform_location     = x1y1x2y2_slider_uniform->location;
-    dropdown_ptr->program_stop_data_uniform_location           = stop_data_uniform->location;
-    dropdown_ptr->program_x1y1x2y2_uniform_location            = x1y1x2y2_uniform->location;
-    dropdown_ptr->program_separator_x1_x2_y_uniform_location   = x1_x2_y_uniform->location;
+    dropdown_ptr->program_bg_border_width_ub_offset     = border_width_bg_uniform->ub_offset;
+    dropdown_ptr->program_bg_highlighted_v1v2_ub_offset = highlighted_v1v2_uniform->ub_offset;
+    dropdown_ptr->program_bg_selected_v1v2_ub_offset    = selected_v1v2_uniform->ub_offset;
+    dropdown_ptr->program_border_width_ub_offset        = border_width_uniform->ub_offset;
+    dropdown_ptr->program_button_start_u_ub_offset      = button_start_u_uniform->ub_offset;
+    dropdown_ptr->program_bg_button_start_uv_ub_offset  = button_start_uv_uniform->ub_offset;
+    dropdown_ptr->program_brightness_ub_offset          = brightness_uniform->ub_offset;
+    dropdown_ptr->program_slider_color_ub_offset        = color_uniform->ub_offset;
+    dropdown_ptr->program_stop_data_ub_offset           = stop_data_uniform->ub_offset;
+    dropdown_ptr->program_separator_x1_x2_y_ub_offset   = x1_x2_y_uniform->ub_offset;
 
     /* Set them up */
     const float button_start_uv[] =
@@ -601,25 +617,33 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
         1.0f - BUTTON_WIDTH_PX * border_width[1]
     };
 
-    dropdown_ptr->pGLProgramUniform1f (program_id,
-                                       button_start_u_uniform->location,
-                                       button_start_uv[0]);
-    dropdown_ptr->pGLProgramUniform2fv(program_bg_id,
-                                       button_start_uv_uniform->location,
-                                       1,
-                                       button_start_uv);
-    dropdown_ptr->pGLProgramUniform2fv(program_id,
-                                       border_width_uniform->location,
-                                       sizeof(border_width) / sizeof(float) / 2,
-                                       border_width);
-    dropdown_ptr->pGLProgramUniform2fv(program_bg_id,
-                                       border_width_bg_uniform->location,
-                                       sizeof(border_width_bg) / sizeof(float) / 2,
-                                       border_width_bg);
-    dropdown_ptr->pGLProgramUniform4fv(program_id,
-                                       stop_data_uniform->location,
-                                       sizeof(stop_data) / sizeof(float) / 4,
-                                       stop_data);
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_ub,
+                                                button_start_u_uniform->ub_offset,
+                                               &button_start_uv[0],
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_bg_ub,
+                                                button_start_uv_uniform->ub_offset,
+                                                button_start_uv,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_ub,
+                                                border_width_uniform->ub_offset,
+                                                border_width,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_bg_ub,
+                                                border_width_bg_uniform->ub_offset,
+                                                border_width_bg,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
+    ogl_program_ub_set_arrayed_uniform_value   (dropdown_ptr->program_ub,
+                                                stop_data_uniform->ub_offset,
+                                                stop_data,
+                                                0,                /* src_data_flags */
+                                                sizeof(float) * 4 /* vec4 */ * 4 /* array items */,
+                                                0,                /* dst_array_start_index */
+                                                4);               /* dst_array_item_count */
 
     dropdown_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 
@@ -1133,39 +1157,36 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         dropdown_ptr->force_gpu_brightness_update  = false;
     }
 
-    dropdown_ptr->pGLProgramUniform1f(program_id,
-                                      dropdown_ptr->program_brightness_uniform_location,
-                                      brightness * ((dropdown_ptr->is_lbm_on && dropdown_ptr->is_button_lbm) ? CLICK_BRIGHTNESS_MODIFIER : 1)
-                                     );
-    dropdown_ptr->pGLProgramUniform4fv(program_id,
-                                       dropdown_ptr->program_x1y1x2y2_uniform_location,
-                                       sizeof(dropdown_ptr->x1y1x2y2) / sizeof(float) / 4,
-                                       dropdown_ptr->x1y1x2y2);
+    const float new_brightness_uniform_value = brightness * ((dropdown_ptr->is_lbm_on && dropdown_ptr->is_button_lbm) ? CLICK_BRIGHTNESS_MODIFIER : 1);
 
-    dropdown_ptr->pGLProgramUniform2fv(program_bg_id,
-                                       dropdown_ptr->program_bg_highlighted_v1v2_uniform_location,
-                                       1, /* count */
-                                       highlighted_v1v2);
-    dropdown_ptr->pGLProgramUniform2fv(program_bg_id,
-                                       dropdown_ptr->program_bg_selected_v1v2_uniform_location,
-                                       1, /* count */
-                                       selected_v1v2);
-    dropdown_ptr->pGLProgramUniform4fv(program_bg_id,
-                                       dropdown_ptr->program_bg_x1y1x2y2_uniform_location,
-                                       1, /* count */
-                                       dropdown_ptr->drop_x1y2x2y1);
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_ub,
+                                                dropdown_ptr->program_brightness_ub_offset,
+                                               &new_brightness_uniform_value,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
 
-    dropdown_ptr->pGLProgramUniform4fv(program_label_bg_id,
-                                       dropdown_ptr->program_label_bg_x1y1x2y2_uniform_location,
-                                       1, /* count */
-                                       dropdown_ptr->label_bg_x1y1x2y2);
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_bg_ub,
+                                                dropdown_ptr->program_bg_highlighted_v1v2_ub_offset,
+                                                highlighted_v1v2,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
+    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_bg_ub,
+                                                dropdown_ptr->program_bg_selected_v1v2_ub_offset,
+                                                selected_v1v2,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
 
     /* Draw */
     if (dropdown_ptr->is_droparea_visible)
     {
         /* Background first */
         dropdown_ptr->pGLUseProgram(program_bg_id);
-        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+        ogl_program_ub_sync(dropdown_ptr->program_bg_ub);
+
+        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                    0, /* first */
+                                    4);/* count */
 
         /* Follow with separators */
         dropdown_ptr->pGLUseProgram(program_separator_id);
@@ -1179,7 +1200,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
         {
             _ogl_ui_dropdown_entry* entry_ptr = NULL;
 
-            /** TODO: Port to UBOs */
             if (system_resizable_vector_get_element_at(dropdown_ptr->entries,
                                                        n_entry,
                                                       &entry_ptr) )
@@ -1196,13 +1216,18 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                 {
                     x1_x2_y[2] = -1.0f + 2.0f * x1_x2_y[2];
 
-                    dropdown_ptr->pGLProgramUniform3fv(program_separator_id,
-                                                       dropdown_ptr->program_separator_x1_x2_y_uniform_location,
-                                                       1, /* count */
-                                                       x1_x2_y);
-                    dropdown_ptr->pGLDrawArrays       (GL_LINES,
-                                                       0, /* first */
-                                                       2);
+                    ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_separator_ub,
+                                                                dropdown_ptr->program_separator_x1_x2_y_ub_offset,
+                                                                x1_x2_y,
+                                                                0, /* src_data_flags */
+                                                                sizeof(float) * 3);
+
+                    /* TODO: Improve! */
+                    ogl_program_ub_sync(dropdown_ptr->program_separator_ub);
+
+                    dropdown_ptr->pGLDrawArrays(GL_LINES,
+                                                0, /* first */
+                                                2);
                 }
             }
         }
@@ -1224,31 +1249,38 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
             1.0f
         };
 
-        dropdown_ptr->pGLUseProgram       (program_slider_id);
-        dropdown_ptr->pGLProgramUniform4fv(program_slider_id,
-                                           dropdown_ptr->program_slider_color_uniform_location,
-                                           1, /* count */
-                                           slider_color);
-        dropdown_ptr->pGLProgramUniform4fv(program_slider_id,
-                                           dropdown_ptr->program_slider_x1y1x2y2_uniform_location,
-                                           1, /* count */
-                                           slider_x1y1x2y2);
-        dropdown_ptr->pGLDrawArrays       (GL_TRIANGLE_FAN,
-                                           0,
-                                           4);
+        dropdown_ptr->pGLUseProgram(program_slider_id);
+
+        ogl_program_ub_set_nonarrayed_uniform_value(dropdown_ptr->program_slider_ub,
+                                                    dropdown_ptr->program_slider_color_ub_offset,
+                                                    slider_color,
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) * 4);
+
+        ogl_program_ub_sync(dropdown_ptr->program_slider_ub);
+
+        dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                    0,  /* first */
+                                    4); /* count */
     }
 
     /* Draw the bar */
     dropdown_ptr->pGLUseProgram(program_id);
-    dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    ogl_program_ub_sync(dropdown_ptr->program_ub);
+
+    dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                0,  /* first */
+                                4); /* count */
 
     /* Draw the label background */
     dropdown_ptr->pGLEnable(GL_BLEND);
     {
         dropdown_ptr->pGLUseProgram(program_label_bg_id);
+
         dropdown_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                    0,
-                                    4);
+                                    0,  /* first */
+                                    4); /* count */
     }
     dropdown_ptr->pGLDisable(GL_BLEND);
 }
@@ -1423,14 +1455,10 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_dropdown->pGLDisable           = entry_points->pGLDisable;
-            new_dropdown->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_dropdown->pGLEnable            = entry_points->pGLEnable;
-            new_dropdown->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_dropdown->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_dropdown->pGLProgramUniform3fv = entry_points->pGLProgramUniform3fv;
-            new_dropdown->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_dropdown->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_dropdown->pGLDisable    = entry_points->pGLDisable;
+            new_dropdown->pGLDrawArrays = entry_points->pGLDrawArrays;
+            new_dropdown->pGLEnable     = entry_points->pGLEnable;
+            new_dropdown->pGLUseProgram = entry_points->pGLUseProgram;
         }
         else
         {
@@ -1443,14 +1471,10 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_dropdown->pGLDisable           = entry_points->pGLDisable;
-            new_dropdown->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_dropdown->pGLEnable            = entry_points->pGLEnable;
-            new_dropdown->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_dropdown->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_dropdown->pGLProgramUniform3fv = entry_points->pGLProgramUniform3fv;
-            new_dropdown->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_dropdown->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_dropdown->pGLDisable    = entry_points->pGLDisable;
+            new_dropdown->pGLDrawArrays = entry_points->pGLDrawArrays;
+            new_dropdown->pGLEnable     = entry_points->pGLEnable;
+            new_dropdown->pGLUseProgram = entry_points->pGLUseProgram;
         }
 
         /* Initialize entries */
