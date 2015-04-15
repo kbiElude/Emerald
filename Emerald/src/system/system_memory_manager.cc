@@ -162,8 +162,9 @@ typedef struct _system_memory_manager
     }
 } _system_memory_manager;
 
-unsigned int _system_memory_manager::n_alloc_log_serializers = 0;
-
+#ifdef LOG_ALLOC_HISTORY
+    unsigned int _system_memory_manager::n_alloc_log_serializers = 0;
+#endif
 
 /** Please see header for spec */
 PUBLIC EMERALD_API bool system_memory_manager_alloc_block(__in  __notnull system_memory_manager manager,
