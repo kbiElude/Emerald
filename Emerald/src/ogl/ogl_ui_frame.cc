@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
@@ -25,16 +26,21 @@ typedef struct
     bool        visible;
     float       x1y1x2y2[4];
 
-    GLint       program_x1y1x2y2_uniform_location;
+    ogl_program_ub program_ub;
+    GLuint         program_ub_bo_id;
+    GLuint         program_ub_bo_size;
+    GLuint         program_ub_bo_start_offset;
+    GLint          program_x1y1x2y2_ub_offset;
 
     /* Cached func ptrs */
-    PFNGLBLENDEQUATIONPROC     pGLBlendEquation;
-    PFNGLBLENDFUNCPROC         pGLBlendFunc;
-    PFNGLDISABLEPROC           pGLDisable;
-    PFNGLDRAWARRAYSPROC        pGLDrawArrays;
-    PFNGLENABLEPROC            pGLEnable;
-    PFNGLPROGRAMUNIFORM4FVPROC pGLProgramUniform4fv;
-    PFNGLUSEPROGRAMPROC        pGLUseProgram;
+    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
+    PFNGLBLENDEQUATIONPROC       pGLBlendEquation;
+    PFNGLBLENDFUNCPROC           pGLBlendFunc;
+    PFNGLDISABLEPROC             pGLDisable;
+    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
+    PFNGLENABLEPROC              pGLEnable;
+    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
+    PFNGLUSEPROGRAMPROC          pGLUseProgram;
 } _ogl_ui_frame;
 
 /** Internal variables */
@@ -63,7 +69,8 @@ PRIVATE void _ogl_ui_frame_init_program(__in __notnull ogl_ui         ui,
                                                     system_hashed_ansi_string_create("UI frame vertex shader") );
 
     frame_ptr->program = ogl_program_create(context,
-                                            system_hashed_ansi_string_create("UI frame program") );
+                                            system_hashed_ansi_string_create("UI frame program"),
+                                            true); /* use_syncable_ubs */
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,
@@ -111,20 +118,29 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
     /* Update uniforms */
     GLuint program_id = ogl_program_get_id(frame_ptr->program);
 
-    frame_ptr->pGLProgramUniform4fv(program_id,
-                                    frame_ptr->program_x1y1x2y2_uniform_location,
-                                    1,
-                                    frame_ptr->x1y1x2y2);
+    ogl_program_ub_set_nonarrayed_uniform_value(frame_ptr->program_ub,
+                                                frame_ptr->program_x1y1x2y2_ub_offset,
+                                                frame_ptr->x1y1x2y2,
+                                                0, /* src_data-flags */
+                                                sizeof(float) * 4);
 
     /* Draw */
     frame_ptr->pGLBlendEquation(GL_FUNC_ADD);
     frame_ptr->pGLBlendFunc    (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     frame_ptr->pGLEnable       (GL_BLEND);
     {
-        frame_ptr->pGLUseProgram(ogl_program_get_id(frame_ptr->program) );
+        frame_ptr->pGLUseProgram     (ogl_program_get_id(frame_ptr->program) );
+        frame_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                      0, /* index */
+                                      frame_ptr->program_ub_bo_id,
+                                      frame_ptr->program_ub_bo_start_offset,
+                                      frame_ptr->program_ub_bo_size);
+
+        ogl_program_ub_sync(frame_ptr->program_ub);
+
         frame_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                 0,
-                                 4);
+                                 0,  /* first */
+                                 4); /* count */
     }
     frame_ptr->pGLDisable(GL_BLEND);
 }
@@ -210,13 +226,14 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_frame->pGLBlendEquation     = entry_points->pGLBlendEquation;
-            new_frame->pGLBlendFunc         = entry_points->pGLBlendFunc;
-            new_frame->pGLDisable           = entry_points->pGLDisable;
-            new_frame->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_frame->pGLEnable            = entry_points->pGLEnable;
-            new_frame->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_frame->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_frame->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_frame->pGLBlendEquation       = entry_points->pGLBlendEquation;
+            new_frame->pGLBlendFunc           = entry_points->pGLBlendFunc;
+            new_frame->pGLDisable             = entry_points->pGLDisable;
+            new_frame->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_frame->pGLEnable              = entry_points->pGLEnable;
+            new_frame->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_frame->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -229,13 +246,14 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_frame->pGLBlendEquation     = entry_points->pGLBlendEquation;
-            new_frame->pGLBlendFunc         = entry_points->pGLBlendFunc;
-            new_frame->pGLDisable           = entry_points->pGLDisable;
-            new_frame->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_frame->pGLEnable            = entry_points->pGLEnable;
-            new_frame->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_frame->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_frame->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_frame->pGLBlendEquation       = entry_points->pGLBlendEquation;
+            new_frame->pGLBlendFunc           = entry_points->pGLBlendFunc;
+            new_frame->pGLDisable             = entry_points->pGLDisable;
+            new_frame->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_frame->pGLEnable              = entry_points->pGLEnable;
+            new_frame->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_frame->pGLUseProgram          = entry_points->pGLUseProgram;
         }
 
         /* Retrieve the rendering program */
@@ -251,6 +269,29 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                               "Could not initialize frame UI program");
         } /* if (new_button->program == NULL) */
 
+        /* Retrieve the uniform block properties */
+        ogl_program_get_uniform_block_by_name(new_frame->program,
+                                              system_hashed_ansi_string_create("dataVS"),
+                                             &new_frame->program_ub);
+
+        ASSERT_DEBUG_SYNC(new_frame->program_ub != NULL,
+                          "dataVS uniform block descriptor is NULL");
+
+        ogl_program_ub_get_property(new_frame->program_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &new_frame->program_ub_bo_size);
+        ogl_program_ub_get_property(new_frame->program_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &new_frame->program_ub_bo_id);
+        ogl_program_ub_get_property(new_frame->program_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &new_frame->program_ub_bo_start_offset);
+
+        /* Set up UBO bindings */
+        new_frame->pGLUniformBlockBinding(ogl_program_get_id(new_frame->program),
+                                          0,  /* uniformBlockIndex */
+                                          0); /* uniformBlockBinding */
+
         /* Retrieve the uniforms */
         const ogl_program_uniform_descriptor* x1y1x2y2_uniform = NULL;
 
@@ -258,7 +299,7 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                         system_hashed_ansi_string_create("x1y1x2y2"),
                                        &x1y1x2y2_uniform);
 
-        new_frame->program_x1y1x2y2_uniform_location = x1y1x2y2_uniform->location;
+        new_frame->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->ub_offset;
     } /* if (new_frame != NULL) */
 
     return (void*) new_frame;
