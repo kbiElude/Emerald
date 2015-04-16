@@ -630,7 +630,7 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
                             modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
                         }
 
-                        modified_region_end = dst_traveller_ptr - (ub_ptr->block_data + row_data_size);
+                        modified_region_end = dst_traveller_ptr - ub_ptr->block_data + row_data_size;
                     }
 
                     dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
@@ -661,7 +661,7 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
                             modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
                         }
 
-                        modified_region_end = dst_traveller_ptr - (ub_ptr->block_data + column_data_size);
+                        modified_region_end = dst_traveller_ptr - ub_ptr->block_data + column_data_size;
                     }
 
                     dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
@@ -712,6 +712,13 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
                     memcpy(dst_traveller_ptr,
                            src_traveller_ptr,
                            src_single_item_size);
+
+                    if (modified_region_start == DIRTY_OFFSET_UNUSED)
+                    {
+                        modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
+                    }
+
+                    modified_region_end = dst_traveller_ptr - ub_ptr->block_data + src_single_item_size;
                 }
 
                 dst_traveller_ptr += uniform_ptr->ub_array_stride;
@@ -721,6 +728,9 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
         else
         {
             /* Not an array! We can again go away with a single memcpy */
+            ASSERT_DEBUG_SYNC(uniform_ptr->size == 1,
+                              "Sanity check failed");
+
             if (memcmp(dst_traveller_ptr,
                        src_traveller_ptr,
                        src_data_size) != 0)
@@ -743,6 +753,10 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
     if (modified_region_start != DIRTY_OFFSET_UNUSED &&
         modified_region_end   != DIRTY_OFFSET_UNUSED)
     {
+        ASSERT_DEBUG_SYNC(modified_region_start    < ub_ptr->block_data_size &&
+                          (modified_region_end - 1) < ub_ptr->block_data_size,
+                          "Sanity check failed");
+
         if (ub_ptr->dirty_offset_start == DIRTY_OFFSET_UNUSED        ||
             modified_region_start      <  ub_ptr->dirty_offset_start)
         {
@@ -930,9 +944,6 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnul
     }
     else
     {
-        ASSERT_DEBUG_SYNC(ub_ptr->pGLBufferSubData != NULL,
-                          "glBufferSubData() is NULL");
-
         /* Use a rarely used binding point to avoid collisions with existing bindings */
         ub_ptr->pGLBindBuffer   (GL_TRANSFORM_FEEDBACK_BUFFER,
                                  ub_ptr->block_bo_id);

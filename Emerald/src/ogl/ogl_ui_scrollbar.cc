@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
@@ -33,11 +34,15 @@ const  float                     _ui_scrollbar_text_color[]        = {1, 1, 1, 1
 /* Loosely based around concepts described in http://thndl.com/?5 */
 static const char* ui_scrollbar_fragment_shader_body = "#version 330\n"
                                                        "\n"
-                                                       "in      vec2  uv;\n"
-                                                       "out     vec4  result;\n"
-                                                       "uniform vec2  border_width;\n"
-                                                       "uniform float brightness;\n"
-                                                       "uniform bool  is_handle;\n"
+                                                       "in  vec2  uv;\n"
+                                                       "out vec4  result;\n"
+                                                       "\n"
+                                                       "uniform data\n"
+                                                       "{\n"
+                                                       "    vec2  border_width;\n"
+                                                       "    float brightness;\n"
+                                                       "    bool  is_handle;\n"
+                                                       "};\n"
                                                        "\n"
                                                        "void main()\n"
                                                        "{\n"
@@ -73,10 +78,13 @@ typedef struct
     ogl_ui                         ui;
 
     ogl_program                    program_slider;
-    GLint                          program_slider_border_width_uniform_location;
-    GLint                          program_slider_brightness_uniform_location;
-    GLint                          program_slider_is_handle_uniform_location;
-    GLint                          program_slider_x1y1x2y2_uniform_location;
+    GLint                          program_slider_border_width_ub_offset;
+    GLint                          program_slider_brightness_ub_offset;
+    GLint                          program_slider_is_handle_ub_offset;
+    ogl_program_ub                 program_slider_ub;
+    GLint                          program_slider_ub_bo_id;
+    GLuint                         program_slider_ub_bo_size;
+    GLuint                         program_slider_ub_bo_start_offset;
 
     system_variant                 min_value_variant;
     system_variant                 max_value_variant;
@@ -104,16 +112,14 @@ typedef struct
     void*                          set_current_value_ptr_user_arg;
 
     /* Cached func ptrs */
-    PFNGLBLENDEQUATIONPROC     pGLBlendEquation;
-    PFNGLBLENDFUNCPROC         pGLBlendFunc;
-    PFNGLDISABLEPROC           pGLDisable;
-    PFNGLDRAWARRAYSPROC        pGLDrawArrays;
-    PFNGLENABLEPROC            pGLEnable;
-    PFNGLPROGRAMUNIFORM1FPROC  pGLProgramUniform1f;
-    PFNGLPROGRAMUNIFORM1IPROC  pGLProgramUniform1i;
-    PFNGLPROGRAMUNIFORM2FVPROC pGLProgramUniform2fv;
-    PFNGLPROGRAMUNIFORM4FVPROC pGLProgramUniform4fv;
-    PFNGLUSEPROGRAMPROC        pGLUseProgram;
+    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
+    PFNGLBLENDEQUATIONPROC       pGLBlendEquation;
+    PFNGLBLENDFUNCPROC           pGLBlendFunc;
+    PFNGLDISABLEPROC             pGLDisable;
+    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
+    PFNGLENABLEPROC              pGLEnable;
+    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
+    PFNGLUSEPROGRAMPROC          pGLUseProgram;
 } _ogl_ui_scrollbar;
 
 /* Forward declarations */
@@ -134,7 +140,8 @@ PRIVATE void _ogl_ui_scrollbar_init_program(__in __notnull ogl_ui             ui
                                                      system_hashed_ansi_string_create("UI scrollbar slider vertex shader") );
 
     scrollbar_ptr->program_slider = ogl_program_create(context,
-                                                       system_hashed_ansi_string_create("UI scrollbar program") );
+                                                       system_hashed_ansi_string_create("UI scrollbar program"),
+                                                       true); /* use_syncable_ubs */
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,
@@ -152,6 +159,10 @@ PRIVATE void _ogl_ui_scrollbar_init_program(__in __notnull ogl_ui             ui
                               vertex_shader);
 
     ogl_program_link(scrollbar_ptr->program_slider);
+
+    scrollbar_ptr->pGLUniformBlockBinding(ogl_program_get_id(scrollbar_ptr->program_slider),
+                                          0,  /* uniformBlockIndex */
+                                          0); /* uniformBlockBinding */
 
     /* Register the prgoram with UI so following button instances will reuse the program */
     ogl_ui_register_program(ui,
@@ -179,6 +190,24 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                window_size);
 
+    /* Retrieve uniform block descriptor */
+    ogl_program_get_uniform_block_by_name(scrollbar_ptr->program_slider,
+                                          system_hashed_ansi_string_create("data"),
+                                         &scrollbar_ptr->program_slider_ub);
+
+    ASSERT_DEBUG_SYNC(scrollbar_ptr->program_slider_ub != NULL,
+                      "data uniform block descriptor is NULL");
+
+    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &scrollbar_ptr->program_slider_ub_bo_size);
+    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &scrollbar_ptr->program_slider_ub_bo_id);
+    ogl_program_ub_get_property(scrollbar_ptr->program_slider_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &scrollbar_ptr->program_slider_ub_bo_start_offset);
+
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* border_width_uniform = NULL;
     const ogl_program_uniform_descriptor* brightness_uniform   = NULL;
@@ -198,15 +227,16 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
                                     system_hashed_ansi_string_create("x1y1x2y2"),
                                    &x1y1x2y2_uniform);
 
-    scrollbar_ptr->program_slider_border_width_uniform_location = (border_width_uniform != NULL ? border_width_uniform->location : -1);
-    scrollbar_ptr->program_slider_brightness_uniform_location   = (brightness_uniform   != NULL ? brightness_uniform->location   : -1);
-    scrollbar_ptr->program_slider_is_handle_uniform_location    = (is_handle_uniform    != NULL ? is_handle_uniform->location    : -1);
-    scrollbar_ptr->program_slider_x1y1x2y2_uniform_location     = x1y1x2y2_uniform->location;
+    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform != NULL ? border_width_uniform->ub_offset : -1);
+    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform   != NULL ? brightness_uniform->ub_offset   : -1);
+    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform    != NULL ? is_handle_uniform->ub_offset    : -1);
 
     /* Set general uniforms */
-    scrollbar_ptr->pGLProgramUniform1f(program_id,
-                                       scrollbar_ptr->program_slider_brightness_uniform_location,
-                                       scrollbar_ptr->current_gpu_brightness_level);
+    ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub,
+                                                scrollbar_ptr->program_slider_brightness_ub_offset,
+                                               &scrollbar_ptr->current_gpu_brightness_level,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
 }
 
 /** TODO */
@@ -369,56 +399,70 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
     if (scrollbar_ptr->current_gpu_brightness_level != brightness ||
         scrollbar_ptr->force_gpu_brightness_update)
     {
-        scrollbar_ptr->pGLProgramUniform1f(ogl_program_get_id(scrollbar_ptr->program_slider),
-                                           scrollbar_ptr->program_slider_brightness_uniform_location,
-                                           brightness * (scrollbar_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1)
-                                          );
+        const float new_brightness = brightness * (scrollbar_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1);
+
+        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub,
+                                                    scrollbar_ptr->program_slider_brightness_ub_offset,
+                                                   &new_brightness,
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) );
 
         scrollbar_ptr->current_gpu_brightness_level = brightness;
         scrollbar_ptr->force_gpu_brightness_update  = false;
     }
 
-    scrollbar_ptr->pGLDisable      (GL_DEPTH_TEST);
-    scrollbar_ptr->pGLEnable       (GL_BLEND);
-    scrollbar_ptr->pGLBlendEquation(GL_FUNC_ADD);
-    scrollbar_ptr->pGLBlendFunc    (GL_SRC_ALPHA,
-                                    GL_ONE_MINUS_SRC_ALPHA);
+    scrollbar_ptr->pGLDisable        (GL_DEPTH_TEST);
+    scrollbar_ptr->pGLEnable         (GL_BLEND);
+    scrollbar_ptr->pGLBlendEquation  (GL_FUNC_ADD);
+    scrollbar_ptr->pGLBlendFunc      (GL_SRC_ALPHA,
+                                      GL_ONE_MINUS_SRC_ALPHA);
+    scrollbar_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                      0, /* index */
+                                      scrollbar_ptr->program_slider_ub_bo_id,
+                                      scrollbar_ptr->program_slider_ub_bo_start_offset,
+                                      scrollbar_ptr->program_slider_ub_bo_size);
+
     {
         scrollbar_ptr->pGLUseProgram(ogl_program_get_id(scrollbar_ptr->program_slider) );
 
         /* Draw the slider area */
-        scrollbar_ptr->pGLProgramUniform2fv(program_id,
-                                            scrollbar_ptr->program_slider_border_width_uniform_location,
-                                            sizeof(scrollbar_ptr->slider_border_width) / sizeof(float) / 2,
-                                            scrollbar_ptr->slider_border_width);
-        scrollbar_ptr->pGLProgramUniform1i (program_id,
-                                            scrollbar_ptr->program_slider_is_handle_uniform_location,
-                                            0);
-        scrollbar_ptr->pGLProgramUniform4fv(program_id,
-                                            scrollbar_ptr->program_slider_x1y1x2y2_uniform_location,
-                                            sizeof(scrollbar_ptr->slider_x1y1x2y2) / sizeof(float) / 4,
-                                            scrollbar_ptr->slider_x1y1x2y2);
+        static const bool bool_false = 0;
+        static const bool bool_true  = 1;
+
+        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub,
+                                                    scrollbar_ptr->program_slider_border_width_ub_offset,
+                                                    scrollbar_ptr->slider_border_width,
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) * 2);
+        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub,
+                                                    scrollbar_ptr->program_slider_is_handle_ub_offset,
+                                                   &bool_false,
+                                                    0, /* src_data_flags */
+                                                    sizeof(bool) );
+
+        ogl_program_ub_sync(scrollbar_ptr->program_slider_ub);
 
         scrollbar_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                     0,
-                                     4);
+                                     0,  /* first */
+                                     4); /* count */
 
         /* Draw the handle */
-        scrollbar_ptr->pGLProgramUniform2fv(program_id,
-                                            scrollbar_ptr->program_slider_border_width_uniform_location,
-                                            sizeof(scrollbar_ptr->slider_handle_border_width) / sizeof(float) / 2,
-                                            scrollbar_ptr->slider_handle_border_width);
-        scrollbar_ptr->pGLProgramUniform1i (program_id,
-                                            scrollbar_ptr->program_slider_is_handle_uniform_location,
-                                            1);
-        scrollbar_ptr->pGLProgramUniform4fv(program_id,
-                                            scrollbar_ptr->program_slider_x1y1x2y2_uniform_location,
-                                            sizeof(scrollbar_ptr->slider_handle_x1y1x2y2) / sizeof(float) / 4,
-                                            scrollbar_ptr->slider_handle_x1y1x2y2);
+        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub,
+                                                    scrollbar_ptr->program_slider_border_width_ub_offset,
+                                                    scrollbar_ptr->slider_handle_border_width,
+                                                    0, /* src_data_flags */
+                                                    sizeof(float) * 2);
+        ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub,
+                                                    scrollbar_ptr->program_slider_is_handle_ub_offset,
+                                                   &bool_true,
+                                                    0, /* src_data_flags */
+                                                    sizeof(bool) );
+
+        ogl_program_ub_sync(scrollbar_ptr->program_slider_ub);
 
         scrollbar_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                     0,
-                                     4);
+                                     0,  /* first */
+                                     4); /* count */
     }
     scrollbar_ptr->pGLDisable(GL_BLEND);
 
@@ -572,16 +616,14 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_scrollbar->pGLBlendEquation     = entry_points->pGLBlendEquation;
-            new_scrollbar->pGLBlendFunc         = entry_points->pGLBlendFunc;
-            new_scrollbar->pGLDisable           = entry_points->pGLDisable;
-            new_scrollbar->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_scrollbar->pGLEnable            = entry_points->pGLEnable;
-            new_scrollbar->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_scrollbar->pGLProgramUniform1i  = entry_points->pGLProgramUniform1i;
-            new_scrollbar->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_scrollbar->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_scrollbar->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_scrollbar->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_scrollbar->pGLBlendEquation       = entry_points->pGLBlendEquation;
+            new_scrollbar->pGLBlendFunc           = entry_points->pGLBlendFunc;
+            new_scrollbar->pGLDisable             = entry_points->pGLDisable;
+            new_scrollbar->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_scrollbar->pGLEnable              = entry_points->pGLEnable;
+            new_scrollbar->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_scrollbar->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -594,16 +636,14 @@ PUBLIC void* ogl_ui_scrollbar_init(__in           __notnull   ogl_ui            
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_scrollbar->pGLBlendEquation     = entry_points->pGLBlendEquation;
-            new_scrollbar->pGLBlendFunc         = entry_points->pGLBlendFunc;
-            new_scrollbar->pGLDisable           = entry_points->pGLDisable;
-            new_scrollbar->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_scrollbar->pGLEnable            = entry_points->pGLEnable;
-            new_scrollbar->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_scrollbar->pGLProgramUniform1i  = entry_points->pGLProgramUniform1i;
-            new_scrollbar->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_scrollbar->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_scrollbar->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_scrollbar->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_scrollbar->pGLBlendEquation       = entry_points->pGLBlendEquation;
+            new_scrollbar->pGLBlendFunc           = entry_points->pGLBlendFunc;
+            new_scrollbar->pGLDisable             = entry_points->pGLDisable;
+            new_scrollbar->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_scrollbar->pGLEnable              = entry_points->pGLEnable;
+            new_scrollbar->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_scrollbar->pGLUseProgram          = entry_points->pGLUseProgram;
         }
 
         /* Configure the text to be shown on the button */

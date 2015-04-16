@@ -557,6 +557,7 @@ PUBLIC void ui_init()
                                                             _ui_on_shadow_map_algorithm_changed,
                                                             NULL); /* fire_user_arg */
 
+#if 0
     /* Add color shadow map blur n passes scrollbar */
     system_variant blur_n_passes_max_value = system_variant_create_float(4.0f);
     system_variant blur_n_passes_min_value = system_variant_create_float(0.0f);
@@ -574,6 +575,7 @@ PUBLIC void ui_init()
 
     system_variant_release(blur_n_passes_max_value);
     system_variant_release(blur_n_passes_min_value);
+#endif
 
     /* Add color shadow map blur n taps dropdown */
     ogl_shadow_mapping context_shadow_mapping = NULL;
@@ -594,6 +596,7 @@ PUBLIC void ui_init()
     system_variant max_n_taps_variant = system_variant_create_float((float) max_n_taps);
     system_variant min_n_taps_variant = system_variant_create_float((float) min_n_taps);
 
+#if 0
     _ui_color_shadow_map_blur_n_taps_scrollbar = ogl_ui_add_scrollbar(_ui,
                                                                       system_hashed_ansi_string_create("Color Shadow map blur taps"),
                                                                       OGL_UI_SCROLLBAR_TEXT_LOCATION_LEFT_TO_SLIDER,
@@ -607,6 +610,7 @@ PUBLIC void ui_init()
 
     system_variant_release(max_n_taps_variant);
     system_variant_release(min_n_taps_variant);
+#endif
 
     /* Add color shadow map blur resolution dropdown */
     _ui_color_shadow_map_blur_resolution_dropdown = ogl_ui_add_dropdown(_ui,
@@ -663,6 +667,7 @@ PUBLIC void ui_init()
                                                                _ui_on_shadow_map_pointlight_algorithm_changed,
                                                                NULL); /* fire_user_arg */
 
+#if 0
     /* Add VSM cutoff scrollbar */
     system_variant vsm_cutoff_max_value = system_variant_create_float(1.0f);
     system_variant vsm_cutoff_min_value = system_variant_create_float(0.0f);
@@ -716,6 +721,7 @@ PUBLIC void ui_init()
 
     system_variant_release(vsm_min_variance_max_value);
     system_variant_release(vsm_min_variance_min_value);
+#endif
 
     /* Add a bag which will re-adjust control positions whenever any of the dropdowns
      * is opened */
@@ -723,16 +729,16 @@ PUBLIC void ui_init()
     const ogl_ui_control ui_controls[]       =
     {
         _ui_shadow_map_algorithm_dropdown,
-        _ui_color_shadow_map_blur_n_passes_scrollbar,
-        _ui_color_shadow_map_blur_n_taps_scrollbar,
+        //_ui_color_shadow_map_blur_n_passes_scrollbar,
+        //_ui_color_shadow_map_blur_n_taps_scrollbar,
         _ui_color_shadow_map_blur_resolution_dropdown,
         _ui_color_shadow_map_internalformat_dropdown,
         _ui_depth_shadow_map_internalformat_dropdown,
         _ui_shadow_map_size_dropdown,
         _ui_shadow_map_pl_algorithm_dropdown,
-        _ui_vsm_cutoff_scrollbar,
-        _ui_vsm_max_variance_scrollbar,
-        _ui_vsm_min_variance_scrollbar
+        //_ui_vsm_cutoff_scrollbar,
+        //_ui_vsm_max_variance_scrollbar,
+        //_ui_vsm_min_variance_scrollbar
     };
     const unsigned int n_ui_controls = sizeof(ui_controls) / sizeof(ui_controls[0]);
 

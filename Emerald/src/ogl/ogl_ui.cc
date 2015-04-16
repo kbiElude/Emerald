@@ -1520,6 +1520,11 @@ PUBLIC EMERALD_API void ogl_ui_set_control_property(__in __notnull ogl_ui_contro
 {
     _ogl_ui_control* ui_control_ptr = (_ogl_ui_control*) control;
 
+    if (ui_control_ptr == NULL)
+    {
+        return;
+    }
+
     ASSERT_DEBUG_SYNC(ui_control_ptr->pfn_set_property_func_ptr != NULL,
                       "Requested user control does not support property setters");
 

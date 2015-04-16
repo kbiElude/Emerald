@@ -1,16 +1,20 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * Internal usage only.
  */
 #ifndef OGL_UI_SHARED_H
 #define OGL_UI_SHARED_H
 
-static const char* ui_general_vertex_shader_body = "#version 330\n"
+static const char* ui_general_vertex_shader_body = "#version 420\n"
                                                    "\n"
-                                                   "uniform vec4 x1y1x2y2;\n"
-                                                   "out     vec2 uv;\n"
+                                                   "uniform dataVS\n"
+                                                   "{\n"
+                                                   "    vec4 x1y1x2y2;\n"
+                                                   "};\n"
+                                                   "\n"
+                                                   "out vec2 uv;\n"
                                                    "\n"
                                                    "void main()\n"
                                                    "{\n"
