@@ -1,6 +1,6 @@
 /**
  *
- * 4D Julia set app (kbi/elude @2012)
+ * 4D Julia set app (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -38,218 +38,574 @@ float            _raycast_radius_multiplier = 2.65f;
 bool             _shadows                   = true;
 float            _specularity               = 4.4f;
 system_window    _window                    = NULL;
-system_event     _window_closed_event       = system_event_create(true, false);
+system_event     _window_closed_event       = system_event_create(true,   /* manual_reset */
+                                                                  false); /* start_state */
 
-void _deinit_gl(ogl_context context, void* not_used)
+
+/* Forward declarations */
+PRIVATE void _deinit_gl                              (ogl_context             context,
+                                                      void*                   not_used);
+PRIVATE void _fire_shadows                           (void*                   not_used,
+                                                      void*                   not_used2);
+PRIVATE void _get_a_value                            (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_b_value                            (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_c_value                            (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_d_value                            (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_epsilon_value                      (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_escape_threshold_value             (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_light_color_blue_value             (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_light_color_green_value            (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_light_color_red_value              (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_light_position_x_value             (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_light_position_y_value             (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_light_position_z_value             (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_max_iterations_value               (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_raycast_radius_multiplier_value    (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _get_specularity_value                  (void*                   user_arg,
+                                                      system_variant          result);
+PRIVATE void _init_gl                                (ogl_context             context,
+                                                      void*                   not_used);
+PRIVATE void _init_pipeline_rendering_thread_callback(ogl_context             context,
+                                                      void*                   unused);
+PRIVATE void _init_ui                                ();
+PRIVATE void _rendering_handler                      (ogl_context             context,
+                                                      uint32_t                n_frames_rendered,
+                                                      system_timeline_time    frame_time,
+                                                      void*                   renderer);
+PRIVATE void _rendering_lbm_callback_handler         (system_window           window,
+                                                      unsigned short          x,
+                                                      unsigned short          y,
+                                                      system_window_vk_status new_status,
+                                                      void*                   unused);
+PRIVATE void _set_a_value                            (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_b_value                            (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_c_value                            (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_d_value                            (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_epsilon_value                      (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_escape_threshold_value             (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_light_color_blue_value             (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_light_color_green_value            (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_light_color_red_value              (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_light_position_x_value             (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_light_position_y_value             (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_light_position_z_value             (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_max_iterations_value               (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_raycast_radius_multiplier_value    (void*                   user_arg,
+                                                      system_variant          new_value);
+PRIVATE void _set_specularity_value                  (void*                   user_arg,
+                                                      system_variant          new_value);
+
+
+/** TODO */
+PRIVATE void _deinit_gl(ogl_context context,
+                        void*       not_used)
 {
     stage_step_julia_deinit(context);
     stage_step_light_deinit(context);
 }
 
 /** TODO */
-PRIVATE void _fire_shadows(void* not_used)
+PRIVATE void _fire_shadows(void* not_used,
+                           void* not_used2)
 {
     _shadows = !_shadows;
 }
 
 /** TODO */
-PRIVATE void _get_a_value(void* user_arg, system_variant result)
+PRIVATE void _get_a_value(void*          user_arg,
+                          system_variant result)
 {
-    system_variant_set_float(result, _data[0]);
+    system_variant_set_float(result,
+                             _data[0]);
 }
 
 /** TODO */
-PRIVATE void _get_b_value(void* user_arg, system_variant result)
+PRIVATE void _get_b_value(void*          user_arg,
+                          system_variant result)
 {
-    system_variant_set_float(result, _data[1]);
+    system_variant_set_float(result,
+                             _data[1]);
 }
 
 /** TODO */
-PRIVATE void _get_c_value(void* user_arg, system_variant result)
+PRIVATE void _get_c_value(void*          user_arg,
+                          system_variant result)
 {
-    system_variant_set_float(result, _data[2]);
+    system_variant_set_float(result,
+                             _data[2]);
 }
 
 /** TODO */
-PRIVATE void _get_d_value(void* user_arg, system_variant result)
+PRIVATE void _get_d_value(void*          user_arg,
+                          system_variant result)
 {
-    system_variant_set_float(result, _data[3]);
+    system_variant_set_float(result,
+                             _data[3]);
 }
 
 /** TODO */
-PRIVATE void _get_epsilon_value(void* user_arg, system_variant result)
+PRIVATE void _get_epsilon_value(void*          user_arg,
+                                system_variant result)
 {
     system_variant_set_float(result, _epsilon);
 }
 
 /** TODO */
-PRIVATE void _get_escape_threshold_value(void* user_arg, system_variant result)
+PRIVATE void _get_escape_threshold_value(void*          user_arg,
+                                         system_variant result)
 {
-    system_variant_set_float(result, _escape);
+    system_variant_set_float(result,
+                             _escape);
 }
 
 /** TODO */
-PRIVATE void _get_light_color_blue_value(void* user_arg, system_variant result)
+PRIVATE void _get_light_color_blue_value(void*          user_arg,
+                                         system_variant result)
 {
-    system_variant_set_float(result, _light_color[2]);
+    system_variant_set_float(result,
+                             _light_color[2]);
 }
 
 /** TODO */
-PRIVATE void _get_light_color_green_value(void* user_arg, system_variant result)
+PRIVATE void _get_light_color_green_value(void*          user_arg,
+                                          system_variant result)
 {
-    system_variant_set_float(result, _light_color[1]);
+    system_variant_set_float(result,
+                             _light_color[1]);
 }
 
 /** TODO */
-PRIVATE void _get_light_color_red_value(void* user_arg, system_variant result)
+PRIVATE void _get_light_color_red_value(void*          user_arg,
+                                        system_variant result)
 {
-    system_variant_set_float(result, _light_color[0]);
+    system_variant_set_float(result,
+                             _light_color[0]);
 }
 
 /** TODO */
-PRIVATE void _get_light_position_x_value(void* user_arg, system_variant result)
+PRIVATE void _get_light_position_x_value(void*          user_arg,
+                                         system_variant result)
 {
-    system_variant_set_float(result, _light_position[0]);
+    system_variant_set_float(result,
+                             _light_position[0]);
 }
 
 /** TODO */
-PRIVATE void _get_light_position_y_value(void* user_arg, system_variant result)
+PRIVATE void _get_light_position_y_value(void*          user_arg,
+                                         system_variant result)
 {
-    system_variant_set_float(result, _light_position[1]);
+    system_variant_set_float(result,
+                             _light_position[1]);
 }
 
 /** TODO */
-PRIVATE void _get_light_position_z_value(void* user_arg, system_variant result)
+PRIVATE void _get_light_position_z_value(void*          user_arg,
+                                         system_variant result)
 {
-    system_variant_set_float(result, _light_position[2]);
+    system_variant_set_float(result,
+                             _light_position[2]);
 }
 
 /** TODO */
-PRIVATE void _get_max_iterations_value(void* user_arg, system_variant result)
+PRIVATE void _get_max_iterations_value(void*          user_arg,
+                                       system_variant result)
 {
-    system_variant_set_float(result, _max_iterations);
+    system_variant_set_float(result,
+                             (float) _max_iterations);
 }
 
 /** TODO */
-PRIVATE void _get_raycast_radius_multiplier_value(void* user_arg, system_variant result)
+PRIVATE void _get_raycast_radius_multiplier_value(void*          user_arg,
+                                                  system_variant result)
 {
-    system_variant_set_float(result, _raycast_radius_multiplier);
+    system_variant_set_float(result,
+                             _raycast_radius_multiplier);
 }
 
 /** TODO */
-PRIVATE void _get_specularity_value(void* user_arg, system_variant result)
+PRIVATE void _get_specularity_value(void*          user_arg,
+                                    system_variant result)
 {
-    system_variant_set_float(result, _specularity);
+    system_variant_set_float(result,
+                             _specularity);
 }
 
-void _init_gl(ogl_context context, void* not_used)
+PRIVATE void _init_gl(ogl_context context,
+                      void*       not_used)
 {
-    stage_step_julia_init(context, _pipeline, _pipeline_stage_id);
-    stage_step_light_init(context, _pipeline, _pipeline_stage_id);
+    _init_pipeline_rendering_thread_callback(context,
+                                             not_used);
+
+    stage_step_julia_init(context,
+                          _pipeline,
+                          _pipeline_stage_id);
+    stage_step_light_init(context,
+                          _pipeline,
+                          _pipeline_stage_id);
+}
+
+/** TODO */
+PRIVATE void _init_pipeline_rendering_thread_callback(__in __notnull ogl_context context,
+                                                      __in           void*       unused)
+{
+    /* Set up pipeline */
+    _pipeline          = ogl_pipeline_create   (_context,
+                                                true,  /* should_overlay_performance_info */
+                                                system_hashed_ansi_string_create("pipeline") );
+    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
+
+    _init_ui();
+}
+
+/** TODO */
+PRIVATE void _init_ui()
+{
+    /* Initialize UI */
+    const float scrollbar_1_x1y1[]  = {0.8f, 0.0f};
+    const float scrollbar_2_x1y1[]  = {0.8f, 0.1f};
+    const float scrollbar_3_x1y1[]  = {0.8f, 0.2f};
+    const float scrollbar_4_x1y1[]  = {0.8f, 0.3f};
+    const float scrollbar_5_x1y1[]  = {0.8f, 0.4f};
+    const float scrollbar_6_x1y1[]  = {0.8f, 0.5f};
+    const float scrollbar_7_x1y1[]  = {0.8f, 0.6f};
+    const float scrollbar_8_x1y1[]  = {0.8f, 0.7f};
+    const float scrollbar_9_x1y1[]  = {0.8f, 0.8f};
+    const float scrollbar_10_x1y1[] = {0.0f, 0.2f};
+    const float scrollbar_11_x1y1[] = {0.0f, 0.3f};
+    const float scrollbar_12_x1y1[] = {0.0f, 0.4f};
+    const float scrollbar_13_x1y1[] = {0.0f, 0.5f};
+    const float scrollbar_14_x1y1[] = {0.0f, 0.6f};
+    const float scrollbar_15_x1y1[] = {0.0f, 0.7f};
+    const float checkbox_1_x1y1[]   = {0.8f, 0.9f};
+    ogl_ui      pipeline_ui         = ogl_pipeline_get_ui(_pipeline);
+
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("A"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-1.5f),
+                         system_variant_create_float(1.5f),
+                         scrollbar_1_x1y1,
+                         _get_a_value,
+                         NULL,         /* get_current_value_user_arg */
+                         _set_a_value,
+                         NULL);        /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("B"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-1.5f),
+                         system_variant_create_float(1.5f),
+                         scrollbar_2_x1y1,
+                         _get_b_value,
+                         NULL,         /* get_current_value_user_arg */
+                         _set_b_value,
+                         NULL);        /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("C"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-1.5f),
+                         system_variant_create_float(1.5f),
+                         scrollbar_3_x1y1,
+                         _get_c_value,
+                         NULL,         /* get_current_value_user_arg */
+                         _set_c_value,
+                         NULL);        /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("D"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-1.5f),
+                         system_variant_create_float(1.5f),
+                         scrollbar_4_x1y1,
+                         _get_d_value,
+                         NULL,         /* get_current_value_user_arg */
+                         _set_d_value,
+                         NULL);        /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Epsilon"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(0.00001f),
+                         system_variant_create_float(0.01f),
+                         scrollbar_5_x1y1,
+                         _get_epsilon_value,
+                         NULL,               /* get_current_value_user_arg */
+                         _set_epsilon_value,
+                         NULL);              /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Escape threshold"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(0.01f),
+                         system_variant_create_float(8.0f),
+                         scrollbar_6_x1y1,
+                         _get_escape_threshold_value,
+                         NULL,                        /* get_current_value_user_arg */
+                         _set_escape_threshold_value,
+                         NULL);                       /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Max iterations"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(1),
+                         system_variant_create_float(10),
+                         scrollbar_7_x1y1,
+                         _get_max_iterations_value,
+                         NULL,                      /* get_current_value_user_arg */
+                         _set_max_iterations_value,
+                         NULL);                     /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Raycast radius"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(1),
+                         system_variant_create_float(4.0f),
+                         scrollbar_8_x1y1,
+                         _get_raycast_radius_multiplier_value,
+                         NULL,                                 /* get_current_value_user_arg */
+                         _set_raycast_radius_multiplier_value,
+                         NULL);                                /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Specularity"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(0.0001f),
+                         system_variant_create_float(40.0f),
+                         scrollbar_9_x1y1,
+                         _get_specularity_value,
+                         NULL,                   /* get_current_value_user_arg */
+                         _set_specularity_value,
+                         NULL);                  /* set_current_value_user_arg */
+    ogl_ui_add_checkbox (pipeline_ui,
+                         system_hashed_ansi_string_create("Shadows"),
+                         checkbox_1_x1y1,
+                         _shadows,
+                         _fire_shadows,
+                         NULL);         /* fire_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Light Color R"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(0.0f),
+                         system_variant_create_float(1.0f),
+                         scrollbar_10_x1y1,
+                         _get_light_color_red_value,
+                         NULL,                       /* get_current_value_user_arg */
+                         _set_light_color_red_value,
+                         NULL);                      /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Light Color G"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(0.0f),
+                         system_variant_create_float(1.0f),
+                         scrollbar_11_x1y1,
+                         _get_light_color_green_value,
+                         NULL,                         /* get_current_value_user_arg */
+                         _set_light_color_green_value,
+                         NULL);                        /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Light Color B"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(0.0f),
+                         system_variant_create_float(1.0f),
+                         scrollbar_12_x1y1,
+                         _get_light_color_blue_value,
+                         NULL,                        /* get_current_value_user_arg */
+                         _set_light_color_blue_value,
+                         NULL);                       /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Light Position X"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-3.0f),
+                         system_variant_create_float(3.0f),
+                         scrollbar_13_x1y1,
+                         _get_light_position_x_value,
+                         NULL,                        /* get_current_value_user_arg */
+                         _set_light_position_x_value,
+                         NULL);                       /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Light Position Y"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-3.0f),
+                         system_variant_create_float(3.0f),
+                         scrollbar_14_x1y1,
+                         _get_light_position_y_value,
+                         NULL,                        /* get_current_value_user_arg */
+                         _set_light_position_y_value,
+                         NULL);                       /* set_current_value_user_arg */
+    ogl_ui_add_scrollbar(pipeline_ui,
+                         system_hashed_ansi_string_create("Light Position Z"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
+                         system_variant_create_float(-3.0f),
+                         system_variant_create_float(3.0f),
+                         scrollbar_15_x1y1,
+                         _get_light_position_z_value,
+                         NULL,                        /* get_current_value_user_arg */
+                         _set_light_position_z_value,
+                         NULL);                       /* set_current_value_user_arg */
 }
 
 /** Rendering handler */
-void _rendering_handler(ogl_context context, uint32_t n_frames_rendered, system_timeline_time frame_time, void* renderer)
+PRIVATE void _rendering_handler(ogl_context          context,
+                                uint32_t             n_frames_rendered,
+                                system_timeline_time frame_time,
+                                void*                renderer)
 {
-    ogl_pipeline_draw_stage(_pipeline, _pipeline_stage_id, frame_time);
+    ogl_pipeline_draw_stage(_pipeline,
+                            _pipeline_stage_id,
+                            frame_time);
 }
 
-void _rendering_lbm_callback_handler(system_window window, unsigned short x, unsigned short y, system_window_vk_status new_status, void*)
+PRIVATE void _rendering_lbm_callback_handler(system_window           window,
+                                             unsigned short          x,
+                                             unsigned short          y,
+                                             system_window_vk_status new_status,
+                                             void*                   unused)
 {
     system_event_set(_window_closed_event);
 }
 
 /** TODO */
-PRIVATE void _set_a_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_a_value(void*          user_arg,
+                          system_variant new_value)
 {
-    system_variant_get_float(new_value, _data + 0);
+    system_variant_get_float(new_value,
+                             _data + 0);
 }
 
 /** TODO */
-PRIVATE void _set_b_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_b_value(void*          user_arg,
+                          system_variant new_value)
 {
-    system_variant_get_float(new_value, _data + 1);
+    system_variant_get_float(new_value,
+                             _data + 1);
 }
 
 /** TODO */
-PRIVATE void _set_c_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_c_value(void*          user_arg,
+                          system_variant new_value)
 {
-    system_variant_get_float(new_value, _data + 2);
+    system_variant_get_float(new_value,
+                             _data + 2);
 }
 
 /** TODO */
-PRIVATE void _set_d_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_d_value(void*          user_arg,
+                          system_variant new_value)
 {
-    system_variant_get_float(new_value, _data + 3);
+    system_variant_get_float(new_value,
+                             _data + 3);
 }
 
 /** TODO */
-PRIVATE void _set_epsilon_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_epsilon_value(void*          user_arg,
+                                system_variant new_value)
 {
-    system_variant_get_float(new_value, &_epsilon);
+    system_variant_get_float(new_value,
+                            &_epsilon);
 }
 
 /** TODO */
-PRIVATE void _set_escape_threshold_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_escape_threshold_value(void*          user_arg,
+                                         system_variant new_value)
 {
-    system_variant_get_float(new_value, &_escape);
+    system_variant_get_float(new_value,
+                            &_escape);
 }
 
 /** TODO */
-PRIVATE void _set_light_color_blue_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_light_color_blue_value(void*          user_arg,
+                                         system_variant new_value)
 {
-    system_variant_get_float(new_value, _light_color + 2);
+    system_variant_get_float(new_value,
+                             _light_color + 2);
 }
 
 /** TODO */
-PRIVATE void _set_light_color_green_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_light_color_green_value(void*          user_arg,
+                                          system_variant new_value)
 {
-    system_variant_get_float(new_value, _light_color + 1);
+    system_variant_get_float(new_value,
+                             _light_color + 1);
 }
 
 /** TODO */
-PRIVATE void _set_light_color_red_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_light_color_red_value(void*          user_arg,
+                                        system_variant new_value)
 {
-    system_variant_get_float(new_value, _light_color + 0);
+    system_variant_get_float(new_value,
+                             _light_color + 0);
 }
 
 /** TODO */
-PRIVATE void _set_light_position_x_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_light_position_x_value(void*          user_arg,
+                                         system_variant new_value)
 {
-    system_variant_get_float(new_value, _light_position + 0);
+    system_variant_get_float(new_value,
+                             _light_position + 0);
 }
 
 /** TODO */
-PRIVATE void _set_light_position_y_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_light_position_y_value(void*          user_arg,
+                                         system_variant new_value)
 {
-    system_variant_get_float(new_value, _light_position + 1);
+    system_variant_get_float(new_value,
+                             _light_position + 1);
 }
 
 /** TODO */
-PRIVATE void _set_light_position_z_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_light_position_z_value(void*          user_arg,
+                                         system_variant new_value)
 {
-    system_variant_get_float(new_value, _light_position + 2);
+    system_variant_get_float(new_value,
+                             _light_position + 2);
 }
 
 /** TODO */
-PRIVATE void _set_max_iterations_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_max_iterations_value(void*          user_arg,
+                                       system_variant new_value)
 {
     float new_max_iterations = 0;
 
-    system_variant_get_float(new_value, &new_max_iterations);
+    system_variant_get_float(new_value,
+                            &new_max_iterations);
+
     _max_iterations = (int) new_max_iterations;
 }
 
 /** TODO */
-PRIVATE void _set_raycast_radius_multiplier_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_raycast_radius_multiplier_value(void*          user_arg,
+                                                  system_variant new_value)
 {
-    system_variant_get_float(new_value, &_raycast_radius_multiplier);
+    system_variant_get_float(new_value,
+                            &_raycast_radius_multiplier);
 }
 
 /** TODO */
-PRIVATE void _set_specularity_value(void* user_arg, system_variant new_value)
+PRIVATE void _set_specularity_value(void*          user_arg,
+                                    system_variant new_value)
 {
-    system_variant_get_float(new_value, &_specularity);
+    system_variant_get_float(new_value,
+                            &_specularity);
 }
 
 /** Please see header for specification */
@@ -313,83 +669,79 @@ float main_get_specularity()
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+int WINAPI WinMain(HINSTANCE instance_handle,
+                   HINSTANCE,
+                   LPTSTR,
+                   int)
 {
-    bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_size    [2]       = {640, 480};
     int                   window_x1y1x2y2[4]       = {0};
 
     /* Carry on */
-    system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
+    system_window_get_centered_window_position_for_primary_monitor(window_size,
+                                                                   window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (window_x1y1x2y2, system_hashed_ansi_string_create("Test window"), false, 0, false, false, true);
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"), 30, _rendering_handler, NULL);
-    context_result           = system_window_get_context(_window, &_context);
+    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
+                                                                            window_x1y1x2y2,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false, /* scalable */
+                                                                            0,     /* n_multisampling_samples */
+                                                                            false, /* vsync_enabled */
+                                                                            false, /* multisampling_supported */
+                                                                            true); /* visible */
+    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                            30, /* desired_fps */
+                                                                            _rendering_handler,
+                                                                            NULL);
 
-    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                               &_context);
 
-    system_window_set_rendering_handler(_window, window_rendering_handler);
+    system_window_set_rendering_handler(_window,
+                                        window_rendering_handler);
 
     /* Set up matrices */
-    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f, 640.0f / 480.0f, 0.001f, 500.0f);
+    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,           /* fov_y */
+                                                                               640.0f / 480.0f, /* ar */
+                                                                               0.001f,          /* z_near */
+                                                                               500.0f);         /* z_far */
 
-    /* Set up pipeline */
-    _pipeline          = ogl_pipeline_create   (_context, true, system_hashed_ansi_string_create("pipeline") );
-    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
-
-    system_window_add_callback_func(_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,  _rendering_lbm_callback_handler, NULL);
+    /* Set up callbacks */
+    system_window_add_callback_func(_window,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                    _rendering_lbm_callback_handler,
+                                    NULL); /* callback_func_user_arg */
 
     /* Initialize flyby */
-    const float camera_pos[] = {-0.1611f, 4.5528f, -6.0926f};
+    const float camera_pos[]          = {-0.1611f, 4.5528f, -6.0926f};
+    const float camera_movement_delta = 0.025f;
+    const float camera_pitch          = -0.6f;
+    const float camera_yaw            = 0.024f;
 
-    ogl_flyby_activate          (_context, camera_pos);
-    ogl_flyby_set_movement_delta(_context,  0.025f);
-    ogl_flyby_set_pitch_yaw     (_context, -0.6f, 0.024f);
+    ogl_flyby_activate          (_context,
+                                 camera_pos);
 
-    /* Initialize UI */
-    const float scrollbar_1_x1y1[]  = {0.8f, 0.0f};
-    const float scrollbar_2_x1y1[]  = {0.8f, 0.1f};
-    const float scrollbar_3_x1y1[]  = {0.8f, 0.2f};
-    const float scrollbar_4_x1y1[]  = {0.8f, 0.3f};
-    const float scrollbar_5_x1y1[]  = {0.8f, 0.4f};
-    const float scrollbar_6_x1y1[]  = {0.8f, 0.5f};
-    const float scrollbar_7_x1y1[]  = {0.8f, 0.6f};
-    const float scrollbar_8_x1y1[]  = {0.8f, 0.7f};
-    const float scrollbar_9_x1y1[]  = {0.8f, 0.8f};
-    const float scrollbar_10_x1y1[] = {0.0f, 0.2f};
-    const float scrollbar_11_x1y1[] = {0.0f, 0.3f};
-    const float scrollbar_12_x1y1[] = {0.0f, 0.4f};
-    const float scrollbar_13_x1y1[] = {0.0f, 0.5f};
-    const float scrollbar_14_x1y1[] = {0.0f, 0.6f};
-    const float scrollbar_15_x1y1[] = {0.0f, 0.7f};
-    const float checkbox_1_x1y1[]   = {0.8f, 0.9f};
-    ogl_ui      pipeline_ui         = ogl_pipeline_get_ui(_pipeline);
-
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("A"),                system_variant_create_float(-1.5f),    system_variant_create_float(1.5f),   scrollbar_1_x1y1,  _get_a_value,                         NULL, _set_a_value,                         NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("B"),                system_variant_create_float(-1.5f),    system_variant_create_float(1.5f),   scrollbar_2_x1y1,  _get_b_value,                         NULL, _set_b_value,                         NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("C"),                system_variant_create_float(-1.5f),    system_variant_create_float(1.5f),   scrollbar_3_x1y1,  _get_c_value,                         NULL, _set_c_value,                         NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("D"),                system_variant_create_float(-1.5f),    system_variant_create_float(1.5f),   scrollbar_4_x1y1,  _get_d_value,                         NULL, _set_d_value,                         NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Epsilon"),          system_variant_create_float(0.00001f), system_variant_create_float(0.01f),  scrollbar_5_x1y1,  _get_epsilon_value,                   NULL, _set_epsilon_value,                   NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Escape threshold"), system_variant_create_float(0.01f),    system_variant_create_float(8.0f),   scrollbar_6_x1y1,  _get_escape_threshold_value,          NULL, _set_escape_threshold_value,          NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Max iterations"),   system_variant_create_float(1),        system_variant_create_float(10),     scrollbar_7_x1y1,  _get_max_iterations_value,            NULL, _set_max_iterations_value,            NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Raycast radius"),   system_variant_create_float(1),        system_variant_create_float(4.0f),   scrollbar_8_x1y1,  _get_raycast_radius_multiplier_value, NULL, _set_raycast_radius_multiplier_value, NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Specularity"),      system_variant_create_float(0.0001f),  system_variant_create_float(40.0f),  scrollbar_9_x1y1,  _get_specularity_value,               NULL, _set_specularity_value,               NULL);
-    ogl_ui_add_checkbox (pipeline_ui, system_hashed_ansi_string_create("Shadows"),                                                                                      checkbox_1_x1y1,   _shadows,                                   _fire_shadows,                        NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Light Color R"),    system_variant_create_float(0.0f),     system_variant_create_float(1.0f),   scrollbar_10_x1y1, _get_light_color_red_value,           NULL, _set_light_color_red_value,           NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Light Color G"),    system_variant_create_float(0.0f),     system_variant_create_float(1.0f),   scrollbar_11_x1y1, _get_light_color_green_value,         NULL, _set_light_color_green_value,         NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Light Color B"),    system_variant_create_float(0.0f),     system_variant_create_float(1.0f),   scrollbar_12_x1y1, _get_light_color_blue_value,          NULL, _set_light_color_blue_value,          NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Light Position X"), system_variant_create_float(-3.0f),    system_variant_create_float(3.0f),   scrollbar_13_x1y1, _get_light_position_x_value,          NULL, _set_light_position_x_value,          NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Light Position Y"), system_variant_create_float(-3.0f),    system_variant_create_float(3.0f),   scrollbar_14_x1y1, _get_light_position_y_value,          NULL, _set_light_position_y_value,          NULL);
-    ogl_ui_add_scrollbar(pipeline_ui, system_hashed_ansi_string_create("Light Position Z"), system_variant_create_float(-3.0f),    system_variant_create_float(3.0f),   scrollbar_15_x1y1, _get_light_position_z_value,          NULL, _set_light_position_z_value,          NULL);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                          &camera_movement_delta);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_PITCH,
+                          &camera_pitch);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_YAW,
+                          &camera_yaw);
 
     /* Initialize GL objects */
     ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,
                                                                _init_gl,
-                                                               NULL);
+                                                               NULL); /* user_arg */
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler, 0);
+    ogl_rendering_handler_play(window_rendering_handler,
+                               0); /* time */
 
     system_event_wait_single_infinite(_window_closed_event);
 

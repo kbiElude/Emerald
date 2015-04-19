@@ -254,6 +254,7 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
     unsigned int                                              texture_width   = 0;
     system_window                                             window          = NULL;
     int                                                       window_size[2]  = {0};
+    GLuint                                                    vao_id          = 0;
 
     ogl_context_get_property(poisson_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -261,6 +262,9 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
     ogl_context_get_property(poisson_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
+    ogl_context_get_property(poisson_ptr->context,
+                             OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
+                            &vao_id);
     ogl_context_get_property(poisson_ptr->context,
                              OGL_CONTEXT_PROPERTY_WINDOW,
                             &window);
@@ -271,7 +275,8 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
 
     entrypoints->pGLBindFramebuffer     (GL_FRAMEBUFFER,
                                          poisson_ptr->fbo_id);
-    entrypoints->pGLFramebufferTexture2D(GL_FRAMEBUFFER,
+    entrypoints->pGLBindVertexArray     (vao_id);
+    entrypoints->pGLFramebufferTexture2D(GL_DRAW_FRAMEBUFFER,
                                          GL_COLOR_ATTACHMENT0,
                                          GL_TEXTURE_2D,
                                          result_texture,
@@ -311,6 +316,8 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
                                0,
                                window_size[0],
                                window_size[1]);
+
+    entrypoints->pGLBindVertexArray(0);
 }
 
 /* Please see header for specification */

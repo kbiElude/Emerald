@@ -27,9 +27,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(__in __notnull ogl_pipel
                                                         __in __notnull void*                      step_callback_user_arg);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_pipeline ogl_pipeline_create(__in __notnull ogl_context               context,
-                                                    __in           bool                      should_overlay_performance_info,
-                                                    __in __notnull system_hashed_ansi_string name);
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(__in __notnull ogl_context               context,
+                                                                           __in           bool                      should_overlay_performance_info,
+                                                                           __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __notnull ogl_pipeline         instance,

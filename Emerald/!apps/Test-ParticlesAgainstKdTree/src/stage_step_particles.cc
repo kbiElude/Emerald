@@ -310,18 +310,24 @@ const char* _particle_update_vertex_shader_body = "#version 330\n"
                                                   "}\n";
 
 /** TODO */
-static void _stage_step_particles_collide(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_particles_collide(ogl_context          context,
+                                          system_timeline_time time,
+                                          void*                not_used)
 {
     ocl_context                           context_cl      = main_get_ocl_context();
-    cl_command_queue                      command_queue   = ocl_context_get_command_queue(context_cl, 0);
+    cl_command_queue                      command_queue   = ocl_context_get_command_queue     (context_cl,
+                                                                                               0);
     const ocl_khr_gl_sharing_entrypoints* ocl_entrypoints = ocl_get_khr_gl_sharing_entrypoints();
     const ogl_context_gl_entrypoints*     ogl_entrypoints = NULL;
     bool                                  result          = false;
     ocl_kdtree                            tree            = main_get_scene_kdtree();
 
-    const cl_mem                          acquirable_mos[] = {_stage_step_particles_data_bo_mo,
-                                                              _stage_step_particles_collide_collision_data_mo};
-    const uint32_t                        n_acquirable_mos = sizeof(acquirable_mos) / sizeof(acquirable_mos[0]);
+    const cl_mem acquirable_mos[] =
+    {
+        _stage_step_particles_data_bo_mo,
+        _stage_step_particles_collide_collision_data_mo
+    };
+    const uint32_t n_acquirable_mos = sizeof(acquirable_mos) / sizeof(acquirable_mos[0]);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
@@ -333,7 +339,13 @@ static void _stage_step_particles_collide(ogl_context context, system_timeline_t
     }
 
     ogl_entrypoints->pGLFinish();
-    if (ocl_entrypoints->pCLEnqueueAcquireGLObjects(command_queue, n_acquirable_mos, acquirable_mos, 0, 0, NULL) != CL_SUCCESS)
+
+    if (ocl_entrypoints->pCLEnqueueAcquireGLObjects(command_queue,
+                                                    n_acquirable_mos,
+                                                    acquirable_mos,
+                                                    0,
+                                                    0,
+                                                    NULL) != CL_SUCCESS)
     {
         ASSERT_DEBUG_SYNC(false, "Could not acquire GL buffer objects");
     }
@@ -355,16 +367,24 @@ static void _stage_step_particles_collide(ogl_context context, system_timeline_t
                                        NULL);                                            /* we don't need callbacks */
     ASSERT_DEBUG_SYNC(result, "Kd Tree intersection failed");
 
-    if (ocl_entrypoints->pCLEnqueueReleaseGLObjects(command_queue, n_acquirable_mos, acquirable_mos, 0, 0, NULL) != CL_SUCCESS)
+    if (ocl_entrypoints->pCLEnqueueReleaseGLObjects(command_queue,
+                                                    n_acquirable_mos,
+                                                    acquirable_mos,
+                                                    0,
+                                                    0,
+                                                    NULL) != CL_SUCCESS)
     {
-        ASSERT_DEBUG_SYNC(false, "Could not release GL buffer object");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not release GL buffer object");
     }
 
     _stage_step_particles_collide_allowed = false;
 }
 
 /** TODO */
-static void _stage_step_particles_debug(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_particles_debug(ogl_context          context,
+                                        system_timeline_time time,
+                                        void*                not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
@@ -387,21 +407,36 @@ static void _stage_step_particles_debug(ogl_context context, system_timeline_tim
         /* Update the uniforms */
         system_matrix4x4 vp = NULL;
 
-             ogl_flyby_get_view_matrix     (context,                      _stage_step_particles_view_matrix);
-        vp = system_matrix4x4_create_by_mul(main_get_projection_matrix(), _stage_step_particles_view_matrix);
+        ogl_flyby_get_property(context,
+                               OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                              &_stage_step_particles_view_matrix);
+
+        vp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
+                                            _stage_step_particles_view_matrix);
         {
-            entrypoints->pGLProgramUniformMatrix4fv(debug_po_id, _stage_step_particles_debug_program_mvp_location, 1, GL_TRUE, system_matrix4x4_get_row_major_data(vp) );
+            entrypoints->pGLProgramUniformMatrix4fv(debug_po_id,
+                                                    _stage_step_particles_debug_program_mvp_location,
+                                                    1,
+                                                    GL_TRUE,
+                                                    system_matrix4x4_get_row_major_data(vp) );
         }
         system_matrix4x4_release(vp);
 
-        dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_BUFFER, _stage_step_particles_data_tbo);
-        dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE1, GL_TEXTURE_BUFFER, _stage_step_particles_collide_collision_data_to);
+        dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                                GL_TEXTURE_BUFFER,
+                                                _stage_step_particles_data_tbo);
+        dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE1,
+                                                GL_TEXTURE_BUFFER,
+                                                _stage_step_particles_collide_collision_data_to);
 
-        entrypoints->pGLEnable(GL_BLEND);
-        entrypoints->pGLEnable(GL_DEPTH_TEST);
-        entrypoints->pGLBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        entrypoints->pGLEnable   (GL_BLEND);
+        entrypoints->pGLEnable   (GL_DEPTH_TEST);
+        entrypoints->pGLBlendFunc(GL_SRC_ALPHA,
+                                  GL_ONE);
         {
-            entrypoints->pGLDrawArraysInstanced(GL_LINES, 0, 2*N_PARTICLES_ALIGNED_4, 2 /* instances */);
+            entrypoints->pGLDrawArraysInstanced(GL_LINES,
+                                                0,
+                                                2 * N_PARTICLES_ALIGNED_4, 2 /* instances */);
         }
         entrypoints->pGLDisable(GL_BLEND);
         entrypoints->pGLDisable(GL_DEPTH_TEST);
@@ -409,7 +444,9 @@ static void _stage_step_particles_debug(ogl_context context, system_timeline_tim
 }
 
 /** TODO */
-static void _stage_step_particles_draw(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_particles_draw(ogl_context          context,
+                                       system_timeline_time time,
+                                       void*                not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
@@ -430,29 +467,44 @@ static void _stage_step_particles_draw(ogl_context context, system_timeline_time
     /* Update the uniforms */
     system_matrix4x4 vp = NULL;
 
-         ogl_flyby_get_view_matrix     (context,                      _stage_step_particles_view_matrix);
-    vp = system_matrix4x4_create_by_mul(main_get_projection_matrix(), _stage_step_particles_view_matrix);
+    ogl_flyby_get_property(context,
+                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                          &_stage_step_particles_view_matrix);
+
+    vp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
+                                        _stage_step_particles_view_matrix);
     {
-        entrypoints->pGLProgramUniformMatrix4fv(draw_po_id, _stage_step_particles_draw_program_projection_view_location, 1, GL_TRUE, system_matrix4x4_get_row_major_data(vp) );
+        entrypoints->pGLProgramUniformMatrix4fv(draw_po_id,
+                                                _stage_step_particles_draw_program_projection_view_location,
+                                                1,
+                                                GL_TRUE,
+                                                system_matrix4x4_get_row_major_data(vp) );
     }
     system_matrix4x4_release(vp);
 
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_BUFFER, _stage_step_particles_data_tbo);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                            GL_TEXTURE_BUFFER,
+                                            _stage_step_particles_data_tbo);
 
-    entrypoints->pGLEnable(GL_BLEND);
-    entrypoints->pGLEnable(GL_DEPTH_TEST);
+    entrypoints->pGLEnable   (GL_BLEND);
+    entrypoints->pGLEnable   (GL_DEPTH_TEST);
     entrypoints->pGLDepthMask(GL_FALSE);
-    entrypoints->pGLBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    entrypoints->pGLBlendFunc(GL_SRC_ALPHA,
+                              GL_ONE);
     {
-        entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+        entrypoints->pGLDrawArrays(GL_POINTS,
+                                   0,
+                                   N_PARTICLES_ALIGNED_4);
     }
     entrypoints->pGLDepthMask(GL_TRUE);
-    entrypoints->pGLDisable(GL_BLEND);
-    entrypoints->pGLEnable(GL_DEPTH_TEST);
+    entrypoints->pGLDisable  (GL_BLEND);
+    entrypoints->pGLEnable   (GL_DEPTH_TEST);
 }
 
 /** TODO */
-static void _stage_step_particles_generate(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_particles_generate(ogl_context          context,
+                                           system_timeline_time time,
+                                           void*                not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
@@ -464,7 +516,8 @@ static void _stage_step_particles_generate(ogl_context context, system_timeline_
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
                             &entrypoints);
 
-    if (_stage_step_particles_iterate_frame || !_stage_step_particles_iterate_status)
+    if ( _stage_step_particles_iterate_frame ||
+        !_stage_step_particles_iterate_status)
     {
         _stage_step_particles_collide_allowed = true;
         _stage_step_particles_update_allowed  = true;
@@ -476,19 +529,21 @@ static void _stage_step_particles_generate(ogl_context context, system_timeline_
 
         /* General */
         entrypoints->pGLBindVertexArray(_stage_step_particles_vao_id);
-        entrypoints->pGLEnable(GL_RASTERIZER_DISCARD);
+        entrypoints->pGLEnable         (GL_RASTERIZER_DISCARD);
 
         /* Barycentric data buffer must be filled with negative values for our hacked approach to work correctly */
         {
             const uint32_t n_entries        = N_PARTICLES_ALIGNED_4 * 4;
             float*         barycentric_data = new (std::nothrow) float[n_entries];
         
-            for (unsigned int n = 0; n < n_entries; ++n)
+            for (unsigned int n = 0;
+                              n < n_entries;
+                            ++n)
             {
                 barycentric_data[n] = -666;
             }
 
-            dsa_entrypoints->pGLNamedBufferSubDataEXT(_stage_step_particles_collide_collision_data_bo, 
+            dsa_entrypoints->pGLNamedBufferSubDataEXT(_stage_step_particles_collide_collision_data_bo,
                                                       0,
                                                       n_entries * sizeof(float),
                                                       barycentric_data);
@@ -499,28 +554,40 @@ static void _stage_step_particles_generate(ogl_context context, system_timeline_
         /* Stage 1 */
         const GLuint stage1_po_id = ogl_program_get_id(_stage_step_particles_generate1_program);
 
-        entrypoints->pGLProgramUniform1f(stage1_po_id, _stage_step_particles_generate1_program_max_mass_delta_location, _stage_step_particles_max_mass_delta);
-        entrypoints->pGLProgramUniform1f(stage1_po_id, _stage_step_particles_generate1_program_min_mass_location,       _stage_step_particles_min_mass);
-        entrypoints->pGLProgramUniform1f(stage1_po_id, _stage_step_particles_generate1_program_spread_location,         _stage_step_particles_spread);
+        entrypoints->pGLProgramUniform1f(stage1_po_id,
+                                         _stage_step_particles_generate1_program_max_mass_delta_location,
+                                         _stage_step_particles_max_mass_delta);
+        entrypoints->pGLProgramUniform1f(stage1_po_id,
+                                         _stage_step_particles_generate1_program_min_mass_location,
+                                         _stage_step_particles_min_mass);
+        entrypoints->pGLProgramUniform1f(stage1_po_id,
+                                         _stage_step_particles_generate1_program_spread_location,
+                                         _stage_step_particles_spread);
 
         entrypoints->pGLUseProgram           (stage1_po_id);
-        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, _stage_step_particles_generate1_tfo_id);
+        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                              _stage_step_particles_generate1_tfo_id);
 
         entrypoints->pGLBeginTransformFeedback(GL_POINTS);
         {
-            entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+            entrypoints->pGLDrawArrays(GL_POINTS,
+                                       0,
+                                       N_PARTICLES_ALIGNED_4);
         }
         entrypoints->pGLEndTransformFeedback();
 
         /* Stage 2 */
         const GLuint stage2_po_id = ogl_program_get_id(_stage_step_particles_generate2_program);
 
-        entrypoints->pGLUseProgram(stage2_po_id);
-        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, _stage_step_particles_generate2_tfo_id);
+        entrypoints->pGLUseProgram           (stage2_po_id);
+        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                              _stage_step_particles_generate2_tfo_id);
         {
             entrypoints->pGLBeginTransformFeedback(GL_POINTS);
             {
-                entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+                entrypoints->pGLDrawArrays(GL_POINTS,
+                                           0,
+                                           N_PARTICLES_ALIGNED_4);
             }
             entrypoints->pGLEndTransformFeedback();
         }
@@ -534,17 +601,25 @@ static void _stage_step_particles_generate(ogl_context context, system_timeline_
 
         /* Update collide step's flag so that previous pass data won't be considered - there is no previous pass,
          * now that we've just started a new run! */
-        entrypoints->pGLProgramUniform1i(ogl_program_get_id(_stage_step_particles_update_program), _stage_step_particles_update_program_is_prev_pass_data_available_uniform_location, 0);
+        entrypoints->pGLProgramUniform1i(ogl_program_get_id(_stage_step_particles_update_program),
+                                         _stage_step_particles_update_program_is_prev_pass_data_available_uniform_location,
+                                         0);
 
         /* Fill the 'previous data' buffer with nans */
         {
             uint32_t n_prev_pass_entries = N_PARTICLES_ALIGNED_4 * 3;
             char*    prev_pass_nan_data  = new (std::nothrow) char[sizeof(float) * n_prev_pass_entries];
 
-            memset(prev_pass_nan_data, 0, n_prev_pass_entries * sizeof(float) );
+            memset(prev_pass_nan_data,
+                   0,
+                   n_prev_pass_entries * sizeof(float) );
 
-            dsa_entrypoints->pGLNamedBufferSubDataEXT(_stage_step_particles_prev_data_bo_id[0], 0, n_prev_pass_entries * sizeof(float), prev_pass_nan_data);
-            dsa_entrypoints->pGLNamedBufferSubDataEXT(_stage_step_particles_prev_data_bo_id[1], 0, n_prev_pass_entries * sizeof(float), prev_pass_nan_data);
+            dsa_entrypoints->pGLNamedBufferSubDataEXT(_stage_step_particles_prev_data_bo_id[0],
+                                                      0,
+                                                      n_prev_pass_entries * sizeof(float), prev_pass_nan_data);
+            dsa_entrypoints->pGLNamedBufferSubDataEXT(_stage_step_particles_prev_data_bo_id[1],
+                                                      0,
+                                                      n_prev_pass_entries * sizeof(float), prev_pass_nan_data);
 
             delete [] prev_pass_nan_data;
             prev_pass_nan_data = NULL;
@@ -558,7 +633,9 @@ static void _stage_step_particles_generate(ogl_context context, system_timeline_
     else
     {
         /* Data is already available */
-        entrypoints->pGLProgramUniform1i(ogl_program_get_id(_stage_step_particles_update_program), _stage_step_particles_update_program_is_prev_pass_data_available_uniform_location, 1);
+        entrypoints->pGLProgramUniform1i(ogl_program_get_id(_stage_step_particles_update_program),
+                                         _stage_step_particles_update_program_is_prev_pass_data_available_uniform_location,
+                                         1);
     }
 }
 
@@ -583,22 +660,39 @@ static void _stage_step_particles_update(ogl_context context, system_timeline_ti
 
     entrypoints->pGLBindVertexArray(_stage_step_particles_vao_id);
     
-    entrypoints->pGLProgramUniform1f(update_po_gl_id, _stage_step_particles_update_program_dt_uniform_location,      _stage_step_particles_dt);
-    entrypoints->pGLProgramUniform1f(update_po_gl_id, _stage_step_particles_update_program_gravity_uniform_location, _stage_step_particles_gravity);
-    entrypoints->pGLProgramUniform1f(update_po_gl_id, _stage_step_particles_update_program_decay_uniform_location,   _stage_step_particles_decay);
+    entrypoints->pGLProgramUniform1f(update_po_gl_id,
+                                     _stage_step_particles_update_program_dt_uniform_location,
+                                     _stage_step_particles_dt);
+    entrypoints->pGLProgramUniform1f(update_po_gl_id,
+                                     _stage_step_particles_update_program_gravity_uniform_location,
+                                     _stage_step_particles_gravity);
+    entrypoints->pGLProgramUniform1f(update_po_gl_id,
+                                     _stage_step_particles_update_program_decay_uniform_location,
+                                     _stage_step_particles_decay);
 
     entrypoints->pGLUseProgram           (update_po_gl_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, _stage_step_particles_update_tfo_id);
-    entrypoints->pGLBindBufferBase       (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_COLLISION_LOCATION_TF_INDEX, _stage_step_particles_prev_data_bo_id[(_stage_step_particles_n_frames+1) % 2]);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _stage_step_particles_update_tfo_id);
+    entrypoints->pGLBindBufferBase       (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_COLLISION_LOCATION_TF_INDEX,
+                                          _stage_step_particles_prev_data_bo_id[(_stage_step_particles_n_frames+1) % 2]);
 
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_BUFFER, _stage_step_particles_data_tbo);
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE1, GL_TEXTURE_BUFFER, _stage_step_particles_collide_collision_data_to);
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE4, GL_TEXTURE_BUFFER, _stage_step_particles_prev_data_tbo[(_stage_step_particles_n_frames) % 2]);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                            GL_TEXTURE_BUFFER,
+                                            _stage_step_particles_data_tbo);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE1,
+                                            GL_TEXTURE_BUFFER,
+                                            _stage_step_particles_collide_collision_data_to);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE4,
+                                            GL_TEXTURE_BUFFER,
+                                            _stage_step_particles_prev_data_tbo[(_stage_step_particles_n_frames) % 2]);
 
     entrypoints->pGLEnable                (GL_RASTERIZER_DISCARD);
     entrypoints->pGLBeginTransformFeedback(GL_POINTS);
     {
-        entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+        entrypoints->pGLDrawArrays(GL_POINTS,
+                                   0,
+                                   N_PARTICLES_ALIGNED_4);
     }
     entrypoints->pGLEndTransformFeedback();
     entrypoints->pGLDisable             (GL_RASTERIZER_DISCARD);
@@ -747,22 +841,35 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
                             &entrypoints);
 
     /* General */
-    entrypoints->pGLGenVertexArrays(1, &_stage_step_particles_vao_id);
+    entrypoints->pGLGenVertexArrays(1,
+                                   &_stage_step_particles_vao_id);
 
     /* Set up particle data buffer object */
-    entrypoints->pGLGenBuffers            (1, &_stage_step_particles_data_bo_id);
-    dsa_entrypoints->pGLNamedBufferDataEXT(_stage_step_particles_data_bo_id, sizeof(float) * N_PARTICLES_ALIGNED_4 * 17, NULL, GL_STREAM_DRAW);
+    entrypoints->pGLGenBuffers            (1,
+                                          &_stage_step_particles_data_bo_id);
+    dsa_entrypoints->pGLNamedBufferDataEXT(_stage_step_particles_data_bo_id,
+                                           sizeof(float) * N_PARTICLES_ALIGNED_4 * 17,
+                                           NULL,
+                                           GL_STREAM_DRAW);
 
     /* Set up prev pass' collision data buffer object */
     entrypoints->pGLGenBuffers (2, _stage_step_particles_prev_data_bo_id);
 
-    _stage_step_particles_prev_data_tbo[0] = ogl_texture_create(context, system_hashed_ansi_string_create("Prev data TBO 1") );
-    _stage_step_particles_prev_data_tbo[1] = ogl_texture_create(context, system_hashed_ansi_string_create("Prev data TBO 2") );
+    _stage_step_particles_prev_data_tbo[0] = ogl_texture_create(context,
+                                                                system_hashed_ansi_string_create("Prev data TBO 1") );
+    _stage_step_particles_prev_data_tbo[1] = ogl_texture_create(context,
+                                                                system_hashed_ansi_string_create("Prev data TBO 2") );
 
     for (uint32_t n = 0; n < 2; ++n)
     {
-        dsa_entrypoints->pGLNamedBufferDataEXT(_stage_step_particles_prev_data_bo_id[n], sizeof(float) * N_PARTICLES_ALIGNED_4 * 3, NULL,      GL_DYNAMIC_COPY);
-        dsa_entrypoints->pGLTextureBufferEXT  (_stage_step_particles_prev_data_tbo[n],   GL_TEXTURE_BUFFER,                         GL_RGB32F, _stage_step_particles_prev_data_bo_id[n]);
+        dsa_entrypoints->pGLNamedBufferDataEXT(_stage_step_particles_prev_data_bo_id[n],
+                                               sizeof(float) * N_PARTICLES_ALIGNED_4 * 3,
+                                               NULL,
+                                               GL_DYNAMIC_COPY);
+        dsa_entrypoints->pGLTextureBufferEXT  (_stage_step_particles_prev_data_tbo[n],
+                                               GL_TEXTURE_BUFFER,
+                                               GL_RGB32F,
+                                               _stage_step_particles_prev_data_bo_id[n]);
     }
 
     /* Set up corresponding particle data memory object */
@@ -774,12 +881,17 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
                                                                                 _stage_step_particles_data_bo_id,
                                                                                 &cl_error_code);
 
-    ASSERT_DEBUG_SYNC(cl_error_code == CL_SUCCESS, "Could not create particle data memory object");
+    ASSERT_DEBUG_SYNC(cl_error_code == CL_SUCCESS,
+                      "Could not create particle data memory object");
 
     /* Set up a corresponding texture buffer object */
-    _stage_step_particles_data_tbo = ogl_texture_create(context, system_hashed_ansi_string_create("Particles data TBO") );
+    _stage_step_particles_data_tbo = ogl_texture_create(context,
+                                                        system_hashed_ansi_string_create("Particles data TBO") );
 
-    dsa_entrypoints->pGLTextureBufferEXT(_stage_step_particles_data_tbo, GL_TEXTURE_BUFFER, GL_RGBA32F, _stage_step_particles_data_bo_id);
+    dsa_entrypoints->pGLTextureBufferEXT(_stage_step_particles_data_tbo,
+                                         GL_TEXTURE_BUFFER,
+                                         GL_RGBA32F,
+                                         _stage_step_particles_data_bo_id);
 
     /* Add executor we'll be using for chasing particles */
     _ocl_kdtree_executor_configuration executor_config = ocl_kdtree_get_float2_executor_configuration(false);
@@ -789,7 +901,9 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
                                      "                                                                                                  \\\n"
                                      "                      vstore4((float4)(t_hit, t_normal), ray_index, (__global float*) result);\n";
 
-    ocl_kdtree_add_executor(main_get_scene_kdtree(), executor_config, &_stage_step_particles_kdtree_float2_executor_id);
+    ocl_kdtree_add_executor(main_get_scene_kdtree(),
+                            executor_config,
+                           &_stage_step_particles_kdtree_float2_executor_id);
 
     /******************************************* PARTICLE DEBUG *****************************************************************/
     const ogl_program_uniform_descriptor* debug_collision_data_ptr    = NULL;
@@ -800,35 +914,59 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
     ogl_shader                            debug_fshader               = NULL;
     ogl_shader                            debug_vshader               = NULL;
 
-    debug_fshader                       = ogl_shader_create (context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("particle debug fragment") );
-    _stage_step_particles_debug_program = ogl_program_create(context,                       system_hashed_ansi_string_create("particle debug") );
-    debug_vshader                       = ogl_shader_create (context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("particle debug vertex") );
+    debug_fshader                       = ogl_shader_create (context,
+                                                             SHADER_TYPE_FRAGMENT,
+                                                             system_hashed_ansi_string_create("particle debug fragment") );
+    _stage_step_particles_debug_program = ogl_program_create(context,
+                                                             system_hashed_ansi_string_create("particle debug") );
+    debug_vshader                       = ogl_shader_create (context,
+                                                             SHADER_TYPE_VERTEX,
+                                                             system_hashed_ansi_string_create("particle debug vertex") );
 
-    ogl_shader_set_body(debug_fshader, system_hashed_ansi_string_create(_particle_debug_fragment_shader_body) );
-    ogl_shader_set_body(debug_vshader, system_hashed_ansi_string_create(_particle_debug_vertex_shader_body) );
+    ogl_shader_set_body(debug_fshader,
+                        system_hashed_ansi_string_create(_particle_debug_fragment_shader_body) );
+    ogl_shader_set_body(debug_vshader,
+                        system_hashed_ansi_string_create(_particle_debug_vertex_shader_body) );
 
-    ogl_program_attach_shader(_stage_step_particles_debug_program, debug_fshader);
-    ogl_program_attach_shader(_stage_step_particles_debug_program, debug_vshader);
+    ogl_program_attach_shader(_stage_step_particles_debug_program,
+                              debug_fshader);
+    ogl_program_attach_shader(_stage_step_particles_debug_program,
+                              debug_vshader);
 
     ogl_shader_compile(debug_fshader);
     ogl_shader_compile(debug_vshader);
-    ogl_program_link  (_stage_step_particles_debug_program);
+
+    ogl_program_link(_stage_step_particles_debug_program);
 
     debug_program_gl_id = ogl_program_get_id(_stage_step_particles_debug_program);
 
-    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program, system_hashed_ansi_string_create("collision_data"),    &debug_collision_data_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program, system_hashed_ansi_string_create("data"),              &debug_data_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program, system_hashed_ansi_string_create("mvp"),               &debug_mvp_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program, system_hashed_ansi_string_create("n_total_particles"), &debug_n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program,
+                                    system_hashed_ansi_string_create("collision_data"),
+                                   &debug_collision_data_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program,
+                                    system_hashed_ansi_string_create("data"),
+                                   &debug_data_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program,
+                                    system_hashed_ansi_string_create("mvp"),
+                                   &debug_mvp_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_debug_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &debug_n_total_particles_ptr);
 
     _stage_step_particles_debug_program_collision_data_location    = (debug_collision_data_ptr    != NULL) ? debug_collision_data_ptr->location    : -1;
     _stage_step_particles_debug_program_data_location              = (debug_data_ptr              != NULL) ? debug_data_ptr->location              : -1;
     _stage_step_particles_debug_program_mvp_location               = (debug_mvp_ptr               != NULL) ? debug_mvp_ptr->location               : -1;
     _stage_step_particles_debug_program_n_total_particles_location = (debug_n_total_particles_ptr != NULL) ? debug_n_total_particles_ptr->location : -1;
 
-    entrypoints->pGLProgramUniform1i(debug_program_gl_id, _stage_step_particles_debug_program_data_location,              0); /* GL_TEXTURE0 */
-    entrypoints->pGLProgramUniform1i(debug_program_gl_id, _stage_step_particles_debug_program_collision_data_location,    1); /* GL_TEXTURE1 */
-    entrypoints->pGLProgramUniform1i(debug_program_gl_id, _stage_step_particles_debug_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    entrypoints->pGLProgramUniform1i(debug_program_gl_id,
+                                     _stage_step_particles_debug_program_data_location,
+                                     0); /* GL_TEXTURE0 */
+    entrypoints->pGLProgramUniform1i(debug_program_gl_id,
+                                     _stage_step_particles_debug_program_collision_data_location,
+                                     1); /* GL_TEXTURE1 */
+    entrypoints->pGLProgramUniform1i(debug_program_gl_id,
+                                     _stage_step_particles_debug_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     ogl_shader_release(debug_fshader);
     ogl_shader_release(debug_vshader);
@@ -841,32 +979,52 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
     ogl_shader                            draw_fshader               = NULL;
     ogl_shader                            draw_vshader               = NULL;
 
-    draw_fshader                       = ogl_shader_create (context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("particle draw fragment") );
-    _stage_step_particles_draw_program = ogl_program_create(context,                       system_hashed_ansi_string_create("particle draw") );
-    draw_vshader                       = ogl_shader_create (context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("particle draw vertex") );
+    draw_fshader                       = ogl_shader_create (context,
+                                                            SHADER_TYPE_FRAGMENT,
+                                                            system_hashed_ansi_string_create("particle draw fragment") );
+    _stage_step_particles_draw_program = ogl_program_create(context,
+                                                            system_hashed_ansi_string_create("particle draw") );
+    draw_vshader                       = ogl_shader_create (context,
+                                                            SHADER_TYPE_VERTEX,
+                                                            system_hashed_ansi_string_create("particle draw vertex") );
 
-    ogl_shader_set_body(draw_fshader, system_hashed_ansi_string_create(_particle_draw_fragment_shader_body) );
-    ogl_shader_set_body(draw_vshader, system_hashed_ansi_string_create(_particle_draw_vertex_shader_body) );
+    ogl_shader_set_body(draw_fshader,
+                        system_hashed_ansi_string_create(_particle_draw_fragment_shader_body) );
+    ogl_shader_set_body(draw_vshader,
+                        system_hashed_ansi_string_create(_particle_draw_vertex_shader_body) );
 
-    ogl_program_attach_shader(_stage_step_particles_draw_program, draw_fshader);
-    ogl_program_attach_shader(_stage_step_particles_draw_program, draw_vshader);
+    ogl_program_attach_shader(_stage_step_particles_draw_program,
+                              draw_fshader);
+    ogl_program_attach_shader(_stage_step_particles_draw_program,
+                              draw_vshader);
 
     ogl_shader_compile(draw_fshader);
     ogl_shader_compile(draw_vshader);
-    ogl_program_link  (_stage_step_particles_draw_program);
+
+    ogl_program_link(_stage_step_particles_draw_program);
 
     draw_program_gl_id = ogl_program_get_id(_stage_step_particles_draw_program);
 
-    ogl_program_get_uniform_by_name(_stage_step_particles_draw_program, system_hashed_ansi_string_create("data"),              &draw_data_particles_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_draw_program, system_hashed_ansi_string_create("n_total_particles"), &draw_n_total_particles_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_draw_program, system_hashed_ansi_string_create("projection_view"),   &draw_projection_view_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_draw_program,
+                                    system_hashed_ansi_string_create("data"),
+                                   &draw_data_particles_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_draw_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &draw_n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_draw_program,
+                                    system_hashed_ansi_string_create("projection_view"),
+                                   &draw_projection_view_ptr);
 
     _stage_step_particles_draw_program_data_location              = (draw_data_particles_ptr    != NULL) ? draw_data_particles_ptr->location    : -1;
     _stage_step_particles_draw_program_n_total_particles_location = (draw_n_total_particles_ptr != NULL) ? draw_n_total_particles_ptr->location : -1;
     _stage_step_particles_draw_program_projection_view_location   = (draw_projection_view_ptr   != NULL) ? draw_projection_view_ptr->location   : -1;
 
-    entrypoints->pGLProgramUniform1i(draw_program_gl_id, _stage_step_particles_draw_program_data_location,              0); /* GL_TEXTURE0 */
-    entrypoints->pGLProgramUniform1i(draw_program_gl_id, _stage_step_particles_draw_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    entrypoints->pGLProgramUniform1i(draw_program_gl_id,
+                                     _stage_step_particles_draw_program_data_location,
+                                     0); /* GL_TEXTURE0 */
+    entrypoints->pGLProgramUniform1i(draw_program_gl_id,
+                                     _stage_step_particles_draw_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     ogl_shader_release(draw_fshader);
     ogl_shader_release(draw_vshader);
@@ -879,42 +1037,85 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
     ogl_shader                            particle_generate1_vshader       = NULL;
     GLuint                                particle_generate1_program_gl_id = 0;
 
-    const char*    generate1_tf_variables[] = {"out_mass", "out_velocity", "out_force", "out_color"};
-    const uint32_t n_generate1_tf_variables = sizeof(generate1_tf_variables) / sizeof(generate1_tf_variables[0]);
-    
-    _stage_step_particles_generate1_program = ogl_program_create(context,                     system_hashed_ansi_string_create("particle generate") );
-    particle_generate1_vshader              = ogl_shader_create (context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("particle generate") );
+    const char* generate1_tf_variables[] =
+    {
+        "out_mass",
+        "out_velocity",
+        "out_force",
+        "out_color"
+    };
+    const uint32_t n_generate1_tf_variables = sizeof(generate1_tf_variables) /
+                                              sizeof(generate1_tf_variables[0]);
+
+    _stage_step_particles_generate1_program = ogl_program_create(context,
+                                                                 system_hashed_ansi_string_create("particle generate") );
+    particle_generate1_vshader              = ogl_shader_create (context,
+                                                                 SHADER_TYPE_VERTEX,
+                                                                 system_hashed_ansi_string_create("particle generate") );
     particle_generate1_program_gl_id        = ogl_program_get_id(_stage_step_particles_generate1_program);
 
-    ogl_shader_set_body(particle_generate1_vshader, system_hashed_ansi_string_create(_particle_generate1_vertex_shader_body) );
+    ogl_shader_set_body(particle_generate1_vshader,
+                        system_hashed_ansi_string_create(_particle_generate1_vertex_shader_body) );
     ogl_shader_compile (particle_generate1_vshader);
 
-    entrypoints->pGLTransformFeedbackVaryings(particle_generate1_program_gl_id, n_generate1_tf_variables, generate1_tf_variables, GL_SEPARATE_ATTRIBS);
+    entrypoints->pGLTransformFeedbackVaryings(particle_generate1_program_gl_id,
+                                              n_generate1_tf_variables,
+                                              generate1_tf_variables,
+                                              GL_SEPARATE_ATTRIBS);
 
-    ogl_program_attach_shader(_stage_step_particles_generate1_program, particle_generate1_vshader);
+    ogl_program_attach_shader(_stage_step_particles_generate1_program,
+                              particle_generate1_vshader);
     ogl_program_link         (_stage_step_particles_generate1_program);
 
-    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program, system_hashed_ansi_string_create("max_mass_delta"),    &generate1_max_mass_delta_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program, system_hashed_ansi_string_create("min_mass"),          &generate1_min_mass_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program, system_hashed_ansi_string_create("n_total_particles"), &generate1_n_total_particles_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program, system_hashed_ansi_string_create("spread"),            &generate1_spread_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program,
+                                    system_hashed_ansi_string_create("max_mass_delta"),
+                                   &generate1_max_mass_delta_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program,
+                                    system_hashed_ansi_string_create("min_mass"),
+                                   &generate1_min_mass_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &generate1_n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_generate1_program,
+                                    system_hashed_ansi_string_create("spread"),
+                                   &generate1_spread_ptr);
 
     _stage_step_particles_generate1_program_max_mass_delta_location    = generate1_max_mass_delta_ptr->location;
     _stage_step_particles_generate1_program_min_mass_location          = generate1_min_mass_ptr->location;
     _stage_step_particles_generate1_program_n_total_particles_location = generate1_n_total_particles_ptr->location;
     _stage_step_particles_generate1_program_spread_location            = (generate1_spread_ptr != NULL ? generate1_spread_ptr->location : -1);
 
-    entrypoints->pGLProgramUniform1i(particle_generate1_program_gl_id, _stage_step_particles_generate1_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    entrypoints->pGLProgramUniform1i(particle_generate1_program_gl_id,
+                                     _stage_step_particles_generate1_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     ogl_shader_release(particle_generate1_vshader);
 
     /* Set up TFO */
-    entrypoints->pGLGenTransformFeedbacks(1,                           &_stage_step_particles_generate1_tfo_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,        _stage_step_particles_generate1_tfo_id);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_MASS_TF_INDEX,     _stage_step_particles_data_bo_id, 0,                                          N_PARTICLES_ALIGNED_4 * sizeof(float) );
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_VELOCITY_TF_INDEX, _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 5,  N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_FORCE_TF_INDEX,    _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 9,  N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_COLOR_TF_INDEX,    _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 13, N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLGenTransformFeedbacks(1,
+                                         &_stage_step_particles_generate1_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _stage_step_particles_generate1_tfo_id);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_MASS_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          0,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) );
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_VELOCITY_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 5,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_FORCE_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 9,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_COLOR_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 13,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
 
     /**************************************** PARTICLE GENERATE 2 **************************************************************/
     const char*    generate2_tf_variables[]          = {"out_position"};
@@ -922,31 +1123,47 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
     GLuint         particle_generate2_program_gl_id  = 0;
     ogl_shader     particle_generate2_vshader        = NULL;
 
-    _stage_step_particles_generate2_program = ogl_program_create(context,                     system_hashed_ansi_string_create("particle generate 2") );
-    particle_generate2_vshader              = ogl_shader_create (context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("particle generate 2") );
+    _stage_step_particles_generate2_program = ogl_program_create(context,
+                                                                 system_hashed_ansi_string_create("particle generate 2") );
+    particle_generate2_vshader              = ogl_shader_create (context,
+                                                                 SHADER_TYPE_VERTEX,
+                                                                 system_hashed_ansi_string_create("particle generate 2") );
     particle_generate2_program_gl_id        = ogl_program_get_id(_stage_step_particles_generate2_program);
 
-    ogl_shader_set_body(particle_generate2_vshader, system_hashed_ansi_string_create(_particle_generate2_vertex_shader_body) );
+    ogl_shader_set_body(particle_generate2_vshader,
+                        system_hashed_ansi_string_create(_particle_generate2_vertex_shader_body) );
     ogl_shader_compile (particle_generate2_vshader);
 
-    entrypoints->pGLTransformFeedbackVaryings(particle_generate2_program_gl_id, n_generate2_tf_variables, generate2_tf_variables, GL_SEPARATE_ATTRIBS);
+    entrypoints->pGLTransformFeedbackVaryings(particle_generate2_program_gl_id,
+                                              n_generate2_tf_variables,
+                                              generate2_tf_variables,
+                                              GL_SEPARATE_ATTRIBS);
 
-    ogl_program_attach_shader(_stage_step_particles_generate2_program, particle_generate2_vshader);
+    ogl_program_attach_shader(_stage_step_particles_generate2_program,
+                              particle_generate2_vshader);
     ogl_program_link         (_stage_step_particles_generate2_program);
 
     /* Set up TFO */
-    entrypoints->pGLGenTransformFeedbacks(1,                           &_stage_step_particles_generate2_tfo_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,        _stage_step_particles_generate2_tfo_id);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE2_OUT_POSITION_TF_INDEX, _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float),  N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLGenTransformFeedbacks(1,
+                                         &_stage_step_particles_generate2_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _stage_step_particles_generate2_tfo_id);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE2_OUT_POSITION_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float),
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
 
     ogl_shader_release(particle_generate2_vshader);
 
     /************************************************ PARTICLE COLLISION DETECTION *****************************/
-    entrypoints->pGLGenBuffers            (1, &_stage_step_particles_collide_collision_data_bo);
+    entrypoints->pGLGenBuffers(1,
+                              &_stage_step_particles_collide_collision_data_bo);
 
-    _stage_step_particles_collide_collision_data_to = ogl_texture_create(context, system_hashed_ansi_string_create("Collision data TBO") );
+    _stage_step_particles_collide_collision_data_to = ogl_texture_create(context,
+                                                                         system_hashed_ansi_string_create("Collision data TBO") );
 
-    dsa_entrypoints->pGLNamedBufferDataEXT(_stage_step_particles_collide_collision_data_bo, 
+    dsa_entrypoints->pGLNamedBufferDataEXT(_stage_step_particles_collide_collision_data_bo,
                                            N_PARTICLES_ALIGNED_4 * 4 * sizeof(float),
                                            NULL,
                                            GL_DYNAMIC_COPY);
@@ -959,17 +1176,23 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
                                                                                                CL_MEM_WRITE_ONLY,
                                                                                                _stage_step_particles_collide_collision_data_bo,
                                                                                                &cl_error_code);
-    ASSERT_DEBUG_SYNC(_stage_step_particles_collide_collision_data_mo != NULL && cl_error_code == CL_SUCCESS,
+
+    ASSERT_DEBUG_SYNC(_stage_step_particles_collide_collision_data_mo != NULL       &&
+                      cl_error_code                                   == CL_SUCCESS,
                       "Could not generate memory object to hold collision data");
 
     /* Create objects */
     ogl_shader particle_update_vshader = NULL;
 
-    _stage_step_particles_update_program = ogl_program_create(context,                     system_hashed_ansi_string_create("particle update") );
-    particle_update_vshader              = ogl_shader_create (context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("particle update") );
+    _stage_step_particles_update_program = ogl_program_create(context,
+                                                              system_hashed_ansi_string_create("particle update") );
+    particle_update_vshader              = ogl_shader_create (context,
+                                                              SHADER_TYPE_VERTEX,
+                                                              system_hashed_ansi_string_create("particle update") );
 
     /* Set up particle update vshader object */
-    ogl_shader_set_body(particle_update_vshader, system_hashed_ansi_string_create(_particle_update_vertex_shader_body) );
+    ogl_shader_set_body(particle_update_vshader,
+                        system_hashed_ansi_string_create(_particle_update_vertex_shader_body) );
     ogl_shader_compile (particle_update_vshader);
 
     /* Set up particle update program */
@@ -982,24 +1205,53 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
     const ogl_program_uniform_descriptor* mesh_vertex_data_ptr             = NULL;
     const ogl_program_uniform_descriptor* n_total_particles_ptr            = NULL;
     const ogl_program_uniform_descriptor* prev_pass_collide_stage_data_ptr = NULL;
-    const char*                           update_tf_variables[]            = {"out_position", "out_velocity", "out_force", "out_collision_location"};
-    const uint32_t                        n_update_tf_variables            = sizeof(update_tf_variables) / sizeof(update_tf_variables[0]);
-    GLuint                                update_program_gl_id             = ogl_program_get_id(_stage_step_particles_update_program);
+    const char*                           update_tf_variables[]            =
+    {
+        "out_position",
+        "out_velocity",
+        "out_force",
+        "out_collision_location"};
 
-    entrypoints->pGLTransformFeedbackVaryings(update_program_gl_id, n_update_tf_variables, update_tf_variables, GL_SEPARATE_ATTRIBS);
+    const uint32_t n_update_tf_variables = sizeof(update_tf_variables) /
+                                           sizeof(update_tf_variables[0]);
+    GLuint         update_program_gl_id  = ogl_program_get_id(_stage_step_particles_update_program);
 
-    ogl_program_attach_shader(_stage_step_particles_update_program, particle_update_vshader);
+    entrypoints->pGLTransformFeedbackVaryings(update_program_gl_id,
+                                              n_update_tf_variables,
+                                              update_tf_variables,
+                                              GL_SEPARATE_ATTRIBS);
+
+    ogl_program_attach_shader(_stage_step_particles_update_program,
+                              particle_update_vshader);
     ogl_program_link         (_stage_step_particles_update_program);
 
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("collide_stage_barycentric_data"),  &barycentric_data_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("prev_pass_data"),                  &data_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("decay"),                           &decay_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("dt"),                              &dt_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("gravity"),                         &gravity_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("is_prev_pass_data_available"),     &is_prev_pass_data_available_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("mesh_vertex_data"),                &mesh_vertex_data_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("prev_pass_collide_stage_data"),    &prev_pass_collide_stage_data_ptr);
-    ogl_program_get_uniform_by_name(_stage_step_particles_update_program, system_hashed_ansi_string_create("n_total_particles"),               &n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("collide_stage_barycentric_data"),
+                                   &barycentric_data_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("prev_pass_data"),
+                                   &data_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("decay"),
+                                   &decay_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("dt"),
+                                   &dt_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("gravity"),
+                                   &gravity_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("is_prev_pass_data_available"),
+                                   &is_prev_pass_data_available_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("mesh_vertex_data"),
+                                   &mesh_vertex_data_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("prev_pass_collide_stage_data"),
+                                   &prev_pass_collide_stage_data_ptr);
+    ogl_program_get_uniform_by_name(_stage_step_particles_update_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &n_total_particles_ptr);
 
     _stage_step_particles_update_program_barycentric_data_uniform_location             = (barycentric_data_ptr             != NULL ? barycentric_data_ptr->location             : -1);
     _stage_step_particles_update_program_decay_uniform_location                        = (decay_ptr                        != NULL ? decay_ptr->location                        : -1);
@@ -1010,28 +1262,87 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_step_particles_init(__in __notnull ogl_
     _stage_step_particles_update_program_n_total_particles_location                    = (n_total_particles_ptr            != NULL ? n_total_particles_ptr->location            : -1);
     _stage_step_particles_update_program_prev_pass_collide_stage_data_uniform_location = (prev_pass_collide_stage_data_ptr != NULL ? prev_pass_collide_stage_data_ptr->location : -1);
 
-    if (data_ptr                         != NULL) entrypoints->pGLProgramUniform1i(update_program_gl_id, data_ptr->location,                         0); /* GL_TEXTURE0 */
-    if (barycentric_data_ptr             != NULL) entrypoints->pGLProgramUniform1i(update_program_gl_id, barycentric_data_ptr->location,             1); /* GL_TEXTURE1 */
-    if (mesh_vertex_data_ptr             != NULL) entrypoints->pGLProgramUniform1i(update_program_gl_id, mesh_vertex_data_ptr->location,             2); /* GL_TEXTURE2 */
-    if (prev_pass_collide_stage_data_ptr != NULL) entrypoints->pGLProgramUniform1i(update_program_gl_id, prev_pass_collide_stage_data_ptr->location, 4); /* GL_TEXTURE4 */
+    if (data_ptr != NULL)
+    {
+        entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                         data_ptr->location,
+                                         0); /* GL_TEXTURE0 */
+    }
 
-    entrypoints->pGLProgramUniform1i(update_program_gl_id, _stage_step_particles_update_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    if (barycentric_data_ptr != NULL)
+    {
+        entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                         barycentric_data_ptr->location,
+                                         1); /* GL_TEXTURE1 */
+    }
+
+    if (mesh_vertex_data_ptr != NULL)
+    {
+        entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                         mesh_vertex_data_ptr->location,
+                                         2); /* GL_TEXTURE2 */
+    }
+
+    if (prev_pass_collide_stage_data_ptr != NULL)
+    {
+        entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                         prev_pass_collide_stage_data_ptr->location,
+                                         4); /* GL_TEXTURE4 */
+    }
+
+    entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                     _stage_step_particles_update_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     ogl_shader_release(particle_update_vshader);
 
     /* Set up TFO */
-    entrypoints->pGLGenTransformFeedbacks(1,                            &_stage_step_particles_update_tfo_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,         _stage_step_particles_update_tfo_id);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_POSITION_TF_INDEX,           _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float),     N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_VELOCITY_TF_INDEX,           _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 5, N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_FORCE_TF_INDEX,              _stage_step_particles_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 9, N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLGenTransformFeedbacks(1,
+                                         &_stage_step_particles_update_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _stage_step_particles_update_tfo_id);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_POSITION_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float),
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_VELOCITY_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 5,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_FORCE_TF_INDEX,
+                                          _stage_step_particles_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 9,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
 
     /* Add the step */
-    _stage_step_particles_generate_step_id = ogl_pipeline_add_stage_step(pipeline, stage_id, system_hashed_ansi_string_create("Particle generation"), _stage_step_particles_generate,  NULL);
-    _stage_step_particles_update_step_id   = ogl_pipeline_add_stage_step(pipeline, stage_id, system_hashed_ansi_string_create("Particle update"),     _stage_step_particles_update,    NULL);
-    _stage_step_particles_collide_step_id  = ogl_pipeline_add_stage_step(pipeline, stage_id, system_hashed_ansi_string_create("Particle collisions"), _stage_step_particles_collide,   NULL);
-    _stage_step_particles_draw_step_id     = ogl_pipeline_add_stage_step(pipeline, stage_id, system_hashed_ansi_string_create("Particle draw"),       _stage_step_particles_draw,      NULL);
-    _stage_step_particles_debug_step_id    = ogl_pipeline_add_stage_step(pipeline, stage_id, system_hashed_ansi_string_create("Particle debug"),      _stage_step_particles_debug,     NULL);
+    _stage_step_particles_generate_step_id = ogl_pipeline_add_stage_step(pipeline,
+                                                                         stage_id,
+                                                                         system_hashed_ansi_string_create("Particle generation"),
+                                                                         _stage_step_particles_generate,
+                                                                         NULL);
+    _stage_step_particles_update_step_id   = ogl_pipeline_add_stage_step(pipeline,
+                                                                         stage_id,
+                                                                         system_hashed_ansi_string_create("Particle update"),
+                                                                         _stage_step_particles_update,
+                                                                         NULL);
+    _stage_step_particles_collide_step_id  = ogl_pipeline_add_stage_step(pipeline,
+                                                                         stage_id,
+                                                                         system_hashed_ansi_string_create("Particle collisions"),
+                                                                         _stage_step_particles_collide,
+                                                                         NULL);
+    _stage_step_particles_draw_step_id     = ogl_pipeline_add_stage_step(pipeline,
+                                                                         stage_id,
+                                                                         system_hashed_ansi_string_create("Particle draw"),
+                                                                         _stage_step_particles_draw,
+                                                                         NULL);
+    _stage_step_particles_debug_step_id    = ogl_pipeline_add_stage_step(pipeline,
+                                                                         stage_id,
+                                                                         system_hashed_ansi_string_create("Particle debug"),
+                                                                         _stage_step_particles_debug,
+                                                                         NULL);
 }
 
 /** Please see header for specification */

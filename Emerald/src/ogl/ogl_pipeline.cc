@@ -499,9 +499,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(__in __notnull ogl_pipeline i
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_pipeline ogl_pipeline_create(__in __notnull ogl_context               context,
-                                                    __in           bool                      should_overlay_performance_info,
-                                                    __in __notnull system_hashed_ansi_string name)
+PUBLIC RENDERING_CONTEXT_CALL EMERALD_API ogl_pipeline ogl_pipeline_create(__in __notnull ogl_context               context,
+                                                                           __in           bool                      should_overlay_performance_info,
+                                                                           __in __notnull system_hashed_ansi_string name)
 {
     _ogl_pipeline* pipeline_ptr = new (std::nothrow) _ogl_pipeline;
 

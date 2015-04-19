@@ -449,6 +449,14 @@ PRIVATE void _ogl_texture_get_texture_format_type_from_internalformat(__in      
 {
     switch (internalformat)
     {
+        case GL_RGB32F:
+        {
+            *out_format = GL_RGB;
+            *out_type   = GL_FLOAT;
+
+            break;
+        }
+
         case GL_RGB8:
         case GL_SRGB8:
         {

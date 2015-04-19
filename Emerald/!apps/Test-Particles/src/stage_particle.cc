@@ -1,6 +1,6 @@
 /**
  *
- * Particles test app (kbi/elude @2012)
+ * Particles test app (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -246,43 +246,61 @@ system_matrix4x4 _matrix_view                                           = NULL;
 GLuint           _vao_id                                                = -1;
 
 /** TODO */
-static void _stage_particle_step_draw(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_particle_step_draw(ogl_context          context,
+                                      system_timeline_time time,
+                                      void*                not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_EXT_DIRECT_STATE_ACCESS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     /* Set up */
     const GLuint draw_po_id = ogl_program_get_id(_particle_draw_program);
 
-    entrypoints->pGLBindVertexArray               (_vao_id);
-    entrypoints->pGLUseProgram                    (draw_po_id);
+    entrypoints->pGLBindVertexArray(_vao_id);
+    entrypoints->pGLUseProgram     (draw_po_id);
 
     /* Update the uniforms */
     system_matrix4x4 vp = NULL;
 
-         ogl_flyby_get_view_matrix     (context,            _matrix_view);
-    vp = system_matrix4x4_create_by_mul(_matrix_projection, _matrix_view);
+    ogl_flyby_get_property(context,
+                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                          &_matrix_view);
+
+    vp = system_matrix4x4_create_by_mul(_matrix_projection,
+                                        _matrix_view);
     {
-        entrypoints->pGLProgramUniformMatrix4fv(draw_po_id, _particle_draw_program_projection_view_location, 1, GL_TRUE, system_matrix4x4_get_row_major_data(vp) );
+        entrypoints->pGLProgramUniformMatrix4fv(draw_po_id,
+                                                _particle_draw_program_projection_view_location,
+                                                1, /* count */
+                                                GL_TRUE,
+                                                system_matrix4x4_get_row_major_data(vp) );
     }
     system_matrix4x4_release(vp);
 
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0, GL_TEXTURE_BUFFER, _particle_data_tbo);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                            GL_TEXTURE_BUFFER,
+                                            _particle_data_tbo);
 
-    entrypoints->pGLClearColor(0, 0.25f, 0, 0);
-    entrypoints->pGLClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    entrypoints->pGLClearColor(0,     /* red */
+                               0.25f, /* green */
+                               0,     /* blue */
+                               0);    /* alpha */
+    entrypoints->pGLClear     (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    entrypoints->pGLEnable(GL_BLEND);
-    entrypoints->pGLBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    entrypoints->pGLEnable   (GL_BLEND);
+    entrypoints->pGLBlendFunc(GL_SRC_ALPHA,
+                              GL_ONE);
     {
-        entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+        entrypoints->pGLDrawArrays(GL_POINTS,
+                                   0, /* first */
+                                   N_PARTICLES_ALIGNED_4);
     }
     entrypoints->pGLDisable(GL_BLEND);
 }
@@ -296,10 +314,10 @@ static void _stage_particle_step_init(ogl_context context, system_timeline_time 
         const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
 
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_EXT_DIRECT_STATE_ACCESS,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &dsa_entrypoints);
         ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entrypoints);
 
         /* General */
@@ -309,42 +327,66 @@ static void _stage_particle_step_init(ogl_context context, system_timeline_time 
         /* Stage 1 */
         const GLuint stage1_po_id = ogl_program_get_id(_particle_generate1_program);
 
-        entrypoints->pGLProgramUniform1f(stage1_po_id, _particle_generate1_program_max_mass_delta_location, _particle_max_mass_delta);
-        entrypoints->pGLProgramUniform1f(stage1_po_id, _particle_generate1_program_min_mass_location,       _particle_min_mass);
-        entrypoints->pGLProgramUniform1f(stage1_po_id, _particle_generate1_program_spread_location,         _particle_spread);
+        entrypoints->pGLProgramUniform1f(stage1_po_id,
+                                         _particle_generate1_program_max_mass_delta_location,
+                                         _particle_max_mass_delta);
+        entrypoints->pGLProgramUniform1f(stage1_po_id,
+                                         _particle_generate1_program_min_mass_location,
+                                         _particle_min_mass);
+        entrypoints->pGLProgramUniform1f(stage1_po_id,
+                                         _particle_generate1_program_spread_location,
+                                         _particle_spread);
 
         entrypoints->pGLUseProgram           (stage1_po_id);
-        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, _particle_generate1_tfo_id);
+        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                              _particle_generate1_tfo_id);
 
         entrypoints->pGLBeginTransformFeedback(GL_POINTS);
         {
-            entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+            entrypoints->pGLDrawArrays(GL_POINTS,
+                                       0, /* first */
+                                       N_PARTICLES_ALIGNED_4);
         }
         entrypoints->pGLEndTransformFeedback();
 
         /* Stage 2 */
         const GLuint stage2_po_id = ogl_program_get_id(_particle_generate2_program);
 
-        entrypoints->pGLUseProgram(stage2_po_id);
-        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, _particle_generate2_tfo_id);
+        entrypoints->pGLUseProgram           (stage2_po_id);
+        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                              _particle_generate2_tfo_id);
         {
             entrypoints->pGLBeginTransformFeedback(GL_POINTS);
             {
-                entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+                entrypoints->pGLDrawArrays(GL_POINTS,
+                                           0, /* first */
+                                           N_PARTICLES_ALIGNED_4);
             }
             entrypoints->pGLEndTransformFeedback();
         }
-        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
+        entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                              0);
 
         /* Flyby */
         if (!_particle_flyby_initialized)
         {
-            const float camera_pos[] = {0, 0, 0};
+            const float camera_movement_delta = 0.025f;
+            const float camera_pitch          = -0.2120f;
+            const float camera_position[]     = {32.8824f, 12.5255f, -30.4577f};
+            const float camera_yaw            = -0.6440f;
 
-            ogl_flyby_activate          (context, camera_pos);
-            ogl_flyby_set_movement_delta(context,  0.025f);
-            ogl_flyby_set_position      (context,  32.8824f, 12.5255f, -30.4577f);
-            ogl_flyby_set_pitch_yaw     (context, -0.2120f, -0.6440f);
+            ogl_flyby_activate(context,
+                               camera_position);
+
+            ogl_flyby_set_property(context,
+                                   OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                                  &camera_movement_delta);
+            ogl_flyby_set_property(context,
+                                   OGL_FLYBY_PROPERTY_PITCH,
+                                  &camera_pitch);
+            ogl_flyby_set_property(context,
+                                   OGL_FLYBY_PROPERTY_YAW,
+                                  &camera_yaw);
 
             _particle_flyby_initialized = true;
         }
@@ -363,33 +405,46 @@ static void _stage_particle_step_init(ogl_context context, system_timeline_time 
 }
 
 /** TODO */
-static void _stage_particle_step_update(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_particle_step_update(ogl_context          context,
+                                        system_timeline_time time,
+                                        void*                not_used)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
     const GLuint                                              update_po_gl_id = ogl_program_get_id(_particle_update_program);
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_EXT_DIRECT_STATE_ACCESS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     entrypoints->pGLBindVertexArray(_vao_id);
 
-    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,     GL_TEXTURE_BUFFER,                                 _particle_data_tbo);
-    entrypoints->pGLProgramUniform1f       (update_po_gl_id, _particle_update_program_dt_uniform_location,      _particle_dt);
-    entrypoints->pGLProgramUniform1f       (update_po_gl_id, _particle_update_program_gravity_uniform_location, _particle_gravity);
-    entrypoints->pGLProgramUniform1f       (update_po_gl_id, _particle_update_program_decay_uniform_location,   _particle_decay);
+    dsa_entrypoints->pGLBindMultiTextureEXT(GL_TEXTURE0,
+                                            GL_TEXTURE_BUFFER,
+                                            _particle_data_tbo);
+    entrypoints->pGLProgramUniform1f       (update_po_gl_id,
+                                            _particle_update_program_dt_uniform_location,
+                                            _particle_dt);
+    entrypoints->pGLProgramUniform1f       (update_po_gl_id,
+                                            _particle_update_program_gravity_uniform_location,
+                                            _particle_gravity);
+    entrypoints->pGLProgramUniform1f       (update_po_gl_id,
+                                            _particle_update_program_decay_uniform_location,
+                                            _particle_decay);
 
     entrypoints->pGLUseProgram           (update_po_gl_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK, _particle_update_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _particle_update_tfo_id);
 
     entrypoints->pGLEnable                (GL_RASTERIZER_DISCARD);
     entrypoints->pGLBeginTransformFeedback(GL_POINTS);
     {
-        entrypoints->pGLDrawArrays(GL_POINTS, 0, N_PARTICLES_ALIGNED_4);
+        entrypoints->pGLDrawArrays(GL_POINTS,
+                                   0, /* first */
+                                   N_PARTICLES_ALIGNED_4);
     }
     entrypoints->pGLEndTransformFeedback();
     entrypoints->pGLDisable             (GL_RASTERIZER_DISCARD);
@@ -460,23 +515,32 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_EXT_DIRECT_STATE_ACCESS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
     /* General */
-    entrypoints->pGLGenVertexArrays(1, &_vao_id);
+    entrypoints->pGLGenVertexArrays(1, /* n */
+                                   &_vao_id);
 
     /* Set up particle data buffer object */
-    entrypoints->pGLGenBuffers            (1, &_particle_data_bo_id);
-    dsa_entrypoints->pGLNamedBufferDataEXT(_particle_data_bo_id, sizeof(float) * N_PARTICLES_ALIGNED_4 * 17, NULL, GL_STREAM_DRAW);
+    entrypoints->pGLGenBuffers            (1,
+                                          &_particle_data_bo_id);
+    dsa_entrypoints->pGLNamedBufferDataEXT(_particle_data_bo_id,
+                                           sizeof(float) * N_PARTICLES_ALIGNED_4 * 17,
+                                           NULL, /* data */
+                                           GL_STREAM_DRAW);
 
     /* Set up a corresponding texture buffer object */
-    _particle_data_tbo = ogl_texture_create(context, system_hashed_ansi_string_create("Particle data") );
-    
-    dsa_entrypoints->pGLTextureBufferEXT(_particle_data_tbo, GL_TEXTURE_BUFFER, GL_RGBA32F, _particle_data_bo_id);
+    _particle_data_tbo = ogl_texture_create_empty(context,
+                                                  system_hashed_ansi_string_create("Particle data") );
+
+    dsa_entrypoints->pGLTextureBufferEXT(_particle_data_tbo,
+                                         GL_TEXTURE_BUFFER,
+                                         GL_RGBA32F,
+                                         _particle_data_bo_id);
 
     /******************************************* PARTICLE DRAW *****************************************************************/
     const ogl_program_uniform_descriptor* draw_data_particles_ptr    = NULL;
@@ -484,25 +548,41 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
     const ogl_program_uniform_descriptor* draw_projection_view_ptr   = NULL;
     GLuint                                draw_program_gl_id         = 0;
 
-    _particle_draw_fshader = ogl_shader_create (context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("particle draw fragment") );
-    _particle_draw_program = ogl_program_create(context,                       system_hashed_ansi_string_create("particle draw") );
-    _particle_draw_vshader = ogl_shader_create (context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("particle draw vertex") );
+    _particle_draw_fshader = ogl_shader_create (context,
+                                                SHADER_TYPE_FRAGMENT,
+                                                system_hashed_ansi_string_create("particle draw fragment") );
+    _particle_draw_program = ogl_program_create(context,
+                                                system_hashed_ansi_string_create("particle draw") );
+    _particle_draw_vshader = ogl_shader_create (context,
+                                                SHADER_TYPE_VERTEX,
+                                                system_hashed_ansi_string_create("particle draw vertex") );
 
-    ogl_shader_set_body(_particle_draw_fshader, system_hashed_ansi_string_create(_particle_draw_fragment_shader_body) );
-    ogl_shader_set_body(_particle_draw_vshader, system_hashed_ansi_string_create(_particle_draw_vertex_shader_body) );
+    ogl_shader_set_body(_particle_draw_fshader,
+                        system_hashed_ansi_string_create(_particle_draw_fragment_shader_body) );
+    ogl_shader_set_body(_particle_draw_vshader,
+                        system_hashed_ansi_string_create(_particle_draw_vertex_shader_body) );
 
-    ogl_program_attach_shader(_particle_draw_program, _particle_draw_fshader);
-    ogl_program_attach_shader(_particle_draw_program, _particle_draw_vshader);
+    ogl_program_attach_shader(_particle_draw_program,
+                              _particle_draw_fshader);
+    ogl_program_attach_shader(_particle_draw_program,
+                              _particle_draw_vshader);
 
-    ogl_shader_compile       (_particle_draw_fshader);
-    ogl_shader_compile       (_particle_draw_vshader);
-    ogl_program_link         (_particle_draw_program);
+    ogl_shader_compile(_particle_draw_fshader);
+    ogl_shader_compile(_particle_draw_vshader);
+
+    ogl_program_link(_particle_draw_program);
 
     draw_program_gl_id = ogl_program_get_id(_particle_draw_program);
 
-    ogl_program_get_uniform_by_name(_particle_draw_program, system_hashed_ansi_string_create("data"),              &draw_data_particles_ptr);
-    ogl_program_get_uniform_by_name(_particle_draw_program, system_hashed_ansi_string_create("n_total_particles"), &draw_n_total_particles_ptr);
-    ogl_program_get_uniform_by_name(_particle_draw_program, system_hashed_ansi_string_create("projection_view"),   &draw_projection_view_ptr);
+    ogl_program_get_uniform_by_name(_particle_draw_program,
+                                    system_hashed_ansi_string_create("data"),
+                                   &draw_data_particles_ptr);
+    ogl_program_get_uniform_by_name(_particle_draw_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &draw_n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_particle_draw_program,
+                                    system_hashed_ansi_string_create("projection_view"),
+                                   &draw_projection_view_ptr);
 
     if (draw_data_particles_ptr != NULL)
     {
@@ -531,8 +611,12 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
         _particle_draw_program_projection_view_location = -1;
     }
 
-    entrypoints->pGLProgramUniform1i(draw_program_gl_id, _particle_draw_program_data_location,              0); /* GL_TEXTURE0 */
-    entrypoints->pGLProgramUniform1i(draw_program_gl_id, _particle_draw_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    entrypoints->pGLProgramUniform1i(draw_program_gl_id,
+                                     _particle_draw_program_data_location,
+                                     0); /* GL_TEXTURE0 */
+    entrypoints->pGLProgramUniform1i(draw_program_gl_id,
+                                     _particle_draw_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     /**************************************** PARTICLE GENERATE 1 **************************************************************/
     const ogl_program_uniform_descriptor* generate1_max_mass_delta_ptr    = NULL;
@@ -540,71 +624,138 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
     const ogl_program_uniform_descriptor* generate1_n_total_particles_ptr = NULL;
     const ogl_program_uniform_descriptor* generate1_spread_ptr            = NULL;
 
-    const char*    generate1_tf_variables[] = {"out_mass", "out_velocity", "out_force", "out_color"};
-    const uint32_t n_generate1_tf_variables = sizeof(generate1_tf_variables) / sizeof(generate1_tf_variables[0]);
+    const char* generate1_tf_variables[] =
+    {
+        "out_mass",
+        "out_velocity",
+        "out_force",
+        "out_color"
+    };
+
+    const uint32_t n_generate1_tf_variables = sizeof(generate1_tf_variables) /
+                                              sizeof(generate1_tf_variables[0]);
     GLuint         generate1_program_gl_id  = 0;
 
-    _particle_generate1_program = ogl_program_create(context,                     system_hashed_ansi_string_create("particle generate") );
-    _particle_generate1_vshader = ogl_shader_create (context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("particle generate") );
+    _particle_generate1_program = ogl_program_create(context,
+                                                     system_hashed_ansi_string_create("particle generate") );
+    _particle_generate1_vshader = ogl_shader_create (context,
+                                                     SHADER_TYPE_VERTEX,
+                                                     system_hashed_ansi_string_create("particle generate") );
     generate1_program_gl_id     = ogl_program_get_id(_particle_generate1_program);
 
-    ogl_shader_set_body(_particle_generate1_vshader, system_hashed_ansi_string_create(_particle_generate1_vertex_shader_body) );
+    ogl_shader_set_body(_particle_generate1_vshader,
+                        system_hashed_ansi_string_create(_particle_generate1_vertex_shader_body) );
     ogl_shader_compile (_particle_generate1_vshader);
 
-    entrypoints->pGLTransformFeedbackVaryings(generate1_program_gl_id, n_generate1_tf_variables, generate1_tf_variables, GL_SEPARATE_ATTRIBS);
+    entrypoints->pGLTransformFeedbackVaryings(generate1_program_gl_id,
+                                              n_generate1_tf_variables,
+                                              generate1_tf_variables,
+                                              GL_SEPARATE_ATTRIBS);
 
-    ogl_program_attach_shader(_particle_generate1_program, _particle_generate1_vshader);
+    ogl_program_attach_shader(_particle_generate1_program,
+                              _particle_generate1_vshader);
     ogl_program_link         (_particle_generate1_program);
 
-    ogl_program_get_uniform_by_name(_particle_generate1_program, system_hashed_ansi_string_create("max_mass_delta"),    &generate1_max_mass_delta_ptr);
-    ogl_program_get_uniform_by_name(_particle_generate1_program, system_hashed_ansi_string_create("min_mass"),          &generate1_min_mass_ptr);
-    ogl_program_get_uniform_by_name(_particle_generate1_program, system_hashed_ansi_string_create("n_total_particles"), &generate1_n_total_particles_ptr);
-    ogl_program_get_uniform_by_name(_particle_generate1_program, system_hashed_ansi_string_create("spread"),            &generate1_spread_ptr);
+    ogl_program_get_uniform_by_name(_particle_generate1_program,
+                                    system_hashed_ansi_string_create("max_mass_delta"),
+                                   &generate1_max_mass_delta_ptr);
+    ogl_program_get_uniform_by_name(_particle_generate1_program,
+                                    system_hashed_ansi_string_create("min_mass"),
+                                   &generate1_min_mass_ptr);
+    ogl_program_get_uniform_by_name(_particle_generate1_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &generate1_n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_particle_generate1_program,
+                                    system_hashed_ansi_string_create("spread"),
+                                   &generate1_spread_ptr);
 
     _particle_generate1_program_max_mass_delta_location    = generate1_max_mass_delta_ptr->location;
     _particle_generate1_program_min_mass_location          = generate1_min_mass_ptr->location;
     _particle_generate1_program_n_total_particles_location = generate1_n_total_particles_ptr->location;
     _particle_generate1_program_spread_location            = (generate1_spread_ptr != NULL ? generate1_spread_ptr->location : -1);
 
-    entrypoints->pGLProgramUniform1i(generate1_program_gl_id, _particle_generate1_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    entrypoints->pGLProgramUniform1i(generate1_program_gl_id,
+                                     _particle_generate1_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     /* Set up TFO */
-    entrypoints->pGLGenTransformFeedbacks(1,                           &_particle_generate1_tfo_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,        _particle_generate1_tfo_id);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_MASS_TF_INDEX,     _particle_data_bo_id, 0,                                          N_PARTICLES_ALIGNED_4 * sizeof(float) );
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_VELOCITY_TF_INDEX, _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 5,  N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_FORCE_TF_INDEX,    _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 9,  N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE1_OUT_COLOR_TF_INDEX,    _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 13, N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLGenTransformFeedbacks(1, /* n */
+                                         &_particle_generate1_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _particle_generate1_tfo_id);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_MASS_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          0,                                        /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) );  /* size */
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_VELOCITY_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 5, /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);/* size */
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_FORCE_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 9, /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);/* size */
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE1_OUT_COLOR_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 13, /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4); /* size */
 
     /**************************************** PARTICLE GENERATE 2 **************************************************************/
     const char*    generate2_tf_variables[] = {"out_position"};
-    const uint32_t n_generate2_tf_variables = sizeof(generate2_tf_variables) / sizeof(generate2_tf_variables[0]);
+    const uint32_t n_generate2_tf_variables = sizeof(generate2_tf_variables) /
+                                              sizeof(generate2_tf_variables[0]);
     GLuint         generate2_program_gl_id  = 0;
 
-    _particle_generate2_program = ogl_program_create(context,                     system_hashed_ansi_string_create("particle generate 2") );
-    _particle_generate2_vshader = ogl_shader_create (context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("particle generate 2") );
+    _particle_generate2_program = ogl_program_create(context,
+                                                     system_hashed_ansi_string_create("particle generate 2") );
+    _particle_generate2_vshader = ogl_shader_create (context,
+                                                     SHADER_TYPE_VERTEX,
+                                                     system_hashed_ansi_string_create("particle generate 2") );
     generate2_program_gl_id     = ogl_program_get_id(_particle_generate2_program);
 
-    ogl_shader_set_body(_particle_generate2_vshader, system_hashed_ansi_string_create(_particle_generate2_vertex_shader_body) );
+    ogl_shader_set_body(_particle_generate2_vshader,
+                        system_hashed_ansi_string_create(_particle_generate2_vertex_shader_body) );
+
     ogl_shader_compile (_particle_generate2_vshader);
 
-    entrypoints->pGLTransformFeedbackVaryings(generate2_program_gl_id, n_generate2_tf_variables, generate2_tf_variables, GL_SEPARATE_ATTRIBS);
+    entrypoints->pGLTransformFeedbackVaryings(generate2_program_gl_id,
+                                              n_generate2_tf_variables,
+                                              generate2_tf_variables,
+                                              GL_SEPARATE_ATTRIBS);
 
-    ogl_program_attach_shader(_particle_generate2_program, _particle_generate2_vshader);
+    ogl_program_attach_shader(_particle_generate2_program,
+                              _particle_generate2_vshader);
     ogl_program_link         (_particle_generate2_program);
 
     /* Set up TFO */
-    entrypoints->pGLGenTransformFeedbacks(1,                           &_particle_generate2_tfo_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,        _particle_generate2_tfo_id);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_GENERATE2_OUT_POSITION_TF_INDEX, _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float),  N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLGenTransformFeedbacks(1,
+                                         &_particle_generate2_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _particle_generate2_tfo_id);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_GENERATE2_OUT_POSITION_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float),      /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4); /* size */
 
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          0);
     /**************************************** PARTICLE UPDATE **************************************************************/
     /* Create objects */
-    _particle_update_program = ogl_program_create(context,                     system_hashed_ansi_string_create("particle update") );
-    _particle_update_vshader = ogl_shader_create (context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("particle update") );
+    _particle_update_program = ogl_program_create(context,
+                                                  system_hashed_ansi_string_create("particle update") );
+    _particle_update_vshader = ogl_shader_create (context,
+                                                  SHADER_TYPE_VERTEX,
+                                                  system_hashed_ansi_string_create("particle update") );
 
     /* Set up particle update vshader object */
-    ogl_shader_set_body(_particle_update_vshader, system_hashed_ansi_string_create(_particle_update_vertex_shader_body) );
+    ogl_shader_set_body(_particle_update_vshader,
+                        system_hashed_ansi_string_create(_particle_update_vertex_shader_body) );
+
     ogl_shader_compile (_particle_update_vshader);
 
     /* Set up particle update program */
@@ -613,45 +764,99 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
     const ogl_program_uniform_descriptor* dt_ptr                = NULL;
     const ogl_program_uniform_descriptor* gravity_ptr           = NULL;
     const ogl_program_uniform_descriptor* n_total_particles_ptr = NULL;
-    const char*                           update_tf_variables[] = {"out_position", "out_velocity", "out_force"};
-    const uint32_t                        n_update_tf_variables = sizeof(update_tf_variables) / sizeof(update_tf_variables[0]);
-    GLuint                                update_program_gl_id  = ogl_program_get_id(_particle_update_program);
 
-    entrypoints->pGLTransformFeedbackVaryings(update_program_gl_id, n_update_tf_variables, update_tf_variables, GL_SEPARATE_ATTRIBS);
+    const char* update_tf_variables[] =
+    {
+        "out_position",
+        "out_velocity",
+        "out_force"
+    };
+    const uint32_t n_update_tf_variables = sizeof(update_tf_variables) /
+                                           sizeof(update_tf_variables[0]);
+    GLuint         update_program_gl_id  = ogl_program_get_id(_particle_update_program);
 
-    ogl_program_attach_shader(_particle_update_program, _particle_update_vshader);
+    entrypoints->pGLTransformFeedbackVaryings(update_program_gl_id,
+                                              n_update_tf_variables,
+                                              update_tf_variables,
+                                              GL_SEPARATE_ATTRIBS);
+
+    ogl_program_attach_shader(_particle_update_program,
+                              _particle_update_vshader);
     ogl_program_link         (_particle_update_program);
 
-    ogl_program_get_uniform_by_name(_particle_update_program, system_hashed_ansi_string_create("data"),              &data_ptr);
-    ogl_program_get_uniform_by_name(_particle_update_program, system_hashed_ansi_string_create("decay"),             &decay_ptr);
-    ogl_program_get_uniform_by_name(_particle_update_program, system_hashed_ansi_string_create("dt"),                &dt_ptr);
-    ogl_program_get_uniform_by_name(_particle_update_program, system_hashed_ansi_string_create("gravity"),           &gravity_ptr);
-    ogl_program_get_uniform_by_name(_particle_update_program, system_hashed_ansi_string_create("n_total_particles"), &n_total_particles_ptr);
+    ogl_program_get_uniform_by_name(_particle_update_program,
+                                    system_hashed_ansi_string_create("data"),
+                                   &data_ptr);
+    ogl_program_get_uniform_by_name(_particle_update_program,
+                                    system_hashed_ansi_string_create("decay"),
+                                   &decay_ptr);
+    ogl_program_get_uniform_by_name(_particle_update_program,
+                                    system_hashed_ansi_string_create("dt"),
+                                   &dt_ptr);
+    ogl_program_get_uniform_by_name(_particle_update_program,
+                                    system_hashed_ansi_string_create("gravity"),
+                                   &gravity_ptr);
+    ogl_program_get_uniform_by_name(_particle_update_program,
+                                    system_hashed_ansi_string_create("n_total_particles"),
+                                   &n_total_particles_ptr);
 
     _particle_update_program_decay_uniform_location     = decay_ptr->location;
     _particle_update_program_dt_uniform_location        = dt_ptr->location;
     _particle_update_program_gravity_uniform_location   = gravity_ptr->location;
     _particle_update_program_n_total_particles_location = n_total_particles_ptr->location;
 
-    entrypoints->pGLProgramUniform1i(update_program_gl_id, data_ptr->location,                                  0); /* GL_TEXTURE0 */
-    entrypoints->pGLProgramUniform1i(update_program_gl_id, _particle_update_program_n_total_particles_location, N_PARTICLES_ALIGNED_4);
+    entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                     data_ptr->location,
+                                     0); /* GL_TEXTURE0 */
+    entrypoints->pGLProgramUniform1i(update_program_gl_id,
+                                     _particle_update_program_n_total_particles_location,
+                                     N_PARTICLES_ALIGNED_4);
 
     /* Set up TFO */
-    entrypoints->pGLGenTransformFeedbacks(1,                            &_particle_update_tfo_id);
-    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,         _particle_update_tfo_id);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_POSITION_TF_INDEX,           _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float),     N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_VELOCITY_TF_INDEX,           _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 5, N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
-    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER, N_UPDATE_OUT_FORCE_TF_INDEX,              _particle_data_bo_id, N_PARTICLES_ALIGNED_4 * sizeof(float) * 9, N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);
+    entrypoints->pGLGenTransformFeedbacks(1,
+                                         &_particle_update_tfo_id);
+    entrypoints->pGLBindTransformFeedback(GL_TRANSFORM_FEEDBACK,
+                                          _particle_update_tfo_id);
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_POSITION_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float),      /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4); /* size */
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_VELOCITY_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 5,  /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4); /* size */
+    entrypoints->pGLBindBufferRange      (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                          N_UPDATE_OUT_FORCE_TF_INDEX,
+                                          _particle_data_bo_id,
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 9, /* offset */
+                                          N_PARTICLES_ALIGNED_4 * sizeof(float) * 4);/* size */
 
     /* Set up a new pipeline stage */
     _particle_stage_id = ogl_pipeline_add_stage(pipeline);
 
-    ogl_pipeline_add_stage_step(pipeline, _particle_stage_id, system_hashed_ansi_string_create("data init"),   _stage_particle_step_init,   NULL);
-    ogl_pipeline_add_stage_step(pipeline, _particle_stage_id, system_hashed_ansi_string_create("data update"), _stage_particle_step_update, NULL);
-    ogl_pipeline_add_stage_step(pipeline, _particle_stage_id, system_hashed_ansi_string_create("data draw"),   _stage_particle_step_draw,   NULL);
+    ogl_pipeline_add_stage_step(pipeline,
+                                _particle_stage_id,
+                                system_hashed_ansi_string_create("data init"),
+                                _stage_particle_step_init,
+                                NULL); /* step_callback_user_arg */
+    ogl_pipeline_add_stage_step(pipeline,
+                                _particle_stage_id,
+                                system_hashed_ansi_string_create("data update"),
+                                _stage_particle_step_update,
+                                NULL); /* step_callback_user_arg */
+    ogl_pipeline_add_stage_step(pipeline,
+                                _particle_stage_id,
+                                system_hashed_ansi_string_create("data draw"),
+                                _stage_particle_step_draw,
+                                NULL); /* step_callback_user_arg */
 
     /* Matrices */
-    _matrix_projection = system_matrix4x4_create_perspective_projection_matrix(45.0f, 640.0f / 480.0f, 0.001f, 500.0f);
+    _matrix_projection = system_matrix4x4_create_perspective_projection_matrix(45.0f,           /* fov_y */
+                                                                               640.0f / 480.0f, /* ar */
+                                                                               0.001f,          /* z_near */
+                                                                               500.0f);         /* z_far */
 }
 
 /** Please see header for specification */

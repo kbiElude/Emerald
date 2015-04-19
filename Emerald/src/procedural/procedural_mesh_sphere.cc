@@ -325,6 +325,7 @@ PUBLIC EMERALD_API procedural_mesh_sphere procedural_mesh_sphere_create(__in __n
         new_instance->n_longitude_splices    = n_longitude_splices;
         new_instance->name                   = name;
         new_instance->n_triangles            = -1;
+        new_instance->raw_arrays_data        = NULL;
 
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_BUFFERS,

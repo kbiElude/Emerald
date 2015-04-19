@@ -1,6 +1,6 @@
 /**
  *
- * Object browser test app (kbi/elude @2012)
+ * Object browser test app (kbi/elude @2012-2015)
  *
  */
 
@@ -229,116 +229,178 @@ static void _stage_step_julia_execute(ogl_context context, system_timeline_time 
     const ogl_context_gl_entrypoints* entrypoints = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
-                            &entry_points);
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints);
 
     entrypoints->pGLUseProgram     (ogl_program_get_id(_julia_program) );
     entrypoints->pGLBindVertexArray(_julia_vao_id);
 
     /* Calculate MVP matrix */
-    const float* data                          = main_get_data_vector();
-    const float  epsilon                       = main_get_epsilon();
-    const float  escape                        = main_get_escape_threshold();
-    const float* light_color                   = main_get_light_color();
-    const float* light_position                = main_get_light_position();
-    const int    max_iterations                = main_get_max_iterations();
-    const float  raycast_radius_multiplier     = main_get_raycast_radius_multiplier();
-    const bool   shadows                       = main_get_shadows_status();
-    const float  specularity                   = main_get_specularity();
-    static float gpu_data[4]                   = {0};
-    static float gpu_epsilon                   = 0;
-    static float gpu_escape                    = 0;
-    static float gpu_eye[3]                    = {0};
-    static float gpu_light_color[3]            = {0};
-    static float gpu_light_position[3]         = {0};
-    static int   gpu_max_iterations            = 0;
-    static float gpu_raycast_radius_multiplier = 0;
-    static bool  gpu_shadows                   = false;
-    static float gpu_specularity               = 0;
+          float      camera_location[3];
+    const float*     data                          = main_get_data_vector();
+    const float      epsilon                       = main_get_epsilon();
+    const float      escape                        = main_get_escape_threshold();
+    const float*     light_color                   = main_get_light_color();
+    const float*     light_position                = main_get_light_position();
+    const int        max_iterations                = main_get_max_iterations();
+    const float      raycast_radius_multiplier     = main_get_raycast_radius_multiplier();
+    const bool       shadows                       = main_get_shadows_status();
+    const float      specularity                   = main_get_specularity();
+    static float     gpu_data[4]                   = {0};
+    static float     gpu_epsilon                   = 0;
+    static float     gpu_escape                    = 0;
+    static float     gpu_eye[3]                    = {0};
+    static float     gpu_light_color[3]            = {0};
+    static float     gpu_light_position[3]         = {0};
+    static int       gpu_max_iterations            = 0;
+    static float     gpu_raycast_radius_multiplier = 0;
+    static bool      gpu_shadows                   = false;
+    static float     gpu_specularity               = 0;
+    system_matrix4x4 mvp                           = NULL;
 
-    const float*     camera_location = ogl_flyby_get_camera_location(context);
-    system_matrix4x4 mvp             = NULL;
-
-          ogl_flyby_get_view_matrix     (context, _julia_view_matrix);
-    mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(), _julia_view_matrix);
-
-    if (memcmp(gpu_data, data, sizeof(float) * 4) != 0)
+    if (_julia_view_matrix == NULL)
     {
-        entrypoints->pGLUniform4fv(_julia_data_uniform_location, 1, data);
+        _julia_view_matrix = system_matrix4x4_create();
+    }
 
-        memcpy(gpu_data, data, sizeof(float) * 4);
+    ogl_flyby_get_property(context,
+                           OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
+                           camera_location);
+    ogl_flyby_get_property(context,
+                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                          &_julia_view_matrix);
+
+    mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
+                                         _julia_view_matrix);
+
+    if (memcmp(gpu_data,
+               data,
+               sizeof(float) * 4) != 0)
+    {
+        entrypoints->pGLProgramUniform4fv(ogl_program_get_id(_julia_program),
+                                          _julia_data_uniform_location,
+                                          1,  /* count */
+                                          data);
+
+        memcpy(gpu_data,
+               data,
+               sizeof(float) * 4);
     }
 
     if (gpu_epsilon != epsilon)
     {
-        entrypoints->pGLUniform1f(_julia_epsilon_uniform_location, epsilon);
+        entrypoints->pGLProgramUniform1f(ogl_program_get_id(_julia_program),
+                                         _julia_epsilon_uniform_location,
+                                         epsilon);
 
         gpu_epsilon = epsilon;
     }
 
     if (gpu_escape != escape)
     {
-        entrypoints->pGLUniform1f(_julia_escape_uniform_location, escape);
+        entrypoints->pGLProgramUniform1f(ogl_program_get_id(_julia_program),
+                                         _julia_escape_uniform_location,
+                                         escape);
 
         gpu_escape = escape;
     }
 
-    if (memcmp(gpu_light_position, light_position, sizeof(float) * 3) != 0)
+    if (memcmp(gpu_light_position,
+               light_position,
+               sizeof(float) * 3) != 0)
     {
-        entrypoints->pGLUniform3fv(_julia_light_position_uniform_location, 1, light_position);
+        entrypoints->pGLProgramUniform3fv(ogl_program_get_id(_julia_program),
+                                          _julia_light_position_uniform_location,
+                                          1, /* count */
+                                          light_position);
 
-        memcpy(gpu_light_position, light_position, sizeof(float) * 3);
+        memcpy(gpu_light_position,
+               light_position,
+               sizeof(float) * 3);
     }
 
-    if (memcmp(gpu_light_color, light_color, sizeof(float) * 3) != 0)
+    if (memcmp(gpu_light_color,
+               light_color,
+               sizeof(float) * 3) != 0)
     {
-        entrypoints->pGLUniform3fv(_julia_light_color_uniform_location, 1, light_color);
+        entrypoints->pGLProgramUniform3fv(ogl_program_get_id(_julia_program),
+                                          _julia_light_color_uniform_location,
+                                          1, /* count */
+                                          light_color);
 
-        memcpy(gpu_light_color, light_color, sizeof(float) * 3);
+        memcpy(gpu_light_color,
+               light_color,
+               sizeof(float) * 3);
     }
 
     if (gpu_max_iterations != max_iterations)
     {
-        entrypoints->pGLUniform1i(_julia_max_iterations_uniform_location, max_iterations);
+        entrypoints->pGLProgramUniform1i(ogl_program_get_id(_julia_program),
+                                         _julia_max_iterations_uniform_location,
+                                         max_iterations);
 
         gpu_max_iterations = max_iterations;
     }
 
     if (gpu_raycast_radius_multiplier != raycast_radius_multiplier)
     {
-        entrypoints->pGLUniform1f(_julia_raycast_radius_multiplier_uniform_location, raycast_radius_multiplier);
+        entrypoints->pGLProgramUniform1f(ogl_program_get_id(_julia_program),
+                                         _julia_raycast_radius_multiplier_uniform_location,
+                                         raycast_radius_multiplier);
 
         gpu_raycast_radius_multiplier = raycast_radius_multiplier;
     }
 
     if (gpu_shadows != shadows)
     {
-        entrypoints->pGLUniform1i(_julia_shadows_uniform_location, shadows);
+        entrypoints->pGLProgramUniform1i(ogl_program_get_id(_julia_program),
+                                         _julia_shadows_uniform_location,
+                                         shadows);
 
         gpu_shadows = shadows;
     }
 
     if (gpu_specularity != specularity)
     {
-        entrypoints->pGLUniform1f(_julia_specularity_uniform_location, specularity);
+        entrypoints->pGLProgramUniform1f(ogl_program_get_id(_julia_program),
+                                         _julia_specularity_uniform_location,
+                                         specularity);
 
         gpu_specularity = specularity;
     }
 
-    entrypoints->pGLUniform3fv      (_julia_eye_uniform_location, 1,          camera_location);
-    entrypoints->pGLUniformMatrix4fv(_julia_mvp_uniform_location, 1, GL_TRUE, system_matrix4x4_get_row_major_data(mvp) );
+    entrypoints->pGLProgramUniform3fv      (ogl_program_get_id(_julia_program),
+                                            _julia_eye_uniform_location,
+                                            1, /* count */
+                                            camera_location);
+    entrypoints->pGLProgramUniformMatrix4fv(ogl_program_get_id(_julia_program),
+                                            _julia_mvp_uniform_location,
+                                            1, /* count */
+                                            GL_TRUE,
+                                            system_matrix4x4_get_row_major_data(mvp) );
 
     system_matrix4x4_release(mvp);
 
     /* Draw the fractal */
-    entrypoints->pGLClearColor(0, 0.3f, 0.7f, 1.0f);
+    entrypoints->pGLClearColor(0,
+                               0.3f,
+                               0.7f,
+                               1.0f);
     entrypoints->pGLClear     (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entrypoints->pGLEnable    (GL_DEPTH_TEST);
     entrypoints->pGLDepthFunc (GL_LESS);
     entrypoints->pGLEnable    (GL_CULL_FACE);
     entrypoints->pGLFrontFace (GL_CW);
     {
-        entrypoints->pGLDrawArrays(GL_TRIANGLES, 0, procedural_mesh_sphere_get_number_of_points(_julia_sphere) );
+        unsigned int n_triangles = 0;
+
+        procedural_mesh_sphere_get_property(_julia_sphere,
+                                            PROCEDURAL_MESH_SPHERE_PROPERTY_N_TRIANGLES,
+                                           &n_triangles);
+
+        entrypoints->pGLDrawArrays(GL_TRIANGLES,
+                                   0, /* first */
+                                   n_triangles * 3);
     }
     entrypoints->pGLDisable(GL_CULL_FACE);
 }
@@ -352,36 +414,54 @@ PUBLIC void stage_step_julia_deinit(ogl_context context)
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_julia_init(ogl_context context, ogl_pipeline pipeline, uint32_t stage_id)
+PUBLIC void stage_step_julia_init(ogl_context  context,
+                                  ogl_pipeline pipeline,
+                                  uint32_t     stage_id)
 {
     /* Instantiate sphere we will use for raytracing */
     uint32_t normals_data_offset  = 0;
     uint32_t vertex_data_offset   = 0;
 
     _julia_sphere = procedural_mesh_sphere_create(context,
-                                                  (_procedural_mesh_data_bitmask) (DATA_ARRAYS),
-                                                  7,
-                                                  7,
+                                                  DATA_BO_ARRAYS,
+                                                  7, /* n_latitude_splices */
+                                                  7, /* n_longitude_splices */
                                                   system_hashed_ansi_string_create("julia sphere") );
 
-    procedural_mesh_sphere_get_arrays_bo_offsets(_julia_sphere, &vertex_data_offset, &normals_data_offset);
+    procedural_mesh_sphere_get_property(_julia_sphere,
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_NORMALS_DATA_OFFSET,
+                                       &normals_data_offset);
+    procedural_mesh_sphere_get_property(_julia_sphere,
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_VERTEX_DATA_OFFSET,
+                                       &vertex_data_offset);
 
     /* Link Julia program */
     ogl_shader fragment_shader = NULL;
     ogl_shader vertex_shader   = NULL;
 
-    _julia_program  = ogl_program_create(context,                       system_hashed_ansi_string_create("julia program") );
-    fragment_shader = ogl_shader_create (context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("julia fragment") );
-    vertex_shader   = ogl_shader_create (context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("julia vertex") );
+    _julia_program  = ogl_program_create(context,
+                                         system_hashed_ansi_string_create("julia program") );
+    fragment_shader = ogl_shader_create (context,
+                                         SHADER_TYPE_FRAGMENT,
+                                         system_hashed_ansi_string_create("julia fragment") );
+    vertex_shader   = ogl_shader_create (context,
+                                         SHADER_TYPE_VERTEX,
+                                         system_hashed_ansi_string_create("julia vertex") );
 
-    ogl_shader_set_body(fragment_shader, system_hashed_ansi_string_create(julia_fragment_shader_code));
-    ogl_shader_set_body(vertex_shader,   system_hashed_ansi_string_create(julia_vertex_shader_code) );
-    ogl_shader_compile (fragment_shader);
-    ogl_shader_compile (vertex_shader);
+    ogl_shader_set_body(fragment_shader,
+                        system_hashed_ansi_string_create(julia_fragment_shader_code));
+    ogl_shader_set_body(vertex_shader,
+                        system_hashed_ansi_string_create(julia_vertex_shader_code) );
 
-    ogl_program_attach_shader(_julia_program, fragment_shader);
-    ogl_program_attach_shader(_julia_program, vertex_shader);
-    ogl_program_link         (_julia_program);
+    ogl_shader_compile(fragment_shader);
+    ogl_shader_compile(vertex_shader);
+
+    ogl_program_attach_shader(_julia_program,
+                              fragment_shader);
+    ogl_program_attach_shader(_julia_program,
+                              vertex_shader);
+
+    ogl_program_link(_julia_program);
 
     ogl_shader_release(fragment_shader);
     ogl_shader_release(vertex_shader);
@@ -400,18 +480,42 @@ PUBLIC void stage_step_julia_init(ogl_context context, ogl_pipeline pipeline, ui
     const ogl_program_uniform_descriptor*   specularity_uniform_data               = NULL;
     const ogl_program_attribute_descriptor* vertex_attribute_data                  = NULL;
 
-    ogl_program_get_attribute_by_name(_julia_program, system_hashed_ansi_string_create("vertex"),                    &vertex_attribute_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("data"),                      &data_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("epsilon"),                   &epsilon_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("escape"),                    &escape_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("eye"),                       &eye_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("light_color"),               &light_color_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("light_position"),            &light_position_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("max_iterations"),            &max_iterations_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("mvp"),                       &mvp_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("raycast_radius_multiplier"), &raycast_radius_multiplier_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("shadows"),                   &shadows_uniform_data);
-    ogl_program_get_uniform_by_name  (_julia_program, system_hashed_ansi_string_create("specularity"),               &specularity_uniform_data);
+    ogl_program_get_attribute_by_name(_julia_program,
+                                      system_hashed_ansi_string_create("vertex"),
+                                     &vertex_attribute_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("data"),
+                                     &data_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                       system_hashed_ansi_string_create("epsilon"),
+                                      &epsilon_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("escape"),
+                                     &escape_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("eye"),
+                                     &eye_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("light_color"),
+                                     &light_color_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("light_position"),
+                                     &light_position_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("max_iterations"),
+                                     &max_iterations_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("mvp"),
+                                     &mvp_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("raycast_radius_multiplier"),
+                                     &raycast_radius_multiplier_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("shadows"),
+                                     &shadows_uniform_data);
+    ogl_program_get_uniform_by_name  (_julia_program,
+                                      system_hashed_ansi_string_create("specularity"),
+                                     &specularity_uniform_data);
 
     _julia_data_uniform_location                      = (data_uniform_data                      != NULL) ? data_uniform_data->location                      : -1;
     _julia_epsilon_uniform_location                   = (epsilon_uniform_data                   != NULL) ? epsilon_uniform_data->location                   : -1;
@@ -427,21 +531,37 @@ PUBLIC void stage_step_julia_init(ogl_context context, ogl_pipeline pipeline, ui
     _julia_vertex_attribute_location                  = (vertex_attribute_data                  != NULL) ? vertex_attribute_data->location                  : -1;
 
     /* Generate & set VAO up */
+    GLuint                            data_bo_id  = 0;
     const ogl_context_gl_entrypoints* entrypoints = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
 
-    entrypoints->pGLGenVertexArrays(1, &_julia_vao_id);
+    procedural_mesh_sphere_get_property(_julia_sphere,
+                                        PROCEDURAL_MESH_SPHERE_PROPERTY_ARRAYS_BO_ID,
+                                       &data_bo_id);
+
+    entrypoints->pGLGenVertexArrays(1,
+                                   &_julia_vao_id);
     entrypoints->pGLBindVertexArray(_julia_vao_id);
 
-    entrypoints->pGLBindBuffer             (GL_ARRAY_BUFFER,         procedural_mesh_sphere_get_arrays_bo_id(_julia_sphere) );
-    entrypoints->pGLVertexAttribPointer    (_julia_vertex_attribute_location, 3, GL_FLOAT, GL_FALSE, 0, (void*) vertex_data_offset);
+    entrypoints->pGLBindBuffer             (GL_ARRAY_BUFFER,
+                                            data_bo_id);
+    entrypoints->pGLVertexAttribPointer    (_julia_vertex_attribute_location,
+                                            3,        /* size */
+                                            GL_FLOAT,
+                                            GL_FALSE, /* normalized */
+                                            0,        /* stride */
+                                            (void*) vertex_data_offset);
     entrypoints->pGLEnableVertexAttribArray(_julia_vertex_attribute_location);
 
     /* Add ourselves to the pipeline */
-    ogl_pipeline_add_stage_step(pipeline, stage_id, system_hashed_ansi_string_create("Raytracing"), _stage_step_julia_execute, NULL);
+    ogl_pipeline_add_stage_step(pipeline,
+                                stage_id,
+                                system_hashed_ansi_string_create("Raytracing"),
+                                _stage_step_julia_execute,
+                                NULL);
 
     /* Set up matrices */
     _julia_view_matrix = system_matrix4x4_create();

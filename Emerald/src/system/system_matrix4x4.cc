@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -49,7 +49,8 @@ system_resource_pool matrix_pool = NULL;
  */
 PRIVATE void _system_matrix4x4_generate_column_major_data(__in __notnull _system_matrix4x4_descriptor* descriptor)
 {
-    ASSERT_DEBUG_SYNC(descriptor->is_data_dirty, "Invalid call detected");
+    ASSERT_DEBUG_SYNC(descriptor->is_data_dirty,
+                      "Invalid call detected");
 
     descriptor->column_major_data[0]  = descriptor->data[0];
     descriptor->column_major_data[4]  = descriptor->data[1];
@@ -74,8 +75,12 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create()
 {
     system_matrix4x4 result = (system_matrix4x4) system_resource_pool_get_from_pool(matrix_pool);
 
-    memset(((_system_matrix4x4_descriptor*)result)->column_major_data, 0, sizeof(float) * 16);
-    memset(((_system_matrix4x4_descriptor*)result)->data,              0, sizeof(float) * 16);
+    memset(((_system_matrix4x4_descriptor*)result)->column_major_data,
+           0,
+           sizeof(float) * 16);
+    memset(((_system_matrix4x4_descriptor*)result)->data,
+           0,
+           sizeof(float) * 16);
 
     ((_system_matrix4x4_descriptor*)result)->is_data_dirty = false;
 
@@ -116,15 +121,18 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_e
     new_matrix_ptr->data[0]       = right_vector[0];
     new_matrix_ptr->data[1]       = right_vector[1];
     new_matrix_ptr->data[2]       = right_vector[2];
-    new_matrix_ptr->data[3]       = system_math_vector_dot3(camera_location, right_vector); /* translation factor */
+    new_matrix_ptr->data[3]       = system_math_vector_dot3(camera_location,
+                                                            right_vector); /* translation factor */
     new_matrix_ptr->data[4]       = up_vector[0];
     new_matrix_ptr->data[5]       = up_vector[1];
     new_matrix_ptr->data[6]       = up_vector[2];
-    new_matrix_ptr->data[7]       = system_math_vector_dot3(camera_location, up_vector); /* translation factor */
+    new_matrix_ptr->data[7]       = system_math_vector_dot3(camera_location,
+                                                            up_vector); /* translation factor */
     new_matrix_ptr->data[8]       = direction_vector[0];
     new_matrix_ptr->data[9]       = direction_vector[1];
     new_matrix_ptr->data[10]      = direction_vector[2];
-    new_matrix_ptr->data[11]      = system_math_vector_dot3(camera_location, direction_vector); /* translation factor */
+    new_matrix_ptr->data[11]      = system_math_vector_dot3(camera_location,
+                                                            direction_vector); /* translation factor */
     new_matrix_ptr->data[12]      = 0.0f;
     new_matrix_ptr->data[13]      = 0.0f;
     new_matrix_ptr->data[14]      = 0.0f;
@@ -135,14 +143,22 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_lookat_matrix(__in_e
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_matrix(float left, float right, float bottom, float top, float z_near, float z_far)
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_matrix(float left,
+                                                                                    float right,
+                                                                                    float bottom,
+                                                                                    float top,
+                                                                                    float z_near,
+                                                                                    float z_far)
 {
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
 
-    ASSERT_DEBUG_SYNC(left   < right, "");
-    ASSERT_DEBUG_SYNC(bottom < top,   "");
-    ASSERT_DEBUG_SYNC(z_near < z_far, "");
+    ASSERT_DEBUG_SYNC(left < right,
+                      "Sanity check failed");
+    ASSERT_DEBUG_SYNC(bottom < top,
+                      "Sanity check failed");
+    ASSERT_DEBUG_SYNC(z_near < z_far, 
+                      "Sanity check failed");
 
     float a = 2.0f / (right  - left);
     float b = 2.0f / (top    - bottom);
@@ -173,7 +189,10 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_ortho_projection_mat
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix(float fov_y, float ar, float z_near, float z_far)
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projection_matrix(float fov_y,
+                                                                                          float ar,
+                                                                                          float z_near,
+                                                                                          float z_far)
 {
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
@@ -241,9 +260,12 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_perspective_projecti
     system_matrix4x4              new_matrix     = system_matrix4x4_create();
     _system_matrix4x4_descriptor* new_matrix_ptr = (_system_matrix4x4_descriptor*) new_matrix;
 
-    ASSERT_DEBUG_SYNC(left   < right, "");
-    ASSERT_DEBUG_SYNC(bottom < top,   "");
-    ASSERT_DEBUG_SYNC(z_near < z_far, "");
+    ASSERT_DEBUG_SYNC(left < right,
+                      "Sanity check failed");
+    ASSERT_DEBUG_SYNC(bottom < top,
+                      "Sanity check failed");
+    ASSERT_DEBUG_SYNC(z_near < z_far,
+                      "Sanity check failed");
 
     /* D3DXMatrixPerspectiveOffCenterRH() */
     new_matrix_ptr->data[0]       =  2.0f * z_near / (right - left);
@@ -304,17 +326,21 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnul
     _system_matrix4x4_descriptor* mat_b_descriptor  = (_system_matrix4x4_descriptor*) mat_b;
     _system_matrix4x4_descriptor* result_descriptor = (_system_matrix4x4_descriptor*) result;
 
-    for (unsigned char column = 0; column < 4; ++column)
+    for (unsigned char column = 0;
+                       column < 4;
+                     ++column)
     {
-        for (unsigned char row = 0; row < 4; ++row)
+        for (unsigned char row = 0;
+                           row < 4;
+                         ++row)
         {
             result_descriptor->data[WORD_INDEX(column, row)] = 
              mat_a_descriptor->data[WORD_INDEX(0,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 0)] + 
              mat_a_descriptor->data[WORD_INDEX(1,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 1)] + 
              mat_a_descriptor->data[WORD_INDEX(2,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 2)] +
              mat_a_descriptor->data[WORD_INDEX(3,      row)] * mat_b_descriptor->data[WORD_INDEX(column, 3)];
-        }
-    }
+        } /* for (all rows) */
+    } /* for (all columns) */
 
     result_descriptor->is_data_dirty = true;
 
@@ -354,7 +380,8 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4 
 
     if (fabs(det) <= 0.0000001f)
     {
-        ASSERT_DEBUG_SYNC(false, "Determinant is very close to 0, this matrix is most likely non-invertable.");
+        ASSERT_DEBUG_SYNC(false,
+                          "Determinant is very close to 0, this matrix is most likely non-invertable.");
 
         return false;
     }
@@ -456,8 +483,11 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4 
                           matrix_descriptor->data[WORD_INDEX(0,1)]*matrix_descriptor->data[WORD_INDEX(1,0)]*matrix_descriptor->data[WORD_INDEX(2,2)] + 
                           matrix_descriptor->data[WORD_INDEX(0,0)]*matrix_descriptor->data[WORD_INDEX(1,1)]*matrix_descriptor->data[WORD_INDEX(2,2)];
 
-    float invDet = 1.0f / det;
-    for (int i = 0; i < 16; i++)
+    const float invDet = 1.0f / det;
+
+    for (int i = 0;
+             i < 16;
+             i++)
     {
         matrix_descriptor->data[i] = m[i] * invDet;
     }
@@ -474,7 +504,10 @@ PUBLIC EMERALD_API void system_matrix4x4_get_clipping_plane(__in            __no
     _system_matrix4x4_descriptor* mvp_ptr = (_system_matrix4x4_descriptor*) mvp;
 
     if (mvp_ptr->is_data_dirty)
-    _system_matrix4x4_generate_column_major_data(mvp_ptr);
+    {
+        _system_matrix4x4_generate_column_major_data(mvp_ptr);
+    }
+
     /* The idea behind this implementation is a fairly straightforward derivation of how clipping works:
      *
      * Let p = (x, y, z, 1)
@@ -583,7 +616,9 @@ PUBLIC EMERALD_API bool system_matrix4x4_is_equal(__in __notnull const system_ma
     const _system_matrix4x4_descriptor* b_ptr  = (const _system_matrix4x4_descriptor*) b;
     bool                                result = true;
 
-    for (int n = 0; n < 16; ++n)
+    for (int n = 0;
+             n < 16;
+           ++n)
     {
         if (fabs(a_ptr->data[n] - b_ptr->data[n]) > 1e-5f)
         {
@@ -591,7 +626,7 @@ PUBLIC EMERALD_API bool system_matrix4x4_is_equal(__in __notnull const system_ma
 
             break;
         }
-    }
+    } /* for (all matrix elements) */
 
     return result;
 }
@@ -604,11 +639,15 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull syste
 {
     float x_vector[3];
     float y_vector[3];
-    float z_vector[3] = { look_at_point[0] - camera_position[0],
-                          look_at_point[1] - camera_position[1],
-                          look_at_point[2] - camera_position[2] };
+    float z_vector[3] =
+    {
+        look_at_point[0] - camera_position[0],
+        look_at_point[1] - camera_position[1],
+        look_at_point[2] - camera_position[2]
+    };
 
     float vector_magnitude = sqrt(z_vector[0] * z_vector[0] + z_vector[1] * z_vector[1] + z_vector[2] * z_vector[2]);
+
     if (vector_magnitude >= 0.00001f)
     {
         z_vector[0] /= vector_magnitude;
@@ -617,11 +656,17 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull syste
     }
 
     // f x up
-    x_vector[0] = up_vector[2] * z_vector[1] - up_vector[1] * z_vector[2];
-    x_vector[1] = up_vector[0] * z_vector[2] - up_vector[2] * z_vector[0];
-    x_vector[2] = up_vector[1] * z_vector[0] - up_vector[0] * z_vector[1];
+    x_vector[0] = up_vector[2] * z_vector[1] -
+                  up_vector[1] * z_vector[2];
+    x_vector[1] = up_vector[0] * z_vector[2] -
+                  up_vector[2] * z_vector[0];
+    x_vector[2] = up_vector[1] * z_vector[0] -
+                  up_vector[0] * z_vector[1];
 
-    vector_magnitude = sqrt(x_vector[0] * x_vector[0] + x_vector[1] * x_vector[1] + x_vector[2] * x_vector[2]);
+    vector_magnitude = sqrt(x_vector[0] * x_vector[0] +
+                            x_vector[1] * x_vector[1] +
+                            x_vector[2] * x_vector[2]);
+
     if (vector_magnitude >= 0.00001f)
     {
         x_vector[0] /= vector_magnitude;
@@ -630,26 +675,40 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull syste
     }
 
     // s x f
-    y_vector[0] = z_vector[2] * x_vector[1] - z_vector[1] * x_vector[2];
-    y_vector[1] = z_vector[0] * x_vector[2] - z_vector[2] * x_vector[0];
-    y_vector[2] = z_vector[1] * x_vector[0] - z_vector[0] * x_vector[1];
+    y_vector[0] = z_vector[2] * x_vector[1] -
+                  z_vector[1] * x_vector[2];
+    y_vector[1] = z_vector[0] * x_vector[2] -
+                  z_vector[2] * x_vector[0];
+    y_vector[2] = z_vector[1] * x_vector[0] -
+                  z_vector[0] * x_vector[1];
 
     //
-    float translation_vec [3]  = {-camera_position[0], -camera_position[1], -camera_position[2]};
-    float view_matrix_data[16] = { x_vector[0],         x_vector[1],         x_vector[2],        0,
-                                   y_vector[0],         y_vector[1],         y_vector[2],        0,
-                                  -z_vector[0],        -z_vector[1],        -z_vector[2],        0,
-                                  0,                    0,                   0,                  1};
+    float translation_vec [3]  =
+    {
+        -camera_position[0],
+        -camera_position[1],
+        -camera_position[2]
+    };
+    float view_matrix_data[16] =
+    {
+        x_vector[0],  x_vector[1],  x_vector[2], 0,
+        y_vector[0],  y_vector[1],  y_vector[2], 0,
+       -z_vector[0], -z_vector[1], -z_vector[2], 0,
+       0,             0,            0,           1};
 
     //
     system_matrix4x4 view_matrix   = system_matrix4x4_create();
     system_matrix4x4 result_matrix = NULL;
 
-    system_matrix4x4_set_from_row_major_raw       (view_matrix, view_matrix_data);
-    result_matrix = system_matrix4x4_create_by_mul(matrix, view_matrix);
+    system_matrix4x4_set_from_row_major_raw       (view_matrix,
+                                                   view_matrix_data);
+    result_matrix = system_matrix4x4_create_by_mul(matrix,
+                                                   view_matrix);
 
-    system_matrix4x4_translate         (result_matrix, translation_vec);
-    system_matrix4x4_set_from_matrix4x4(matrix,        result_matrix);
+    system_matrix4x4_translate         (result_matrix,
+                                        translation_vec);
+    system_matrix4x4_set_from_matrix4x4(matrix,
+                                        result_matrix);
 
     system_matrix4x4_release(view_matrix);
     system_matrix4x4_release(result_matrix);
@@ -663,16 +722,20 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull sy
     _system_matrix4x4_descriptor* b_ptr = (_system_matrix4x4_descriptor*) b;
     _system_matrix4x4_descriptor  temp;
 
-    for (unsigned char column = 0; column < 4; ++column)
+    for (unsigned char column = 0;
+                       column < 4;
+                     ++column)
     {
-        for (unsigned char row = 0; row < 4; ++row)
+        for (unsigned char row = 0;
+                           row < 4;
+                         ++row)
         {
             temp.data[WORD_INDEX(column, row)] = a_ptr->data[WORD_INDEX(0, row)] * b_ptr->data[WORD_INDEX(column, 0)] +
                                                  a_ptr->data[WORD_INDEX(1, row)] * b_ptr->data[WORD_INDEX(column, 1)] +
                                                  a_ptr->data[WORD_INDEX(2, row)] * b_ptr->data[WORD_INDEX(column, 2)] +
                                                  a_ptr->data[WORD_INDEX(3, row)] * b_ptr->data[WORD_INDEX(column, 3)];
-        }
-    }
+        } /* for (all rows) */
+    } /* for (all columns) */
 
     memcpy(&a_ptr->data,
            temp.data,
@@ -688,12 +751,25 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(__in  __notnull sys
 {
     _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
 
-    ASSERT_DEBUG_SYNC(vector != result, "In data cannot be equal to out data!");
+    ASSERT_DEBUG_SYNC(vector != result,
+                      "In data cannot be equal to out data!");
 
-    result[0] = descriptor->data[WORD_INDEX(0, 0)] * vector[0] + descriptor->data[WORD_INDEX(1, 0)] * vector[1] + descriptor->data[WORD_INDEX(2, 0)] * vector[2] + descriptor->data[WORD_INDEX(3, 0)] * vector[3];
-    result[1] = descriptor->data[WORD_INDEX(0, 1)] * vector[0] + descriptor->data[WORD_INDEX(1, 1)] * vector[1] + descriptor->data[WORD_INDEX(2, 1)] * vector[2] + descriptor->data[WORD_INDEX(3, 1)] * vector[3]; 
-    result[2] = descriptor->data[WORD_INDEX(0, 2)] * vector[0] + descriptor->data[WORD_INDEX(1, 2)] * vector[1] + descriptor->data[WORD_INDEX(2, 2)] * vector[2] + descriptor->data[WORD_INDEX(3, 2)] * vector[3]; 
-    result[3] = descriptor->data[WORD_INDEX(0, 3)] * vector[0] + descriptor->data[WORD_INDEX(1, 3)] * vector[1] + descriptor->data[WORD_INDEX(2, 3)] * vector[2] + descriptor->data[WORD_INDEX(3, 3)] * vector[3];
+    result[0] = descriptor->data[WORD_INDEX(0, 0)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 0)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 0)] * vector[2] +
+                descriptor->data[WORD_INDEX(3, 0)] * vector[3];
+    result[1] = descriptor->data[WORD_INDEX(0, 1)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 1)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 1)] * vector[2] +
+                descriptor->data[WORD_INDEX(3, 1)] * vector[3];
+    result[2] = descriptor->data[WORD_INDEX(0, 2)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 2)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 2)] * vector[2] +
+                descriptor->data[WORD_INDEX(3, 2)] * vector[3];
+    result[3] = descriptor->data[WORD_INDEX(0, 3)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 3)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 3)] * vector[2] +
+                descriptor->data[WORD_INDEX(3, 3)] * vector[3];
 }
 
 /** Please see header for specification */
@@ -703,11 +779,18 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(__in  __notnull sys
 {
     _system_matrix4x4_descriptor* descriptor = (_system_matrix4x4_descriptor*) matrix;
 
-    ASSERT_DEBUG_SYNC(vector != result, "In data cannot be equal to out data!");
+    ASSERT_DEBUG_SYNC(vector != result,
+                      "In data cannot be equal to out data!");
 
-    result[0] = descriptor->data[WORD_INDEX(0, 0)] * vector[0] + descriptor->data[WORD_INDEX(1, 0)] * vector[1] + descriptor->data[WORD_INDEX(2, 0)] * vector[2];
-    result[1] = descriptor->data[WORD_INDEX(0, 1)] * vector[0] + descriptor->data[WORD_INDEX(1, 1)] * vector[1] + descriptor->data[WORD_INDEX(2, 1)] * vector[2]; 
-    result[2] = descriptor->data[WORD_INDEX(0, 2)] * vector[0] + descriptor->data[WORD_INDEX(1, 2)] * vector[1] + descriptor->data[WORD_INDEX(2, 2)] * vector[2]; 
+    result[0] = descriptor->data[WORD_INDEX(0, 0)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 0)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 0)] * vector[2];
+    result[1] = descriptor->data[WORD_INDEX(0, 1)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 1)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 1)] * vector[2]; 
+    result[2] = descriptor->data[WORD_INDEX(0, 2)] * vector[0] +
+                descriptor->data[WORD_INDEX(1, 2)] * vector[1] +
+                descriptor->data[WORD_INDEX(2, 2)] * vector[2]; 
 }
 
 /** Please see header for specification */
@@ -766,11 +849,15 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull             syste
     rotation_matrix_descriptor->data[WORD_INDEX(2, 3)] = 0;
     rotation_matrix_descriptor->data[WORD_INDEX(3, 3)] = 1;
 
-    system_matrix4x4              result_matrix            = system_matrix4x4_create_by_mul(matrix, rotation_matrix);
+    system_matrix4x4              result_matrix            = system_matrix4x4_create_by_mul(matrix,
+                                                                                            rotation_matrix);
     _system_matrix4x4_descriptor* result_matrix_descriptor = (_system_matrix4x4_descriptor*) result_matrix;
     _system_matrix4x4_descriptor* matrix_descriptor        = (_system_matrix4x4_descriptor*) matrix;
 
-    memcpy(matrix_descriptor->data, result_matrix_descriptor->data, sizeof(float)*16);
+    memcpy(matrix_descriptor->data,
+           result_matrix_descriptor->data,
+           sizeof(float) * 16);
+
     matrix_descriptor->is_data_dirty = true;
 
     system_matrix4x4_release(result_matrix);
@@ -790,11 +877,15 @@ PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system
     scale_matrix_descriptor->data[WORD_INDEX(1, 1)] = xyz[1];
     scale_matrix_descriptor->data[WORD_INDEX(2, 2)] = xyz[2];
 
-    system_matrix4x4              result_matrix            = system_matrix4x4_create_by_mul(matrix, scale_matrix);
+    system_matrix4x4              result_matrix            = system_matrix4x4_create_by_mul(matrix,
+                                                                                            scale_matrix);
     _system_matrix4x4_descriptor* result_matrix_descriptor = (_system_matrix4x4_descriptor*) result_matrix;
     _system_matrix4x4_descriptor* matrix_descriptor        = (_system_matrix4x4_descriptor*) matrix;
 
-    memcpy(matrix_descriptor->data, result_matrix_descriptor->data, sizeof(float) * 16);
+    memcpy(matrix_descriptor->data,
+           result_matrix_descriptor->data,
+           sizeof(float) * 16);
+
     matrix_descriptor->is_data_dirty = true;
 
     system_matrix4x4_release(result_matrix);
@@ -807,7 +898,9 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matr
 {
     _system_matrix4x4_descriptor* matrix_ptr = (_system_matrix4x4_descriptor*) matrix;
 
-    for (unsigned char n = 0; n < 16; ++n)
+    for (unsigned char n = 0;
+                       n < 16;
+                     ++n)
     {
         matrix_ptr->data[n] = value;
     }
@@ -822,9 +915,14 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_m
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
 
-    for (unsigned char n = 0; n < 16; ++n)
+    for (unsigned char n = 0;
+                       n < 16;
+                     ++n)
     {
-        if (n == 0 || n == 5 || n == 10 || n == 15)
+        if (n == 0  ||
+            n == 5  ||
+            n == 10 ||
+            n == 15)
         {
             matrix_descriptor->data[n] = 1.0f;
         }
@@ -832,9 +930,12 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_m
         {
             matrix_descriptor->data[n] = 0.0f;
         }
-    }
+    } /* for (all matrix items) */
 
-    memcpy(matrix_descriptor->column_major_data, matrix_descriptor->data, sizeof(float) * 16);
+    memcpy(matrix_descriptor->column_major_data,
+           matrix_descriptor->data,
+           sizeof(float) * 16);
+
     matrix_descriptor->is_data_dirty = false;
 }
 
@@ -845,10 +946,12 @@ PUBLIC EMERALD_API void system_matrix4x4_set_element(__in __notnull system_matri
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
 
-    ASSERT_ALWAYS_SYNC(false, "verify");
+    ASSERT_ALWAYS_SYNC(false,
+                       "verify");
 
-    matrix_descriptor->data[WORD_INDEX(COL_FROM_ELEMENT_INDEX(location_data), ROW_FROM_ELEMENT_INDEX(location_data) )] = value;
-    matrix_descriptor->is_data_dirty                                                                                   = true;
+    matrix_descriptor->data[WORD_INDEX(COL_FROM_ELEMENT_INDEX(location_data),
+                                       ROW_FROM_ELEMENT_INDEX(location_data) )] = value;
+    matrix_descriptor->is_data_dirty                                            = true;
 }
 
 /** Please see header for specification */
@@ -871,7 +974,10 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(__in __notnull  
 {
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
 
-    memcpy(matrix_descriptor->data, data, sizeof(float) * 16);
+    memcpy(matrix_descriptor->data,
+           data,
+           sizeof(float) * 16);
+
     matrix_descriptor->is_data_dirty = true;
 }
 
@@ -882,7 +988,9 @@ PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(__in __notnull syste
     _system_matrix4x4_descriptor* dst_matrix_descriptor = (_system_matrix4x4_descriptor*) dst_matrix;
     _system_matrix4x4_descriptor* src_matrix_descriptor = (_system_matrix4x4_descriptor*) src_matrix;
 
-    memcpy(dst_matrix_descriptor, src_matrix_descriptor, sizeof(_system_matrix4x4_descriptor) );
+    memcpy(dst_matrix_descriptor,
+           src_matrix_descriptor,
+           sizeof(_system_matrix4x4_descriptor) );
 }
 
 /** Please see header for specification */
@@ -901,10 +1009,14 @@ PUBLIC EMERALD_API void system_matrix4x4_translate(__in __notnull             sy
     translation_matrix_descriptor->data[WORD_INDEX(3, 1)] = xyz[1];
     translation_matrix_descriptor->data[WORD_INDEX(3, 2)] = xyz[2];
 
-    result_matrix            = system_matrix4x4_create_by_mul(matrix, translation_matrix);
+    result_matrix            = system_matrix4x4_create_by_mul(matrix,
+                                                              translation_matrix);
     result_matrix_descriptor = (_system_matrix4x4_descriptor*) result_matrix;
 
-    memcpy(matrix_descriptor->data, result_matrix_descriptor->data, sizeof(float) * 16);
+    memcpy(matrix_descriptor->data,
+           result_matrix_descriptor->data,
+           sizeof(float) * 16);
+
     matrix_descriptor->is_data_dirty = true;
 
     system_matrix4x4_release(result_matrix);
@@ -917,34 +1029,49 @@ PUBLIC EMERALD_API void system_matrix4x4_transpose(__in __notnull system_matrix4
     _system_matrix4x4_descriptor* matrix_descriptor = (_system_matrix4x4_descriptor*) matrix;
     float                         data[16];
 
-    for (unsigned char x = 0; x < 4; ++x)
+    for (unsigned char x = 0;
+                       x < 4;
+                     ++x)
     {
-        for (unsigned char y = 0; y < 4; ++y)
+        for (unsigned char y = 0;
+                           y < 4;
+                         ++y)
         {
             data[WORD_INDEX(y, x)] = matrix_descriptor->data[WORD_INDEX(x, y)];
-        }
-    }
+        } /* for (all rows) */
+    } /* for (all columns) */
 
-    memcpy(matrix_descriptor->data, data, sizeof(float) * 16);
+    memcpy(matrix_descriptor->data,
+           data,
+           sizeof(float) * 16);
+
     matrix_descriptor->is_data_dirty = true;
 }
 
 /** Please see header for specification */
 PUBLIC void _system_matrix4x4_init()
 {
-    ASSERT_DEBUG_SYNC(matrix_pool == NULL, "4x4 matrix pool already initialized");
+    ASSERT_DEBUG_SYNC(matrix_pool == NULL,
+                      "4x4 matrix pool already initialized");
+
     if (matrix_pool == NULL)
     {
-        matrix_pool = system_resource_pool_create(sizeof(_system_matrix4x4_descriptor), MATRIX4X4_BASE_CAPACITY, 0, 0);
+        matrix_pool = system_resource_pool_create(sizeof(_system_matrix4x4_descriptor),
+                                                  MATRIX4X4_BASE_CAPACITY,
+                                                  NULL, /* init_fn   */
+                                                  0);   /* deinit_fn */
 
-        ASSERT_ALWAYS_SYNC(matrix_pool != NULL, "Could not create 4x4 matrix pool");
+        ASSERT_ALWAYS_SYNC(matrix_pool != NULL,
+                           "Could not create a 4x4 matrix pool");
     }
 }
 
 /** Please see header for specification */
 PUBLIC void _system_matrix4x4_deinit()
 {
-    ASSERT_DEBUG_SYNC(matrix_pool != NULL, "4x4 matrix pool not initialized");
+    ASSERT_DEBUG_SYNC(matrix_pool != NULL,
+                      "4x4 matrix pool not initialized");
+
     if (matrix_pool != NULL)
     {
         system_resource_pool_release(matrix_pool);

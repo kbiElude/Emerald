@@ -1,6 +1,6 @@
 /**
  *
- * 4D Julia set app (kbi/elude @2012)
+ * DOF test app (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -49,91 +49,125 @@ float            _reflectivity              = 0.2f;
 bool             _shadows                   = true;
 float            _specularity               = 4.4f;
 system_window    _window                    = NULL;
-system_event     _window_closed_event       = system_event_create(true, false);
+system_event     _window_closed_event       = system_event_create(true,   /* manual_reset */
+                                                                  false); /* start_state */
 int              _window_resolution[2]      = {1280, 720};
 
-PRIVATE void _get_blur_radius(void* user_arg, system_variant result)
+PRIVATE void _get_blur_radius(void*          user_arg,
+                              system_variant result)
 {
-    system_variant_set_float(result, _blur_radius);
+    system_variant_set_float(result,
+                             _blur_radius);
 }
 
-PRIVATE void _get_dof_cutoff(void* user_arg, system_variant result)
+PRIVATE void _get_dof_cutoff(void*          user_arg,
+                             system_variant result)
 {
-    system_variant_set_float(result, _dof_cutoff);
+    system_variant_set_float(result,
+                             _dof_cutoff);
 }
 
-PRIVATE void _get_dof_far_plane_depth(void* user_arg, system_variant result)
+PRIVATE void _get_dof_far_plane_depth(void*          user_arg,
+                                      system_variant result)
 {
-    system_variant_set_float(result, _dof_far_plane_depth);
+    system_variant_set_float(result,
+                             _dof_far_plane_depth);
 }
 
-PRIVATE void _get_dof_focal_plane_depth(void* user_arg, system_variant result)
+PRIVATE void _get_dof_focal_plane_depth(void*          user_arg,
+                                        system_variant result)
 {
-    system_variant_set_float(result, _dof_focal_plane_depth);
+    system_variant_set_float(result,
+                             _dof_focal_plane_depth);
 }
 
-PRIVATE void _get_dof_near_plane_depth(void* user_arg, system_variant result)
+PRIVATE void _get_dof_near_plane_depth(void*          user_arg,
+                                       system_variant result)
 {
-    system_variant_set_float(result, _dof_near_plane_depth);
+    system_variant_set_float(result,
+                             _dof_near_plane_depth);
 }
 
-PRIVATE void _get_fresnel_reflectance(void* user_arg, system_variant result)
+PRIVATE void _get_fresnel_reflectance(void*          user_arg,
+                                      system_variant result)
 {
-    system_variant_set_float(result, _fresnel_reflectance);
+    system_variant_set_float(result,
+                             _fresnel_reflectance);
 }
 
-PRIVATE void _get_max_coc_px(void* user_arg, system_variant result)
+PRIVATE void _get_max_coc_px(void*          user_arg,
+                             system_variant result)
 {
-    system_variant_set_float(result, _max_coc_px);
+    system_variant_set_float(result,
+                             _max_coc_px);
 }
 
-PRIVATE void _get_reflectivity(void* user_arg, system_variant result)
+PRIVATE void _get_reflectivity(void*          user_arg,
+                               system_variant result)
 {
-    system_variant_set_float(result, _reflectivity);
+    system_variant_set_float(result,
+                             _reflectivity);
 }
 
-PRIVATE void _set_blur_radius(void* user_arg, system_variant new_value)
+PRIVATE void _set_blur_radius(void*          user_arg,
+                              system_variant new_value)
 {
-    system_variant_get_float(new_value, &_blur_radius);
+    system_variant_get_float(new_value,
+                            &_blur_radius);
 }
 
-PRIVATE void _set_dof_cutoff(void* user_arg, system_variant new_value)
+PRIVATE void _set_dof_cutoff(void*          user_arg,
+                             system_variant new_value)
 {
-    system_variant_get_float(new_value, &_dof_cutoff);
+    system_variant_get_float(new_value,
+                            &_dof_cutoff);
 }
 
-PRIVATE void _set_dof_far_plane_depth(void* user_arg, system_variant new_value)
+PRIVATE void _set_dof_far_plane_depth(void*          user_arg,
+                                      system_variant new_value)
 {
-    system_variant_get_float(new_value, &_dof_far_plane_depth);
+    system_variant_get_float(new_value,
+                            &_dof_far_plane_depth);
 }
 
-PRIVATE void _set_dof_focal_plane_depth(void* user_arg, system_variant new_value)
+PRIVATE void _set_dof_focal_plane_depth(void*          user_arg,
+                                        system_variant new_value)
 {
-    system_variant_get_float(new_value, &_dof_focal_plane_depth);
+    system_variant_get_float(new_value,
+                            &_dof_focal_plane_depth);
 }
 
-PRIVATE void _set_dof_near_plane_depth(void* user_arg, system_variant new_value)
+PRIVATE void _set_dof_near_plane_depth(void*          user_arg,
+                                       system_variant new_value)
 {
-    system_variant_get_float(new_value, &_dof_near_plane_depth);
+    system_variant_get_float(new_value,
+                            &_dof_near_plane_depth);
 }
 
-PRIVATE void _set_fresnel_reflectance(void* user_arg, system_variant new_value)
+PRIVATE void _set_fresnel_reflectance(void*          user_arg,
+                                      system_variant new_value)
 {
-    system_variant_get_float(new_value, &_fresnel_reflectance);
+    system_variant_get_float(new_value,
+                            &_fresnel_reflectance);
 }
 
-PRIVATE void _set_max_coc_px(void* user_arg, system_variant new_value)
+PRIVATE void _set_max_coc_px(void*          user_arg,
+                             system_variant new_value)
 {
-    system_variant_get_float(new_value, &_max_coc_px);
+    system_variant_get_float(new_value,
+                            &_max_coc_px);
 }
 
-PRIVATE void _set_reflectivity(void* user_arg, system_variant new_value)
+PRIVATE void _set_reflectivity(void*          user_arg,
+                               system_variant new_value)
 {
-    system_variant_get_float(new_value, &_reflectivity);
+    system_variant_get_float(new_value,
+                            &_reflectivity);
 }
 
 
-void _deinit_gl(ogl_context context, void* not_used)
+void _deinit_gl(ogl_context context,
+                void*       not_used)
 {
     stage_step_background_deinit     (context);
     stage_step_julia_deinit          (context);
@@ -143,10 +177,23 @@ void _deinit_gl(ogl_context context, void* not_used)
 
 void _init_gl(ogl_context context, void* not_used)
 {
-    stage_step_background_init     (context, _pipeline, _pipeline_stage_id);
-    stage_step_julia_init          (context, _pipeline, _pipeline_stage_id);
-    stage_step_dof_scheuermann_init(context, _pipeline, _pipeline_stage_id);
-    stage_step_preview_init        (context, _pipeline, _pipeline_stage_id);
+    _pipeline          = ogl_pipeline_create   (_context,
+                                                true, /* should_overlay_performance_info */
+                                                system_hashed_ansi_string_create("pipeline") );
+    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
+
+    stage_step_background_init     (context,
+                                    _pipeline,
+                                    _pipeline_stage_id);
+    stage_step_julia_init          (context,
+                                    _pipeline,
+                                    _pipeline_stage_id);
+    stage_step_dof_scheuermann_init(context,
+                                    _pipeline,
+                                    _pipeline_stage_id);
+    stage_step_preview_init        (context,
+                                    _pipeline,
+                                    _pipeline_stage_id);
 
     /* Initialize UI */
     const float scrollbar_1_x1y1[]         = {0.8f, 0.0f};
@@ -161,99 +208,118 @@ void _init_gl(ogl_context context, void* not_used)
     const float texture_preview_x1y1[]     = {0.6f, 0.1f};
     ogl_ui      pipeline_ui                = ogl_pipeline_get_ui(_pipeline);
 
-    //ogl_ui_add_texture_preview(pipeline_ui, system_hashed_ansi_string_create("Depth texture"), texture_preview_x1y1, texture_preview_max_size, stage_step_julia_get_color_texture(), OGL_UI_TEXTURE_PREVIEW_TYPE_ALPHA);
-
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("DOF cut-off"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.0f),
                          system_variant_create_float     (1.0f),
                          scrollbar_1_x1y1,
                          _get_dof_cutoff,
-                         NULL,
+                         NULL,             /* pfn_get_current_value_ptr */
                          _set_dof_cutoff,
-                         NULL);
+                         NULL);            /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui, 
                          system_hashed_ansi_string_create("DOF far plane depth"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.0f),
                          system_variant_create_float     (10.0f),
                          scrollbar_2_x1y1,
                          _get_dof_far_plane_depth,
-                         NULL,
+                         NULL,                    /* pfn_get_current_value_ptr */
                          _set_dof_far_plane_depth,
-                         NULL);
+                         NULL);                   /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui, 
                          system_hashed_ansi_string_create("DOF focal plane depth"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.0f),
                          system_variant_create_float     (10.0f),
                          scrollbar_3_x1y1,
                          _get_dof_focal_plane_depth,
-                         NULL,
+                         NULL,                       /* pfn_get_current_value_ptr */
                          _set_dof_focal_plane_depth,
-                         NULL);
+                         NULL);                      /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("DOF near plane depth"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.0f),
                          system_variant_create_float     (10.0f),
                          scrollbar_4_x1y1,
                          _get_dof_near_plane_depth,
-                         NULL,
+                         NULL,                     /* pfn_get_current_value_ptr */
                          _set_dof_near_plane_depth,
-                         NULL);
+                         NULL);                    /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("Max CoC size (px)"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (1.0f),
                          system_variant_create_float     (20.0f),
                          scrollbar_5_x1y1,
                          _get_max_coc_px,
-                         NULL,
+                         NULL,            /* pfn_get_current_value_ptr */
                          _set_max_coc_px,
-                         NULL);
+                         NULL);           /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("Blur radius"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.01f),
                          system_variant_create_float     (2.0f),
                          scrollbar_6_x1y1,
                          _get_blur_radius,
-                         NULL,
+                         NULL,            /* pfn_get_current_value_ptr */
                          _set_blur_radius,
-                         NULL);
+                         NULL);           /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("Reflectivity"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.0f),
                          system_variant_create_float     (1.0f),
                          scrollbar_7_x1y1,
                          _get_reflectivity,
-                         NULL,
+                         NULL,             /* pfn_get_current_value_ptr */
                          _set_reflectivity,
-                         NULL);
+                         NULL);            /* pfn_set_current_value_ptr */
     ogl_ui_add_scrollbar(pipeline_ui,
                          system_hashed_ansi_string_create("Fresnel reflectance"),
+                         OGL_UI_SCROLLBAR_TEXT_LOCATION_ABOVE_SLIDER,
                          system_variant_create_float     (0.0f),
                          system_variant_create_float     (1.0f),
                          scrollbar_8_x1y1,
                          _get_fresnel_reflectance,
-                         NULL,
+                         NULL,                     /* pfn_get_current_value_ptr */
                          _set_fresnel_reflectance,
-                         NULL);
+                         NULL);                    /* pfn_set_current_value_ptr */
 }
 
 /** Rendering handler */
-void _rendering_handler(ogl_context context, uint32_t n_frames_rendered, system_timeline_time frame_time, void* renderer)
+void _rendering_handler(ogl_context          context,
+                        uint32_t             n_frames_rendered,
+                        system_timeline_time frame_time,
+                        void*                renderer)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLClearColor     (0, 0, 0, 1);
-    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER, 0);
+    entry_points->pGLClearColor     (0, /* red */
+                                     0, /* green */
+                                     0, /* blue */
+                                     1); /* alpha */
+    entry_points->pGLBindFramebuffer(GL_FRAMEBUFFER,
+                                     0);
     entry_points->pGLClear          (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    ogl_pipeline_draw_stage(_pipeline, _pipeline_stage_id, frame_time);
+    ogl_pipeline_draw_stage(_pipeline,
+                            _pipeline_stage_id,
+                            frame_time);
 }
 
-void _rendering_lbm_callback_handler(system_window window, unsigned short x, unsigned short y, system_window_vk_status new_status, void*)
+void _rendering_lbm_callback_handler(system_window           window,
+                                     unsigned short          x,
+                                     unsigned short          y,
+                                     system_window_vk_status new_status,
+                                     void*)
 {
     system_event_set(_window_closed_event);
 }
@@ -380,39 +446,69 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     int                   window_x1y1x2y2[4]       = {0};
 
     /* Carry on */
-    system_window_get_centered_window_position_for_primary_monitor(_window_resolution, window_x1y1x2y2);
+    system_window_get_centered_window_position_for_primary_monitor(_window_resolution,
+                                                                   window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (window_x1y1x2y2, system_hashed_ansi_string_create("Test window"), false, 0, false, false, true);
-    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"), 30, _rendering_handler, NULL);
-    context_result           = system_window_get_context(_window, &_context);
+    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
+                                                                            window_x1y1x2y2,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false, /* scalable */
+                                                                            0,     /* n_multisampling_samples */
+                                                                            false, /* vsync_enabled */
+                                                                            false, /* multisampling_supported */
+                                                                            true); /* visible */
+    window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
+                                                                            30,                 /* desired_fps */
+                                                                            _rendering_handler,
+                                                                            NULL);              /* user_arg */
 
-    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &_context);
 
-    system_window_set_rendering_handler(_window, window_rendering_handler);
+    system_window_set_rendering_handler(_window,
+                                         window_rendering_handler);
 
     /* Set up matrices */
-    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f, float(_window_resolution[0]) / float(_window_resolution[1]), 0.01f, 100.0f);
+    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f, /* fov_y */
+                                                                               float(_window_resolution[0]) / float(_window_resolution[1]),
+                                                                               0.01f,  /* z_near */
+                                                                               100.0f);/* z_far */
 
-    /* Set up pipeline */
-    _pipeline          = ogl_pipeline_create   (_context, true, system_hashed_ansi_string_create("pipeline") );
-    _pipeline_stage_id = ogl_pipeline_add_stage(_pipeline);
-
-    system_window_add_callback_func(_window, SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL, SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,  _rendering_lbm_callback_handler, NULL);
+    /* Set up callbacks */
+    system_window_add_callback_func(_window,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                    _rendering_lbm_callback_handler,
+                                    NULL);
 
     /* Initialize flyby */
-    const float camera_pos[] = {-0.1611f, 4.5528f, -6.0926f};
+    const float camera_movement_delta =  0.025f;
+    const float camera_pitch          = -0.6f;
+    const float camera_pos[]          = {-0.1611f, 4.5528f, -6.0926f};
+    const float camera_yaw            =  0.024f;
 
-    ogl_flyby_activate          (_context, camera_pos);
-    ogl_flyby_set_movement_delta(_context,  0.025f);
-    ogl_flyby_set_pitch_yaw     (_context, -0.6f, 0.024f);
+    ogl_flyby_activate(_context,
+                       camera_pos);
+
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                          &camera_movement_delta);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_PITCH,
+                          &camera_pitch);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_YAW,
+                          &camera_yaw);
 
     /* Initialize GL objects */
     ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,
                                                                _init_gl,
-                                                               NULL);
+                                                               NULL); /* user_arg */
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler, 0);
+    ogl_rendering_handler_play(window_rendering_handler,
+                               0); /* time */
 
     system_event_wait_single_infinite(_window_closed_event);
 
