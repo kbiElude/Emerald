@@ -1,6 +1,6 @@
 /**
  *
- * Texture Compression tool (kbi/elude @2014)
+ * Texture Compression tool (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -106,7 +106,8 @@ ogl_shader                      _whiteline_fs                      = NULL;
 ogl_program                     _whiteline_po                      = NULL;
 ogl_shader                      _whiteline_vs                      = NULL;
 system_window                   _window                            = NULL;
-system_event                    _window_closed_event               = system_event_create(true, false);
+system_event                    _window_closed_event               = system_event_create(true,  /* manual_reset */
+                                                                                         false);/* start_state */
 const int                       _window_size[2]                    = {1280, 720};
 float                           _x1y1x2y2[4]                       = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -230,8 +231,9 @@ void _callback_on_dropdown_switch(ogl_ui_control control,
 {
     ogl_rendering_handler rendering_handler = NULL;
 
-    system_window_get_rendering_handler(_window,
-                                       &rendering_handler);
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
     ogl_rendering_handler_lock_bound_context(rendering_handler);
     {
@@ -416,7 +418,7 @@ bool _compress_texture(ogl_context context,
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
     /* Retrieve the internalformat properties */
@@ -449,8 +451,8 @@ bool _compress_texture(ogl_context context,
         _texture_c = NULL;
     }
 
-    _texture_c = ogl_texture_create(context,
-                                    system_hashed_ansi_string_create("Compressed texture") );
+    _texture_c = ogl_texture_create_empty(context,
+                                          system_hashed_ansi_string_create("Compressed texture") );
 
     /* Set up compressed mipmap chain */
     unsigned int compressed_size_all_mipmaps = 0;
@@ -499,7 +501,6 @@ bool _compress_texture(ogl_context context,
                           "Compressed texture mipmap size is reported to be 0");
 
         ogl_texture_set_mipmap_property(_texture_c,
-                                        OGL_TEXTURE_DIMENSIONALITY_GL_TEXTURE_2D,
                                         n_mipmap,
                                         OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,
                                        &mipmap_size);
@@ -672,10 +673,10 @@ void _move_to_next_texture(ogl_context context,
         }
     }
 
-    if (n_switches == _file_enumerator_n_files)
+    if (n_switches != _file_enumerator_n_files)
     {
         ::MessageBoxA(NULL,
-                      "Cannot load any texture file!",
+                      "Cannot load at least one of the found texture files!",
                       "Error",
                       MB_OK | MB_ICONERROR);
 
@@ -713,44 +714,62 @@ void _rendering_handler(ogl_context          context,
     static bool                                               initialized      = false;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_EXT_DIRECT_STATE_ACCESS,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entry_points);
 
     /* Initialize stuff if it's the first frame */
     if (!initialized)
     {
         /***** White line progarm */
-        _whiteline_fs = ogl_shader_create (_context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("Whiteline FS") );
-        _whiteline_po = ogl_program_create(_context,                       system_hashed_ansi_string_create("Wniteline PO") );
-        _whiteline_vs = ogl_shader_create (_context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("Whiteline VS") );
+        _whiteline_fs = ogl_shader_create (_context,
+                                           SHADER_TYPE_FRAGMENT,
+                                           system_hashed_ansi_string_create("Whiteline FS") );
+        _whiteline_po = ogl_program_create(_context,
+                                           system_hashed_ansi_string_create("Wniteline PO") );
+        _whiteline_vs = ogl_shader_create (_context,
+                                           SHADER_TYPE_VERTEX,
+                                           system_hashed_ansi_string_create("Whiteline VS") );
 
-        ogl_shader_set_body(_whiteline_fs, system_hashed_ansi_string_create(whiteline_fs_code) );
-        ogl_shader_set_body(_whiteline_vs, system_hashed_ansi_string_create(whiteline_vs_code) );
+        ogl_shader_set_body(_whiteline_fs,
+                            system_hashed_ansi_string_create(whiteline_fs_code) );
+        ogl_shader_set_body(_whiteline_vs,
+                            system_hashed_ansi_string_create(whiteline_vs_code) );
 
         ogl_shader_compile(_whiteline_fs);
         ogl_shader_compile(_whiteline_vs);
 
-        ogl_program_attach_shader(_whiteline_po, _whiteline_fs);
-        ogl_program_attach_shader(_whiteline_po, _whiteline_vs);
+        ogl_program_attach_shader(_whiteline_po,
+                                  _whiteline_fs);
+        ogl_program_attach_shader(_whiteline_po,
+                                  _whiteline_vs);
 
         ogl_program_link(_whiteline_po);
 
         /***** Preview program */
-        _preview_fs = ogl_shader_create (_context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create("Preview FS") );
-        _preview_po = ogl_program_create(_context,                       system_hashed_ansi_string_create("Preview PO") );
-        _preview_vs = ogl_shader_create (_context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create("Preview VS") );
+        _preview_fs = ogl_shader_create (_context,
+                                         SHADER_TYPE_FRAGMENT,
+                                         system_hashed_ansi_string_create("Preview FS") );
+        _preview_po = ogl_program_create(_context,
+                                         system_hashed_ansi_string_create("Preview PO") );
+        _preview_vs = ogl_shader_create (_context,
+                                         SHADER_TYPE_VERTEX,
+                                         system_hashed_ansi_string_create("Preview VS") );
 
-        ogl_shader_set_body(_preview_fs, system_hashed_ansi_string_create(preview_fs_code) );
-        ogl_shader_set_body(_preview_vs, system_hashed_ansi_string_create(preview_vs_code) );
+        ogl_shader_set_body(_preview_fs,
+                            system_hashed_ansi_string_create(preview_fs_code) );
+        ogl_shader_set_body(_preview_vs,
+                            system_hashed_ansi_string_create(preview_vs_code) );
 
         ogl_shader_compile(_preview_fs);
         ogl_shader_compile(_preview_vs);
 
-        ogl_program_attach_shader(_preview_po, _preview_fs);
-        ogl_program_attach_shader(_preview_po, _preview_vs);
+        ogl_program_attach_shader(_preview_po,
+                                  _preview_fs);
+        ogl_program_attach_shader(_preview_po,
+                                  _preview_vs);
 
         ogl_program_link(_preview_po);
 
@@ -758,24 +777,34 @@ void _rendering_handler(ogl_context          context,
         const ogl_program_uniform_descriptor* uniform_texture  = NULL;
         const ogl_program_uniform_descriptor* uniform_x1y1x2y2 = NULL;
 
-        ogl_program_get_uniform_by_name(_preview_po, system_hashed_ansi_string_create("texture"),  &uniform_texture);
-        ogl_program_get_uniform_by_name(_preview_po, system_hashed_ansi_string_create("x1y1x2y2"), &uniform_x1y1x2y2);
+        ogl_program_get_uniform_by_name(_preview_po,
+                                        system_hashed_ansi_string_create("texture"),
+                                       &uniform_texture);
+        ogl_program_get_uniform_by_name(_preview_po,
+                                        system_hashed_ansi_string_create("x1y1x2y2"),
+                                       &uniform_x1y1x2y2);
 
-        ASSERT_ALWAYS_SYNC(uniform_texture  != NULL, "texture is not recognized");
-        ASSERT_ALWAYS_SYNC(uniform_x1y1x2y2 != NULL, "x1y1x2y2 is not recognized");
+        ASSERT_ALWAYS_SYNC(uniform_texture != NULL,
+                           "texture is not recognized");
+        ASSERT_ALWAYS_SYNC(uniform_x1y1x2y2 != NULL,
+                           "x1y1x2y2 is not recognized");
 
         _preview_po_uniform_texture  = uniform_texture->location;
         _preview_po_uniform_x1y1x2y2 = uniform_x1y1x2y2->location;
 
         /* Instantiate a FBO we will use for conversions */
-        entry_points->pGLGenFramebuffers(1, &_compression_fbo);
+        entry_points->pGLGenFramebuffers(1,
+                                        &_compression_fbo);
 
         /* Spawn a VAO */
-        entry_points->pGLGenVertexArrays(1, &_vao_id);
+        entry_points->pGLGenVertexArrays(1,
+                                         &_vao_id);
 
         /* Load the first file */
         _file_enumerator_n_current_file = -1;
-        _move_to_next_texture(context, true);
+
+        _move_to_next_texture(context,
+                              true);
 
         /* Retrieve texture compression handler */
         ogl_context_get_property(context,
@@ -1009,9 +1038,9 @@ void _save_compressed_texture()
     /* Determine if we should store all mipmaps, or just the base one */
     bool store_all_mipmaps = false;
 
-    ogl_ui_get_property(_ui_generate_mipmaps_checkbox,
-                        OGL_UI_CHECKBOX_PROPERTY_CHECK_STATUS,
-                       &store_all_mipmaps);
+    ogl_ui_get_control_property(_ui_generate_mipmaps_checkbox,
+                                OGL_UI_CONTROL_PROPERTY_CHECKBOX_CHECK_STATUS,
+                               &store_all_mipmaps);
 
     /* Allocate space for the buffer */
     unsigned int   compressed_data_size = (store_all_mipmaps) ? _current_compression_algorithm->size_all_mipmaps
@@ -1030,7 +1059,9 @@ void _save_compressed_texture()
         n_mipmaps_to_store = 1;
     }
 
-    ASSERT_DEBUG_SYNC(compressed_data != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(compressed_data != NULL,
+                      "Out of memory");
+
     if (compressed_data != NULL)
     {
         /* Retrieve the compressed data */
@@ -1039,7 +1070,7 @@ void _save_compressed_texture()
         unsigned int                                              total_data_size  = 0;
 
         ogl_context_get_property(_context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_EXT_DIRECT_STATE_ACCESS,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &dsa_entry_points);
 
         for (unsigned int n_mipmap = 0;
@@ -1112,9 +1143,12 @@ void _save_compressed_texture()
                                                 OGL_TEXTURE_MIPMAP_PROPERTY_DATA_SIZE,
                                                &mipmap_data_size);
 
-                ASSERT_ALWAYS_SYNC(mipmap_depth  < (1 << (8 * sizeof(mipmap_header.depth))),  "Unsupported depth");
-                ASSERT_ALWAYS_SYNC(mipmap_height < (1 << (8 * sizeof(mipmap_header.height))), "Unsupported height");
-                ASSERT_ALWAYS_SYNC(mipmap_width  < (1 << (8 * sizeof(mipmap_header.width))),  "Unsupported width");
+                ASSERT_ALWAYS_SYNC(mipmap_depth  < (1 << (8 * sizeof(mipmap_header.depth))),
+                                   "Unsupported depth");
+                ASSERT_ALWAYS_SYNC(mipmap_height < (1 << (8 * sizeof(mipmap_header.height))),
+                                   "Unsupported height");
+                ASSERT_ALWAYS_SYNC(mipmap_width  < (1 << (8 * sizeof(mipmap_header.width))),
+                                   "Unsupported width");
 
                 mipmap_header.data_size = mipmap_data_size;
                 mipmap_header.depth     = mipmap_depth;
@@ -1333,12 +1367,11 @@ void _setup_ui(ogl_context context)
 /** TODO */
 void _update_ui_controls_location()
 {
-    int window_height = 0;
-    int window_width  = 0;
+    int window_size[2] = {0};
 
-    system_window_get_dimensions(_window,
-                                &window_width,
-                                &window_height);
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_size);
 
     /* The hierarchy is:
      *
@@ -1355,47 +1388,47 @@ void _update_ui_controls_location()
     float label_height_ss;
     float label_x1y1       [2];
 
-    ogl_ui_get_property(_ui_compression_algorithm_dropdown,
-                        OGL_UI_DROPDOWN_PROPERTY_LABEL_BG_X1Y1X2Y2,
-                        dropdown_label_bg_x1y1x2y2);
-    ogl_ui_get_property(_ui_compression_algorithm_dropdown,
-                        OGL_UI_DROPDOWN_PROPERTY_LABEL_X1Y1,
-                        dropdown_label_x1y1);
-    ogl_ui_get_property(_ui_compression_algorithm_dropdown,
-                        OGL_UI_DROPDOWN_PROPERTY_X1Y1X2Y2,
-                        dropdown_x1y1x2y2);
-    ogl_ui_get_property(_ui_compressed_filesize_label,
-                        OGL_UI_LABEL_PROPERTY_TEXT_HEIGHT_SS,
-                        &label_height_ss);
+    ogl_ui_get_control_property(_ui_compression_algorithm_dropdown,
+                                OGL_UI_CONTROL_PROPERTY_DROPDOWN_LABEL_BG_X1Y1X2Y2,
+                                dropdown_label_bg_x1y1x2y2);
+    ogl_ui_get_control_property(_ui_compression_algorithm_dropdown,
+                                OGL_UI_CONTROL_PROPERTY_DROPDOWN_LABEL_X1Y1,
+                                dropdown_label_x1y1);
+    ogl_ui_get_control_property(_ui_compression_algorithm_dropdown,
+                                OGL_UI_CONTROL_PROPERTY_DROPDOWN_X1Y1X2Y2,
+                                dropdown_x1y1x2y2);
+    ogl_ui_get_control_property(_ui_compressed_filesize_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_TEXT_HEIGHT_SS,
+                               &label_height_ss);
 
     /* Compressed file name */
     label_x1y1[0] = dropdown_label_x1y1[0];
-    label_x1y1[1] = (1.0f - dropdown_x1y1x2y2[1]) + label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_height);
+    label_x1y1[1] = (1.0f - dropdown_x1y1x2y2[1]) + label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_size[1]);
 
-    ogl_ui_set_property(_ui_compressed_filename_label,
-                        OGL_UI_LABEL_PROPERTY_X1Y1,
-                        label_x1y1);
+    ogl_ui_set_control_property(_ui_compressed_filename_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_X1Y1,
+                                label_x1y1);
 
     /* Compressed file size */
-    label_x1y1[1] += label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_height);
+    label_x1y1[1] += label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_size[1]);
 
-    ogl_ui_set_property(_ui_compressed_filesize_label,
-                        OGL_UI_LABEL_PROPERTY_X1Y1,
-                        label_x1y1);
+    ogl_ui_set_control_property(_ui_compressed_filesize_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_X1Y1,
+                                label_x1y1);
 
     /* Decompressed file name */
-    label_x1y1[1] += label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_height);
+    label_x1y1[1] += label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_size[1]);
 
-    ogl_ui_set_property(_ui_decompressed_filename_label,
-                        OGL_UI_LABEL_PROPERTY_X1Y1,
-                        label_x1y1);
+    ogl_ui_set_control_property(_ui_decompressed_filename_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_X1Y1,
+                                label_x1y1);
 
     /* Decompressed file size */
-    label_x1y1[1] += label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_height);
+    label_x1y1[1] += label_height_ss + float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_size[1]);
 
-    ogl_ui_set_property(_ui_decompressed_filesize_label,
-                        OGL_UI_LABEL_PROPERTY_X1Y1,
-                        label_x1y1);
+    ogl_ui_set_control_property(_ui_decompressed_filesize_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_X1Y1,
+                                label_x1y1);
 
 
     /* Previous button */
@@ -1403,35 +1436,35 @@ void _update_ui_controls_location()
     float button_width;
     float prev_button_x1y1x2y2[4];
 
-    ogl_ui_get_property(_ui_previous_file_button,
-                        OGL_UI_BUTTON_PROPERTY_HEIGHT_SS,
-                       &button_height);
-    ogl_ui_get_property(_ui_previous_file_button,
-                        OGL_UI_BUTTON_PROPERTY_WIDTH_SS,
-                       &button_width);
+    ogl_ui_get_control_property(_ui_previous_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_HEIGHT_SS,
+                               &button_height);
+    ogl_ui_get_control_property(_ui_previous_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_WIDTH_SS,
+                               &button_width);
 
     prev_button_x1y1x2y2[0] = dropdown_x1y1x2y2[0];
-    prev_button_x1y1x2y2[1] = label_x1y1[1] + label_height_ss + 2.0f * float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_height);
+    prev_button_x1y1x2y2[1] = label_x1y1[1] + label_height_ss + 2.0f * float(UI_CONTROL_Y_SEPARATOR_PX) / float(window_size[1]);
     prev_button_x1y1x2y2[2] = prev_button_x1y1x2y2[0] + button_width;
     prev_button_x1y1x2y2[3] = prev_button_x1y1x2y2[1] - button_height;
 
-    ogl_ui_set_property(_ui_previous_file_button,
-                        OGL_UI_BUTTON_PROPERTY_X1Y1X2Y2,
-                        prev_button_x1y1x2y2);
+    ogl_ui_set_control_property(_ui_previous_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1X2Y2,
+                                prev_button_x1y1x2y2);
 
     /* Generate mipmaps button */
     label_x1y1[1] = prev_button_x1y1x2y2[1];
 
-    ogl_ui_set_property(_ui_generate_mipmaps_checkbox,
-                        OGL_UI_CHECKBOX_PROPERTY_X1Y1,
-                        label_x1y1);
+    ogl_ui_set_control_property(_ui_generate_mipmaps_checkbox,
+                                OGL_UI_CONTROL_PROPERTY_CHECKBOX_X1Y1,
+                                label_x1y1);
 
     /* Next button */
     float next_button_x1y1x2y2[4];
 
-    ogl_ui_get_property(_ui_next_file_button,
-                        OGL_UI_BUTTON_PROPERTY_WIDTH_SS,
-                       &button_width);
+    ogl_ui_get_control_property(_ui_next_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_WIDTH_SS,
+                               &button_width);
 
     memcpy(next_button_x1y1x2y2,
            prev_button_x1y1x2y2,
@@ -1440,17 +1473,17 @@ void _update_ui_controls_location()
     next_button_x1y1x2y2[0] = dropdown_x1y1x2y2[2]    - button_width;
     next_button_x1y1x2y2[2] = next_button_x1y1x2y2[0] + button_width;
 
-    ogl_ui_set_property(_ui_next_file_button,
-                        OGL_UI_BUTTON_PROPERTY_X1Y1X2Y2,
-                        next_button_x1y1x2y2);
+    ogl_ui_set_control_property(_ui_next_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1X2Y2,
+                                next_button_x1y1x2y2);
 
     /* Save button */
     float dx = (dropdown_x1y1x2y2[2] - dropdown_x1y1x2y2[0]) * 0.3f;
     float save_button_x1y1x2y2[4];
 
-    ogl_ui_get_property(_ui_save_file_button,
-                        OGL_UI_BUTTON_PROPERTY_WIDTH_SS,
-                       &button_width);
+    ogl_ui_get_control_property(_ui_save_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_WIDTH_SS,
+                               &button_width);
 
     memcpy(save_button_x1y1x2y2,
            prev_button_x1y1x2y2,
@@ -1459,9 +1492,9 @@ void _update_ui_controls_location()
     save_button_x1y1x2y2[0] = prev_button_x1y1x2y2[0] + (next_button_x1y1x2y2[0] - prev_button_x1y1x2y2[0]) * 0.5f;
     save_button_x1y1x2y2[2] = save_button_x1y1x2y2[0] + button_width;
 
-    ogl_ui_set_property(_ui_save_file_button,
-                        OGL_UI_BUTTON_PROPERTY_X1Y1X2Y2,
-                        save_button_x1y1x2y2);
+    ogl_ui_set_control_property(_ui_save_file_button,
+                                OGL_UI_CONTROL_PROPERTY_BUTTON_X1Y1X2Y2,
+                                save_button_x1y1x2y2);
 
     /* Frame */
     float frame_x1y1x2y2[4] =
@@ -1472,9 +1505,9 @@ void _update_ui_controls_location()
         1.0f - next_button_x1y1x2y2[1]
     };
 
-    ogl_ui_set_property(_ui_frame,
-                        OGL_UI_FRAME_PROPERTY_X1Y1X2Y2,
-                        frame_x1y1x2y2);
+    ogl_ui_set_control_property(_ui_frame,
+                                OGL_UI_CONTROL_PROPERTY_FRAME_X1Y1X2Y2,
+                                frame_x1y1x2y2);
 }
 
 /* TODO */
@@ -1486,9 +1519,9 @@ void _update_ui_controls_strings()
     /* Determine if the user wants to store all mipmaps */
     bool should_generate_mipmaps = false;
 
-    ogl_ui_get_property(_ui_generate_mipmaps_checkbox,
-                        OGL_UI_CHECKBOX_PROPERTY_CHECK_STATUS,
-                       &should_generate_mipmaps);
+    ogl_ui_get_control_property(_ui_generate_mipmaps_checkbox,
+                                OGL_UI_CONTROL_PROPERTY_CHECKBOX_CHECK_STATUS,
+                               &should_generate_mipmaps);
 
     /* Form string for the "compressed file size" label. */
     ASSERT_DEBUG_SYNC(_current_compression_algorithm != NULL,
@@ -1500,9 +1533,9 @@ void _update_ui_controls_strings()
                                  << " bytes";
     compressed_file_size_has = system_hashed_ansi_string_create(compressed_file_size_sstream.str().c_str() );
 
-    ogl_ui_set_property(_ui_compressed_filesize_label,
-                        OGL_UI_LABEL_PROPERTY_TEXT,
-                       &compressed_file_size_has);
+    ogl_ui_set_control_property(_ui_compressed_filesize_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_TEXT,
+                               &compressed_file_size_has);
 
     /* Form string for the "compressed file name" label */
     system_hashed_ansi_string current_file_has;
@@ -1516,9 +1549,9 @@ void _update_ui_controls_strings()
                              << ")";
     current_file_has = system_hashed_ansi_string_create(current_filename_sstream.str().c_str() );
 
-    ogl_ui_set_property(_ui_compressed_filename_label,
-                        OGL_UI_LABEL_PROPERTY_TEXT,
-                       &current_file_has);
+    ogl_ui_set_control_property(_ui_compressed_filename_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_TEXT,
+                               &current_file_has);
 
     /* Form string for the "decompressed file size" label. */
     unsigned int              decompressed_file_size = 0;
@@ -1539,15 +1572,27 @@ void _update_ui_controls_strings()
                                     0, /* mipmap_level */
                                     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
                                     texture_size + 2);
-    ogl_texture_get_mipmap_property(_texture_nc,
-                                    0, /* mipmap_level */
-                                    OGL_TEXTURE_MIPMAP_PROPERTY_INTERNALFORMAT,
-                                   &texture_internalformat);
+
+    ogl_texture_get_property(_texture_nc,
+                             OGL_TEXTURE_PROPERTY_INTERNALFORMAT,
+                            &texture_internalformat);
 
     switch(texture_internalformat)
     {
-        case GL_RGB8:  decompressed_file_size = 3 * texture_size[0] * texture_size[1] * texture_size[2]; break;
-        case GL_RGBA8: decompressed_file_size = 4 * texture_size[0] * texture_size[1] * texture_size[2]; break;
+        case GL_RGB8:
+        case GL_SRGB8:
+        {
+            decompressed_file_size = 3 * texture_size[0] * texture_size[1] * texture_size[2];
+
+            break;
+        }
+
+        case GL_RGBA8:
+        {
+            decompressed_file_size = 4 * texture_size[0] * texture_size[1] * texture_size[2];
+
+            break;
+        }
 
         default:
         {
@@ -1561,9 +1606,9 @@ void _update_ui_controls_strings()
                                    << " bytes";
     decompressed_file_size_has = system_hashed_ansi_string_create(decompressed_file_size_sstream.str().c_str() );
 
-    ogl_ui_set_property(_ui_decompressed_filesize_label,
-                        OGL_UI_LABEL_PROPERTY_TEXT,
-                       &decompressed_file_size_has);
+    ogl_ui_set_control_property(_ui_decompressed_filesize_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_TEXT,
+                               &decompressed_file_size_has);
 
     /* Form string for the "decompressed file name" label */
     current_filename_sstream.str(std::string());
@@ -1582,9 +1627,9 @@ void _update_ui_controls_strings()
                              << ")";
     current_filename_has = system_hashed_ansi_string_create(current_filename_sstream.str().c_str() );
 
-    ogl_ui_set_property(_ui_decompressed_filename_label,
-                        OGL_UI_LABEL_PROPERTY_TEXT,
-                       &current_filename_has);
+    ogl_ui_set_control_property(_ui_decompressed_filename_label,
+                                OGL_UI_CONTROL_PROPERTY_LABEL_TEXT,
+                               &current_filename_has);
 }
 
 /** Entry point */
@@ -1600,7 +1645,8 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
-    _window                  = system_window_create_not_fullscreen         (window_x1y1x2y2,
+    _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
+                                                                            window_x1y1x2y2,
                                                                             system_hashed_ansi_string_create("Test window"),
                                                                             false, /* scalable */
                                                                             0,     /* n_multisampling_samples */
@@ -1611,10 +1657,10 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                             60,                 /* desired_fps */
                                                                             _rendering_handler, /* pfn_rendering_callback */
                                                                             NULL);              /* user_arg */
-    context_result           = system_window_get_context                   (_window,
-                                                                           &_context);
 
-    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                               &_context);
 
     system_window_set_rendering_handler(_window,
                                         window_rendering_handler);
