@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_texture.h"
@@ -17,6 +18,10 @@
 #include "system/system_log.h"
 #include "system/system_window.h"
 #include <string>
+
+#define UB_FS_BP_INDEX (0)
+#define UB_VS_BP_INDEX (1)
+
 
 const float _ui_texture_preview_text_color[] = {1, 1, 1, 1.0f};
 
@@ -42,10 +47,18 @@ typedef struct
     ogl_context               context;
     system_hashed_ansi_string name;
     ogl_program               program;
-    GLint                     program_border_width_uniform_location;
-    GLint                     program_layer_uniform_location;
-    GLint                     program_texture_uniform_location;
-    GLint                     program_x1y1x2y2_uniform_location;
+    GLint                     program_border_width_ub_offset;
+    GLint                     program_layer_ub_offset;
+    GLint                     program_texture_ub_offset;
+    ogl_program_ub            program_ub_fs;
+    GLuint                    program_ub_fs_bo_id;
+    GLuint                    program_ub_fs_bo_size;
+    GLuint                    program_ub_fs_bo_start_offset;
+    ogl_program_ub            program_ub_vs;
+    GLuint                    program_ub_vs_bo_id;
+    GLuint                    program_ub_vs_bo_size;
+    GLuint                    program_ub_vs_bo_start_offset;
+    GLint                     program_x1y1x2y2_ub_offset;
     ogl_texture               texture;
     bool                      texture_initialized;
 
@@ -58,6 +71,7 @@ typedef struct
     PFNWRAPPEDGLBINDTEXTUREPROC          gl_pGLBindTexture;
     PFNWRAPPEDGLTEXTUREPARAMETERIEXTPROC gl_pGLTextureParameteriEXT;
     PFNGLACTIVETEXTUREPROC               pGLActiveTexture;
+    PFNGLBINDBUFFERRANGEPROC             pGLBindBufferRange;
     PFNGLBINDSAMPLERPROC                 pGLBindSampler;
     PFNGLBINDTEXTUREPROC                 pGLBindTexture;
     PFNGLBLENDCOLORPROC                  pGLBlendColor;
@@ -67,10 +81,8 @@ typedef struct
     PFNGLDRAWARRAYSPROC                  pGLDrawArrays;
     PFNGLENABLEPROC                      pGLEnable;
     PFNGLGETTEXLEVELPARAMETERIVPROC      pGLGetTexLevelParameteriv;
-    PFNGLPROGRAMUNIFORM1FPROC            pGLProgramUniform1f;
-    PFNGLPROGRAMUNIFORM2FVPROC           pGLProgramUniform2fv;
-    PFNGLPROGRAMUNIFORM4FVPROC           pGLProgramUniform4fv;
     PFNGLTEXPARAMETERIPROC               pGLTexParameteri;
+    PFNGLUNIFORMBLOCKBINDINGPROC         pGLUniformBlockBinding;
     PFNGLUSEPROGRAMPROC                  pGLUseProgram;
 } _ogl_ui_texture_preview;
 
@@ -85,9 +97,13 @@ static const char* ui_texture_preview_fragment_shader_body               = "#ver
                                                                            "\n"
                                                                            "in      vec2         uv;\n"
                                                                            "out     vec4         result;\n"
-                                                                           "uniform vec2         border_width;\n"
                                                                            "uniform SAMPLER_TYPE texture;\n"
-                                                                           "uniform float        layer;\n"
+                                                                           "\n"
+                                                                           "uniform dataFS\n"
+                                                                           "{\n"
+                                                                           "    vec2  border_width;\n"
+                                                                           "    float layer;\n"
+                                                                           "};\n"
                                                                            "\n"
                                                                            "void main()\n"
                                                                            "{\n"
@@ -136,7 +152,8 @@ PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui         
                                                                                                             " vertex shader") );
 
     texture_preview_ptr->program = ogl_program_create(context,
-                                                      system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)) );
+                                                      system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)),
+                                                      true); /* use_syncable_ubs */
 
     /* Set up FS body */
     std::string fs_body                      = ui_texture_preview_fragment_shader_body;
@@ -383,25 +400,81 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 
     if (border_width_uniform != NULL)
     {
-        texture_preview_ptr->program_border_width_uniform_location = border_width_uniform->location;
+        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform->ub_offset;
     }
     else
     {
-        texture_preview_ptr->program_border_width_uniform_location = -1;
+        texture_preview_ptr->program_border_width_ub_offset = -1;
     }
 
     if (layer_uniform != NULL)
     {
-        texture_preview_ptr->program_layer_uniform_location = layer_uniform->location;
+        texture_preview_ptr->program_layer_ub_offset = layer_uniform->ub_offset;
     }
     else
     {
-        texture_preview_ptr->program_layer_uniform_location = -1;
+        texture_preview_ptr->program_layer_ub_offset = -1;
     }
 
-    texture_preview_ptr->program_texture_uniform_location  = texture_uniform->location;
-    texture_preview_ptr->program_x1y1x2y2_uniform_location = x1y1x2y2_uniform->location;
-    texture_preview_ptr->texture_initialized               = true;
+    texture_preview_ptr->program_texture_ub_offset  = texture_uniform->ub_offset;
+    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->ub_offset;
+
+    /* Set up uniform blocks */
+    unsigned int ub_fs_index = -1;
+    unsigned int ub_vs_index = -1;
+
+    texture_preview_ptr->program_ub_fs = NULL;
+    texture_preview_ptr->program_ub_vs = NULL;
+
+    ogl_program_get_uniform_block_by_name(texture_preview_ptr->program,
+                                          system_hashed_ansi_string_create("dataFS"),
+                                         &texture_preview_ptr->program_ub_fs);
+    ogl_program_get_uniform_block_by_name(texture_preview_ptr->program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &texture_preview_ptr->program_ub_vs);
+
+    ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_fs != NULL,
+                      "dataFS uniform block descriptor is NULL.");
+    ASSERT_DEBUG_SYNC(texture_preview_ptr->program_ub_vs != NULL,
+                      "dataVS uniform block descriptor is NULL.");
+
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &texture_preview_ptr->program_ub_fs_bo_size);
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &texture_preview_ptr->program_ub_vs_bo_size);
+
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &texture_preview_ptr->program_ub_fs_bo_id);
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &texture_preview_ptr->program_ub_vs_bo_id);
+
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &texture_preview_ptr->program_ub_fs_bo_start_offset);
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &texture_preview_ptr->program_ub_vs_bo_start_offset);
+
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEX,
+                               &ub_fs_index);
+    ogl_program_ub_get_property(texture_preview_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEX,
+                               &ub_vs_index);
+
+    texture_preview_ptr->pGLUniformBlockBinding(ogl_program_get_id(texture_preview_ptr->program),
+                                                ub_fs_index,
+                                                UB_FS_BP_INDEX);
+    texture_preview_ptr->pGLUniformBlockBinding(ogl_program_get_id(texture_preview_ptr->program),
+                                                ub_vs_index,
+                                                UB_VS_BP_INDEX);
+
+    /* All done */
+    texture_preview_ptr->texture_initialized = true;
 }
 
 /** Please see header for specification */
@@ -482,19 +555,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     }
 
     /* Set up uniforms */
-    GLuint program_id = ogl_program_get_id(texture_preview_ptr->program);
+    float layer_index = (float) texture_preview_ptr->layer_shown;
 
-    texture_preview_ptr->pGLProgramUniform2fv(program_id,
-                                              texture_preview_ptr->program_border_width_uniform_location,
-                                              1,
-                                              texture_preview_ptr->border_width);
-    texture_preview_ptr->pGLProgramUniform4fv(program_id,
-                                              texture_preview_ptr->program_x1y1x2y2_uniform_location,
-                                              1,
-                                              texture_preview_ptr->x1y1x2y2);
-    texture_preview_ptr->pGLProgramUniform1f (program_id,
-                                              texture_preview_ptr->program_layer_uniform_location,
-                                              (float) texture_preview_ptr->layer_shown);
+    ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_fs,
+                                                texture_preview_ptr->program_border_width_ub_offset,
+                                                texture_preview_ptr->border_width,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
+    ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_vs,
+                                                texture_preview_ptr->program_x1y1x2y2_ub_offset,
+                                                texture_preview_ptr->x1y1x2y2,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 4);
+    ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_fs,
+                                                texture_preview_ptr->program_layer_ub_offset,
+                                               &layer_index,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
 
     /* Configure blending.
      *
@@ -521,6 +598,20 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
                                                   texture_preview_ptr->blend_function_dst_alpha);
 
     /* Draw */
+    texture_preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                            UB_FS_BP_INDEX,
+                                            texture_preview_ptr->program_ub_fs_bo_id,
+                                            texture_preview_ptr->program_ub_fs_bo_start_offset,
+                                            texture_preview_ptr->program_ub_fs_bo_size);
+    texture_preview_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                            UB_VS_BP_INDEX,
+                                            texture_preview_ptr->program_ub_vs_bo_id,
+                                            texture_preview_ptr->program_ub_vs_bo_start_offset,
+                                            texture_preview_ptr->program_ub_vs_bo_size);
+
+    ogl_program_ub_sync(texture_preview_ptr->program_ub_fs);
+    ogl_program_ub_sync(texture_preview_ptr->program_ub_vs);
+
     texture_preview_ptr->pGLUseProgram(ogl_program_get_id(texture_preview_ptr->program) );
     texture_preview_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                        0,
@@ -707,6 +798,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->gl_pGLBindTexture          = NULL;
             new_texture_preview->gl_pGLTextureParameteriEXT = NULL;
             new_texture_preview->pGLActiveTexture           = entry_points->pGLActiveTexture;
+            new_texture_preview->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
             new_texture_preview->pGLBindSampler             = entry_points->pGLBindSampler;
             new_texture_preview->pGLBindTexture             = entry_points->pGLBindTexture;
             new_texture_preview->pGLBlendColor              = entry_points->pGLBlendColor;
@@ -716,10 +808,8 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->pGLDrawArrays              = entry_points->pGLDrawArrays;
             new_texture_preview->pGLEnable                  = entry_points->pGLEnable;
             new_texture_preview->pGLGetTexLevelParameteriv  = entry_points->pGLGetTexLevelParameteriv;
-            new_texture_preview->pGLProgramUniform1f        = entry_points->pGLProgramUniform1f;
-            new_texture_preview->pGLProgramUniform2fv       = entry_points->pGLProgramUniform2fv;
-            new_texture_preview->pGLProgramUniform4fv       = entry_points->pGLProgramUniform4fv;
             new_texture_preview->pGLTexParameteri           = entry_points->pGLTexParameteri;
+            new_texture_preview->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
             new_texture_preview->pGLUseProgram              = entry_points->pGLUseProgram;
         }
         else
@@ -742,6 +832,7 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->gl_pGLBindTexture          = entry_points->pGLBindTexture;
             new_texture_preview->gl_pGLTextureParameteriEXT = dsa_entry_points->pGLTextureParameteriEXT;
             new_texture_preview->pGLActiveTexture           = entry_points->pGLActiveTexture;
+            new_texture_preview->pGLBindBufferRange         = entry_points->pGLBindBufferRange;
             new_texture_preview->pGLBindSampler             = entry_points->pGLBindSampler;
             new_texture_preview->pGLBlendColor              = entry_points->pGLBlendColor;
             new_texture_preview->pGLBlendEquationSeparate   = entry_points->pGLBlendEquationSeparate;
@@ -750,10 +841,8 @@ PUBLIC void* ogl_ui_texture_preview_init(__in           __notnull ogl_ui        
             new_texture_preview->pGLDrawArrays              = entry_points->pGLDrawArrays;
             new_texture_preview->pGLEnable                  = entry_points->pGLEnable;
             new_texture_preview->pGLGetTexLevelParameteriv  = entry_points->pGLGetTexLevelParameteriv;
-            new_texture_preview->pGLProgramUniform1f        = entry_points->pGLProgramUniform1f;
-            new_texture_preview->pGLProgramUniform2fv       = entry_points->pGLProgramUniform2fv;
-            new_texture_preview->pGLProgramUniform4fv       = entry_points->pGLProgramUniform4fv;
             new_texture_preview->pGLTexParameteri           = entry_points->pGLTexParameteri;
+            new_texture_preview->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
             new_texture_preview->pGLUseProgram              = entry_points->pGLUseProgram;
         }
 
