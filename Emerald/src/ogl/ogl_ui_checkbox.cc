@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
@@ -26,6 +27,9 @@
 #define NONFOCUSED_BRIGHTNESS                 (0.1f)
 #define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(450) )
 #define TEXT_DELTA_PX                         (4)
+
+#define UB_FSDATA_BP_INDEX (0)
+#define UB_VSDATA_BP_INDEX (1)
 
 const float _ui_checkbox_text_color[] = {1, 1, 1, 1.0f};
 
@@ -52,20 +56,27 @@ typedef struct
 
     ogl_context             context;
     ogl_program             program;
-    GLint                   program_border_width_uniform_location;
-    GLint                   program_brightness_uniform_location;
-    GLint                   program_text_brightness_uniform_location;
-    GLint                   program_x1y1x2y2_uniform_location;
+    GLint                   program_border_width_ub_offset;
+    GLint                   program_brightness_ub_offset;
+    GLint                   program_text_brightness_ub_offset;
+    ogl_program_ub          program_ub_fs;
+    GLuint                  program_ub_fs_bo_id;
+    GLuint                  program_ub_fs_bo_size;
+    GLuint                  program_ub_fs_bo_start_offset;
+    ogl_program_ub          program_ub_vs;
+    GLuint                  program_ub_vs_bo_id;
+    GLuint                  program_ub_vs_bo_size;
+    GLuint                  program_ub_vs_bo_start_offset;
+    GLint                   program_x1y1x2y2_ub_offset;
 
     GLint    text_index;
     ogl_text text_renderer;
 
     /* Cached func ptrs */
-    PFNGLDRAWARRAYSPROC        pGLDrawArrays;
-    PFNGLPROGRAMUNIFORM1FPROC  pGLProgramUniform1f;
-    PFNGLPROGRAMUNIFORM2FVPROC pGLProgramUniform2fv;
-    PFNGLPROGRAMUNIFORM4FVPROC pGLProgramUniform4fv;
-    PFNGLUSEPROGRAMPROC        pGLUseProgram;
+    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
+    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
+    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
+    PFNGLUSEPROGRAMPROC          pGLUseProgram;
 } _ogl_ui_checkbox;
 
 /** Internal variables */
@@ -74,10 +85,13 @@ static const char* ui_checkbox_fragment_shader_body = "#version 330\n"
                                                       "in  vec2 uv;\n"
                                                       "out vec3 result;\n"
                                                       /* stop, rgb */
-                                                      "uniform float brightness;\n"
-                                                      "uniform vec2  border_width;\n"
-                                                      "uniform vec4  stop_data[4];\n"
-                                                      "uniform float text_brightness;\n"
+                                                      "uniform dataFS\n"
+                                                      "{\n"
+                                                      "    float brightness;\n"
+                                                      "    vec2  border_width;\n"
+                                                      "    vec4  stop_data[4];\n"
+                                                      "    float text_brightness;\n"
+                                                      "};\n"
                                                       "\n"
                                                       "void main()\n"
                                                       "{\n"
@@ -109,7 +123,8 @@ PRIVATE void _ogl_ui_checkbox_init_program(__in __notnull ogl_ui            ui,
                                                      system_hashed_ansi_string_create("UI checkbox vertex shader") );
 
     checkbox_ptr->program = ogl_program_create(context,
-                                               system_hashed_ansi_string_create("UI checkbox program") );
+                                               system_hashed_ansi_string_create("UI checkbox program"),
+                                               true); /* use_syncable_ubs */
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,
@@ -127,6 +142,33 @@ PRIVATE void _ogl_ui_checkbox_init_program(__in __notnull ogl_ui            ui,
                               vertex_shader);
 
     ogl_program_link(checkbox_ptr->program);
+
+    /* Set up uniform block bindings */
+    ogl_program_ub ub_fs       = NULL;
+    unsigned int   ub_fs_index = -1;
+    ogl_program_ub ub_vs       = NULL;
+    unsigned int   ub_vs_index = -1;
+
+    ogl_program_get_uniform_block_by_name(checkbox_ptr->program,
+                                          system_hashed_ansi_string_create("dataFS"),
+                                         &ub_fs);
+    ogl_program_get_uniform_block_by_name(checkbox_ptr->program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &ub_vs);
+
+    ogl_program_ub_get_property(ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEX,
+                               &ub_fs_index);
+    ogl_program_ub_get_property(ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEX,
+                               &ub_vs_index);
+
+    checkbox_ptr->pGLUniformBlockBinding(ogl_program_get_id(checkbox_ptr->program),
+                                         ub_fs_index,         /* uniformBlockIndex */
+                                         UB_FSDATA_BP_INDEX); /* uniformBlockBinding */
+    checkbox_ptr->pGLUniformBlockBinding(ogl_program_get_id(checkbox_ptr->program),
+                                         ub_vs_index,         /* uniformBlockIndex */
+                                         UB_VSDATA_BP_INDEX); /* uniformBlockBinding */
 
     /* Register the prgoram with UI so following button instances will reuse the program */
     ogl_ui_register_program(ui,
@@ -178,19 +220,61 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
                                     system_hashed_ansi_string_create("x1y1x2y2"),
                                    &x1y1x2y2_uniform);
 
-    checkbox_ptr->program_border_width_uniform_location    = border_width_uniform->location;
-    checkbox_ptr->program_brightness_uniform_location      = brightness_uniform->location;
-    checkbox_ptr->program_text_brightness_uniform_location = text_brightness_uniform->location;
-    checkbox_ptr->program_x1y1x2y2_uniform_location        = x1y1x2y2_uniform->location;
+    checkbox_ptr->program_border_width_ub_offset    = border_width_uniform->ub_offset;
+    checkbox_ptr->program_brightness_ub_offset      = brightness_uniform->ub_offset;
+    checkbox_ptr->program_text_brightness_ub_offset = text_brightness_uniform->ub_offset;
+    checkbox_ptr->program_x1y1x2y2_ub_offset        = x1y1x2y2_uniform->ub_offset;
+
+    /* Set up uniform blocks */
+    checkbox_ptr->program_ub_fs = NULL;
+    checkbox_ptr->program_ub_vs = NULL;
+
+    ogl_program_get_uniform_block_by_name(checkbox_ptr->program,
+                                          system_hashed_ansi_string_create("dataFS"),
+                                         &checkbox_ptr->program_ub_fs);
+    ogl_program_get_uniform_block_by_name(checkbox_ptr->program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &checkbox_ptr->program_ub_vs);
+
+    ASSERT_DEBUG_SYNC(checkbox_ptr->program_ub_fs != NULL,
+                      "dataFS uniform block descriptor is NULL");
+    ASSERT_DEBUG_SYNC(checkbox_ptr->program_ub_vs != NULL,
+                      "dataVS uniform block descriptor is NULL");
+
+    ogl_program_ub_get_property(checkbox_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &checkbox_ptr->program_ub_fs_bo_size);
+    ogl_program_ub_get_property(checkbox_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &checkbox_ptr->program_ub_vs_bo_size);
+
+    ogl_program_ub_get_property(checkbox_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &checkbox_ptr->program_ub_fs_bo_id);
+    ogl_program_ub_get_property(checkbox_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &checkbox_ptr->program_ub_vs_bo_id);
+
+    ogl_program_ub_get_property(checkbox_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &checkbox_ptr->program_ub_fs_bo_start_offset);
+    ogl_program_ub_get_property(checkbox_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &checkbox_ptr->program_ub_vs_bo_start_offset);
 
     /* Set them up */
-    checkbox_ptr->pGLProgramUniform2fv(program_id,
-                                       border_width_uniform->location,
-                                       sizeof(border_width) / sizeof(float) / 2,
-                                       border_width);
-    checkbox_ptr->pGLProgramUniform1f (program_id,
-                                       text_brightness_uniform->location,
-                                       NONFOCUSED_BRIGHTNESS);
+    const float default_brightness = NONFOCUSED_BRIGHTNESS;
+
+    ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
+                                                border_width_uniform->ub_offset,
+                                               &border_width,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 2);
+    ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
+                                                text_brightness_uniform->ub_offset,
+                                               &default_brightness,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
 
     checkbox_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 }
@@ -351,7 +435,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
     }
 
     /* Update uniforms */
-    GLuint program_id = ogl_program_get_id(checkbox_ptr->program);
+    const float new_brightness = brightness * (checkbox_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1) * (checkbox_ptr->status ? CHECK_BRIGHTNESS_MODIFIER : 1);
+    GLuint      program_id     = ogl_program_get_id(checkbox_ptr->program);
 
     if (checkbox_ptr->current_gpu_brightness_level != brightness ||
         checkbox_ptr->force_gpu_brightness_update)
@@ -360,15 +445,32 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_checkbox_draw(void* internal_instance)
         checkbox_ptr->force_gpu_brightness_update  = false;
     }
 
-    checkbox_ptr->pGLProgramUniform1f (program_id,
-                                       checkbox_ptr->program_brightness_uniform_location,
-                                       brightness * (checkbox_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1) * (checkbox_ptr->status ? CHECK_BRIGHTNESS_MODIFIER : 1));
-    checkbox_ptr->pGLProgramUniform4fv(program_id,
-                                       checkbox_ptr->program_x1y1x2y2_uniform_location,
-                                       sizeof(checkbox_ptr->x1y1x2y2) / sizeof(float) / 4,
-                                       checkbox_ptr->x1y1x2y2);
+    ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
+                                                checkbox_ptr->program_brightness_ub_offset,
+                                               &new_brightness,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
+    ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_vs,
+                                                checkbox_ptr->program_x1y1x2y2_ub_offset,
+                                                checkbox_ptr->x1y1x2y2,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 4);
+
+    ogl_program_ub_sync(checkbox_ptr->program_ub_fs);
+    ogl_program_ub_sync(checkbox_ptr->program_ub_vs);
 
     /* Draw */
+    checkbox_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     UB_FSDATA_BP_INDEX,
+                                     checkbox_ptr->program_ub_fs_bo_id,
+                                     checkbox_ptr->program_ub_fs_bo_start_offset,
+                                     checkbox_ptr->program_ub_fs_bo_size);
+    checkbox_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     UB_VSDATA_BP_INDEX,
+                                     checkbox_ptr->program_ub_vs_bo_id,
+                                     checkbox_ptr->program_ub_vs_bo_start_offset,
+                                     checkbox_ptr->program_ub_vs_bo_size);
+
     checkbox_ptr->pGLUseProgram(ogl_program_get_id(checkbox_ptr->program) );
     checkbox_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                                 0,
@@ -455,11 +557,10 @@ PUBLIC void* ogl_ui_checkbox_init(__in           __notnull   ogl_ui             
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_checkbox->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_checkbox->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_checkbox->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_checkbox->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_checkbox->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_checkbox->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_checkbox->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_checkbox->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_checkbox->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -472,11 +573,10 @@ PUBLIC void* ogl_ui_checkbox_init(__in           __notnull   ogl_ui             
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_checkbox->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_checkbox->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_checkbox->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_checkbox->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_checkbox->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_checkbox->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_checkbox->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_checkbox->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_checkbox->pGLUseProgram          = entry_points->pGLUseProgram;
         }
 
         /* Configure the text to be shown on the button */

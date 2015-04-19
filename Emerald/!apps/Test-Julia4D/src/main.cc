@@ -303,7 +303,7 @@ PRIVATE void _init_ui()
     const float scrollbar_13_x1y1[] = {0.0f, 0.5f};
     const float scrollbar_14_x1y1[] = {0.0f, 0.6f};
     const float scrollbar_15_x1y1[] = {0.0f, 0.7f};
-    const float checkbox_1_x1y1[]   = {0.8f, 0.9f};
+    const float checkbox_1_x1y1[]   = {0.0f, 0.1f};
     ogl_ui      pipeline_ui         = ogl_pipeline_get_ui(_pipeline);
 
     ogl_ui_add_scrollbar(pipeline_ui,
