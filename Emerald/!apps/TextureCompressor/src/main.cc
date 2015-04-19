@@ -1500,9 +1500,9 @@ void _update_ui_controls_location()
     float frame_x1y1x2y2[4] =
     {
         dropdown_label_bg_x1y1x2y2 [0],
-        dropdown_label_x1y1        [1],
+        1.0f - dropdown_label_x1y1 [1],
         next_button_x1y1x2y2       [2],
-        1.0f - next_button_x1y1x2y2[1]
+        next_button_x1y1x2y2[1]
     };
 
     ogl_ui_set_control_property(_ui_frame,

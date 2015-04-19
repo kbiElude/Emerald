@@ -126,7 +126,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_frame_draw(void* internal_instance)
 
     /* Draw */
     frame_ptr->pGLBlendEquation(GL_FUNC_ADD);
-    frame_ptr->pGLBlendFunc    (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    frame_ptr->pGLBlendFunc    (GL_SRC_ALPHA,
+                                GL_ONE_MINUS_SRC_ALPHA);
     frame_ptr->pGLEnable       (GL_BLEND);
     {
         frame_ptr->pGLUseProgram     (ogl_program_get_id(frame_ptr->program) );
