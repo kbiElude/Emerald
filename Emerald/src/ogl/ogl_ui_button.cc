@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_ui.h"
@@ -22,6 +23,10 @@
 #define FOCUSED_TO_NONFOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(200) )
 #define NONFOCUSED_BRIGHTNESS                 (1.0f)
 #define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(450) )
+
+#define UB_DATAFS_BP_INDEX (0)
+#define UB_DATAVS_BP_INDEX (1)
+
 
 const float _ui_button_text_color[] = {1, 1, 1, 1.0f};
 
@@ -45,22 +50,29 @@ typedef struct
     system_timeline_time start_hovering_time;
     bool                 visible;
 
-    ogl_context context;
-    ogl_program program;
-    GLint       program_border_width_uniform_location;
-    GLint       program_brightness_uniform_location;
-    GLint       program_stop_data_uniform_location;
-    GLint       program_x1y1x2y2_uniform_location;
+    ogl_context    context;
+    ogl_program    program;
+    GLint          program_border_width_ub_offset;
+    GLint          program_brightness_ub_offset;
+    GLint          program_stop_data_ub_offset;
+    ogl_program_ub program_ub_fs;
+    GLuint         program_ub_fs_bo_id;
+    GLuint         program_ub_fs_bo_size;
+    GLuint         program_ub_fs_bo_start_offset;
+    ogl_program_ub program_ub_vs;
+    GLuint         program_ub_vs_bo_id;
+    GLuint         program_ub_vs_bo_size;
+    GLuint         program_ub_vs_bo_start_offset;
+    GLint          program_x1y1x2y2_ub_offset;
 
     GLint    text_index;
     ogl_text text_renderer;
 
     /* Cached func ptrs */
-    PFNGLDRAWARRAYSPROC        pGLDrawArrays;
-    PFNGLPROGRAMUNIFORM1FPROC  pGLProgramUniform1f;
-    PFNGLPROGRAMUNIFORM2FVPROC pGLProgramUniform2fv;
-    PFNGLPROGRAMUNIFORM4FVPROC pGLProgramUniform4fv;
-    PFNGLUSEPROGRAMPROC        pGLUseProgram;
+    PFNGLBINDBUFFERRANGEPROC     pGLBindBufferRange;
+    PFNGLDRAWARRAYSPROC          pGLDrawArrays;
+    PFNGLUNIFORMBLOCKBINDINGPROC pGLUniformBlockBinding;
+    PFNGLUSEPROGRAMPROC          pGLUseProgram;
 } _ogl_ui_button;
 
 /** Internal variables */
@@ -69,9 +81,12 @@ static const char* ui_button_fragment_shader_body = "#version 330\n"
                                                     "in  vec2 uv;\n"
                                                     "out vec3 result;\n"
                                                     /* stop, rgb */
-                                                    "uniform float brightness;\n"
-                                                    "uniform vec2  border_width;\n"
-                                                    "uniform vec4  stop_data[4];\n"
+                                                    "uniform dataFS\n"
+                                                    "{\n"
+                                                    "    float brightness;\n"
+                                                    "    vec2  border_width;\n"
+                                                    "    vec4  stop_data[4];\n"
+                                                    "};\n"
                                                     "\n"
                                                     "void main()\n"
                                                     "{\n"
@@ -98,7 +113,8 @@ PRIVATE void _ogl_ui_button_init_program(__in __notnull ogl_ui          ui,
                                                      system_hashed_ansi_string_create("UI button vertex shader") );
 
     button_ptr->program = ogl_program_create(context,
-                                             system_hashed_ansi_string_create("UI button program") );
+                                             system_hashed_ansi_string_create("UI button program"),
+                                             true); /* use_syncable_ubs */
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,
@@ -142,7 +158,7 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
                                OGL_CONTEXT_PROPERTY_WINDOW,
                               &window);
 
-    /* Retrieve uniform locations */
+    /* Retrieve uniform UB offsets */
     const ogl_program_uniform_descriptor* border_width_uniform = NULL;
     const ogl_program_uniform_descriptor* brightness_uniform   = NULL;
     const ogl_program_uniform_descriptor* stop_data_uniform    = NULL;
@@ -161,16 +177,68 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
                                     system_hashed_ansi_string_create("x1y1x2y2"),
                                    &x1y1x2y2_uniform);
 
-    button_ptr->program_border_width_uniform_location = border_width_uniform->location;
-    button_ptr->program_brightness_uniform_location   = brightness_uniform->location;
-    button_ptr->program_stop_data_uniform_location    = stop_data_uniform->location;
-    button_ptr->program_x1y1x2y2_uniform_location     = x1y1x2y2_uniform->location;
+    button_ptr->program_border_width_ub_offset = border_width_uniform->ub_offset;
+    button_ptr->program_brightness_ub_offset   = brightness_uniform->ub_offset;
+    button_ptr->program_stop_data_ub_offset    = stop_data_uniform->ub_offset;
+    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform->ub_offset;
+
+    /* Retrieve uniform block data */
+    unsigned int ub_fs_index = -1;
+    unsigned int ub_vs_index = -1;
+
+    button_ptr->program_ub_fs = NULL;
+    button_ptr->program_ub_vs = NULL;
+
+    ogl_program_get_uniform_block_by_name(button_ptr->program,
+                                          system_hashed_ansi_string_create("dataFS"),
+                                         &button_ptr->program_ub_fs);
+    ogl_program_get_uniform_block_by_name(button_ptr->program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &button_ptr->program_ub_vs);
+
+    ogl_program_ub_get_property(button_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &button_ptr->program_ub_fs_bo_size);
+    ogl_program_ub_get_property(button_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &button_ptr->program_ub_vs_bo_size);
+
+    ogl_program_ub_get_property(button_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &button_ptr->program_ub_fs_bo_id);
+    ogl_program_ub_get_property(button_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &button_ptr->program_ub_vs_bo_id);
+
+    ogl_program_ub_get_property(button_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &button_ptr->program_ub_fs_bo_start_offset);
+    ogl_program_ub_get_property(button_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &button_ptr->program_ub_vs_bo_start_offset);
+
+    ogl_program_ub_get_property(button_ptr->program_ub_fs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEX,
+                               &ub_fs_index);
+    ogl_program_ub_get_property(button_ptr->program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEX,
+                               &ub_vs_index);
+
+    button_ptr->pGLUniformBlockBinding(ogl_program_get_id(button_ptr->program),
+                                       ub_fs_index,         /* uniformBlockIndex */
+                                       UB_DATAFS_BP_INDEX); /* uniformBlockBinding */
+    button_ptr->pGLUniformBlockBinding(ogl_program_get_id(button_ptr->program),
+                                       ub_vs_index,         /* uniformBlockIndex */
+                                       UB_DATAVS_BP_INDEX); /* uniformBlockBinding */
 
     /* Set them up */
-    button_ptr->pGLProgramUniform4fv(program_id,
-                                     stop_data_uniform->location,
-                                     sizeof(stop_data) / sizeof(float) / 4,
-                                     stop_data);
+    ogl_program_ub_set_arrayed_uniform_value(button_ptr->program_ub_fs,
+                                             stop_data_uniform->ub_offset,
+                                             stop_data,
+                                             0, /* src_data_flags */
+                                             sizeof(stop_data),
+                                             0, /* dst_array_start_index */
+                                             sizeof(stop_data) / sizeof(float) / 4);
 
     button_ptr->current_gpu_brightness_level = NONFOCUSED_BRIGHTNESS;
 }
@@ -300,6 +368,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
     }
 
     /* Update uniforms */
+    const float new_brightness = brightness * (button_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1);
+
     GLuint program_id = ogl_program_get_id(button_ptr->program);
 
     if (button_ptr->current_gpu_brightness_level != brightness ||
@@ -309,13 +379,16 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
         button_ptr->force_gpu_brightness_update  = false;
     }
 
-    button_ptr->pGLProgramUniform1f (program_id,
-                                     button_ptr->program_brightness_uniform_location,
-                                     brightness * (button_ptr->is_lbm_on ? CLICK_BRIGHTNESS_MODIFIER : 1) );
-    button_ptr->pGLProgramUniform4fv(program_id,
-                                     button_ptr->program_x1y1x2y2_uniform_location,
-                                     sizeof(button_ptr->x1y1x2y2) / sizeof(float) / 4,
-                                     button_ptr->x1y1x2y2);
+    ogl_program_ub_set_nonarrayed_uniform_value(button_ptr->program_ub_fs,
+                                                button_ptr->program_brightness_ub_offset,
+                                               &new_brightness,
+                                                0, /* src_data_flags */
+                                                sizeof(new_brightness) );
+    ogl_program_ub_set_nonarrayed_uniform_value(button_ptr->program_ub_vs,
+                                                button_ptr->program_x1y1x2y2_ub_offset,
+                                                button_ptr->x1y1x2y2,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 4);
 
     if (button_ptr->should_update_border_width)
     {
@@ -333,15 +406,30 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_button_draw(void* internal_instance)
         border_width[0] = 1.0f / (float)((button_ptr->x1y1x2y2[2] - button_ptr->x1y1x2y2[0]) * (window_size[0]) );
         border_width[1] = 1.0f / (float)((button_ptr->x1y1x2y2[3] - button_ptr->x1y1x2y2[1]) * (window_size[1]));
 
-        button_ptr->pGLProgramUniform2fv(program_id,
-                                         button_ptr->program_border_width_uniform_location,
-                                         1,
-                                         border_width);
+        ogl_program_ub_set_nonarrayed_uniform_value(button_ptr->program_ub_fs,
+                                                    button_ptr->program_border_width_ub_offset,
+                                                    border_width,
+                                                    0, /* src_data_flags */
+                                                    sizeof(border_width) );
 
         button_ptr->should_update_border_width = false;
     }
 
     /* Draw */
+    button_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                   UB_DATAFS_BP_INDEX,
+                                   button_ptr->program_ub_fs_bo_id,
+                                   button_ptr->program_ub_fs_bo_start_offset,
+                                   button_ptr->program_ub_fs_bo_size);
+    button_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                   UB_DATAVS_BP_INDEX,
+                                   button_ptr->program_ub_vs_bo_id,
+                                   button_ptr->program_ub_vs_bo_start_offset,
+                                   button_ptr->program_ub_vs_bo_size);
+
+    ogl_program_ub_sync(button_ptr->program_ub_fs);
+    ogl_program_ub_sync(button_ptr->program_ub_vs);
+
     button_ptr->pGLUseProgram(ogl_program_get_id(button_ptr->program) );
     button_ptr->pGLDrawArrays(GL_TRIANGLE_FAN,
                               0,
@@ -438,11 +526,10 @@ PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui               
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                     &entry_points);
 
-            new_button->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_button->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_button->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_button->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_button->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_button->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_button->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_button->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_button->pGLUseProgram          = entry_points->pGLUseProgram;
         }
         else
         {
@@ -455,11 +542,10 @@ PUBLIC void* ogl_ui_button_init(__in           __notnull   ogl_ui               
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
 
-            new_button->pGLDrawArrays        = entry_points->pGLDrawArrays;
-            new_button->pGLProgramUniform1f  = entry_points->pGLProgramUniform1f;
-            new_button->pGLProgramUniform2fv = entry_points->pGLProgramUniform2fv;
-            new_button->pGLProgramUniform4fv = entry_points->pGLProgramUniform4fv;
-            new_button->pGLUseProgram        = entry_points->pGLUseProgram;
+            new_button->pGLBindBufferRange     = entry_points->pGLBindBufferRange;
+            new_button->pGLDrawArrays          = entry_points->pGLDrawArrays;
+            new_button->pGLUniformBlockBinding = entry_points->pGLUniformBlockBinding;
+            new_button->pGLUseProgram          = entry_points->pGLUseProgram;
         }
 
         /* Configure the text to be shown on the button */
