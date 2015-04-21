@@ -7,6 +7,7 @@
 #include "mesh/mesh.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_normals_preview.h"
 #include "ogl/ogl_shader.h"
@@ -32,8 +33,11 @@ static const char* preview_geometry_shader = "#version 420\n"
                                              "in vec3 normal[];\n"
                                              "in vec3 vertex[];\n"
                                              "\n"
-                                             "uniform mat4 normal_matrix;\n"
-                                             "uniform mat4 vp;\n"
+                                             "uniform dataGS\n"
+                                             "{\n"
+                                             "    mat4 normal_matrix;\n"
+                                             "    mat4 vp;\n"
+                                             "};\n"
                                              "\n"
                                              "void main()\n"
                                              "{\n"
@@ -58,8 +62,11 @@ static const char* preview_vertex_shader   = "#version 420\n"
                                              "    restrict readonly float data[];\n"
                                              "};\n"
                                              "\n"
-                                             "uniform uvec2 start_offsets;\n"
-                                             "uniform uint  stride;\n"
+                                             "uniform dataVS\n"
+                                             "{\n"
+                                             "    uvec2 start_offsets;\n"
+                                             "    uint  stride;\n"
+                                             "};\n"
                                              "\n"
                                              "out vec3 normal;\n"
                                              "out vec3 vertex;\n"
@@ -87,10 +94,20 @@ typedef struct _ogl_scene_renderer_normals_preview
 
     ogl_scene_renderer owner;
     ogl_program        preview_program;
-    GLint              preview_program_normal_matrix_location;
-    GLint              preview_program_start_offsets_location;
-    GLint              preview_program_stride_location;
-    GLint              preview_program_vp_location;
+    GLint              preview_program_normal_matrix_ub_offset;
+    GLint              preview_program_start_offsets_ub_offset;
+    GLint              preview_program_stride_ub_offset;
+    ogl_program_ub     preview_program_ub_gs;
+    GLuint             preview_program_ub_gs_bo_id;
+    unsigned int       preview_program_ub_gs_bo_size;
+    unsigned int       preview_program_ub_gs_bo_start_offset;
+    GLuint             preview_program_ub_gs_ub_bp;
+    ogl_program_ub     preview_program_ub_vs;
+    GLuint             preview_program_ub_vs_bo_id;
+    unsigned int       preview_program_ub_vs_bo_size;
+    unsigned int       preview_program_ub_vs_bo_start_offset;
+    GLuint             preview_program_ub_vs_ub_bp;
+    GLint              preview_program_vp_ub_offset;
     scene              scene;
 } _ogl_scene_renderer_normals_preview;
 
@@ -148,7 +165,8 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
     /* Initialize the program object */
     preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer normals preview program ",
-                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)) );
+                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)),
+                                                      true); /* use_syncable_ubs */
 
     ogl_program_attach_shader(preview_ptr->preview_program,
                               fs_shader);
@@ -195,23 +213,66 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
 
     if (normal_matrix_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_normal_matrix_location = normal_matrix_uniform_descriptor_ptr->location;
+        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_descriptor_ptr->ub_offset;
     }
 
     if (start_offsets_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_start_offsets_location = start_offsets_uniform_descriptor_ptr->location;
+        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_descriptor_ptr->ub_offset;
     }
 
     if (stride_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_stride_location = stride_uniform_descriptor_ptr->location;
+        preview_ptr->preview_program_stride_ub_offset = stride_uniform_descriptor_ptr->ub_offset;
     }
 
     if (vp_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_vp_location = vp_uniform_descriptor_ptr->location;
+        preview_ptr->preview_program_vp_ub_offset = vp_uniform_descriptor_ptr->ub_offset;
     }
+
+    /* Retrieve UB properties */
+    preview_ptr->preview_program_ub_gs = NULL;
+    preview_ptr->preview_program_ub_vs = NULL;
+
+    ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
+                                          system_hashed_ansi_string_create("dataGS"),
+                                         &preview_ptr->preview_program_ub_gs);
+    ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &preview_ptr->preview_program_ub_vs);
+
+    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub_gs != NULL &&
+                      preview_ptr->preview_program_ub_vs != NULL,
+                      "Could not retrieve UB descriptors");
+
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &preview_ptr->preview_program_ub_gs_bo_size);
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &preview_ptr->preview_program_ub_vs_bo_size);
+
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &preview_ptr->preview_program_ub_gs_bo_id);
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &preview_ptr->preview_program_ub_vs_bo_id);
+
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &preview_ptr->preview_program_ub_gs_bo_start_offset);
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &preview_ptr->preview_program_ub_vs_bo_start_offset);
+
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                               &preview_ptr->preview_program_ub_gs_ub_bp);
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                               &preview_ptr->preview_program_ub_vs_ub_bp);
 
     /* Set up SSBO bindings */
     const ogl_context_gl_entrypoints_arb_shader_storage_buffer_object* ssbo_entrypoints_ptr = NULL;
@@ -282,14 +343,14 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
         /* Do not allocate any GL objects at this point. We will only create GL objects if we
          * are asked to render the preview.
          */
-        new_instance->context                                = context;
-        new_instance->owner                                  = owner;
-        new_instance->preview_program                        = NULL;
-        new_instance->preview_program_normal_matrix_location = -1;
-        new_instance->preview_program_start_offsets_location = -1;
-        new_instance->preview_program_stride_location        = -1;
-        new_instance->preview_program_vp_location            = -1;
-        new_instance->scene                                  = scene;
+        new_instance->context                                 = context;
+        new_instance->owner                                   = owner;
+        new_instance->preview_program                         = NULL;
+        new_instance->preview_program_normal_matrix_ub_offset = -1;
+        new_instance->preview_program_start_offsets_ub_offset = -1;
+        new_instance->preview_program_stride_ub_offset        = -1;
+        new_instance->preview_program_vp_ub_offset            = -1;
+        new_instance->scene                                   = scene;
 
         scene_retain(scene);
     } /* if (new_instance != NULL) */
@@ -381,18 +442,24 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(__i
         mesh_start_offset_vertex - mesh_bo_start_offset
     };
 
-    entrypoints_ptr->pGLProgramUniformMatrix4fv(program_id,
-                                                preview_ptr->preview_program_normal_matrix_location,
-                                                1, /* count */
-                                                GL_TRUE,
-                                                system_matrix4x4_get_row_major_data(normal_matrix) );
-    entrypoints_ptr->pGLProgramUniform2uiv     (program_id,
-                                                preview_ptr->preview_program_start_offsets_location,
-                                                1, /* count */
-                                                start_offsets);
-    entrypoints_ptr->pGLProgramUniform1ui      (program_id,
-                                                preview_ptr->preview_program_stride_location,
-                                                mesh_stride);
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub_gs,
+                                                preview_ptr->preview_program_normal_matrix_ub_offset,
+                                                system_matrix4x4_get_column_major_data(normal_matrix),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub_vs,
+                                                preview_ptr->preview_program_start_offsets_ub_offset,
+                                                start_offsets,
+                                                0, /* src_data_flags */
+                                                sizeof(unsigned int) * 2);
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub_vs,
+                                                preview_ptr->preview_program_stride_ub_offset,
+                                               &mesh_stride,
+                                                0, /* src_data_flags */
+                                                sizeof(unsigned int) );
+
+    ogl_program_ub_sync(preview_ptr->preview_program_ub_gs);
+    ogl_program_ub_sync(preview_ptr->preview_program_ub_vs);
 
     /* Set up shader storage buffer binding */
     entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
@@ -440,11 +507,22 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_start(__in
                             &vao_id);
 
     entrypoints_ptr->pGLUseProgram             (program_id);
-    entrypoints_ptr->pGLProgramUniformMatrix4fv(program_id,
-                                                preview_ptr->preview_program_vp_location,
-                                                1, /* count */
-                                                GL_TRUE,
-                                                system_matrix4x4_get_row_major_data(vp) );
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub_gs,
+                                                preview_ptr->preview_program_vp_ub_offset,
+                                                system_matrix4x4_get_column_major_data(vp),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
+
+    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                        preview_ptr->preview_program_ub_gs_ub_bp,
+                                        preview_ptr->preview_program_ub_gs_bo_id,
+                                        preview_ptr->preview_program_ub_gs_bo_start_offset,
+                                        preview_ptr->preview_program_ub_gs_bo_size);
+    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                        preview_ptr->preview_program_ub_vs_ub_bp,
+                                        preview_ptr->preview_program_ub_vs_bo_id,
+                                        preview_ptr->preview_program_ub_vs_bo_start_offset,
+                                        preview_ptr->preview_program_ub_vs_bo_size);
 
     entrypoints_ptr->pGLBindVertexArray(vao_id);
 }
