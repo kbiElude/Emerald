@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_lights_preview.h"
 #include "ogl/ogl_shader.h"
@@ -15,14 +16,15 @@
 #include <sstream>
 
 /* This is pretty basic stuff to draw white splats in clip space */
-#define POSITION_UNIFORM_LOCATION  (0)
-#define COLOR_UNIFORM_LOCATION     (2)
-
 static const char* preview_fragment_shader = "#version 420\n"
                                              "\n"
                                              "#extension GL_ARB_explicit_uniform_location : enable\n"
                                              "\n"
-                                             "layout(location = 2) uniform vec3 color;\n"
+                                             "uniform data\n"
+                                             "{\n"
+                                             "    vec3 color;\n"
+                                             "    vec4 position[2];\n"
+                                             "};\n"
                                              "\n"
                                              "out vec4 result;\n"
                                              "\n"
@@ -34,7 +36,11 @@ static const char* preview_vertex_shader   = "#version 420\n"
                                              "\n"
                                              "#extension GL_ARB_explicit_uniform_location : enable\n"
                                              "\n"
-                                             "layout(location = 0) uniform vec4 position[2];\n"
+                                             "uniform data\n"
+                                             "{\n"
+                                             "    vec3 color;\n"
+                                             "    vec4 position[2];\n"
+                                             "};\n"
                                              "\n"
                                              "void main()\n"
                                              "{\n"
@@ -49,14 +55,26 @@ typedef struct _ogl_scene_renderer_lights_preview
      */
     ogl_context context;
 
-    ogl_program preview_program;
-    scene       scene;
+    ogl_program    preview_program;
+    ogl_program_ub preview_program_ub;
+    GLuint         preview_program_ub_bo_id;
+    unsigned int   preview_program_ub_bo_size;
+    unsigned int   preview_program_ub_bo_start_offset;
+    GLint          preview_program_color_ub_offset;
+    GLint          preview_program_position_ub_offset;
+    scene          scene;
 
     _ogl_scene_renderer_lights_preview()
     {
-        context         = NULL;
-        preview_program = NULL;
-        scene           = NULL;
+        context                            = NULL;
+        preview_program                    = NULL;
+        preview_program_ub                 = NULL;
+        preview_program_ub_bo_id           = 0;
+        preview_program_ub_bo_size         = 0;
+        preview_program_ub_bo_start_offset = 0;
+        preview_program_color_ub_offset    = -1;
+        preview_program_position_ub_offset = -1;
+        scene                              = NULL;
     }
 
 } _ogl_scene_renderer_lights_preview;
@@ -108,7 +126,8 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__i
     /* Initialize the program object */
     preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer lights preview program ",
-                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)) );
+                                                                                                              system_hashed_ansi_string_get_buffer(scene_name)),
+                                                      true); /* use_syncable_ubs */
 
     ogl_program_attach_shader(preview_ptr->preview_program,
                               fs_shader);
@@ -122,6 +141,42 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__i
 
         goto end_fail;
     }
+
+    /* Retrieve UB properties */
+    ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &preview_ptr->preview_program_ub);
+
+    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_ub != NULL,
+                      "Data UB descriptor is NULL");
+
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &preview_ptr->preview_program_ub_bo_size);
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &preview_ptr->preview_program_ub_bo_id);
+    ogl_program_ub_get_property(preview_ptr->preview_program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &preview_ptr->preview_program_ub_bo_start_offset);
+
+    /* Retrieve uniform properties */
+    const ogl_program_uniform_descriptor* color_uniform_ptr    = NULL;
+    const ogl_program_uniform_descriptor* position_uniform_ptr = NULL;
+
+    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
+                                    system_hashed_ansi_string_create("color"),
+                                   &color_uniform_ptr);
+    ogl_program_get_uniform_by_name(preview_ptr->preview_program,
+                                    system_hashed_ansi_string_create("position[0]"),
+                                   &position_uniform_ptr);
+
+    preview_ptr->preview_program_color_ub_offset    = color_uniform_ptr->ub_offset;
+    preview_ptr->preview_program_position_ub_offset = position_uniform_ptr->ub_offset;
+
+    ASSERT_DEBUG_SYNC(preview_ptr->preview_program_color_ub_offset    != -1 &&
+                      preview_ptr->preview_program_position_ub_offset != -1,
+                      "At least one uniform UB offset is -1");
 
     /* All done */
     goto end;
@@ -237,19 +292,31 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_lights_preview_render(__in
                sizeof(float) * 4);
     }
 
-    entrypoints_ptr->pGLProgramUniform4fv(program_id,
-                                          POSITION_UNIFORM_LOCATION,
-                                          (light_pos_plus_direction != NULL) ? 2 : 1,
-                                          merged_light_positions);
-    entrypoints_ptr->pGLProgramUniform3fv(program_id,
-                                          COLOR_UNIFORM_LOCATION,
-                                          1, /* count */
-                                          light_color);
+    ogl_program_ub_set_arrayed_uniform_value   (preview_ptr->preview_program_ub,
+                                                preview_ptr->preview_program_position_ub_offset,
+                                                merged_light_positions,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 4,
+                                                0, /* dst_array_start_index */
+                                                ((light_pos_plus_direction != NULL) ? 2 : 1) );
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->preview_program_ub,
+                                                preview_ptr->preview_program_color_ub_offset,
+                                                light_color,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 3);
+
+    ogl_program_ub_sync(preview_ptr->preview_program_ub);
 
     /* Draw. This probably beats the world's worst way of achieving this functionality,
      * but light preview is only used for debugging purposes, so not much sense
      * in writing an overbloated implementation.
      */
+    entrypoints_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                        0, /* index */
+                                        preview_ptr->preview_program_ub_bo_id,
+                                        preview_ptr->preview_program_ub_bo_start_offset,
+                                        preview_ptr->preview_program_ub_bo_size);
+
     entrypoints_ptr->pGLDrawArrays(GL_POINTS,
                                    0,  /* first */
                                    1); /* count */
