@@ -481,6 +481,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
      *       parent which provides the mesh data. This is to ensure that the
      *       model matrix we use for the calculations refers to the actual object
      *       of our interest.
+     *
      */
     if (!ogl_scene_renderer_cull_against_frustum( (ogl_scene_renderer) renderer,
                                                   mesh_instantiation_parent_gpu,
@@ -1494,6 +1495,12 @@ PUBLIC bool ogl_scene_renderer_cull_against_frustum(__in __notnull ogl_scene_ren
 
 end:
 
+    /* NOTE: For normals preview to work correctly, frustum culling MUST always succeed */
+    if (renderer_ptr->current_helper_visualization == HELPER_VISUALIZATION_NORMALS)
+    {
+        result = true;
+    }
+
     /* All done */
     if (result)
     {
@@ -1557,6 +1564,12 @@ PUBLIC void ogl_scene_renderer_get_indexed_property(__in  __notnull const ogl_sc
                                      &entry_data_ptr) )
             {
                 *((system_matrix4x4*) out_result) = entry_data_ptr->model_matrix;
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve model matrix for mesh id [%d]",
+                                  index);
             }
 
             break;

@@ -622,10 +622,20 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
         mesh_ptr->gl_bo_id           = 0;
     }
 
-    /* Copy the data to VRAM. */
+    /* Copy the data to VRAM.
+     *
+     * NOTE: For normals preview renderer, we need to align
+     *       mesh data on SSBO boundary.
+     */
+    const ogl_context_gl_limits* limits_ptr = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
+                            &limits_ptr);
+
     ogl_buffers_allocate_buffer_memory(buffers,
                                        mesh_ptr->gl_processed_data_size,
-                                       1, /* alignment_requirement */
+                                       limits_ptr->shader_storage_buffer_offset_alignment,
                                        OGL_BUFFERS_MAPPABILITY_NONE,
                                        OGL_BUFFERS_USAGE_VBO,
                                        OGL_BUFFERS_FLAGS_NONE,
@@ -668,8 +678,7 @@ PRIVATE void _mesh_fill_gl_buffers_renderer_callback(ogl_context context,
     {
         delete [] mesh_ptr->gl_processed_data;
 
-        mesh_ptr->gl_processed_data      = NULL;
-        mesh_ptr->gl_processed_data_size = 0;
+        mesh_ptr->gl_processed_data = NULL;
     }
 
     /* Mark mesh as GL-initialized */
@@ -2415,8 +2424,7 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
     {
         delete [] mesh_ptr->gl_processed_data;
 
-        mesh_ptr->gl_processed_data      = NULL;
-        mesh_ptr->gl_processed_data_size = 0;
+        mesh_ptr->gl_processed_data = NULL;
     }
 
     for (uint32_t n_layer = 0;
@@ -3158,21 +3166,31 @@ PUBLIC EMERALD_API void mesh_get_layer_data_stream_property(__in  __notnull mesh
     ASSERT_DEBUG_SYNC(type < MESH_LAYER_DATA_STREAM_TYPE_COUNT,
                       "Unrecognized stream type");
 
-    switch (property)
+    if (mesh_ptr->instantiation_parent != NULL)
     {
-        case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
+        mesh_get_layer_data_stream_property(mesh_ptr->instantiation_parent,
+                                            type,
+                                            property,
+                                            out_result);
+    } /* if (mesh_ptr->instantiation_parent != NULL) */
+    else
+    {
+        switch (property)
         {
-            *((uint32_t*) out_result) = mesh_ptr->gl_bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
+            case MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET:
+            {
+                *((uint32_t*) out_result) = mesh_ptr->gl_bo_start_offset + mesh_ptr->gl_processed_data_stream_start_offset[type];
 
-            break;
-        }
+                break;
+            }
 
-        default:
-        {
-            ASSERT_DEBUG_SYNC(false,
-                              "Unrecognized mesh layer data stream property");
-        }
-    } /* switch (property) */
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized mesh layer data stream property");
+            }
+        } /* switch (property) */
+    }
 }
 
 /* Please see header for specification */
@@ -3206,25 +3224,53 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
         }
 
         case MESH_PROPERTY_GL_BO_ID:
+        case MESH_PROPERTY_GL_BO_START_OFFSET:
         {
-            if (!mesh_ptr->gl_storage_initialized)
+            if (mesh_ptr->instantiation_parent == NULL)
             {
-                mesh_fill_gl_buffers(instance,
-                                     ogl_context_get_current_context() );
+                if (!mesh_ptr->gl_storage_initialized)
+                {
+                    mesh_fill_gl_buffers(instance,
+                                         ogl_context_get_current_context() );
+                }
+
+                ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,
+                                  "Cannot query GL BO id - GL storage not initialized");
+
+                if (property == MESH_PROPERTY_GL_BO_ID)
+                {
+                    ASSERT_DEBUG_SYNC(mesh_ptr->gl_bo_id != 0,
+                                      "Mesh BO ID is 0");
+
+                    *((GLuint*)result) = mesh_ptr->gl_bo_id;
+                }
+                else
+                {
+                    *((GLuint*)result) = mesh_ptr->gl_bo_start_offset;
+                }
+            } /* if (mesh_ptr->instantiation_parent == NULL) */
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  property,
+                                  result);
             }
 
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized,
-                              "Cannot query GL BO id - GL storage not initialized");
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_bo_id != 0,
-                              "Mesh BO ID is 0");
-
-            *((GLuint*)result) = mesh_ptr->gl_bo_id;
             break;
         }
 
         case MESH_PROPERTY_GL_INDEX_TYPE:
         {
-            *((_mesh_index_type*) result) = mesh_ptr->gl_index_type;
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                *((_mesh_index_type*) result) = mesh_ptr->gl_index_type;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_GL_INDEX_TYPE,
+                                  result);
+            }
 
             break;
         }
@@ -3240,44 +3286,88 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_GL_PROCESSED_DATA_SIZE:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data != NULL,
-                              "Requested GL processed data size, but the data buffer is NULL");
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                *((uint32_t*) result) = mesh_ptr->gl_processed_data_size;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
+                                  result);
+            }
 
-            *((uint32_t*) result) = mesh_ptr->gl_processed_data_size;
             break;
         }
 
         case MESH_PROPERTY_GL_STRIDE:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data_stride != 0,
-                              "Requested stride is 0");
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data_stride != 0,
+                                  "Requested stride is 0");
 
-            *((uint32_t*) result) = mesh_ptr->gl_processed_data_stride;
+                *((uint32_t*) result) = mesh_ptr->gl_processed_data_stride;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_GL_STRIDE,
+                                  result);
+            }
 
             break;
         }
 
         case MESH_PROPERTY_GL_TBO:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized, "Cannot query GL TBO id - GL storage not initialized");
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                ASSERT_DEBUG_SYNC(mesh_ptr->gl_storage_initialized, "Cannot query GL TBO id - GL storage not initialized");
 
-            *((ogl_texture*)result) = mesh_ptr->gl_tbo;
+                *((ogl_texture*)result) = mesh_ptr->gl_tbo;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_GL_TBO,
+                                  result);
+            }
+
             break;
         }
 
         case MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED:
         {
-            *(bool*) result = mesh_ptr->gl_thread_fill_gl_buffers_call_needed;
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                *(bool*) result = mesh_ptr->gl_thread_fill_gl_buffers_call_needed;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_GL_THREAD_FILL_BUFFERS_CALL_NEEDED,
+                                  result);
+            }
 
             break;
         }
 
         case MESH_PROPERTY_GL_TOTAL_ELEMENTS:
         {
-            ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data_total_elements != 0,
-                              "About to return 0 for MESH_PROPERTY_GL_TOTAL_ELEMENTS query");
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                ASSERT_DEBUG_SYNC(mesh_ptr->gl_processed_data_total_elements != 0,
+                                  "About to return 0 for MESH_PROPERTY_GL_TOTAL_ELEMENTS query");
 
-            *((uint32_t*) result) = mesh_ptr->gl_processed_data_total_elements;
+                *((uint32_t*) result) = mesh_ptr->gl_processed_data_total_elements;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_GL_TOTAL_ELEMENTS,
+                                  result);
+            }
 
             break;
         }
@@ -3298,7 +3388,16 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_N_SH_BANDS:
         {
-            *((uint32_t*)result) = mesh_ptr->n_sh_bands;
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                *((uint32_t*)result) = mesh_ptr->n_sh_bands;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_N_SH_BANDS,
+                                  result);
+            }
 
             break;
         }
@@ -3312,7 +3411,16 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_N_GL_UNIQUE_VERTICES:
         {
-            *((uint32_t*)result) = mesh_ptr->n_gl_unique_vertices;
+            if (mesh_ptr->instantiation_parent == NULL)
+            {
+                *((uint32_t*)result) = mesh_ptr->n_gl_unique_vertices;
+            }
+            else
+            {
+                mesh_get_property(mesh_ptr->instantiation_parent,
+                                  MESH_PROPERTY_N_GL_UNIQUE_VERTICES,
+                                  result);
+            }
 
             break;
         }
@@ -4148,8 +4256,7 @@ PUBLIC EMERALD_API void mesh_set_as_instantiated(__in __notnull mesh mesh_to_mod
     {
         delete [] mesh_to_modify_ptr->gl_processed_data;
 
-        mesh_to_modify_ptr->gl_processed_data      = NULL;
-        mesh_to_modify_ptr->gl_processed_data_size = 0;
+        mesh_to_modify_ptr->gl_processed_data = NULL;
     }
 
     if (mesh_to_modify_ptr->gl_bo_id != 0)

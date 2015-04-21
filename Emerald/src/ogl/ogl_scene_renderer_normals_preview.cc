@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -324,6 +324,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(__i
 {
     const ogl_context_gl_entrypoints*    entrypoints_ptr          = NULL;
     GLuint                               mesh_bo_id               = 0;
+    unsigned int                         mesh_bo_size             = 0;
+    unsigned int                         mesh_bo_start_offset     = -1;
     mesh                                 mesh_instance            = NULL;
     uint32_t                             mesh_start_offset_normal = -1;
     uint32_t                             mesh_start_offset_vertex = -1;
@@ -351,6 +353,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(__i
                       MESH_PROPERTY_GL_BO_ID,
                      &mesh_bo_id);
     mesh_get_property(mesh_instance,
+                      MESH_PROPERTY_GL_BO_START_OFFSET,
+                     &mesh_bo_start_offset);
+    mesh_get_property(mesh_instance,
+                      MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
+                     &mesh_bo_size);
+    mesh_get_property(mesh_instance,
                       MESH_PROPERTY_GL_STRIDE,
                      &mesh_stride);
     mesh_get_property(mesh_instance,
@@ -369,8 +377,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(__i
     /* Set the uniforms */
     const uint32_t start_offsets[] =
     {
-        mesh_start_offset_normal,
-        mesh_start_offset_vertex
+        mesh_start_offset_normal - mesh_bo_start_offset,
+        mesh_start_offset_vertex - mesh_bo_start_offset
     };
 
     entrypoints_ptr->pGLProgramUniformMatrix4fv(program_id,
@@ -387,9 +395,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_normals_preview_render(__i
                                                 mesh_stride);
 
     /* Set up shader storage buffer binding */
-    entrypoints_ptr->pGLBindBufferBase (GL_SHADER_STORAGE_BUFFER,
+    entrypoints_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
                                         0, /* index */
-                                        mesh_bo_id);
+                                        mesh_bo_id,
+                                        mesh_bo_start_offset,
+                                        mesh_bo_size);
 
     /* Draw */
     entrypoints_ptr->pGLDrawArrays(GL_POINTS,

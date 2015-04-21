@@ -15,6 +15,7 @@ typedef enum
     MESH_PROPERTY_MODEL_AABB_MIN,                                /*     settable,  float[4]                */
     MESH_PROPERTY_CREATION_FLAGS,                                /* not settable,  mesh_creation_flags     */
     MESH_PROPERTY_GL_BO_ID,                                      /* not settable,  GLuint                  */
+    MESH_PROPERTY_GL_BO_START_OFFSET,                            /* not settable,  unsigned int            */
     MESH_PROPERTY_GL_INDEX_TYPE,                                 /* not settable,  _mesh_index_type        */
     MESH_PROPERTY_GL_PROCESSED_DATA,                             /* not settable,  void*                   */
     MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,                        /* not settable,  uint32_t                */
