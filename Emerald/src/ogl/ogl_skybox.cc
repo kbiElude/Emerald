@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_skybox.h"
 #include "ogl/ogl_texture.h"
@@ -77,9 +78,12 @@ const char* fragment_shader_spherical_texture_preview = "#version 330 core\n"
 
 const char* vertex_shader_preview = "#version 330 core\n"
                                     "\n"
-                                    "uniform mat4 mv;\n"
-                                    "uniform mat4 inv_projection;\n"
-                                    "out     vec3 view_vector;\n"
+                                    "uniform dataVS\n"
+                                    "{\n"
+                                    "    mat4 mv;\n"
+                                    "    mat4 inv_projection;\n"
+                                    "};\n"
+                                    "out vec3 view_vector;\n"
                                     "\n"
                                     "void main()\n"
                                     "{\n"
@@ -103,11 +107,15 @@ typedef struct
     ogl_texture               texture;
     _ogl_skybox_type          type;
 
-    GLuint      input_sh_light_data_uniform_location;
-    GLuint      inverse_projection_uniform_location;
-    GLuint      mv_uniform_location;
-    ogl_program program;
-    GLuint      skybox_uniform_location;
+    GLuint         input_sh_light_data_uniform_location;
+    GLuint         inverse_projection_ub_offset;
+    GLuint         mv_ub_offset;
+    ogl_program    program;
+    ogl_program_ub program_ub;
+    GLuint         program_ub_bo_id;
+    unsigned int   program_ub_bo_size;
+    unsigned int   program_ub_bo_start_offset;
+    GLuint         skybox_uniform_location;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_skybox;
@@ -121,7 +129,9 @@ typedef struct
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_skybox, ogl_skybox, _ogl_skybox);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_skybox,
+                               ogl_skybox,
+                              _ogl_skybox);
 
 /* Forward declarations */
 PRIVATE std::string _ogl_skybox_get_fragment_shader_body         (__in __notnull sh_samples                samples);
@@ -132,6 +142,7 @@ PRIVATE void        _ogl_skybox_init_ogl_skybox                  (__in __notnull
                                                                   __in __notnull ogl_context               context,
                                                                   __in __notnull ogl_texture               texture);
 PRIVATE void        _ogl_skybox_init_ogl_skybox_sh               (__in __notnull _ogl_skybox*              skybox_ptr);
+PRIVATE void        _ogl_skybox_init_ub                          (__in __notnull _ogl_skybox*              skybox_ptr);
 
 /** TODO */
 PRIVATE std::string _ogl_skybox_get_fragment_shader_body(__in __notnull sh_samples samples)
@@ -185,7 +196,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
     /* Create a program */
     skybox_ptr->program = ogl_program_create(skybox_ptr->context,
                                              system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
-                                                                                                     " program") );
+                                                                                                     " program"),
+                                             true); /* use_syncable_ubs */
+
     ASSERT_DEBUG_SYNC(skybox_ptr->program != NULL,
                       "Could not create skybox program");
 
@@ -197,9 +210,10 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
 
     if (!ogl_program_link(skybox_ptr->program) )
     {
-        ASSERT_DEBUG_SYNC(false, "Could not link the skybox program");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not link the skybox program");
     }
-    
+
     /* Retrieve uniform locations */
     const ogl_program_uniform_descriptor* input_light_sh_data_uniform_descriptor = NULL;
     const ogl_program_uniform_descriptor* inverse_projection_uniform_descriptor  = NULL;
@@ -216,8 +230,11 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
                                    &mv_data_uniform_descriptor);
 
     skybox_ptr->input_sh_light_data_uniform_location = (input_light_sh_data_uniform_descriptor != NULL) ? input_light_sh_data_uniform_descriptor->location : -1;
-    skybox_ptr->inverse_projection_uniform_location  = (inverse_projection_uniform_descriptor  != NULL) ? inverse_projection_uniform_descriptor->location  : -1;
-    skybox_ptr->mv_uniform_location                  = (mv_data_uniform_descriptor             != NULL) ? mv_data_uniform_descriptor->location             : -1;
+    skybox_ptr->inverse_projection_ub_offset         = (inverse_projection_uniform_descriptor  != NULL) ? inverse_projection_uniform_descriptor->ub_offset : -1;
+    skybox_ptr->mv_ub_offset                         = (mv_data_uniform_descriptor             != NULL) ? mv_data_uniform_descriptor->ub_offset            : -1;
+
+    /* Retrieve uniform block info */
+    _ogl_skybox_init_ub(skybox_ptr);
 
     /* Done */
     ogl_shader_release(fragment_shader);
@@ -252,7 +269,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
     /* Create a program */
     skybox_ptr->program = ogl_program_create(skybox_ptr->context,
                                              system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
-                                                                                                     " program") );
+                                                                                                     " program"),
+                                             true); /* use_syncable_ubs */
+
     ASSERT_DEBUG_SYNC(skybox_ptr->program != NULL,
                       "Could not create skybox program");
 
@@ -284,9 +303,12 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
                                     system_hashed_ansi_string_create("skybox"),
                                    &skybox_uniform_descriptor);
 
-    skybox_ptr->inverse_projection_uniform_location = (inverse_projection_uniform_descriptor != NULL) ? inverse_projection_uniform_descriptor->location  : -1;
-    skybox_ptr->mv_uniform_location                 = (mv_data_uniform_descriptor            != NULL) ? mv_data_uniform_descriptor->location             : -1;
-    skybox_ptr->skybox_uniform_location             = (skybox_uniform_descriptor             != NULL) ? skybox_uniform_descriptor->location              : -1;
+    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_descriptor != NULL) ? inverse_projection_uniform_descriptor->ub_offset : -1;
+    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_descriptor            != NULL) ? mv_data_uniform_descriptor->ub_offset            : -1;
+    skybox_ptr->skybox_uniform_location      = (skybox_uniform_descriptor             != NULL) ? skybox_uniform_descriptor->location              : -1;
+
+    /* Retrieve uniform block info */
+    _ogl_skybox_init_ub(skybox_ptr);
 
     /* Done */
     ogl_shader_release(fragment_shader);
@@ -301,7 +323,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox(__in __notnull _ogl_skybox*            
                                          __in __notnull ogl_context               context,
                                          __in __notnull ogl_texture               texture)
 {
-    memset(skybox_ptr, 0, sizeof(_ogl_skybox) );
+    memset(skybox_ptr,
+           0,
+           sizeof(_ogl_skybox) );
 
     skybox_ptr->context = context;
     skybox_ptr->name    = name;
@@ -333,6 +357,27 @@ PRIVATE void _ogl_skybox_init_ogl_skybox(__in __notnull _ogl_skybox*            
     } /* switch (type) */
 
     ogl_context_retain(skybox_ptr->context);
+}
+
+/** TODO */
+PRIVATE void _ogl_skybox_init_ub(__in __notnull _ogl_skybox* skybox_ptr)
+{
+    ogl_program_get_uniform_block_by_name(skybox_ptr->program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &skybox_ptr->program_ub);
+
+    ASSERT_DEBUG_SYNC(skybox_ptr->program_ub != NULL,
+                      "dataVS uniform block descriptor is NULL.");
+
+    ogl_program_ub_get_property(skybox_ptr->program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &skybox_ptr->program_ub_bo_size);
+    ogl_program_ub_get_property(skybox_ptr->program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &skybox_ptr->program_ub_bo_id);
+    ogl_program_ub_get_property(skybox_ptr->program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &skybox_ptr->program_ub_bo_start_offset);
 }
 
 /** TODO */
@@ -447,16 +492,16 @@ PUBLIC EMERALD_API void ogl_skybox_draw(__in __notnull ogl_skybox       skybox,
     entry_points->pGLBindVertexArray(vao_id);
 
     /* Update general uniforms */
-    entry_points->pGLProgramUniformMatrix4fv(skybox_program_id,
-                                             skybox_ptr->inverse_projection_uniform_location,
-                                             1,
-                                             GL_FALSE,
-                                             system_matrix4x4_get_column_major_data(inverted_projection) );
-    entry_points->pGLProgramUniformMatrix4fv(skybox_program_id,
-                                             skybox_ptr->mv_uniform_location,
-                                             1,
-                                             GL_FALSE,
-                                             system_matrix4x4_get_column_major_data(modelview) );
+    ogl_program_ub_set_nonarrayed_uniform_value(skybox_ptr->program_ub,
+                                                skybox_ptr->inverse_projection_ub_offset,
+                                                system_matrix4x4_get_column_major_data(inverted_projection),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
+    ogl_program_ub_set_nonarrayed_uniform_value(skybox_ptr->program_ub,
+                                                skybox_ptr->mv_ub_offset,
+                                                system_matrix4x4_get_column_major_data(modelview),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
 
     /* Do SH-specific stuff */
     if (skybox_ptr->type == OGL_SKYBOX_LIGHT_PROJECTION_SH)
@@ -480,7 +525,14 @@ PUBLIC EMERALD_API void ogl_skybox_draw(__in __notnull ogl_skybox       skybox,
     } /* if (skybox_ptr->type == OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE) */
 
     /* Draw. Do not modify depth information */
-    entry_points->pGLDepthMask(GL_FALSE);
+    ogl_program_ub_sync(skybox_ptr->program_ub);
+
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     0, /* index */
+                                     skybox_ptr->program_ub_bo_id,
+                                     skybox_ptr->program_ub_bo_start_offset,
+                                     skybox_ptr->program_ub_bo_size);
+    entry_points->pGLDepthMask      (GL_FALSE);
     {
         entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
                                     0,

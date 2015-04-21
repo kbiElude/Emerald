@@ -11,6 +11,9 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_context_vaos.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_programs.h"
 #include "ogl/ogl_texture.h"
 #include "ogl/ogl_vao.h"
 #include "system/system_log.h"
@@ -1354,6 +1357,66 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr ind
                                  STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
 
     _private_entrypoints_ptr->pGLDispatchComputeIndirect(indirect);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
+                                                                GLuint uniformBlockIndex,
+                                                                GLuint uniformBlockBinding)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_programs            programs    = NULL;
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_PROGRAMS,
+                            &programs);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    ogl_context_state_cache_sync(state_cache,
+                                 STATE_CACHE_SYNC_BIT_ACTIVE_PROGRAM_OBJECT);
+
+    /* Does it make sense to try to make the call? */
+    ogl_program program_instance = ogl_programs_get_program_by_id(programs,
+                                                                  program);
+
+    ASSERT_DEBUG_SYNC(program_instance != NULL,
+                      "The ogl_program for requested PO was not found.");
+
+    if (program_instance != NULL)
+    {
+        ogl_program_ub requested_ub = NULL;
+
+        ogl_program_get_uniform_block_by_index(program_instance,
+                                               uniformBlockIndex,
+                                              &requested_ub);
+
+        ASSERT_DEBUG_SYNC(requested_ub != NULL,
+                          "ogl_program_ub instance for requested uniform block index was not found.");
+
+        if (requested_ub != NULL)
+        {
+            GLuint current_indexed_ub_bp = -1;
+
+            ogl_program_ub_get_property(requested_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                       &current_indexed_ub_bp);
+
+            if (current_indexed_ub_bp != uniformBlockBinding)
+            {
+                /* Update the internal cache */
+                _private_entrypoints_ptr->pGLUniformBlockBinding(program,
+                                                                 uniformBlockIndex,
+                                                                 uniformBlockBinding);
+
+                ogl_program_ub_set_property(requested_ub,
+                                            OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                           &uniformBlockBinding);
+            } /* if (current_indexed_ub_bp != uniformBlockBinding) */
+        } /* if (requested_ub != NULL) */
+    } /* if (program_instance != NULL) */
 }
 
 /** Please see header for spec */

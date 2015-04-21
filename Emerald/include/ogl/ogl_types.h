@@ -1346,6 +1346,7 @@ typedef struct
     PFNGLTEXSUBIMAGE1DPROC                   pGLTexSubImage1D;
     PFNGLTEXSUBIMAGE2DPROC                   pGLTexSubImage2D;
     PFNGLTEXSUBIMAGE3DPROC                   pGLTexSubImage3D;
+    PFNGLUNIFORMBLOCKBINDINGPROC             pGLUniformBlockBinding;
     PFNGLUNMAPBUFFERPROC                     pGLUnmapBuffer;
     PFNGLUSEPROGRAMPROC                      pGLUseProgram;
     PFNGLVERTEXATTRIBIPOINTERPROC            pGLVertexAttribIPointer;

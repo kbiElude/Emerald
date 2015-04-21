@@ -40,7 +40,8 @@ typedef struct
     GLchar**                  tf_varyings;
     unsigned int              n_tf_varyings;
 
-    system_hash64map ub_name_to_ub_map; /* do NOT release the stored items */
+    system_hash64map ub_index_to_ub_map;
+    system_hash64map ub_name_to_ub_map;  /* do NOT release the stored items */
 
     /* GL entry-point cache */
     PFNGLATTACHSHADERPROC              pGLAttachShader;
@@ -61,6 +62,7 @@ typedef struct
     PFNGLPROGRAMBINARYPROC             pGLProgramBinary;
     PFNGLPROGRAMPARAMETERIPROC         pGLProgramParameteri;
     PFNGLTRANSFORMFEEDBACKVARYINGSPROC pGLTransformFeedbackVaryings;
+    PFNGLUNIFORMBLOCKBINDINGPROC       pGLUniformBlockBinding;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_program;
@@ -430,21 +432,39 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                                               uniform_block_name_has,
                                                               program_ptr->is_syncable);
 
+                /* Sanity checks */
                 ASSERT_ALWAYS_SYNC(new_ub != NULL,
                                    "ogl_program_ub_create() returned NULL.");
+
+                ASSERT_DEBUG_SYNC (!system_hash64map_contains(program_ptr->ub_index_to_ub_map,
+                                                              n_active_uniform_block),
+                                   "UB index->descriptor map already recognizes UB with index [%d]",
+                                   n_active_uniform_block);
+
                 ASSERT_DEBUG_SYNC (!system_hash64map_contains(program_ptr->ub_name_to_ub_map,
                                                               system_hashed_ansi_string_get_hash(uniform_block_name_has) ),
                                    "UB name->descriptor map already recognizes UB named [%s]",
                                    uniform_block_name);
 
+                /* Go ahead and store the UB info */
                 system_resizable_vector_push(program_ptr->active_uniform_blocks,
                                              new_ub);
+                system_hash64map_insert     (program_ptr->ub_index_to_ub_map,
+                                             n_active_uniform_block,
+                                             new_ub,
+                                             NULL,  /* on_remove_callback */
+                                             NULL); /* on_remove_callback_user_arg */
                 system_hash64map_insert     (program_ptr->ub_name_to_ub_map,
                                              system_hashed_ansi_string_get_hash(uniform_block_name_has),
                                              new_ub,
                                              NULL,  /* on_remove_callback */
                                              NULL); /* on_remove_callback_user_arg */
-            } /* for (all uniform blocks) */;
+
+                /* Set up the UB block->binding mapping */
+                program_ptr->pGLUniformBlockBinding(program_ptr->id,
+                                                    n_active_uniform_block,
+                                                    n_active_uniform_block);
+            } /* for (all uniform blocks) */
         } /* if (attribute_name != NULL && uniform_name != NULL) */
 
         /* Free the buffers. */
@@ -1048,6 +1068,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         result->n_tf_varyings         = 0;
         result->tf_mode               = GL_NONE;
         result->tf_varyings           = NULL;
+        result->ub_index_to_ub_map    = system_hash64map_create(sizeof(ogl_program_ub) );
         result->ub_name_to_ub_map     = system_hash64map_create(sizeof(ogl_program_ub) );
 
         /* Init GL entry-point cache */
@@ -1083,6 +1104,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLProgramBinary             = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri         = entry_points->pGLProgramParameteri;
             result->pGLTransformFeedbackVaryings = entry_points->pGLTransformFeedbackVaryings;
+            result->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
         }
         else
         {
@@ -1113,6 +1135,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLProgramBinary             = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri         = entry_points->pGLProgramParameteri;
             result->pGLTransformFeedbackVaryings = entry_points->pGLTransformFeedbackVaryings;
+            result->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
         }
 
         /* Carry on */
@@ -1354,6 +1377,21 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
             }
         }
     }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull ogl_program     program,
+                                                               __in            unsigned int    index,
+                                                               __out __notnull ogl_program_ub* out_ub_ptr)
+{
+    _ogl_program* program_ptr = (_ogl_program*) program;
+    bool          result      = false;
+
+    result = system_hash64map_get(program_ptr->ub_index_to_ub_map,
+                                  index,
+                                  out_ub_ptr);
 
     return result;
 }

@@ -161,6 +161,11 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDispatchCompute(GLuint num_groups_x,
 PUBLIC void APIENTRY ogl_context_wrappers_glDispatchComputeIndirect(GLintptr indirect);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
+                                                                GLuint uniformBlockIndex,
+                                                                GLuint uniformBlockBinding);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glUseProgram(GLuint program);
 
 /*** SAMPLERS ***/

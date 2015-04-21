@@ -2156,7 +2156,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLTexSubImage2D,                  "glTexSubImage2D"},
             {&context_ptr->entry_points_private.pGLTexSubImage3D,                  "glTexSubImage3D"},
             {&context_ptr->entry_points_gl.pGLTransformFeedbackVaryings,           "glTransformFeedbackVaryings"},
-            {&context_ptr->entry_points_gl.pGLUniformBlockBinding,                 "glUniformBlockBinding"},
+            {&context_ptr->entry_points_private.pGLUniformBlockBinding,            "glUniformBlockBinding"},
             {&context_ptr->entry_points_private.pGLUnmapBuffer,                    "glUnmapBuffer"},
             {&context_ptr->entry_points_private.pGLUseProgram,                     "glUseProgram"},
             {&context_ptr->entry_points_gl.pGLUseProgramStages,                    "glUseProgramStages"},
@@ -2351,6 +2351,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
         context_ptr->entry_points_gl.pGLTexSubImage1D                   = ogl_context_wrappers_glTexSubImage1D;
         context_ptr->entry_points_gl.pGLTexSubImage2D                   = ogl_context_wrappers_glTexSubImage2D;
         context_ptr->entry_points_gl.pGLTexSubImage3D                   = ogl_context_wrappers_glTexSubImage3D;
+        context_ptr->entry_points_gl.pGLUniformBlockBinding             = ogl_context_wrappers_glUniformBlockBinding;
         context_ptr->entry_points_gl.pGLUnmapBuffer                     = ogl_context_wrappers_glUnmapBuffer;
         context_ptr->entry_points_gl.pGLUseProgram                      = ogl_context_wrappers_glUseProgram;
         context_ptr->entry_points_gl.pGLVertexAttribIPointer            = ogl_context_wrappers_glVertexAttribIPointer;

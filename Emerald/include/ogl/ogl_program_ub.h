@@ -33,6 +33,9 @@ typedef enum
     /* GLuint */
     OGL_PROGRAM_UB_PROPERTY_INDEX,
 
+    /* GLuint */
+    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+
     /* system_hashed_ansi_string */
     OGL_PROGRAM_UB_PROPERTY_NAME,
 
@@ -83,6 +86,11 @@ PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in        
                                                                     __in_ecount(src_data_size) __notnull const void*    src_data,
                                                                     __in                                 int            src_data_flags, /* UB_SRC_DATA_FLAG_* */
                                                                     __in                                 unsigned int   src_data_size);
+
+/** TODO */
+PUBLIC void ogl_program_ub_set_property(__in  __notnull const ogl_program_ub    ub,
+                                        __in            ogl_program_ub_property property,
+                                        __out __notnull const void*             data);
 
 /** TODO */
 PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnull ogl_program_ub ub);

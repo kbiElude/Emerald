@@ -34,6 +34,7 @@ typedef struct _ogl_program_ub
     unsigned int   block_bo_start_offset;
     unsigned char* block_data;
     GLint          block_data_size;
+    GLuint         indexed_ub_bp;
 
     system_hashed_ansi_string name;
     system_resizable_vector   members;                          /* pointers to const ogl_program_uniform_descriptor*. These are owned by owner - DO NOT release. */
@@ -44,6 +45,7 @@ typedef struct _ogl_program_ub
     PFNGLBUFFERSUBDATAPROC           pGLBufferSubData;
     PFNGLGETACTIVEUNIFORMBLOCKIVPROC pGLGetActiveUniformBlockiv;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC   pGLNamedBufferSubDataEXT;
+    PFNGLUNIFORMBLOCKBINDINGPROC     pGLUniformBlockBinding;
 
     /* Delimits a UB region which needs to be re-uploaded to the GPU upon next
      * synchronisation request.
@@ -75,6 +77,7 @@ typedef struct _ogl_program_ub
         dirty_offset_end                 = DIRTY_OFFSET_UNUSED;
         dirty_offset_start               = DIRTY_OFFSET_UNUSED;
         index                            = in_index;
+        indexed_ub_bp                    = 0; /* default GL state value */
         name                             = in_name;
         members                          = system_resizable_vector_create(4, /* capacity */
                                                                           sizeof(ogl_program_uniform_descriptor*) );
@@ -83,6 +86,7 @@ typedef struct _ogl_program_ub
         pGLBufferSubData                 = NULL;
         pGLGetActiveUniformBlockiv       = NULL;
         pGLNamedBufferSubDataEXT         = NULL;
+        pGLUniformBlockBinding           = NULL;
         syncable                         = in_syncable;
 
         ogl_context_get_property(context,
@@ -343,6 +347,7 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
         ub_ptr->pGLBindBuffer              = entry_points->pGLBindBuffer;
         ub_ptr->pGLBufferSubData           = entry_points->pGLBufferSubData;
         ub_ptr->pGLGetActiveUniformBlockiv = entry_points->pGLGetActiveUniformBlockiv;
+        ub_ptr->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
         uniform_buffer_offset_alignment    = limits_ptr->uniform_buffer_offset_alignment;
 
         if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL)
@@ -366,6 +371,7 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
         ub_ptr->pGLBindBuffer              = entry_points->pGLBindBuffer;
         ub_ptr->pGLBufferSubData           = entry_points->pGLBufferSubData;
         ub_ptr->pGLGetActiveUniformBlockiv = entry_points->pGLGetActiveUniformBlockiv;
+        ub_ptr->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
     }
 
     /* Retrieve UB uniform block properties */
@@ -846,6 +852,13 @@ PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    
             break;
         }
 
+        case OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP:
+        {
+            *(GLuint*) out_result = ub_ptr->indexed_ub_bp;
+
+            break;
+        }
+
         case OGL_PROGRAM_UB_PROPERTY_NAME:
         {
             *(system_hashed_ansi_string*) out_result = ub_ptr->name;
@@ -906,6 +919,30 @@ PUBLIC EMERALD_API void ogl_program_ub_set_nonarrayed_uniform_value(__in        
                                       src_data_size,
                                       0,  /* dst_array_start */
                                       1); /* dst_array_item_count */
+}
+
+/* Please see header for spec */
+PUBLIC void ogl_program_ub_set_property(__in  __notnull const ogl_program_ub    ub,
+                                        __in            ogl_program_ub_property property,
+                                        __out __notnull const void*             data)
+{
+    _ogl_program_ub* ub_ptr = (_ogl_program_ub*) ub;
+
+    switch (property)
+    {
+        case OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP:
+        {
+            ub_ptr->indexed_ub_bp = *(GLuint*) data;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized ogl_program_ub_proeprty value.");
+        }
+    } /* switch (property) */
 }
 
 /* Please see header for spec */

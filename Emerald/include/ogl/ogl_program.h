@@ -128,6 +128,11 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
                                                         __out __notnull const ogl_program_uniform_descriptor**);
 
 /** TODO */
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull ogl_program     program,
+                                                               __in            unsigned int    index,
+                                                               __out __notnull ogl_program_ub* out_ub_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull ogl_program               program,
                                                               __in  __notnull system_hashed_ansi_string name,
                                                               __out __notnull ogl_program_ub*           out_ub_ptr);
