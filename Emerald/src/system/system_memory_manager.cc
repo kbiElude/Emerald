@@ -16,6 +16,14 @@
     #define LOG_ALLOC_HISTORY
 #endif /* _DEBUG */
 
+/* If this is defined, the implementation will perform a sanity check of the
+ * page owner counters upon free_block calls.
+ * This will seriously deteriorate performance, so should only be enabled for debugging */
+#ifdef _DEBUG
+    #define ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME
+#endif /* _DEBUG */
+
+
 typedef struct _system_memory_manager_block
 {
     unsigned int block_offset; /* NOT aligned to page size */
@@ -442,13 +450,34 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
                     manager_ptr->page_owners[page_index]   != 0          &&
                     callback_page_index_mark               != page_index)
                 {
+                    const unsigned int free_start_offset = (callback_page_index_mark - 1)          * manager_ptr->page_size;
+                    const unsigned int free_size         = (page_index - callback_page_index_mark) * manager_ptr->page_size;
+
+                    #ifdef _DEBUG
+                    {
+                        for (unsigned int index =  free_start_offset              / manager_ptr->page_size;
+                                          index < (free_start_offset + free_size) / manager_ptr->page_size;
+                                        ++index)
+                        {
+                            ASSERT_DEBUG_SYNC(manager_ptr->page_owners[index] == 0,
+                                              "Sanity check failed");
+                        }
+                    }
+                    #endif
+
+                    /* Dealloc the whole blob */
                     manager_ptr->pfn_on_memory_block_freed(manager,
-                                                           callback_page_index_mark               * manager_ptr->page_size,
-                                                          (page_index - callback_page_index_mark) * manager_ptr->page_size,
+                                                           free_start_offset,
+                                                           free_size,
                                                            manager_ptr->user_arg);
 
                     /* Update the marker index */
                     callback_page_index_mark = callback_page_index_start;
+                }
+
+                if (manager_ptr->page_owners[callback_page_index_mark] > 0)
+                {
+                    callback_page_index_mark++;
                 }
             } /* for (all affected pages) */
 
@@ -456,10 +485,25 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
                 callback_page_index_mark                              != callback_page_index_end &&
                 manager_ptr->page_owners[callback_page_index_end - 1] == 0)
             {
+                const unsigned int free_start_offset = callback_page_index_mark                            * manager_ptr->page_size;
+                const unsigned int free_size         = (callback_page_index_end - callback_page_index_mark) * manager_ptr->page_size;
+
+                #ifdef _DEBUG
+                {
+                    for (unsigned int index =  free_start_offset              / manager_ptr->page_size;
+                                      index < (free_start_offset + free_size) / manager_ptr->page_size;
+                                    ++index)
+                    {
+                        ASSERT_DEBUG_SYNC(manager_ptr->page_owners[index] == 0,
+                                          "Sanity check failed");
+                    }
+                }
+                #endif
+
                 manager_ptr->pfn_on_memory_block_freed(manager,
-                                                       callback_page_index_mark                            * manager_ptr->page_size,
-                                                      (callback_page_index_end - callback_page_index_mark) * manager_ptr->page_size,
-                                                      manager_ptr->user_arg);
+                                                       free_start_offset,
+                                                       free_size,
+                                                       manager_ptr->user_arg);
             }
 
             has_found = true;
@@ -477,6 +521,76 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
 
     ASSERT_DEBUG_SYNC(has_found,
                       "Submitted memory block was not found.");
+
+    #ifdef ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME
+    {
+        if (has_found)
+        {
+            /* Iterate over all pages.. */
+            _system_memory_manager_block* current_block_ptr = NULL;
+            const unsigned int            n_total_pages      = manager_ptr->memory_region_size / manager_ptr->page_size;
+
+            for (unsigned int n_page = 0;
+                              n_page < n_total_pages;
+                            ++n_page)
+            {
+                      unsigned int n_page_committed_blocks = 0;
+                const unsigned int page_start_offset       =  n_page      * manager_ptr->page_size;
+                const unsigned int page_end_offset         = (n_page + 1) * manager_ptr->page_size - 1;
+
+                /* Iterate over all allocations and count them manually */
+                system_list_bidirectional_item current_block_item      = system_list_bidirectional_get_head_item(manager_ptr->alloced_blocks);
+                void*                          current_block_item_data = NULL;
+
+                while (current_block_item != NULL)
+                {
+                    _system_memory_manager_block* block_ptr = NULL;
+
+                    system_list_bidirectional_get_item_data(current_block_item,
+                                                           &current_block_item_data);
+
+                    block_ptr = (_system_memory_manager_block*) current_block_item_data;
+
+                    /* Does this block intersect with the page? */
+                    /* 1.  BBBB
+                     *    ppp
+                     *
+                     * 2.  BBBB
+                     *      p
+                     *
+                     * 3.  BBBB
+                     *      pppp
+                     *
+                     * 4.  BBBB
+                     *    pppppp
+                     */
+                    if (page_start_offset <=  block_ptr->block_offset                          &&
+                        page_end_offset   >=  block_ptr->block_offset                          &&
+                        page_end_offset   <  (block_ptr->block_offset + block_ptr->block_size) ||
+
+                        page_start_offset >=  block_ptr->block_offset                          &&
+                        page_end_offset   <  (block_ptr->block_offset + block_ptr->block_size) ||
+
+                        page_start_offset >=  block_ptr->block_offset                          &&
+                        page_start_offset <  (block_ptr->block_offset + block_ptr->block_size) &&
+                        page_end_offset   >  (block_ptr->block_offset + block_ptr->block_size) ||
+
+                        page_start_offset <=  block_ptr->block_offset                          &&
+                        page_end_offset   >  (block_ptr->block_offset + block_ptr->block_size) )
+                    {
+                        n_page_committed_blocks++;
+                    }
+
+                    /* Move on */
+                    current_block_item = system_list_bidirectional_get_next_item(current_block_item);
+                } /* while (current_block_item != NULL) */
+
+                ASSERT_DEBUG_SYNC(n_page_committed_blocks == manager_ptr->page_owners[n_page],
+                                  "Page owner counter is corrupt!");
+            } /* for (all pages) */
+        } /* if (has_found) */
+    }
+    #endif /* ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME */
 
     if (manager_ptr->cs)
     {
