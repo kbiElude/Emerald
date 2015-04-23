@@ -7,6 +7,7 @@
 #include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_scene_renderer.h"
 #include "ogl/ogl_scene_renderer_frustum_preview.h"
@@ -127,7 +128,11 @@ typedef struct _ogl_scene_renderer_frustum_preview
     unsigned int            data_bo_size;
     unsigned int            data_bo_start_offset;
     ogl_program             po;
-    GLint                   po_vp_location;
+    ogl_program_ub          po_ub;
+    GLuint                  po_ub_bo_id;
+    unsigned int            po_ub_bo_size;
+    unsigned int            po_ub_bo_start_offset;
+    GLint                   po_vp_ub_offset;
     scene                   scene;
     ogl_text                text_renderer;  /* TODO: use a global text renderer */
     GLuint                  vao_id;
@@ -155,7 +160,10 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_count_array               = NULL;
         mdebv_indices_array             = NULL;
         po                              = NULL;
-        po_vp_location                  = -1;
+        po_ub_bo_id                     = -1;
+        po_ub_bo_size                   = 0;
+        po_ub_bo_start_offset           = 0;
+        po_vp_ub_offset                 = -1;
         scene                           = NULL;
         text_renderer                   = NULL;
         vao_id                          = 0;
@@ -239,8 +247,12 @@ PRIVATE const char* po_fs = "#version 420\n"
                             "}\n";
 PRIVATE const char* po_vs = "#version 420\n"
                             "\n"
-                            "in      vec4 position;\n"
-                            "uniform mat4 vp;\n"
+                            "in vec4 position;\n"
+                            "\n"
+                            "uniform dataVS\n"
+                            "{\n"
+                            "    mat4 vp;\n"
+                            "};\n"
                             "\n"
                             "void main()\n"
                             "{\n"
@@ -392,7 +404,8 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                system_hashed_ansi_string_create("Frustum preview renderer VS") );
 
         preview_ptr->po = ogl_program_create(context,
-                                             system_hashed_ansi_string_create(po_name) );
+                                             system_hashed_ansi_string_create(po_name),
+                                             true); /* use_syncable_ubs */
 
         if (!ogl_shader_set_body(fs,
                                  system_hashed_ansi_string_create(po_fs)) ||
@@ -422,6 +435,24 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
         ogl_shader_release(vs);
     }
 
+    /* Retrieve PO UB details */
+    ogl_program_get_uniform_block_by_name(preview_ptr->po,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &preview_ptr->po_ub);
+
+    ASSERT_DEBUG_SYNC(preview_ptr->po_ub != NULL,
+                      "dataVS UB uniform descriptor is NULL");
+
+    ogl_program_ub_get_property(preview_ptr->po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &preview_ptr->po_ub_bo_size);
+    ogl_program_ub_get_property(preview_ptr->po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &preview_ptr->po_ub_bo_id);
+    ogl_program_ub_get_property(preview_ptr->po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &preview_ptr->po_ub_bo_start_offset);
+
     /* Retrieve PO uniform locations */
     const ogl_program_uniform_descriptor* po_vp_descriptor = NULL;
 
@@ -434,7 +465,10 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     }
     else
     {
-        preview_ptr->po_vp_location = po_vp_descriptor->location;
+        preview_ptr->po_vp_ub_offset = po_vp_descriptor->ub_offset;
+
+        ASSERT_DEBUG_SYNC(preview_ptr->po_vp_ub_offset != -1,
+                          "VP UB offset is -1");
     }
 }
 
@@ -894,16 +928,23 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_frustum_preview_render(__i
     /* Update VP before we kick off */
     const GLuint po_id = ogl_program_get_id(preview_ptr->po);
 
-    entrypoints_ptr->pGLUseProgram             (po_id);
-    entrypoints_ptr->pGLProgramUniformMatrix4fv(po_id,
-                                                preview_ptr->po_vp_location,
-                                                1,        /* count */
-                                                GL_FALSE, /* transpose */
-                                                system_matrix4x4_get_column_major_data(vp) );
+    entrypoints_ptr->pGLUseProgram(po_id);
+
+    ogl_program_ub_set_nonarrayed_uniform_value(preview_ptr->po_ub,
+                                                preview_ptr->po_vp_ub_offset,
+                                                system_matrix4x4_get_column_major_data(vp),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
+    ogl_program_ub_sync                        (preview_ptr->po_ub);
 
     /* Draw! */
     entrypoints_ptr->pGLEnable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
     {
+        entrypoints_ptr->pGLBindBufferRange            (GL_UNIFORM_BUFFER,
+                                                        0, /* index */
+                                                        preview_ptr->po_ub_bo_id,
+                                                        preview_ptr->po_ub_bo_start_offset,
+                                                        preview_ptr->po_ub_bo_size);
         entrypoints_ptr->pGLMultiDrawElementsBaseVertex(GL_LINE_STRIP,
                                                         preview_ptr->mdebv_count_array,
                                                         GL_UNSIGNED_BYTE,
