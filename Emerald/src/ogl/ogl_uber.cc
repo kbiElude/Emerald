@@ -195,7 +195,13 @@ typedef struct _ogl_uber
     bool                      is_rendering;
     uint32_t                  n_texture_units_assigned;
     ogl_program_ub            ub_fs;
+    GLuint                    ub_fs_bo_id;
+    GLuint                    ub_fs_bo_size;
+    GLuint                    ub_fs_bo_start_offset;
     ogl_program_ub            ub_vs;
+    GLuint                    ub_vs_bo_id;
+    GLuint                    ub_vs_bo_size;
+    GLuint                    ub_vs_bo_start_offset;
 
     system_matrix4x4          current_vp;
     float                     current_vsm_max_variance;
@@ -1522,9 +1528,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Retrieve uniform block IDs and their properties*/
-    unsigned int fs_ub_size = 0;
-    unsigned int vs_ub_size = 0;
-
     uber_ptr->ub_fs = NULL;
     uber_ptr->ub_vs = NULL;
 
@@ -1539,14 +1542,26 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     {
         ogl_program_ub_get_property(uber_ptr->ub_fs,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                   &fs_ub_size);
+                                   &uber_ptr->ub_fs_bo_size);
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &uber_ptr->ub_fs_bo_id);
+        ogl_program_ub_get_property(uber_ptr->ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &uber_ptr->ub_fs_bo_start_offset);
     }
 
     if (uber_ptr->ub_vs != NULL)
     {
         ogl_program_ub_get_property(uber_ptr->ub_vs,
                                     OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                   &vs_ub_size);
+                                   &uber_ptr->ub_vs_bo_size);
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &uber_ptr->ub_vs_bo_id);
+        ogl_program_ub_get_property(uber_ptr->ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &uber_ptr->ub_vs_bo_start_offset);
     }
 
     /* Create internal representation of uber shader items */
@@ -1995,6 +2010,25 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                   "Unrecognized mesh index type");
             }
         } /* switch (index_type) */
+
+        /* Make sure the uniform buffer bindings are fine */
+        if (uber_ptr->ub_fs != NULL)
+        {
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             FRAGMENT_SHADER_PROPERTIES_UBO_BINDING_ID,
+                                             uber_ptr->ub_fs_bo_id,
+                                             uber_ptr->ub_fs_bo_start_offset,
+                                             uber_ptr->ub_fs_bo_size);
+        }
+
+        if (uber_ptr->ub_vs != NULL)
+        {
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             VERTEX_SHADER_PROPERTIES_UBO_BINDING_ID,
+                                             uber_ptr->ub_vs_bo_id,
+                                             uber_ptr->ub_vs_bo_start_offset,
+                                             uber_ptr->ub_vs_bo_size);
+        }
 
         /* Iterate over all layers.. */
               uint32_t n_layers = 0;

@@ -851,20 +851,3 @@ PUBLIC EMERALD_API void ogl_primitive_renderer_draw(__in                       _
     system_critical_section_leave(renderer_ptr->draw_cs);
 }
 
-/** Please see header for specification */
-PUBLIC EMERALD_API void ogl_primitive_renderer_flush(__in __notnull ogl_primitive_renderer renderer)
-{
-    _ogl_primitive_renderer* renderer_ptr = (_ogl_primitive_renderer*) renderer;
-
-    system_critical_section_enter(renderer_ptr->draw_cs);
-    {
-        if (renderer_ptr->dirty)
-        {
-            _ogl_primitive_renderer_update_data_buffer(renderer_ptr);
-
-            ASSERT_DEBUG_SYNC(!renderer_ptr->dirty,
-                              "Renderer still marked as dirty");
-        }
-    }
-    system_critical_section_leave(renderer_ptr->draw_cs);
-}

@@ -52,7 +52,9 @@ typedef struct
 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_curve_renderer, ogl_curve_renderer, _ogl_curve_renderer)
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_curve_renderer,
+                               ogl_curve_renderer,
+                              _ogl_curve_renderer)
 
 /* Forward declarations */
 PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnull scene_graph               graph,
@@ -84,12 +86,18 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
     float*       result_view_vector_data = NULL;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(graph                      != NULL, "Graph is NULL");
-    ASSERT_DEBUG_SYNC(node                       != NULL, "Graph node is NULL");
-    ASSERT_DEBUG_SYNC(duration                   != 0,    "Graph duration is 0");
-    ASSERT_DEBUG_SYNC(n_samples_per_second       != 0,    "Samples/second is 0");
-    ASSERT_DEBUG_SYNC(out_n_vertices             != NULL, "out_n_vertices is NULL");
-    ASSERT_DEBUG_SYNC(out_vertex_line_strip_data != NULL, "out_vertex_data is NULL");
+    ASSERT_DEBUG_SYNC(graph != NULL,
+                      "Graph is NULL");
+    ASSERT_DEBUG_SYNC(node  != NULL,
+                      "Graph node is NULL");
+    ASSERT_DEBUG_SYNC(duration != 0,
+                      "Graph duration is 0");
+    ASSERT_DEBUG_SYNC(n_samples_per_second != 0,
+                      "Samples/second is 0");
+    ASSERT_DEBUG_SYNC(out_n_vertices != NULL,
+                      "out_n_vertices is NULL");
+    ASSERT_DEBUG_SYNC(out_vertex_line_strip_data != NULL,
+                      "out_vertex_data is NULL");
 
     /* How many samples will we need to take? */
     uint32_t duration_ms = 0;
@@ -104,7 +112,9 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
 
     result_vertex_data = new float[3 /* x, y, z */ * n_samples];
 
-    ASSERT_ALWAYS_SYNC(result_vertex_data != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(result_vertex_data != NULL,
+                       "Out of memory");
+
     if (result_vertex_data == NULL)
     {
         result = false;
@@ -119,7 +129,9 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
     {
         result_view_vector_data = new float[2 /* points */ * 3 /* x, y, z */ * n_samples];
 
-        ASSERT_ALWAYS_SYNC(result_view_vector_data != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(result_view_vector_data != NULL,
+                           "Out of memory");
+
         if (result_view_vector_data == NULL)
         {
             result = false;
@@ -298,7 +310,7 @@ PRIVATE void _ogl_curve_renderer_release_item(__in __notnull _ogl_curve_renderer
     ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
                                           item_ptr->path_dataset_id);
     ogl_primitive_renderer_delete_dataset(renderer_ptr->primitive_renderer,
-        item_ptr->view_vector_dataset_id);
+                                          item_ptr->view_vector_dataset_id);
 
     item_ptr->path_dataset_id        = -1;
     item_ptr->view_vector_dataset_id = -1;
@@ -336,6 +348,7 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
                        n_vertices  != 0    &&
                        vertex_data != NULL,
                        "Could not generate vertex data");
+
     if (vertex_data == NULL)
     {
         goto end;
@@ -344,7 +357,9 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     /* Spawn new item descriptor */
     _ogl_curve_renderer_item* item_ptr = new (std::nothrow) _ogl_curve_renderer_item;
 
-    ASSERT_ALWAYS_SYNC(item_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(item_ptr != NULL,
+                       "Out of memory");
+
     if (item_ptr == NULL)
     {
         goto end;
@@ -389,7 +404,9 @@ PUBLIC EMERALD_API ogl_curve_renderer ogl_curve_renderer_create(__in __notnull o
 {
     _ogl_curve_renderer* new_instance = new (std::nothrow) _ogl_curve_renderer;
 
-    ASSERT_DEBUG_SYNC(new_instance != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_instance != NULL,
+                      "Out of memory");
+
     if (new_instance != NULL)
     {
         ogl_context_get_property(context,
@@ -476,6 +493,7 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
 
         ASSERT_ALWAYS_SYNC(renderer_ptr->conversion_array_items != NULL,
                            "Out of memory");
+
         if (renderer_ptr->conversion_array_items == NULL)
         {
             goto end;

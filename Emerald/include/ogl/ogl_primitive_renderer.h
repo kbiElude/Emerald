@@ -42,15 +42,5 @@ PUBLIC EMERALD_API void ogl_primitive_renderer_draw(__in                       _
                                                     __in                                 unsigned int                       n_dataset_ids,
                                                     __in_ecount(n_dataset_ids) __notnull ogl_primitive_renderer_dataset_id* dataset_ids);
 
-/** If the renderer has outstanding dataset changes, this function will prepare
- *  an internal data buffer holding the data that will need to be transferred
- *  to the BO in a _draw() call.
- *
- *  If the renderer is not flushed prior to a draw call happening after a set
- *  of ogl_primitive_renderer_*_dataset*() calls, the preparation will be done
- *  in a rendering thread (which is something you probably want to avoid!)
- *
- *  @param renderer TODO */
-PUBLIC EMERALD_API void ogl_primitive_renderer_flush(__in __notnull ogl_primitive_renderer renderer);
 
 #endif /* OGL_PRIMITIVE_RENDERER_H */

@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_blur_poisson.h"
@@ -22,13 +23,16 @@ typedef struct
     ogl_context                                       context;
     const char*                                       custom_shader_code;
 
-    GLint blur_strength_uniform_location;
-    float gpu_blur_strength_value;
+    GLint blur_strength_ub_offset;
 
     GLuint fbo_id;
 
     system_hashed_ansi_string name;
     ogl_program               program;
+    ogl_program_ub            program_ub;
+    GLuint                    program_ub_bo_id;
+    unsigned int              program_ub_bo_size;
+    unsigned int              program_ub_bo_start_offset;
 
     REFCOUNT_INSERT_VARIABLES
 } _postprocessing_blur_poisson;
@@ -62,7 +66,11 @@ static const char* postprocessing_blur_poisson_tap_data_body = "const float taps
                                                                "                             -0.8836895f,  -0.4189175f,\n"
                                                                "                             -0.7953489f,   0.5906183f,\n"
                                                                "                              0.8182191f,  -0.5711964f);\n";
-static const char* postprocessing_blur_poisson_fragment_shader_body_declarations = "uniform float     blur_strength;\n"
+static const char* postprocessing_blur_poisson_fragment_shader_body_declarations = "uniform dataFS\n"
+                                                                                   "{\n"
+                                                                                   "    float blur_strength;\n"
+                                                                                   "};\n"
+                                                                                   "\n"
                                                                                    "uniform sampler2D data;\n"
                                                                                    "out     vec4      result;\n"
                                                                                    "in      vec2      uv;\n"
@@ -126,7 +134,8 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
                                                             poisson_ptr->name);
     poisson_ptr->program = ogl_program_create              (poisson_ptr->context,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
-                                                                                                                    system_hashed_ansi_string_get_buffer(poisson_ptr->name) ));
+                                                                                                                    system_hashed_ansi_string_get_buffer(poisson_ptr->name) ),
+                                                            true); /* use_syncable_ubs */
 
     ogl_shader_set_body      (fragment_shader,
                               system_hashed_ansi_string_create_by_merging_strings(fragment_shader_n_body_parts,
@@ -145,7 +154,28 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
                                     system_hashed_ansi_string_create("blur_strength"),
                                    &blur_strength_uniform);
 
-    poisson_ptr->blur_strength_uniform_location = blur_strength_uniform->location;
+    ASSERT_DEBUG_SYNC(blur_strength_uniform->ub_offset != -1,
+                      "Blur strength UB offset is -1");
+
+    poisson_ptr->blur_strength_ub_offset = blur_strength_uniform->ub_offset;
+
+    /* Retrieve UB info */
+    ogl_program_get_uniform_block_by_name(poisson_ptr->program,
+                                          system_hashed_ansi_string_create("dataFS"),
+                                         &poisson_ptr->program_ub);
+
+    ASSERT_DEBUG_SYNC(poisson_ptr->program_ub != NULL,
+                      "dataFS uniform block descriptor is NULL");
+
+    ogl_program_ub_get_property(poisson_ptr->program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &poisson_ptr->program_ub_bo_id);
+    ogl_program_ub_get_property(poisson_ptr->program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &poisson_ptr->program_ub_bo_size);
+    ogl_program_ub_get_property(poisson_ptr->program_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &poisson_ptr->program_ub_bo_start_offset);
 
     /* Generate FBO */
     const ogl_context_gl_entrypoints* entrypoints = NULL;
@@ -287,14 +317,12 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
                                             GL_TEXTURE_2D,
                                             input_texture);
 
-    if (poisson_ptr->gpu_blur_strength_value != blur_strength)
-    {
-        entrypoints->pGLProgramUniform1f(ogl_program_get_id(poisson_ptr->program),
-                                         poisson_ptr->blur_strength_uniform_location,
-                                         blur_strength);
-
-        poisson_ptr->gpu_blur_strength_value = blur_strength;
-    }
+    ogl_program_ub_set_nonarrayed_uniform_value(poisson_ptr->program_ub,
+                                                poisson_ptr->blur_strength_ub_offset,
+                                               &blur_strength,
+                                               0, /* src_data_flags */
+                                               sizeof(float) );
+    ogl_program_ub_sync                        (poisson_ptr->program_ub);
 
     ogl_texture_get_mipmap_property(result_texture,
                                     0, /* mipmap_levle */
@@ -304,6 +332,12 @@ PUBLIC EMERALD_API void postprocessing_blur_poisson_execute(__in __notnull postp
                                     0, /* mipmap_levle */
                                     OGL_TEXTURE_MIPMAP_PROPERTY_WIDTH,
                                    &texture_width);
+
+    entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                    0, /* index */
+                                    poisson_ptr->program_ub_bo_id,
+                                    poisson_ptr->program_ub_bo_start_offset,
+                                    poisson_ptr->program_ub_bo_size);
 
     entrypoints->pGLViewport  (0,
                                0,
