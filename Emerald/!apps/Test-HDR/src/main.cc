@@ -99,6 +99,66 @@ GLuint                                _vaa_id                                   
 
 
 /** Rendering handler */
+void _update_text_renderer()
+{
+    switch (_active_mapping)
+    {
+        case MAPPING_FILMIC:
+        {
+            ogl_text_set(_text_renderer,
+                         0,
+                         "Filmic tone mapping");
+
+            break;
+        }
+
+        case MAPPING_FILMIC_CUSTOMIZABLE:
+        {
+            ogl_text_set(_text_renderer,
+                         0,
+                         "Customizable filmic tone mapping");
+
+            break;
+        }
+
+        case MAPPING_LINEAR:
+        {
+            ogl_text_set(_text_renderer,
+                         0,
+                         "Linear tone mapping");
+
+            break;
+        }
+
+        case MAPPING_REINHARDT:
+        {
+            ogl_text_set(_text_renderer,
+                         0,
+                         "Reinhardt tone mapping (simple)");
+
+            break;
+        }
+
+        case MAPPING_REINHARDT_GLOBAL:
+        {
+            ogl_text_set(_text_renderer,
+                         0,
+                         "Reinhardt tone mapping (global)");
+
+            break;
+        }
+
+        case MAPPING_REINHARDT_GLOBAL_CRUDE:
+        {
+            ogl_text_set(_text_renderer,
+                         0,
+                         "Reinhardt tone mapping (global crude)");
+
+            break;
+        }
+    }
+}
+
 void _rendering_handler(ogl_context          context,
                         uint32_t             n_frames_rendered,
                         system_timeline_time frame_time,
@@ -109,6 +169,32 @@ void _rendering_handler(ogl_context          context,
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
+
+    /* Create text renderer, if needed */
+    if (_text_renderer == NULL)
+    {
+        const float text_color[4] = {0, 0, 1, 1};
+        const int   text_pos  [2] = {0, 60};
+
+        _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
+                                         _context,
+                                         system_resources_get_meiryo_font_table(),
+                                         _texture_width,
+                                         _texture_height
+                                         );
+
+        ogl_text_add_string              (_text_renderer);
+        ogl_text_set_text_string_property(_text_renderer,
+                                          0, /* text_string_id */
+                                          OGL_TEXT_STRING_PROPERTY_COLOR,
+                                          text_color);
+        ogl_text_set_text_string_property(_text_renderer,
+                                          0, /* text_string_id */
+                                          OGL_TEXT_STRING_PROPERTY_POSITION_PX,
+                                          text_pos);
+
+        _update_text_renderer();
+    }
 
     if (_texture == NULL)
     {
@@ -181,12 +267,12 @@ void _rendering_handler(ogl_context          context,
     }
 
     /* Set up uniforms */
-    const GLuint po_id = ogl_program_get_id(_linear_program);
-
     switch(_active_mapping)
     {
         case MAPPING_LINEAR:
         {
+            const GLuint po_id = ogl_program_get_id(_linear_program);
+
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
@@ -203,6 +289,8 @@ void _rendering_handler(ogl_context          context,
 
         case MAPPING_REINHARDT:
         {
+            const GLuint po_id = ogl_program_get_id(_reinhardt_program);
+
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
@@ -239,6 +327,8 @@ void _rendering_handler(ogl_context          context,
 
         case MAPPING_FILMIC:
         {
+            const GLuint po_id = ogl_program_get_id(_filmic_program);
+
             entry_points->pGLUseProgram      (po_id);
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
@@ -256,6 +346,8 @@ void _rendering_handler(ogl_context          context,
         case MAPPING_FILMIC_CUSTOMIZABLE:
         {
             float a, b, c, d, e, exposure_bias, f, w;
+
+            const GLuint po_id = ogl_program_get_id(_filmic_customizable_program);
 
             curve_container_get_default_value(_filmic_customizable_exposure_bias_curve,
                                               true,
@@ -343,66 +435,6 @@ void _rendering_handler(ogl_context          context,
 
     ogl_text_draw(_context,
                   _text_renderer);
-}
-
-void _update_text_renderer()
-{
-    switch (_active_mapping)
-    {
-        case MAPPING_FILMIC:
-        {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Filmic tone mapping");
-
-            break;
-        }
-
-        case MAPPING_FILMIC_CUSTOMIZABLE:
-        {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Customizable filmic tone mapping");
-
-            break;
-        }
-
-        case MAPPING_LINEAR:
-        {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Linear tone mapping");
-
-            break;
-        }
-
-        case MAPPING_REINHARDT:
-        {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Reinhardt tone mapping (simple)");
-
-            break;
-        }
-
-        case MAPPING_REINHARDT_GLOBAL:
-        {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Reinhardt tone mapping (global)");
-
-            break;
-        }
-
-        case MAPPING_REINHARDT_GLOBAL_CRUDE:
-        {
-            ogl_text_set(_text_renderer,
-                         0,
-                         "Reinhardt tone mapping (global crude)");
-
-            break;
-        }
-    }
 }
 
 bool _rendering_lbm_callback_handler(system_window           window,
@@ -535,10 +567,10 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                       _float_variant);
 
     /* Load HDR image */
-    //_texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("nave_o366.hdr") );
-    //_texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("dani_belgium_oC65.hdr") );
-    //_texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("MtTamWest_o281.hdr") );
-    _texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("bigFogMap_oDAA.hdr"),
+    _texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("nave_o366.hdr"),
+    //_texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("dani_belgium_oC65.hdr"),
+    //_texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("MtTamWest_o281.hdr"),
+    //_texture_image = gfx_rgbe_load_from_file(system_hashed_ansi_string_create("bigFogMap_oDAA.hdr"),
                                              NULL); /* file_unpacker */
 
     gfx_image_get_mipmap_property(_texture_image,
@@ -590,30 +622,6 @@ int WINAPI WinMain(HINSTANCE instance_handle,
 
     ogl_rendering_handler_set_fps_counter_visibility(window_rendering_handler,
                                                      true);
-
-    /* Create text renderer */
-    float text_color[4] = {0, 0, 1, 1};
-    int   text_pos  [2] = {0, 60};
-
-    _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
-                                     _context,
-                                     system_resources_get_meiryo_font_table(),
-                                     _texture_width,
-                                     _texture_height
-                                     );
-
-    ogl_text_add_string              (_text_renderer);
-    ogl_text_set_text_string_property(_text_renderer,
-                                      0, /* text_string_id */
-                                      OGL_TEXT_STRING_PROPERTY_COLOR,
-                                      text_color);
-    ogl_text_set_text_string_property(_text_renderer,
-                                      0, /* text_string_id */
-                                      OGL_TEXT_STRING_PROPERTY_POSITION_PX,
-                                      text_pos);
-
-    _update_text_renderer();
-
     /* Create shared VP */
     _vp = shaders_vertex_fullscreen_create(_context,
                                            true, /* export_uv */
