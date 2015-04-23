@@ -12,7 +12,8 @@
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_filmic, shaders_fragment_texture2D_filmic)
+REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_filmic,
+                             shaders_fragment_texture2D_filmic)
 
 
 /** Creates a shaders_fragment_texture2D_filmic object instance.
@@ -23,7 +24,9 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_filmic, shaders_fragment
  * 
  *  @return shaders_fragment_texture2D_filmic instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_texture2D_filmic shaders_fragment_texture2D_filmic_create(__in __notnull ogl_context, __in bool, __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_fragment_texture2D_filmic shaders_fragment_texture2D_filmic_create(__in __notnull ogl_context               context,
+                                                                                              __in           bool                      should_revert_y,
+                                                                                              __in __notnull system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
@@ -31,6 +34,6 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_filmic shaders_fragment_texture2D_
  *
  *  @return ogl_shader instance.
  **/
-PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_filmic_get_shader(__in __notnull shaders_fragment_texture2D_filmic);
+PUBLIC EMERALD_API ogl_shader shaders_fragment_texture2D_filmic_get_shader(__in __notnull shaders_fragment_texture2D_filmic filmic);
 
 #endif /* SHADERS_FRAGMENT_TEXTURE2D_FILMIC_H */

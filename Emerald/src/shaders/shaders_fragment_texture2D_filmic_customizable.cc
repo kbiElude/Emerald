@@ -74,11 +74,10 @@ typedef struct
 } _shaders_fragment_texture2D_filmic_customizable;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_texture2D_filmic_customizable, shaders_fragment_texture2D_filmic_customizable, _shaders_fragment_texture2D_filmic_customizable);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_texture2D_filmic_customizable,
+                               shaders_fragment_texture2D_filmic_customizable,
+                               _shaders_fragment_texture2D_filmic_customizable);
 
-
-/* Internal variables */
-                          
 
 /** Function called back when reference counter drops to zero. Releases the static shader object.
  *
@@ -98,15 +97,21 @@ PRIVATE void _shaders_fragment_texture2D_filmic_customizable_release(__in __notn
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragment_texture2D_filmic_customizable_create(__in __notnull ogl_context context, __in bool should_revert_y, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragment_texture2D_filmic_customizable_create(__in __notnull ogl_context               context,
+                                                                                                                        __in           bool                      should_revert_y,
+                                                                                                                        __in __notnull system_hashed_ansi_string name)
 {
     _shaders_fragment_texture2D_filmic_customizable* result_object = NULL;
     shaders_fragment_texture2D_filmic_customizable   result_shader = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, name);
+    ogl_shader shader = ogl_shader_create(context,
+                                          SHADER_TYPE_FRAGMENT,
+                                          name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "Could not create a fragment shader.");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "Could not create a fragment shader.");
+
     if (shader == NULL)
     {
         LOG_ERROR("Could not create a fragment shader for Customizable Filmic Texture2D shader object.");
@@ -115,10 +120,14 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragme
     }
 
     /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader, system_hashed_ansi_string_create(should_revert_y ? tex2D_fragment_filmic_customizable_shader_body_reverted : tex2D_fragment_filmic_customizable_shader_body_not_reverted) ))
+    if (!ogl_shader_set_body(shader,
+                             system_hashed_ansi_string_create(should_revert_y ? tex2D_fragment_filmic_customizable_shader_body_reverted
+                                                                              : tex2D_fragment_filmic_customizable_shader_body_not_reverted) ))
     {
         LOG_ERROR("Could not set body of Customizable Filmic Texture2D fragment shader.");
-        ASSERT_DEBUG_SYNC(false, "");
+
+        ASSERT_DEBUG_SYNC(false,
+                          "");
 
         goto end;
     }
@@ -126,7 +135,9 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragme
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_texture2D_filmic_customizable;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_texture2D_filmic_customizable object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_texture2D_filmic_customizable object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Customizable Filmic Texture2D object instance.");
@@ -136,10 +147,11 @@ PUBLIC EMERALD_API shaders_fragment_texture2D_filmic_customizable shaders_fragme
 
     result_object->shader = shader;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_fragment_texture2D_filmic_customizable_release,
                                                    OBJECT_TYPE_SHADERS_FRAGMENT_TEXTURE2D_FILMIC_CUSTOMIZABLE,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Texture2D Customizable Filmic Fragment Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Texture2D Customizable Filmic Fragment Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (shaders_fragment_texture2D_filmic_customizable) result_object;

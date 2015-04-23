@@ -12,7 +12,8 @@
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_reinhardt, shaders_fragment_texture2D_reinhardt)
+REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_reinhardt,
+                             shaders_fragment_texture2D_reinhardt)
 
 
 /** Creates a shaders_fragment_texture2D_reinhardt object instance.
@@ -23,7 +24,9 @@ REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_texture2D_reinhardt, shaders_fragm
  * 
  *  @return shaders_fragment_texture2D_reinhardt instance if successful, NULL otherwise.
  */
-PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture2D_reinhardt_create(__in __notnull ogl_context, __in bool, __in __notnull system_hashed_ansi_string name);
+PUBLIC EMERALD_API shaders_fragment_texture2D_reinhardt shaders_fragment_texture2D_reinhardt_create(__in __notnull ogl_context               context,
+                                                                                                    __in           bool                      should_revert_y,
+                                                                                                    __in __notnull system_hashed_ansi_string name);
 
 /** Retrieves ogl_shader object associated with the instance. Do not release the object or modify it in any way.
  *
