@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -30,7 +30,9 @@ typedef struct
 } _curve_editor_program_lerp;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(curve_editor_program_lerp, curve_editor_program_lerp, _curve_editor_program_lerp);
+REFCOUNT_INSERT_IMPLEMENTATION(curve_editor_program_lerp,
+                               curve_editor_program_lerp,
+                              _curve_editor_program_lerp);
 
 
 /** Please see header for specification */
@@ -58,11 +60,14 @@ PRIVATE void _curve_editor_program_lerp_release(void* in)
 
 
 /** Please see header for specification */
-PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull ogl_context               context,
+                                                                  __in __notnull system_hashed_ansi_string name)
 {
     _curve_editor_program_lerp* result = new (std::nothrow) _curve_editor_program_lerp;
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Out of memroy while instantiating lerp program object.");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Out of memroy while instantiating lerp program object.");
+
     if (result != NULL)
     {
         /* Reset the structure */
@@ -94,9 +99,12 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
                           "}\n";
 
         /* Create the program */
-        result->program = ogl_program_create(context, name);
+        result->program = ogl_program_create(context,
+                                             name);
 
-        ASSERT_DEBUG_SYNC(result->program != NULL, "ogl_program_create() failed");
+        ASSERT_DEBUG_SYNC(result->program != NULL,
+                          "ogl_program_create() failed");
+
         if (result->program == NULL)
         {
             LOG_ERROR("Could not create lerp curve program.");
@@ -105,11 +113,21 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         }
 
         /* Create the shaders */
-        result->fragment_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name), " FP"));
-        result->vertex_shader   = ogl_shader_create(context, SHADER_TYPE_VERTEX,   system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name), " VP"));
+        result->fragment_shader = ogl_shader_create(context,
+                                                    SHADER_TYPE_FRAGMENT,
+                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                            " FP"));
+        result->vertex_shader   = ogl_shader_create(context,
+                                                    SHADER_TYPE_VERTEX,
+                                                    system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                            " VP"));
 
-        ASSERT_DEBUG_SYNC(result->fragment_shader != NULL && result->vertex_shader != NULL, "ogl_shader_create() failed");
-        if (result->fragment_shader == NULL || result->vertex_shader == NULL)
+        ASSERT_DEBUG_SYNC(result->fragment_shader != NULL &&
+                          result->vertex_shader   != NULL,
+                          "ogl_shader_create() failed");
+
+        if (result->fragment_shader == NULL ||
+            result->vertex_shader   == NULL)
         {
             LOG_ERROR("Could not create lerp curve fragment / vertex shader.");
 
@@ -121,10 +139,14 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         system_hashed_ansi_string vp_shader_body = system_hashed_ansi_string_create(vp_body_stream.str().c_str() );
         bool                      b_result       = false;
         
-        b_result  = ogl_shader_set_body(result->fragment_shader, fp_shader_body);
-        b_result &= ogl_shader_set_body(result->vertex_shader,   vp_shader_body);
+        b_result  = ogl_shader_set_body(result->fragment_shader,
+                                        fp_shader_body);
+        b_result &= ogl_shader_set_body(result->vertex_shader,
+                                        vp_shader_body);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_shader_set_body() failed");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_shader_set_body() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not set lerp curve fragment / vertex shader body.");
@@ -133,10 +155,14 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         }
 
         /* Attach shaders to the program */
-        b_result  = ogl_program_attach_shader(result->program, result->fragment_shader);
-        b_result &= ogl_program_attach_shader(result->program, result->vertex_shader);
+        b_result  = ogl_program_attach_shader(result->program,
+                                              result->fragment_shader);
+        b_result &= ogl_program_attach_shader(result->program,
+                                              result->vertex_shader);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_program_attach_shader() failed");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_program_attach_shader() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not attach shader(s) to lerp curve program.");
@@ -147,7 +173,9 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         /* Link the program */
         b_result = ogl_program_link(result->program);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_program_link() failed");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_program_link() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not link lerp curve program");
@@ -159,10 +187,16 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         const ogl_program_uniform_descriptor* pos1_uniform_descriptor = NULL;
         const ogl_program_uniform_descriptor* pos2_uniform_descriptor = NULL;
 
-        b_result  = ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("pos1"), &pos1_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program, system_hashed_ansi_string_create("pos2"), &pos2_uniform_descriptor);
+        b_result  = ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("pos1"),
+                                                   &pos1_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name(result->program,
+                                                    system_hashed_ansi_string_create("pos2"),
+                                                   &pos2_uniform_descriptor);
 
-        ASSERT_DEBUG_SYNC(b_result, "Could not retrieve pos1/pos2 uniform descriptor.");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "Could not retrieve pos1/pos2 uniform descriptor.");
+
         if (b_result)
         {
             result->pos1_location = pos1_uniform_descriptor->location;
@@ -170,10 +204,11 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         }
 
         /* Add to the object manager */
-        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result, 
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                        _curve_editor_program_lerp_release,
                                                        OBJECT_TYPE_PROGRAMS_CURVE_EDITOR_LERP,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Curve Editor Programs (LERP)\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Curve Editor Programs (LERP)\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (curve_editor_program_lerp) result;

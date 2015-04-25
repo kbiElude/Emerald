@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef CURVE_EDITOR_PROGRAM_LERP_H
@@ -11,11 +11,13 @@
 #include "ogl/ogl_types.h"
 
 
-REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_lerp, curve_editor_program_lerp)
+REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_lerp,
+                             curve_editor_program_lerp)
 
 
 /** TODO */
-PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name);
+PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull ogl_context               context,
+                                                                  __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC GLuint curve_editor_program_lerp_get_id(__in __notnull curve_editor_program_lerp);

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_H
@@ -11,11 +11,13 @@
 #include "ogl/ogl_types.h"
 
 
-REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_curvebackground, curve_editor_program_curvebackground)
+REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_curvebackground,
+                             curve_editor_program_curvebackground)
 
 
 /** TODO */
-PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name);
+PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground_create(__in __notnull ogl_context               context,
+                                                                                        __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
 PUBLIC GLint curve_editor_program_curvebackground_get_colors_uniform_location(__in __notnull curve_editor_program_curvebackground);

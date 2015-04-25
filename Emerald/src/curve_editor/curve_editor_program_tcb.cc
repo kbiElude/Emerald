@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -39,7 +39,9 @@ typedef struct
 } _curve_editor_program_tcb;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(curve_editor_program_tcb, curve_editor_program_tcb, _curve_editor_program_tcb);
+REFCOUNT_INSERT_IMPLEMENTATION(curve_editor_program_tcb,
+                               curve_editor_program_tcb,
+                              _curve_editor_program_tcb);
 
 
 /** Please see header for specification */
@@ -236,7 +238,8 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
                           result->vertex_shader   != NULL,
                           "ogl_shader_create() failed");
 
-        if (result->fragment_shader == NULL || result->vertex_shader == NULL)
+        if (result->fragment_shader == NULL ||
+            result->vertex_shader   == NULL)
         {
             LOG_ERROR("Could not create tcb curve fragment / vertex shader.");
 
@@ -255,6 +258,7 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
 
         ASSERT_DEBUG_SYNC(b_result,
                           "ogl_shader_set_body() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not set tcb curve fragment / vertex shader body.");
@@ -340,7 +344,7 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         ogl_context_request_callback_from_context_thread(context,
                                                          _curve_editor_program_tcb_create_renderer_callback,
                                                          result);
-        
+
         /* Add to the object manager */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
                                                        _curve_editor_program_tcb_release,

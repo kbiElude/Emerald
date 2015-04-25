@@ -2773,6 +2773,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                 _result->entry_points_gl.pGLGenVertexArrays(1,
                                                                            &_result->vao_no_vaas_id);
 
+                                _result->buffers = ogl_buffers_create((ogl_context) _result,
+                                                                      system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
                             } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
                             /* Set context-specific vsync setting */
@@ -2847,13 +2849,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_BUFFERS:
         {
-            /* If there's no BO manager, create one now */
-            if (context_ptr->buffers == NULL)
-            {
-                context_ptr->buffers = ogl_buffers_create(context,
-                                                          system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
-            }
-
             *((ogl_buffers*) out_result) = context_ptr->buffers;
 
             break;
