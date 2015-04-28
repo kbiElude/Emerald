@@ -2,6 +2,8 @@
  *
  * Emerald (kbi/elude @2012-2015)
  *
+ * Nodes buffer UB is exposed under UB BP 0.
+ * It is caller's responsibility to bind it & set its contents.
  */
 #ifndef CURVE_EDITOR_PROGRAM_TCB_H
 #define CURVE_EDITOR_PROGRAM_TCB_H
@@ -9,6 +11,32 @@
 #include "curve/curve_types.h"
 #include "curve_editor/curve_editor_types.h"
 #include "ogl/ogl_types.h"
+
+
+typedef enum
+{
+    /* GLfloat, only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_DELTA_TIME_DATA,
+
+    /* GLfloat, only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_DELTA_X_DATA,
+
+    /* GLint[4], only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_NODE_INDEXES_DATA,
+
+    /* GLboolean, only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_SHOULD_ROUND_DATA,
+
+    /* GLfloat, only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_START_TIME_DATA,
+
+    /* GLfloat, only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_START_X_DATA,
+
+    /* GLfloat[2], only settable */
+    CURVE_EDITOR_PROGRAM_TCB_PROPERTY_VAL_RANGE_DATA,
+
+} curve_editor_program_tcb_property;
 
 
 REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_tcb,
@@ -20,30 +48,12 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
                                                                 __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_nodes_uniform_buffer_location(__in __notnull curve_editor_program_tcb);
+PUBLIC void curve_editor_program_tcb_set_property(__in __notnull curve_editor_program_tcb          tcb,
+                                                  __in           curve_editor_program_tcb_property property,
+                                                  __in __notnull const void*                       data);
 
 /** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_delta_time_uniform_location(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_delta_x_uniform_location(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLuint curve_editor_program_tcb_get_id(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_node_indexes_uniform_location(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_should_round_uniform_location(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_start_time_uniform_location(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_start_x_uniform_location(__in __notnull curve_editor_program_tcb);
-
-/** TODO */
-PUBLIC GLint curve_editor_program_tcb_get_val_range_uniform_location(__in __notnull curve_editor_program_tcb);
+PUBLIC void curve_editor_program_tcb_use(__in __notnull ogl_context              context,
+                                         __in __notnull curve_editor_program_tcb tcb);
 
 #endif /* CURVE_EDITOR_PROGRAM_TCB_H */

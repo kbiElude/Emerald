@@ -17,6 +17,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
@@ -162,32 +163,12 @@ typedef struct
     GLuint                                         static_color_b_uniform_location;
     GLuint                                         static_color_mvp_uniform_location;
 
-    curve_editor_program_static static_curve_program;
-    GLint                       static_curve_pos1_location;
-    GLint                       static_curve_pos2_location;
-
-    curve_editor_program_lerp lerp_curve_program;
-    GLint                     lerp_curve_pos1_location;
-    GLint                     lerp_curve_pos2_location;
-
-    curve_editor_program_tcb tcb_curve_program;
-    GLuint                   tcb_curve_delta_time_location;
-    GLuint                   tcb_curve_delta_x_location;
-    GLuint                   tcb_curve_node_indexes_location;
-    GLuint                   tcb_curve_should_round_location;
-    GLuint                   tcb_curve_start_time_location;
-    GLuint                   tcb_curve_start_x_location;
-    GLuint                   tcb_curve_val_range_location;
-
-    curve_editor_program_quadselector quadselector_program;
-    GLuint                            quadselector_program_id;
-    GLint                             quadselector_alpha_location;
-    GLint                             quadselector_positions_location;
-
     curve_editor_program_curvebackground curvebackground_program;
-    GLuint                               curvebackground_program_id;
-    GLint                                curvebackground_colors_location;
-    GLint                                curvebackground_positions_location;
+    curve_editor_program_lerp            lerp_curve_program;
+    curve_editor_program_quadselector    quadselector_program;
+    curve_editor_program_static          static_curve_program;
+    curve_editor_program_tcb             tcb_curve_program;
+
     unsigned long long          ref_counter;
 } _curve_window_renderer_globals;
 
@@ -784,16 +765,18 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ogl_conte
     entry_points->pGLBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     entry_points->pGLEnable(GL_BLEND);
     {
-        entry_points->pGLUseProgram       (_globals->curvebackground_program_id);
-        entry_points->pGLProgramUniform4fv(_globals->curvebackground_program_id,
-                                           _globals->curvebackground_colors_location,
-                                           1,
-                                           color);
-        entry_points->pGLProgramUniform4fv(_globals->curvebackground_program_id,
-                                           _globals->curvebackground_positions_location,
-                                           4,
-                                           positions);
-        entry_points->pGLDrawArrays       (GL_TRIANGLE_FAN, 0, 4);
+        curve_editor_program_curvebackground_set_property(_globals->curvebackground_program,
+                                                          CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_PROPERTY_COLORS_DATA,
+                                                          color);
+        curve_editor_program_curvebackground_set_property(_globals->curvebackground_program,
+                                                          CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_PROPERTY_POSITIONS_DATA,
+                                                          positions);
+        curve_editor_program_curvebackground_use         (context,
+                                                          _globals->curvebackground_program);
+
+        entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                    0,
+                                    4);
 
         /* Border */
         positions[0 ] = start_ss; positions[1 ] = -1;
@@ -801,17 +784,18 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_background(ogl_conte
         positions[8 ] = end_ss;   positions[9 ] =  1;
         positions[12] = start_ss; positions[13] =  1;
 
-        entry_points->pGLProgramUniform4fv(_globals->curvebackground_program_id,
-                                           _globals->curvebackground_colors_location,
-                                           1,
-                                           white_color);
-        entry_points->pGLProgramUniform4fv(_globals->curvebackground_program_id,
-                                           _globals->curvebackground_positions_location,
-                                           5,
-                                           positions);
-        entry_points->pGLDrawArrays       (GL_LINE_STRIP,
-                                           0,
-                                           5);
+        curve_editor_program_curvebackground_set_property(_globals->curvebackground_program,
+                                                          CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_PROPERTY_COLORS_DATA,
+                                                          white_color);
+        curve_editor_program_curvebackground_set_property(_globals->curvebackground_program,
+                                                          CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_PROPERTY_POSITIONS_DATA,
+                                                          positions);
+        curve_editor_program_curvebackground_use         (context,
+                                                          _globals->curvebackground_program);
+
+        entry_points->pGLDrawArrays(GL_LINE_STRIP,
+                                    0,
+                                    5);
     }
     entry_points->pGLDisable(GL_BLEND);
     entry_points->pGLLineWidth(1);
@@ -856,9 +840,8 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px(ogl_context 
                                                                     float                                end_x)
 {
     /* Draw static curve preview */
-    GLuint program_id   = curve_editor_program_lerp_get_id(_globals->lerp_curve_program);
-    float  start_pos[4] = {0, 0, 0, 1};
-    float  end_pos  [4] = {1, 0, 0, 1};
+    float start_pos[4] = {0, 0, 0, 1};
+    float end_pos  [4] = {1, 0, 0, 1};
 
     start_pos[0] = LERP_FROM_A_B_TO_C_D(start_x,
                                         descriptor_ptr->x1,
@@ -881,15 +864,15 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_px(ogl_context 
                                        -1,
                                         1);
 
-    entry_points->pGLUseProgram       (program_id);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->lerp_curve_pos1_location,
-                                       1,
-                                       start_pos);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->lerp_curve_pos2_location,
-                                       1,
-                                       end_pos);
+    curve_editor_program_lerp_set_property(_globals->lerp_curve_program,
+                                           CURVE_EDITOR_PROGRAM_LERP_PROPERTY_POS1,
+                                           start_pos);
+    curve_editor_program_lerp_set_property(_globals->lerp_curve_program,
+                                           CURVE_EDITOR_PROGRAM_LERP_PROPERTY_POS2,
+                                           end_pos);
+    curve_editor_program_lerp_use         (context,
+                                           _globals->lerp_curve_program);
+
     entry_points->pGLDrawArrays       (GL_LINES,
                                        0,
                                        2);
@@ -905,7 +888,6 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss(ogl_context 
                                                                     float                                end_x)
 {
     /* Draw static curve preview */
-    GLuint program_id   = curve_editor_program_lerp_get_id(_globals->lerp_curve_program);
     float  start_pos[4] = {0, 0, 0, 1};
     float  end_pos  [4] = {1, 0, 0, 1};
 
@@ -914,18 +896,18 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_lerp_ss(ogl_context 
     end_pos  [0] = end_x;
     end_pos  [1] = end_curve_value;
 
-    entry_points->pGLUseProgram       (program_id);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->lerp_curve_pos1_location,
-                                       1,
-                                       start_pos);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->lerp_curve_pos2_location,
-                                       1,
-                                       end_pos);
-    entry_points->pGLDrawArrays       (GL_LINES,
-                                       0,
-                                       2);
+    curve_editor_program_lerp_set_property(_globals->lerp_curve_program,
+                                           CURVE_EDITOR_PROGRAM_LERP_PROPERTY_POS1,
+                                           start_pos);
+    curve_editor_program_lerp_set_property(_globals->lerp_curve_program,
+                                           CURVE_EDITOR_PROGRAM_LERP_PROPERTY_POS2,
+                                           end_pos);
+    curve_editor_program_lerp_use         (context,
+                                           _globals->lerp_curve_program);
+
+    entry_points->pGLDrawArrays(GL_LINES,
+                                0,
+                                2);
 }
 
 /** TODO */
@@ -1095,21 +1077,23 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_node_ss(_curve_edito
         alpha *= 2.5f;
     }
 
-    entry_points->pGLBlendFunc        (GL_SRC_ALPHA,
-                                       GL_ONE_MINUS_SRC_ALPHA);
-    entry_points->pGLEnable           (GL_BLEND);
-    entry_points->pGLUseProgram       (_globals->quadselector_program_id);
-    entry_points->pGLProgramUniform1f (_globals->quadselector_program_id,
-                                       _globals->quadselector_alpha_location,
-                                       alpha);
-    entry_points->pGLProgramUniform4fv(_globals->quadselector_program_id,
-                                       _globals->quadselector_positions_location,
-                                       4,
-                                       positions);
-    entry_points->pGLDrawArrays       (GL_TRIANGLE_FAN,
-                                       0,
-                                       4);
-    entry_points->pGLDisable          (GL_BLEND);
+    entry_points->pGLBlendFunc(GL_SRC_ALPHA,
+                               GL_ONE_MINUS_SRC_ALPHA);
+    entry_points->pGLEnable   (GL_BLEND);
+
+    curve_editor_program_quadselector_set_property(_globals->quadselector_program,
+                                                   CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_ALPHA_DATA,
+                                                  &alpha);
+    curve_editor_program_quadselector_set_property(_globals->quadselector_program,
+                                                   CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_POSITIONS_DATA,
+                                                   positions);
+    curve_editor_program_quadselector_use         (context,
+                                                   _globals->quadselector_program);
+
+    entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                0,
+                                4);
+    entry_points->pGLDisable   (GL_BLEND);
 
 }
 
@@ -1122,7 +1106,6 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px(ogl_contex
                                                                       float                                end_x)
 {
     /* Draw static curve preview */
-    GLuint program_id   = curve_editor_program_static_get_id(_globals->static_curve_program);
     float  start_pos[4] = {0, 0, 0, 1};
     float  end_pos  [4] = {1, 0, 0, 1};
 
@@ -1143,18 +1126,18 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_px(ogl_contex
                                         1);
     end_pos  [1] = start_pos[1];
 
-    entry_points->pGLUseProgram       (program_id);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->static_curve_pos1_location,
-                                       1,
-                                       start_pos);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->static_curve_pos2_location,
-                                       1,
-                                       end_pos);
-    entry_points->pGLDrawArrays       (GL_LINES,
-                                       0,
-                                       2);
+    curve_editor_program_static_set_property(_globals->static_curve_program,
+                                             CURVE_EDITOR_PROGRAM_STATIC_PROPERTY_POS1_DATA,
+                                             start_pos);
+    curve_editor_program_static_set_property(_globals->static_curve_program,
+                                             CURVE_EDITOR_PROGRAM_STATIC_PROPERTY_POS2_DATA,
+                                             end_pos);
+    curve_editor_program_static_use         (context,
+                                             _globals->static_curve_program);
+
+    entry_points->pGLDrawArrays(GL_LINES,
+                                0,
+                                2);
 }
 
 /** TODO */
@@ -1166,7 +1149,6 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss(ogl_contex
                                                                       float                                end_x)
 {
     /* Draw static curve preview */
-    GLuint program_id   = curve_editor_program_static_get_id(_globals->static_curve_program);
     float  start_pos[4] = {0, 0, 0, 1};
     float  end_pos  [4] = {1, 0, 0, 1};
 
@@ -1175,18 +1157,18 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_static_ss(ogl_contex
     end_pos  [0] = end_x;
     end_pos  [1] = start_pos[1];
 
-    entry_points->pGLUseProgram       (program_id);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->static_curve_pos1_location,
-                                       1,
-                                       start_pos);
-    entry_points->pGLProgramUniform4fv(program_id,
-                                       _globals->static_curve_pos2_location,
-                                       1,
-                                       end_pos);
-    entry_points->pGLDrawArrays       (GL_LINES,
-                                       0,
-                                       2);
+    curve_editor_program_static_set_property(_globals->static_curve_program,
+                                             CURVE_EDITOR_PROGRAM_STATIC_PROPERTY_POS1_DATA,
+                                             start_pos);
+    curve_editor_program_static_set_property(_globals->static_curve_program,
+                                             CURVE_EDITOR_PROGRAM_STATIC_PROPERTY_POS2_DATA,
+                                             end_pos);
+    curve_editor_program_static_use         (context,
+                                             _globals->static_curve_program);
+
+    entry_points->pGLDrawArrays(GL_LINES,
+                                0,
+                                2);
 }
 
 /** TODO */
@@ -1353,7 +1335,6 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
     curve_segment           segment         = curve_container_get_segment(descriptor_ptr->curve,
                                                                           segment_id);
     uint32_t                n_nodes         = 0;
-    GLuint                  program_id      = curve_editor_program_tcb_get_id(_globals->tcb_curve_program);
     _tcb_segment_rendering* tcb_segment_ptr = NULL;
 
     curve_segment_get_amount_of_nodes(segment,
@@ -1362,17 +1343,18 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                       segment_id,
                                      &tcb_segment_ptr);
 
-    entry_points->pGLUseProgram       (program_id);
-    entry_points->pGLProgramUniform1f (program_id,
-                                       _globals->tcb_curve_delta_time_location,
-                                       delta_time);
-    entry_points->pGLProgramUniform1f (program_id,
-                                       _globals->tcb_curve_delta_x_location,
-                                       delta_x);
-    entry_points->pGLProgramUniform2fv(program_id,
-                                       _globals->tcb_curve_val_range_location,
-                                       1,
-                                       val_range);
+    curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                          CURVE_EDITOR_PROGRAM_TCB_PROPERTY_DELTA_TIME_DATA,
+                                         &delta_time);
+    curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                          CURVE_EDITOR_PROGRAM_TCB_PROPERTY_DELTA_X_DATA,
+                                         &delta_x);
+    curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                          CURVE_EDITOR_PROGRAM_TCB_PROPERTY_VAL_RANGE_DATA,
+                                          val_range);
+    curve_editor_program_tcb_use         (context,
+                                          _globals->tcb_curve_program);
+
     entry_points->pGLBindBufferBase   (GL_UNIFORM_BUFFER,
                                        0,
                                        tcb_segment_ptr->tcb_ubo_id);
@@ -1487,9 +1469,13 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
     curve_segment_get_node_value_variant_type(segment,
                                              &segment_data_type);
 
-    entry_points->pGLProgramUniform1i(program_id,
-                                      _globals->tcb_curve_should_round_location,
-                                      segment_data_type == SYSTEM_VARIANT_INTEGER);
+    const bool new_should_round_data_value = segment_data_type == SYSTEM_VARIANT_INTEGER;
+
+    curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                          CURVE_EDITOR_PROGRAM_TCB_PROPERTY_SHOULD_ROUND_DATA,
+                                         &new_should_round_data_value);
+    curve_editor_program_tcb_use         (context,
+                                          _globals->tcb_curve_program);
 
     for (uint32_t n_node = 0;
                   n_node < n_nodes - 1;
@@ -1506,16 +1492,17 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                                                      0,
                                                      (window_rect.right - window_rect.left) ) * 2;
 
-        entry_points->pGLProgramUniform4iv(program_id,
-                                           _globals->tcb_curve_node_indexes_location,
-                                           1,
-                                           node_indexes);
-        entry_points->pGLProgramUniform1f (program_id,
-                                           _globals->tcb_curve_start_time_location,
-                                           float(node_b_time_msec) / 1000.0f);
-        entry_points->pGLProgramUniform1f (program_id,
-                                           _globals->tcb_curve_start_x_location,
-                                           node_b_ss);
+        const float new_start_time_value = float(node_b_time_msec) / 1000.0f;
+
+        curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                              CURVE_EDITOR_PROGRAM_TCB_PROPERTY_NODE_INDEXES_DATA,
+                                              node_indexes);
+        curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                              CURVE_EDITOR_PROGRAM_TCB_PROPERTY_START_TIME_DATA,
+                                             &new_start_time_value);
+        curve_editor_program_tcb_set_property(_globals->tcb_curve_program,
+                                              CURVE_EDITOR_PROGRAM_TCB_PROPERTY_START_X_DATA,
+                                             &node_b_ss);
 
         ASSERT_DEBUG_SYNC(width_px >= 0,
                           "Invalid width (in pixels): %d",
@@ -1523,6 +1510,9 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
 
         if (width_px > 0)
         {
+            curve_editor_program_tcb_use(context,
+                                         _globals->tcb_curve_program);
+
             entry_points->pGLDrawArrays(GL_LINE_STRIP,
                                         0,
                                         width_px);
@@ -1955,19 +1945,12 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         ASSERT_DEBUG_SYNC(_globals->curvebackground_program != NULL,
                           "Could not create curve background program.");
 
-        _globals->curvebackground_colors_location    = curve_editor_program_curvebackground_get_colors_uniform_location   (_globals->curvebackground_program);
-        _globals->curvebackground_positions_location = curve_editor_program_curvebackground_get_positions_uniform_location(_globals->curvebackground_program);
-        _globals->curvebackground_program_id         = curve_editor_program_curvebackground_get_id                        (_globals->curvebackground_program);
-
         /* Create curve static program */
         _globals->static_curve_program = curve_editor_program_static_create(context,
                                                                             system_hashed_ansi_string_create("Global Curve Static") );
 
         ASSERT_DEBUG_SYNC(_globals->static_curve_program != NULL,
                           "Could not create static curve program.");
-
-        _globals->static_curve_pos1_location = curve_editor_program_static_get_pos1_uniform_location(_globals->static_curve_program);
-        _globals->static_curve_pos2_location = curve_editor_program_static_get_pos2_uniform_location(_globals->static_curve_program);
 
         /* Create curve lerp program */
         _globals->lerp_curve_program = curve_editor_program_lerp_create(context,
@@ -1976,9 +1959,6 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         ASSERT_DEBUG_SYNC(_globals->lerp_curve_program != NULL,
                           "Could not create lerp curve program.");
 
-        _globals->lerp_curve_pos1_location = curve_editor_program_lerp_get_pos1_uniform_location(_globals->lerp_curve_program);
-        _globals->lerp_curve_pos2_location = curve_editor_program_lerp_get_pos2_uniform_location(_globals->lerp_curve_program);
-
         /* Create curve tcb program */
         _globals->tcb_curve_program = curve_editor_program_tcb_create(context,
                                                                       system_hashed_ansi_string_create("Global Curve TCB") );
@@ -1986,24 +1966,12 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
         ASSERT_DEBUG_SYNC(_globals->tcb_curve_program != NULL,
                           "Could not create tcb curve program.");
 
-        _globals->tcb_curve_delta_time_location   = curve_editor_program_tcb_get_delta_time_uniform_location  (_globals->tcb_curve_program);
-        _globals->tcb_curve_delta_x_location      = curve_editor_program_tcb_get_delta_x_uniform_location     (_globals->tcb_curve_program);
-        _globals->tcb_curve_node_indexes_location = curve_editor_program_tcb_get_node_indexes_uniform_location(_globals->tcb_curve_program);
-        _globals->tcb_curve_should_round_location = curve_editor_program_tcb_get_should_round_uniform_location(_globals->tcb_curve_program);
-        _globals->tcb_curve_start_time_location   = curve_editor_program_tcb_get_start_time_uniform_location  (_globals->tcb_curve_program);
-        _globals->tcb_curve_start_x_location      = curve_editor_program_tcb_get_start_x_uniform_location     (_globals->tcb_curve_program);
-        _globals->tcb_curve_val_range_location    = curve_editor_program_tcb_get_val_range_uniform_location   (_globals->tcb_curve_program);
-
         /* Create quad selector program */
         _globals->quadselector_program = curve_editor_program_quadselector_create(context,
                                                                                   system_hashed_ansi_string_create("Global Curve QuadSelector") );
 
         ASSERT_DEBUG_SYNC(_globals->quadselector_program != NULL,
                           "Could not create quad selector program");
-
-        _globals->quadselector_alpha_location     = curve_editor_program_quadselector_get_alpha_uniform_location    (_globals->quadselector_program);
-        _globals->quadselector_program_id         = curve_editor_program_quadselector_get_id                        (_globals->quadselector_program);
-        _globals->quadselector_positions_location = curve_editor_program_quadselector_get_positions_uniform_location(_globals->quadselector_program);
 
         /* Reset reference counter */
         _globals->ref_counter = 1;
@@ -3344,17 +3312,20 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                        GL_ONE_MINUS_SRC_ALPHA);
             entry_points->pGLEnable   (GL_BLEND);
             {
-                entry_points->pGLUseProgram       (_globals->quadselector_program_id);
-                entry_points->pGLProgramUniform1f (_globals->quadselector_program_id,
-                                                   _globals->quadselector_alpha_location,
-                                                   0.25f);
-                entry_points->pGLProgramUniform4fv(_globals->quadselector_program_id,
-                                                   _globals->quadselector_positions_location,
-                                                   4,
-                                                   positions);
-                entry_points->pGLDrawArrays       (GL_TRIANGLE_FAN,
-                                                   0,
-                                                   4);
+                const float new_alpha = 0.25f;
+
+                curve_editor_program_quadselector_set_property(_globals->quadselector_program,
+                                                               CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_ALPHA_DATA,
+                                                              &new_alpha);
+                curve_editor_program_quadselector_set_property(_globals->quadselector_program,
+                                                               CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_POSITIONS_DATA,
+                                                               positions);
+                curve_editor_program_quadselector_use         (context,
+                                                               _globals->quadselector_program);
+
+                entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                            0,
+                                            4);
             }
             entry_points->pGLDisable(GL_BLEND);
         }
@@ -3390,17 +3361,20 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
             positions[12] = x1;
             positions[13]  = y1;
 
-            entry_points->pGLUseProgram       (_globals->quadselector_program_id);
-            entry_points->pGLProgramUniform1f (_globals->quadselector_program_id,
-                                               _globals->quadselector_alpha_location,
-                                               0.75f);
-            entry_points->pGLProgramUniform4fv(_globals->quadselector_program_id,
-                                               _globals->quadselector_positions_location,
-                                               4,
-                                               positions);
-            entry_points->pGLDrawArrays       (GL_TRIANGLE_FAN,
-                                               0,
-                                               4);
+            const float new_alpha = 0.75f;
+
+            curve_editor_program_quadselector_set_property(_globals->quadselector_program,
+                                                           CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_ALPHA_DATA,
+                                                          &new_alpha);
+            curve_editor_program_quadselector_set_property(_globals->quadselector_program,
+                                                           CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_POSITIONS_DATA,
+                                                           positions);
+            curve_editor_program_quadselector_use         (context,
+                                                           _globals->quadselector_program);
+
+            entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
+                                        0,
+                                        4);
         }
     }
     entry_points->pGLBindVertexArray(0);

@@ -11,6 +11,16 @@
 #include "ogl/ogl_types.h"
 
 
+typedef enum
+{
+    /* GLfloat[4], only settable */
+    CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_PROPERTY_COLORS_DATA,
+
+    /* GLfloat[20], only settable */
+    CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_PROPERTY_POSITIONS_DATA,
+} curve_editor_program_curvebackground_property;
+
+
 REFCOUNT_INSERT_DECLARATIONS(curve_editor_program_curvebackground,
                              curve_editor_program_curvebackground)
 
@@ -20,12 +30,12 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
                                                                                         __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC GLint curve_editor_program_curvebackground_get_colors_uniform_location(__in __notnull curve_editor_program_curvebackground);
+PUBLIC void curve_editor_program_curvebackground_set_property(__in __notnull curve_editor_program_curvebackground          program,
+                                                              __in           curve_editor_program_curvebackground_property property,
+                                                              __in __notnull const void*                                   data);
 
 /** TODO */
-PUBLIC GLuint curve_editor_program_curvebackground_get_id(__in __notnull curve_editor_program_curvebackground);
+PUBLIC void curve_editor_program_curvebackground_use(__in __notnull ogl_context                          context,
+                                                     __in __notnull curve_editor_program_curvebackground curvebackground);
 
-/** TODO */
-PUBLIC GLint curve_editor_program_curvebackground_get_positions_uniform_location(__in __notnull curve_editor_program_curvebackground);
-
-#endif /* CURVE_EDITOR_PROGRAM_QUADSELECTOR_H */
+#endif /* CURVE_EDITOR_PROGRAM_CURVEBACKGROUND_H */

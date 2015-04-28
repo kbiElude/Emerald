@@ -6,7 +6,9 @@
 #include "shared.h"
 #include "curve_editor/curve_editor_types.h"
 #include "curve_editor/curve_editor_program_quadselector.h"
+#include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
 #include "system/system_assertions.h"
@@ -18,12 +20,16 @@
 /* Type definitions */
 typedef struct
 {
-    ogl_shader  fragment_shader;
-    ogl_shader  vertex_shader;
-    ogl_program program;
+    ogl_shader     fragment_shader;
+    ogl_shader     vertex_shader;
+    ogl_program    program;
+    ogl_program_ub program_ub;
+    GLuint         program_ub_bo_id;
+    GLuint         program_ub_bo_size;
+    GLuint         program_ub_bo_start_offset;
 
-    GLint alpha_location;
-    GLint positions_location;
+    GLint alpha_ub_offset;
+    GLint positions_ub_offset;
 
     REFCOUNT_INSERT_VARIABLES
 
@@ -81,8 +87,13 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
 
         fp_body_stream << "#version 330\n"
                           "\n"
-                          "uniform float alpha;\n"
-                          "out     vec4  color;\n"
+                          "uniform data\n"
+                          "{\n"
+                          "    float alpha;\n"
+                          "    vec4 positions[4];\n"
+                          "};\n"
+                          "\n"
+                          "out vec4 color;\n"
                           "\n"
                           "void main()\n"
                           "{\n"
@@ -91,7 +102,11 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
 
         vp_body_stream << "#version 330\n"
                           "\n"
-                          "uniform vec4 positions[4];\n"
+                          "uniform data\n"
+                          "{\n"
+                          "    float alpha;\n"
+                          "    vec4  positions[4];\n"
+                          "};\n"
                           "\n"
                           "void main()\n"
                           "{\n"
@@ -100,7 +115,8 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
 
         /* Create the program */
         result->program = ogl_program_create(context,
-                                             name);
+                                             name,
+                                             true); /* use_syncable_ubs */
 
         ASSERT_DEBUG_SYNC(result->program != NULL,
                           "ogl_program_create() failed");
@@ -173,7 +189,9 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
         /* Link the program */
         b_result = ogl_program_link(result->program);
 
-        ASSERT_DEBUG_SYNC(b_result, "ogl_program_link() failed");
+        ASSERT_DEBUG_SYNC(b_result,
+                          "ogl_program_link() failed");
+
         if (!b_result)
         {
             LOG_ERROR("Could not link quad selector curve program");
@@ -185,20 +203,37 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
         const ogl_program_uniform_descriptor* alpha_uniform_descriptor     = NULL;
         const ogl_program_uniform_descriptor* positions_uniform_descriptor = NULL;
 
-        b_result  = ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("alpha"),
-                                                   &alpha_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("positions[0]"),
-                                                   &positions_uniform_descriptor);
+        b_result  = ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("alpha"),
+                                                         &alpha_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("positions[0]"),
+                                                         &positions_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_block_by_name(result->program,
+                                                          system_hashed_ansi_string_create("data"),
+                                                          &result->program_ub);
 
         ASSERT_DEBUG_SYNC(b_result,
-                          "Could not retrieve alpha/positions uniform descriptor.");
+                          "Could not retrieve alpha/positions uniform descriptor or the data uniform block descriptor.");
 
         if (b_result)
         {
-            result->alpha_location     = alpha_uniform_descriptor->location;
-            result->positions_location = positions_uniform_descriptor->location;
+            result->alpha_ub_offset     = alpha_uniform_descriptor->ub_offset;
+            result->positions_ub_offset = positions_uniform_descriptor->ub_offset;
+
+            ASSERT_DEBUG_SYNC(result->alpha_ub_offset     != -1 &&
+                              result->positions_ub_offset != -1,
+                              "At least one UB offset is -1");
+
+            ogl_program_ub_get_property(result->program_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                       &result->program_ub_bo_size);
+            ogl_program_ub_get_property(result->program_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                       &result->program_ub_bo_id);
+            ogl_program_ub_get_property(result->program_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                       &result->program_ub_bo_start_offset);
         }
 
         /* Add to the object manager */
@@ -220,20 +255,64 @@ end:
     return NULL;
 }
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_quadselector_get_alpha_uniform_location(__in __notnull curve_editor_program_quadselector program)
+/** Please see header for spec */
+PUBLIC void curve_editor_program_quadselector_set_property(__in __notnull curve_editor_program_quadselector          program,
+                                                           __in           curve_editor_program_quadselector_property property,
+                                                           __in __notnull const void*                                data)
 {
-    return ((_curve_editor_program_quadselector*) program)->alpha_location;
+    _curve_editor_program_quadselector* program_ptr = (_curve_editor_program_quadselector*) program;
+
+    switch (property)
+    {
+        case CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_ALPHA_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(program_ptr->program_ub,
+                                                        program_ptr->alpha_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) );
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_QUADSELECTOR_PROPERTY_POSITIONS_DATA:
+        {
+            ogl_program_ub_set_arrayed_uniform_value(program_ptr->program_ub,
+                                                     program_ptr->positions_ub_offset,
+                                                     data,
+                                                     0, /* src_data_flags */
+                                                     sizeof(float) * 16,
+                                                     0, /* dst_array_start_index */
+                                                     4);/* dst_array_item_count */
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve_editor_program_quadselector_property value.");
+        }
+    } /* switch (property) */
 }
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_quadselector_get_positions_uniform_location(__in __notnull curve_editor_program_quadselector program)
+/** Please see header for spec */
+PUBLIC void curve_editor_program_quadselector_use(__in __notnull ogl_context                       context,
+                                                  __in __notnull curve_editor_program_quadselector quadselector)
 {
-    return ((_curve_editor_program_quadselector*) program)->positions_location;
-}
+    const ogl_context_gl_entrypoints*   entry_points     = NULL;
+    _curve_editor_program_quadselector* quadselector_ptr = (_curve_editor_program_quadselector*) quadselector;
 
-/** Please see header for specification */
-PUBLIC GLuint curve_editor_program_quadselector_get_id(__in __notnull curve_editor_program_quadselector program)
-{
-    return ogl_program_get_id( ((_curve_editor_program_quadselector*) program)->program);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    ogl_program_ub_sync(quadselector_ptr->program_ub);
+
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     0, /* index */
+                                     quadselector_ptr->program_ub_bo_id,
+                                     quadselector_ptr->program_ub_bo_start_offset,
+                                     quadselector_ptr->program_ub_bo_size);
+    entry_points->pGLUseProgram     (ogl_program_get_id(quadselector_ptr->program) );
 }

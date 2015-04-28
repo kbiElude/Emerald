@@ -8,6 +8,7 @@
 #include "curve_editor/curve_editor_program_tcb.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
@@ -20,19 +21,21 @@
 /* Type definitions */
 typedef struct
 {
-    ogl_shader  fragment_shader;
-    ogl_shader  vertex_shader;
-    ogl_program program;
+    ogl_shader     fragment_shader;
+    ogl_shader     vertex_shader;
+    ogl_program    program;
+    ogl_program_ub program_data_ub;
+    GLuint         program_data_ub_bo_id;
+    GLuint         program_data_ub_bo_size;
+    GLuint         program_data_ub_bo_start_offset;
 
-    GLuint delta_time_location;
-    GLuint delta_x_location;
-    GLuint node_indexes_location;
-    GLuint should_round_location;
-    GLuint start_time_location;
-    GLuint start_x_location;
-    GLuint val_range_location;
-
-    GLint nodes_buffer_uniform_block_index;
+    GLuint delta_time_ub_offset;
+    GLuint delta_x_ub_offset;
+    GLuint node_indexes_ub_offset;
+    GLuint should_round_ub_offset;
+    GLuint start_time_ub_offset;
+    GLuint start_x_ub_offset;
+    GLuint val_range_ub_offset;
 
     REFCOUNT_INSERT_VARIABLES
 
@@ -67,35 +70,6 @@ PRIVATE void _curve_editor_program_tcb_release(void* in)
 }
 
 
-/** TODO */
-PRIVATE void _curve_editor_program_tcb_create_renderer_callback(__in __notnull ogl_context context,
-                                                                               void*       curve_editor_program_tcb)
-{
-    const ogl_context_gl_entrypoints* entry_points = NULL;
-    _curve_editor_program_tcb*        result_ptr   = (_curve_editor_program_tcb*) curve_editor_program_tcb;
-    GLuint                            program_id   = ogl_program_get_id(result_ptr->program);
-
-    ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
-                            &entry_points);
-
-    result_ptr->nodes_buffer_uniform_block_index = entry_points->pGLGetUniformBlockIndex(program_id,
-                                                                                         "NodesBuffer");
-
-    ASSERT_DEBUG_SYNC(result_ptr->nodes_buffer_uniform_block_index != -1,
-                      "Could not retrieve uniform block index for NodesBuffer");
-
-    /* Configure the binding for the program */
-    entry_points->pGLUseProgram         (program_id);
-    entry_points->pGLUniformBlockBinding(program_id,
-                                         result_ptr->nodes_buffer_uniform_block_index,
-                                         0);
-    entry_points->pGLUseProgram         (0);
-
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "GL error in _curve_editor_program_tcb_create_renderer_callback()");
-}
-
 /** Please see header for specification */
 PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull ogl_context               context,
                                                                 __in __notnull system_hashed_ansi_string name)
@@ -108,13 +82,10 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
     if (result != NULL)
     {
         /* Reset the structure */
-        result->delta_time_location = -1;
-        result->delta_x_location    = -1;
-        result->fragment_shader     = NULL;
-        result->program             = NULL;
-        result->start_time_location = -1;
-        result->start_x_location    = -1;
-        result->vertex_shader       = NULL;
+        result->fragment_shader         = NULL;
+        result->program                 = NULL;
+        result->program_data_ub         = NULL;
+        result->vertex_shader           = NULL;
 
         /* Create vertex shader */
         std::stringstream fp_body_stream;
@@ -133,13 +104,16 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
                           "\n"
                           "const int max_nodes = 64;\n"
                           "\n"
-                          "uniform float start_x;\n"
-                          "uniform float start_time;\n"
-                          "uniform float delta_x;\n"
-                          "uniform float delta_time;\n"
-                          "uniform vec2  val_range;\n"
-                          "uniform ivec4 node_indexes;\n"
-                          "uniform bool  should_round;\n"
+                          "layout(binding = 1) uniform data\n"
+                          "{\n"
+                          "    float start_x;\n"
+                          "    float start_time;\n"
+                          "    float delta_x;\n"
+                          "    float delta_time;\n"
+                          "    vec2  val_range;\n"
+                          "    ivec4 node_indexes;\n"
+                          "    bool  should_round;\n"
+                          "};\n"
                           "\n"
                           "struct Node\n"
                           "{\n"
@@ -212,7 +186,9 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
                           "}\n";
         
         /* Create the program */
-        result->program = ogl_program_create(context, name);
+        result->program = ogl_program_create(context,
+                                             name,
+                                             true); /* use_syncable_ubs */
 
         ASSERT_DEBUG_SYNC(result->program != NULL,
                           "ogl_program_create() failed");
@@ -304,46 +280,63 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         const ogl_program_uniform_descriptor* start_x_uniform_descriptor      = NULL;
         const ogl_program_uniform_descriptor* val_range_uniform_descriptor    = NULL;
 
-        b_result  = ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("delta_time"),
-                                                   &delta_time_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("delta_x"),
-                                                   &delta_x_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("node_indexes"),
-                                                   &node_indexes_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("should_round"),
-                                                   &should_round_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("start_time"),
-                                                   &start_time_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("start_x"),
-                                                   &start_x_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("val_range"),
-                                                   &val_range_uniform_descriptor);
+        b_result  = ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("delta_time"),
+                                                         &delta_time_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("delta_x"),
+                                                         &delta_x_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("node_indexes"),
+                                                         &node_indexes_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("should_round"),
+                                                         &should_round_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("start_time"),
+                                                         &start_time_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("start_x"),
+                                                         &start_x_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("val_range"),
+                                                         &val_range_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_block_by_name(result->program,
+                                                          system_hashed_ansi_string_create("data"),
+                                                         &result->program_data_ub);
 
         ASSERT_DEBUG_SYNC(b_result,
-                          "Could not retrieve delta_time/delta_x/start_time/start_x uniform descriptor.");
+                          "Could not retrieve uniform or uniform block descriptor(s).");
 
         if (b_result)
         {
-            result->delta_time_location   = delta_time_uniform_descriptor->location;
-            result->delta_x_location      = delta_x_uniform_descriptor->location;
-            result->node_indexes_location = node_indexes_uniform_descriptor->location;
-            result->should_round_location = should_round_uniform_descriptor->location;
-            result->start_time_location   = start_time_uniform_descriptor->location;
-            result->start_x_location      = start_x_uniform_descriptor->location;
-            result->val_range_location    = val_range_uniform_descriptor->location;
-        }
+            result->delta_time_ub_offset   = delta_time_uniform_descriptor->ub_offset;
+            result->delta_x_ub_offset      = delta_x_uniform_descriptor->ub_offset;
+            result->node_indexes_ub_offset = node_indexes_uniform_descriptor->ub_offset;
+            result->should_round_ub_offset = should_round_uniform_descriptor->ub_offset;
+            result->start_time_ub_offset   = start_time_uniform_descriptor->ub_offset;
+            result->start_x_ub_offset      = start_x_uniform_descriptor->ub_offset;
+            result->val_range_ub_offset    = val_range_uniform_descriptor->ub_offset;
 
-        /* Configure uniform block binding */
-        ogl_context_request_callback_from_context_thread(context,
-                                                         _curve_editor_program_tcb_create_renderer_callback,
-                                                         result);
+            ASSERT_DEBUG_SYNC(result->delta_time_ub_offset   != -1 &&
+                              result->delta_x_ub_offset      != -1 &&
+                              result->node_indexes_ub_offset != -1 &&
+                              result->should_round_ub_offset != -1 &&
+                              result->start_time_ub_offset   != -1 &&
+                              result->start_x_ub_offset      != -1 &&
+                              result->val_range_ub_offset    != -1,
+                              "At least one uniform has an UB offset of -1");
+
+            ogl_program_ub_get_property(result->program_data_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                       &result->program_data_ub_bo_size);
+            ogl_program_ub_get_property(result->program_data_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                       &result->program_data_ub_bo_id);
+            ogl_program_ub_get_property(result->program_data_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                       &result->program_data_ub_bo_start_offset);
+        }
 
         /* Add to the object manager */
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result,
@@ -364,50 +357,117 @@ end:
     return NULL;
 }
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_delta_time_uniform_location(__in __notnull curve_editor_program_tcb program)
+/* Please see header for spec */
+PUBLIC void curve_editor_program_tcb_set_property(__in __notnull curve_editor_program_tcb          tcb,
+                                                  __in           curve_editor_program_tcb_property property,
+                                                  __in __notnull const void*                       data)
 {
-    return ((_curve_editor_program_tcb*) program)->delta_time_location;
+    _curve_editor_program_tcb* tcb_ptr = (_curve_editor_program_tcb*) tcb;
+
+    switch (property)
+    {
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_DELTA_TIME_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->delta_time_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) );
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_DELTA_X_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->delta_x_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) );
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_NODE_INDEXES_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->node_indexes_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(GLuint) * 4);
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_SHOULD_ROUND_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->should_round_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(GLboolean) );
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_START_TIME_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->start_time_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(GLfloat) );
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_START_X_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->start_x_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(GLfloat) );
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_TCB_PROPERTY_VAL_RANGE_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(tcb_ptr->program_data_ub,
+                                                        tcb_ptr->val_range_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(GLfloat) * 2);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve_editor_program_tcb_property value");
+        }
+    } /* switch (property) */
 }
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_delta_x_uniform_location(__in __notnull curve_editor_program_tcb program)
+/** Please see header for spec */
+PUBLIC void curve_editor_program_tcb_use(__in __notnull ogl_context              context,
+                                         __in __notnull curve_editor_program_tcb tcb)
 {
-    return ((_curve_editor_program_tcb*) program)->delta_x_location;
-}
+    const ogl_context_gl_entrypoints* entry_points = NULL;
+    _curve_editor_program_tcb*        tcb_ptr      = (_curve_editor_program_tcb*) tcb;
 
-/** Please see header for specification */
-PUBLIC GLuint curve_editor_program_tcb_get_id(__in __notnull curve_editor_program_tcb program)
-{
-    return ogl_program_get_id( ((_curve_editor_program_tcb*) program)->program);
-}
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_node_indexes_uniform_location(__in __notnull curve_editor_program_tcb program)
-{
-    return ((_curve_editor_program_tcb*) program)->node_indexes_location;
-}
+    ogl_program_ub_sync(tcb_ptr->program_data_ub);
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_should_round_uniform_location(__in __notnull curve_editor_program_tcb program)
-{
-    return ((_curve_editor_program_tcb*) program)->should_round_location;
-}
-
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_start_time_uniform_location(__in __notnull curve_editor_program_tcb program)
-{
-    return ((_curve_editor_program_tcb*) program)->start_time_location;
-}
-
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_start_x_uniform_location(__in __notnull curve_editor_program_tcb program)
-{
-    return ((_curve_editor_program_tcb*) program)->start_x_location;
-}
-
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_tcb_get_val_range_uniform_location(__in __notnull curve_editor_program_tcb program)
-{
-    return ((_curve_editor_program_tcb*) program)->val_range_location;
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     1, /* index */
+                                     tcb_ptr->program_data_ub_bo_id,
+                                     tcb_ptr->program_data_ub_bo_start_offset,
+                                     tcb_ptr->program_data_ub_bo_size);
+    entry_points->pGLUseProgram     (ogl_program_get_id(tcb_ptr->program) );
 }

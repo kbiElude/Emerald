@@ -6,7 +6,9 @@
 #include "shared.h"
 #include "curve_editor/curve_editor_types.h"
 #include "curve_editor/curve_editor_program_static.h"
+#include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_types.h"
 #include "system/system_assertions.h"
@@ -18,12 +20,16 @@
 /* Type definitions */
 typedef struct
 {
-    ogl_shader  fragment_shader;
-    ogl_shader  vertex_shader;
-    ogl_program program;
+    ogl_shader     fragment_shader;
+    ogl_shader     vertex_shader;
+    ogl_program    program;
+    ogl_program_ub program_ub;
+    GLuint         program_ub_bo_id;
+    GLuint         program_ub_bo_size;
+    GLuint         program_ub_bo_start_offset;
 
-    GLint pos1_location;
-    GLint pos2_location;
+    GLint pos1_ub_offset;
+    GLint pos2_ub_offset;
 
     REFCOUNT_INSERT_VARIABLES
 
@@ -73,6 +79,7 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __not
         /* Reset the structure */
         result->fragment_shader = NULL;
         result->program         = NULL;
+        result->program_ub      = NULL;
         result->vertex_shader   = NULL;
 
         /* Create vertex shader */
@@ -90,8 +97,11 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __not
 
         vp_body_stream << "#version 330\n"
                           "\n"
-                          "uniform vec4 pos1;\n"
-                          "uniform vec4 pos2;\n"
+                          "uniform data\n"
+                          "{\n"
+                          "    vec4 pos1;\n"
+                          "    vec4 pos2;\n"
+                          "};\n"
                           "\n"
                           "void main()\n"
                           "{\n"
@@ -100,7 +110,8 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __not
 
         /* Create the program */
         result->program = ogl_program_create(context,
-                                             name);
+                                             name,
+                                             true); /* use_syncable_ubs */
 
         ASSERT_DEBUG_SYNC(result->program != NULL,
                           "ogl_program_create() failed");
@@ -187,20 +198,37 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __not
         const ogl_program_uniform_descriptor* pos1_uniform_descriptor = NULL;
         const ogl_program_uniform_descriptor* pos2_uniform_descriptor = NULL;
 
-        b_result  = ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("pos1"),
-                                                   &pos1_uniform_descriptor);
-        b_result &= ogl_program_get_uniform_by_name(result->program,
-                                                    system_hashed_ansi_string_create("pos2"),
-                                                   &pos2_uniform_descriptor);
+        b_result  = ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("pos1"),
+                                                         &pos1_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_by_name      (result->program,
+                                                          system_hashed_ansi_string_create("pos2"),
+                                                         &pos2_uniform_descriptor);
+        b_result &= ogl_program_get_uniform_block_by_name(result->program,
+                                                          system_hashed_ansi_string_create("data"),
+                                                         &result->program_ub);
 
         ASSERT_DEBUG_SYNC(b_result,
                           "Could not retrieve pos1/pos2 uniform descriptor.");
 
         if (b_result)
         {
-            result->pos1_location = pos1_uniform_descriptor->location;
-            result->pos2_location = pos2_uniform_descriptor->location;
+            result->pos1_ub_offset = pos1_uniform_descriptor->ub_offset;
+            result->pos2_ub_offset = pos2_uniform_descriptor->ub_offset;
+
+            ASSERT_DEBUG_SYNC(result->pos1_ub_offset != -1 &&
+                              result->pos2_ub_offset != -1,
+                              "At least one UB offset is -1");
+
+            ogl_program_ub_get_property(result->program_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                       &result->program_ub_bo_size);
+            ogl_program_ub_get_property(result->program_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                       &result->program_ub_bo_id);
+            ogl_program_ub_get_property(result->program_ub,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                       &result->program_ub_bo_start_offset);
         }
 
         /* Add to the object manager */
@@ -222,20 +250,64 @@ end:
     return NULL;
 }
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_static_get_pos1_uniform_location(__in __notnull curve_editor_program_static program)
+/** Please see header for spec */
+PUBLIC void curve_editor_program_static_set_property(__in __notnull curve_editor_program_static          instance,
+                                                     __in           curve_editor_program_static_property property,
+                                                     __in __notnull const void*                          data)
 {
-    return ((_curve_editor_program_static*) program)->pos1_location;
+    _curve_editor_program_static* instance_ptr = (_curve_editor_program_static*) instance;
+
+    switch (property)
+    {
+        case CURVE_EDITOR_PROGRAM_STATIC_PROPERTY_POS1_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(instance_ptr->program_ub,
+                                                        instance_ptr->pos1_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+
+            break;
+        }
+
+        case CURVE_EDITOR_PROGRAM_STATIC_PROPERTY_POS2_DATA:
+        {
+            ogl_program_ub_set_nonarrayed_uniform_value(instance_ptr->program_ub,
+                                                        instance_ptr->pos2_ub_offset,
+                                                        data,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized curve_editor_program_static_property value.");
+        }
+    } /* switch (property) */
 }
 
-/** Please see header for specification */
-PUBLIC GLint curve_editor_program_static_get_pos2_uniform_location(__in __notnull curve_editor_program_static program)
+/** Please see header for spec */
+PUBLIC void curve_editor_program_static_use(__in __notnull ogl_context                 context,
+                                            __in __notnull curve_editor_program_static instance)
 {
-    return ((_curve_editor_program_static*) program)->pos2_location;
+    const ogl_context_gl_entrypoints* entry_points = NULL;
+    _curve_editor_program_static*     static_ptr   = (_curve_editor_program_static*) instance;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    ogl_program_ub_sync(static_ptr->program_ub);
+
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     0, /* index */
+                                     static_ptr->program_ub_bo_id,
+                                     static_ptr->program_ub_bo_start_offset,
+                                     static_ptr->program_ub_bo_size);
+    entry_points->pGLUseProgram     (ogl_program_get_id(static_ptr->program) );
+
 }
 
-/** Please see header for specification */
-PUBLIC GLuint curve_editor_program_static_get_id(__in __notnull curve_editor_program_static program)
-{
-    return ogl_program_get_id( ((_curve_editor_program_static*) program)->program);
-}
