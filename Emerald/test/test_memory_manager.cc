@@ -587,3 +587,142 @@ TEST(MemoryManagerTest, AlignedRegionDealloc)
 
     system_memory_manager_release(manager);
 }
+
+TEST(MemoryManagerTest, FunctionalTest1)
+{
+    /* This use case used to throw an assertion failure in the past */
+    /* A regression test which verifies that an aligned alloc is recognized
+     * can be correctly released by a following free call.
+     */
+    const unsigned int memory_size    = 524681216;
+    const unsigned int page_size      = 65536;
+          bool         result         = false;
+          unsigned int temp           = -1;
+
+    system_memory_manager manager = system_memory_manager_create(memory_size,
+                                                                 page_size,
+                                                                 _mmanager_block_alloc_callback,
+                                                                 _mmanager_block_freed_callback,
+                                                                 NULL,                           /* user_arg */
+                                                                 false);                         /* should_be_thread_safe */
+
+    memory_blocks = system_resizable_vector_create(4, /* capacity */
+                                                   sizeof(_memory_block*) );
+
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 118560, 32, &temp);
+    system_memory_manager_alloc_block(manager, 111696, 32, &temp);
+    system_memory_manager_alloc_block(manager, 114192, 32, &temp);
+    system_memory_manager_alloc_block(manager, 86112, 32, &temp);
+    system_memory_manager_alloc_block(manager, 111540, 32, &temp);
+    system_memory_manager_alloc_block(manager, 65208, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 42024, 32, &temp);
+    system_memory_manager_alloc_block(manager, 18530424, 32, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 160, 256, &temp);
+    system_memory_manager_alloc_block(manager, 160, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 128, 256, &temp);
+    system_memory_manager_alloc_block(manager, 80, 256, &temp);
+    system_memory_manager_alloc_block(manager, 208, 256, &temp);
+    system_memory_manager_alloc_block(manager, 80, 256, &temp);
+    system_memory_manager_alloc_block(manager, 272, 256, &temp);
+    system_memory_manager_alloc_block(manager, 64, 256, &temp);
+    system_memory_manager_alloc_block(manager, 208, 256, &temp);
+    system_memory_manager_alloc_block(manager, 64, 256, &temp);
+    system_memory_manager_alloc_block(manager, 272, 256, &temp);
+    system_memory_manager_alloc_block(manager, 96, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 32, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 4608, 256, &temp);
+    system_memory_manager_alloc_block(manager, 16, 256, &temp);
+    system_memory_manager_alloc_block(manager, 36816, 32, &temp);
+    system_memory_manager_alloc_block(manager, 37752, 32, &temp);
+    system_memory_manager_alloc_block(manager, 16224, 32, &temp);
+    system_memory_manager_alloc_block(manager, 78624, 32, &temp);
+    system_memory_manager_alloc_block(manager, 19488, 256, &temp);
+    system_memory_manager_alloc_block(manager, 512, 256, &temp);
+    system_memory_manager_free_block (manager, 20137216);
+    system_memory_manager_alloc_block(manager, 1760, 256, &temp);
+    system_memory_manager_free_block (manager, 19948032);
+    system_memory_manager_free_block (manager, 19942144);
+    system_memory_manager_free_block (manager, 19941888);
+    system_memory_manager_free_block (manager, 19942656);
+    system_memory_manager_free_block (manager, 19942400);
+    system_memory_manager_free_block (manager, 19943168);
+    system_memory_manager_free_block (manager, 19942912);
+    system_memory_manager_free_block (manager, 19941632);
+    system_memory_manager_free_block (manager, 19941376);
+    system_memory_manager_free_block (manager, 19941120);
+    system_memory_manager_free_block (manager, 19940864);
+    system_memory_manager_free_block (manager, 20117504);
+    system_memory_manager_free_block (manager, 230560);
+    system_memory_manager_free_block (manager, 118848);
+    system_memory_manager_free_block (manager, 288);
+    system_memory_manager_free_block (manager, 542432);
+    system_memory_manager_free_block (manager, 430880);
+    system_memory_manager_free_block (manager, 344768);
+    system_memory_manager_free_block (manager, 20038880);
+    system_memory_manager_free_block (manager, 20022656);
+    system_memory_manager_free_block (manager, 19984896);
+    system_memory_manager_free_block (manager, 19948064);
+    system_memory_manager_free_block (manager, 1406560);
+    system_memory_manager_free_block (manager, 1028128);
+    system_memory_manager_free_block (manager, 1364512);
+    system_memory_manager_free_block (manager, 986080);
+    system_memory_manager_free_block (manager, 944032);
+    system_memory_manager_free_block (manager, 901984);
+    system_memory_manager_free_block (manager, 1322464);
+    system_memory_manager_free_block (manager, 1280416);
+    system_memory_manager_free_block (manager, 1238368);
+    system_memory_manager_free_block (manager, 1196320);
+    system_memory_manager_free_block (manager, 859936);
+    system_memory_manager_free_block (manager, 1154272);
+    system_memory_manager_free_block (manager, 817888);
+    system_memory_manager_free_block (manager, 775840);
+    system_memory_manager_free_block (manager, 733792);
+    system_memory_manager_free_block (manager, 1112224);
+    system_memory_manager_free_block (manager, 691744);
+    system_memory_manager_free_block (manager, 1070176);
+    system_memory_manager_free_block (manager, 649696);
+    system_memory_manager_free_block (manager, 607648);
+    system_memory_manager_free_block (manager, 19937536);
+    system_memory_manager_free_block (manager, 19937280);
+    system_memory_manager_free_block (manager, 19937024);
+    system_memory_manager_free_block (manager, 19939840);
+    system_memory_manager_free_block (manager, 19939584);
+    system_memory_manager_free_block (manager, 19940352);
+    system_memory_manager_free_block (manager, 19940096);
+    system_memory_manager_free_block (manager, 19938560);
+    system_memory_manager_free_block (manager, 19938304);
+    system_memory_manager_free_block (manager, 19939072);
+    system_memory_manager_free_block (manager, 19938816);
+
+    system_memory_manager_release(manager);
+}
