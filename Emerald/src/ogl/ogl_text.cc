@@ -28,6 +28,7 @@
 #include "ogl/ogl_texture.h"
 #include "system/system_assertions.h"
 #include "system/system_critical_section.h"
+#include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
@@ -127,12 +128,8 @@ typedef struct
 
 } _ogl_text_string;
 
-typedef struct
+typedef struct _global_per_context_variables
 {
-    ogl_program    draw_text_program;
-    ogl_shader     draw_text_fragment_shader;
-    ogl_shader     draw_text_vertex_shader;
-
     ogl_program_ub draw_text_program_ub_fsdata;
     GLuint         draw_text_program_ub_fsdata_bo_id;
     GLuint         draw_text_program_ub_fsdata_bo_size;
@@ -143,6 +140,27 @@ typedef struct
     GLuint         draw_text_program_ub_vsdata_bo_size;
     GLuint         draw_text_program_ub_vsdata_bo_start_offset;
     GLuint         draw_text_program_ub_vsdata_index;
+
+    _global_per_context_variables()
+    {
+        draw_text_program_ub_fsdata                 = NULL;
+        draw_text_program_ub_fsdata_bo_id           =  0;
+        draw_text_program_ub_fsdata_bo_size         =  0;
+        draw_text_program_ub_fsdata_bo_start_offset = -1;
+        draw_text_program_ub_fsdata_index           = -1;
+        draw_text_program_ub_vsdata                 = NULL;
+        draw_text_program_ub_vsdata_bo_id           =  0;
+        draw_text_program_ub_vsdata_bo_size         =  0;
+        draw_text_program_ub_vsdata_bo_start_offset = -1;
+        draw_text_program_ub_vsdata_index           = -1;
+    }
+} _global_per_context_variables;
+
+typedef struct
+{
+    ogl_program    draw_text_program; /* ogl_program_ub instances are PER-CONTEXT */
+    ogl_shader     draw_text_fragment_shader;
+    ogl_shader     draw_text_vertex_shader;
 
     GLuint      draw_text_fragment_shader_color_ub_offset;
     GLuint      draw_text_fragment_shader_font_table_location;
@@ -160,9 +178,11 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_text,
 
 
 /* Private definitions */
-system_critical_section _global_cs       = system_critical_section_create();
-_global_variables       _global;             /* always enter _global_cs before accessing */
-uint32_t                _n_global_owners = 0;/* always enter _global_cs before accessing */
+_global_variables       _global;                                                                                    /* always enter _global_cs before accessing */
+system_critical_section _global_cs              = system_critical_section_create();
+system_hash64map        _global_per_context_map = system_hash64map_create(sizeof(_global_per_context_variables*) ); /* holds _global_per_context_variables* items.
+                                                                                                                     * always enter _global_cs before accessing. */
+uint32_t                _n_global_owners = 0;                                                                       /* always enter _global_cs before accessing */
 
 
 const char* fragment_shader_template = "#ifdef GL_ES\n"
@@ -395,9 +415,6 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
                                         text_ptr->data_buffer_offset,
                                         text_ptr->data_buffer_contents_size);
         }
-
-        ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Could not set up texture buffer");
     } /* if (text_ptr->data_buffer_contents_length < summed_text_length) */
 
     /* Iterate through each character and prepare the data for uploading */
@@ -461,7 +478,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
     else
     {
         text_ptr->pGLBufferSubData(GL_ARRAY_BUFFER,
-                                   0,
+                                   text_ptr->data_buffer_offset,
                                    text_ptr->data_buffer_contents_size,
                                    text_ptr->data_buffer_contents);
     }
@@ -488,7 +505,7 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                                    system_hashed_ansi_string_create("ogl_text fragment shader"));
             _global.draw_text_program         = ogl_program_create(context,
                                                                    system_hashed_ansi_string_create("ogl_text program"),
-                                                                   true); /* use_syncable_ubs */
+                                                                   OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
             _global.draw_text_vertex_shader   = ogl_shader_create (context,
                                                                    SHADER_TYPE_VERTEX,
                                                                    system_hashed_ansi_string_create("ogl_text vertex shader") );
@@ -605,53 +622,6 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                   "VSData scale UB offset is -1");
             }
 
-            /* Retrieve uniform blocks */
-            ogl_program_get_uniform_block_by_name(_global.draw_text_program,
-                                                  system_hashed_ansi_string_create("FSData"),
-                                                 &_global.draw_text_program_ub_fsdata);
-            ogl_program_get_uniform_block_by_name(_global.draw_text_program,
-                                                  system_hashed_ansi_string_create("VSData"),
-                                                 &_global.draw_text_program_ub_vsdata);
-
-            ASSERT_DEBUG_SYNC(_global.draw_text_program_ub_fsdata != NULL,
-                              "FSData uniform block descriptor is NULL");
-            ASSERT_DEBUG_SYNC(_global.draw_text_program_ub_vsdata != NULL,
-                              "VSData uniform block descriptor is NULL");
-
-            /* Set up uniform block bindings */
-            ogl_program_ub_get_property(_global.draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_INDEX,
-                                       &_global.draw_text_program_ub_fsdata_index);
-            ogl_program_ub_get_property(_global.draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                       &_global.draw_text_program_ub_fsdata_bo_size);
-            ogl_program_ub_get_property(_global.draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                       &_global.draw_text_program_ub_fsdata_bo_id);
-            ogl_program_ub_get_property(_global.draw_text_program_ub_fsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                       &_global.draw_text_program_ub_fsdata_bo_start_offset);
-
-            ogl_program_ub_get_property(_global.draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_INDEX,
-                                       &_global.draw_text_program_ub_vsdata_index);
-            ogl_program_ub_get_property(_global.draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
-                                       &_global.draw_text_program_ub_vsdata_bo_size);
-            ogl_program_ub_get_property(_global.draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
-                                       &_global.draw_text_program_ub_vsdata_bo_id);
-            ogl_program_ub_get_property(_global.draw_text_program_ub_vsdata,
-                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
-                                       &_global.draw_text_program_ub_vsdata_bo_start_offset);
-
-            text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
-                                             _global.draw_text_program_ub_fsdata_index,
-                                             _global.draw_text_program_ub_fsdata_index);
-            text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
-                                             _global.draw_text_program_ub_vsdata_index,
-                                             _global.draw_text_program_ub_vsdata_index);
-
             /* Set up samplers */
             text_ptr->pGLProgramUniform1i(ogl_program_get_id(_global.draw_text_program),
                                           _global.draw_text_fragment_shader_font_table_location,
@@ -661,6 +631,73 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                           0);
         }
 
+        /* Retrieve uniform block instances.
+         *
+         * NOTE: The ogl_program_ub instances are per-context, since we do not want contexts
+         *       to be modifying their own text data representation in parallel.
+         */
+        if (!system_hash64map_contains(_global_per_context_map,
+                                       (system_hash64) context) )
+        {
+            _global_per_context_variables* per_context_data_ptr = new (std::nothrow) _global_per_context_variables;
+
+            ASSERT_DEBUG_SYNC(per_context_data_ptr != NULL,
+                              "Out of memory");
+
+            ogl_program_get_uniform_block_by_name(_global.draw_text_program,
+                                                  system_hashed_ansi_string_create("FSData"),
+                                                 &per_context_data_ptr->draw_text_program_ub_fsdata);
+            ogl_program_get_uniform_block_by_name(_global.draw_text_program,
+                                                  system_hashed_ansi_string_create("VSData"),
+                                                 &per_context_data_ptr->draw_text_program_ub_vsdata);
+
+            ASSERT_DEBUG_SYNC(per_context_data_ptr->draw_text_program_ub_fsdata != NULL,
+                              "FSData uniform block descriptor is NULL");
+            ASSERT_DEBUG_SYNC(per_context_data_ptr->draw_text_program_ub_vsdata != NULL,
+                              "VSData uniform block descriptor is NULL");
+
+            /* Set up uniform block bindings */
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_INDEX,
+                                       &per_context_data_ptr->draw_text_program_ub_fsdata_index);
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                       &per_context_data_ptr->draw_text_program_ub_fsdata_bo_size);
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                       &per_context_data_ptr->draw_text_program_ub_fsdata_bo_id);
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_fsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                       &per_context_data_ptr->draw_text_program_ub_fsdata_bo_start_offset);
+
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_INDEX,
+                                       &per_context_data_ptr->draw_text_program_ub_vsdata_index);
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                       &per_context_data_ptr->draw_text_program_ub_vsdata_bo_size);
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                       &per_context_data_ptr->draw_text_program_ub_vsdata_bo_id);
+            ogl_program_ub_get_property(per_context_data_ptr->draw_text_program_ub_vsdata,
+                                        OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                       &per_context_data_ptr->draw_text_program_ub_vsdata_bo_start_offset);
+
+            text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
+                                             per_context_data_ptr->draw_text_program_ub_fsdata_index,
+                                             per_context_data_ptr->draw_text_program_ub_fsdata_index);
+            text_ptr->pGLUniformBlockBinding(ogl_program_get_id(_global.draw_text_program),
+                                             per_context_data_ptr->draw_text_program_ub_vsdata_index,
+                                             per_context_data_ptr->draw_text_program_ub_vsdata_index);
+
+            system_hash64map_insert(_global_per_context_map,
+                                    (system_hash64) context,
+                                    per_context_data_ptr,
+                                    NULL,  /* on_remove_callback */
+                                    NULL); /* on_remove_callback_user_arg */
+        } /* if (_global_per_context_map recognizes context) */
+
+        /* Increment the ref counter */
         ++_n_global_owners;
     }
     system_critical_section_leave(_global_cs);
@@ -807,6 +844,24 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
         }
 
         --_n_global_owners;
+
+        /* Also release context-specific data */
+        _global_per_context_variables* variables_ptr = NULL;
+
+        ASSERT_DEBUG_SYNC(system_hash64map_contains(_global_per_context_map,
+                                                    (system_hash64) context),
+                          "Sanity check failed");
+
+        if (system_hash64map_get(_global_per_context_map,
+                                 (system_hash64) context,
+                                &variables_ptr) )
+        {
+            delete variables_ptr;
+            variables_ptr = NULL;
+
+            system_hash64map_remove(_global_per_context_map,
+                                    (system_hash64) context);
+        }
     }
     system_critical_section_leave(_global_cs);
 }
@@ -842,6 +897,15 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
 
             system_critical_section_enter(_global_cs);
             {
+                _global_per_context_variables* variables_ptr = NULL;
+
+                system_hash64map_get(_global_per_context_map,
+                                     (system_hash64) context,
+                                    &variables_ptr);
+
+                ASSERT_DEBUG_SYNC(variables_ptr != NULL,
+                                  "Per-context text variable data is unavailable");
+
                 /* Mark the text drawing program as active */
                 if (context_type == OGL_CONTEXT_TYPE_GL)
                 {
@@ -897,15 +961,15 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
 
                 /* Draw! */
                 text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                             _global.draw_text_program_ub_fsdata_index,
-                                             _global.draw_text_program_ub_fsdata_bo_id,
-                                             _global.draw_text_program_ub_fsdata_bo_start_offset,
-                                             _global.draw_text_program_ub_fsdata_bo_size);
+                                             variables_ptr->draw_text_program_ub_fsdata_index,
+                                             variables_ptr->draw_text_program_ub_fsdata_bo_id,
+                                             variables_ptr->draw_text_program_ub_fsdata_bo_start_offset,
+                                             variables_ptr->draw_text_program_ub_fsdata_bo_size);
                 text_ptr->pGLBindBufferRange(GL_UNIFORM_BUFFER,
-                                             _global.draw_text_program_ub_vsdata_index,
-                                             _global.draw_text_program_ub_vsdata_bo_id,
-                                             _global.draw_text_program_ub_vsdata_bo_start_offset,
-                                             _global.draw_text_program_ub_vsdata_bo_size);
+                                             variables_ptr->draw_text_program_ub_vsdata_index,
+                                             variables_ptr->draw_text_program_ub_vsdata_bo_id,
+                                             variables_ptr->draw_text_program_ub_vsdata_bo_start_offset,
+                                             variables_ptr->draw_text_program_ub_vsdata_bo_size);
 
                 text_ptr->pGLBindVertexArray(vao_id);
                 text_ptr->pGLEnable         (GL_BLEND);
@@ -949,24 +1013,24 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
                                 has_enabled_scissor_test = true;
                             }
 
-                            ogl_program_ub_set_nonarrayed_uniform_value(_global.draw_text_program_ub_fsdata,
+                            ogl_program_ub_set_nonarrayed_uniform_value(variables_ptr->draw_text_program_ub_fsdata,
                                                                         _global.draw_text_fragment_shader_color_ub_offset,
                                                                         string_ptr->color,
                                                                         0, /* src_data_flags */
                                                                         sizeof(float) * 3);
-                            ogl_program_ub_set_nonarrayed_uniform_value(_global.draw_text_program_ub_vsdata,
+                            ogl_program_ub_set_nonarrayed_uniform_value(variables_ptr->draw_text_program_ub_vsdata,
                                                                         _global.draw_text_vertex_shader_scale_ub_offset,
                                                                        &string_ptr->scale,
                                                                         0, /* src_data_flags */
                                                                         sizeof(float) );
-                            ogl_program_ub_set_nonarrayed_uniform_value(_global.draw_text_program_ub_vsdata,
+                            ogl_program_ub_set_nonarrayed_uniform_value(variables_ptr->draw_text_program_ub_vsdata,
                                                                         _global.draw_text_vertex_shader_n_origin_character_ub_offset,
                                                                        &n_characters_drawn_so_far,
                                                                         0, /* src_data_flags */
                                                                         sizeof(int) );
 
-                            ogl_program_ub_sync(_global.draw_text_program_ub_fsdata);
-                            ogl_program_ub_sync(_global.draw_text_program_ub_vsdata);
+                            ogl_program_ub_sync(variables_ptr->draw_text_program_ub_fsdata);
+                            ogl_program_ub_sync(variables_ptr->draw_text_program_ub_vsdata);
 
                             text_ptr->pGLDrawArrays(GL_TRIANGLES,
                                                     n_characters_drawn_so_far * 6,

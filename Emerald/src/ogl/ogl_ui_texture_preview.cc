@@ -153,7 +153,7 @@ PRIVATE void _ogl_ui_texture_preview_init_program(__in __notnull ogl_ui         
 
     texture_preview_ptr->program = ogl_program_create(context,
                                                       system_hashed_ansi_string_create(_ogl_ui_texture_preview_get_program_name(texture_preview_ptr->preview_type)),
-                                                      true); /* use_syncable_ubs */
+                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     /* Set up FS body */
     std::string fs_body                      = ui_texture_preview_fragment_shader_body;

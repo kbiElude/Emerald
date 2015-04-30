@@ -445,19 +445,19 @@ PRIVATE void _ogl_ui_dropdown_init_program(__in __notnull ogl_ui            ui,
 
     dropdown_ptr->program_bg        = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (bg)"),
-                                                         true); /* use_syncable_ubs */
+                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     dropdown_ptr->program_label_bg  = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (label bg)"),
-                                                         true); /* use_syncable_ubs */
+                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     dropdown_ptr->program_separator = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (separator)"),
-                                                         true); /* use_syncable_ubs */
+                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     dropdown_ptr->program_slider    = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program (slider)"),
-                                                         true); /* use_syncable_ubs */
+                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     dropdown_ptr->program           = ogl_program_create(context,
                                                          system_hashed_ansi_string_create("UI dropdown program"),
-                                                         true); /* use_syncable_ubs */
+                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,

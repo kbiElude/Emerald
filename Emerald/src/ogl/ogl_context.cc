@@ -2574,7 +2574,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->multisampling_supported_sample             = NULL;
                             _result->n_multisampling_supported_sample           = 0;
                             _result->pfd                                        = in_pfd;
-                            _result->programs                                   = ogl_programs_create();
+                            _result->programs                                   = NULL;
                             _result->sampler_bindings                           = NULL;
                             _result->state_cache                                = NULL;
                             _result->samplers                                   = ogl_context_samplers_create( (ogl_context) _result);
@@ -2593,6 +2593,21 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             ogl_pixel_format_descriptor_retain(in_pfd);
 
                             result = (ogl_context) _result;
+
+                            /* Set up program manager. If there is a parent context, use its manager instance.
+                             * Otherwise, spawn a new one */
+                            if (share_context != NULL)
+                            {
+                                ogl_context_get_property(share_context,
+                                                         OGL_CONTEXT_PROPERTY_PROGRAMS,
+                                                        &_result->programs);
+
+                                ogl_programs_retain(_result->programs);
+                            }
+                            else
+                            {
+                                _result->programs = ogl_programs_create();
+                            }
 
                             /* Initialize WGL extensions */
                             _ogl_context_initialize_wgl_extensions(_result);

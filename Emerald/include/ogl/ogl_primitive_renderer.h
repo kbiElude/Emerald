@@ -13,7 +13,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_primitive_renderer, ogl_primitive_renderer);
+REFCOUNT_INSERT_DECLARATIONS(ogl_primitive_renderer,
+                             ogl_primitive_renderer);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_dataset(__in                      __notnull ogl_primitive_renderer renderer,

@@ -127,7 +127,7 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__i
     preview_ptr->preview_program = ogl_program_create(preview_ptr->context,
                                                       system_hashed_ansi_string_create_by_merging_two_strings("Scene Renderer lights preview program ",
                                                                                                               system_hashed_ansi_string_get_buffer(scene_name)),
-                                                      true); /* use_syncable_ubs */
+                                                      OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_program_attach_shader(preview_ptr->preview_program,
                               fs_shader);

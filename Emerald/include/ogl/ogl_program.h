@@ -9,6 +9,32 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
+typedef enum
+{
+    /* ogl_program will not expose ogl_program_ub instances for each uniform block
+     * determined active for the owned program object.
+     */
+    OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE,
+
+    /** Uniform block data will be synchronized by ogl_program_ub instances,
+     *  each created for corresponding uniform blocks. When enabled, you should NOT
+     *  manually asign values via UBOs, but rather assign values to corresponding
+     *  uniform block members via ogl_program_ub_set_*() functions. Then, prior
+     *  to a draw call, call ogl_program_ub_sync() to update dirty uniform block
+     *  regions.
+     *
+     *  The same ogl_program_ub instance will be exposed to all rendering contexts.
+     */
+    OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL,
+
+    /** General behavior is the same as for OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL.
+     *
+     *  Each rendering context will be returned a different ogl_program_ub instance.
+     */
+    OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT,
+
+} ogl_program_syncable_ubs_mode;
+
 REFCOUNT_INSERT_DECLARATIONS(ogl_program,
                              ogl_program)
 
@@ -38,9 +64,9 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program,
  *
  *  @return New ogl_program instance.
  **/
-PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name,
-                                                  __in           bool                      use_syncable_ubs = false);
+PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context                   context,
+                                                  __in __notnull system_hashed_ansi_string     name,
+                                                  __in           ogl_program_syncable_ubs_mode syncable_ubs_mode = OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 
 /** Detaches a fragment/geometry/vertex shader from a program object.
  *

@@ -197,7 +197,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
     skybox_ptr->program = ogl_program_create(skybox_ptr->context,
                                              system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                      " program"),
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ASSERT_DEBUG_SYNC(skybox_ptr->program != NULL,
                       "Could not create skybox program");
@@ -270,7 +270,7 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
     skybox_ptr->program = ogl_program_create(skybox_ptr->context,
                                              system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(skybox_ptr->name),
                                                                                                      " program"),
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ASSERT_DEBUG_SYNC(skybox_ptr->program != NULL,
                       "Could not create skybox program");

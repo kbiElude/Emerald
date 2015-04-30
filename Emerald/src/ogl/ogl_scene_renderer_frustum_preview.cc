@@ -405,7 +405,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
 
         preview_ptr->po = ogl_program_create(context,
                                              system_hashed_ansi_string_create(po_name),
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
         if (!ogl_shader_set_body(fs,
                                  system_hashed_ansi_string_create(po_fs)) ||

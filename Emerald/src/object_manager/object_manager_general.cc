@@ -32,6 +32,7 @@ static const system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_str
 static const system_hashed_ansi_string _object_type_ogl_pixel_format_descriptor_hashed_ansi_string           = system_hashed_ansi_string_create("OpenGL Pixel Format Descriptors");
 static const system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi_string                = system_hashed_ansi_string_create("Primitive Renderers");
 static const system_hashed_ansi_string _object_type_ogl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Programs");
+static const system_hashed_ansi_string _object_type_ogl_programs_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Program Managers");
 static const system_hashed_ansi_string _object_type_ogl_rendering_handler_hashed_ansi_string                 = system_hashed_ansi_string_create("OpenGL Rendering Handlers");
 static const system_hashed_ansi_string _object_type_ogl_sampler_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Samplers");
 static const system_hashed_ansi_string _object_type_ogl_shader_constructor_hashed_ansi_string                = system_hashed_ansi_string_create("OpenGL Shader Constructors");
@@ -107,6 +108,7 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_PIXEL_FORMAT_DESCRIPTOR:                     return _object_type_ogl_pixel_format_descriptor_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PRIMITIVE_RENDERER:                          return _object_type_ogl_primitive_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PROGRAM:                                     return _object_type_ogl_program_hashed_ansi_string;
+        case OBJECT_TYPE_OGL_PROGRAMS:                                    return _object_type_ogl_programs_hashed_ansi_string;
         case OBJECT_TYPE_OGL_RENDERING_HANDLER:                           return _object_type_ogl_rendering_handler_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SAMPLER:                                     return _object_type_ogl_sampler_hashed_ansi_string;
         case OBJECT_TYPE_OGL_SHADER:                                      return _object_type_ogl_shader_hashed_ansi_string;

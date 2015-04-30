@@ -18,6 +18,9 @@
 #include "system/system_types.h"
 
 
+REFCOUNT_INSERT_DECLARATIONS(ogl_programs,
+                             ogl_programs);
+
 /** TODO.
  *
  *  Internal usage only.
@@ -37,12 +40,6 @@ PUBLIC ogl_program ogl_programs_get_program_by_id(__in __notnull ogl_programs pr
  **/
 PUBLIC ogl_program ogl_programs_get_program_by_name(__in __notnull ogl_programs              programs,
                                                     __in __notnull system_hashed_ansi_string program_has);
-
-/** TODO.
- *
- *  Internal usage only.
- **/
-PUBLIC void ogl_programs_release(__in __notnull ogl_programs programs);
 
 /** TODO.
  *

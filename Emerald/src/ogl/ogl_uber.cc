@@ -1023,7 +1023,7 @@ PUBLIC EMERALD_API ogl_uber ogl_uber_create(__in __notnull ogl_context          
         /* Create a program with the shaders we were provided */
         result->program = ogl_program_create(context,
                                              name,
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
         result->type    = OGL_UBER_TYPE_REGULAR;
 
         ASSERT_ALWAYS_SYNC(result->program != NULL,

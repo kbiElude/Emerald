@@ -135,7 +135,7 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
     poisson_ptr->program = ogl_program_create              (poisson_ptr->context,
                                                             system_hashed_ansi_string_create_by_merging_two_strings("Postprocessing blur poisson program ",
                                                                                                                     system_hashed_ansi_string_get_buffer(poisson_ptr->name) ),
-                                                            true); /* use_syncable_ubs */
+                                                            OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_shader_set_body      (fragment_shader,
                               system_hashed_ansi_string_create_by_merging_strings(fragment_shader_n_body_parts,

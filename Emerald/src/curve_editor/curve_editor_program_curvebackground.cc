@@ -114,7 +114,7 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
         /* Create the program */
         result->program = ogl_program_create(context,
                                              name,
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
         ASSERT_DEBUG_SYNC(result->program != NULL,
                           "ogl_program_create() failed");
@@ -277,7 +277,7 @@ PUBLIC void curve_editor_program_curvebackground_set_property(__in __notnull cur
                                                      program_ptr->positions_ub_offset,
                                                      data,
                                                      0, /* src_data_flags */
-                                                     sizeof(float) * 4,
+                                                     sizeof(float) * 4 * 5,
                                                      0,  /* dst_array_start_index */
                                                      5); /* dst_array_item_count */
 

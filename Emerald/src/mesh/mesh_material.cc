@@ -828,7 +828,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(__in __
     result_material_ptr = (_mesh_material*) result_material;
     result_program      = ogl_program_create(context,
                                              name,
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     result_material_ptr->type = MESH_MATERIAL_TYPE_PROGRAM;
 

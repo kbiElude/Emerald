@@ -188,7 +188,7 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         /* Create the program */
         result->program = ogl_program_create(context,
                                              name,
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
         ASSERT_DEBUG_SYNC(result->program != NULL,
                           "ogl_program_create() failed");

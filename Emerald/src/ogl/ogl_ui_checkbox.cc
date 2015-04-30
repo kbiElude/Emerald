@@ -124,7 +124,7 @@ PRIVATE void _ogl_ui_checkbox_init_program(__in __notnull ogl_ui            ui,
 
     checkbox_ptr->program = ogl_program_create(context,
                                                system_hashed_ansi_string_create("UI checkbox program"),
-                                               true); /* use_syncable_ubs */
+                                               OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     /* Set up shaders */
     ogl_shader_set_body(fragment_shader,

@@ -16,6 +16,8 @@ typedef struct _ogl_programs
     system_hash64map program_id_to_program_map;
     system_hash64map program_name_to_program_map;
 
+    REFCOUNT_INSERT_VARIABLES
+
     _ogl_programs()
     {
         program_id_to_program_map   = NULL;
@@ -41,6 +43,20 @@ typedef struct _ogl_programs
     }
 } _ogl_programs;
 
+
+/** Reference counter impl */
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_programs,
+                               ogl_programs,
+                              _ogl_programs);
+
+
+/** TODO */
+PRIVATE void _ogl_programs_release(void* programs)
+{
+    /* Nothing to do here */
+}
+
+
 /** Please see header for spec */
 PUBLIC ogl_programs ogl_programs_create()
 {
@@ -51,13 +67,27 @@ PUBLIC ogl_programs ogl_programs_create()
 
     if (new_programs != NULL)
     {
+        static unsigned int cnt = 0;
+        char                name[32];
+
+        sprintf_s(name,
+                  "Instance %d",
+                  cnt++);
+
         new_programs->program_id_to_program_map   = system_hash64map_create(sizeof(ogl_program),
                                                                             true); /* should_be_thread_safe */
         new_programs->program_name_to_program_map = system_hash64map_create(sizeof(ogl_program),
                                                                             true); /* should_be_thread_safe */
 
-        ASSERT_DEBUG_SYNC(new_programs->program_name_to_program_map != NULL,
+        ASSERT_DEBUG_SYNC(new_programs->program_id_to_program_map   != NULL &&
+                          new_programs->program_name_to_program_map != NULL,
                           "Could not initialize a hash-map");
+
+        REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_programs,
+                                                       _ogl_programs_release,
+                                                       OBJECT_TYPE_OGL_PROGRAMS,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Program Managers\\",
+                                                                                                               name) );
     }
 
     return (ogl_programs) new_programs;

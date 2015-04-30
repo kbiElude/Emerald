@@ -116,7 +116,7 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
         /* Create the program */
         result->program = ogl_program_create(context,
                                              name,
-                                             true); /* use_syncable_ubs */
+                                             OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
         ASSERT_DEBUG_SYNC(result->program != NULL,
                           "ogl_program_create() failed");

@@ -19,29 +19,43 @@
 #include <sstream>
 
 /** Internal definitions */
-const char*    file_blob_prefix       = "temp_shader_blob_";
-const char*    file_sourcecode_prefix = "temp_shader_sourcecode_";
+const char* file_blob_prefix       = "temp_shader_blob_";
+const char* file_sourcecode_prefix = "temp_shader_sourcecode_";
 
 /** Internal type definitions */
 typedef struct
 {
-    system_resizable_vector   active_attributes;
-    system_resizable_vector   active_uniforms;
-    system_resizable_vector   active_uniform_blocks; /* holds ogl_program_ub items */
-    system_resizable_vector   attached_shaders;
-    ogl_context               context;
-    GLuint                    id;
-    bool                      is_syncable; /* should uniform block data be synchronized? */
-    bool                      link_status;
-    system_hashed_ansi_string name;
-    system_hashed_ansi_string program_info_log;
+    system_resizable_vector       active_attributes;
+    system_resizable_vector       active_uniforms;
+    system_resizable_vector       attached_shaders;
+    ogl_context                   context;
+    GLuint                        id;
+    bool                          link_status;
+    system_hashed_ansi_string     name;
+    system_hashed_ansi_string     program_info_log;
+    ogl_program_syncable_ubs_mode syncable_ubs_mode;
+
+    /* Maps ogl_context instances to ogl_program_ub instances.
+     *
+     * If syncable_ubs_mode is set to:
+     *   a) OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE:            this map is NULL.
+     *   b) OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL:      this map holds a single entry at key 0.
+     *   c) OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT: this map holds as many entries, as there were contexts
+     *                                                        that tried to access it. use ogl_context instances as keys.
+     */
+    system_hash64map context_to_active_ubs_map;
+
+    /* Same as above, but maps an ogl_context instance to a system_hash64map which
+     * maps uniform block indices to ogl_program_ub instances */
+    system_hash64map context_to_ub_index_to_ub_map;
+
+    /* Same as above, but maps an ogl_context instances to a system_hash64map, which
+     * maps uniform block names (represented as system_hash64) to ogl_program_ub instances */
+    system_hash64map context_to_ub_name_to_ub_map; /* do NOT release the stored items */
 
     GLenum                    tf_mode;
     GLchar**                  tf_varyings;
     unsigned int              n_tf_varyings;
-
-    system_hash64map ub_index_to_ub_map;
-    system_hash64map ub_name_to_ub_map;  /* do NOT release the stored items */
 
     /* GL entry-point cache */
     PFNGLATTACHSHADERPROC              pGLAttachShader;
@@ -132,8 +146,6 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
     program_ptr->id                    = program_ptr->pGLCreateProgram();
     program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER,
                                                                         sizeof(ogl_program_attribute_descriptor*) );
-    program_ptr->active_uniform_blocks = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER,
-                                                                        sizeof(ogl_program_ub) );
     program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER,
                                                                         sizeof(ogl_program_uniform_descriptor*) );
     program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER,
@@ -141,8 +153,6 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
 
     ASSERT_ALWAYS_SYNC(program_ptr->active_attributes != NULL,
                        "Out of memory while allocating active attributes resizable vector");
-    ASSERT_ALWAYS_SYNC(program_ptr->active_uniform_blocks != NULL,
-                       "Out of memory while allocating active uniform blocks resizable vector");
     ASSERT_ALWAYS_SYNC(program_ptr->active_uniforms != NULL,
                        "Out of memory while allocating active uniforms resizable vector");
     ASSERT_ALWAYS_SYNC(program_ptr->attached_shaders != NULL,
@@ -216,6 +226,139 @@ PRIVATE char*_ogl_program_get_source_code_file_name(__in __notnull _ogl_program*
     return file_name;
 }
 
+PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_program* program_ptr,
+                                                          __in __notnull ogl_context   context_map_key,
+                                                          __in __notnull ogl_context   context)
+{
+    GLint   n_active_uniform_blocks           = 0;
+    GLint   n_active_uniform_block_max_length = 0;
+    GLchar* uniform_block_name                = NULL;
+
+    program_ptr->pGLGetProgramiv(program_ptr->id,
+                                 GL_ACTIVE_UNIFORM_BLOCKS,
+                                &n_active_uniform_blocks);
+    program_ptr->pGLGetProgramiv(program_ptr->id,
+                                 GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
+                                &n_active_uniform_block_max_length);
+
+    uniform_block_name = new (std::nothrow) GLchar[n_active_uniform_block_max_length + 1];
+
+    ASSERT_ALWAYS_SYNC(uniform_block_name != NULL,
+                       "Could not allocate [%d] bytes for active uniform block name",
+                       n_active_uniform_block_max_length + 1);
+
+    for (GLint n_active_uniform_block = 0;
+               n_active_uniform_block < n_active_uniform_blocks;
+             ++n_active_uniform_block)
+    {
+        system_hashed_ansi_string uniform_block_name_has = NULL;
+
+        program_ptr->pGLGetActiveUniformBlockName(program_ptr->id,
+                                                  n_active_uniform_block,
+                                                  n_active_uniform_block_max_length + 1,
+                                                  NULL, /* length */
+                                                  uniform_block_name);
+
+        uniform_block_name_has = system_hashed_ansi_string_create(uniform_block_name);
+
+        ogl_program_ub new_ub = ogl_program_ub_create(context,
+                                                      (ogl_program) program_ptr,
+                                                      n_active_uniform_block,
+                                                      uniform_block_name_has,
+                                                      program_ptr->syncable_ubs_mode != OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
+
+        ASSERT_ALWAYS_SYNC(new_ub != NULL,
+                           "ogl_program_ub_create() returned NULL.");
+
+        /* Go ahead and store the UB info */
+        system_resizable_vector context_active_ubs         = NULL;
+        system_hash64map        context_ub_index_to_ub_map = NULL;
+        system_hash64map        context_ub_name_to_ub_map  = NULL;
+
+        system_hash64map_get(program_ptr->context_to_active_ubs_map,
+                             (system_hash64) context_map_key,
+                            &context_active_ubs);
+        system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
+                             (system_hash64) context_map_key,
+                            &context_ub_index_to_ub_map);
+        system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
+                             (system_hash64) context_map_key,
+                            &context_ub_name_to_ub_map);
+
+        if (context_active_ubs         == NULL ||
+            context_ub_index_to_ub_map == NULL ||
+            context_ub_name_to_ub_map  == NULL)
+        {
+            context_active_ubs         = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER,
+                                                                        sizeof(ogl_program_ub) );
+            context_ub_index_to_ub_map = system_hash64map_create       (sizeof(ogl_program_ub) );
+            context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(ogl_program_ub) );
+
+            ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
+                              context_ub_index_to_ub_map != NULL &&
+                              context_ub_name_to_ub_map  != NULL,
+                              "Sanity check failed");
+
+            system_hash64map_insert(program_ptr->context_to_active_ubs_map,
+                                    (system_hash64) context_map_key,
+                                    context_active_ubs,
+                                    NULL,  /* on_remove_callback          */
+                                    NULL); /* on_remove_callback_user_arg */
+            system_hash64map_insert(program_ptr->context_to_ub_index_to_ub_map,
+                                    (system_hash64) context_map_key,
+                                    context_ub_index_to_ub_map,
+                                    NULL,  /* on_remove_callback          */
+                                    NULL); /* on_remove_callback_user_arg */
+            system_hash64map_insert(program_ptr->context_to_ub_name_to_ub_map,
+                                    (system_hash64) context_map_key,
+                                    context_ub_name_to_ub_map,
+                                    NULL,  /* on_remove_callback          */
+                                    NULL); /* on_remove_callback_user_arg */
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
+                              context_ub_index_to_ub_map != NULL &&
+                              context_ub_name_to_ub_map  != NULL,
+                              "Sanity check failed");
+        }
+
+        ASSERT_DEBUG_SYNC(system_resizable_vector_find(context_active_ubs,
+                                                       new_ub) == ITEM_NOT_FOUND,
+                          "Sanity check failed");
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_index_to_ub_map,
+                                                     (system_hash64) n_active_uniform_block),
+                          "Sanity check failed");
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_name_to_ub_map,
+                                                     system_hashed_ansi_string_get_hash(uniform_block_name_has) ),
+                          "Sanity check failed");
+
+        system_resizable_vector_push(context_active_ubs,
+                                     new_ub);
+        system_hash64map_insert     (context_ub_index_to_ub_map,
+                                     n_active_uniform_block,
+                                     new_ub,
+                                     NULL,  /* on_remove_callback */
+                                     NULL); /* on_remove_callback_user_arg */
+        system_hash64map_insert     (context_ub_name_to_ub_map,
+                                     system_hashed_ansi_string_get_hash(uniform_block_name_has),
+                                     new_ub,
+                                     NULL,  /* on_remove_callback */
+                                     NULL); /* on_remove_callback_user_arg */
+
+        /* Set up the UB block->binding mapping */
+        program_ptr->pGLUniformBlockBinding(program_ptr->id,
+                                            n_active_uniform_block,
+                                            n_active_uniform_block);
+    } /* for (all uniform blocks) */
+
+    if (uniform_block_name != NULL)
+    {
+        delete [] uniform_block_name;
+        uniform_block_name = NULL;
+    }
+}
+
 /** TODO */
 PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                                        void*       in_arg)
@@ -270,8 +413,6 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
         /* Retrieve attibute & uniform data for the program */
         GLint n_active_attributes               = 0;
         GLint n_active_attribute_max_length     = 0;
-        GLint n_active_uniform_blocks           = 0;
-        GLint n_active_uniform_block_max_length = 0;
         GLint n_active_uniforms                 = 0;
         GLint n_active_uniform_max_length       = 0;
 
@@ -282,12 +423,6 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                      GL_ACTIVE_ATTRIBUTE_MAX_LENGTH,
                                     &n_active_attribute_max_length);
         program_ptr->pGLGetProgramiv(program_ptr->id,
-                                     GL_ACTIVE_UNIFORM_BLOCKS,
-                                    &n_active_uniform_blocks);
-        program_ptr->pGLGetProgramiv(program_ptr->id,
-                                     GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
-                                    &n_active_uniform_block_max_length);
-        program_ptr->pGLGetProgramiv(program_ptr->id,
                                      GL_ACTIVE_UNIFORMS,
                                     &n_active_uniforms);
         program_ptr->pGLGetProgramiv(program_ptr->id,
@@ -295,22 +430,17 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                     &n_active_uniform_max_length);
 
         /* Allocate temporary name buffers */
-        GLchar* attribute_name     = new (std::nothrow) GLchar[n_active_attribute_max_length     + 1];
-        GLchar* uniform_block_name = new (std::nothrow) GLchar[n_active_uniform_block_max_length + 1];
-        GLchar* uniform_name       = new (std::nothrow) GLchar[n_active_uniform_max_length       + 1];
+        GLchar* attribute_name = new (std::nothrow) GLchar[n_active_attribute_max_length + 1];
+        GLchar* uniform_name   = new (std::nothrow) GLchar[n_active_uniform_max_length   + 1];
 
         ASSERT_ALWAYS_SYNC(attribute_name != NULL,
                            "Could not allocate [%d] bytes for active attribute name",
                            n_active_attribute_max_length + 1);
-        ASSERT_ALWAYS_SYNC(uniform_block_name != NULL,
-                           "Could not allocate [%d] bytes for active uniform block name",
-                           n_active_uniform_block_max_length + 1);
         ASSERT_ALWAYS_SYNC(uniform_name!= NULL,
                            "Could not allocate [%d] bytes for active uniform name",
                            n_active_uniform_max_length + 1);
 
         if (attribute_name     != NULL &&
-            uniform_block_name != NULL &&
             uniform_name       != NULL)
         {
             /* Focus on attributes for a minute */
@@ -411,60 +541,13 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                              new_uniform);
             }
 
-            /* Continue with uniform blocks */
-            for (GLint n_active_uniform_block = 0;
-                       n_active_uniform_block < n_active_uniform_blocks;
-                     ++n_active_uniform_block)
-            {
-                system_hashed_ansi_string uniform_block_name_has = NULL;
+            /* Continue with uniform blocks. */
+            ogl_context context_map_key = (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL) ? 0
+                                                                                                                          : context;
 
-                program_ptr->pGLGetActiveUniformBlockName(program_ptr->id,
-                                                          n_active_uniform_block,
-                                                          n_active_uniform_block_max_length + 1,
-                                                          NULL, /* length */
-                                                          uniform_block_name);
-
-                uniform_block_name_has = system_hashed_ansi_string_create(uniform_block_name);
-
-                ogl_program_ub new_ub = ogl_program_ub_create(program_ptr->context,
-                                                              (ogl_program) program_ptr,
-                                                              n_active_uniform_block,
-                                                              uniform_block_name_has,
-                                                              program_ptr->is_syncable);
-
-                /* Sanity checks */
-                ASSERT_ALWAYS_SYNC(new_ub != NULL,
-                                   "ogl_program_ub_create() returned NULL.");
-
-                ASSERT_DEBUG_SYNC (!system_hash64map_contains(program_ptr->ub_index_to_ub_map,
-                                                              n_active_uniform_block),
-                                   "UB index->descriptor map already recognizes UB with index [%d]",
-                                   n_active_uniform_block);
-
-                ASSERT_DEBUG_SYNC (!system_hash64map_contains(program_ptr->ub_name_to_ub_map,
-                                                              system_hashed_ansi_string_get_hash(uniform_block_name_has) ),
-                                   "UB name->descriptor map already recognizes UB named [%s]",
-                                   uniform_block_name);
-
-                /* Go ahead and store the UB info */
-                system_resizable_vector_push(program_ptr->active_uniform_blocks,
-                                             new_ub);
-                system_hash64map_insert     (program_ptr->ub_index_to_ub_map,
-                                             n_active_uniform_block,
-                                             new_ub,
-                                             NULL,  /* on_remove_callback */
-                                             NULL); /* on_remove_callback_user_arg */
-                system_hash64map_insert     (program_ptr->ub_name_to_ub_map,
-                                             system_hashed_ansi_string_get_hash(uniform_block_name_has),
-                                             new_ub,
-                                             NULL,  /* on_remove_callback */
-                                             NULL); /* on_remove_callback_user_arg */
-
-                /* Set up the UB block->binding mapping */
-                program_ptr->pGLUniformBlockBinding(program_ptr->id,
-                                                    n_active_uniform_block,
-                                                    n_active_uniform_block);
-            } /* for (all uniform blocks) */
+            _ogl_program_init_uniform_blocks_for_context(program_ptr,
+                                                         context_map_key,
+                                                         context);
         } /* if (attribute_name != NULL && uniform_name != NULL) */
 
         /* Free the buffers. */
@@ -472,12 +555,6 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
         {
             delete [] attribute_name;
             attribute_name = NULL;
-        }
-
-        if (uniform_block_name != NULL)
-        {
-            delete [] uniform_block_name;
-            uniform_block_name = NULL;
         }
 
         if (uniform_name != NULL)
@@ -686,15 +763,21 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
                                                      program_ptr);
 
     /* Release all attached shaders */
-    while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
+    if (program_ptr->attached_shaders != NULL)
     {
-        ogl_shader shader     = NULL;
-        bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
-                                                           &shader);
+        while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
+        {
+            ogl_shader shader     = NULL;
+            bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
+                                                               &shader);
 
-        ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
+            ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
 
-        ogl_shader_release(shader);
+            ogl_shader_release(shader);
+        }
+
+        system_resizable_vector_release(program_ptr->attached_shaders);
+        program_ptr->attached_shaders = NULL;
     }
 
     /* Release resizable vectors */
@@ -702,34 +785,67 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     ogl_program_uniform_descriptor*   uniform_ptr   = NULL;
     ogl_program_ub                    uniform_block = NULL;
 
-    while (system_resizable_vector_pop(program_ptr->active_attributes,
-                                      &attribute_ptr) )
+    if (program_ptr->active_attributes != NULL)
     {
-        delete attribute_ptr;
+        while (system_resizable_vector_pop(program_ptr->active_attributes,
+                                          &attribute_ptr) )
+        {
+            delete attribute_ptr;
 
-        attribute_ptr = NULL;
+            attribute_ptr = NULL;
+        }
+
+        system_resizable_vector_release(program_ptr->active_attributes);
+        program_ptr->active_attributes = NULL;
     }
 
-    while (system_resizable_vector_pop(program_ptr->active_uniforms,
-                                      &uniform_ptr) )
+    if (program_ptr->active_uniforms != NULL)
     {
-        delete uniform_ptr;
+        while (system_resizable_vector_pop(program_ptr->active_uniforms,
+                                          &uniform_ptr) )
+        {
+            delete uniform_ptr;
 
-        uniform_ptr = NULL;
+            uniform_ptr = NULL;
+        }
+
+        system_resizable_vector_release(program_ptr->active_uniforms);
+        program_ptr->active_uniforms = NULL;
     }
 
-    while (system_resizable_vector_pop(program_ptr->active_uniform_blocks,
-                                      &uniform_block) )
+    if (program_ptr->context_to_active_ubs_map != NULL)
     {
-        ogl_program_ub_release(uniform_block);
+        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_active_ubs_map);
 
-        uniform_block = NULL;
-    }
+        for (unsigned int n_context = 0;
+                          n_context < n_contexts;
+                        ++n_context)
+        {
+            system_resizable_vector active_ubs = NULL;
 
-    system_resizable_vector_release(program_ptr->active_attributes);
-    system_resizable_vector_release(program_ptr->active_uniforms);
-    system_resizable_vector_release(program_ptr->active_uniform_blocks);
-    system_resizable_vector_release(program_ptr->attached_shaders);
+            system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
+                                            n_context,
+                                           &active_ubs,
+                                            NULL); /* pOutHash */
+
+            ASSERT_DEBUG_SYNC(active_ubs != NULL,
+                              "Sanity check failed");
+
+            while (system_resizable_vector_pop(active_ubs,
+                                              &uniform_block) )
+            {
+                ogl_program_ub_release(uniform_block);
+
+                uniform_block = NULL;
+            }
+
+            system_resizable_vector_release(active_ubs);
+            active_ubs = NULL;
+        } /* for (all recognized contexts) */
+
+        system_hash64map_release(program_ptr->context_to_active_ubs_map);
+        program_ptr->context_to_active_ubs_map = NULL;
+    } /* if (program_ptr->context_to_active_ubs_map != NULL) */
 
     /* Release TF varying name array, if one was allocated */
     if (program_ptr->tf_varyings != NULL)
@@ -1042,9 +1158,9 @@ PUBLIC EMERALD_API bool ogl_program_attach_shader(__in __notnull ogl_program pro
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context               context,
-                                                  __in __notnull system_hashed_ansi_string name,
-                                                  __in           bool                      use_syncable_ubs)
+PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context                   context,
+                                                  __in __notnull system_hashed_ansi_string     name,
+                                                  __in           ogl_program_syncable_ubs_mode syncable_ubs_mode)
 {
     _ogl_program* result = new (std::nothrow) _ogl_program;
 
@@ -1056,20 +1172,23 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Programs\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
-        result->active_attributes     = NULL;
-        result->active_uniforms       = NULL;
-        result->active_uniform_blocks = NULL;
-        result->attached_shaders      = NULL;
-        result->context               = context;
-        result->id                    = 0;
-        result->is_syncable           = use_syncable_ubs;
-        result->link_status           = false;
-        result->name                  = name;
-        result->n_tf_varyings         = 0;
-        result->tf_mode               = GL_NONE;
-        result->tf_varyings           = NULL;
-        result->ub_index_to_ub_map    = system_hash64map_create(sizeof(ogl_program_ub) );
-        result->ub_name_to_ub_map     = system_hash64map_create(sizeof(ogl_program_ub) );
+        result->active_attributes             = NULL;
+        result->active_uniforms               = NULL;
+        result->attached_shaders              = NULL;
+        result->context                       = context;
+        result->context_to_active_ubs_map     = system_hash64map_create(sizeof(system_hash64map),
+                                                                        true); /* should_be_thread_safe */
+        result->context_to_ub_index_to_ub_map = system_hash64map_create(sizeof(system_hash64map),
+                                                                        true); /* should_be_thread_safe */
+        result->context_to_ub_name_to_ub_map  = system_hash64map_create(sizeof(system_hash64map),
+                                                                        true); /* should_be_thread_safe */
+        result->id                            = 0;
+        result->link_status                   = false;
+        result->name                          = name;
+        result->n_tf_varyings                 = 0;
+        result->syncable_ubs_mode             = syncable_ubs_mode;
+        result->tf_mode                       = GL_NONE;
+        result->tf_varyings                   = NULL;
 
         /* Init GL entry-point cache */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -1386,12 +1505,32 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull o
                                                                __in            unsigned int    index,
                                                                __out __notnull ogl_program_ub* out_ub_ptr)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    ogl_context      current_context    = NULL;
+    _ogl_program*    program_ptr        = (_ogl_program*) program;
+    bool             result             = false;
+    system_hash64map ub_index_to_ub_map = NULL;
 
-    result = system_hash64map_get(program_ptr->ub_index_to_ub_map,
-                                  index,
-                                  out_ub_ptr);
+    if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
+    {
+        current_context = ogl_context_get_current_context();
+    }
+
+    if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
+                                   (system_hash64) current_context) )
+    {
+        _ogl_program_init_uniform_blocks_for_context(program_ptr,
+                                                     current_context,
+                                                     ogl_context_get_current_context() );
+    }
+
+    if (system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
+                             (system_hash64) current_context,
+                            &ub_index_to_ub_map) )
+    {
+        result = system_hash64map_get(ub_index_to_ub_map,
+                                      index,
+                                      out_ub_ptr);
+    }
 
     return result;
 }
@@ -1401,12 +1540,32 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
                                                               __in  __notnull system_hashed_ansi_string name,
                                                               __out __notnull ogl_program_ub*           out_ub_ptr)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    ogl_context      current_context   = NULL;
+    _ogl_program*    program_ptr       = (_ogl_program*) program;
+    bool             result            = false;
+    system_hash64map ub_name_to_ub_map = NULL;
 
-    result = system_hash64map_get(program_ptr->ub_name_to_ub_map,
-                                  system_hashed_ansi_string_get_hash(name),
-                                  out_ub_ptr);
+    if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
+    {
+        current_context = ogl_context_get_current_context();
+    }
+
+    if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
+                                   (system_hash64) current_context) )
+    {
+        _ogl_program_init_uniform_blocks_for_context(program_ptr,
+                                                     current_context,
+                                                     ogl_context_get_current_context() );
+    }
+
+    if (system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
+                             (system_hash64) current_context,
+                            &ub_name_to_ub_map) )
+    {
+        result = system_hash64map_get(ub_name_to_ub_map,
+                                      system_hashed_ansi_string_get_hash(name),
+                                      out_ub_ptr);
+    }
 
     return result;
 }
