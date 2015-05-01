@@ -1,12 +1,12 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * The vertex shader uses the following variables:
  *
  * INPUT   in_position - model-space position attribute;
  * INPUT   in_uv       - uv attribute;
- * UNIFORM mvp         - projection*view*model matrix;
+ * UNIFORM mvp         - projection*view*model matrix; (exposed in dataVS uniform block)
  * OUTPUT  uv          - passes in_uv value.
  *
  * The implementation is reference counter-based.
@@ -16,7 +16,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_generic, shaders_vertex_combinedmvp_generic)
+REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_generic,
+                             shaders_vertex_combinedmvp_generic)
 
 
 /** Creates a new combined mvp generic vertex shader object instance.

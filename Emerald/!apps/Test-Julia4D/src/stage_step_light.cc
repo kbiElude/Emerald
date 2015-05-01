@@ -11,18 +11,29 @@
 #include "ogl\ogl_flyby.h"
 #include "ogl\ogl_pipeline.h"
 #include "ogl\ogl_program.h"
+#include "ogl\ogl_program_ub.h"
 #include "ogl\ogl_shader.h"
 #include "shaders\shaders_fragment_static.h"
 #include "shaders\shaders_vertex_combinedmvp_generic.h"
 #include "system\system_matrix4x4.h"
 
-ogl_program      _light_program                        = 0;
-GLuint           _light_color_uniform_location         = -1;
-GLuint           _light_in_position_attribute_location = -1;
-GLuint           _light_mvp_uniform_location           = -1;
-GLuint           _light_vao_id                         = -1;
-GLuint           _light_vertex_attribute_location      = -1;
-system_matrix4x4 _light_view_matrix                    = NULL;
+ogl_program      _light_program                           =  0;
+ogl_program_ub   _light_program_datafs_ub                 = NULL;
+GLuint           _light_program_datafs_ub_bo_id           =  0;
+GLuint           _light_program_datafs_ub_bo_size         =  0;
+GLuint           _light_program_datafs_ub_bo_start_offset =  0;
+GLuint           _light_program_datafs_ub_bp              = -1;
+ogl_program_ub   _light_program_datavs_ub                 = NULL;
+GLuint           _light_program_datavs_ub_bo_id           =  0;
+GLuint           _light_program_datavs_ub_bo_size         =  0;
+GLuint           _light_program_datavs_ub_bo_start_offset =  0;
+GLuint           _light_program_datavs_ub_bp              = -1;
+GLuint           _light_color_ub_offset                   = -1;
+GLuint           _light_in_position_attribute_location    = -1;
+GLuint           _light_mvp_ub_offset                     = -1;
+GLuint           _light_vao_id                            = -1;
+GLuint           _light_vertex_attribute_location         = -1;
+system_matrix4x4 _light_view_matrix                       = NULL;
 
 /** TODO */
 static void _stage_step_light_execute(ogl_context          context,
@@ -59,23 +70,14 @@ static void _stage_step_light_execute(ogl_context          context,
 
     /* Set up uniforms */
     static float  gpu_light_position[3] = {0};
-    static float  gpu_light_color   [4] = {0, 1};
     const  float* light_color           = main_get_light_color();
     const  float* light_position        = main_get_light_position();
 
-    if (memcmp(gpu_light_color,
-               light_color,
-               sizeof(float) * 3) != 0)
-    {
-        entrypoints->pGLProgramUniform4fv(ogl_program_get_id(_light_program),
-                                          _light_color_uniform_location,
-                                          1, /* count */
-                                          light_color);
-
-        memcpy(gpu_light_color,
-               light_color,
-               sizeof(float) * 3);
-    }
+    ogl_program_ub_set_nonarrayed_uniform_value(_light_program_datafs_ub,
+                                                _light_color_ub_offset,
+                                                light_color,
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 4);
 
     if (memcmp(gpu_light_position,
                light_position,
@@ -89,13 +91,27 @@ static void _stage_step_light_execute(ogl_context          context,
                sizeof(float) * 3);
     }
 
-    entrypoints->pGLProgramUniformMatrix4fv(ogl_program_get_id(_light_program),
-                                            _light_mvp_uniform_location,
-                                            1,       /* count */
-                                            GL_TRUE, /* transpose */
-                                            system_matrix4x4_get_row_major_data(mvp) );
+    ogl_program_ub_set_nonarrayed_uniform_value(_light_program_datavs_ub,
+                                                _light_mvp_ub_offset,
+                                                system_matrix4x4_get_column_major_data(mvp),
+                                                0, /* src_data_flags */
+                                                sizeof(float) * 16);
 
     system_matrix4x4_release(mvp);
+
+    ogl_program_ub_sync(_light_program_datafs_ub);
+    ogl_program_ub_sync(_light_program_datavs_ub);
+
+    entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                    _light_program_datafs_ub_bp,
+                                    _light_program_datafs_ub_bo_id,
+                                    _light_program_datafs_ub_bo_start_offset,
+                                    _light_program_datafs_ub_bo_size);
+    entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                    _light_program_datavs_ub_bp,
+                                    _light_program_datavs_ub_bo_id,
+                                    _light_program_datavs_ub_bo_start_offset,
+                                    _light_program_datavs_ub_bo_size);
 
     /* Draw light representation*/
     entrypoints->pGLPointSize (16.0f);
@@ -126,9 +142,9 @@ PUBLIC void stage_step_light_init(ogl_context  context,
     shaders_vertex_combinedmvp_generic vertex_shader   = NULL;
 
     _light_program  = ogl_program_create                       (context,
-                                                                system_hashed_ansi_string_create("light program") );
+                                                                system_hashed_ansi_string_create("light program"),
+                                                                OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     fragment_shader = shaders_fragment_static_create           (context,
-                                                                FRAGMENT_STATIC_UNIFORM,
                                                                 system_hashed_ansi_string_create("light fragment") );
     vertex_shader   = shaders_vertex_combinedmvp_generic_create(context,
                                                                 system_hashed_ansi_string_create("light vertex") );
@@ -158,9 +174,43 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                       system_hashed_ansi_string_create("mvp"),
                                      &mvp_uniform_data);
 
-    _light_color_uniform_location         = (color_uniform_data         != NULL) ? color_uniform_data->location         : -1;
+    _light_color_ub_offset                = (color_uniform_data         != NULL) ? color_uniform_data->ub_offset        : -1;
     _light_in_position_attribute_location = (in_position_attribute_data != NULL) ? in_position_attribute_data->location : -1;
-    _light_mvp_uniform_location           = (mvp_uniform_data           != NULL) ? mvp_uniform_data->location           : -1;
+    _light_mvp_ub_offset                  = (mvp_uniform_data           != NULL) ? mvp_uniform_data->ub_offset          : -1;
+
+    /* Retrieve uniform block properties */
+    ogl_program_get_uniform_block_by_name(_light_program,
+                                          system_hashed_ansi_string_create("dataFS"),
+                                         &_light_program_datafs_ub);
+    ogl_program_get_uniform_block_by_name(_light_program,
+                                          system_hashed_ansi_string_create("dataVS"),
+                                         &_light_program_datavs_ub);
+
+    ogl_program_ub_get_property(_light_program_datafs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &_light_program_datafs_ub_bo_size);
+    ogl_program_ub_get_property(_light_program_datafs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &_light_program_datafs_ub_bo_id);
+    ogl_program_ub_get_property(_light_program_datafs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &_light_program_datafs_ub_bo_start_offset);
+    ogl_program_ub_get_property(_light_program_datafs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                               &_light_program_datafs_ub_bp);
+
+    ogl_program_ub_get_property(_light_program_datavs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &_light_program_datavs_ub_bo_size);
+    ogl_program_ub_get_property(_light_program_datavs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &_light_program_datavs_ub_bo_id);
+    ogl_program_ub_get_property(_light_program_datavs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &_light_program_datavs_ub_bo_start_offset);
+    ogl_program_ub_get_property(_light_program_datavs_ub,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                               &_light_program_datavs_ub_bp);
 
     /* Generate VAO */
     const ogl_context_gl_entrypoints* entrypoints = NULL;

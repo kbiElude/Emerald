@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -13,30 +13,19 @@
 #include <sstream>
 
 /* Internal variables */
-const char* static_attribute_fragment_shader_body = "#version 330 core\n"
-                                                    "\n"
-                                                    "in vec2 uv;\n"
-                                                    "in vec4 color;\n"
-                                                    "\n"
-                                                    "out vec4 result;\n"
-                                                    "\n"
-                                                    "void main()\n"
-                                                    "{\n"
-                                                    "    result = color;\n"
-                                                    "}\n";
-
-const char* static_uniform_fragment_shader_body = "#version 330 core\n"
-                                                  "\n"
-                                                  "in vec2 uv;\n"
-                                                  "\n"
-                                                  "uniform vec4 color;\n"
-                                                  "\n"
-                                                  "out vec4 result;\n"
-                                                  "\n"
-                                                  "void main()\n"
-                                                  "{\n"
-                                                  "    result = color;\n"
-                                                  "}\n";
+const char* fragment_shader_body = "#version 330 core\n"
+                                   "\n"
+                                   "uniform dataFS\n"
+                                   "{\n"
+                                   "    vec4 color;\n"
+                                   "};\n"
+                                   "\n"
+                                   "out vec4 result;\n"
+                                   "\n"
+                                   "void main()\n"
+                                   "{\n"
+                                   "    result = color;\n"
+                                   "}\n";
 
 /** Internal type definition */
 typedef struct
@@ -47,11 +36,10 @@ typedef struct
 } _shaders_fragment_static;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_static, shaders_fragment_static, _shaders_fragment_static);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_static,
+                               shaders_fragment_static,
+                              _shaders_fragment_static);
 
-
-/* Internal variables */
-                          
 
 /** Function called back when reference counter drops to zero. Releases the static shader object.
  *
@@ -71,17 +59,20 @@ PRIVATE void _shaders_fragment_static_release(__in __notnull __deallocate(mem) v
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in __notnull ogl_context                  context,
-                                                                          __in           shaders_fragment_static_type type,
-                                                                          __in __notnull system_hashed_ansi_string    name)
+PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in __notnull ogl_context               context,
+                                                                          __in __notnull system_hashed_ansi_string name)
 {
     _shaders_fragment_static* result_object = NULL;
     shaders_fragment_static   result_shader = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, name);
+    ogl_shader shader = ogl_shader_create(context,
+                                          SHADER_TYPE_FRAGMENT,
+                                          name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "Could not create a fragment shader.");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "Could not create a fragment shader.");
+
     if (shader == NULL)
     {
         LOG_ERROR("Could not create a fragment shader for Static shader object.");
@@ -90,10 +81,13 @@ PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in _
     }
 
     /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader, system_hashed_ansi_string_create(type == FRAGMENT_STATIC_ATTRIBUTE ? static_attribute_fragment_shader_body : static_uniform_fragment_shader_body) ))
+    if (!ogl_shader_set_body(shader,
+                             system_hashed_ansi_string_create(fragment_shader_body)) )
     {
         LOG_ERROR("Could not set body of static fragment shader.");
-        ASSERT_DEBUG_SYNC(false, "");
+
+        ASSERT_DEBUG_SYNC(false,
+                          "");
 
         goto end;
     }
@@ -101,7 +95,9 @@ PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in _
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_static;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_static object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_static object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Static object instance.");
@@ -111,10 +107,11 @@ PUBLIC EMERALD_API shaders_fragment_static shaders_fragment_static_create(__in _
 
     result_object->shader = shader;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_fragment_static_release,
                                                    OBJECT_TYPE_SHADERS_FRAGMENT_STATIC,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Static Fragment Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Static Fragment Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (shaders_fragment_static) result_object;
