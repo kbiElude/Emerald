@@ -1,6 +1,6 @@
 /**
  *
- * Collada->internal Emerald scene format converter, with preview support (kbi/elude @2012-2014)
+ * Collada->internal Emerald scene format converter, with preview support (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -52,7 +52,8 @@ ogl_text                  _text_renderer              = NULL;
 ogl_ui                    _ui                         = NULL;
 ogl_ui_control            _ui_convert_button          = NULL;
 system_window             _window                     = NULL;
-system_event              _window_closed_event        = system_event_create(true, false);
+system_event              _window_closed_event        = system_event_create(true,   /* manual_reset */
+                                                                            false); /* start_state */
 ogl_rendering_handler     _window_rendering_handler   = NULL;
 
 system_matrix4x4 _projection_matrix = NULL;
@@ -64,9 +65,10 @@ system_hashed_ansi_string _get_result_file_name()
     /* The last four characters should be .dae. We need to replace that sub-string with a
      * new extension name. */
     const char*        input_filename_raw_ptr   = system_hashed_ansi_string_get_buffer(_selected_collada_data_file);
-    const unsigned int input_filename_length    = strlen(input_filename_raw_ptr);
+    const unsigned int input_filename_length    = strlen                              (input_filename_raw_ptr);
     const char*        input_filename_extension = input_filename_raw_ptr + (input_filename_length - 4);
-    std::string        result_filename          = std::string(input_filename_raw_ptr, input_filename_extension - input_filename_raw_ptr);
+    std::string        result_filename          = std::string(input_filename_raw_ptr,
+                                                              input_filename_extension - input_filename_raw_ptr);
 
     ASSERT_ALWAYS_SYNC(input_filename_extension[0] == '.' &&
                        input_filename_extension[1] == 'd' &&
@@ -90,6 +92,7 @@ void _on_callback_convert_clicked(void* not_used,
 
     ASSERT_ALWAYS_SYNC(serializer != NULL,
                        "Could not create result scene serializer");
+
     if (serializer == NULL)
     {
         goto end;
@@ -122,10 +125,13 @@ void _rendering_handler(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLClearColor(1.0f, 0.0f, 0.0f, 0.0f);
-    entry_points->pGLClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    entry_points->pGLEnable(GL_DEPTH_TEST);
-    entry_points->pGLEnable(GL_CULL_FACE);
+    entry_points->pGLClearColor(1.0f,
+                                0.0f,
+                                0.0f,
+                                0.0f);
+    entry_points->pGLClear     (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    entry_points->pGLEnable    (GL_DEPTH_TEST);
+    entry_points->pGLEnable    (GL_CULL_FACE);
 
     /* Render the scene */
     ogl_pipeline_draw_stage(_pipeline,
@@ -146,13 +152,18 @@ void _render_scene(ogl_context          context,
         ogl_flyby_update(_context);
 
         /* Retrieve flyby details */
-        const float* flyby_camera_location = ogl_flyby_get_camera_location(_context);
-
-        memcpy(camera_location, flyby_camera_location, sizeof(float) * 3);
-
-        ogl_flyby_get_view_matrix(_context, view);
+        ogl_flyby_get_property(_context,
+                               OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
+                               camera_location);
+        ogl_flyby_get_property(_context,
+                               OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                              &view);
     }
     ogl_flyby_unlock();
+
+    /* Retrieve scene camera */
+    scene_camera camera = scene_get_camera_by_index(_test_scene,
+                                                    0);
 
     /* Traverse the scene graph */
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -161,22 +172,20 @@ void _render_scene(ogl_context          context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
-    entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
-    {
-        ogl_scene_renderer_render_scene_graph(_scene_renderer,
-                                              view,
-                                              _projection_matrix,
-                                              RENDER_MODE_FORWARD,
-                                              SHADOW_MAPPING_TYPE_DISABLED,
-                                              HELPER_VISUALIZATION_NONE,
-                                              system_time_now() % _animation_duration_time
-                                             );
-    }
-    entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
+    ogl_scene_renderer_render_scene_graph(_scene_renderer,
+                                          view,
+                                          _projection_matrix,
+                                          camera,
+                                          RENDER_MODE_FORWARD,
+                                          true, /* apply_shadow_mapping */
+                                          HELPER_VISUALIZATION_NONE,
+                                          system_time_now() % _animation_duration_time
+                                         );
 
     /* Render UI */
     ogl_ui_draw  (_ui);
-    ogl_text_draw(_context, _text_renderer);
+    ogl_text_draw(_context,
+                  _text_renderer);
 
     /* All done */
     system_matrix4x4_release(view);
@@ -196,18 +205,17 @@ void _setup_ui()
     const float  convert_button_x1y1[2]            = {0.7f, 0.1f};
     const float  load_curve_dataset_button_x1y1[2] = {0.7f, 0.2f};
     const float  text_default_size                 = 0.5f;
-    int          window_height                     = 0;
-    int          window_width                      = 0;
+    int          window_dimensions[2]              = {0};
 
-    system_window_get_dimensions(_window,
-                                &window_width,
-                                &window_height);
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                               window_dimensions);
 
     _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
                                      _context,
                                      system_resources_get_meiryo_font_table(),
-                                     window_width,
-                                     window_height);
+                                     window_dimensions[0],
+                                     window_dimensions[1]);
 
     ogl_text_set_text_string_property(_text_renderer,
                                       TEXT_STRING_ID_DEFAULT,
@@ -226,15 +234,18 @@ void _setup_ui()
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+int WINAPI WinMain(HINSTANCE instance_handle,
+                   HINSTANCE,
+                   LPTSTR,
+                   int)
 {
     float camera_position[3] = {0, 0, 0};
-    bool  context_result     = false;
     int   window_size    [2] = {1280, 720};
     int   window_x1y1x2y2[4] = {0};
 
     /* Carry on */
-    system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
+    system_window_get_centered_window_position_for_primary_monitor(window_size,
+                                                                   window_x1y1x2y2);
 
     _window                   = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
                                                                              window_x1y1x2y2,
@@ -248,10 +259,10 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                                                              60,
                                                                              _rendering_handler,
                                                                              NULL);
-    context_result            = system_window_get_context                   (_window,
-                                                                            &_context);
 
-    ASSERT_DEBUG_SYNC(context_result, "Could not retrieve OGL context");
+    system_window_get_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &_context);
 
     system_window_set_rendering_handler(_window,
                                         _window_rendering_handler);
@@ -262,9 +273,19 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         NULL);
 
     /* Let the user select the DAE file */
+    const system_hashed_ansi_string filter_descriptions[] =
+    {
+        system_hashed_ansi_string_create("COLLADA files")
+    };
+    const system_hashed_ansi_string filter_extensions[] =
+    {
+        system_hashed_ansi_string_create("*.dae")
+    };
+
     _selected_collada_data_file = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
-                                                                            system_hashed_ansi_string_create("*.dae"),
-                                                                            system_hashed_ansi_string_create("COLLADA files"),
+                                                                            1, /* n_filters */
+                                                                            filter_descriptions,
+                                                                            filter_extensions,
                                                                             system_hashed_ansi_string_create("Select COLLADA file") );
 
     if (_selected_collada_data_file == NULL)
@@ -284,15 +305,26 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
-    _test_scene = collada_data_get_emerald_scene(_test_collada_data, _context, 0);
+    const float flyby_movement_delta = 10.25f;
 
-    _current_matrix    = system_matrix4x4_create();
-    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f, 1280 / 720.0f, 1.0f, 100000.0f);
+    _test_scene = collada_data_get_emerald_scene(_test_collada_data,
+                                                 _context,
+                                                 0); /* n_scene */
 
-    _scene_renderer = ogl_scene_renderer_create(_context, _test_scene);
+    _current_matrix    = system_matrix4x4_create                              ();
+    _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,        /* fov_y */
+                                                                               1280 / 720.0f,/* ar */
+                                                                               1.0f,         /* z_near */
+                                                                               100000.0f);   /* z_far */
 
-    ogl_flyby_activate(_context, camera_position);
-    ogl_flyby_set_movement_delta(_context, 10.25f);
+    _scene_renderer = ogl_scene_renderer_create(_context,
+                                                _test_scene);
+
+    ogl_flyby_activate          (_context,
+                                 camera_position);
+    ogl_flyby_set_property(_context,
+                           OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
+                          &flyby_movement_delta);
 
     /* Show the curve editor */
 #if 0
@@ -319,7 +351,8 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     _setup_ui();
 
     /* Carry on */
-    ogl_rendering_handler_play(_window_rendering_handler, 0);
+    ogl_rendering_handler_play(_window_rendering_handler,
+                               0);
 
     system_event_wait_single_infinite(_window_closed_event);
 
