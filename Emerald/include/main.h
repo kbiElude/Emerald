@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef APPMAIN_H
@@ -17,7 +17,9 @@
  @return
 
  **/ 
-EMERALD_API BOOL WINAPI DllMain(__in HINSTANCE instance, __in DWORD reason, __in LPVOID reserved);
+EMERALD_API BOOL WINAPI DllMain(__in HINSTANCE instance,
+                                __in DWORD     reason,
+                                __in LPVOID    reserved);
 
 /** TODO */
 EMERALD_API void main_force_deinit();
