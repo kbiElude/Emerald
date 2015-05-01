@@ -16,4 +16,7 @@ ADD_SUBDIRECTORY(Test-ObjectBrowser)
 ADD_SUBDIRECTORY(Test-Particles)
 ADD_SUBDIRECTORY(Test-ParticlesAgainstKdTree)
 ADD_SUBDIRECTORY(Test-Pipeline)
-ADD_SUBDIRECTORY(Test-Uber)
+
+# Following are obsolete examples which no longer build. These are left as
+# reference only, and should not be included 
+# ADD_SUBDIRECTORY(Test-Uber)
