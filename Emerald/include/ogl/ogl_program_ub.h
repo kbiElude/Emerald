@@ -60,9 +60,9 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_program_ub ogl_program_ub_create(__in __notnul
                                                                    __in           bool                      support_sync_behavior);
 
 /** TODO */
-PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    ub,
-                                        __in            ogl_program_ub_property property,
-                                        __out __notnull void*                   out_result);
+PUBLIC EMERALD_API void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    ub,
+                                                    __in            ogl_program_ub_property property,
+                                                    __out __notnull void*                   out_result);
 
 /** TODO
  *

@@ -807,9 +807,9 @@ PUBLIC ogl_program_ub ogl_program_ub_create(__in __notnull ogl_context          
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    ub,
-                                        __in            ogl_program_ub_property property,
-                                        __out __notnull void*                   out_result)
+PUBLIC EMERALD_API void ogl_program_ub_get_property(__in  __notnull const ogl_program_ub    ub,
+                                                    __in            ogl_program_ub_property property,
+                                                    __out __notnull void*                   out_result)
 {
     const _ogl_program_ub* ub_ptr = (const _ogl_program_ub*) ub;
 

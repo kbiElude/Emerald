@@ -14,6 +14,7 @@
 #include "ogl\ogl_context.h"
 #include "ogl\ogl_pipeline.h"
 #include "ogl\ogl_program.h"
+#include "ogl\ogl_program_ub.h"
 #include "ogl\ogl_shader.h"
 #include "ogl\ogl_texture.h"
 
@@ -29,13 +30,18 @@ GLuint                      _dof_scheuermann_downsample_src_fbo_id  = 0;
 ogl_texture                 _dof_scheuermann_downsampled_blurred_to = NULL;
 ogl_texture                 _dof_scheuermann_downsampled_to         = NULL;
 GLuint                      _dof_scheuermann_vao_id                 = -1;
+
 /* Combination program */
 ogl_program                 _dof_scheuermann_combination_po                             = NULL;
+ogl_program_ub              _dof_scheuermann_combination_po_ub                          = NULL;
+GLuint                      _dof_scheuermann_combination_po_ub_bo_id                    =  0;
+GLuint                      _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = -1;
+GLuint                      _dof_scheuermann_combination_po_ub_bo_size                  =  0;
+GLuint                      _dof_scheuermann_combination_po_ub_bo_start_offset          =  0;
 GLuint                      _dof_scheuermann_combination_po_bg_uniform_location         = -1;
 GLuint                      _dof_scheuermann_combination_po_data_high_uniform_location  = -1;
 GLuint                      _dof_scheuermann_combination_po_data_low_uniform_location   = -1;
 GLuint                      _dof_scheuermann_combination_po_depth_high_uniform_location = -1;
-GLuint                      _dof_scheuermann_combination_po_max_coc_px_uniform_location = -1;
 
 
 static const char* _dof_scheuermann_combination_fragment_shader_preambule = "#version 330\n"
@@ -44,7 +50,12 @@ static const char* _dof_scheuermann_combination_fragment_shader_declarations = "
                                                                                "uniform sampler2D data_low;\n"  /* uses texture unit 1 */
                                                                                "uniform sampler2D bg;\n"        /* uses texture unit 2 */
                                                                                "uniform sampler2D depth_high;\n"/* uses texture unit 3 */
-                                                                               "uniform float     max_coc_px;\n"
+                                                                               "\n"
+                                                                               "uniform data\n"
+                                                                               "{\n"
+                                                                               "    float max_coc_px;\n"
+                                                                               "};\n"
+                                                                               "\n"
                                                                                "out     vec4      result;\n"
                                                                                "in      vec2      uv;\n"
                                                                                "\n";
@@ -116,19 +127,23 @@ static void _stage_step_dof_scheuermann_combine_execute(ogl_context          con
     entrypoints->pGLBindVertexArray(_dof_scheuermann_vao_id);
 
     /* Uniforms! */
-    const  float max_coc_px     = main_get_max_coc_px();
-    static float gpu_max_coc_px = 0.0f;
+    const  float max_coc_px = main_get_max_coc_px();
 
-    if (max_coc_px != gpu_max_coc_px)
-    {
-        entrypoints->pGLProgramUniform1f(ogl_program_get_id(_dof_scheuermann_combination_po),
-                                         _dof_scheuermann_combination_po_max_coc_px_uniform_location,
-                                         max_coc_px);
+    ogl_program_ub_set_nonarrayed_uniform_value(_dof_scheuermann_combination_po_ub,
+                                                _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset,
+                                               &max_coc_px,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
 
-        gpu_max_coc_px = max_coc_px;
-    }
+    ogl_program_ub_sync(_dof_scheuermann_combination_po_ub);
 
     /* Go on */
+    entrypoints->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                    0, /* index */
+                                    _dof_scheuermann_combination_po_ub_bo_id,
+                                    _dof_scheuermann_combination_po_ub_bo_start_offset,
+                                    _dof_scheuermann_combination_po_ub_bo_size);
+
     entrypoints->pGLUseProgram(ogl_program_get_id(_dof_scheuermann_combination_po) );
     entrypoints->pGLDrawArrays(GL_TRIANGLE_FAN,
                                0,  /* first */
@@ -215,7 +230,9 @@ PUBLIC ogl_texture stage_step_dof_scheuermann_get_downsampled_blurred_texture()
 }
 
 /* Please see header for specification */
-PUBLIC void stage_step_dof_scheuermann_init(ogl_context context, ogl_pipeline pipeline, uint32_t stage_id)
+PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
+                                            ogl_pipeline pipeline,
+                                            uint32_t     stage_id)
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints                 = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints                     = NULL;
@@ -349,7 +366,8 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context context, ogl_pipeline pi
                                                  sizeof(combination_fs_body_parts[0]);
 
     _dof_scheuermann_combination_po = ogl_program_create(context,
-                                                         system_hashed_ansi_string_create("DOF Scheuermann combination PO") );
+                                                         system_hashed_ansi_string_create("DOF Scheuermann combination PO"),
+                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_shader_set_body(combination_fs,
                         system_hashed_ansi_string_create_by_merging_strings(combination_fs_n_body_parts,
@@ -363,6 +381,21 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context context, ogl_pipeline pi
                               shaders_vertex_fullscreen_get_shader(combination_vs) );
 
     ogl_program_link(_dof_scheuermann_combination_po);
+
+    /* Retrieve combination program uniform block data */
+    ogl_program_get_uniform_block_by_name(_dof_scheuermann_combination_po,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_dof_scheuermann_combination_po_ub);
+
+    ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &_dof_scheuermann_combination_po_ub_bo_size);
+    ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &_dof_scheuermann_combination_po_ub_bo_id);
+    ogl_program_ub_get_property(_dof_scheuermann_combination_po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &_dof_scheuermann_combination_po_ub_bo_start_offset);
 
     /* Retrieve combination program uniform locations */
     const ogl_program_uniform_descriptor* bg_uniform_descriptor         = NULL;
@@ -387,11 +420,11 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context context, ogl_pipeline pi
                                     system_hashed_ansi_string_create("max_coc_px"),
                                    &max_coc_px_uniform_descriptor);
 
-    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_descriptor         != NULL) ? bg_uniform_descriptor->location         : -1;
-    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_descriptor  != NULL) ? data_high_uniform_descriptor->location  : -1;
-    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_descriptor   != NULL) ? data_low_uniform_descriptor->location   : -1;
-    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_descriptor != NULL) ? depth_high_uniform_descriptor->location : -1;
-    _dof_scheuermann_combination_po_max_coc_px_uniform_location = (max_coc_px_uniform_descriptor != NULL) ? max_coc_px_uniform_descriptor->location : -1;
+    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_descriptor         != NULL) ? bg_uniform_descriptor->location          : -1;
+    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_descriptor  != NULL) ? data_high_uniform_descriptor->location   : -1;
+    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_descriptor   != NULL) ? data_low_uniform_descriptor->location    : -1;
+    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_descriptor != NULL) ? depth_high_uniform_descriptor->location  : -1;
+    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_descriptor != NULL) ? max_coc_px_uniform_descriptor->ub_offset : -1;
 
     entrypoints->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
                                      data_high_uniform_descriptor->location,
