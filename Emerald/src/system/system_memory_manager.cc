@@ -450,7 +450,7 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
                     manager_ptr->page_owners[page_index]   != 0          &&
                     callback_page_index_mark               != page_index)
                 {
-                    const unsigned int free_start_offset = (callback_page_index_mark - 1)          * manager_ptr->page_size;
+                    const unsigned int free_start_offset = (callback_page_index_mark)          * manager_ptr->page_size;
                     const unsigned int free_size         = (page_index - callback_page_index_mark) * manager_ptr->page_size;
 
                     #ifdef _DEBUG
