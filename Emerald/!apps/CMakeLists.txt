@@ -14,9 +14,14 @@ ADD_SUBDIRECTORY(Test-HDR)
 ADD_SUBDIRECTORY(Test-Julia4D)
 ADD_SUBDIRECTORY(Test-ObjectBrowser)
 ADD_SUBDIRECTORY(Test-Particles)
-ADD_SUBDIRECTORY(Test-ParticlesAgainstKdTree)
 ADD_SUBDIRECTORY(Test-Pipeline)
 
-# Following are obsolete examples which no longer build. These are left as
-# reference only, and should not be included 
+
+# Following are obsolete examples which no longer build or whose asset became
+# incompatible with the recent Emerald versions. As such, they are no longer
+# maintained.
+#
+# These examples are left as reference only.
+
+# ADD_SUBDIRECTORY(Test-ParticlesAgainstKdTree)
 # ADD_SUBDIRECTORY(Test-Uber)
