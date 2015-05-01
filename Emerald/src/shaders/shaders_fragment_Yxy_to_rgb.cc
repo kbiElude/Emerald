@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -21,7 +21,9 @@ typedef struct
 } _shaders_fragment_Yxy_to_rgb;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_Yxy_to_rgb, shaders_fragment_Yxy_to_rgb, _shaders_fragment_Yxy_to_rgb);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_Yxy_to_rgb,
+                               shaders_fragment_Yxy_to_rgb,
+                              _shaders_fragment_Yxy_to_rgb);
 
 /* Internal variables */
 const char* yxy_to_rgb_shader_body = "#version 330\n"
@@ -66,15 +68,20 @@ PRIVATE void _shaders_fragment_Yxy_to_rgb_release(__in __notnull __deallocate(me
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_create(__in __notnull ogl_context               context,
+                                                                                  __in __notnull system_hashed_ansi_string name)
 {
     _shaders_fragment_Yxy_to_rgb* result_object = NULL;
     shaders_fragment_Yxy_to_rgb   result_shader = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, name);
+    ogl_shader shader = ogl_shader_create(context,
+                                          SHADER_TYPE_FRAGMENT,
+                                          name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "Could not create a fragment shader.");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "Could not create a fragment shader.");
+
     if (shader == NULL)
     {
         LOG_ERROR("Could not create a fragment shader for Yxy=>RGB shader object.");
@@ -83,10 +90,13 @@ PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_creat
     }
 
     /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader, system_hashed_ansi_string_create(yxy_to_rgb_shader_body)) )
+    if (!ogl_shader_set_body(shader,
+                             system_hashed_ansi_string_create(yxy_to_rgb_shader_body)) )
     {
         LOG_ERROR("Could not set body of Yxy=>RGB fragment shader.");
-        ASSERT_DEBUG_SYNC(false, "");
+
+        ASSERT_DEBUG_SYNC(false,
+                          "");
 
         goto end;
     }
@@ -94,7 +104,9 @@ PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_creat
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_Yxy_to_rgb;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_Yxy_to_rgb object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_Yxy_to_rgb object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Yxy=>RGB shader object instance.");
@@ -104,10 +116,11 @@ PUBLIC EMERALD_API shaders_fragment_Yxy_to_rgb shaders_fragment_Yxy_to_rgb_creat
 
     result_object->shader = shader;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_fragment_Yxy_to_rgb_release,
                                                    OBJECT_TYPE_SHADERS_FRAGMENT_YXY_TO_RGB,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Yxy to RGB Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Yxy to RGB Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (shaders_fragment_Yxy_to_rgb) result_object;

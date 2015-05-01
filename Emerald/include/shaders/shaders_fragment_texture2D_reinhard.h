@@ -2,7 +2,7 @@
  *
  * Emerald (kbi/elude @2012)
  * 
- * Reinhardt tone mapping operator. Only exposes "exposure" float uniform.
+ * Reinhardt tone mapping operator. Only exposes "exposure" float uniform (in data uniform block)
  *
  * The implementation is reference counter-based.
  */

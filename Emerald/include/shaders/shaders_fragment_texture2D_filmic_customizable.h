@@ -2,17 +2,17 @@
  *
  * Emerald (kbi/elude @2012)
  * 
- * Filmic tone mapping operator. Exposes uniforms:
+ * Filmic tone mapping operator. The data uniform block exposes:
  *
  * 1) exposure
- * 2) A (shoulder strength)                 - pre-baked:0.22
- * 3) B (linear strength)                   - pre-baked:0.30
- * 4) C (linear angle)                      - pre-baked:0.10
- * 5) D (toe strength)                      - pre-baked:0.20
- * 6) E (toe numerator)                     - pre-baked:0.01
- * 7) F (toe denominator) <E/F - toe angle> - pre-baked:0.30
- * 8) W (linear white point value)          - pre-baked:11.2
- * 9) Exposure bias                         - 2.0
+ * 2) A (shoulder strength)                 - suggested setting:0.22
+ * 3) B (linear strength)                   - suggested setting:0.30
+ * 4) C (linear angle)                      - suggested setting:0.10
+ * 5) D (toe strength)                      - suggested setting:0.20
+ * 6) E (toe numerator)                     - suggested setting:0.01
+ * 7) F (toe denominator) <E/F - toe angle> - suggested setting:0.30
+ * 8) W (linear white point value)          - suggested setting:11.2
+ * 9) Exposure bias                         - suggested setting:2.0
  *
  * The implementation is reference counter-based.
  */

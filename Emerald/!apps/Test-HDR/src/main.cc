@@ -13,6 +13,7 @@
 #include "gfx/gfx_rgbe.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_text.h"
 #include "ogl/ogl_texture.h"
@@ -58,6 +59,10 @@ const ogl_program_uniform_descriptor*          _filmic_customizable_program_expo
 const ogl_program_uniform_descriptor*          _filmic_customizable_program_f_uniform             = NULL;
 const ogl_program_uniform_descriptor*          _filmic_customizable_program_w_uniform             = NULL;
 const ogl_program_uniform_descriptor*          _filmic_customizable_program_tex_uniform           = NULL;
+ogl_program_ub                                 _filmic_customizable_program_ub                    = NULL;
+GLuint                                         _filmic_customizable_program_ub_bo_id              = 0;
+GLuint                                         _filmic_customizable_program_ub_bo_size            = 0;
+GLuint                                         _filmic_customizable_program_ub_bo_start_offset    = 0;
 curve_container                                _filmic_customizable_a_curve                       = NULL;
 curve_container                                _filmic_customizable_b_curve                       = NULL;
 curve_container                                _filmic_customizable_c_curve                       = NULL;
@@ -75,17 +80,29 @@ shaders_fragment_texture2D_filmic     _filmic_fp                                
 ogl_program                           _filmic_program                           = NULL;
 const ogl_program_uniform_descriptor* _filmic_program_exposure_uniform          = NULL;
 const ogl_program_uniform_descriptor* _filmic_program_tex_uniform               = NULL;
+ogl_program_ub                        _filmic_program_ub                        = NULL;
+GLuint                                _filmic_program_ub_bo_id                  = 0;
+GLuint                                _filmic_program_ub_bo_size                = 0;
+GLuint                                _filmic_program_ub_bo_start_offset        = 0;
 system_variant                        _float_variant                            = NULL;
 shaders_fragment_texture2D_linear     _linear_fp                                = NULL;
 ogl_program                           _linear_program                           = NULL;
 const ogl_program_uniform_descriptor* _linear_program_exposure_uniform          = NULL;
 const ogl_program_uniform_descriptor* _linear_program_tex_uniform               = NULL;
+ogl_program_ub                        _linear_program_ub                        = NULL;
+GLuint                                _linear_program_ub_bo_id                  = 0;
+GLuint                                _linear_program_ub_bo_size                = 0;
+GLuint                                _linear_program_ub_bo_start_offset        = 0;
 postprocessing_reinhard_tonemap       _postprocessing_reinhard_tonemapper       = NULL;
 postprocessing_reinhard_tonemap       _postprocessing_reinhard_tonemapper_crude = NULL;
 shaders_fragment_texture2D_reinhardt  _reinhardt_fp                             = NULL;
 ogl_program                           _reinhardt_program                        = NULL;
 const ogl_program_uniform_descriptor* _reinhardt_program_exposure_uniform       = NULL;
 const ogl_program_uniform_descriptor* _reinhardt_program_tex_uniform            = NULL;
+ogl_program_ub                        _reinhardt_program_ub                     = NULL;
+GLuint                                _reinhardt_program_ub_bo_id               = 0;
+GLuint                                _reinhardt_program_ub_bo_size             = 0;
+GLuint                                _reinhardt_program_ub_bo_start_offset     = 0;
 ogl_text                              _text_renderer                            = NULL;
 GLuint                                _texture_height                           = -1;
 ogl_texture                           _texture                                  = NULL;
@@ -280,9 +297,20 @@ void _rendering_handler(ogl_context          context,
             entry_points->pGLProgramUniform1i(po_id,
                                               _linear_program_tex_uniform->location,
                                               0);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _linear_program_exposure_uniform->location,
-                                              variant_value);
+
+            ogl_program_ub_set_nonarrayed_uniform_value( _linear_program_ub,
+                                                         _linear_program_exposure_uniform->ub_offset,
+                                                        &variant_value,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+
+            ogl_program_ub_sync(_linear_program_ub);
+
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             0, /* index */
+                                             _linear_program_ub_bo_id,
+                                             _linear_program_ub_bo_start_offset,
+                                             _linear_program_ub_bo_size);
 
             break;
         }
@@ -298,9 +326,20 @@ void _rendering_handler(ogl_context          context,
             entry_points->pGLProgramUniform1i(po_id,
                                               _reinhardt_program_tex_uniform->location,
                                               0);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _reinhardt_program_exposure_uniform->location,
-                                              variant_value);
+
+            ogl_program_ub_set_nonarrayed_uniform_value( _reinhardt_program_ub,
+                                                         _reinhardt_program_exposure_uniform->ub_offset,
+                                                        &variant_value,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+
+            ogl_program_ub_sync(_reinhardt_program_ub);
+
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             0, /* index */
+                                             _reinhardt_program_ub_bo_id,
+                                             _reinhardt_program_ub_bo_start_offset,
+                                             _reinhardt_program_ub_bo_size);
 
             break;
         }
@@ -333,12 +372,24 @@ void _rendering_handler(ogl_context          context,
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
                                               _texture);
+
             entry_points->pGLProgramUniform1i(po_id,
                                               _filmic_program_tex_uniform->location,
                                               0);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_program_exposure_uniform->location,
-                                              variant_value);
+
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_program_ub,
+                                                         _filmic_program_exposure_uniform->ub_offset,
+                                                        &variant_value,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+
+            ogl_program_ub_sync(_filmic_program_ub);
+
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             0, /* index */
+                                             _filmic_program_ub_bo_id,
+                                             _filmic_program_ub_bo_start_offset,
+                                             _filmic_program_ub_bo_size);
 
             break;
         }
@@ -394,36 +445,64 @@ void _rendering_handler(ogl_context          context,
             entry_points->pGLActiveTexture   (GL_TEXTURE0);
             entry_points->pGLBindTexture     (GL_TEXTURE_2D,
                                               _texture);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_a_uniform->location,
-                                              a);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_b_uniform->location,
-                                              b);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_c_uniform->location,
-                                              c);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_d_uniform->location,
-                                              d);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_e_uniform->location,
-                                              e);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_exposure_uniform->location,
-                                              variant_value);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_exposure_bias_uniform->location,
-                                              exposure_bias);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_f_uniform->location,
-                                              f);
-            entry_points->pGLProgramUniform1f(po_id,
-                                              _filmic_customizable_program_w_uniform->location,
-                                              w);
+
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_a_uniform->ub_offset,
+                                                        &a,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_b_uniform->ub_offset,
+                                                        &b,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_c_uniform->ub_offset,
+                                                        &c,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_d_uniform->ub_offset,
+                                                        &d,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_e_uniform->ub_offset,
+                                                        &e,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_exposure_uniform->ub_offset,
+                                                        &variant_value,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_exposure_bias_uniform->ub_offset,
+                                                        &exposure_bias,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_f_uniform->ub_offset,
+                                                        &f,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+            ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
+                                                         _filmic_customizable_program_w_uniform->ub_offset,
+                                                        &w,
+                                                         0, /* src_data_flags */
+                                                         sizeof(float) );
+
+            ogl_program_ub_sync(_filmic_customizable_program_ub);
+
             entry_points->pGLProgramUniform1i(po_id,
                                               _filmic_customizable_program_tex_uniform->location,
                                               0);
+
+            entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                             0, /* index */
+                                             _filmic_customizable_program_ub_bo_id,
+                                             _filmic_customizable_program_ub_bo_start_offset,
+                                             _filmic_customizable_program_ub_bo_size);
 
             break;
         }
@@ -632,7 +711,8 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                                                true,
                                                                system_hashed_ansi_string_create("Linear FP"));
     _linear_program = ogl_program_create                      (_context,
-                                                               system_hashed_ansi_string_create("Linear Main"));
+                                                               system_hashed_ansi_string_create("Linear Main"),
+                                                               OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_program_attach_shader(_linear_program,
                              shaders_fragment_texture2D_linear_get_shader(_linear_fp) );
@@ -647,12 +727,26 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                     system_hashed_ansi_string_create("tex"),
                                    &_linear_program_tex_uniform);
 
+    ogl_program_get_uniform_block_by_name(_linear_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_linear_program_ub);
+    ogl_program_ub_get_property          (_linear_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                         &_linear_program_ub_bo_size);
+    ogl_program_ub_get_property          (_linear_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                         &_linear_program_ub_bo_id);
+    ogl_program_ub_get_property          (_linear_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                         &_linear_program_ub_bo_start_offset);
+
     /* Create Reinhardt texture program */
     _reinhardt_fp      = shaders_fragment_texture2D_reinhardt_create(_context,
                                                                      true, /* export_uv */
                                                                      system_hashed_ansi_string_create("Reinhardt FP"));
     _reinhardt_program = ogl_program_create                         (_context,
-                                                                     system_hashed_ansi_string_create("Reinhardt Main"));
+                                                                     system_hashed_ansi_string_create("Reinhardt Main"),
+                                                                     OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_program_attach_shader(_reinhardt_program,
                               shaders_fragment_texture2D_reinhardt_get_shader(_reinhardt_fp) );
@@ -666,6 +760,19 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_program_get_uniform_by_name(_reinhardt_program,
                                     system_hashed_ansi_string_create("tex"),
                                    &_reinhardt_program_tex_uniform);
+
+    ogl_program_get_uniform_block_by_name(_reinhardt_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_reinhardt_program_ub);
+    ogl_program_ub_get_property          (_reinhardt_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                         &_reinhardt_program_ub_bo_size);
+    ogl_program_ub_get_property          (_reinhardt_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                         &_reinhardt_program_ub_bo_id);
+    ogl_program_ub_get_property          (_reinhardt_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                         &_reinhardt_program_ub_bo_start_offset);
 
     /* Create global Reinhardt post-processors */
     uint32_t texture_size[2] =
@@ -688,7 +795,8 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                                                true, /* should_revert_y */
                                                                system_hashed_ansi_string_create("Filmic FP"));
     _filmic_program = ogl_program_create                      (_context,
-                                                               system_hashed_ansi_string_create("Filmic Main"));
+                                                               system_hashed_ansi_string_create("Filmic Main"),
+                                                               OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_program_attach_shader(_filmic_program,
                               shaders_fragment_texture2D_filmic_get_shader(_filmic_fp) );
@@ -703,12 +811,26 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                     system_hashed_ansi_string_create("tex"),
                                    &_filmic_program_tex_uniform);
 
+    ogl_program_get_uniform_block_by_name(_filmic_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_filmic_program_ub);
+    ogl_program_ub_get_property          (_filmic_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                         &_filmic_program_ub_bo_size);
+    ogl_program_ub_get_property          (_filmic_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                         &_filmic_program_ub_bo_id);
+    ogl_program_ub_get_property          (_filmic_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                         &_filmic_program_ub_bo_start_offset);
+
     /* Create Filmic Customizable texture program */
     _filmic_customizable_fp      = shaders_fragment_texture2D_filmic_customizable_create(_context,
                                                                                          true, /* should_revert_y */
                                                                                          system_hashed_ansi_string_create("Filmic Customizable FP"));
     _filmic_customizable_program = ogl_program_create                                   (_context,
-                                                                                         system_hashed_ansi_string_create("Filmic Customizable Main"));
+                                                                                         system_hashed_ansi_string_create("Filmic Customizable Main"),
+                                                                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_program_attach_shader(_filmic_customizable_program,
                               shaders_fragment_texture2D_filmic_customizable_get_shader(_filmic_customizable_fp) );
@@ -746,6 +868,19 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_program_get_uniform_by_name(_filmic_customizable_program,
                                     system_hashed_ansi_string_create("w"),
                                    &_filmic_customizable_program_w_uniform);
+
+    ogl_program_get_uniform_block_by_name(_filmic_customizable_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_filmic_customizable_program_ub);
+    ogl_program_ub_get_property          (_filmic_customizable_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                         &_filmic_customizable_program_ub_bo_size);
+    ogl_program_ub_get_property          (_filmic_customizable_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                         &_filmic_customizable_program_ub_bo_id);
+    ogl_program_ub_get_property          (_filmic_customizable_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                         &_filmic_customizable_program_ub_bo_start_offset);
 
     /* Open curve editor */
     curve_editor_show(_context);

@@ -23,7 +23,7 @@ const char* tex2D_fragment_shader_body_not_reverted = "#version 330\n"
                                                       "\n"
                                                       "void main()\n"
                                                       "{\n"
-                                                      "    result = pow(texture2D(tex, uv), vec4(1/2.2) );\n"
+                                                      "    result = pow(texture(tex, uv), vec4(1/2.2) );\n"
                                                       "}\n";
 
 const char* tex2D_fragment_shader_body_reverted = "#version 330\n"
@@ -36,7 +36,7 @@ const char* tex2D_fragment_shader_body_reverted = "#version 330\n"
                                                   "\n"
                                                   "void main()\n"
                                                   "{\n"
-                                                  "    result = pow(texture2D(tex, vec2(uv.x, 1.0 - uv.y)), vec4(1/2.2)) ;\n"
+                                                  "    result = pow(texture(tex, vec2(uv.x, 1.0 - uv.y)), vec4(1/2.2)) ;\n"
                                                   "}\n";
 
 /** Internal type definition */

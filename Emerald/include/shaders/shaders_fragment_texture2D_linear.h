@@ -2,7 +2,7 @@
  *
  * Emerald (kbi/elude @2012)
  * 
- * Linear tone mapping operator. Only exposes "exposure" float uniform.
+ * Linear tone mapping operator. Only exposes "exposure" float uniform (in a data uniform block)
  *
  * The implementation is reference counter-based.
  */

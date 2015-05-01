@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
 #include "postprocessing/postprocessing_reinhard_tonemap.h"
@@ -14,6 +15,7 @@
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_math_other.h"
 
 
 /** Internal type definition */
@@ -33,12 +35,16 @@ typedef struct
     ogl_program rgb_to_Yxy_program;
     GLuint      rgb_to_Yxy_program_tex_uniform_location;
 
-    ogl_program operator_program;
-    GLuint      operator_program_alpha_uniform_location;
-    ogl_shader  operator_fragment_shader;
-    GLuint      operator_program_luminance_texture_location;
-    GLuint      operator_program_luminance_texture_avg_location;
-    GLuint      operator_program_white_level_uniform_location;
+    ogl_program    operator_program;
+    GLuint         operator_program_alpha_ub_offset;
+    ogl_program_ub operator_program_ub;
+    GLuint         operator_program_ub_bo_id;
+    GLuint         operator_program_ub_bo_size;
+    GLuint         operator_program_ub_bo_start_offset;
+    ogl_shader     operator_fragment_shader;
+    GLuint         operator_program_luminance_texture_location;
+    GLuint         operator_program_luminance_texture_avg_location;
+    GLuint         operator_program_white_level_ub_offset;
 
     uint32_t texture_width;
     uint32_t texture_height;
@@ -58,18 +64,22 @@ typedef struct
 /** Internal variables */
 system_hashed_ansi_string reinhard_tonemap_fragment_shader_body = system_hashed_ansi_string_create("#version 330\n"
                                                                                                    "\n"
-                                                                                                   "uniform float     alpha;\n"
+                                                                                                   "uniform data\n"
+                                                                                                   "{\n"
+                                                                                                   "    float alpha;\n"
+                                                                                                   "    float white_level;\n"
+                                                                                                   "};\n"
+                                                                                                   "\n"
                                                                                                    "uniform sampler2D luminance_texture;\n"
                                                                                                    "uniform sampler2D luminance_texture_avg;\n"
                                                                                                    "uniform sampler2D rgb_texture;\n"
-                                                                                                   "uniform float     white_level;\n"
                                                                                                    "\n"
                                                                                                    "in  vec2 uv;\n"
                                                                                                    "out vec4 result;\n"
                                                                                                    "\n"
                                                                                                    "void main()\n"
                                                                                                    "{\n"
-                                                                                                   "    float lum_avg = textureLod(luminance_texture_avg, vec2(0.0, 0.0), 32).x;\n"
+                                                                                                   "    float lum_avg = textureLod(luminance_texture_avg, vec2(0.0, 0.0), 5).x;\n"
                                                                                                    "    vec4  Yxy     = texture   (luminance_texture,     vec2(uv.x, 1-uv.y) );\n"
                                                                                                    "\n"
                                                                                                    "    lum_avg = exp(lum_avg);\n"
@@ -89,6 +99,7 @@ system_hashed_ansi_string reinhard_tonemap_fragment_shader_body = system_hashed_
                                                                                                    "\n"
                                                                                                    "    result = vec4(dot(X_vector, XYZ), dot(Y_vector, XYZ), dot(Z_vector, XYZ), Yxy.w);\n"
                                                                                                    "}\n");
+
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_reinhard_tonemap,
                                postprocessing_reinhard_tonemap,
@@ -103,7 +114,8 @@ REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_reinhard_tonemap,
 
 
 /** TODO */
-PRIVATE void _create_callback(ogl_context context, void* arg)
+PRIVATE void _create_callback(ogl_context context,
+                              void*       arg)
 {
     _create_callback_data*            data         = (_create_callback_data*) arg;
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -120,17 +132,13 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
                                                            system_hashed_ansi_string_create_by_merging_two_strings("Reinhard tonemap [YXY texture] ",
                                                            system_hashed_ansi_string_get_buffer(data->name) ));
 
-    entry_points->pGLBindTexture(GL_TEXTURE_2D,
-                                 data->data_ptr->yxy_texture);
-    entry_points->pGLTexImage2D (GL_TEXTURE_2D,
-                                 0,
-                                 GL_RGB32F,
-                                 data->data_ptr->texture_width,
-                                 data->data_ptr->texture_height,
-                                 0,
-                                 GL_RGB,
-                                 GL_FLOAT,
-                                 NULL);
+    entry_points->pGLBindTexture  (GL_TEXTURE_2D,
+                                   data->data_ptr->yxy_texture);
+    entry_points->pGLTexStorage2D (GL_TEXTURE_2D,
+                                   log2_uint32(max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
+                                   GL_RGB32F,
+                                   data->data_ptr->texture_width,
+                                   data->data_ptr->texture_height);
 
     entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                    GL_TEXTURE_WRAP_S,
@@ -145,9 +153,6 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
                                    GL_TEXTURE_MIN_FILTER,
                                    GL_LINEAR);
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create YXY texture");
-
     /* TODO */
     if (data->data_ptr->use_crude_downsampled_lum_average_calculation)
     {
@@ -157,15 +162,11 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
 
         entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                        data->data_ptr->downsampled_yxy_texture);
-        entry_points->pGLTexImage2D   (GL_TEXTURE_2D,
-                                       0,
+        entry_points->pGLTexStorage2D (GL_TEXTURE_2D,
+                                       6,  /* levels - initialize the mip-map chain up to 1x1 */
                                        GL_RGB32F,
-                                       64,
-                                       64,
-                                       0,
-                                       GL_RGB,
-                                       GL_FLOAT,
-                                       NULL);
+                                       64,  /* width */
+                                       64); /* height */
         entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                        GL_TEXTURE_WRAP_S,
                                        GL_CLAMP_TO_BORDER);
@@ -178,9 +179,6 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
         entry_points->pGLTexParameteri(GL_TEXTURE_2D,
                                        GL_TEXTURE_MIN_FILTER,
                                        GL_LINEAR);
-
-        ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                           "Could not create downsampled YXY texture");
     }
     else
     {
@@ -191,15 +189,9 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
     entry_points->pGLGenFramebuffers(1,
                                     &data->data_ptr->src_framebuffer_id);
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create source framebuffer");
-
     /* Create destination framebuffer we will be using for blitting purposes */
     entry_points->pGLGenFramebuffers(1,
                                     &data->data_ptr->dst_framebuffer_id);
-
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create and configure destination framebuffer");
 
     /* Create RGB=>Yxy fragment shader */
     data->data_ptr->rgb_to_Yxy_fragment_shader = shaders_fragment_rgb_to_Yxy_create(context,
@@ -207,17 +199,11 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
                                                                                                                                             system_hashed_ansi_string_get_buffer(data->name) ),
                                                                                     true);
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create RGB2YXY fragment shader");
-
     /* Create fullscreen vertex shader */
     data->data_ptr->fullscreen_vertex_shader = shaders_vertex_fullscreen_create(context,
                                                                                 true,
                                                                                 system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap Fullscreen ",
                                                                                                                                         system_hashed_ansi_string_get_buffer(data->name) ));
-
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create fullscreen vertex shader");
 
     /* Create RGB=>Yxy program */
     data->data_ptr->rgb_to_Yxy_program = ogl_program_create(context,
@@ -238,9 +224,6 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
 
     data->data_ptr->rgb_to_Yxy_program_tex_uniform_location = tex_uniform_descriptor->location;
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create RGB2YXY program");
-
     /* Create operator fragment shader */
     data->data_ptr->operator_fragment_shader = ogl_shader_create(context,
                                                                  SHADER_TYPE_FRAGMENT,
@@ -250,13 +233,11 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
     ogl_shader_set_body(data->data_ptr->operator_fragment_shader,
                         reinhard_tonemap_fragment_shader_body);
 
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create operator shader");
-
     /* Create operator program */
     data->data_ptr->operator_program = ogl_program_create(context,
                                                           system_hashed_ansi_string_create_by_merging_two_strings("Reinhard Tonemap operator ",
-                                                                                                                  system_hashed_ansi_string_get_buffer(data->name) ));
+                                                                                                                  system_hashed_ansi_string_get_buffer(data->name) ),
+                                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
 
     ogl_program_attach_shader(data->data_ptr->operator_program,
                               data->data_ptr->operator_fragment_shader);
@@ -264,6 +245,21 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
                               shaders_vertex_fullscreen_get_shader(data->data_ptr->fullscreen_vertex_shader) );
     ogl_program_link         (data->data_ptr->operator_program);
 
+    /* Retrieve uniform block properties */
+    ogl_program_get_uniform_block_by_name(data->data_ptr->operator_program,
+                                          system_hashed_ansi_string_create("data"),
+                                         &data->data_ptr->operator_program_ub);
+    ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                         &data->data_ptr->operator_program_ub_bo_size);
+    ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                         &data->data_ptr->operator_program_ub_bo_id);
+    ogl_program_ub_get_property          (data->data_ptr->operator_program_ub,
+                                          OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                         &data->data_ptr->operator_program_ub_bo_start_offset);
+
+    /* Retrieve uniform properties */
     const ogl_program_uniform_descriptor* alpha_uniform_descriptor                 = NULL;
     const ogl_program_uniform_descriptor* luminance_texture_uniform_descriptor     = NULL;
     const ogl_program_uniform_descriptor* luminance_texture_avg_uniform_descriptor = NULL;
@@ -282,17 +278,15 @@ PRIVATE void _create_callback(ogl_context context, void* arg)
                                     system_hashed_ansi_string_create("white_level"),
                                    &white_level_uniform_descriptor);
 
-    data->data_ptr->operator_program_alpha_uniform_location         = alpha_uniform_descriptor->location;
+    data->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_descriptor->ub_offset;
     data->data_ptr->operator_program_luminance_texture_location     = luminance_texture_uniform_descriptor->location;
     data->data_ptr->operator_program_luminance_texture_avg_location = luminance_texture_avg_uniform_descriptor->location;
-    data->data_ptr->operator_program_white_level_uniform_location   = white_level_uniform_descriptor->location;
-
-    ASSERT_ALWAYS_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                       "Could not create operator program");
+    data->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_descriptor->ub_offset;
 }
 
 /** TODO */
-PRIVATE void _release_callback(ogl_context context, void* arg)
+PRIVATE void _release_callback(ogl_context context,
+                               void*       arg)
 {
     _postprocessing_reinhard_tonemap* data_ptr     = (_postprocessing_reinhard_tonemap*) arg;
     const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -359,6 +353,7 @@ PUBLIC EMERALD_API postprocessing_reinhard_tonemap postprocessing_reinhard_tonem
 
     ASSERT_DEBUG_SYNC(result_object != NULL,
                       "Out of memory while instantiating _postprocessing_reinhard_tonemap object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Reinhard tonemap postprocessor object instance.");
@@ -417,6 +412,11 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull p
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    entry_points->pGLViewport(0, /* x */
+                              0, /* y */
+                              tonemapper_ptr->texture_width,
+                              tonemapper_ptr->texture_height);
+
     /* 1. Calculate luminance texture */
     GLuint rgb_to_Yxy_program_id = ogl_program_get_id(tonemapper_ptr->rgb_to_Yxy_program);
 
@@ -441,14 +441,11 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull p
                                      0,
                                      4);
 
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "Could not calculate luminance texture");
-
     /* 2. Downsample Yxy texture IF needed */
+    static const GLenum draw_buffers[1] = {GL_COLOR_ATTACHMENT0};
+
     if (tonemapper_ptr->use_crude_downsampled_lum_average_calculation)
     {
-        static const GLenum draw_buffers[1] = {GL_COLOR_ATTACHMENT0};
-
         entry_points->pGLBindFramebuffer     (GL_READ_FRAMEBUFFER,
                                               tonemapper_ptr->src_framebuffer_id);  /* TODO: as above */
         entry_points->pGLReadBuffer          (GL_COLOR_ATTACHMENT0);
@@ -466,19 +463,22 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull p
                                               GL_TEXTURE_2D,
                                               tonemapper_ptr->downsampled_yxy_texture,
                                               0);
-        entry_points->pGLBlitFramebuffer     (0,
-                                              0,
+
+        entry_points->pGLBlitFramebuffer     (0, /* srcX0 */
+                                              0, /* srcYo */
                                               tonemapper_ptr->texture_width,
                                               tonemapper_ptr->texture_height,
-                                              0,
-                                              0,
-                                              64,
-                                              64,
+                                              0,  /* dstX0 */
+                                              0,  /* dstY0 */
+                                              64, /* dstX1 */
+                                              64, /* dstY1 */
                                               GL_COLOR_BUFFER_BIT,
                                               GL_LINEAR);
 
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                          "Could not downsample");
+        entry_points->pGLViewport(0,  /* x */
+                                  0,  /* y */
+                                  64, /* width */
+                                  64);/* height */
     }
 
     /* 3. Generate mipmaps so that the last level contains average luminance */
@@ -486,9 +486,6 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull p
                                     (tonemapper_ptr->use_crude_downsampled_lum_average_calculation ? tonemapper_ptr->downsampled_yxy_texture :
                                                                                                      tonemapper_ptr->yxy_texture) );
     entry_points->pGLGenerateMipmap(GL_TEXTURE_2D);
-
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "Could not generate mipmaps for YXY texture");
 
     /* 4. Process input texture */
     GLuint tonemapper_program_id = ogl_program_get_id(tonemapper_ptr->operator_program);
@@ -505,18 +502,25 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull p
                                        tonemapper_ptr->downsampled_yxy_texture);
     }
 
-    entry_points->pGLProgramUniform1f(tonemapper_program_id,
-                                      tonemapper_ptr->operator_program_alpha_uniform_location,
-                                      alpha);
     entry_points->pGLProgramUniform1i(tonemapper_program_id,
                                       tonemapper_ptr->operator_program_luminance_texture_location,
                                       0);
     entry_points->pGLProgramUniform1i(tonemapper_program_id,
                                       tonemapper_ptr->operator_program_luminance_texture_avg_location,
                                       (tonemapper_ptr->use_crude_downsampled_lum_average_calculation ? 1 : 0) );
-    entry_points->pGLProgramUniform1f(tonemapper_program_id,
-                                      tonemapper_ptr->operator_program_white_level_uniform_location,
-                                      white_level);
+
+    ogl_program_ub_set_nonarrayed_uniform_value(tonemapper_ptr->operator_program_ub,
+                                                tonemapper_ptr->operator_program_alpha_ub_offset,
+                                               &alpha,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
+    ogl_program_ub_set_nonarrayed_uniform_value(tonemapper_ptr->operator_program_ub,
+                                                tonemapper_ptr->operator_program_white_level_ub_offset,
+                                               &white_level,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
+
+    ogl_program_ub_sync(tonemapper_ptr->operator_program_ub);
 
     if (out_texture != NULL)
     {
@@ -532,10 +536,17 @@ PUBLIC EMERALD_API void postprocessing_reinhard_tonemap_execute(__in __notnull p
                                          0);
     }
 
-    entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
-                                0,
-                                4);
+    entry_points->pGLViewport(0, /* x */
+                              0, /* y */
+                              tonemapper_ptr->texture_width,
+                              tonemapper_ptr->texture_height);
 
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "Could not generate output texture");
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     0, /* index */
+                                     tonemapper_ptr->operator_program_ub_bo_id,
+                                     tonemapper_ptr->operator_program_ub_bo_start_offset,
+                                     tonemapper_ptr->operator_program_ub_bo_size);
+    entry_points->pGLDrawArrays     (GL_TRIANGLE_FAN,
+                                     0,  /* first */
+                                     4); /* count */
 }
