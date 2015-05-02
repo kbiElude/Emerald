@@ -5,9 +5,9 @@
  * The vertex shader uses the following variables:
  *
  * INPUT   in_uv - uv attribute;
- * UNIFORM a     - start point;
- * UNIFORM b     - end point;
- * UNIFORM mvp   - projection*view*model matrix;
+ * UNIFORM a     - start point; (exposed via dataVS uniform block)
+ * UNIFORM b     - end point; (exposed via dataVS uniform block)
+ * UNIFORM mvp   - projection*view*model matrix; (exposed via dataVS uniform block)
  * OUTPUT  uv    - passes in_uv value.
  *
  * The implementation is reference counter-based.
@@ -17,7 +17,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_simplified_twopoint, shaders_vertex_combinedmvp_simplified_twopoint)
+REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_simplified_twopoint,
+                             shaders_vertex_combinedmvp_simplified_twopoint)
 
 
 /** Creates a new combined mvp (simplified, two-point) vertex shader object instance.

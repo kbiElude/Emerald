@@ -89,7 +89,7 @@ typedef struct
     system_timeline_time tcb_ubo_modification_time;
     GLuint               tcb_ubo_id;
 
-} _tcb_segment_rendering; 
+} _tcb_segment_rendering;
 
 typedef struct
 {
@@ -101,6 +101,21 @@ typedef struct
     ogl_rendering_handler     rendering_handler;
     HWND                      view_window_handle;
     system_window             window;
+
+    GLuint         static_color_program_a_ub_offset;
+    GLuint         static_color_program_b_ub_offset;
+    GLuint         static_color_program_color_ub_offset;
+    GLuint         static_color_program_mvp_ub_offset;
+    ogl_program_ub static_color_program_ub_fs;
+    GLuint         static_color_program_ub_fs_bo_id;
+    GLuint         static_color_program_ub_fs_bo_size;
+    GLuint         static_color_program_ub_fs_bo_start_offset;
+    GLuint         static_color_program_ub_fs_bp;
+    ogl_program_ub static_color_program_ub_vs;
+    GLuint         static_color_program_ub_vs_bo_id;
+    GLuint         static_color_program_ub_vs_bo_size;
+    GLuint         static_color_program_ub_vs_bo_start_offset;
+    GLuint         static_color_program_ub_vs_bp;
 
     float                     max_screen_height;
     float                     max_screen_width;
@@ -155,13 +170,9 @@ typedef struct
     ogl_shader                  bg_fragment_shader;
     shaders_vertex_fullscreen   bg_vertex_shader;
 
-    ogl_program                                    static_color_program;
     ogl_shader                                     static_color_fragment_shader;
+    ogl_program                                    static_color_program;
     shaders_vertex_combinedmvp_simplified_twopoint static_color_vertex_shader;
-    GLuint                                         static_color_color_uniform_location;
-    GLuint                                         static_color_a_uniform_location;
-    GLuint                                         static_color_b_uniform_location;
-    GLuint                                         static_color_mvp_uniform_location;
 
     curve_editor_program_curvebackground curvebackground_program;
     curve_editor_program_lerp            lerp_curve_program;
@@ -188,8 +199,12 @@ system_hashed_ansi_string _bg_fragment_shader_body = system_hashed_ansi_string_c
                                                                                      );
 system_hashed_ansi_string _static_color_fragment_shader_body = system_hashed_ansi_string_create("#version 330\n"
                                                                                                 "\n"
-                                                                                                "uniform vec4 in_color;\n"
-                                                                                                "out     vec4 color;\n"
+                                                                                                "uniform dataFS\n"
+                                                                                                "{\n"
+                                                                                                "    vec4 in_color;\n"
+                                                                                                "};\n"
+                                                                                                "\n"
+                                                                                                "out vec4 color;\n"
                                                                                                 "\n"
                                                                                                 "void main()\n"
                                                                                                 "{\n"
@@ -1780,35 +1795,47 @@ PRIVATE void _curve_editor_curve_window_renderer_init_descriptor(     _curve_edi
                                                                  __in curve_container                      curve,
                                                                  __in curve_editor_curve_window            owner)
 {
-    descriptor->context                   = NULL;
-    descriptor->curve                     = curve;
-    descriptor->float_variant             = system_variant_create(SYSTEM_VARIANT_FLOAT);
-    descriptor->hovered_curve_segment_id  = -1;
-    descriptor->is_left_button_down       = false;
-    descriptor->max_screen_height         = MAX_SCREEN_HEIGHT_DEFAULT;
-    descriptor->max_screen_width          = MAX_SCREEN_WIDTH_DEFAULT;
-    descriptor->mouse_x                   = 0;
-    descriptor->mouse_y                   = 0;
-    descriptor->name                      = name;
-    descriptor->nodemove_mode_active      = false;
-    descriptor->nodemove_node_id          = -1;
-    descriptor->nodemove_segment_id       = 0;
-    descriptor->n_text_strings            = 0;
-    descriptor->owner                     = owner;
-    descriptor->quadselector_mode_active  = false;
-    descriptor->segmentmove_mode_active   = false;
-    descriptor->segmentresize_mode_active = false;
-    descriptor->selected_node_id          = -1;
-    descriptor->selected_segment_id       = -1;
-    descriptor->tcb_segments              = system_hash64map_create(sizeof(void*) );
-    descriptor->text_renderer             = NULL;
-    descriptor->text_variant              = system_variant_create(SYSTEM_VARIANT_ANSI_STRING);
-    descriptor->view_window_handle        = view_window_handle;
-    descriptor->window                    = NULL;
-    descriptor->x1                        = START_X1;
-    descriptor->x_width                   = START_X_WIDTH;
-    descriptor->y1                        = START_Y1;
-    descriptor->y_height                  = START_Y_HEIGHT;
+    descriptor->context                                    = NULL;
+    descriptor->curve                                      = curve;
+    descriptor->float_variant                              = system_variant_create(SYSTEM_VARIANT_FLOAT);
+    descriptor->hovered_curve_segment_id                   = -1;
+    descriptor->is_left_button_down                        = false;
+    descriptor->max_screen_height                          = MAX_SCREEN_HEIGHT_DEFAULT;
+    descriptor->max_screen_width                           = MAX_SCREEN_WIDTH_DEFAULT;
+    descriptor->mouse_x                                    = 0;
+    descriptor->mouse_y                                    = 0;
+    descriptor->name                                       = name;
+    descriptor->nodemove_mode_active                       = false;
+    descriptor->nodemove_node_id                           = -1;
+    descriptor->nodemove_segment_id                        = 0;
+    descriptor->n_text_strings                             = 0;
+    descriptor->owner                                      = owner;
+    descriptor->quadselector_mode_active                   = false;
+    descriptor->segmentmove_mode_active                    = false;
+    descriptor->segmentresize_mode_active                  = false;
+    descriptor->selected_node_id                           = -1;
+    descriptor->selected_segment_id                        = -1;
+    descriptor->static_color_program_a_ub_offset           = -1;
+    descriptor->static_color_program_b_ub_offset           = -1;
+    descriptor->static_color_program_color_ub_offset       = -1;
+    descriptor->static_color_program_mvp_ub_offset         = -1;
+    descriptor->static_color_program_ub_fs                 = NULL;
+    descriptor->static_color_program_ub_fs_bo_id           = 0;
+    descriptor->static_color_program_ub_fs_bo_size         = 0;
+    descriptor->static_color_program_ub_fs_bo_start_offset = 0;
+    descriptor->static_color_program_ub_vs                 = NULL;
+    descriptor->static_color_program_ub_vs_bo_id           = 0;
+    descriptor->static_color_program_ub_vs_bo_size         = 0;
+    descriptor->static_color_program_ub_vs_bo_start_offset = 0;
+    descriptor->tcb_segments                               = system_hash64map_create(sizeof(void*) );
+    descriptor->text_renderer                              = NULL;
+    descriptor->text_variant                               = system_variant_create(SYSTEM_VARIANT_ANSI_STRING);
+    descriptor->view_window_handle                         = view_window_handle;
+    descriptor->window                                     = NULL;
+    descriptor->x1                                         = START_X1;
+    descriptor->x_width                                    = START_X_WIDTH;
+    descriptor->y1                                         = START_Y1;
+    descriptor->y_height                                   = START_Y_HEIGHT;
 }
 
 /** TODO */
@@ -1873,7 +1900,8 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
 
         /* Create static color program and corresponding shaders */
         _globals->static_color_program = ogl_program_create(context,
-                                                            system_hashed_ansi_string_create("Static color program") );
+                                                            system_hashed_ansi_string_create("Static color program"),
+                                                            OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT);
 
         ASSERT_DEBUG_SYNC(_globals->static_color_program != NULL,
                           "Could not craete static color program for curve window renderer.");
@@ -1913,30 +1941,6 @@ PRIVATE void _curve_editor_curve_window_renderer_init_globals(ogl_context contex
 
         ASSERT_DEBUG_SYNC(result,
                           "Could not link static color program for curve window renderer.");
-
-        /* Retrieve static color program's attribute & uniform locations */
-        const ogl_program_uniform_descriptor* in_color_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* a_uniform_descriptor        = NULL;
-        const ogl_program_uniform_descriptor* b_uniform_descriptor        = NULL;
-        const ogl_program_uniform_descriptor* mvp_uniform_descriptor      = NULL;
-
-        ogl_program_get_uniform_by_name(_globals->static_color_program,
-                                        system_hashed_ansi_string_create("in_color"),
-                                       &in_color_uniform_descriptor);
-        ogl_program_get_uniform_by_name(_globals->static_color_program,
-                                        system_hashed_ansi_string_create("a"),
-                                       &a_uniform_descriptor);
-        ogl_program_get_uniform_by_name(_globals->static_color_program,
-                                        system_hashed_ansi_string_create("b"),
-                                       &b_uniform_descriptor);
-        ogl_program_get_uniform_by_name(_globals->static_color_program,
-                                        system_hashed_ansi_string_create("mvp"),
-                                       &mvp_uniform_descriptor);
-
-        _globals->static_color_color_uniform_location = in_color_uniform_descriptor->location;
-        _globals->static_color_a_uniform_location     = a_uniform_descriptor->location;
-        _globals->static_color_b_uniform_location     = b_uniform_descriptor->location;
-        _globals->static_color_mvp_uniform_location   = mvp_uniform_descriptor->location;
 
         /* Create curve background program */
         _globals->curvebackground_program = curve_editor_program_curvebackground_create(context,
@@ -2887,13 +2891,79 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    /* If this is the first draw call ever, initialize uniform & uniform block data */
+    if (descriptor_ptr->static_color_program_ub_fs == NULL)
+    {
+        /* Retrieve properties of all the uniforms & uniform blocks */
+        ogl_program_get_uniform_block_by_name(_globals->static_color_program,
+                                              system_hashed_ansi_string_create("dataFS"),
+                                             &descriptor_ptr->static_color_program_ub_fs);
+        ogl_program_get_uniform_block_by_name(_globals->static_color_program,
+                                              system_hashed_ansi_string_create("dataVS"),
+                                             &descriptor_ptr->static_color_program_ub_vs);
+
+        ASSERT_DEBUG_SYNC(descriptor_ptr->static_color_program_ub_fs != NULL &&
+                          descriptor_ptr->static_color_program_ub_vs != NULL,
+                          "One of the required uniform blocks is considered inactive.");
+
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &descriptor_ptr->static_color_program_ub_fs_bo_size);
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &descriptor_ptr->static_color_program_ub_fs_bo_id);
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &descriptor_ptr->static_color_program_ub_fs_bo_start_offset);
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
+                                    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                   &descriptor_ptr->static_color_program_ub_fs_bp);
+
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &descriptor_ptr->static_color_program_ub_vs_bo_size);
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &descriptor_ptr->static_color_program_ub_vs_bo_id);
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &descriptor_ptr->static_color_program_ub_vs_bo_start_offset);
+        ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
+                                    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                   &descriptor_ptr->static_color_program_ub_vs_bp);
+
+        /* Retrieve static color program's attribute & uniform locations */
+        const ogl_program_uniform_descriptor* in_color_uniform_descriptor = NULL;
+        const ogl_program_uniform_descriptor* a_uniform_descriptor        = NULL;
+        const ogl_program_uniform_descriptor* b_uniform_descriptor        = NULL;
+        const ogl_program_uniform_descriptor* mvp_uniform_descriptor      = NULL;
+
+        ogl_program_get_uniform_by_name(_globals->static_color_program,
+                                        system_hashed_ansi_string_create("in_color"),
+                                       &in_color_uniform_descriptor);
+        ogl_program_get_uniform_by_name(_globals->static_color_program,
+                                        system_hashed_ansi_string_create("a"),
+                                       &a_uniform_descriptor);
+        ogl_program_get_uniform_by_name(_globals->static_color_program,
+                                        system_hashed_ansi_string_create("b"),
+                                       &b_uniform_descriptor);
+        ogl_program_get_uniform_by_name(_globals->static_color_program,
+                                        system_hashed_ansi_string_create("mvp"),
+                                       &mvp_uniform_descriptor);
+
+        descriptor_ptr->static_color_program_color_ub_offset = in_color_uniform_descriptor->ub_offset;
+        descriptor_ptr->static_color_program_a_ub_offset     = a_uniform_descriptor->ub_offset;
+        descriptor_ptr->static_color_program_b_ub_offset     = b_uniform_descriptor->ub_offset;
+        descriptor_ptr->static_color_program_mvp_ub_offset   = mvp_uniform_descriptor->ub_offset;
+    }
+
     /* If globals are not initialized DO NOT continue */
     if (!_is_globals_initialized)
     {
         return;
     }
 
-    /* Since this is the first call-back ever for the window, enable line smoothing */
+    /* Enable line smoothing */
     GLuint vao_id = 0;
 
     ogl_context_get_property(context,
@@ -2913,6 +2983,18 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         entry_points->pGLDrawArrays(GL_TRIANGLE_FAN,
                                     0,
                                     4);
+
+        /* Set up uniform buffers */
+        entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                         descriptor_ptr->static_color_program_ub_fs_bp,
+                                         descriptor_ptr->static_color_program_ub_fs_bo_id,
+                                         descriptor_ptr->static_color_program_ub_fs_bo_start_offset,
+                                         descriptor_ptr->static_color_program_ub_fs_bo_size);
+        entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                         descriptor_ptr->static_color_program_ub_vs_bp,
+                                         descriptor_ptr->static_color_program_ub_vs_bo_id,
+                                         descriptor_ptr->static_color_program_ub_vs_bo_start_offset,
+                                         descriptor_ptr->static_color_program_ub_vs_bo_size);
 
         /* Draw axes */
         float axis_x    = LERP_FROM_A_B_TO_C_D(0,
@@ -2949,44 +3031,58 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         {
             GLuint program_id = ogl_program_get_id(_globals->static_color_program);
 
-            entry_points->pGLLineWidth              (WIDTH_AXES);
-            entry_points->pGLUseProgram             (program_id);
-            entry_points->pGLProgramUniform4fv      (program_id,
-                                                     _globals->static_color_a_uniform_location,
-                                                     1,
-                                                     horizontal_a);
-            entry_points->pGLProgramUniform4fv      (program_id,
-                                                     _globals->static_color_b_uniform_location,
-                                                     1,
-                                                     horizontal_b);
-            entry_points->pGLProgramUniformMatrix4fv(program_id,
-                                                     _globals->static_color_mvp_uniform_location,
-                                                     1,
-                                                     false,
-                                                     identity_matrix);
-            entry_points->pGLProgramUniform4fv      (program_id,
-                                                     _globals->static_color_color_uniform_location,
-                                                     1,
-                                                     color);
-            entry_points->pGLDrawArrays             (GL_LINES,
-                                                     0,
-                                                     2);
-            entry_points->pGLProgramUniform4fv      (program_id,
-                                                     _globals->static_color_a_uniform_location,
-                                                     1,
-                                                     vertical_a);
-            entry_points->pGLProgramUniform4fv      (program_id,
-                                                     _globals->static_color_b_uniform_location,
-                                                     1,
-                                                     vertical_b);
-            entry_points->pGLDrawArrays             (GL_LINES,
-                                                     0,
-                                                     2);
+            entry_points->pGLLineWidth (WIDTH_AXES);
+            entry_points->pGLUseProgram(program_id);
+
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_a_ub_offset,
+                                                        horizontal_a,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_b_ub_offset,
+                                                        horizontal_b,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_mvp_ub_offset,
+                                                        identity_matrix,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 16);
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_fs,
+                                                        descriptor_ptr->static_color_program_color_ub_offset,
+                                                        color,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+
+            ogl_program_ub_sync(descriptor_ptr->static_color_program_ub_fs);
+            ogl_program_ub_sync(descriptor_ptr->static_color_program_ub_vs);
+
+            entry_points->pGLDrawArrays(GL_LINES,
+                                        0,
+                                        2);
+
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_a_ub_offset,
+                                                        vertical_a,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_b_ub_offset,
+                                                        vertical_b,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+
+            ogl_program_ub_sync(descriptor_ptr->static_color_program_ub_vs);
+
+            entry_points->pGLDrawArrays(GL_LINES,
+                                        0,
+                                        2);
         }
         entry_points->pGLDisable(GL_BLEND);
 
         /* Draw separators. The way we handle them is that we start from 0 and render a separator every __predefined__ amount of pixels, 
-         * no matter what current horizontal scale is. 
+         * no matter what current horizontal scale is.
          */
         float horizontal_separator_width = 0;
 
@@ -3045,17 +3141,22 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                 float a[4]            = {separator_x_ss, separator_y1_ss, 0, 1};
                 float b[4]            = {separator_x_ss, separator_y2_ss, 0, 1};
 
-                entry_points->pGLProgramUniform4fv(program_id,
-                                                   _globals->static_color_a_uniform_location,
-                                                   1,
-                                                   a);
-                entry_points->pGLProgramUniform4fv(program_id,
-                                                   _globals->static_color_b_uniform_location,
-                                                   1,
-                                                   b);
-                entry_points->pGLDrawArrays       (GL_LINES,
-                                                   0,
-                                                   2);
+                ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                            descriptor_ptr->static_color_program_a_ub_offset,
+                                                            a,
+                                                            0, /* src_data_flags */
+                                                            sizeof(float) * 4);
+                ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                            descriptor_ptr->static_color_program_b_ub_offset,
+                                                            b,
+                                                            0, /* src_data_flags */
+                                                            sizeof(float) * 4);
+
+                ogl_program_ub_sync(descriptor_ptr->static_color_program_ub_vs);
+
+                entry_points->pGLDrawArrays(GL_LINES,
+                                            0,
+                                            2);
 
                 /* Update text to be drawn */
                 char  buffer[32];
@@ -3138,17 +3239,22 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
             float a[4]         = {separator_x1_ss, bottom_y_ss, 0, 1};
             float b[4]         = {separator_x2_ss, bottom_y_ss, 0, 1};
 
-            entry_points->pGLProgramUniform4fv(program_id,
-                                               _globals->static_color_a_uniform_location,
-                                               1,
-                                               a);
-            entry_points->pGLProgramUniform4fv(program_id,
-                                               _globals->static_color_b_uniform_location,
-                                               1,
-                                               b);
-            entry_points->pGLDrawArrays       (GL_LINES,
-                                               0,
-                                               2);
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_a_ub_offset,
+                                                        a,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+            ogl_program_ub_set_nonarrayed_uniform_value(descriptor_ptr->static_color_program_ub_vs,
+                                                        descriptor_ptr->static_color_program_b_ub_offset,
+                                                        b,
+                                                        0, /* src_data_flags */
+                                                        sizeof(float) * 4);
+
+            ogl_program_ub_sync(descriptor_ptr->static_color_program_ub_vs);
+
+            entry_points->pGLDrawArrays(GL_LINES,
+                                        0,
+                                        2);
 
             if (n_text_strings_used < descriptor_ptr->n_text_strings)
             {
