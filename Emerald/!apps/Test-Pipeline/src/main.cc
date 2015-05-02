@@ -9,6 +9,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_texture.h"
@@ -26,20 +27,28 @@ system_event  _window_closed_event = system_event_create(true,   /* manual_reset
                                                          false); /* start_state */
 int           _window_size[2]      = {0};
 
-GLuint      _fbo_id                         = -1;
-ogl_program _generation_po                  = NULL;
-GLuint      _generation_po_time_location    = -1;
-ogl_program _modification_po                = NULL;
-GLuint      _modification_po_input_location = -1; /* set to GL_TEXTURE0 */
-ogl_texture _to_1                           = 0;
-ogl_texture _to_2                           = 0;
-GLuint      _vao_id                         = 0;
+GLuint         _fbo_id                           = -1;
+ogl_program    _generation_po                    = NULL;
+GLuint         _generation_po_time_ub_offset     = -1;
+ogl_program_ub _generation_po_ub                 = NULL;
+GLuint         _generation_po_ub_bo_id           = 0;
+GLuint         _generation_po_ub_bo_size         = 0;
+GLuint         _generation_po_ub_bo_start_offset = 0;
+ogl_program    _modification_po                  = NULL;
+GLuint         _modification_po_input_location   = -1; /* set to GL_TEXTURE0 */
+ogl_texture    _to_1                             = 0;
+ogl_texture    _to_2                             = 0;
+GLuint         _vao_id                           = 0;
 
 const char* fragment_shader_generation = "#version 330\n"
                                          "\n"
-                                         "in      vec2  uv;\n"
-                                         "out     vec4  result;\n"
-                                         "uniform float time;\n"
+                                         "in  vec2 uv;\n"
+                                         "out vec4 result;\n"
+                                         "\n"
+                                         "uniform data\n"
+                                         "{\n"
+                                         "    float time;\n"
+                                         "};\n"
                                          "\n"
                                          "void main()\n"
                                          "{\n"
@@ -64,6 +73,7 @@ const char* fragment_shader_modification = "#version 330\n"
                                            "        result = input_data;\n"
                                            "    }\n"
                                            "}\n";
+
 /* GL deinitialization */
 void _deinit_gl(ogl_context context,
                 void*       arg)
@@ -166,7 +176,8 @@ void _init_gl(ogl_context context,
                                                                                  system_hashed_ansi_string_create("modification") );
 
     _generation_po   = ogl_program_create(_context,
-                                          system_hashed_ansi_string_create("generation") );
+                                          system_hashed_ansi_string_create("generation"),
+                                          OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
     _modification_po = ogl_program_create(_context,
                                           system_hashed_ansi_string_create("modification") );
 
@@ -203,8 +214,23 @@ void _init_gl(ogl_context context,
                                     system_hashed_ansi_string_create("input"),
                                    &input_descriptor);
 
-    _generation_po_time_location    = time_descriptor->location;
+    _generation_po_time_ub_offset   = time_descriptor->ub_offset;
     _modification_po_input_location = input_descriptor->location;
+
+    /* Retrieve uniform block data */
+    ogl_program_get_uniform_block_by_name(_generation_po,
+                                          system_hashed_ansi_string_create("data"),
+                                         &_generation_po_ub);
+
+    ogl_program_ub_get_property(_generation_po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                               &_generation_po_ub_bo_size);
+    ogl_program_ub_get_property(_generation_po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                               &_generation_po_ub_bo_id);
+    ogl_program_ub_get_property(_generation_po_ub,
+                                OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                               &_generation_po_ub_bo_start_offset);
 }
 
 /* Stage step 1: sample data generation */
@@ -230,12 +256,20 @@ static void _stage_step_generate_data(ogl_context          context,
     time_ms_as_s = ((float) time_ms) / 1000.0f;
 
     entry_points->pGLBindVertexArray(_vao_id);
-
     entry_points->pGLUseProgram      (ogl_program_get_id(_generation_po) );
-    entry_points->pGLProgramUniform1f(ogl_program_get_id(_generation_po),
-                                      _generation_po_time_location,
-                                      time_ms_as_s);
 
+    ogl_program_ub_set_nonarrayed_uniform_value(_generation_po_ub,
+                                                _generation_po_time_ub_offset,
+                                               &time_ms_as_s,
+                                                0, /* src_data_flags */
+                                                sizeof(float) );
+    ogl_program_ub_sync                        (_generation_po_ub);
+
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     0, /* index */
+                                     _generation_po_ub_bo_id,
+                                     _generation_po_ub_bo_start_offset,
+                                     _generation_po_ub_bo_size);
     entry_points->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                      _fbo_id);
     entry_points->pGLDrawArrays     (GL_TRIANGLE_FAN,
