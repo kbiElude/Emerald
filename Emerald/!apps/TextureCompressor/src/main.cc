@@ -10,6 +10,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_texture_compression.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
 #include "ogl/ogl_text.h"
@@ -67,49 +68,53 @@ const float _default_previous_button_x1y1               [] = {0.7f,  0.5f};
 const float _default_save_button_x1y1                   [] = {0.75f, 0.5f};
 const float _default_next_button_x1y1                   [] = {0.8f,  0.5f};
 
-system_resizable_vector         _compression_algorithms            = NULL;
-GLuint                          _compression_fbo                   = -1;
-_compression_algorithm*         _current_compression_algorithm     = NULL;
-ogl_context                     _context                           = NULL;
-ogl_context_texture_compression _context_texture_compression       = NULL;
-bool                            _drag_mode                         = false;
-float                           _drag_mode_start_dx_dy[2]          = {0};
-unsigned short                  _drag_mode_start_xy[2]             = {0};
-float                           _dx_dy[2]                          = {0.0f, 0.0f};
-system_file_enumerator          _file_enumerator                   = NULL;
-uint32_t                        _file_enumerator_n_current_file    = 0;
-uint32_t                        _file_enumerator_n_files           = 0;
-ogl_shader                      _preview_fs                        = NULL;
-ogl_program                     _preview_po                        = NULL;
-GLint                           _preview_po_uniform_texture        = -1;
-GLint                           _preview_po_uniform_x1y1x2y2       = -1;
-ogl_shader                      _preview_vs                        = NULL;
-GLuint                          _sampler_id                        = 0;
-float                           _scale                             = 1.0f;
-ogl_text                        _text_renderer                     = NULL;
-ogl_texture                     _texture_c                         = NULL;
-ogl_texture                     _texture_nc                        = NULL;
-ogl_ui                          _ui                                = NULL;
-system_critical_section         _ui_callback_cs                    = NULL;
-ogl_ui_control                  _ui_compressed_filename_label      = NULL;
-ogl_ui_control                  _ui_compressed_filesize_label      = NULL;
-ogl_ui_control                  _ui_compression_algorithm_dropdown = NULL;
-ogl_ui_control                  _ui_decompressed_filename_label    = NULL;
-ogl_ui_control                  _ui_decompressed_filesize_label    = NULL;
-ogl_ui_control                  _ui_frame                          = NULL;
-ogl_ui_control                  _ui_generate_mipmaps_checkbox      = NULL;
-ogl_ui_control                  _ui_next_file_button               = NULL;
-ogl_ui_control                  _ui_previous_file_button           = NULL;
-ogl_ui_control                  _ui_save_file_button               = NULL;
-GLuint                          _vao_id                            = 0;
-ogl_shader                      _whiteline_fs                      = NULL;
-ogl_program                     _whiteline_po                      = NULL;
-ogl_shader                      _whiteline_vs                      = NULL;
-system_window                   _window                            = NULL;
-system_event                    _window_closed_event               = system_event_create(true,  /* manual_reset */
-                                                                                         false);/* start_state */
-const int                       _window_size[2]                    = {1280, 720};
-float                           _x1y1x2y2[4]                       = {0.0f, 0.0f, 0.0f, 0.0f};
+system_resizable_vector         _compression_algorithms                = NULL;
+GLuint                          _compression_fbo                       = -1;
+_compression_algorithm*         _current_compression_algorithm         = NULL;
+ogl_context                     _context                               = NULL;
+ogl_context_texture_compression _context_texture_compression           = NULL;
+bool                            _drag_mode                             = false;
+float                           _drag_mode_start_dx_dy[2]              = {0};
+unsigned short                  _drag_mode_start_xy[2]                 = {0};
+float                           _dx_dy[2]                              = {0.0f, 0.0f};
+system_file_enumerator          _file_enumerator                       = NULL;
+uint32_t                        _file_enumerator_n_current_file        = 0;
+uint32_t                        _file_enumerator_n_files               = 0;
+ogl_shader                      _preview_fs                            = NULL;
+ogl_program                     _preview_po                            = NULL;
+ogl_program_ub                  _preview_po_ub                         = NULL;
+GLuint                          _preview_po_ub_bo_id                   = 0;
+GLuint                          _preview_po_ub_bo_size                 = 0;
+GLuint                          _preview_po_ub_bo_start_offset         = 0;
+GLint                           _preview_po_uniform_texture            = -1;
+GLint                           _preview_po_uniform_x1y1x2y2_ub_offset = -1;
+ogl_shader                      _preview_vs                            = NULL;
+GLuint                          _sampler_id                            = 0;
+float                           _scale                                 = 1.0f;
+ogl_text                        _text_renderer                         = NULL;
+ogl_texture                     _texture_c                             = NULL;
+ogl_texture                     _texture_nc                            = NULL;
+ogl_ui                          _ui                                    = NULL;
+system_critical_section         _ui_callback_cs                        = NULL;
+ogl_ui_control                  _ui_compressed_filename_label          = NULL;
+ogl_ui_control                  _ui_compressed_filesize_label          = NULL;
+ogl_ui_control                  _ui_compression_algorithm_dropdown     = NULL;
+ogl_ui_control                  _ui_decompressed_filename_label        = NULL;
+ogl_ui_control                  _ui_decompressed_filesize_label        = NULL;
+ogl_ui_control                  _ui_frame                              = NULL;
+ogl_ui_control                  _ui_generate_mipmaps_checkbox          = NULL;
+ogl_ui_control                  _ui_next_file_button                   = NULL;
+ogl_ui_control                  _ui_previous_file_button               = NULL;
+ogl_ui_control                  _ui_save_file_button                   = NULL;
+GLuint                          _vao_id                                = 0;
+ogl_shader                      _whiteline_fs                          = NULL;
+ogl_program                     _whiteline_po                          = NULL;
+ogl_shader                      _whiteline_vs                          = NULL;
+system_window                   _window                                = NULL;
+system_event                    _window_closed_event                   = system_event_create(true,  /* manual_reset */
+                                                                                             false);/* start_state */
+const int                       _window_size[2]                        = {800, 600};
+float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 
 /** Shaders: preview */
 const char* preview_fs_code = "#version 420\n"
@@ -124,8 +129,12 @@ const char* preview_fs_code = "#version 420\n"
                               "}\n";
 const char* preview_vs_code = "#version 420\n"
                               "\n"
-                              "     out vec2 uv;\n"
-                              "uniform  vec4 x1y1x2y2;\n"
+                              "out vec2 uv;\n"
+                              "\n"
+                              "uniform data\n"
+                              "{\n"
+                              "    vec4 x1y1x2y2;\n"
+                              "};\n"
                               "\n"
                               "void main()\n"
                               "{\n"
@@ -753,7 +762,8 @@ void _rendering_handler(ogl_context          context,
                                          SHADER_TYPE_FRAGMENT,
                                          system_hashed_ansi_string_create("Preview FS") );
         _preview_po = ogl_program_create(_context,
-                                         system_hashed_ansi_string_create("Preview PO") );
+                                         system_hashed_ansi_string_create("Preview PO"),
+                                         OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL);
         _preview_vs = ogl_shader_create (_context,
                                          SHADER_TYPE_VERTEX,
                                          system_hashed_ansi_string_create("Preview VS") );
@@ -789,8 +799,23 @@ void _rendering_handler(ogl_context          context,
         ASSERT_ALWAYS_SYNC(uniform_x1y1x2y2 != NULL,
                            "x1y1x2y2 is not recognized");
 
-        _preview_po_uniform_texture  = uniform_texture->location;
-        _preview_po_uniform_x1y1x2y2 = uniform_x1y1x2y2->location;
+        _preview_po_uniform_texture            = uniform_texture->location;
+        _preview_po_uniform_x1y1x2y2_ub_offset = uniform_x1y1x2y2->ub_offset;
+
+        /* Retrieve uniform block data */
+        ogl_program_get_uniform_block_by_name(_preview_po,
+                                              system_hashed_ansi_string_create("data"),
+                                             &_preview_po_ub);
+
+        ogl_program_ub_get_property(_preview_po_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BLOCK_DATA_SIZE,
+                                   &_preview_po_ub_bo_size);
+        ogl_program_ub_get_property(_preview_po_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_ID,
+                                   &_preview_po_ub_bo_id);
+        ogl_program_ub_get_property(_preview_po_ub,
+                                    OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
+                                   &_preview_po_ub_bo_start_offset);
 
         /* Instantiate a FBO we will use for conversions */
         entry_points->pGLGenFramebuffers(1,
@@ -897,10 +922,18 @@ void _rendering_handler(ogl_context          context,
                 norm[3] * len[3] * _scale,
     };
 
-    entry_points->pGLProgramUniform4fv(ogl_program_get_id(_preview_po),
-                                       _preview_po_uniform_x1y1x2y2,
-                                       1, /* count */
-                                       norm_scaled);
+    ogl_program_ub_set_nonarrayed_uniform_value(_preview_po_ub,
+                                                _preview_po_uniform_x1y1x2y2_ub_offset,
+                                                norm_scaled,
+                                                0, /* src_data_scaled */
+                                                sizeof(float) * 4);
+    ogl_program_ub_sync                        (_preview_po_ub);
+
+    entry_points->pGLBindBufferRange(GL_UNIFORM_BUFFER,
+                                     0, /* index */
+                                     _preview_po_ub_bo_id,
+                                     _preview_po_ub_bo_start_offset,
+                                     _preview_po_ub_bo_size);
 
     /* Clear the color buffer */
     entry_points->pGLClear(GL_COLOR_BUFFER_BIT);
@@ -935,10 +968,12 @@ void _rendering_handler(ogl_context          context,
     norm_scaled[0] += 1.0f;
     norm_scaled[2] += 1.0f;
 
-    entry_points->pGLProgramUniform4fv(ogl_program_get_id(_preview_po),
-                                       _preview_po_uniform_x1y1x2y2,
-                                       1, /* count */
-                                       norm_scaled);
+    ogl_program_ub_set_nonarrayed_uniform_value(_preview_po_ub,
+                                                _preview_po_uniform_x1y1x2y2_ub_offset,
+                                                norm_scaled,
+                                                0, /* src_data_scaled */
+                                                sizeof(float) * 4);
+    ogl_program_ub_sync                        (_preview_po_ub);
 
     dsa_entry_points->pGLBindMultiTextureEXT(GL_TEXTURE0,
                                              GL_TEXTURE_2D,
