@@ -2846,6 +2846,23 @@ PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
 }
 
 /** Please see header for spec */
+PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferRangeEXT(GLuint     buffer,
+                                                                    GLintptr   offset,
+                                                                    GLsizeiptr length,
+                                                                    GLbitfield access)
+{
+    ogl_context context = ogl_context_get_current_context();
+    void*       result  = NULL;
+
+    result = _private_entrypoints_ptr->pGLMapNamedBufferRangeEXT(buffer,
+                                                                 offset,
+                                                                 length,
+                                                                 access);
+
+    return result;
+}
+
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferDataEXT(GLuint      buffer,
                                                                GLsizeiptr  size,
                                                                const void* data,

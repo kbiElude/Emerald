@@ -1407,6 +1407,7 @@ typedef struct
     PFNGLGETNAMEDBUFFERPOINTERVEXTPROC    pGLGetNamedBufferPointervEXT;
     PFNGLGETNAMEDBUFFERSUBDATAEXTPROC     pGLGetNamedBufferSubDataEXT;
     PFNGLMAPNAMEDBUFFEREXTPROC            pGLMapNamedBufferEXT;
+    PFNGLMAPNAMEDBUFFERRANGEEXTPROC       pGLMapNamedBufferRangeEXT;
     PFNGLNAMEDBUFFERDATAEXTPROC           pGLNamedBufferDataEXT;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC        pGLNamedBufferSubDataEXT;
     PFNGLNAMEDCOPYBUFFERSUBDATAEXTPROC    pGLNamedCopyBufferSubDataEXT;
@@ -1555,6 +1556,7 @@ typedef struct
     PFNWRAPPEDGLCOPYTEXTURESUBIMAGE3DEXTPROC                pGLCopyTextureSubImage3DEXT;
     PFNGLDISABLEVERTEXARRAYATTRIBEXTPROC                    pGLDisableVertexArrayAttribEXT;
     PFNGLENABLEVERTEXARRAYATTRIBEXTPROC                     pGLEnableVertexArrayAttribEXT;
+    PFNGLFLUSHMAPPEDNAMEDBUFFERRANGEEXTPROC                 pGLFlushMappedNamedBufferRangeEXT;
     PFNGLFRAMEBUFFERDRAWBUFFEREXTPROC                       pGLFramebufferDrawBufferEXT;
     PFNGLFRAMEBUFFERDRAWBUFFERSEXTPROC                      pGLFramebufferDrawBuffersEXT;
     PFNGLFRAMEBUFFERREADBUFFEREXTPROC                       pGLFramebufferReadBufferEXT;
@@ -1571,6 +1573,7 @@ typedef struct
     PFNWRAPPEDGLGETTEXTUREPARAMETERFVEXTPROC                pGLGetTextureLevelParameterfvEXT;
     PFNWRAPPEDGLGETTEXTUREPARAMETERIVEXTPROC                pGLGetTextureLevelParameterivEXT;
     PFNGLMAPNAMEDBUFFEREXTPROC                              pGLMapNamedBufferEXT;
+    PFNGLMAPNAMEDBUFFERRANGEEXTPROC                         pGLMapNamedBufferRangeEXT;
     PFNGLNAMEDBUFFERDATAEXTPROC                             pGLNamedBufferDataEXT;
     PFNGLNAMEDBUFFERSTORAGEEXTPROC                          pGLNamedBufferStorageEXT;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC                          pGLNamedBufferSubDataEXT;

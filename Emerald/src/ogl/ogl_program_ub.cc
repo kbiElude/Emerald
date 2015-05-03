@@ -23,14 +23,21 @@
 /** Internal types */
 typedef struct _ogl_program_ub
 {
+    bool are_persistent_buffers_in;
+
     ogl_buffers  buffers; /* NOT retained */
     ogl_context  context; /* NOT retained */
     unsigned int index;
     ogl_program  owner;
 
     /* block_data holds a local cache of uniform data. This helps us avoid all the complex logic
-     * that would otherwise have to be used to store uniform values AND is pretty cache-friendly. */
+     * that would otherwise have to be used to store uniform values AND is pretty cache-friendly.
+     *
+     * block_data_gl is only used if persistent buffers are supported. If so, this is the ptr
+     * returned by GL, which should be used for write operations (instead of glBufferSubData() calls)
+     */
     GLuint         block_bo_id;
+    GLvoid*        block_bo_mapped_gl_ptr;
     unsigned int   block_bo_start_offset;
     unsigned char* block_data;
     GLint          block_data_size;
@@ -44,11 +51,13 @@ typedef struct _ogl_program_ub
     PFNGLBINDBUFFERPROC              pGLBindBuffer;
     PFNGLBUFFERSUBDATAPROC           pGLBufferSubData;
     PFNGLGETACTIVEUNIFORMBLOCKIVPROC pGLGetActiveUniformBlockiv;
+    PFNGLMAPNAMEDBUFFERRANGEEXTPROC  pGLMapNamedBufferRangeEXT;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC   pGLNamedBufferSubDataEXT;
     PFNGLUNIFORMBLOCKBINDINGPROC     pGLUniformBlockBinding;
 
     /* Delimits a UB region which needs to be re-uploaded to the GPU upon next
-     * synchronisation request.
+     * synchronisation request. These are only used if persistent mapping is not
+     * available!
      *
      * TODO: We could actually approach this task in a more intelligent manner:
      *
@@ -57,7 +66,7 @@ typedef struct _ogl_program_ub
      *               uploading its contents just once, and then using gl*Sub*() calls
      *               to update relevant target buffer regions for ultra-fast performance.
      *
-     * Sticking to brute-force implementation for testing purposes, for the time being.
+     * Sticking to brute-force implementation for the time being.
      */
     unsigned int dirty_offset_end;
     unsigned int dirty_offset_start;
@@ -68,7 +77,9 @@ typedef struct _ogl_program_ub
                              __in __notnull system_hashed_ansi_string in_name,
                              __in           bool                      in_syncable)
     {
+        are_persistent_buffers_in        = false;
         block_bo_id                      = 0;
+        block_bo_mapped_gl_ptr           = NULL;
         block_bo_start_offset            = -1;
         block_data                       = NULL;
         block_data_size                  = 0;
@@ -83,8 +94,10 @@ typedef struct _ogl_program_ub
                                                                           sizeof(ogl_program_uniform_descriptor*) );
         offset_to_uniform_descriptor_map = system_hash64map_create       (sizeof(ogl_program_uniform_descriptor*) );
         owner                            = in_owner;
+        pGLBindBuffer                    = NULL;
         pGLBufferSubData                 = NULL;
         pGLGetActiveUniformBlockiv       = NULL;
+        pGLMapNamedBufferRangeEXT        = NULL;
         pGLNamedBufferSubDataEXT         = NULL;
         pGLUniformBlockBinding           = NULL;
         syncable                         = in_syncable;
@@ -92,6 +105,16 @@ typedef struct _ogl_program_ub
         ogl_context_get_property(context,
                                  OGL_CONTEXT_PROPERTY_BUFFERS,
                                 &buffers);
+
+        #ifdef ENABLE_PERSISTENT_UB_STORAGE
+        {
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
+                                    &are_persistent_buffers_in);
+        }
+        #else
+            are_persistent_buffers_in = false;
+        #endif
 
         ASSERT_DEBUG_SYNC(members                          != NULL &&
                           offset_to_uniform_descriptor_map != NULL,
@@ -116,6 +139,8 @@ typedef struct _ogl_program_ub
 
             block_data = NULL;
         }
+
+        /* NOTE: Do not touch block_bo_mapped_gl_ptr, as it is owned by ogl_buffers */
 
         if (members != NULL)
         {
@@ -347,13 +372,10 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
         ub_ptr->pGLBindBuffer              = entry_points->pGLBindBuffer;
         ub_ptr->pGLBufferSubData           = entry_points->pGLBufferSubData;
         ub_ptr->pGLGetActiveUniformBlockiv = entry_points->pGLGetActiveUniformBlockiv;
+        ub_ptr->pGLMapNamedBufferRangeEXT  = entry_points_dsa->pGLMapNamedBufferRangeEXT;
+        ub_ptr->pGLNamedBufferSubDataEXT   = entry_points_dsa->pGLNamedBufferSubDataEXT;
         ub_ptr->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
         uniform_buffer_offset_alignment    = limits_ptr->uniform_buffer_offset_alignment;
-
-        if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL)
-        {
-            ub_ptr->pGLNamedBufferSubDataEXT = entry_points_dsa->pGLNamedBufferSubDataEXT;
-        } /* if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL) */
     }
     else
     {
@@ -387,6 +409,7 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
     if (ub_ptr->block_data_size > 0 &&
         ub_ptr->syncable)
     {
+        /* Allocate the local data storage */
         ub_ptr->block_data = new (std::nothrow) unsigned char[ub_ptr->block_data_size];
 
         if (ub_ptr->block_data == NULL)
@@ -399,19 +422,37 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
             goto end;
         }
 
+        /* Allocate the memory on the GL side..
+         *
+         * If persistent buffers are in, we will want to map the region to directly
+         * update the GPU-accessible memory.
+         * Otherwise, we will stick to glBufferSubData() calls so we need not map
+         * anything.
+         */
+        ogl_buffers_allocate_buffer_memory(ub_ptr->buffers,
+                                           ub_ptr->block_data_size,
+                                           uniform_buffer_offset_alignment,
+                                           (ub_ptr->are_persistent_buffers_in) ? OGL_BUFFERS_MAPPABILITY_WRITE_OPS_ONLY
+                                                                               : OGL_BUFFERS_MAPPABILITY_NONE,
+                                           OGL_BUFFERS_USAGE_UBO,
+                                           OGL_BUFFERS_FLAGS_NONE,
+                                          &ub_ptr->block_bo_id,
+                                          &ub_ptr->block_bo_start_offset,
+                                          &ub_ptr->block_bo_mapped_gl_ptr);
+
+        ASSERT_DEBUG_SYNC(ub_ptr->block_bo_id != 0,
+                          "Invalid BO ID returned by ogl_buffers_allocate_buffer_memory()");
+
+        if (ub_ptr->are_persistent_buffers_in)
+        {
+            ASSERT_DEBUG_SYNC(ub_ptr->block_bo_mapped_gl_ptr != NULL,
+                              "NULL mapped_gl_ptr returned by ogl_buffers_allocate_buffer_memory");
+        } /* if (ub_ptr->are_persistent_buffers_in) */
+
         /* All uniforms are set to zeroes by default. */
         memset(ub_ptr->block_data,
                0,
                ub_ptr->block_data_size);
-
-        ogl_buffers_allocate_buffer_memory(ub_ptr->buffers,
-                                           ub_ptr->block_data_size,
-                                           uniform_buffer_offset_alignment,
-                                           OGL_BUFFERS_MAPPABILITY_NONE,
-                                           OGL_BUFFERS_USAGE_UBO,
-                                           OGL_BUFFERS_FLAGS_NONE,
-                                          &ub_ptr->block_bo_id,
-                                          &ub_ptr->block_bo_start_offset);
 
         /* Force a data sync */
         ub_ptr->dirty_offset_end   = ub_ptr->block_data_size;
@@ -593,14 +634,19 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
     }
     #endif
 
-    /* Proceed with updating the internal cache */
-    const bool   is_uniform_matrix     = _ogl_program_ub_is_matrix_uniform(uniform_ptr);
-    unsigned int modified_region_end   = DIRTY_OFFSET_UNUSED;
-    unsigned int modified_region_start = DIRTY_OFFSET_UNUSED;
+    /* Proceed with updating the internal cache. */
 
-          unsigned char* dst_traveller_ptr = ub_ptr->block_data + uniform_ptr->ub_offset                                                       +
-                                             ((uniform_ptr->ub_array_stride != -1) ? uniform_ptr->ub_array_stride : 0) * dst_array_start_index;
-    const unsigned char* src_traveller_ptr = (const unsigned char*) src_data;
+    unsigned char* const block_data_read_write_ptr  = ub_ptr->block_data;
+    const bool           is_uniform_matrix          = _ogl_program_ub_is_matrix_uniform(uniform_ptr);
+    unsigned int         modified_region_end        = DIRTY_OFFSET_UNUSED;
+    unsigned int         modified_region_start      = DIRTY_OFFSET_UNUSED;
+    const unsigned int   start_offset               = uniform_ptr->ub_offset +
+                                                      ((uniform_ptr->ub_array_stride != -1) ? uniform_ptr->ub_array_stride
+                                                                                            : 0)                           * dst_array_start_index;
+
+          unsigned char* dst_rw_traveller_ptr       = block_data_read_write_ptr + start_offset;
+    const unsigned char* dst_rw_traveller_start_ptr = dst_rw_traveller_ptr;
+    const unsigned char* src_traveller_ptr          = (const unsigned char*) src_data;
 
     if (is_uniform_matrix)
     {
@@ -610,8 +656,6 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
 
         if (_ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride)
         {
-            /* NOTE: The following code may seem redundant but will be useful for code maintainability
-             *       when we introduce transposed data support. */
             if (uniform_ptr->is_row_major_matrix)
             {
                 /* Need to copy the data row-by-row */
@@ -623,24 +667,24 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
                                 ++n_row)
                 {
                     /* TODO: Consider doing epsilon-based comparisons here */
-                    if (memcmp(dst_traveller_ptr,
+                    if (memcmp(dst_rw_traveller_ptr,
                                src_traveller_ptr,
                                row_data_size) != 0)
                     {
-                        memcpy(dst_traveller_ptr,
+                        memcpy(dst_rw_traveller_ptr,
                                src_traveller_ptr,
                                row_data_size);
 
                         if (modified_region_start == DIRTY_OFFSET_UNUSED)
                         {
-                            modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
+                            modified_region_start = dst_rw_traveller_ptr - block_data_read_write_ptr;
                         }
 
-                        modified_region_end = dst_traveller_ptr - ub_ptr->block_data + row_data_size;
+                        modified_region_end = dst_rw_traveller_ptr - block_data_read_write_ptr + row_data_size;
                     }
 
-                    dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
-                    src_traveller_ptr += row_data_size;
+                    dst_rw_traveller_ptr += uniform_ptr->ub_matrix_stride;
+                    src_traveller_ptr    += row_data_size;
                 } /* for (all matrix rows) */
             }
             else
@@ -654,24 +698,24 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
                                 ++n_column)
                 {
                     /* TODO: Consider doing epsilon-based comparisons here */
-                    if (memcmp(dst_traveller_ptr,
+                    if (memcmp(dst_rw_traveller_ptr,
                                src_traveller_ptr,
                                column_data_size) != 0)
                     {
-                        memcpy(dst_traveller_ptr,
+                        memcpy(dst_rw_traveller_ptr,
                                src_traveller_ptr,
                                column_data_size);
 
                         if (modified_region_start == DIRTY_OFFSET_UNUSED)
                         {
-                            modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
+                            modified_region_start = dst_rw_traveller_ptr - block_data_read_write_ptr;
                         }
 
-                        modified_region_end = dst_traveller_ptr - ub_ptr->block_data + column_data_size;
+                        modified_region_end = dst_rw_traveller_ptr - block_data_read_write_ptr + column_data_size;
                     }
 
-                    dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
-                    src_traveller_ptr += column_data_size;
+                    dst_rw_traveller_ptr += uniform_ptr->ub_matrix_stride;
+                    src_traveller_ptr    += column_data_size;
                 } /* for (all matrix columns) */
             }
         } /* if (_ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride) */
@@ -681,15 +725,15 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
              * without any padding in-between.
              *
              * TODO: Consider doing epsilon-based comparisons here */
-            if (memcmp(dst_traveller_ptr,
+            if (memcmp(dst_rw_traveller_ptr,
                        src_traveller_ptr,
                        src_data_size) != 0)
             {
-                memcpy(dst_traveller_ptr,
+                memcpy(dst_rw_traveller_ptr,
                        src_traveller_ptr,
                        src_data_size);
 
-                modified_region_start = dst_traveller_ptr     - ub_ptr->block_data;
+                modified_region_start = dst_rw_traveller_ptr  - block_data_read_write_ptr;
                 modified_region_end   = modified_region_start + src_data_size;
             }
         }
@@ -711,47 +755,47 @@ PRIVATE void _ogl_program_ub_set_uniform_value(__in                       __notn
                               n_item < dst_array_item_count;
                             ++n_item)
             {
-                if (memcmp(dst_traveller_ptr,
+                if (memcmp(dst_rw_traveller_ptr,
                            src_traveller_ptr,
                            src_single_item_size) != 0)
                 {
-                    memcpy(dst_traveller_ptr,
+                    memcpy(dst_rw_traveller_ptr,
                            src_traveller_ptr,
                            src_single_item_size);
 
                     if (modified_region_start == DIRTY_OFFSET_UNUSED)
                     {
-                        modified_region_start = dst_traveller_ptr - ub_ptr->block_data;
+                        modified_region_start = dst_rw_traveller_ptr - block_data_read_write_ptr;
                     }
 
-                    modified_region_end = dst_traveller_ptr - ub_ptr->block_data + src_single_item_size;
+                    modified_region_end = dst_rw_traveller_ptr - block_data_read_write_ptr + src_single_item_size;
                 }
 
-                dst_traveller_ptr += uniform_ptr->ub_array_stride;
-                src_traveller_ptr += src_single_item_size;
+                dst_rw_traveller_ptr += uniform_ptr->ub_array_stride;
+                src_traveller_ptr    += src_single_item_size;
             } /* for (all array items) */
         }
         else
         {
-            /* Not an array! We can again go away with a single memcpy */
+            /* We can again go away with a single memcpy */
             ASSERT_DEBUG_SYNC(uniform_ptr->size == 1,
                               "Sanity check failed");
 
-            if (memcmp(dst_traveller_ptr,
+            if (memcmp(dst_rw_traveller_ptr,
                        src_traveller_ptr,
                        src_data_size) != 0)
             {
-                memcpy(dst_traveller_ptr,
+                memcpy(dst_rw_traveller_ptr,
                        src_traveller_ptr,
                        src_data_size);
 
-                modified_region_start = dst_traveller_ptr     - ub_ptr->block_data;
+                modified_region_start = dst_rw_traveller_ptr  - block_data_read_write_ptr;
                 modified_region_end   = modified_region_start + src_data_size;
             }
         }
     }
 
-    /* Update the dirty region delimiters if needed */
+    /* Update the dirty region delimiters if needed. */
     ASSERT_DEBUG_SYNC(modified_region_start == DIRTY_OFFSET_UNUSED && modified_region_end == DIRTY_OFFSET_UNUSED ||
                       modified_region_start != DIRTY_OFFSET_UNUSED && modified_region_end != DIRTY_OFFSET_UNUSED,
                       "Sanity check failed.");
@@ -972,22 +1016,35 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL void ogl_program_ub_sync(__in __notnul
         goto end;
     }
 
-    if (ub_ptr->pGLNamedBufferSubDataEXT != NULL)
+    if (ub_ptr->are_persistent_buffers_in)
     {
-        ub_ptr->pGLNamedBufferSubDataEXT(ub_ptr->block_bo_id,
-                                         ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
-                                         ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start,
-                                         ub_ptr->block_data + ub_ptr->dirty_offset_start);
+        ASSERT_DEBUG_SYNC(ub_ptr->block_bo_mapped_gl_ptr != NULL,
+                          "Sanity check failed");
+
+        memcpy((char*) ub_ptr->block_bo_mapped_gl_ptr + ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
+               ub_ptr->block_data + ub_ptr->dirty_offset_start,
+               ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start);
     }
     else
     {
-        /* Use a rarely used binding point to avoid collisions with existing bindings */
-        ub_ptr->pGLBindBuffer   (GL_TRANSFORM_FEEDBACK_BUFFER,
-                                 ub_ptr->block_bo_id);
-        ub_ptr->pGLBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER,
-                                 ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
-                                 ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start,
-                                 ub_ptr->block_data + ub_ptr->dirty_offset_start);
+        /* No persistent buffers support available - use the legacy glBufferSubData() API */
+        if (ub_ptr->pGLNamedBufferSubDataEXT != NULL)
+        {
+            ub_ptr->pGLNamedBufferSubDataEXT(ub_ptr->block_bo_id,
+                                             ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
+                                             ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start,
+                                             ub_ptr->block_data + ub_ptr->dirty_offset_start);
+        }
+        else
+        {
+            /* Use a rarely used binding point to avoid collisions with existing bindings */
+            ub_ptr->pGLBindBuffer   (GL_TRANSFORM_FEEDBACK_BUFFER,
+                                     ub_ptr->block_bo_id);
+            ub_ptr->pGLBufferSubData(GL_TRANSFORM_FEEDBACK_BUFFER,
+                                     ub_ptr->block_bo_start_offset + ub_ptr->dirty_offset_start,
+                                     ub_ptr->dirty_offset_end - ub_ptr->dirty_offset_start,
+                                     ub_ptr->block_data + ub_ptr->dirty_offset_start);
+        }
     }
 
     /* Reset the offsets */

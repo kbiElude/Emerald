@@ -1655,6 +1655,7 @@ PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers(__inou
                                            n_func_ptr_table_entries) )
     {
         context_ptr->gl_arb_sparse_buffer_support = true;
+        //context_ptr->gl_arb_sparse_buffer_support = false;
     }
 }
 
@@ -1719,6 +1720,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLCopyTextureSubImage3DEXT,                                         "glCopyTextureSubImage3DEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLDisableVertexArrayAttribEXT,                   "glDisableVertexArrayAttribEXT"},
         {&context_ptr->entry_points_gl_ext_direct_state_access.pGLEnableVertexArrayAttribEXT,                    "glEnableVertexArrayAttribEXT"},
+        {&context_ptr->entry_points_gl_ext_direct_state_access.pGLFlushMappedNamedBufferRangeEXT,                "glFlushMappedNamedBufferRangeEXT"},
         {&context_ptr->entry_points_private.pGLFramebufferDrawBufferEXT,                                         "glFramebufferDrawBufferEXT"},
         {&context_ptr->entry_points_private.pGLFramebufferDrawBuffersEXT,                                        "glFramebufferDrawBuffersEXT"},
         {&context_ptr->entry_points_private.pGLFramebufferReadBufferEXT,                                         "glFramebufferReadBufferEXT"},
@@ -1735,6 +1737,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         {&context_ptr->entry_points_private.pGLGetTextureLevelParameterfvEXT,                                    "glGetTextureLevelParameterfvEXT"},
         {&context_ptr->entry_points_private.pGLGetTextureLevelParameterivEXT,                                    "glGetTextureLevelParameterivEXT"},
         {&context_ptr->entry_points_private.pGLMapNamedBufferEXT,                                                "glMapNamedBufferEXT"},
+        {&context_ptr->entry_points_private.pGLMapNamedBufferRangeEXT,                                           "glMapNamedBufferRangeEXT"},
         {&context_ptr->entry_points_private.pGLNamedBufferDataEXT,                                               "glNamedBufferDataEXT"},
         {&context_ptr->entry_points_private.pGLNamedBufferSubDataEXT,                                            "glNamedBufferSubDataEXT"},
         {&context_ptr->entry_points_private.pGLNamedCopyBufferSubDataEXT,                                        "glNamedCopyBufferSubDataEXT"},
@@ -1839,6 +1842,7 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterfvEXT     = ogl_context_wrappers_glGetTextureLevelParameterfvEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLGetTextureLevelParameterivEXT     = ogl_context_wrappers_glGetTextureLevelParameterivEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLMapNamedBufferEXT                 = ogl_context_wrappers_glMapNamedBufferEXT;
+    context_ptr->entry_points_gl_ext_direct_state_access.pGLMapNamedBufferRangeEXT            = ogl_context_wrappers_glMapNamedBufferRangeEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferDataEXT                = ogl_context_wrappers_glNamedBufferDataEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferSubDataEXT             = ogl_context_wrappers_glNamedBufferSubDataEXT;
     context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedCopyBufferSubDataEXT         = ogl_context_wrappers_glNamedCopyBufferSubDataEXT;

@@ -443,6 +443,12 @@ PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferEXT(GLuint buffer,
                                                                GLenum access);
 
 /** TODO */
+PUBLIC void* APIENTRY ogl_context_wrappers_glMapNamedBufferRangeEXT(GLuint     buffer,
+                                                                    GLintptr   offset,
+                                                                    GLsizeiptr length,
+                                                                    GLbitfield access);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferDataEXT(GLuint      buffer,
                                                                GLsizeiptr  size,
                                                                const void* data,

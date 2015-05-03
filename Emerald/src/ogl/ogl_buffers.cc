@@ -13,6 +13,7 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 
+
 #define NONSPARSE_IBO_BUFFER_SIZE  (16  * 1024768)
 #define NONSPARSE_MISC_BUFFER_SIZE (16  * 1024768)
 #define NONSPARSE_UBO_BUFFER_SIZE  (4   * 1024768)
@@ -29,6 +30,7 @@ typedef struct _ogl_buffers_buffer
     GLuint                   bo_id;
     struct _ogl_buffers*     buffers_ptr;
     _ogl_buffers_mappability mappability;
+    GLvoid*                  mapped_gl_ptr;
     system_memory_manager    manager;
 
     ~_ogl_buffers_buffer();
@@ -36,6 +38,7 @@ typedef struct _ogl_buffers_buffer
 
 typedef struct _ogl_buffers
 {
+    bool                                           are_persistent_buffers_in;
     bool                                           are_sparse_buffers_in;
     system_hash64map                               bo_id_offset_hash_to_buffer_map;
     system_resource_pool                           buffer_descriptor_pool;
@@ -43,9 +46,10 @@ typedef struct _ogl_buffers
 
     ogl_context_es_entrypoints*                    entry_points_es;
 
-    ogl_context_gl_entrypoints*                    entry_points_gl;
-    ogl_context_gl_entrypoints_arb_buffer_storage* entry_points_gl_bs;
-    ogl_context_gl_entrypoints_arb_sparse_buffer*  entry_points_gl_sb;
+    ogl_context_gl_entrypoints*                         entry_points_gl;
+    ogl_context_gl_entrypoints_arb_buffer_storage*      entry_points_gl_bs;
+    ogl_context_gl_entrypoints_ext_direct_state_access* entry_points_gl_dsa;
+    ogl_context_gl_entrypoints_arb_sparse_buffer*       entry_points_gl_sb;
 
     system_hashed_ansi_string                      name;
     system_resizable_vector                        nonsparse_buffers[OGL_BUFFERS_USAGE_COUNT];
@@ -55,6 +59,7 @@ typedef struct _ogl_buffers
     _ogl_buffers(__in __notnull ogl_context               in_context,
                  __in __notnull system_hashed_ansi_string in_name)
     {
+        are_persistent_buffers_in       = false;
         are_sparse_buffers_in           = false;
         bo_id_offset_hash_to_buffer_map = system_hash64map_create    (sizeof(_ogl_buffers_buffer*) );
         buffer_descriptor_pool          = system_resource_pool_create(sizeof(_ogl_buffers_buffer),
@@ -65,6 +70,7 @@ typedef struct _ogl_buffers
         entry_points_es                 = NULL;
         entry_points_gl                 = NULL;
         entry_points_gl_bs              = NULL;
+        entry_points_gl_dsa             = NULL;
         entry_points_gl_sb              = NULL;
         name                            = in_name;
         page_size                       = 0;
@@ -98,10 +104,23 @@ typedef struct _ogl_buffers
             ogl_context_get_property(context,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points_gl);
-
             ogl_context_get_property(context,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
                                     &entry_points_gl_bs);
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
+                                    &entry_points_gl_dsa);
+
+            /* Are persistent buffers supported? */
+            #ifdef ENABLE_PERSISTENT_UB_STORAGE
+            {
+                ogl_context_get_property(context,
+                                         OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
+                                        &are_persistent_buffers_in);
+            }
+            #else
+                are_persistent_buffers_in = false;
+            #endif
 
             /* Are sparse buffers supported? */
             ogl_context_get_property(context,
@@ -254,7 +273,15 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
 
         case OGL_BUFFERS_USAGE_UBO:
         {
-            bo_target = GL_UNIFORM_BUFFER;
+            /* Assume the caller will want to update the UBO contents in the future. */
+            if (buffers_ptr->are_persistent_buffers_in)
+            {
+                bo_flags  |= GL_MAP_COHERENT_BIT   |
+                             GL_MAP_PERSISTENT_BIT |
+                             GL_MAP_WRITE_BIT;
+            }
+
+            bo_target  = GL_UNIFORM_BUFFER;
 
             break;
         }
@@ -336,6 +363,20 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
 
     if (reported_bo_size >= bo_size)
     {
+        /* Persistent buffer memory should be mapped at all times, so that the block owners
+         * can modify it any time they wish. */
+        if ((bo_flags & GL_MAP_PERSISTENT_BIT) != 0)
+        {
+            new_buffer_ptr->mapped_gl_ptr = buffers_ptr->entry_points_gl->pGLMapBufferRange(bo_target,
+                                                                                            0, /* offset */
+                                                                                            bo_size,
+                                                                                            (bo_flags & ~GL_DYNAMIC_STORAGE_BIT) | GL_MAP_UNSYNCHRONIZED_BIT);
+        }
+        else
+        {
+            new_buffer_ptr->mapped_gl_ptr = NULL;
+        }
+
         new_buffer_ptr->buffers_ptr = buffers_ptr;
         new_buffer_ptr->mappability = mappability;
         new_buffer_ptr->manager     = system_memory_manager_create(bo_size,
@@ -356,6 +397,11 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_immutable_buffer(__in __notn
 
         if (buffers_ptr->entry_points_gl != NULL)
         {
+            if (new_buffer_ptr->mapped_gl_ptr != NULL)
+            {
+                buffers_ptr->entry_points_gl->pGLUnmapBuffer(bo_target);
+            }
+
             buffers_ptr->entry_points_gl->pGLDeleteBuffers(1,
                                                           &new_buffer_ptr->bo_id);
         }
@@ -402,14 +448,15 @@ PRIVATE _ogl_buffers_buffer* _ogl_buffers_alloc_new_sparse_buffer(__in __notnull
 
     if (reported_bo_size >= SPARSE_BUFFER_SIZE)
     {
-        new_buffer_ptr->buffers_ptr = buffers_ptr;
-        new_buffer_ptr->mappability = OGL_BUFFERS_MAPPABILITY_NONE;
-        new_buffer_ptr->manager     = system_memory_manager_create(SPARSE_BUFFER_SIZE,
-                                                                   buffers_ptr->page_size,
-                                                                   _ogl_buffers_on_sparse_memory_block_alloced,
-                                                                   _ogl_buffers_on_sparse_memory_block_freed,
-                                                                   new_buffer_ptr,
-                                                                   false); /* should_be_thread_safe */
+        new_buffer_ptr->buffers_ptr   = buffers_ptr;
+        new_buffer_ptr->mappability   = OGL_BUFFERS_MAPPABILITY_NONE;
+        new_buffer_ptr->mapped_gl_ptr = NULL; /* mapping sparse buffers = no no! */
+        new_buffer_ptr->manager       = system_memory_manager_create(SPARSE_BUFFER_SIZE,
+                                                                     buffers_ptr->page_size,
+                                                                     _ogl_buffers_on_sparse_memory_block_alloced,
+                                                                     _ogl_buffers_on_sparse_memory_block_freed,
+                                                                     new_buffer_ptr,
+                                                                     false); /* should_be_thread_safe */
 
         system_resizable_vector_push(new_buffer_ptr->buffers_ptr->sparse_buffers,
                                      new_buffer_ptr);
@@ -527,7 +574,8 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                            __in            _ogl_buffers_usage       usage,
                                                            __in            int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
                                                            __out __notnull unsigned int*            out_bo_id_ptr,
-                                                           __out __notnull unsigned int*            out_bo_offset_ptr)
+                                                           __out __notnull unsigned int*            out_bo_offset_ptr,
+                                                           __out_opt       GLvoid**                 out_mapped_gl_ptr)
 {
     _ogl_buffers_buffer* buffer_ptr                 = NULL;
     _ogl_buffers*        buffers_ptr                = (_ogl_buffers*) buffers;
@@ -535,12 +583,14 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
     bool                 result                     = false;
     unsigned int         result_id                  = 0;
     unsigned int         result_offset              = -1;
+    GLvoid*              result_mapped_gl_ptr       = NULL;
 
-    /* Check the sparse buffers first, if these are supported and no mappability
-     * was requested. */
-    if (buffers_ptr->are_sparse_buffers_in                                 &&
-       !must_be_immutable_bo_based                                         &&
-        mappability                        == OGL_BUFFERS_MAPPABILITY_NONE)
+    /* Check the sparse buffers first. */
+    bool is_mappability_compatible_with_sparse_buffers = (mappability == OGL_BUFFERS_MAPPABILITY_NONE);
+
+    if ( buffers_ptr->are_sparse_buffers_in            &&
+        !must_be_immutable_bo_based                    &&
+         is_mappability_compatible_with_sparse_buffers)
     {
         /* Try to find a suitable sparse buffer */
         const unsigned int n_sparse_buffers = system_resizable_vector_get_amount_of_elements(buffers_ptr->sparse_buffers);
@@ -560,11 +610,6 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                            size,
                                                            alignment_requirement,
                                                           &result_offset);
-
-                if (result)
-                {
-                    result_id = buffer_ptr->bo_id;
-                } /* if (result) */
             } /* if (sparse descriptor found) */
             else
             {
@@ -588,11 +633,7 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                                alignment_requirement,
                                                               &result_offset);
 
-                    if (result)
-                    {
-                        result_id = buffer_ptr->bo_id;
-                    } /* if (result) */
-                    else
+                    if (!result)
                     {
                         ASSERT_DEBUG_SYNC(false,
                                           "Memory block allocation failed in a brand new sparse buffer.");
@@ -634,11 +675,6 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                            size,
                                                            alignment_requirement,
                                                           &result_offset);
-
-                if (result)
-                {
-                    result_id = buffer_ptr->bo_id;
-                }
             } /* if (non-sparse descriptor was found) */
             else
             {
@@ -662,25 +698,27 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                            size,
                                                            alignment_requirement,
                                                           &result_offset);
-
-                if (result)
-                {
-                    result_id = buffer_ptr->bo_id;
-                }
-                else
-                {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not allocate a new immutable buffer");
-                }
             } /* if (buffer_ptr != NULL) */
         } /* if (!result) */
     } /* if (!result) */
 
-    LOG_ERROR("ogl_buffers_allocate_buffer_memory(): size:[%d] alignment_requirement:[%d] => BO id:[%d] offset:[%d]",
+    if (result)
+    {
+        result_id            = buffer_ptr->bo_id;
+        result_mapped_gl_ptr = buffer_ptr->mapped_gl_ptr;
+    } /* if (result) */
+    else
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "ogl_buffers_allocate_buffer_memory() failed.");
+    }
+
+    LOG_ERROR("ogl_buffers_allocate_buffer_memory(): size:[%d] alignment_requirement:[%d] => BO id:[%d] offset:[%d] mapped GL ptr:[%x]",
               size,
               alignment_requirement,
               result_id,
-              result_offset);
+              result_offset,
+              result_mapped_gl_ptr);
 
     if (result)
     {
@@ -690,6 +728,11 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
 
         *out_bo_id_ptr     = result_id;
         *out_bo_offset_ptr = result_offset;
+
+        if (out_mapped_gl_ptr != NULL)
+        {
+            *out_mapped_gl_ptr = result_mapped_gl_ptr;
+        }
 
         system_hash64map_insert(buffers_ptr->bo_id_offset_hash_to_buffer_map,
                                 MAKE_BO_HASHMAP_KEY(result_id,

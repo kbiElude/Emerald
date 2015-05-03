@@ -17,19 +17,33 @@
  *
  * The instantiated regions come from immutable buffer objects.
  *
+ * The buffer object(s) used to back up the memory allocation requests will be initialized
+ * with the persistence bit at creation time, if GL_ARB_buffer_storage is supported. Later
+ * on, if UBO usage is requested, the allocated pages will be mapped with coherent bit and
+ * updated directly, instead of doing the glBufferSubData() calls.
+ *
+ *
  * Finally, since ogl_buffers keeps track of all allocated buffers, it can also provide
  * info regarding:
  *
  * a) committed buffer memory (if sparse buffers are supported)
- * b) reserved buffer memory  (otherwise)
+ * b) reserved buffer memory  (otherwise) (TODO)
  *
- * TODO: Buffer coherency is currently not taken into consideration. Add if needed.
  */
 #ifndef OGL_BUFFERS_H
 #define OGL_BUFFERS_H
 
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
+
+/* Enable the #define below to toggle persistent buffer usage.
+ *
+ * At the moment, toggling this on significantly breaks the rendering process.
+ * This can be reproduced by running Test-DemoApp with the #define on.
+ *
+ * (work-in-progress feature)
+ */
+//#define ENABLE_PERSISTENT_UB_STORAGE
 
 
 typedef enum
@@ -46,6 +60,13 @@ typedef enum
 {
     OGL_BUFFERS_USAGE_IBO,
     OGL_BUFFERS_USAGE_MISCELLANEOUS,
+    /* If persistent buffers are supported, the underlying UB Ostorage will be initialized
+     * with coherence & persistance & map_write bits. This implies that the user of the BO
+     * region can safely map part(s) of the region and update the underlying storage.
+     *
+     * If persistent buffers are NOT supported (that is: GL_ARB_buffer_storage is unavailable),
+     * the reported BO is NOT mappable.
+     **/
     OGL_BUFFERS_USAGE_UBO,
     OGL_BUFFERS_USAGE_VBO,
 
@@ -68,7 +89,8 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
                                                            __in            _ogl_buffers_usage       usage,
                                                            __in            int                      flags, /* bitfield of OGL_BUFFERS_FLAGS_ */
                                                            __out __notnull unsigned int*            out_bo_id_ptr,
-                                                           __out __notnull unsigned int*            out_bo_offset_ptr);
+                                                           __out __notnull unsigned int*            out_bo_offset_ptr,
+                                                           __out_opt       GLvoid**                 out_mapped_gl_ptr = NULL);
 
 /** TODO.
  *
