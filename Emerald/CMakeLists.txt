@@ -23,27 +23,26 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${EMERALD_BINARY_DIR}/bin")
 MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar)
   IF(MSVC)
     GET_FILENAME_COMPONENT(PrecompiledBasename ${PrecompiledHeader} NAME_WE)
-    SET(PrecompiledBinary "${EMERALD_BINARY_DIR}/bin/${PrecompiledBasename}.pch")
+    SET(PrecompiledBinary "${CMAKE_CURRENT_BINARY_DIR}/${PrecompiledBasename}.pch")
     SET(Sources ${${SourcesVar}})
 
-    SET_SOURCE_FILES_PROPERTIES(${Sources}
-                                PROPERTIES COMPILE_FLAGS "/W3 /analyze /Yu\"${PrecompiledHeader}\" /Fp\"{PrecompiledBinary}\" /Fp\"${PrecompiledBinary}\" "
-                                           OBJECT_DEPENDS "${PrecompiledBinary}")  
     SET_SOURCE_FILES_PROPERTIES(${PrecompiledSource}
-                                PROPERTIES COMPILE_FLAGS "/analyze /Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\" "
+                                PROPERTIES COMPILE_FLAGS "/analyze /Yc\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
                                            OBJECT_OUTPUTS "${PrecompiledBinary}")
+    SET_SOURCE_FILES_PROPERTIES(${Sources}
+                                PROPERTIES COMPILE_FLAGS "/W3 /analyze /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
+                                           OBJECT_DEPENDS "${PrecompiledBinary}")  
+    LIST(APPEND ${SourcesVar} ${PrecompiledSource})
   ENDIF(MSVC)
-  LIST(APPEND ${SourcesVar} ${PrecompiledSource})
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/jpeg-6b")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/libpng-1.2.36")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/lwsdk")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/tinyxml2")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/!deps/zlib-1.2.8")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/modules/system/include")
+INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/deps/jpeg-6b")
+INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/deps/libpng-1.2.36")
+INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/deps/lwsdk")
+INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/deps/tinyxml2")
+INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/deps/zlib-1.2.8")
 INCLUDE_DIRECTORIES("gtest-1.6.0/include")
 INCLUDE_DIRECTORIES("gtest-1.6.0/")
 
@@ -52,7 +51,7 @@ FILE(GLOB ColladaSources "${EMERALD_BINARY_DIR}/src/collada/*.cc")
 FILE(GLOB CurveIncludes "${EMERALD_BINARY_DIR}/include/curve/*.h")
 FILE(GLOB CurveSources "${EMERALD_BINARY_DIR}/src/curve/*.cc")
 FILE(GLOB GeneralIncludes "${EMERALD_BINARY_DIR}/include/*.h")
-FILE(GLOB GeneralSources "${EMERALD_BINARY_DIR}/src/*.cc")
+FILE(GLOB GeneralSources "${EMERALD_BINARY_DIR}/src/main.cc")
 FILE(GLOB GFXIncludes "${EMERALD_BINARY_DIR}/include/gfx/*.h")
 FILE(GLOB GFXSources "${EMERALD_BINARY_DIR}/src/gfx/*.cc")
 FILE(GLOB MeshIncludes "${EMERALD_BINARY_DIR}/include/mesh/*.h")
@@ -196,8 +195,11 @@ FIND_PACKAGE(OpenGL)
 
 TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} LIB_JPEG LIB_PNG LIB_ZLIB tinyxml2static)
 TARGET_LINK_LIBRARIES(TEST EMERALD)
+ADD_DEPENDENCIES(EMERALD LIB_JPEG)
 ADD_DEPENDENCIES(EMERALD LIB_PNG)
+ADD_DEPENDENCIES(EMERALD LIB_ZLIB)
+ADD_DEPENDENCIES(EMERALD tinyxml2static)
 ADD_DEPENDENCIES(TEST EMERALD)
 
-ADD_SUBDIRECTORY(!apps)
-ADD_SUBDIRECTORY(!deps)
+ADD_SUBDIRECTORY(apps)
+ADD_SUBDIRECTORY(deps)
