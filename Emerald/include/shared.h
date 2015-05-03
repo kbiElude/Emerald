@@ -19,12 +19,14 @@
 #endif /* WINVER */
 
 /* A nifty macro that will allow us to enforce strong type checking for void* handle types */
-#ifdef DECLARE_HANDLE
-    #undef DECLARE_HANDLE
-#endif
+#ifndef _WIN32
+    #ifdef DECLARE_HANDLE
+        #undef DECLARE_HANDLE
+    #endif
 
-#define DECLARE_HANDLE(name) struct name##__ { int unused; }; \
-                             typedef struct name##__ *name;
+    #define DECLARE_HANDLE(name) struct name##__ { int unused; }; \
+                                 typedef struct name##__ *name;
+#endif
 
 /* CRT debugging */
 #ifdef _DEBUG
