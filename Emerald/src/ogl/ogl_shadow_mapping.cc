@@ -2361,7 +2361,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
         /* Variance Shadow Mapping for 2D Texture / Cube-map Texture Targets */
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS:
         {
-            static system_hashed_ansi_string depth_clip_and_squared_depth_clip_fs = system_hashed_ansi_string_create("#version 420\n"
+            static system_hashed_ansi_string depth_clip_and_squared_depth_clip_fs = system_hashed_ansi_string_create("#version 420 core\n"
                                                                                                                      "\n"
                                                                                                                      "                     in  vec2 out_vs_depth;\n"
                                                                                                                      "layout(location = 0) out vec2 result;\n"
@@ -2391,7 +2391,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_VS:
         {
-            static system_hashed_ansi_string depth_clip_and_squared_depth_clip_vs = system_hashed_ansi_string_create("#version 420\n"
+            static system_hashed_ansi_string depth_clip_and_squared_depth_clip_vs = system_hashed_ansi_string_create("#version 420 core\n"
                                                                                                                      "\n"
                                                                                                                      "uniform VertexShaderProperties\n"
                                                                                                                      "{\n"
@@ -2416,7 +2416,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
         /* Variance Shadow Mapping for two 2D Texture Targets (dual-paraboloid) */
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_FS:
         {
-            static system_hashed_ansi_string dc_and_squared_dc_dp_fs = system_hashed_ansi_string_create("#version 420\n"
+            static system_hashed_ansi_string dc_and_squared_dc_dp_fs = system_hashed_ansi_string_create("#version 420 core\n"
                                                                                                         "\n"
                                                                                                         "                     in  vec2 out_vs_paraboloid_depth;\n"
                                                                                                         "                     in  vec2 out_vs_depth;\n"
@@ -2451,7 +2451,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_DUAL_PARABOLOID_VS:
         {
-            static system_hashed_ansi_string dc_and_squared_dc_dp_vs = system_hashed_ansi_string_create("#version 420\n"
+            static system_hashed_ansi_string dc_and_squared_dc_dp_vs = system_hashed_ansi_string_create("#version 420 core\n"
                                                                                                         "\n"
                                                                                                         "uniform VertexShaderProperties\n"
                                                                                                         "{\n"
@@ -2494,7 +2494,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
         /* Plain Shadow Mapping for 2D texture / Cube-Map texture targets: */
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_FS:
         {
-            static system_hashed_ansi_string depth_clip_dual_paraboloid_fs = system_hashed_ansi_string_create("#version 420\n"
+            static system_hashed_ansi_string depth_clip_dual_paraboloid_fs = system_hashed_ansi_string_create("#version 420 core\n"
                                                                                                               "\n"
                                                                                                               "in float clip_depth;\n"
                                                                                                               "\n"
@@ -2510,7 +2510,7 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_DUAL_PARABOLOID_VS:
         {
-            static system_hashed_ansi_string depth_clip_dual_paraboloid_vs = system_hashed_ansi_string_create("#version 420\n"
+            static system_hashed_ansi_string depth_clip_dual_paraboloid_vs = system_hashed_ansi_string_create("#version 420 core\n"
                                                                                                               "\n"
                                                                                                               "uniform VertexShaderProperties\n"
                                                                                                               "{\n"

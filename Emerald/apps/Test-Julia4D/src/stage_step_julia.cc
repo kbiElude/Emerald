@@ -41,7 +41,7 @@ system_matrix4x4       _julia_view_matrix                         = NULL;
  *
  * Built upon https://developer.apple.com/library/mac/samplecode/OpenCL_RayTraced_Quaternion_Julia-Set_Example/Listings/qjulia_kernel_cl.html#//apple_ref/doc/uid/DTS40008190-qjulia_kernel_cl-DontLinkElementID_5 
  **/
-const char* julia_fragment_shader_code = "#version 330\n"
+const char* julia_fragment_shader_code = "#version 420 core\n"
                                          "\n"
                                          "in vec3 fp_vertex;\n"
                                          "\n"
@@ -220,7 +220,7 @@ const char* julia_fragment_shader_code = "#version 330\n"
                                          "        discard;\n"
                                          "}\n";
 
-const char* julia_vertex_shader_code = "#version 330\n"
+const char* julia_vertex_shader_code = "#version 420 core\n"
                                        "\n"
                                        "in      vec3  vertex;\n"
                                        "out     vec3  fp_vertex;\n"

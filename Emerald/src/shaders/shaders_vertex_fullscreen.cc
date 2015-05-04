@@ -55,7 +55,7 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__
     /* Create the body */
     std::stringstream body_stream;
 
-    body_stream << "#version 330\n"
+    body_stream << "#version 420 core\n"
                    "\n";
 
     if (export_uv)

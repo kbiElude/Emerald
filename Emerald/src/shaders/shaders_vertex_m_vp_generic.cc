@@ -51,7 +51,7 @@ PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_creat
     /* Create the body */
     std::stringstream body_stream;
 
-    body_stream << "#version 330\n"
+    body_stream << "#version 420 core\n"
                    "\n"
                    "in      vec4 in_position;\n"
                    "in      vec2 in_uv;\n"

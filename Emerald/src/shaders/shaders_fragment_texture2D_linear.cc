@@ -13,7 +13,7 @@
 #include <sstream>
 
 /* Internal variables */
-const char* tex2D_fragment_linear_shader_body_not_reverted = "#version 330\n"
+const char* tex2D_fragment_linear_shader_body_not_reverted = "#version 420 core\n"
                                                              "\n"
                                                              "in vec2 uv;\n"
                                                              "\n"
@@ -31,7 +31,7 @@ const char* tex2D_fragment_linear_shader_body_not_reverted = "#version 330\n"
                                                              "    result = pow(texture(tex, uv) * vec4(exposure), vec4(1/2.2) );\n"
                                                              "}\n";
 
-const char* tex2D_fragment_linear_shader_body_reverted = "#version 330\n"
+const char* tex2D_fragment_linear_shader_body_reverted = "#version 420 core\n"
                                                          "\n"
                                                          "in vec2 uv;\n"
                                                          "\n"

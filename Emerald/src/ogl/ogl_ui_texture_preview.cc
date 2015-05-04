@@ -93,7 +93,7 @@ static const char* ui_texture_preview_renderer_sampler2d_red_body        = "resu
 static const char* ui_texture_preview_renderer_sampler2d_rgb_body        = "result = vec4(textureLod(texture, uv, 0).xyz, 1.0);\n";
 static const char* ui_texture_preview_renderer_sampler2d_rgba_body       = "result = textureLod(texture, uv, 0);\n";
 static const char* ui_texture_preview_renderer_sampler2darray_depth_body = "result = vec4(textureLod(texture, vec3(uv, layer), 0.0).xxx, 1.0);\n";
-static const char* ui_texture_preview_fragment_shader_body               = "#version 420\n"
+static const char* ui_texture_preview_fragment_shader_body               = "#version 420 core\n"
                                                                            "\n"
                                                                            "in      vec2         uv;\n"
                                                                            "out     vec4         result;\n"

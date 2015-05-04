@@ -26,7 +26,7 @@
  *        screw it for now. 
  */
 /** Internal shaders */
-const char* fragment_shader_sh_preview = "#version 330 core\n"
+const char* fragment_shader_sh_preview = "#version 420 core\n"
                                          "\n"
                                          "#define N_BANDS (N_BANDS_VALUE)\n"
                                          "\n"
@@ -62,7 +62,7 @@ const char* fragment_shader_sh_preview = "#version 330 core\n"
                                          "   result_nonsh = vec4(result, 1.0);\n"
                                          "}\n";
 
-const char* fragment_shader_spherical_texture_preview = "#version 330 core\n"
+const char* fragment_shader_spherical_texture_preview = "#version 420 core\n"
                                                         "\n"
                                                         "in      vec3      view_vector;\n"
                                                         "uniform sampler2D skybox;\n"
@@ -76,7 +76,7 @@ const char* fragment_shader_spherical_texture_preview = "#version 330 core\n"
                                                         "    result = texture(skybox, asin(view_vector_n.xy) / 3.1415265 + 0.5).xyz;\r\n"
                                                         "}\n";
 
-const char* vertex_shader_preview = "#version 330 core\n"
+const char* vertex_shader_preview = "#version 420 core\n"
                                     "\n"
                                     "uniform dataVS\n"
                                     "{\n"

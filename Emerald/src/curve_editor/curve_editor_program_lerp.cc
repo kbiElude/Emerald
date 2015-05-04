@@ -86,7 +86,7 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         std::stringstream fp_body_stream;
         std::stringstream vp_body_stream;
 
-        fp_body_stream << "#version 330\n"
+        fp_body_stream << "#version 420 core\n"
                           "\n"
                           "out vec4 color;\n"
                           "\n"
@@ -95,7 +95,7 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
                           "    color = vec4(1, 1, 0, 1);\n"
                           "}\n";
 
-        vp_body_stream << "#version 330\n"
+        vp_body_stream << "#version 420 core\n"
                           "\n"
                           "uniform data\n"
                           "{\n"

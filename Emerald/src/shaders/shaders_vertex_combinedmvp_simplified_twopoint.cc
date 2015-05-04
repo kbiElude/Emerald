@@ -54,7 +54,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_simplified_twopoint shaders_vertex
     /* Create the body */
     std::stringstream body_stream;
 
-    body_stream << "#version 330\n"
+    body_stream << "#version 420 core\n"
                    "\n"
                    "in vec2 in_uv;\n"
                    "\n"

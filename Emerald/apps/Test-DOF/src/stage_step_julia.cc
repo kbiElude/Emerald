@@ -56,7 +56,7 @@ system_matrix4x4       _julia_view_matrix                         = NULL;
  *
  * Stores depth in alpha channel for Scheuermann DOF
  **/
-const char* julia_fragment_shader_code = "#version 330\n"
+const char* julia_fragment_shader_code = "#version 420 core\n"
                                          "\n"
                                          "in vec3 fp_vertex;\n"
                                          "\n"
@@ -274,7 +274,7 @@ const char* julia_fragment_shader_code = "#version 330\n"
                                          "        discard;\n"
                                          "}\n";
 
-const char* julia_vertex_shader_code = "#version 330\n"
+const char* julia_vertex_shader_code = "#version 420 core\n"
                                        "\n"
                                        "in      vec3  vertex;\n"
                                        "out     vec3  fp_vertex;\n"
