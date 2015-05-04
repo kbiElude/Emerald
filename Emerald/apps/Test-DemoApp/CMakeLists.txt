@@ -4,7 +4,7 @@
 cmake_minimum_required (VERSION 2.6) 
 project (Test-DemoApp) 
 
-SET(CMAKE_INCLUDE_PATH "${Test-DemoApp_BINARY_DIR}/include")
+SET(CMAKE_INCLUDE_PATH "${Test-DemoApp_SOURCE_DIR}/include")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${EMERALD_BINARY_DIR}/bin")
 
 MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar)
@@ -27,12 +27,12 @@ ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-INCLUDE_DIRECTORIES("${Test-DemoApp_BINARY_DIR}")
-INCLUDE_DIRECTORIES("${Test-DemoApp_BINARY_DIR}/include")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
+INCLUDE_DIRECTORIES("${Test-DemoApp_SOURCE_DIR}")
+INCLUDE_DIRECTORIES("${Test-DemoApp_SOURCE_DIR}/include")
+INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 
-FILE(GLOB GeneralIncludes "${Test-DemoApp_BINARY_DIR}/include/*.h")
-FILE(GLOB GeneralSources "${Test-DemoApp_BINARY_DIR}/src/*.cc")
+FILE(GLOB GeneralIncludes "${Test-DemoApp_SOURCE_DIR}/include/*.h")
+FILE(GLOB GeneralSources "${Test-DemoApp_SOURCE_DIR}/src/*.cc")
 
 SET(AllTest-DemoAppSources ${GeneralSources} )
 
@@ -40,6 +40,8 @@ ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTest-DemoAppSources)
 
 ADD_EXECUTABLE(Test-DemoApp WIN32 ${AllTest-DemoAppSources} ${GeneralIncludes})
 SET_TARGET_PROPERTIES(Test-DemoApp PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${Test-DemoApp_BINARY_DIR}/blob/")
 
 # Other blabbery ..
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

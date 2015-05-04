@@ -6,12 +6,14 @@ project (lib_png)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 
-FILE(GLOB Includes"${lib_png_BINARY_DIR}/*.h")
-FILE(GLOB Sources "${lib_png_BINARY_DIR}/*.c")
+FILE(GLOB Includes"${lib_png_SOURCE_DIR}/*.h")
+FILE(GLOB Sources "${lib_png_SOURCE_DIR}/*.c")
 
 SET(AllSources ${Sources})
 
 ADD_LIBRARY(LIB_PNG STATIC ${Sources} ${Includes})
+SET_TARGET_PROPERTIES(LIB_PNG PROPERTIES LINKER_LANGUAGE C)
+
 ADD_DEPENDENCIES(LIB_PNG LIB_ZLIB)
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

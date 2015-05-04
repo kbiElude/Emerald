@@ -4,17 +4,17 @@
 cmake_minimum_required (VERSION 2.6) 
 project (LW-AnimationDataExtractor) 
 
-SET(CMAKE_INCLUDE_PATH "${LW-AnimationDataExtractor_BINARY_DIR}/include")
+SET(CMAKE_INCLUDE_PATH "${LW-AnimationDataExtractor_BINARY_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${EMERALD_BINARY_DIR}/bin")
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-INCLUDE_DIRECTORIES("${LW-AnimationDataExtractor_BINARY_DIR}")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
+INCLUDE_DIRECTORIES("${LW-AnimationDataExtractor_SOURCE_DIR}")
+INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 
-FILE(GLOB GeneralIncludes "${LW-AnimationDataExtractor_BINARY_DIR}/*.h")
-FILE(GLOB GeneralSources "${LW-AnimationDataExtractor_BINARY_DIR}/*.cc")
+FILE(GLOB GeneralIncludes "${LW-AnimationDataExtractor_SOURCE_DIR}/*.h")
+FILE(GLOB GeneralSources "${LW-AnimationDataExtractor_SOURCE_DIR}/*.cc")
 
-SET(AllLW-AnimationDataExtractorSources ${GeneralIncludes} ${GeneralSources} )
+SET(AllLW-AnimationDataExtractorSources ${GeneralSources} ${GeneralIncludes})
 
 set (CMAKE_LINK_DEF_FILE_FLAG "/DEF:serv.def") 
 
