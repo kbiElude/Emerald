@@ -6,12 +6,13 @@ project (lib_zlib)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 
-FILE(GLOB Includes"${lib_zlib_BINARY_DIR}/*.h")
-FILE(GLOB Sources "${lib_zlib_BINARY_DIR}/*.c")
+FILE(GLOB Includes"${lib_zlib_SOURCE_DIR}/*.h")
+FILE(GLOB Sources "${lib_zlib_SOURCE_DIR}/*.c")
 
 SET(AllSources ${Sources})
 
 ADD_LIBRARY(LIB_ZLIB STATIC ${Sources} ${Includes})
+SET_TARGET_PROPERTIES(LIB_ZLIB PROPERTIES LINKER_LANGUAGE C)
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

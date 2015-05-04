@@ -4,7 +4,7 @@
 cmake_minimum_required (VERSION 2.6) 
 project (TestUber) 
 
-SET(CMAKE_INCLUDE_PATH "${TestUber_BINARY_DIR}/include")
+SET(CMAKE_INCLUDE_PATH "${TestUber_SOURCE_DIR}/include")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${EMERALD_BINARY_DIR}/bin")
 
 MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar)
@@ -26,12 +26,12 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-INCLUDE_DIRECTORIES("${TestUber_BINARY_DIR}")
-INCLUDE_DIRECTORIES("${TestUber_BINARY_DIR}/include")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
+INCLUDE_DIRECTORIES("${TestUber_SOURCE_DIR}")
+INCLUDE_DIRECTORIES("${TestUber_SOURCE_DIR}/include")
+INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 
-FILE(GLOB GeneralIncludes "${TestUber_BINARY_DIR}/include/*.h")
-FILE(GLOB GeneralSources "${TestUber_BINARY_DIR}/src/*.cc")
+FILE(GLOB GeneralIncludes "${TestUber_SOURCE_DIR}/include/*.h")
+FILE(GLOB GeneralSources "${TestUber_SOURCE_DIR}/src/*.cc")
 
 SET(AllTestUberSources ${GeneralSources} )
 

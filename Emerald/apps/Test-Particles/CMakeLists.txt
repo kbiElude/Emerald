@@ -4,7 +4,7 @@
 cmake_minimum_required (VERSION 2.6) 
 project (TestParticles) 
 
-SET(CMAKE_INCLUDE_PATH "${TestParticles_BINARY_DIR}/include")
+SET(CMAKE_INCLUDE_PATH "${TestParticles_SOURCE_DIR}/include")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  "${EMERALD_BINARY_DIR}/bin")
 
 MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar)
@@ -26,12 +26,12 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-INCLUDE_DIRECTORIES("${TestParticles_BINARY_DIR}")
-INCLUDE_DIRECTORIES("${TestParticles_BINARY_DIR}/include")
-INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
+INCLUDE_DIRECTORIES("${TestParticles_SOURCE_DIR}")
+INCLUDE_DIRECTORIES("${TestParticles_SOURCE_DIR}/include")
+INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 
-FILE(GLOB GeneralIncludes "${TestParticles_BINARY_DIR}/include/*.h")
-FILE(GLOB GeneralSources "${TestParticles_BINARY_DIR}/src/*.cc")
+FILE(GLOB GeneralIncludes "${TestParticles_SOURCE_DIR}/include/*.h")
+FILE(GLOB GeneralSources "${TestParticles_SOURCE_DIR}/src/*.cc")
 
 SET(AllTestParticlesSources ${GeneralSources} )
 

@@ -26,12 +26,12 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
-INCLUDE_DIRECTORIES("${TestParticlesAgainstKdTree_BINARY_DIR}")
-INCLUDE_DIRECTORIES("${TestParticlesAgainstKdTree_BINARY_DIR}/include")
+INCLUDE_DIRECTORIES("${TestParticlesAgainstKdTree_SOURCE_DIR}")
+INCLUDE_DIRECTORIES("${TestParticlesAgainstKdTree_SOURCE_DIR}/include")
 INCLUDE_DIRECTORIES("${EMERALD_BINARY_DIR}/include")
 
-FILE(GLOB GeneralIncludes "${TestParticlesAgainstKdTree_BINARY_DIR}/include/*.h")
-FILE(GLOB GeneralSources "${TestParticlesAgainstKdTree_BINARY_DIR}/src/*.cc")
+FILE(GLOB GeneralIncludes "${TestParticlesAgainstKdTree_SOURCE_DIR}/include/*.h")
+FILE(GLOB GeneralSources "${TestParticlesAgainstKdTree_SOURCE_DIR}/src/*.cc")
 
 SET(AllTestParticlesAgainstKdTreeSources ${GeneralSources} )
 
