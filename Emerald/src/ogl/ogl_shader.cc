@@ -288,6 +288,12 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_body(__in __notnull 
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ogl_shader_get_compile_status(__in __notnull ogl_shader shader)
+{
+    return ((_ogl_shader*) shader)->compile_status;
+}
+
+/** Please see header for specification */
 PUBLIC GLuint ogl_shader_get_id(__in __notnull ogl_shader shader)
 {
     return ((_ogl_shader*)shader)->id;

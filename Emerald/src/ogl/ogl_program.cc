@@ -99,25 +99,27 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_program,
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _ogl_program_attach_shader_callback   (__in __notnull ogl_context            context,
-                                                                   void*                  in_arg);
-PRIVATE void _ogl_program_create_callback          (__in __notnull ogl_context            context,
-                                                                   void*                  in_arg);
-PRIVATE void _ogl_program_detach_shader_callback   (__in __notnull ogl_context            context,
-                                                                   void*                  in_arg);
-PRIVATE char*_ogl_program_get_binary_blob_file_name(__in __notnull _ogl_program*          program_ptr);
-PRIVATE char*_ogl_program_get_source_code_file_name(__in __notnull _ogl_program*          program_ptr);
-PRIVATE void _ogl_program_link_callback            (__in __notnull ogl_context            context,
-                                                                   void*                  in_arg);
-PRIVATE bool _ogl_program_load_binary_blob         (__in __notnull ogl_context,
-                                                    __in __notnull _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_release                  (__in __notnull void*                   program);
-PRIVATE void _ogl_program_release_active_attributes(               system_resizable_vector active_attributes);
-PRIVATE void _ogl_program_release_callback         (__in __notnull ogl_context             context,
-                                                                   void*                   in_arg);
-PRIVATE void _ogl_program_save_binary_blob         (__in __notnull ogl_context,
-                                                    __in __notnull _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_save_shader_sources      (__in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_attach_shader_callback       (__in __notnull ogl_context            context,
+                                                                       void*                  in_arg);
+PRIVATE void _ogl_program_create_callback              (__in __notnull ogl_context            context,
+                                                                       void*                  in_arg);
+PRIVATE void _ogl_program_detach_shader_callback       (__in __notnull ogl_context            context,
+                                                                       void*                  in_arg);
+PRIVATE char*_ogl_program_get_binary_blob_file_name    (__in __notnull _ogl_program*          program_ptr);
+PRIVATE char*_ogl_program_get_source_code_file_name    (__in __notnull _ogl_program*          program_ptr);
+PRIVATE void _ogl_program_link_callback                (__in __notnull ogl_context            context,
+                                                                       void*                  in_arg);
+PRIVATE bool _ogl_program_load_binary_blob             (__in __notnull ogl_context,
+                                                        __in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release                      (__in __notnull void*                   program);
+PRIVATE void _ogl_program_release_active_attributes    (               system_resizable_vector active_attributes);
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release_active_uniforms      (               system_resizable_vector active_uniforms);
+PRIVATE void _ogl_program_release_callback             (__in __notnull ogl_context             context,
+                                                                       void*                   in_arg);
+PRIVATE void _ogl_program_save_binary_blob             (__in __notnull ogl_context,
+                                                        __in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_save_shader_sources          (__in __notnull _ogl_program*           program_ptr);
 
 
 /** TODO */
@@ -785,67 +787,39 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     ogl_program_uniform_descriptor*   uniform_ptr   = NULL;
     ogl_program_ub                    uniform_block = NULL;
 
+    _ogl_program_release_active_attributes    (program_ptr->active_attributes);
+    _ogl_program_release_active_uniforms      (program_ptr->active_uniforms);
+    _ogl_program_release_active_uniform_blocks(program_ptr);
+
     if (program_ptr->active_attributes != NULL)
     {
-        while (system_resizable_vector_pop(program_ptr->active_attributes,
-                                          &attribute_ptr) )
-        {
-            delete attribute_ptr;
-
-            attribute_ptr = NULL;
-        }
-
         system_resizable_vector_release(program_ptr->active_attributes);
         program_ptr->active_attributes = NULL;
     }
 
+    if (program_ptr->context_to_active_ubs_map != NULL)
+    {
+        system_hash64map_release(program_ptr->context_to_active_ubs_map);
+        program_ptr->context_to_active_ubs_map = NULL;
+    }
+
+    if (program_ptr->context_to_ub_index_to_ub_map != NULL)
+    {
+        system_hash64map_release(program_ptr->context_to_ub_index_to_ub_map);
+        program_ptr->context_to_ub_index_to_ub_map = NULL;
+    }
+
+    if (program_ptr->context_to_ub_name_to_ub_map != NULL)
+    {
+        system_hash64map_release(program_ptr->context_to_ub_name_to_ub_map);
+        program_ptr->context_to_ub_name_to_ub_map = NULL;
+    }
+
     if (program_ptr->active_uniforms != NULL)
     {
-        while (system_resizable_vector_pop(program_ptr->active_uniforms,
-                                          &uniform_ptr) )
-        {
-            delete uniform_ptr;
-
-            uniform_ptr = NULL;
-        }
-
         system_resizable_vector_release(program_ptr->active_uniforms);
         program_ptr->active_uniforms = NULL;
     }
-
-    if (program_ptr->context_to_active_ubs_map != NULL)
-    {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_active_ubs_map);
-
-        for (unsigned int n_context = 0;
-                          n_context < n_contexts;
-                        ++n_context)
-        {
-            system_resizable_vector active_ubs = NULL;
-
-            system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
-                                            n_context,
-                                           &active_ubs,
-                                            NULL); /* pOutHash */
-
-            ASSERT_DEBUG_SYNC(active_ubs != NULL,
-                              "Sanity check failed");
-
-            while (system_resizable_vector_pop(active_ubs,
-                                              &uniform_block) )
-            {
-                ogl_program_ub_release(uniform_block);
-
-                uniform_block = NULL;
-            }
-
-            system_resizable_vector_release(active_ubs);
-            active_ubs = NULL;
-        } /* for (all recognized contexts) */
-
-        system_hash64map_release(program_ptr->context_to_active_ubs_map);
-        program_ptr->context_to_active_ubs_map = NULL;
-    } /* if (program_ptr->context_to_active_ubs_map != NULL) */
 
     /* Release TF varying name array, if one was allocated */
     if (program_ptr->tf_varyings != NULL)
@@ -882,6 +856,111 @@ PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector acti
                           "Could not retrieve program attribute pointer.");
 
         delete program_attribute_ptr;
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program* program_ptr)
+{
+    if (program_ptr->context_to_active_ubs_map != NULL)
+    {
+        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_active_ubs_map);
+
+        for (unsigned int n_context = 0;
+                          n_context < n_contexts;
+                        ++n_context)
+        {
+            system_resizable_vector active_ubs    = NULL;
+            ogl_program_ub          uniform_block = NULL;
+
+            system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
+                                            n_context,
+                                           &active_ubs,
+                                            NULL); /* pOutHash */
+
+            ASSERT_DEBUG_SYNC(active_ubs != NULL,
+                              "Sanity check failed");
+
+            while (system_resizable_vector_pop(active_ubs,
+                                              &uniform_block) )
+            {
+                ogl_program_ub_release(uniform_block);
+
+                uniform_block = NULL;
+            }
+
+            system_resizable_vector_release(active_ubs);
+            active_ubs = NULL;
+        } /* for (all recognized contexts) */
+    } /* if (program_ptr->context_to_active_ubs_map != NULL) */
+
+    if (program_ptr->context_to_ub_index_to_ub_map != NULL)
+    {
+        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_index_to_ub_map);
+
+        for (unsigned int n_context = 0;
+                          n_context < n_contexts;
+                        ++n_context)
+        {
+            system_hash64map current_ub_index_to_ub_map = NULL;
+
+            if (!system_hash64map_get_element_at(program_ptr->context_to_ub_index_to_ub_map,
+                                                 n_context,
+                                                &current_ub_index_to_ub_map,
+                                                 NULL) ) /* pOutHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Sanity check failed");
+
+                continue;
+            }
+
+            system_hash64map_clear(current_ub_index_to_ub_map);
+            current_ub_index_to_ub_map = NULL;
+        } /* for (all recognized contexts) */
+    } /* if (program_ptr->context_to_ub_index_to_ub_map != NULL) */
+
+    if (program_ptr->context_to_ub_name_to_ub_map != NULL)
+    {
+        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
+
+        for (unsigned int n_context = 0;
+                          n_context < n_contexts;
+                        ++n_context)
+        {
+            system_hash64map current_ub_name_to_ub_map = NULL;
+
+            if (!system_hash64map_get_element_at(program_ptr->context_to_ub_name_to_ub_map,
+                                                 n_context,
+                                                &current_ub_name_to_ub_map,
+                                                 NULL) ) /* pOutHash */
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Sanity check failed");
+
+                continue;
+            }
+
+            system_hash64map_clear(current_ub_name_to_ub_map);
+            current_ub_name_to_ub_map = NULL;
+        } /* for (all recognized contexts) */
+    } /* if (program_ptr->context_to_ub_name_to_ub_map != NULL) */
+}
+
+/** TODO */
+PRIVATE void _ogl_program_release_active_uniforms(system_resizable_vector active_uniforms)
+{
+    while (system_resizable_vector_get_amount_of_elements(active_uniforms) > 0)
+    {
+        ogl_program_uniform_descriptor* program_uniform_ptr = NULL;
+        bool                            result_get           = system_resizable_vector_pop(active_uniforms,
+                                                                                          &program_uniform_ptr);
+
+        ASSERT_DEBUG_SYNC(result_get,
+                          "Could not retrieve program uniform descriptor.");
+
+        delete program_uniform_ptr;
+        program_uniform_ptr = NULL;
     }
 }
 
@@ -1573,24 +1652,77 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program program)
 {
-    _ogl_program* program_ptr = (_ogl_program*) program;
-    bool          result      = false;
+    _ogl_program*      program_ptr        = (_ogl_program*) program;
+    const unsigned int n_attached_shaders = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
+    bool               result             = false;
 
-    ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0,
+    ASSERT_DEBUG_SYNC(n_attached_shaders > 0,
                       "Linking will fail - no shaders attached.");
 
-    if (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
+    if (n_attached_shaders > 0)
     {
         /* Clean up */
-        _ogl_program_release_active_attributes(program_ptr->active_attributes);
+        _ogl_program_release_active_attributes    (program_ptr->active_attributes);
+        _ogl_program_release_active_uniform_blocks(program_ptr);
+        _ogl_program_release_active_uniforms      (program_ptr->active_uniforms);
 
-        /* Let's go. */
-        ogl_context_request_callback_from_context_thread(program_ptr->context,
-                                                         _ogl_program_link_callback,
-                                                         program);
+        /* Run through all the attached shaders and make sure these are compiled.
+        *
+         * If not, compile them before proceeding with handling the actual linking request.
+         */
+        bool all_shaders_compiled = true;
 
-        result = program_ptr->link_status;
-    }
+        for (unsigned int n_shader = 0;
+                          n_shader < n_attached_shaders;
+                        ++n_shader)
+        {
+            ogl_shader current_shader           = NULL;
+            GLuint     current_shader_gl_id     = 0;
+            bool       is_compiled_successfully = false;
+
+            if (!system_resizable_vector_get_element_at(program_ptr->attached_shaders,
+                                                        n_shader,
+                                                       &current_shader) )
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve attached shader object at index [%d]",
+                                  n_shader);
+
+                continue;
+            }
+
+            current_shader_gl_id     = ogl_shader_get_id            (current_shader);
+            is_compiled_successfully = ogl_shader_get_compile_status(current_shader);
+
+            if (!is_compiled_successfully)
+            {
+                LOG_ERROR("Shader object [%d] has not been compiled successfully prior to linking. Attempting to compile.");
+
+                ogl_shader_compile(current_shader);
+
+                is_compiled_successfully = ogl_shader_get_compile_status(current_shader);
+            }
+
+            if (!is_compiled_successfully)
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Cannot proceeding with linking - at least one shader object failed to compile");
+
+                all_shaders_compiled = false;
+                break;
+            }
+        } /* for (all attached shaders) */
+
+        if (all_shaders_compiled)
+        {
+            /* Let's go. */
+            ogl_context_request_callback_from_context_thread(program_ptr->context,
+                                                             _ogl_program_link_callback,
+                                                             program);
+
+            result = program_ptr->link_status;
+        }
+    } /* if (n_attached_shaders > 0) */
 
     return result;
 }
