@@ -44,6 +44,9 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context,
 PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_body(__in __notnull ogl_shader);
 
 /** TODO */
+PUBLIC EMERALD_API bool ogl_shader_get_compile_status(__in __notnull ogl_shader);
+
+/** TODO */
 PUBLIC EMERALD_API system_hashed_ansi_string ogl_shader_get_name(__in __notnull ogl_shader);
 
 /** TODO */

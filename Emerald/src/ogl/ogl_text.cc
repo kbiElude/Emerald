@@ -554,6 +554,9 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             ogl_program_attach_shader(_global.draw_text_program,
                                       _global.draw_text_vertex_shader);
 
+            ogl_shader_compile(_global.draw_text_fragment_shader);
+            ogl_shader_compile(_global.draw_text_vertex_shader);
+
             if (!ogl_program_link(_global.draw_text_program) )
             {
                 LOG_ERROR        ("Could not link text drawing program.");
