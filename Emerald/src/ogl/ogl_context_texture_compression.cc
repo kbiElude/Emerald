@@ -607,24 +607,13 @@ PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_text
                                                                compressed_texture_formats,
                                                                n_compressed_texture_formats);
 
-            /* GL_ARB_ES3_compatibility introduces some cool compression algorithms. */
+            /* GL_ARB_ES3_compatibility introduces ETC & ETC2 compression algorithms support. */
             if (ogl_context_is_extension_supported(texture_compression_ptr->context,
                                                    system_hashed_ansi_string_create("GL_ARB_ES3_compatibility") ))
             {
                 _ogl_context_texture_compression_init_etc_etc2_support(texture_compression_ptr,
                                                                        compressed_texture_formats,
                                                                        n_compressed_texture_formats);
-            }
-
-            /* Add compression formats specific to GL_EXT_texture_compression_dxt1 */
-            if (ogl_context_is_extension_supported(texture_compression_ptr->context,
-                                                   system_hashed_ansi_string_create("GL_EXT_texture_compression_dxt1") ))
-            {
-                _ogl_context_texture_compression_init_dxt1_support(texture_compression_ptr);
-            }
-            else
-            {
-                LOG_ERROR("GL_EXT_texture_compression_dxt1 is not supported. The demo will crash if it uses DXT1 textures");
             }
 
             /* Add compression formats specific to GL_EXT_texture_compression_latc */
@@ -638,15 +627,16 @@ PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_text
                 LOG_ERROR("GL_EXT_texture_compression_latc is not supported. The demo will crash if it uses LATC1/2 textures");
             }
 
-            /* Add compression formats specific to GL_EXT_texture_Compression_s3tc */
+            /* Add compression formats specific to GL_EXT_texture_compression_s3tc */
             if (ogl_context_is_extension_supported(texture_compression_ptr->context,
                                                    system_hashed_ansi_string_create("GL_EXT_texture_compression_s3tc") ))
             {
+                _ogl_context_texture_compression_init_dxt1_support     (texture_compression_ptr);
                 _ogl_context_texture_compression_init_dxt3_dxt5_support(texture_compression_ptr);
             }
             else
             {
-                LOG_ERROR("GL_EXT_texture_compression_s3tc is not supported. The demo will crash if it uses DXT3/DXT5 textures");
+                LOG_ERROR("GL_EXT_texture_compression_s3tc is not supported. The demo will crash if it uses DXT1/DXT3/DXT5 textures");
             }
 
             /* All done */
