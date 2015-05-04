@@ -599,7 +599,7 @@ PRIVATE bool _ogl_context_get_function_pointers(__in                   __notnull
 
         if (*ptr_to_update == NULL)
         {
-            LOG_ERROR("Could not retrieve function pointer to %s - update your drivers, OpenGL3.3 is required to run.",
+            LOG_ERROR("Could not retrieve function pointer to %s - update your drivers, OpenGL 4.2 is required to run.",
                       func_name);
 
             ASSERT_ALWAYS_SYNC(false,
@@ -2448,7 +2448,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
             }
             else
             {
-                /* Create a temporary WGL context that we will use to initialize WGL context for GL3.3 */
+                /* Create a temporary WGL context that we will use to initialize WGL context for GL4.2 */
                 HGLRC temp_wgl_context = ::wglCreateContext(window_dc);
 
                 ::wglMakeCurrent(window_dc,
