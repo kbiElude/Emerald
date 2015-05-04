@@ -237,7 +237,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_TRUE(test_vertex_shader != NULL);
 
     ogl_shader_set_body(test_vertex_shader,
-                        system_hashed_ansi_string_create("#version 330\n"
+                        system_hashed_ansi_string_create("#version 420 core\n"
                                                          "\n"
                                                          "uniform mat4 view_matrix;\n"
                                                          "uniform mat4 projection_matrix;\n"

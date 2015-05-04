@@ -534,11 +534,11 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                 ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
                                   "Unrecognized context type");
 
-                fs_sstream << "#version 420\n"
+                fs_sstream << "#version 420 core\n"
                               "\n"
                            << fragment_shader_template;
 
-                vs_sstream << "#version 420\n"
+                vs_sstream << "#version 420 core\n"
                               "\n"
                            << vertex_shader_template;
             }

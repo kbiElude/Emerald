@@ -44,7 +44,7 @@ GLuint                      _dof_scheuermann_combination_po_data_low_uniform_loc
 GLuint                      _dof_scheuermann_combination_po_depth_high_uniform_location = -1;
 
 
-static const char* _dof_scheuermann_combination_fragment_shader_preambule = "#version 330\n"
+static const char* _dof_scheuermann_combination_fragment_shader_preambule = "#version 420 core\n"
                                                                             "\n";
 static const char* _dof_scheuermann_combination_fragment_shader_declarations = "uniform sampler2D data_high;\n" /* uses texture unit 0 */
                                                                                "uniform sampler2D data_low;\n"  /* uses texture unit 1 */

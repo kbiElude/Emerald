@@ -21,7 +21,7 @@
 #define VS_VERTEX_DATA_VAA_ID (0)
 #define VS_COLOR_DATA_VAA_ID  (1)
 
-static const char* fs_body     = "#version 420\n"
+static const char* fs_body     = "#version 420 core\n"
                                  "\n"
                                  "flat in  vec4 fp_color;\n"
                                  "     out vec4 result;\n"
@@ -30,7 +30,7 @@ static const char* fs_body     = "#version 420\n"
                                  "{\n"
                                  "    result = fp_color;\n"
                                  "}\n";
-static const char* vs_preamble = "#version 420\n"
+static const char* vs_preamble = "#version 420 core\n"
                                  "\n";
 static const char* vs_body     = "layout(std140, binding = 0) uniform UB\n"
                                  "{\n"

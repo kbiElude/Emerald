@@ -17,7 +17,7 @@
 #include <string>
 #include <sstream>
 
-static const char* preview_fragment_shader = "#version 420\n"
+static const char* preview_fragment_shader = "#version 420 core\n"
                                              "\n"
                                              "out vec4 result;\n"
                                              "\n"
@@ -25,7 +25,7 @@ static const char* preview_fragment_shader = "#version 420\n"
                                              "{\n"
                                              "    result = vec4(0, 1, 0, 1);\n"
                                              "}\n";
-static const char* preview_geometry_shader = "#version 420\n"
+static const char* preview_geometry_shader = "#version 420 core\n"
                                              "\n"
                                              "layout(points)                     in;\n"
                                              "layout(line_strip, max_vertices=2) out;\n"
@@ -49,7 +49,7 @@ static const char* preview_geometry_shader = "#version 420\n"
                                              "    EmitVertex();\n"
                                              "    EndPrimitive();\n"
                                              "}\n";
-static const char* preview_vertex_shader   = "#version 420\n"
+static const char* preview_vertex_shader   = "#version 420 core\n"
                                              "\n"
                                              "#extension GL_ARB_shader_storage_buffer_object : require\n"
                                              "\n"

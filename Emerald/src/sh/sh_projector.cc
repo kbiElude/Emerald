@@ -94,7 +94,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(sh_projector,
                               _sh_projector);
 
 /* Internal variables */
-const char* sh_projector_preamble = "#version 330 core\n"
+const char* sh_projector_preamble = "#version 420 core\n"
                                     "\n";
 
 const char* sh_projector_static_variables = "uniform DATATYPE static_colorINDEX;\n";
@@ -164,7 +164,7 @@ const char* sh_projector_general_template_body = "\n"
                                                  "   Out.result.DATATYPE_COMPONENTS = tmp_result * DATATYPE(factor);\n"
                                                  "}\n";
 
-const char* sh_projector_rgbXrgbX_rrggbb_converter_body = "#version 330 core\n"
+const char* sh_projector_rgbXrgbX_rrggbb_converter_body = "#version 420 core\n"
                                                           "\n"
                                                           "uniform samplerBuffer input_data;\n"
                                                           "uniform int           n_sh_coeffs;\n"

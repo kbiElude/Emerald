@@ -57,7 +57,7 @@ typedef struct
 
 /* Internal variables */
 #ifdef INCLUDE_KRIVANEK_FAST_SH_Y_ROTATION
-    const char* sh_rotate_krivanek_y_vp_template_body = "#version 330 core\n"
+    const char* sh_rotate_krivanek_y_vp_template_body = "#version 420 core\n"
                                                         "\n"
                                                         "#define N_BANDS (%d)\n"
                                                         "\n"
@@ -84,7 +84,7 @@ typedef struct
                                                         "}\n";
 #endif /* INCLUDE_KRIVANEK_FAST_SH_Y_ROTATION */
 
-const char* sh_rotate_xyz_vp_body = "#version 330 core\n"
+const char* sh_rotate_xyz_vp_body = "#version 420 core\n"
                                     "\n"
                                     "#define N_BANDS (%d)\n"
                                     "\n"
@@ -114,7 +114,7 @@ const char* sh_rotate_xyz_vp_body = "#version 330 core\n"
                                     "    Result.rotated_sh_coeff = output_data[gl_VertexID].xyz;\n"
                                     "}\n";
 
-const char* sh_rotate_z_vp_template_body = "#version 330 core\n"
+const char* sh_rotate_z_vp_template_body = "#version 420 core\n"
                                            "\n"
                                            "#define N_BANDS (%d)\n"
                                            "\n"

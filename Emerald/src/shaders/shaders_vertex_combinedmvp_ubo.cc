@@ -51,7 +51,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
     /* Create the body */
     std::stringstream body_stream;
 
-    body_stream << "#version 330\n"
+    body_stream << "#version 420 core\n"
                    "\n"
                    "layout(std140) uniform Matrices\n"
                    "{\n"
@@ -109,7 +109,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
     result_object->body          = shader_body;
     result_object->vertex_shader = vertex_shader;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_vertex_combinedmvp_ubo_release,
                                                    OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_UBO,
                                                    system_hashed_ansi_string_create_by_merging_two_strings("\\Combined MVP UBO Vertex Shaders\\", system_hashed_ansi_string_get_buffer(name)) );

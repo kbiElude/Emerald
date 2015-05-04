@@ -63,7 +63,7 @@ const char* shared_body                       = "   float n_samples_square_inv =
                                                 "   float theta = 2.0 * acos(sqrt(1.0 - x) );\n"
                                                 "   float phi   = 2.0 * 3.14152965 * y;\n";
 
-const char* unit_vec_generator_body           = "#version 330 core\n"
+const char* unit_vec_generator_body           = "#version 420 core\n"
                                                 "\n"
                                                 "#define N_BANDS (%d)\n"
                                                 "\n"
@@ -93,7 +93,7 @@ const char* unit_vec_generator_body           = "#version 330 core\n"
                                                 "   Out.unit_vec  = vec3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta) );\n"
                                                 "}\n";
 
-const char* sh_coeffs_generator_template_body = "#version 330 core\n"
+const char* sh_coeffs_generator_template_body = "#version 420 core\n"
                                                 "\n"
                                                 "#define N_BANDS (%d)\n"
                                                 /* Crude random generator goes here ==> */

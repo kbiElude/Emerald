@@ -7,7 +7,7 @@
 #ifndef OGL_UI_SHARED_H
 #define OGL_UI_SHARED_H
 
-static const char* ui_general_vertex_shader_body = "#version 420\n"
+static const char* ui_general_vertex_shader_body = "#version 420 core\n"
                                                    "\n"
                                                    "uniform dataVS\n"
                                                    "{\n"

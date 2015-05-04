@@ -803,7 +803,7 @@ typedef struct
 
 } ogl_context_es_entrypoints_ext_texture_buffer;
 
-/** Structure that cotnains context-specific strings of GL3.3 */
+/** Structure that cotnains context-specific strings of GL */
 typedef struct
 {
     const GLubyte** extensions;

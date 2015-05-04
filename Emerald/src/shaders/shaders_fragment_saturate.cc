@@ -13,7 +13,7 @@
 #include <sstream>
 
 /* Internal variables */
-const char* saturate_fragment_shader_body = "#version 330\n"
+const char* saturate_fragment_shader_body = "#version 420 core\n"
                                             "\n"
                                             "in vec2 uv;\n"
                                             "\n"

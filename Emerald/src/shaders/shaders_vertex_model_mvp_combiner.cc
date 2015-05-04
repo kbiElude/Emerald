@@ -51,7 +51,7 @@ PUBLIC EMERALD_API shaders_vertex_model_mvp_combiner shaders_vertex_model_mvp_co
     /* Create the body */
     std::stringstream body_stream;
 
-    body_stream << "#version 330\n"
+    body_stream << "#version 420 core\n"
                    "\n"
                    "in vec3 in_color;\n"
                    "in vec4 in_translation;\n"

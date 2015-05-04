@@ -85,7 +85,7 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
         std::stringstream fp_body_stream;
         std::stringstream vp_body_stream;
 
-        fp_body_stream << "#version 330\n"
+        fp_body_stream << "#version 420 core\n"
                           "\n"
                           "in  vec4 color;\n"
                           "out vec4 result;\n"
@@ -95,7 +95,7 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
                           "    result = color;\n"
                           "}\n";
 
-        vp_body_stream << "#version 330\n"
+        vp_body_stream << "#version 420 core\n"
                           "\n"
                           "uniform data\n"
                           "{\n"

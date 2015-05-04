@@ -48,7 +48,7 @@ static const char* postprocessing_blur_poisson_source_input_alpha_blur_strength_
                                                                                        "    return texture(data, uv).aa;\n"
                                                                                        "}\n";
 
-static const char* postprocessing_blur_poisson_fragment_shader_body_preambule = "#version 330\n"
+static const char* postprocessing_blur_poisson_fragment_shader_body_preambule = "#version 420 core\n"
                                                                                 "\n";
 static const char* postprocessing_blur_poisson_tap_data_body = "const float taps[] = float[](-0.37468f,     0.8566398f,\n"
                                                                "                              0.2497663f,   0.5130413f,\n"

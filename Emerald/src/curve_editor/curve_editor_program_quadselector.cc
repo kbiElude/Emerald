@@ -85,7 +85,7 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
         std::stringstream fp_body_stream;
         std::stringstream vp_body_stream;
 
-        fp_body_stream << "#version 330\n"
+        fp_body_stream << "#version 420 core\n"
                           "\n"
                           "uniform data\n"
                           "{\n"
@@ -100,7 +100,7 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
                           "    color = vec4(1, 1, 1, alpha);\n"
                           "}\n";
 
-        vp_body_stream << "#version 330\n"
+        vp_body_stream << "#version 420 core\n"
                           "\n"
                           "uniform data\n"
                           "{\n"
