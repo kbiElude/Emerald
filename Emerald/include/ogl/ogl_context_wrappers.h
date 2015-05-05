@@ -951,13 +951,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureEXT(GLuint   
                                                                        GLint       level);
 
 /** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureFaceEXT(GLuint      framebuffer,
-                                                                           GLenum      attachment,
-                                                                           ogl_texture texture,
-                                                                           GLint       level,
-                                                                           GLenum      face);
-
-/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureLayerEXT(GLuint      framebuffer,
                                                                             GLenum      attachment,
                                                                             ogl_texture texture,
@@ -1198,11 +1191,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterivEXT(ogl_texture  t
                                                                   GLenum       target,
                                                                   GLenum       pname,
                                                                   const GLint* params);
-
-/** TODO */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureRenderbufferEXT(ogl_texture texture,
-                                                                   GLenum      target,
-                                                                   GLuint      renderbuffer);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glTextureStorage1DEXT(ogl_texture texture,
