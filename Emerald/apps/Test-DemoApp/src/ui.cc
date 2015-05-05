@@ -396,6 +396,9 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
         ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &not_visible);
+        ogl_ui_set_control_property(_ui_vsm_max_variance_scrollbar,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &not_visible);
         ogl_ui_set_control_property(_ui_vsm_min_variance_scrollbar,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &not_visible);
@@ -418,6 +421,9 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
         ogl_ui_set_control_property(_ui_vsm_cutoff_scrollbar,
+                                    OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
+                                   &visible);
+        ogl_ui_set_control_property(_ui_vsm_max_variance_scrollbar,
                                     OGL_UI_CONTROL_PROPERTY_GENERAL_VISIBLE,
                                    &visible);
         ogl_ui_set_control_property(_ui_vsm_min_variance_scrollbar,

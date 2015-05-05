@@ -16,6 +16,16 @@ DECLARE_HANDLE(ogl_shadow_mapping);
 
 typedef enum
 {
+    /* Fragment shader to be used for generating depth shadow map data for
+     * Plain Shadow Mapping.
+     */
+    OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_FS,
+
+    /* Vertex shader to be used for generating depth shadow map data for
+     * Plain Shadow Mapping.
+     */
+    OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_VS,
+
     /* Fragment shader to be used for generating color shadow map data for
      * Variance Shadow Mapping.
      */

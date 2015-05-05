@@ -2358,6 +2358,41 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 
     switch (body_type)
     {
+        case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_FS:
+        {
+            static system_hashed_ansi_string depth_clip_fs = system_hashed_ansi_string_create("#version 420 core\n"
+                                                                                              "\n"
+                                                                                              "void main()\n"
+                                                                                              "{\n"
+                                                                                              "}\n");
+
+            result = depth_clip_fs;
+
+            break;
+        }
+
+        case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_VS:
+        {
+            static system_hashed_ansi_string depth_clip_and_squared_depth_clip_vs = system_hashed_ansi_string_create("#version 420 core\n"
+                                                                                                                     "\n"
+                                                                                                                     "uniform VertexShaderProperties\n"
+                                                                                                                     "{\n"
+                                                                                                                     "    layout(row_major) mat4 model;\n"
+                                                                                                                     "    layout(row_major) mat4 vp;\n"
+                                                                                                                     "};\n"
+                                                                                                                     "\n"
+                                                                                                                     "in vec3 object_vertex;\n"
+                                                                                                                     "\n"
+                                                                                                                     "void main()\n"
+                                                                                                                     "{\n"
+                                                                                                                     "    gl_Position = vp * model * vec4(object_vertex, 1.0);\n"
+                                                                                                                     "}\n");
+
+            result = depth_clip_and_squared_depth_clip_vs;
+
+            break;
+        }
+
         /* Variance Shadow Mapping for 2D Texture / Cube-map Texture Targets */
         case OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_AND_SQUARED_DEPTH_CLIP_FS:
         {

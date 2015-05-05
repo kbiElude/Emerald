@@ -1020,33 +1020,34 @@ PRIVATE system_hashed_ansi_string _ogl_materials_get_uber_name(__in __notnull me
 /** TODO */
 PRIVATE void _ogl_materials_init_special_materials(__in __notnull _ogl_materials* materials_ptr)
 {
-    const mesh_material_shading     shading_type_attribute_data                                        = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
-    const mesh_material_shading     shading_type_none                                                  = MESH_MATERIAL_SHADING_NONE;
-          mesh_material             special_material_depth_clip                                        = mesh_material_create(system_hashed_ansi_string_create("Special material: depth clip space"),
-                                                                                                                              materials_ptr->context,
-                                                                                                                              NULL); /* object_manager_path */
-          
-          mesh_material             special_material_normal                                            = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
-                                                                                                                              materials_ptr->context,
-                                                                                                                              NULL); /* object_manager_path */
-          mesh_material             special_material_texcoord                                          = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
-                                                                                                                              materials_ptr->context,
-                                                                                                                              NULL); /* object_manager_path */
+    const mesh_material_shading     shading_type_attribute_data = MESH_MATERIAL_SHADING_INPUT_FRAGMENT_ATTRIBUTE;
+    const mesh_material_shading     shading_type_none           = MESH_MATERIAL_SHADING_NONE;
 
-    /* Configure "depth clip" material */
-    mesh_material_set_property(special_material_depth_clip,
-                               MESH_MATERIAL_PROPERTY_SHADING,
-                              &shading_type_none);
+          mesh_material             special_material_normal     = mesh_material_create(system_hashed_ansi_string_create("Special material: normals"),
+                                                                                       materials_ptr->context,
+                                                                                       NULL); /* object_manager_path */
+          mesh_material             special_material_texcoord   = mesh_material_create(system_hashed_ansi_string_create("Special material: texcoord"),
+                                                                                       materials_ptr->context,
+                                                                                       NULL); /* object_manager_path */
 
     /* Configure materials using predefined shader bodies.
      *
      * NOTE: These bodies need to adhere to the requirements inposed
      *       by how ogl_uber works.
      */
+    mesh_material special_material_depth_clip                                        = NULL;
     mesh_material special_material_depth_clip_and_depth_clip_squared                 = NULL;
     mesh_material special_material_depth_clip_and_depth_clip_squared_dual_paraboloid = NULL;
     mesh_material special_material_depth_clip_dual_paraboloid                        = NULL;
 
+    special_material_depth_clip                                        = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space"),
+                                                                                                                 materials_ptr->context,
+                                                                                                                 NULL, /* object_manager_path */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_FS),
+                                                                                                                 NULL, /* gs_body */
+                                                                                                                 NULL, /* tc_body */
+                                                                                                                 NULL, /* te_body */
+                                                                                                                 ogl_shadow_mapping_get_special_material_shader_body(OGL_SHADOW_MAPPING_SPECIAL_MATERIAL_BODY_TYPE_DEPTH_CLIP_VS) );
     special_material_depth_clip_and_depth_clip_squared_dual_paraboloid = mesh_material_create_from_shader_bodies(system_hashed_ansi_string_create("Special material: depth clip space and depth squared clip space dual paraboloid"),
                                                                                                                  materials_ptr->context,
                                                                                                                  NULL, /* object_manager_path */
