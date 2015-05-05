@@ -5088,26 +5088,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureEXT(GLuint   
 }
 
 /* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureFaceEXT(GLuint      framebuffer,
-                                                                           GLenum      attachment,
-                                                                           ogl_texture texture,
-                                                                           GLint       level,
-                                                                           GLenum      face)
-{
-    GLuint texture_id = 0;
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLNamedFramebufferTextureFaceEXT(framebuffer,
-                                                                attachment,
-                                                                texture_id,
-                                                                level,
-                                                                face);
-}
-
-/* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glNamedFramebufferTextureLayerEXT(GLuint      framebuffer,
                                                                             GLenum      attachment,
                                                                             ogl_texture texture,
@@ -6264,22 +6244,6 @@ PUBLIC void APIENTRY ogl_context_wrappers_glTextureParameterivEXT(ogl_texture  t
                                                        target,
                                                        pname,
                                                        params);
-}
-
-/* Please see header for specification */
-PUBLIC void APIENTRY ogl_context_wrappers_glTextureRenderbufferEXT(ogl_texture texture,
-                                                                   GLenum      target,
-                                                                   GLuint      renderbuffer)
-{
-    GLuint texture_id = 0;
-
-    ogl_texture_get_property(texture,
-                             OGL_TEXTURE_PROPERTY_ID,
-                            &texture_id);
-
-    _private_entrypoints_ptr->pGLTextureRenderbufferEXT(texture_id,
-                                                        target,
-                                                        renderbuffer);
 }
 
 /* Please see header for specification */

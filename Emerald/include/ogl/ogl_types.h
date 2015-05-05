@@ -1378,7 +1378,6 @@ typedef struct
     PFNGLGETTEXTUREPARAMETERIUIVEXTPROC      pGLGetTextureParameterIuiv;
     PFNGLNAMEDFRAMEBUFFERTEXTUREEXTPROC      pGLNamedFramebufferTextureEXT;
     PFNGLNAMEDFRAMEBUFFERTEXTURELAYEREXTPROC pGLNamedFramebufferTextureLayerEXT;
-    PFNGLNAMEDFRAMEBUFFERTEXTUREFACEEXTPROC  pGLNamedFramebufferTextureFaceEXT;
     PFNGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC    pGLNamedFramebufferTexture1DEXT;
     PFNGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC    pGLNamedFramebufferTexture2DEXT;
     PFNGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC    pGLNamedFramebufferTexture3DEXT;
@@ -1393,7 +1392,6 @@ typedef struct
     PFNGLTEXTUREPARAMETERIIVEXTPROC         pGLTextureParameterIivEXT;
     PFNGLTEXTUREPARAMETERIUIVEXTPROC        pGLTextureParameterIuivEXT;
     PFNGLTEXTUREPARAMETERIVEXTPROC          pGLTextureParameterivEXT;
-    PFNGLTEXTURERENDERBUFFEREXTPROC         pGLTextureRenderbufferEXT;
     PFNGLTEXTURESTORAGE1DEXTPROC            pGLTextureStorage1DEXT;
     PFNGLTEXTURESTORAGE2DEXTPROC            pGLTextureStorage2DEXT;
     PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC pGLTextureStorage2DMultisampleEXT;
@@ -1541,6 +1539,12 @@ typedef struct
 
 typedef struct
 {
+    /* NOTE: EXT_direct_state_access support will be superseded with ARB_direct_state_access
+     *       in the near future.
+     *
+     *       If you need to add a new entry-point, please ensure these come from core GL 4.2
+     *       feature-set and carry no vendor-specific dependencies.
+     */
     PFNWRAPPEDGLBINDMULTITEXTUREEXTPROC                     pGLBindMultiTextureEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE1DEXTPROC             pGLCompressedTextureImage1DEXT;
     PFNWRAPPEDGLCOMPRESSEDTEXTUREIMAGE2DEXTPROC             pGLCompressedTextureImage2DEXT;
@@ -1580,11 +1584,9 @@ typedef struct
     PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE1DEXTPROC            pGLNamedFramebufferTexture1DEXT;
     PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE2DEXTPROC            pGLNamedFramebufferTexture2DEXT;
     PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURE3DEXTPROC            pGLNamedFramebufferTexture3DEXT;
-    PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTUREFACEEXTPROC          pGLNamedFramebufferTextureFaceEXT;
     PFNWRAPPEDGLNAMEDFRAMEBUFFERTEXTURELAYEREXTPROC         pGLNamedFramebufferTextureLayerEXT;
     PFNGLNAMEDRENDERBUFFERSTORAGEEXTPROC                    pGLNamedRenderbufferStorageEXT;
     PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC         pGLNamedRenderbufferStorageMultisampleEXT;
-    PFNGLNAMEDRENDERBUFFERSTORAGEMULTISAMPLECOVERAGEEXTPROC pGLNamedRenderbufferStorageMultisampleCoverageEXT;
     PFNWRAPPEDGLTEXTUREBUFFEREXTPROC                        pGLTextureBufferEXT;
     PFNWRAPPEDGLTEXTUREBUFFERRANGEEXTPROC                   pGLTextureBufferRangeEXT;
     PFNWRAPPEDGLTEXTUREIMAGE1DEXTPROC                       pGLTextureImage1DEXT;
@@ -1596,7 +1598,6 @@ typedef struct
     PFNWRAPPEDGLTEXTUREPARAMETERFVEXTPROC                   pGLTextureParameterfvEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIIVEXTPROC                  pGLTextureParameterIivEXT;
     PFNWRAPPEDGLTEXTUREPARAMETERIUIVEXTPROC                 pGLTextureParameterIuivEXT;
-    PFNWRAPPEDGLTEXTURERENDERBUFFEREXTPROC                  pGLTextureRenderbufferEXT;
     PFNWRAPPEDGLTEXTURESTORAGE1DEXTPROC                     pGLTextureStorage1DEXT;
     PFNWRAPPEDGLTEXTURESTORAGE2DEXTPROC                     pGLTextureStorage2DEXT;
     PFNWRAPPEDGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC          pGLTextureStorage2DMultisampleEXT;
