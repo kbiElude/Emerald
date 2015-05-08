@@ -753,33 +753,46 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     /* Unregister the PO from the registry */
     ogl_programs programs = NULL;
 
-    ogl_context_get_property       (program_ptr->context,
-                                    OGL_CONTEXT_PROPERTY_PROGRAMS,
-                                   &programs);
-    ogl_programs_unregister_program(programs,
-                                    (ogl_program) program);
+    ogl_context_get_property(program_ptr->context,
+                             OGL_CONTEXT_PROPERTY_PROGRAMS,
+                            &programs);
 
-    /* Do releasing stuff in GL context first */
-    ogl_context_request_callback_from_context_thread(program_ptr->context,
-                                                     _ogl_program_release_callback,
-                                                     program_ptr);
-
-    /* Release all attached shaders */
-    if (program_ptr->attached_shaders != NULL)
+    if (programs == NULL)
     {
-        while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
+        /* We may end up here if the user explicitly killed the window (eg. with ALT+F4).
+         *
+         * In this case, the whole context will have been wiped out at this point, so there's
+         * no sense in trying to release ogl_shader and ogl_program instances.
+         */
+        LOG_FATAL("Program manager is NULL. An ogl_program instance will not be unregistered.")
+    }
+    else
+    {
+        ogl_programs_unregister_program(programs,
+                                        (ogl_program)program);
+
+        /* Do releasing stuff in GL context first */
+        ogl_context_request_callback_from_context_thread(program_ptr->context,
+                                                         _ogl_program_release_callback,
+                                                         program_ptr);
+
+        /* Release all attached shaders */
+        if (program_ptr->attached_shaders != NULL)
         {
-            ogl_shader shader     = NULL;
-            bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
-                                                               &shader);
+            while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
+            {
+                ogl_shader shader     = NULL;
+                bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
+                                                                   &shader);
 
-            ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
+                ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
 
-            ogl_shader_release(shader);
+                ogl_shader_release(shader);
+            }
+
+            system_resizable_vector_release(program_ptr->attached_shaders);
+            program_ptr->attached_shaders = NULL;
         }
-
-        system_resizable_vector_release(program_ptr->attached_shaders);
-        program_ptr->attached_shaders = NULL;
     }
 
     /* Release resizable vectors */

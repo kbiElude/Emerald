@@ -75,21 +75,22 @@ typedef struct
     system_event         window_safe_to_release_event;
     system_event         window_thread_event;
 
+    system_resizable_vector char_callbacks;                      /* PFNWINDOWCHARCALLBACKPROC               */
     system_resizable_vector exit_size_move_callbacks;            /* PFNWINDOWEXITSIZEMOVECALLBACKPROC       */
-    system_resizable_vector mouse_move_callbacks;                /* PFNWINDOWMOUSEMOVECALLBACKPROC          */
+    system_resizable_vector key_down_callbacks;                  /* PFNWINDOWKEYDOWNCALLBACKPROC            */
+    system_resizable_vector key_up_callbacks;                    /* PFNWINDOWKEYUPCALLBACKPROC              */
     system_resizable_vector left_button_down_callbacks;          /* PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC     */
     system_resizable_vector left_button_up_callbacks;            /* PFNWINDOWLEFTBUTTONUPCALLBACKPROC       */
     system_resizable_vector left_button_double_click_callbacks;  /* PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC   */
     system_resizable_vector middle_button_down_callbacks;        /* PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC   */
     system_resizable_vector middle_button_up_callbacks;          /* PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC     */
     system_resizable_vector middle_button_double_click_callbacks;/* PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC */
+    system_resizable_vector mouse_move_callbacks;                /* PFNWINDOWMOUSEMOVECALLBACKPROC          */
+    system_resizable_vector mouse_wheel_callbacks;               /* PFNWINDOWMOUSEWHEELCALLBACKPROC         */
     system_resizable_vector right_button_down_callbacks;         /* PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC    */
     system_resizable_vector right_button_up_callbacks;           /* PFNWINDOWRIGHTBUTTONUPCALLBACKPROC      */
     system_resizable_vector right_button_double_click_callbacks; /* PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC  */
-    system_resizable_vector mouse_wheel_callbacks;               /* PFNWINDOWMOUSEWHEELCALLBACKPROC         */
-    system_resizable_vector char_callbacks;                      /* PFNWINDOWCHARCALLBACKPROC               */
-    system_resizable_vector key_down_callbacks;                  /* PFNWINDOWKEYDOWNCALLBACKPROC            */
-    system_resizable_vector key_up_callbacks;                    /* PFNWINDOWKEYUPCALLBACKPROC              */
+    system_resizable_vector window_closed_callbacks;             /* PFNWINDOWINDOWCLOSEDCALLBACKPROC        */
 } _system_window;
 
 /** Internal variables */
@@ -143,21 +144,22 @@ PRIVATE void _deinit_system_window(_system_window* descriptor)
     /* Release callback descriptors */
     system_resizable_vector callback_vectors[] =
     {
+        descriptor->char_callbacks,
         descriptor->exit_size_move_callbacks,
-        descriptor->mouse_move_callbacks,
+        descriptor->key_down_callbacks,
+        descriptor->key_up_callbacks,
+        descriptor->left_button_double_click_callbacks,
         descriptor->left_button_down_callbacks,
         descriptor->left_button_up_callbacks,
-        descriptor->left_button_double_click_callbacks,
+        descriptor->middle_button_double_click_callbacks,
         descriptor->middle_button_down_callbacks,
         descriptor->middle_button_up_callbacks,
-        descriptor->middle_button_double_click_callbacks,
+        descriptor->mouse_move_callbacks,
+        descriptor->mouse_wheel_callbacks,
+        descriptor->right_button_double_click_callbacks,
         descriptor->right_button_down_callbacks,
         descriptor->right_button_up_callbacks,
-        descriptor->right_button_double_click_callbacks,
-        descriptor->mouse_wheel_callbacks,
-        descriptor->char_callbacks,
-        descriptor->key_down_callbacks,
-        descriptor->key_up_callbacks
+        descriptor->window_closed_callbacks
     };
 
     for (uint32_t n = 0;
@@ -219,26 +221,48 @@ PRIVATE void _init_system_window(_system_window* descriptor)
     descriptor->system_dc                           = NULL;
     descriptor->system_handle                       = NULL;
     descriptor->system_ogl_context                  = NULL;
-    descriptor->message_pump_lock_event             = system_event_create(true, false);
+    descriptor->message_pump_lock_event             = system_event_create(true,   /* manual_reset */
+                                                                          false); /* start_state */
     descriptor->message_pump_thread_id              = 0;
-    descriptor->message_pump_unlock_event           = system_event_create(true, false);
-    descriptor->window_safe_to_release_event        = system_event_create(true, false);
-    descriptor->window_initialized_event            = system_event_create(true, false);
-    descriptor->exit_size_move_callbacks            = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->mouse_move_callbacks                = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->left_button_down_callbacks          = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->left_button_up_callbacks            = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->left_button_double_click_callbacks  = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->middle_button_down_callbacks        = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->middle_button_up_callbacks          = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->middle_button_double_click_callbacks= system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->right_button_down_callbacks         = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->right_button_up_callbacks           = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->right_button_double_click_callbacks = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->mouse_wheel_callbacks               = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->char_callbacks                      = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->key_down_callbacks                  = system_resizable_vector_create(1, sizeof(void*) );
-    descriptor->key_up_callbacks                    = system_resizable_vector_create(1, sizeof(void*) );
+    descriptor->message_pump_unlock_event           = system_event_create(true,   /* manual_reset */
+                                                                          false); /* start_state */
+    descriptor->window_safe_to_release_event        = system_event_create(true,   /* manual_reset */
+                                                                          false); /* start_state */
+    descriptor->window_initialized_event            = system_event_create(true,   /* manual_reset */
+                                                                          false); /* start_state */
+
+    descriptor->char_callbacks                       = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->exit_size_move_callbacks             = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->key_down_callbacks                   = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->key_up_callbacks                     = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->left_button_double_click_callbacks   = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->left_button_down_callbacks           = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->left_button_up_callbacks             = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->middle_button_double_click_callbacks = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->middle_button_down_callbacks         = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->middle_button_up_callbacks           = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->mouse_move_callbacks                 = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->mouse_wheel_callbacks                = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->right_button_double_click_callbacks  = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->right_button_down_callbacks          = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->right_button_up_callbacks            = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
+    descriptor->window_closed_callbacks              = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
 
     #ifdef INCLUDE_WEBCAM_MANAGER
         descriptor->webcam_device_notification_handle = NULL;
@@ -252,10 +276,12 @@ PRIVATE void _init_system_window(_system_window* descriptor)
 
 /** TODO */
 PRIVATE VOID _lock_system_window_message_pump(_system_window* descriptor)
-{    
-    /* Only lock if not in message pump */
-    if (system_threads_get_thread_id() != descriptor->message_pump_thread_id)
+{
+    /* Only lock if not in message pump AND the window has not been marked for release. */
+    if ( system_threads_get_thread_id () != descriptor->message_pump_thread_id   &&
+        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) )
     {
+        /* Only lock if the window is still alive! */
         system_event_reset(descriptor->message_pump_lock_event);
         system_event_reset(descriptor->message_pump_unlock_event);
         {
@@ -273,7 +299,8 @@ PRIVATE VOID _lock_system_window_message_pump(_system_window* descriptor)
 PRIVATE VOID _unlock_system_window_message_pump(_system_window* descriptor)
 {
     /* Only unlock if not in message pump */
-    if (system_threads_get_thread_id() != descriptor->message_pump_thread_id)
+    if ( system_threads_get_thread_id() != descriptor->message_pump_thread_id   &&
+        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) )
     {
         ASSERT_DEBUG_SYNC(descriptor->is_message_pump_locked,
                           "Cannot unlock system window message pump - not locked.");
@@ -282,6 +309,40 @@ PRIVATE VOID _unlock_system_window_message_pump(_system_window* descriptor)
 
         /* Wait until message pump confirms it has finished handling WM_EMERALD_LOCK_MESSAGE_PUMP msg */
         while (system_event_wait_single_peek(descriptor->message_pump_unlock_event) ){}
+    }
+}
+
+/** TODO */
+PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
+{
+    _system_window* window_ptr = (_system_window*) arg;
+
+    /* Wait for the window thread to die */
+    system_event_wait_single_infinite(window_ptr->window_safe_to_release_event);
+
+    /* Call back the subscribers, if any */
+    uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window_ptr->window_closed_callbacks);
+
+    if (n_callbacks != 0)
+    {
+        for (uint32_t n_callback = 0;
+                      n_callback < n_callbacks;
+                    ++n_callback)
+        {
+            _callback_descriptor* descriptor_ptr = NULL;
+
+            if (system_resizable_vector_get_element_at(window_ptr->window_closed_callbacks,
+                                                       n_callback,
+                                                      &descriptor_ptr) )
+            {
+                bool result = ((PFNWINDOWWINDOWCLOSEDCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) arg);
+
+                if (!result)
+                {
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -879,11 +940,37 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_CLOSE:
         {
+            /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
+             * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
+            ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+
+            ogl_rendering_handler_get_property(window->rendering_handler,
+                                               OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                              &playback_status);
+
+            if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+            {
+                ogl_rendering_handler_stop(window->rendering_handler);
+            } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+
+            /* OK, safe to destroy the system window at this point */
             ::DestroyWindow(window_handle);
+
+            /* Now here's the trick: the call-backs can only be fired AFTER the window thread has shut down.
+             * This lets us avoid various thread racing conditions which used to break all hell loose at the
+             * tear-down time in the past.
+             *
+             * The entry-point we're pointing the task at does exactly that.
+             */
+            system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_CRITICAL,
+                                                                                                             _system_window_teardown_thread_pool_callback,
+                                                                                                             (void*) window);
+
+            system_thread_pool_submit_single_task(task);
 
             return 0;
         }
-        
+
         case WM_DESTROY:
         {
             ::PostQuitMessage(0);
@@ -1277,6 +1364,14 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
 
             switch (callback_func)
             {
+                case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
+                {
+                    callback_container = window_ptr->char_callbacks;
+                    result             = true;
+
+                    break;
+                }
+
                 case SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE:
                 {
                     callback_container = window_ptr->exit_size_move_callbacks;
@@ -1285,9 +1380,25 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                     break;
                 }
 
-                case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE:
+                case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
                 {
-                    callback_container = window_ptr->mouse_move_callbacks;
+                    callback_container = window_ptr->key_up_callbacks;
+                    result             = true;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
+                {
+                    callback_container = window_ptr->key_down_callbacks;
+                    result             = true;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOUBLE_CLICK:
+                {
+                    callback_container = window_ptr->left_button_double_click_callbacks;
                     result             = true;
 
                     break;
@@ -1309,9 +1420,9 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                     break;
                 }
 
-                case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOUBLE_CLICK:
+                case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOUBLE_CLICK:
                 {
-                    callback_container = window_ptr->left_button_double_click_callbacks;
+                    callback_container = window_ptr->middle_button_double_click_callbacks;
                     result             = true;
 
                     break;
@@ -1333,9 +1444,25 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                     break;
                 }
 
-                case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOUBLE_CLICK:
+                case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE:
                 {
-                    callback_container = window_ptr->middle_button_double_click_callbacks;
+                    callback_container = window_ptr->mouse_move_callbacks;
+                    result             = true;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL:
+                {
+                    callback_container = window_ptr->mouse_wheel_callbacks;
+                    result             = true;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK:
+                {
+                    callback_container = window_ptr->right_button_double_click_callbacks;
                     result             = true;
 
                     break;
@@ -1357,41 +1484,9 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                     break;
                 }
 
-                case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK:
+                case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED:
                 {
-                    callback_container = window_ptr->right_button_double_click_callbacks;
-                    result             = true;
-
-                    break;
-                }
-
-                case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL:
-                {
-                    callback_container = window_ptr->mouse_wheel_callbacks;
-                    result             = true;
-
-                    break;
-                }
-
-                case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
-                {
-                    callback_container = window_ptr->char_callbacks;
-                    result             = true;
-
-                    break;
-                }
-
-                case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
-                {
-                    callback_container = window_ptr->key_up_callbacks;
-                    result             = true;
-
-                    break;
-                }
-
-                case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
-                {
-                    callback_container = window_ptr->key_down_callbacks;
+                    callback_container = window_ptr->window_closed_callbacks;
                     result             = true;
 
                     break;

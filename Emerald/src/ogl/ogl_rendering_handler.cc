@@ -657,9 +657,6 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_
 
     if (rendering_handler_ptr->context != NULL)
     {
-        ASSERT_DEBUG_SYNC(rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED,
-                          "Cannot stop playback - not playing.");
-
         if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED)
         {
             system_critical_section_enter(rendering_handler_ptr->rendering_cs);
@@ -674,8 +671,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_stop(__in __notnull ogl_rendering_
             system_event_wait_single_infinite(rendering_handler_ptr->playback_waiting_event);
 
             result = true;
-        }
-    }
+        } /* if (rendering_handler_ptr->playback_status == RENDERING_HANDLER_PLAYBACK_STATUS_STARTED) */
+    } /* if (rendering_handler_ptr->context != NULL) */
 
     return result;
 }

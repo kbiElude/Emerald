@@ -175,6 +175,13 @@ void _rendering_rbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
+bool _rendering_window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+
+    return true;
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
@@ -207,6 +214,11 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                         _rendering_rbm_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                        _rendering_window_closed_callback_handler,
                                         NULL);
 
     /* Initialize data required to run the demo */

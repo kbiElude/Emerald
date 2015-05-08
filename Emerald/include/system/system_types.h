@@ -173,39 +173,111 @@ typedef enum system_window_callback_func
     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK,
     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-    SYSTEM_WINDOW_CALLBACK_FUNC_CHAR
+    SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,
+
+    /* Called whenever the window is closed. This could occur per either
+     * the user's, or the system's request. */
+    SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED
 };
 
 /** TODO */
+typedef bool (*PFNWINDOWCHARCALLBACKPROC)              (system_window,
+                                                        unsigned short,
+                                                        void*);
+
+/** TODO */
 typedef bool (*PFNWINDOWEXITSIZEMOVECALLBACKPROC)      (system_window);
+
 /** TODO */
-typedef bool (*PFNWINDOWMOUSEMOVECALLBACKPROC)         (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWKEYDOWNCALLBACKPROC)           (system_window,
+                                                        unsigned short,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC)    (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWKEYUPCALLBACKPROC)             (system_window,
+                                                        unsigned short,
+                                                        void*);
 /** TODO */
-typedef bool (*PFNWINDOWLEFTBUTTONUPCALLBACKPROC)      (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC)  (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC)  (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC)    (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC)  (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWLEFTBUTTONUPCALLBACKPROC)      (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC)    (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC)(system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC)(system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC)  (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC)   (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC)    (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWRIGHTBUTTONUPCALLBACKPROC)     (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWMOUSEMOVECALLBACKPROC)         (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC) (system_window, LONG, LONG, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWMOUSEWHEELCALLBACKPROC)        (system_window,
+                                                        unsigned short,
+                                                        unsigned short,
+                                                        short /* scroll delta */,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWMOUSEWHEELCALLBACKPROC)        (system_window, unsigned short, unsigned short, short /* scroll delta */, system_window_vk_status, void*);
+typedef bool (*PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC) (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWCHARCALLBACKPROC)              (system_window, unsigned short, void*);
+typedef bool (*PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC)   (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWKEYDOWNCALLBACKPROC)           (system_window, unsigned short, void*);
+typedef bool (*PFNWINDOWRIGHTBUTTONUPCALLBACKPROC)     (system_window,
+                                                        LONG,
+                                                        LONG,
+                                                        system_window_vk_status,
+                                                        void*);
+
 /** TODO */
-typedef bool (*PFNWINDOWKEYUPCALLBACKPROC)             (system_window, unsigned short, void*);
+typedef bool (*PFNWINDOWWINDOWCLOSEDCALLBACKPROC)     (system_window);
+
 
 /********************** CONTEXT MENU *************************************/
 DECLARE_HANDLE(system_context_menu);
