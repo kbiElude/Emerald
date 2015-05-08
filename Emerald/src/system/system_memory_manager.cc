@@ -20,7 +20,8 @@
  * page owner counters upon free_block calls.
  * This will seriously deteriorate performance, so should only be enabled for debugging */
 #ifdef _DEBUG
-    #define ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME
+    /* DO NOT leave enabled! */
+    //#define ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME
 #endif /* _DEBUG */
 
 
@@ -522,7 +523,7 @@ PUBLIC EMERALD_API void system_memory_manager_free_block(__in __notnull system_m
     ASSERT_DEBUG_SYNC(has_found,
                       "Submitted memory block was not found.");
 
-    #ifdef ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME
+    #if defined(_DEBUG) && defined(ENABLE_INTEGRITY_CHECKS_AT_FREE_CALL_TIME)
     {
         if (has_found)
         {
