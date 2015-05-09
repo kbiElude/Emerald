@@ -482,9 +482,6 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
                                    text_ptr->data_buffer_contents_size,
                                    text_ptr->data_buffer_contents);
     }
-
-    ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
-                      "Could not update VRAM text data");
 }
 
 /** TODO */

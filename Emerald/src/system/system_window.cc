@@ -45,6 +45,7 @@ typedef struct
     ogl_context_type           context_type;
     bool                       is_cursor_visible;
     bool                       is_fullscreen;
+    bool                       is_root_window;
     bool                       is_scalable;
     bool                       multisampling_supported;
     uint16_t                   n_multisampling_samples;
@@ -123,11 +124,41 @@ system_critical_section spawned_windows_cs = NULL;
 
 /** Used to track amount of spawned windows. Also, if it is the first window that is created, window class is initialized.
  *  Always lock n_windows_spawned_cs before accessing (in order to defend against multiple window class creation and counter
- *  corruption
+ *  corruption)
  */
 int                     n_windows_spawned    = 0;
 system_critical_section n_windows_spawned_cs = NULL;
 
+/* Root window - holds root rendering context which encapsulates buffer objects, program objects, texutre objects, etc. that
+ * all other rendering contexts may use.
+ *
+ * Deleted when n_windows_spawned drops to 0.
+ */
+ogl_rendering_handler root_window_rendering_handler = NULL;
+system_window         root_window                   = NULL;
+
+
+/* Forward declarations */
+PRIVATE void          _deinit_system_window                       (                           _system_window*                      descriptor);
+PRIVATE void          _init_system_window                         (                           _system_window*                      descriptor);
+PRIVATE VOID          _lock_system_window_message_pump            (                           _system_window*                      descriptor);
+PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnull             system_thread_pool_callback_argument arg);
+PRIVATE void          _system_window_thread_entrypoint            (     __notnull             void*                                in_arg);
+PRIVATE void          _system_window_create_root_window           (__in                       ogl_context_type                     context_type);
+PRIVATE system_window _system_window_create_shared                (__in __notnull             ogl_context_type                     context_type,
+                                                                   __in                       bool                                 is_fullscreen,
+                                                                   __in __notnull __ecount(4) const int*                           x1y1x2y2,
+                                                                   __in __notnull             system_hashed_ansi_string            title,
+                                                                   __in __notnull             bool                                 is_scalable,
+                                                                   __in __notnull             uint16_t                             n_multisampling_samples,
+                                                                   __in                       uint16_t                             fullscreen_bpp,
+                                                                   __in                       uint16_t                             fullscreen_freq,
+                                                                   __in                       bool                                 vsync_enabled,
+                                                                   __in __maybenull           HWND                                 parent_window_handle,
+                                                                   __in                       bool                                 multisampling_supported,
+                                                                   __in                       bool                                 visible,
+                                                                   __in                       bool                                 is_root_window);
+PRIVATE VOID          _unlock_system_window_message_pump          (                           _system_window*                      descriptor);
 
 /** TODO */
 PRIVATE void _deinit_system_window(_system_window* descriptor)
@@ -1022,40 +1053,54 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 /** TODO */
 PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
 {
-    DWORD           ex_style = 0;
-    DWORD           style    = 0;
-    _system_window* window   = (_system_window*) in_arg;
+    DWORD                       ex_style = 0;
+    ogl_pixel_format_descriptor pfd      = NULL;
+    DWORD                       style    = 0;
+    _system_window*             window   = (_system_window*) in_arg;
 
     window->message_pump_thread_id = system_threads_get_thread_id();
 
     /* Create window class, if necessary, and cache mouse cursors */
     {
-        system_critical_section_enter(n_windows_spawned_cs);
+        if (!window->is_root_window)
+        {
+            /* For root windows, the CS will have already been locked. This does not
+             * hold for any other window type.
+             */
+            system_critical_section_enter(n_windows_spawned_cs);
+        }
         {
             if (n_windows_spawned == 0)
             {
-                WNDCLASSA window_class;
+                /* Set up the window class. */
+                WNDCLASSA   window_class;
+                static bool window_class_registered = false;
 
-                window_class.cbClsExtra    = 0;
-                window_class.cbWndExtra    = 0;
-                window_class.hbrBackground = 0;
-                window_class.hCursor       = ::LoadCursorA     (NULL,
-                                                                IDC_ARROW);
-                window_class.hIcon         = ::LoadIconA       (NULL,
-                                                                IDI_WINLOGO);
-                window_class.hInstance     = ::GetModuleHandleA(NULL);
-                window_class.lpfnWndProc   = _system_window_class_message_loop_entrypoint;
-                window_class.lpszClassName = EMERALD_WINDOW_CLASS_NAME;
-                window_class.lpszMenuName  = NULL;
-                window_class.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
-
-                if (!::RegisterClassA(&window_class) )
+                if (!window_class_registered)
                 {
-                    LOG_FATAL("Could not register engine window class.");
+                    window_class.cbClsExtra    = 0;
+                    window_class.cbWndExtra    = 0;
+                    window_class.hbrBackground = 0;
+                    window_class.hCursor       = ::LoadCursorA     (NULL,
+                                                                    IDC_ARROW);
+                    window_class.hIcon         = ::LoadIconA       (NULL,
+                                                                    IDI_WINLOGO);
+                    window_class.hInstance     = ::GetModuleHandleA(NULL);
+                    window_class.lpfnWndProc   = _system_window_class_message_loop_entrypoint;
+                    window_class.lpszClassName = EMERALD_WINDOW_CLASS_NAME;
+                    window_class.lpszMenuName  = NULL;
+                    window_class.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
 
-                    goto end;
-                }
-            }
+                    if (!::RegisterClassA(&window_class) )
+                    {
+                        LOG_FATAL("Could not register engine window class.");
+
+                        goto end;
+                    }
+
+                    window_class_registered = true;
+                } /* if (!window_class_registered) */
+            } /* if (n_windows_spawned == 0) */
 
             ++n_windows_spawned;
 
@@ -1083,7 +1128,10 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
             ASSERT_DEBUG_SYNC(cached_hand_cursor_resource != NULL,
                               "Failed to load hand cursor resource.");
         }
-        system_critical_section_leave(n_windows_spawned_cs);
+        if (!window->is_root_window)
+        {
+            system_critical_section_leave(n_windows_spawned_cs);
+        }
     }
 
     /* If full-screen window was requested, change display mode. */
@@ -1200,12 +1248,12 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
     }
 
     /* Create OGL context */
-    ogl_pixel_format_descriptor pfd = ogl_pixel_format_descriptor_create(window->title,
-                                                                         8,  /* color_buffer_red_bits   */
-                                                                         8,  /* color_buffer_green_bits */
-                                                                         8,  /* color_buffer_blue_bits  */
-                                                                         0,  /* color_buffer_alpha_bits */
-                                                                         8); /* color_buffer_depth_bits */
+    pfd = ogl_pixel_format_descriptor_create(window->title,
+                                             8,  /* color_buffer_red_bits   */
+                                             8,  /* color_buffer_green_bits */
+                                             8,  /* color_buffer_blue_bits  */
+                                             0,  /* color_buffer_alpha_bits */
+                                             8); /* color_buffer_depth_bits */
 
     if (pfd == NULL)
     {
@@ -1217,23 +1265,18 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
     /* Set up context sharing between all windows */
     system_critical_section_enter(spawned_windows_cs);
     {
-        ogl_context reference_context = NULL;
+        ogl_context     root_context    = NULL;
+        _system_window* root_window_ptr = NULL;
 
-        if (system_resizable_vector_get_amount_of_elements(spawned_windows) > 0)
+        if (root_window != NULL)
         {
-            system_window   reference_system_window = NULL;
-            bool            result_get              = false;
-
-            result_get = system_resizable_vector_get_element_at(spawned_windows,
-                                                                0,
-                                                               &reference_system_window);
-
-            ASSERT_DEBUG_SYNC(result_get,
-                              "Could not retrieve reference system window.");
-
-            _system_window* reference_system_window_ptr = (_system_window*) reference_system_window;
-
-            reference_context = reference_system_window_ptr->system_ogl_context;
+            root_window_ptr = (_system_window*)root_window;
+            root_context    = root_window_ptr->system_ogl_context;
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(window->is_root_window,
+                              "Sanity check failed")
         }
 
         /* Create the new context now */
@@ -1242,7 +1285,7 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
                                                                            (system_window) window,
                                                                            pfd,
                                                                            window->vsync_enabled,
-                                                                           reference_context,
+                                                                           root_context,
                                                                            window->multisampling_supported);
 
         if (window->system_ogl_context == NULL)
@@ -1253,7 +1296,7 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
             goto end;
         }
 
-        if (reference_context != NULL)
+        if (root_context != NULL)
         {
             ogl_context_bind_to_current_thread(window->system_ogl_context);
         }
@@ -1617,7 +1660,90 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
 
     delete window_ptr;
 
+    /* If no other window is around, release the root window */
+    system_critical_section_enter(n_windows_spawned_cs);
+    {
+        ASSERT_DEBUG_SYNC(n_windows_spawned >= 1,
+                          "Sanity check failed.");
+
+        --n_windows_spawned;
+
+        if (n_windows_spawned == 1)
+        {
+            ASSERT_DEBUG_SYNC(root_window                   != NULL &&
+                              root_window_rendering_handler != NULL,
+                              "Sanity check failed");
+
+            ogl_rendering_handler_release(root_window_rendering_handler);
+            root_window_rendering_handler = NULL;
+
+            system_window_close(root_window);
+            root_window = NULL;
+        } /* if (n_windows_spawned == 0) */
+    }
+    system_critical_section_leave(n_windows_spawned_cs);
+
     return true;
+}
+
+/** TODO */
+PRIVATE void _system_window_create_root_window(__in ogl_context_type context_type)
+{
+    static ogl_context_type prev_context_type      = (ogl_context_type) 0xFFFFFFFF;
+    static const int        root_window_x1y1x2y2[] =
+    {
+        0,
+        0,
+        1,
+        1
+    };
+
+    /* Sanity checks */
+    if (prev_context_type != 0xFFFFFFFF)
+    {
+        ASSERT_DEBUG_SYNC(context_type == prev_context_type,
+                          "Fix limitation where either only ES or only GL contexts can be created during app lifespan.");
+    }
+    else
+    {
+        prev_context_type = context_type;
+    }
+
+    ASSERT_DEBUG_SYNC(root_window                   == NULL &&
+                      root_window_rendering_handler == NULL,
+                      "Sanity check failed.");
+
+    root_window =  _system_window_create_shared(context_type,
+                                                false, /* is_fullscreen */
+                                                root_window_x1y1x2y2,
+                                                system_hashed_ansi_string_create("Root window"),
+                                                false, /* scalable */
+                                                0,     /* n_multisampling_samples */
+                                                0,     /* fullscreen_bpp */
+                                                0,     /* fullscreen_freq */
+                                                false, /* vsync_enabled */
+                                                HWND_DESKTOP,
+                                                false, /* multisampling_supported */
+                                                false, /* visible */
+                                                true   /* is_root_window */);
+
+    ASSERT_DEBUG_SYNC(root_window != NULL,
+                      "Root window context creation failed");
+
+    root_window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Root window rendering handler"),
+                                                                                 1,     /* desired_fps */
+                                                                                 NULL,  /* pfn_rendering_callback */
+                                                                                 NULL); /* user_arg */
+
+    ASSERT_DEBUG_SYNC(root_window_rendering_handler != NULL,
+                      "Root window rendering handler creation failed");
+
+    system_window_set_rendering_handler(root_window,
+                                        root_window_rendering_handler);
+
+    /* The setter takes ownership of root_window, but for the sake of code maintainability,
+     * retain the RH so that we can release it at the moment root_window is also released. */
+    ogl_rendering_handler_retain(root_window_rendering_handler);
 }
 
 /** TODO */
@@ -1632,11 +1758,14 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
                                                    __in                       bool                      vsync_enabled,
                                                    __in __maybenull           HWND                      parent_window_handle,
                                                    __in                       bool                      multisampling_supported,
-                                                   __in                       bool                      visible)
+                                                   __in                       bool                      visible,
+                                                   __in                       bool                      is_root_window)
 {
     _system_window* new_window = new (std::nothrow) _system_window;
 
-    ASSERT_ALWAYS_SYNC(new_window != NULL, "Out of memory while creating system window instance");
+    ASSERT_ALWAYS_SYNC(new_window != NULL,
+                       "Out of memory while creating system window instance");
+
     if (new_window != NULL)
     {
         _init_system_window(new_window);
@@ -1651,6 +1780,7 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
         new_window->x1y1x2y2[3]             = x1y1x2y2[3];
         new_window->is_cursor_visible       = false;
         new_window->is_fullscreen           = is_fullscreen;
+        new_window->is_root_window          = is_root_window;
         new_window->is_scalable             = is_scalable;
         new_window->multisampling_supported = multisampling_supported;
         new_window->n_multisampling_samples = n_multisampling_samples;
@@ -1662,6 +1792,29 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
         if (new_window->window_safe_to_release_event != NULL &&
             new_window->window_initialized_event     != NULL)
         {
+            /* If this is the first window created during app life-time, spawn a root context window
+             * before we continue.
+             *
+             * NOTE: This will be done repeatedly if appn_windows_spawnedlication opens a window A, kills it, and then
+             *       opens a window B. No damage done, but it will have performance implications.
+             */
+            system_critical_section_enter(n_windows_spawned_cs);
+            {
+                if ( n_windows_spawned == 0      &&
+                    !new_window->is_root_window)
+                {
+                    _system_window_create_root_window(context_type);
+                }
+                else
+                if (n_windows_spawned > 0      &&
+                    new_window->is_root_window)
+                {
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Sanity check failed");
+                }
+            }
+            system_critical_section_leave(n_windows_spawned_cs);
+
             /* Spawn window thread */
             system_threads_spawn(_system_window_thread_entrypoint,
                                  new_window,
@@ -1735,7 +1888,8 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in s
                                               vsync_enabled,
                                               ::GetParent(parent_window_handle),
                                               multisampling_supported,
-                                              true /* visible */);
+                                              true  /* visible */,
+                                              false /* is_root_window */);
     }
 
     return result;
@@ -1762,7 +1916,8 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in       
                                         vsync_enabled,
                                         HWND_DESKTOP,
                                         multisampling_supported,
-                                        visible);
+                                        visible,
+                                        false /* is_root_window */);
 }
 
 /** Please see header for specification */
@@ -1788,7 +1943,8 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
                                         vsync_enabled,
                                         HWND_DESKTOP,
                                         multisampling_supported,
-                                        true);
+                                        true, /* visible */
+                                        false /* is_root_window */);
 }
 
 /** Please see header for specification */

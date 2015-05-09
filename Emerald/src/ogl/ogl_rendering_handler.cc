@@ -349,7 +349,10 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
     system_event_set                 (rendering_handler->context_set_event);
     system_event_set                 (rendering_handler->shutdown_request_event);
     system_event_wait_single_infinite(rendering_handler->shutdown_request_ack_event);
-    
+
+    /* Release the context */
+    ogl_context_release(rendering_handler->context);
+
     /* Release created events */
     system_event_release(rendering_handler->bind_context_request_event);
     system_event_release(rendering_handler->bind_context_request_ack_event);
@@ -368,9 +371,6 @@ PRIVATE void _ogl_rendering_handler_release(void* in_arg)
 
     /* Release user callback serialization cs */
     system_critical_section_release(rendering_handler->callback_request_cs);
-
-    /* Release the context */
-    ogl_context_release(rendering_handler->context);
 
     /* Cool to release the descriptor now */
 }
