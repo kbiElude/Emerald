@@ -33,6 +33,8 @@ INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 FILE(GLOB GeneralIncludes "${TestHDR_SOURCE_DIR}/include/*.h")
 FILE(GLOB GeneralSources "${TestHDR_SOURCE_DIR}/src/*.cc")
 
+FILE(COPY "${TestHDR_SOURCE_DIR}/nave_o366.hdr" DESTINATION "${TestHDR_BINARY_DIR}/")
+
 SET(AllTestHDRSources ${GeneralSources} )
 
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTestHDRSources)
