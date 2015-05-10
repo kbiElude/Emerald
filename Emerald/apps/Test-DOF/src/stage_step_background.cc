@@ -26,10 +26,13 @@ gfx_image        _skybox_image   = NULL;
 ogl_texture      _skybox_texture = NULL;
 
 /** TODO */
-static void _stage_step_background_execute(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_step_background_execute(ogl_context          context,
+                                           system_timeline_time time,
+                                           void*                not_used)
 {
     const GLenum                      draw_buffer       = GL_COLOR_ATTACHMENT0;
     const ogl_context_gl_entrypoints* entrypoints       = NULL;
+    ogl_flyby                         flyby             = NULL;
     system_matrix4x4                  projection_matrix = main_get_projection_matrix();
 
     ogl_context_get_property(context,
@@ -45,9 +48,12 @@ static void _stage_step_background_execute(ogl_context context, system_timeline_
     entrypoints->pGLDrawBuffers    (1, /* n */
                                    &draw_buffer);
 
-    ogl_flyby_get_property(context,
-                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                          &_mv);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
+    ogl_flyby_get_property  (flyby,
+                             OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                            &_mv);
 
     ogl_skybox_draw(_skybox,
                     NULL, /* light_sh_data_tbo */

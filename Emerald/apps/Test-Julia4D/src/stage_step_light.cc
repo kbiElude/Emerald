@@ -41,10 +41,14 @@ static void _stage_step_light_execute(ogl_context          context,
                                       void*                not_used)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
+    ogl_flyby                         flyby       = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
 
     entrypoints->pGLUseProgram     (ogl_program_get_id(_light_program) );
     entrypoints->pGLBindVertexArray(_light_vao_id);
@@ -58,10 +62,10 @@ static void _stage_step_light_execute(ogl_context          context,
         _light_view_matrix = system_matrix4x4_create();
     }
 
-    ogl_flyby_get_property(context,
+    ogl_flyby_get_property(flyby,
                            OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
                            camera_location);
-    ogl_flyby_get_property(context,
+    ogl_flyby_get_property(flyby,
                            OGL_FLYBY_PROPERTY_VIEW_MATRIX,
                           &_light_view_matrix);
 

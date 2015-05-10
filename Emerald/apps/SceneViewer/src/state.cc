@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "ogl/ogl_context.h"
 #include "ogl/ogl_curve_renderer.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_pipeline.h"
@@ -33,6 +34,7 @@ system_hashed_ansi_string* _camera_names                 = NULL;
 system_resizable_vector    _cameras                      = NULL;
 ogl_curve_renderer         _curve_renderer               = NULL;
 ogl_curve_item_id          _curve_renderer_item_id       = -1;
+ogl_flyby                  _flyby                        = NULL;
 system_timeline_time       _last_frame_time              = 0;
 ogl_pipeline               _pipeline                     = NULL;
 uint32_t                   _pipeline_stage_id            = -1;
@@ -430,6 +432,11 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
                             scene_filename);
     }
 
+    /* Retrieve flyby instance */
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &_flyby);
+
     /* Enumerate all cameras */
     _camera_cs = system_critical_section_create();
 
@@ -458,9 +465,10 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
     _scene_renderer = ogl_scene_renderer_create(_context,
                                                 _scene);
 
-    ogl_flyby_activate    (_context,
+    ogl_flyby_set_property(_flyby,
+                           OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
                            camera_start_position);
-    ogl_flyby_set_property(_context,
+    ogl_flyby_set_property(_flyby,
                            OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
                           &movement_delta);
 

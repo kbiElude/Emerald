@@ -50,6 +50,7 @@ system_window         _window              = NULL;
 system_event          _window_closed_event = system_event_create(true, false);
 GLuint                _vao_id              = 0;
 
+extern ogl_flyby      _flyby;
 
 /** Rendering handler */
 void _rendering_handler_callback(ogl_context          context,
@@ -161,29 +162,29 @@ PUBLIC void _render_scene(ogl_context          context,
                                            &new_visibility);
             }
 
-            ogl_flyby_get_property(context,
+            ogl_flyby_get_property(_flyby,
                                    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA,
                                   &camera);
-            ogl_flyby_set_property(context,
+            ogl_flyby_set_property(_flyby,
                                    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_FAR,
                                   &new_zfar);
-            ogl_flyby_set_property(context,
+            ogl_flyby_set_property(_flyby,
                                    OGL_FLYBY_PROPERTY_FAKE_SCENE_CAMERA_Z_NEAR,
                                   &new_znear);
         }
 
         if (camera_is_flyby_active)
         {
-            ogl_flyby_lock();
+            ogl_flyby_lock(_flyby);
             {
-                ogl_flyby_update(_context);
+                ogl_flyby_update(_flyby);
 
                 /* Retrieve flyby view matrix */
-                ogl_flyby_get_property(_context,
+                ogl_flyby_get_property(_flyby,
                                        OGL_FLYBY_PROPERTY_VIEW_MATRIX,
                                       &view);
             }
-            ogl_flyby_unlock();
+            ogl_flyby_unlock(_flyby);
         } /* if (camera_ptr->is_flyby) */
         else
         {
@@ -352,6 +353,9 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_get_property(_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
+    ogl_context_get_property  (_context,
+                               OGL_CONTEXT_PROPERTY_FLYBY,
+                              &_flyby);
 
     system_window_set_rendering_handler(_window,
                                         _rendering_handler);

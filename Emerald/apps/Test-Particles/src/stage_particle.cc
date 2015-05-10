@@ -252,10 +252,14 @@ static void _stage_particle_step_draw(ogl_context          context,
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
+    ogl_flyby                                                 flyby           = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                             &dsa_entrypoints);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);
@@ -269,9 +273,11 @@ static void _stage_particle_step_draw(ogl_context          context,
     /* Update the uniforms */
     system_matrix4x4 vp = NULL;
 
-    ogl_flyby_get_property(context,
+    ogl_flyby_get_property(flyby,
                            OGL_FLYBY_PROPERTY_VIEW_MATRIX,
                           &_matrix_view);
+
+    ogl_flyby_update(flyby);
 
     vp = system_matrix4x4_create_by_mul(_matrix_projection,
                                         _matrix_view);
@@ -306,8 +312,16 @@ static void _stage_particle_step_draw(ogl_context          context,
 }
 
 /** TODO */
-static void _stage_particle_step_init(ogl_context context, system_timeline_time time, void* not_used)
+static void _stage_particle_step_init(ogl_context          context,
+                                      system_timeline_time time,
+                                      void*                not_used)
 {
+    ogl_flyby flyby = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
+
     if (!_particle_data_initialized)
     {
         const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
@@ -375,16 +389,17 @@ static void _stage_particle_step_init(ogl_context context, system_timeline_time 
             const float camera_position[]     = {32.8824f, 12.5255f, -30.4577f};
             const float camera_yaw            = -0.6440f;
 
-            ogl_flyby_activate(context,
-                               camera_position);
+            ogl_flyby_set_property(flyby,
+                                   OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
+                                   camera_position);
 
-            ogl_flyby_set_property(context,
+            ogl_flyby_set_property(flyby,
                                    OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
                                   &camera_movement_delta);
-            ogl_flyby_set_property(context,
+            ogl_flyby_set_property(flyby,
                                    OGL_FLYBY_PROPERTY_PITCH,
                                   &camera_pitch);
-            ogl_flyby_set_property(context,
+            ogl_flyby_set_property(flyby,
                                    OGL_FLYBY_PROPERTY_YAW,
                                   &camera_yaw);
 

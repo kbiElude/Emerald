@@ -8,14 +8,15 @@
 
 #include "ogl/ogl_types.h"
 
+
 typedef enum
 {
-    OGL_FLYBY_PROPERTY_CAMERA_LOCATION, /*     settable, float[3]         */
-    OGL_FLYBY_PROPERTY_IS_ACTIVE,       /* not settable, bool             */
-    OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,  /*     settable, float            */
-    OGL_FLYBY_PROPERTY_PITCH,           /*     settable, float            */
-    OGL_FLYBY_PROPERTY_ROTATION_DELTA,  /*     settable, float            */
-    OGL_FLYBY_PROPERTY_YAW,             /*     settable, float            */
+    OGL_FLYBY_PROPERTY_CAMERA_LOCATION, /* settable, float[3]         */
+    OGL_FLYBY_PROPERTY_IS_ACTIVE,       /* settable, bool             */
+    OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,  /* settable, float            */
+    OGL_FLYBY_PROPERTY_PITCH,           /* settable, float            */
+    OGL_FLYBY_PROPERTY_ROTATION_DELTA,  /* settable, float            */
+    OGL_FLYBY_PROPERTY_YAW,             /* settable, float            */
 
     /* not settable.
      *
@@ -37,30 +38,36 @@ typedef enum
     OGL_FLYBY_PROPERTY_VIEW_MATRIX,
 } ogl_flyby_property;
 
-/** TODO */
-PUBLIC EMERALD_API void ogl_flyby_activate(__in           __notnull ogl_context context,
-                                           __in_ecount(3) __notnull const float*      camera_xyz);
+REFCOUNT_INSERT_DECLARATIONS(ogl_flyby,
+                             ogl_flyby);
+
+
+/** TODO.
+ *
+ *  Internal usage only.
+ */
+PUBLIC ogl_flyby ogl_flyby_create(__in __notnull ogl_context context);
 
 /** TODO */
 PUBLIC EMERALD_API void ogl_flyby_deactivate(__in __notnull ogl_context context);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_get_property(__in  __notnull ogl_context        context,
+PUBLIC EMERALD_API void ogl_flyby_get_property(__in  __notnull ogl_flyby          flyby,
                                                __in            ogl_flyby_property property,
                                                __out __notnull void*              out_result);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_lock();
+PUBLIC EMERALD_API void ogl_flyby_lock(__in  __notnull ogl_flyby flyby);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_set_property(__in __notnull ogl_context        context,
+PUBLIC EMERALD_API void ogl_flyby_set_property(__in __notnull ogl_flyby          flyby,
                                                __in           ogl_flyby_property property,
                                                __in __notnull const void*        data);
 
 /** TODO */
-PUBLIC EMERALD_API void ogl_flyby_unlock();
+PUBLIC EMERALD_API void ogl_flyby_unlock(__in  __notnull ogl_flyby flyby);
 
 /** TODO. Must be called once per frame after flyby has been activated */
-PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_context context);
+PUBLIC EMERALD_API void ogl_flyby_update(__in __notnull ogl_flyby flyby);
 
 #endif /* OGL_FLYBY_H */
