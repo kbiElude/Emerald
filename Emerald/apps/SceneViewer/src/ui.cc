@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "ogl/ogl_context.h"
 #include "ogl/ogl_ui.h"
 #include "ogl/ogl_ui_dropdown.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -144,11 +145,10 @@ PUBLIC void ui_init()
                                SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
                                window_size);
 
-    _text_renderer = ogl_text_create(system_hashed_ansi_string_create("Text renderer"),
-                                     _context,
-                                     system_resources_get_meiryo_font_table(),
-                                     window_size[0],
-                                     window_size[1]);
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_TEXT_RENDERER,
+                            &_text_renderer);
+    ogl_text_retain         (_text_renderer);
 
     ogl_text_set_text_string_property(_text_renderer,
                                       TEXT_STRING_ID_DEFAULT,

@@ -36,8 +36,6 @@
 #include "system/system_window.h"
 #include <string>
 
-#define RANDOM_TEXTURE_WIDTH  (512)
-#define RANDOM_TEXTURE_HEIGHT (512)
 
 /** Internal variables */
 typedef struct
@@ -47,6 +45,7 @@ typedef struct
     bool                        is_nv_driver;
     HMODULE                     opengl32_dll_handle;
     ogl_pixel_format_descriptor pfd;
+    ogl_context                 share_context;
     HGLRC                       wgl_rendering_context;
     system_window               window;
     system_window_handle        window_handle;
@@ -135,6 +134,7 @@ struct func_ptr_table_entry
 
 
 __declspec(thread) ogl_context _current_context = NULL;
+
 
 /** Reference counter impl */
 REFCOUNT_INSERT_IMPLEMENTATION(ogl_context,
@@ -346,66 +346,10 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
      *       circumstances.
      */
 
-    if (context_ptr->bo_bindings != NULL)
-    {
-        ogl_context_bo_bindings_release(context_ptr->bo_bindings);
-
-        context_ptr->bo_bindings = NULL;
-    }
-
-    if (context_ptr->primitive_renderer != NULL)
-    {
-        ogl_primitive_renderer_release(context_ptr->primitive_renderer);
-
-        context_ptr->primitive_renderer = NULL;
-    }
-
     if (context_ptr->multisampling_supported_sample != NULL)
     {
         delete [] context_ptr->multisampling_supported_sample;
         context_ptr->multisampling_supported_sample = NULL;
-    }
-
-    if (context_ptr->sampler_bindings != NULL)
-    {
-        ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
-
-        context_ptr->sampler_bindings = NULL;
-    }
-
-    if (context_ptr->shadow_mapping != NULL)
-    {
-        ogl_shadow_mapping_release(context_ptr->shadow_mapping);
-
-        context_ptr->shadow_mapping = NULL;
-    }
-
-    if (context_ptr->state_cache != NULL)
-    {
-        ogl_context_state_cache_release(context_ptr->state_cache);
-
-        context_ptr->state_cache = NULL;
-    }
-
-    if (context_ptr->text_renderer != NULL)
-    {
-        ogl_text_release(context_ptr->text_renderer);
-
-        context_ptr->text_renderer = NULL;
-    }
-
-    if (context_ptr->texture_compression != NULL)
-    {
-        ogl_context_texture_compression_release(context_ptr->texture_compression);
-
-        context_ptr->texture_compression = NULL;
-    }
-
-    if (context_ptr->to_bindings != NULL)
-    {
-        ogl_context_to_bindings_release(context_ptr->to_bindings);
-
-        context_ptr->to_bindings = NULL;
     }
 
     /* Release arrays allocated for "limits" storage */
@@ -416,6 +360,15 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
         context_ptr->limits.program_binary_formats = NULL;
     }
 
+    /* Release the parent context */
+    if (context_ptr->share_context != NULL)
+    {
+        ogl_context_release(context_ptr->share_context);
+
+        context_ptr->share_context = NULL;
+    }
+
+    ogl_context_release_managers( (ogl_context) ptr);
 
     deinit_ogl_context_gl_info         (&context_ptr->info);
     ogl_pixel_format_descriptor_release(context_ptr->pfd);
@@ -519,9 +472,22 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
 
         Happens in Cammuxer so disabling.
     */
+    /* 131184:
+     *
+     * [Id:131184] [Source:OpenGL] Type:[Other event] Severity:[!]: Buffer info: 
+     *  Total VBO memory usage in the system:
+     *   memType: SYSHEAP, 0 bytes Allocated, numAllocations: 0.
+     *   memType: VID, 3.91 Mb Allocated, numAllocations: 1.
+     *   memType: DMA_CACHED, 0 bytes Allocated, numAllocations: 0.
+     *   memType: MALLOC, 106.04 Kb Allocated, numAllocations: 16.
+     *   memType: PAGED_AND_MAPPED, 3.91 Mb Allocated, numAllocations: 1.
+     *   memType: PAGED, 41.16 Mb Allocated, numAllocations: 9.
+     *
+     */
     if (id != 131185 &&
         id != 131204 &&
-        id != 131154)
+        id != 131154 &&
+        id != 131184)
     {
         /* This function is called back from within driver layer! Do not issue GL commands from here! */
         _ogl_context* context_ptr   = (_ogl_context*) userParam;
@@ -2472,6 +2438,9 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                    SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
                                                   &share_context_rendering_handler);
 
+                        ASSERT_DEBUG_SYNC(share_context_rendering_handler != NULL,
+                                          "No rendering handler attached to the parent context");
+
                         ogl_rendering_handler_lock_bound_context(share_context_rendering_handler);
                     }
 
@@ -2571,6 +2540,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->pfd                                        = in_pfd;
                             _result->programs                                   = NULL;
                             _result->sampler_bindings                           = NULL;
+                            _result->share_context                              = share_context;
                             _result->state_cache                                = NULL;
                             _result->samplers                                   = ogl_context_samplers_create( (ogl_context) _result);
                             _result->shaders                                    = ogl_shaders_create         ();
@@ -2586,6 +2556,11 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->window_handle                              = window_handle;
 
                             ogl_pixel_format_descriptor_retain(in_pfd);
+
+                            if (share_context != NULL)
+                            {
+                                ogl_context_retain(share_context);
+                            }
 
                             result = (ogl_context) _result;
 
@@ -3166,19 +3141,16 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
         case OGL_CONTEXT_PROPERTY_TEXT_RENDERER:
         {
-            /* Set up a text renderer.
-             *
-             * NOTE: Instantiation of the renderer is deferred because of the fact that
-             *       ogl_* modules called by the constructor require an active rendering
-             *       handler.
+            /* Text renderer is not created at context creation time. If requested for the first time,
+             * make sure to instantiate it, before returning the handle.
              */
             if (context_ptr->text_renderer == NULL)
             {
+                /* Set up text renderer */
                 const  float              text_default_size = 0.75f;
                 static float              text_color[3]     = {1.0f, 1.0f, 1.0f};
                 system_hashed_ansi_string window_name       = NULL;
                 int                       window_size[2];
-
 
                 system_window_get_property(context_ptr->window,
                                            SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
@@ -3188,7 +3160,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
                                           &window_name);
 
                 context_ptr->text_renderer = ogl_text_create(window_name,
-                                                             (ogl_context) context_ptr,
+                                                             context,
                                                              system_resources_get_meiryo_font_table(),
                                                              window_size[0],
                                                              window_size[1]);
@@ -3201,7 +3173,7 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
                                                   TEXT_STRING_ID_DEFAULT,
                                                   OGL_TEXT_STRING_PROPERTY_COLOR,
                                                   text_color);
-            }
+            } /* if (context_ptr->text_renderer == NULL) */
 
             *((ogl_text*) out_result) = context_ptr->text_renderer;
 
@@ -3323,6 +3295,21 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
         context_ptr->materials = NULL;
     }
 
+    if (context_ptr->primitive_renderer != NULL)
+    {
+        ogl_primitive_renderer_release(context_ptr->primitive_renderer);
+
+        context_ptr->primitive_renderer = NULL;
+    }
+
+    if (context_ptr->text_renderer != NULL)
+    {
+        ogl_text_release(context_ptr->text_renderer);
+
+        context_ptr->text_renderer = NULL;
+    }
+
+
     if (context_ptr->programs != NULL)
     {
         ogl_programs_release(context_ptr->programs);
@@ -3344,11 +3331,55 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
         context_ptr->shaders = NULL;
     }
 
+    if (context_ptr->shadow_mapping != NULL)
+    {
+        ogl_shadow_mapping_release(context_ptr->shadow_mapping);
+
+        context_ptr->shadow_mapping = NULL;
+    }
+
     if (context_ptr->textures != NULL)
     {
         ogl_context_textures_release(context_ptr->textures);
 
         context_ptr->textures = NULL;
+    }
+
+
+
+    if (context_ptr->bo_bindings != NULL)
+    {
+        ogl_context_bo_bindings_release(context_ptr->bo_bindings);
+
+        context_ptr->bo_bindings = NULL;
+    }
+
+    if (context_ptr->sampler_bindings != NULL)
+    {
+        ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
+
+        context_ptr->sampler_bindings = NULL;
+    }
+
+    if (context_ptr->state_cache != NULL)
+    {
+        ogl_context_state_cache_release(context_ptr->state_cache);
+
+        context_ptr->state_cache = NULL;
+    }
+
+    if (context_ptr->texture_compression != NULL)
+    {
+        ogl_context_texture_compression_release(context_ptr->texture_compression);
+
+        context_ptr->texture_compression = NULL;
+    }
+
+    if (context_ptr->to_bindings != NULL)
+    {
+        ogl_context_to_bindings_release(context_ptr->to_bindings);
+
+        context_ptr->to_bindings = NULL;
     }
 
     return true;
@@ -3377,7 +3408,8 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __
     }
     else
     {
-        LOG_ERROR("Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
+        ASSERT_DEBUG_SYNC(false,
+                          "Provided context must be assigned a rendering handler before it is possible to issue blocking calls from GL context thread!");
     }
 
     return result;

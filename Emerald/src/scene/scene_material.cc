@@ -475,9 +475,34 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
         goto end;
     }
 
-    /* Read all the properties */
+    /* Release the default curves */
     _scene_material* result_material_ptr = (_scene_material*) result_material;
 
+    curve_container* default_curves[] =
+    {
+         result_material_ptr->color + 0,
+         result_material_ptr->color + 1,
+         result_material_ptr->color + 2,
+        &result_material_ptr->glosiness,
+        &result_material_ptr->luminance,
+        &result_material_ptr->reflection_ratio,
+        &result_material_ptr->specular_ratio
+    };
+    const unsigned int n_default_curves = sizeof(default_curves) / sizeof(default_curves[0]);
+
+    for (unsigned int n_default_curve = 0;
+                      n_default_curve < n_default_curves;
+                    ++n_default_curve)
+    {
+        if (default_curves[n_default_curve] != NULL)
+        {
+            curve_container_release(*default_curves[n_default_curve]);
+
+            *default_curves[n_default_curve] = NULL;
+        }
+    } /* for (all default curves) */
+
+    /* Read all the properties */
     result &= _scene_material_load_curve                    (owner_scene,
                                                              result_material_ptr->object_manager_path,
                                                              result_material_ptr->color + 0,

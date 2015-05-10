@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -24,11 +24,17 @@ typedef struct
 /* Private variables */
 
 /* Please see header for specification */
-PUBLIC object_manager_item object_manager_item_create(__in __notnull system_hashed_ansi_string name, __in __notnull system_hashed_ansi_string origin_file, __in int origin_line, __in object_manager_object_type type, __in __notnull void* ptr)
+PUBLIC object_manager_item object_manager_item_create(__in __notnull system_hashed_ansi_string  name,
+                                                      __in __notnull system_hashed_ansi_string  origin_file,
+                                                      __in           int                        origin_line,
+                                                      __in           object_manager_object_type type,
+                                                      __in __notnull void*                      ptr)
 {
     _object_manager_item* new_item = new (std::nothrow) _object_manager_item;
 
-    ASSERT_DEBUG_SYNC(new_item != NULL, "Out of memory while allocating object manager item descriptor.");
+    ASSERT_DEBUG_SYNC(new_item != NULL,
+                      "Out of memory while allocating object manager item descriptor.");
+
     if (new_item != NULL)
     {
         new_item->name             = name;
@@ -48,7 +54,9 @@ PUBLIC EMERALD_API system_hashed_ansi_string object_manager_item_get_name(__in _
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API void object_manager_item_get_origin_details(__in __notnull object_manager_item item, __out __notnull system_hashed_ansi_string* out_file, __out __notnull int* out_file_line)
+PUBLIC EMERALD_API void object_manager_item_get_origin_details(__in  __notnull object_manager_item        item,
+                                                               __out __notnull system_hashed_ansi_string* out_file,
+                                                               __out __notnull int*                       out_file_line)
 {
     *out_file      = ((_object_manager_item*) item)->origin_file;
     *out_file_line = ((_object_manager_item*) item)->origin_file_line;

@@ -17,7 +17,7 @@ typedef struct
 {
     system_hashed_ansi_string body;
     bool                      compile_status;
-    ogl_context               context;
+    ogl_context               context; /* DO NOT retain - context owns the instance */
     bool                      has_been_compiled;
     GLuint                    id;
     system_hashed_ansi_string name;
@@ -147,7 +147,6 @@ PRIVATE void _ogl_shader_release(__in __notnull __deallocate(mem) void* shader)
         shader_ptr->shader_info_log = NULL;
     }
 
-    ogl_context_release                             (shader_ptr->context);
     ogl_context_request_callback_from_context_thread(shader_ptr->context,
                                                      _ogl_shader_release_callback,
                                                      shader_ptr);
@@ -159,8 +158,15 @@ PRIVATE void _ogl_shader_release(__in __notnull __deallocate(mem) void* shader)
                              OGL_CONTEXT_PROPERTY_SHADERS,
                             &shaders);
 
-    ogl_shaders_unregister_shader(shaders,
-                                  (ogl_shader) shader_ptr);
+    if (shaders != NULL)
+    {
+        ogl_shaders_unregister_shader(shaders,
+                                      (ogl_shader) shader_ptr);
+    }
+    else
+    {
+        LOG_FATAL("Shader manager is NULL. An ogl_shader instance will not be unregistered.")
+    }
 }
 
 /** Please see header for specification */
@@ -268,7 +274,6 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context      
         }
 
         /* Carry on */
-        ogl_context_retain                              (context);
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_shader_create_callback,
                                                          result);

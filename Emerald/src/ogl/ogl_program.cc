@@ -28,7 +28,7 @@ typedef struct
     system_resizable_vector       active_attributes;
     system_resizable_vector       active_uniforms;
     system_resizable_vector       attached_shaders;
-    ogl_context                   context;
+    ogl_context                   context; /* DO NOT retain - context owns the instance! */
     GLuint                        id;
     bool                          link_status;
     system_hashed_ansi_string     name;
@@ -113,7 +113,8 @@ PRIVATE bool _ogl_program_load_binary_blob             (__in __notnull ogl_conte
                                                         __in __notnull _ogl_program*           program_ptr);
 PRIVATE void _ogl_program_release                      (__in __notnull void*                   program);
 PRIVATE void _ogl_program_release_active_attributes    (               system_resizable_vector active_attributes);
-PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr,
+                                                        __in_opt       ogl_context             owner_context = NULL);
 PRIVATE void _ogl_program_release_active_uniforms      (               system_resizable_vector active_uniforms);
 PRIVATE void _ogl_program_release_callback             (__in __notnull ogl_context             context,
                                                                        void*                   in_arg);
@@ -770,29 +771,29 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     {
         ogl_programs_unregister_program(programs,
                                         (ogl_program)program);
+    }
 
-        /* Do releasing stuff in GL context first */
-        ogl_context_request_callback_from_context_thread(program_ptr->context,
-                                                         _ogl_program_release_callback,
-                                                         program_ptr);
+    /* Do releasing stuff in GL context first */
+    ogl_context_request_callback_from_context_thread(program_ptr->context,
+                                                     _ogl_program_release_callback,
+                                                     program_ptr);
 
-        /* Release all attached shaders */
-        if (program_ptr->attached_shaders != NULL)
+    /* Release all attached shaders */
+    if (program_ptr->attached_shaders != NULL)
+    {
+        while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
         {
-            while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
-            {
-                ogl_shader shader     = NULL;
-                bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
-                                                                   &shader);
+            ogl_shader shader     = NULL;
+            bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
+                                                               &shader);
 
-                ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
+            ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
 
-                ogl_shader_release(shader);
-            }
-
-            system_resizable_vector_release(program_ptr->attached_shaders);
-            program_ptr->attached_shaders = NULL;
+            ogl_shader_release(shader);
         }
+
+        system_resizable_vector_release(program_ptr->attached_shaders);
+        program_ptr->attached_shaders = NULL;
     }
 
     /* Release resizable vectors */
@@ -851,9 +852,6 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
         program_ptr->n_tf_varyings = 0;
         program_ptr->tf_varyings   = NULL;
     }
-
-    /* Release the context */
-    ogl_context_release(program_ptr->context);
 }
 
 /** TODO */
@@ -873,7 +871,8 @@ PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector acti
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program* program_ptr)
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_program* program_ptr,
+                                                        __in_opt           ogl_context   owner_context)
 {
     if (program_ptr->context_to_active_ubs_map != NULL)
     {
@@ -883,27 +882,45 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_prog
                           n_context < n_contexts;
                         ++n_context)
         {
-            system_resizable_vector active_ubs    = NULL;
-            ogl_program_ub          uniform_block = NULL;
+            system_resizable_vector active_ubs                 = NULL;
+            system_hash64           current_owner_context_hash = 0;
+            ogl_context             current_owner_context      = NULL;
+            ogl_program_ub          uniform_block              = NULL;
 
             system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
                                             n_context,
                                            &active_ubs,
-                                            NULL); /* pOutHash */
+                                           &current_owner_context_hash);
+
+            current_owner_context = (ogl_context) current_owner_context_hash;
+
+#if 0
+            TODO: pending fix for hash map container
 
             ASSERT_DEBUG_SYNC(active_ubs != NULL,
                               "Sanity check failed");
+#endif
 
-            while (system_resizable_vector_pop(active_ubs,
-                                              &uniform_block) )
+            if (active_ubs != NULL)
             {
-                ogl_program_ub_release(uniform_block);
+                if (owner_context == NULL ||
+                    owner_context != NULL && owner_context == current_owner_context)
+                {
+                    while (system_resizable_vector_pop(active_ubs,
+                                                      &uniform_block) )
+                    {
+                        ogl_program_ub_release(uniform_block);
 
-                uniform_block = NULL;
+                        uniform_block = NULL;
+                    }
+
+                    system_resizable_vector_release(active_ubs);
+                    active_ubs = NULL;
+
+                    system_hash64map_remove(program_ptr->context_to_active_ubs_map,
+                                            current_owner_context_hash);
+                }
             }
-
-            system_resizable_vector_release(active_ubs);
-            active_ubs = NULL;
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_active_ubs_map != NULL) */
 
@@ -915,27 +932,44 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_prog
                           n_context < n_contexts;
                         ++n_context)
         {
+            system_hash64    current_owner_context_hash = 0;
+            ogl_context      current_owner_context      = NULL;
             system_hash64map current_ub_index_to_ub_map = NULL;
 
             if (!system_hash64map_get_element_at(program_ptr->context_to_ub_index_to_ub_map,
                                                  n_context,
                                                 &current_ub_index_to_ub_map,
-                                                 NULL) ) /* pOutHash */
+                                                &current_owner_context_hash) )
             {
+#if 0
+            TODO: pending fix for hash map container
+
                 ASSERT_DEBUG_SYNC(false,
                                   "Sanity check failed");
+#endif
 
                 continue;
             }
 
-            system_hash64map_clear(current_ub_index_to_ub_map);
-            current_ub_index_to_ub_map = NULL;
+            current_owner_context = (ogl_context) current_owner_context_hash;
+
+            if (owner_context == NULL ||
+                owner_context != NULL && owner_context == current_owner_context)
+            {
+                system_hash64map_clear(current_ub_index_to_ub_map);
+                current_ub_index_to_ub_map = NULL;
+
+                system_hash64map_remove(program_ptr->context_to_ub_index_to_ub_map,
+                                        current_owner_context_hash);
+            }
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_ub_index_to_ub_map != NULL) */
 
     if (program_ptr->context_to_ub_name_to_ub_map != NULL)
     {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
+        system_hash64      current_owner_context_hash = 0;
+        ogl_context        current_owner_context      = NULL;
+        const unsigned int n_contexts                 = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -946,16 +980,29 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_prog
             if (!system_hash64map_get_element_at(program_ptr->context_to_ub_name_to_ub_map,
                                                  n_context,
                                                 &current_ub_name_to_ub_map,
-                                                 NULL) ) /* pOutHash */
+                                                &current_owner_context_hash) )
             {
+#if 0
+            TODO: pending fix for hash map container
+
                 ASSERT_DEBUG_SYNC(false,
                                   "Sanity check failed");
+#endif
 
                 continue;
             }
 
-            system_hash64map_clear(current_ub_name_to_ub_map);
-            current_ub_name_to_ub_map = NULL;
+            current_owner_context = (ogl_context) current_owner_context_hash;
+
+            if (owner_context == NULL ||
+                owner_context != NULL && owner_context == current_owner_context)
+            {
+                system_hash64map_clear(current_ub_name_to_ub_map);
+                current_ub_name_to_ub_map = NULL;
+
+                system_hash64map_remove(program_ptr->context_to_ub_name_to_ub_map,
+                                        current_owner_context_hash);
+            }
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_ub_name_to_ub_map != NULL) */
 }
@@ -1350,7 +1397,6 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         }
 
         /* Carry on */
-        ogl_context_retain                              (context);
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_program_create_callback,
                                                          result);
@@ -1738,6 +1784,22 @@ PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program program)
     } /* if (n_attached_shaders > 0) */
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC RENDERING_CONTEXT_CALL void ogl_program_release_context_objects(__in __notnull ogl_program program,
+                                                                       __in __notnull ogl_context context)
+{
+    _ogl_program* program_ptr = (_ogl_program*) program;
+
+    ASSERT_DEBUG_SYNC(context != NULL,
+                      "Sanity check failed");
+
+    if (context != NULL)
+    {
+        _ogl_program_release_active_uniform_blocks(program_ptr,
+                                                   context);
+    }
 }
 
 /** Please see header for specification */

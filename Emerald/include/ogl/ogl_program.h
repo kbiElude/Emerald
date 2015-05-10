@@ -171,6 +171,14 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
  **/
 PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program);
 
+/** Releases GL objects associated with a specific context: eg. per-context ogl_program_ub
+ *  instances.
+ *
+ *  Internal usage only.
+ */
+PUBLIC RENDERING_CONTEXT_CALL void ogl_program_release_context_objects(__in __notnull ogl_program program,
+                                                                       __in __notnull ogl_context context);
+
 /** TODO */
 PUBLIC EMERALD_API void ogl_program_set_tf_varyings(__in __notnull ogl_program    program,
                                                     __in           unsigned int   n_varyings,

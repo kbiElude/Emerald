@@ -196,18 +196,18 @@ typedef struct _postprocessing_blur_gaussian
             coeff_buffer_offsets = NULL;
         }
 
-        if (context != NULL)
-        {
-            ogl_context_release(context);
-
-            context = NULL;
-        }
-
         if (po != NULL)
         {
             ogl_program_release(po);
 
             po = NULL;
+        }
+
+        if (context != NULL)
+        {
+            ogl_context_release(context);
+
+            context = NULL;
         }
     }
 
@@ -250,6 +250,10 @@ PRIVATE void _postprocessing_blur_gaussian_deinit_rendering_thread_callback(__in
         /* Invalid FBO ids will be released */
         entrypoints_ptr->pGLDeleteFramebuffers(sizeof(instance_ptr->fbo_ids) / sizeof(instance_ptr->fbo_ids[0]),
                                                instance_ptr->fbo_ids);
+
+        memset(instance_ptr->fbo_ids,
+               0,
+               sizeof(instance_ptr->fbo_ids) );
     }
 
     if (instance_ptr->other_data_bo_id != 0)
