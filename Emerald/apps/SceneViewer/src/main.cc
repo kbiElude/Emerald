@@ -5,6 +5,7 @@
  */
 #include "shared.h"
 #include <stdlib.h>
+#include "main.h"
 #include "curve/curve_container.h"
 #include "mesh/mesh.h"
 #include "mesh/mesh_material.h"
@@ -413,6 +414,8 @@ end:
     ogl_context_release (_context);
     system_window_close (_window);
     system_event_release(_window_closed_event);
+
+    main_force_deinit();
 
     return 0;
 }

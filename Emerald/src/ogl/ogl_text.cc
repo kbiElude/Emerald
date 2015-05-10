@@ -837,20 +837,26 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
             {
                 ogl_texture_release(iterator->second.to);
             }
+            _global.font_tables.clear();
 
             _global.draw_text_fragment_shader = NULL;
             _global.draw_text_program         = NULL;
             _global.draw_text_vertex_shader   = NULL;
         }
+        else
+        {
+            ogl_program_release_context_objects(_global.draw_text_program,
+                                                context);
+        }
 
         --_n_global_owners;
 
-        /* Also release context-specific data */
+        /* Also release context-specific data.
+         *
+         * Note: This location may also be called for the root context, for which there will be no
+         *       per-context variables initialized.
+         */
         _global_per_context_variables* variables_ptr = NULL;
-
-        ASSERT_DEBUG_SYNC(system_hash64map_contains(_global_per_context_map,
-                                                    (system_hash64) context),
-                          "Sanity check failed");
 
         if (system_hash64map_get(_global_per_context_map,
                                  (system_hash64) context,

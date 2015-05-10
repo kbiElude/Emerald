@@ -113,7 +113,8 @@ PRIVATE bool _ogl_program_load_binary_blob             (__in __notnull ogl_conte
                                                         __in __notnull _ogl_program*           program_ptr);
 PRIVATE void _ogl_program_release                      (__in __notnull void*                   program);
 PRIVATE void _ogl_program_release_active_attributes    (               system_resizable_vector active_attributes);
-PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr,
+                                                        __in_opt       ogl_context             owner_context = NULL);
 PRIVATE void _ogl_program_release_active_uniforms      (               system_resizable_vector active_uniforms);
 PRIVATE void _ogl_program_release_callback             (__in __notnull ogl_context             context,
                                                                        void*                   in_arg);
@@ -873,7 +874,8 @@ PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector acti
 }
 
 /** TODO */
-PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program* program_ptr)
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_program* program_ptr,
+                                                        __in_opt           ogl_context   owner_context)
 {
     if (program_ptr->context_to_active_ubs_map != NULL)
     {
@@ -883,27 +885,45 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_prog
                           n_context < n_contexts;
                         ++n_context)
         {
-            system_resizable_vector active_ubs    = NULL;
-            ogl_program_ub          uniform_block = NULL;
+            system_resizable_vector active_ubs                 = NULL;
+            system_hash64           current_owner_context_hash = 0;
+            ogl_context             current_owner_context      = NULL;
+            ogl_program_ub          uniform_block              = NULL;
 
             system_hash64map_get_element_at(program_ptr->context_to_active_ubs_map,
                                             n_context,
                                            &active_ubs,
-                                            NULL); /* pOutHash */
+                                           &current_owner_context_hash);
+
+            current_owner_context = (ogl_context) current_owner_context_hash;
+
+#if 0
+            TODO: pending fix for hash map container
 
             ASSERT_DEBUG_SYNC(active_ubs != NULL,
                               "Sanity check failed");
+#endif
 
-            while (system_resizable_vector_pop(active_ubs,
-                                              &uniform_block) )
+            if (active_ubs != NULL)
             {
-                ogl_program_ub_release(uniform_block);
+                if (owner_context == NULL ||
+                    owner_context != NULL && owner_context == current_owner_context)
+                {
+                    while (system_resizable_vector_pop(active_ubs,
+                                                      &uniform_block) )
+                    {
+                        ogl_program_ub_release(uniform_block);
 
-                uniform_block = NULL;
+                        uniform_block = NULL;
+                    }
+
+                    system_resizable_vector_release(active_ubs);
+                    active_ubs = NULL;
+
+                    system_hash64map_remove(program_ptr->context_to_active_ubs_map,
+                                            current_owner_context_hash);
+                }
             }
-
-            system_resizable_vector_release(active_ubs);
-            active_ubs = NULL;
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_active_ubs_map != NULL) */
 
@@ -915,27 +935,44 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_prog
                           n_context < n_contexts;
                         ++n_context)
         {
+            system_hash64    current_owner_context_hash = 0;
+            ogl_context      current_owner_context      = NULL;
             system_hash64map current_ub_index_to_ub_map = NULL;
 
             if (!system_hash64map_get_element_at(program_ptr->context_to_ub_index_to_ub_map,
                                                  n_context,
                                                 &current_ub_index_to_ub_map,
-                                                 NULL) ) /* pOutHash */
+                                                &current_owner_context_hash) )
             {
+#if 0
+            TODO: pending fix for hash map container
+
                 ASSERT_DEBUG_SYNC(false,
                                   "Sanity check failed");
+#endif
 
                 continue;
             }
 
-            system_hash64map_clear(current_ub_index_to_ub_map);
-            current_ub_index_to_ub_map = NULL;
+            current_owner_context = (ogl_context) current_owner_context_hash;
+
+            if (owner_context == NULL ||
+                owner_context != NULL && owner_context == current_owner_context)
+            {
+                system_hash64map_clear(current_ub_index_to_ub_map);
+                current_ub_index_to_ub_map = NULL;
+
+                system_hash64map_remove(program_ptr->context_to_ub_index_to_ub_map,
+                                        current_owner_context_hash);
+            }
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_ub_index_to_ub_map != NULL) */
 
     if (program_ptr->context_to_ub_name_to_ub_map != NULL)
     {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
+        system_hash64      current_owner_context_hash = 0;
+        ogl_context        current_owner_context      = NULL;
+        const unsigned int n_contexts                 = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -946,16 +983,29 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_prog
             if (!system_hash64map_get_element_at(program_ptr->context_to_ub_name_to_ub_map,
                                                  n_context,
                                                 &current_ub_name_to_ub_map,
-                                                 NULL) ) /* pOutHash */
+                                                &current_owner_context_hash) )
             {
+#if 0
+            TODO: pending fix for hash map container
+
                 ASSERT_DEBUG_SYNC(false,
                                   "Sanity check failed");
+#endif
 
                 continue;
             }
 
-            system_hash64map_clear(current_ub_name_to_ub_map);
-            current_ub_name_to_ub_map = NULL;
+            current_owner_context = (ogl_context) current_owner_context_hash;
+
+            if (owner_context == NULL ||
+                owner_context != NULL && owner_context == current_owner_context)
+            {
+                system_hash64map_clear(current_ub_name_to_ub_map);
+                current_ub_name_to_ub_map = NULL;
+
+                system_hash64map_remove(program_ptr->context_to_ub_name_to_ub_map,
+                                        current_owner_context_hash);
+            }
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_ub_name_to_ub_map != NULL) */
 }
@@ -1738,6 +1788,22 @@ PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program program)
     } /* if (n_attached_shaders > 0) */
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC RENDERING_CONTEXT_CALL void ogl_program_release_context_objects(__in __notnull ogl_program program,
+                                                                       __in __notnull ogl_context context)
+{
+    _ogl_program* program_ptr = (_ogl_program*) program;
+
+    ASSERT_DEBUG_SYNC(context != NULL,
+                      "Sanity check failed");
+
+    if (context != NULL)
+    {
+        _ogl_program_release_active_uniform_blocks(program_ptr,
+                                                   context);
+    }
 }
 
 /** Please see header for specification */

@@ -973,16 +973,19 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
         {
             /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
              * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-            ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-
-            ogl_rendering_handler_get_property(window->rendering_handler,
-                                               OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
-                                              &playback_status);
-
-            if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+            if (window->rendering_handler != NULL)
             {
-                ogl_rendering_handler_stop(window->rendering_handler);
-            } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+                ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+
+                ogl_rendering_handler_get_property(window->rendering_handler,
+                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                                  &playback_status);
+
+                if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+                {
+                    ogl_rendering_handler_stop(window->rendering_handler);
+                } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+            }
 
             /* OK, safe to destroy the system window at this point */
             ::DestroyWindow(window_handle);
@@ -1363,6 +1366,7 @@ end:
 
     /* Release rendering handler. This may be odd, but rendering handler retains a context and the context retains the rendering handler
      * so window rendering thread closure looks like one of good spots to insert a release request.
+     *
      **/
     if (window->rendering_handler != NULL)
     {
