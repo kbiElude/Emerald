@@ -334,6 +334,7 @@ static void _stage_step_julia_execute(ogl_context          context,
     const float             dof_near_plane_depth      = main_get_dof_near_plane_depth();
     const float             epsilon                   = main_get_epsilon();
     const float             escape                    = main_get_escape_threshold();
+          ogl_flyby         flyby                     = NULL;
     const float             fresnel_reflectance       = main_get_fresnel_reflectance();
     const float             reflectivity              = main_get_reflectivity();
     const float*            light_color               = main_get_light_color();
@@ -344,12 +345,15 @@ static void _stage_step_julia_execute(ogl_context          context,
     const float             specularity               = main_get_specularity();
            system_matrix4x4 mvp                       = NULL;
 
-    ogl_flyby_get_property(context,
-                           OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
-                           camera_location);
-    ogl_flyby_get_property(context,
-                           OGL_FLYBY_PROPERTY_VIEW_MATRIX,
-                          &_julia_view_matrix);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
+    ogl_flyby_get_property  (flyby,
+                             OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
+                             camera_location);
+    ogl_flyby_get_property  (flyby,
+                             OGL_FLYBY_PROPERTY_VIEW_MATRIX,
+                            &_julia_view_matrix);
 
     mvp = system_matrix4x4_create_by_mul(main_get_projection_matrix(),
                                          _julia_view_matrix);

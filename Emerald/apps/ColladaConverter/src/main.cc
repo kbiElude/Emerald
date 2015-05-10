@@ -42,6 +42,7 @@ float                     _animation_duration_float   = 0.0f;
 system_timeline_time      _animation_duration_time    = 0;
 ogl_context               _context                    = NULL;
 system_matrix4x4          _current_matrix             = NULL;
+ogl_flyby                 _flyby                      = NULL;
 ogl_pipeline              _pipeline                   = NULL;
 uint32_t                  _pipeline_stage_id          = -1;
 ogl_scene_renderer        _scene_renderer             = NULL;
@@ -145,21 +146,26 @@ void _render_scene(ogl_context          context,
 {
     /* Update view matrix */
     float            camera_location[4] = {0, 0, 0, 0};
+    ogl_flyby        flyby              = NULL;
     system_matrix4x4 view               = system_matrix4x4_create();
 
-    ogl_flyby_lock();
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
+
+    ogl_flyby_lock(flyby);
     {
-        ogl_flyby_update(_context);
+        ogl_flyby_update(flyby);
 
         /* Retrieve flyby details */
-        ogl_flyby_get_property(_context,
+        ogl_flyby_get_property(flyby,
                                OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
                                camera_location);
-        ogl_flyby_get_property(_context,
+        ogl_flyby_get_property(flyby,
                                OGL_FLYBY_PROPERTY_VIEW_MATRIX,
                               &view);
     }
-    ogl_flyby_unlock();
+    ogl_flyby_unlock(flyby);
 
     /* Retrieve scene camera */
     scene_camera camera = scene_get_camera_by_index(_test_scene,
@@ -263,6 +269,9 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_get_property(_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
+    ogl_context_get_property  (_context,
+                               OGL_CONTEXT_PROPERTY_FLYBY,
+                              &_flyby);
 
     system_window_set_rendering_handler(_window,
                                         _window_rendering_handler);
@@ -305,6 +314,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
+    const bool  flyby_active         = true;
     const float flyby_movement_delta = 10.25f;
 
     _test_scene = collada_data_get_emerald_scene(_test_collada_data,
@@ -320,9 +330,14 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     _scene_renderer = ogl_scene_renderer_create(_context,
                                                 _test_scene);
 
-    ogl_flyby_activate          (_context,
-                                 camera_position);
-    ogl_flyby_set_property(_context,
+    ogl_flyby_set_property(_flyby,
+                           OGL_FLYBY_PROPERTY_IS_ACTIVE,
+                          &flyby_active);
+    ogl_flyby_set_property(_flyby,
+                           OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
+                           camera_position);
+
+    ogl_flyby_set_property(_flyby,
                            OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
                           &flyby_movement_delta);
 

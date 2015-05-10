@@ -15,6 +15,7 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_context_vaos.h"
 #include "ogl/ogl_context_wrappers.h"
+#include "ogl/ogl_flyby.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_primitive_renderer.h"
@@ -109,6 +110,7 @@ typedef struct
 
     ogl_context_bo_bindings         bo_bindings;
     ogl_buffers                     buffers;
+    ogl_flyby                       flyby;
     ogl_materials                   materials;
     ogl_programs                    programs;
     ogl_primitive_renderer          primitive_renderer;
@@ -2530,6 +2532,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->pWGLSwapIntervalEXT                        = NULL;
 
                             _result->buffers                                    = NULL;
+                            _result->flyby                                      = NULL;
                             _result->is_nv_driver                               = false; /* determined later */
                             _result->primitive_renderer                         = NULL;
                             _result->materials                                  = NULL; /* deferred till first query time */
@@ -2758,9 +2761,13 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                 _result->entry_points_gl.pGLGenVertexArrays(1,
                                                                            &_result->vao_no_vaas_id);
 
+                                /* Set up the buffer object manager */
                                 _result->buffers = ogl_buffers_create((ogl_context) _result,
                                                                       system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
                             } /* if (type == OGL_CONTEXT_TYPE_GL) */
+
+                            /* Set up the context-wide flyby */
+                            _result->flyby = ogl_flyby_create( (ogl_context) _result);
 
                             /* Set context-specific vsync setting */
                             ogl_context_set_vsync( (ogl_context) _result,
@@ -2955,6 +2962,13 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
                               "OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS property requested for a non-GL context");
 
             *((const ogl_context_gl_entrypoints_ext_direct_state_access**) out_result) = &context_ptr->entry_points_gl_ext_direct_state_access;
+
+            break;
+        }
+
+        case OGL_CONTEXT_PROPERTY_FLYBY:
+        {
+            *(ogl_flyby*) out_result = context_ptr->flyby;
 
             break;
         }
@@ -3359,6 +3373,13 @@ PUBLIC bool ogl_context_release_managers(__in __notnull ogl_context context)
         ogl_context_sampler_bindings_release(context_ptr->sampler_bindings);
 
         context_ptr->sampler_bindings = NULL;
+    }
+
+    if (context_ptr->flyby != NULL)
+    {
+        ogl_flyby_release(context_ptr->flyby);
+
+        context_ptr->flyby = NULL;
     }
 
     if (context_ptr->state_cache != NULL)

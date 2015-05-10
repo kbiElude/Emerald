@@ -36,6 +36,7 @@ float            _dof_focal_plane_depth     = 3.79f;
 float            _dof_near_plane_depth      = 4.0f;
 float            _epsilon                   = 0.001f;
 float            _escape                    = 1.2f * 1.5f;
+ogl_flyby        _flyby                     = NULL;
 float            _fresnel_reflectance       = 0.028f;
 float            _light_color[3]            = {1.0f,  1.0f,   1.0f};
 float            _light_position[3]         = {2.76f, 1.619f, 0.0f};
@@ -439,7 +440,10 @@ float main_get_specularity()
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+int WINAPI WinMain(HINSTANCE instance_handle,
+                   HINSTANCE,
+                   LPTSTR,
+                   int)
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
@@ -487,17 +491,25 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     const float camera_pitch          = -0.6f;
     const float camera_pos[]          = {-0.1611f, 4.5528f, -6.0926f};
     const float camera_yaw            =  0.024f;
+    const bool  flyby_active          = true;
 
-    ogl_flyby_activate(_context,
-                       camera_pos);
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &_flyby);
+    ogl_flyby_set_property  (_flyby,
+                             OGL_FLYBY_PROPERTY_CAMERA_LOCATION,
+                             camera_pos);
+    ogl_flyby_set_property  (_flyby,
+                             OGL_FLYBY_PROPERTY_IS_ACTIVE,
+                            &flyby_active);
 
-    ogl_flyby_set_property(_context,
+    ogl_flyby_set_property(_flyby,
                            OGL_FLYBY_PROPERTY_MOVEMENT_DELTA,
                           &camera_movement_delta);
-    ogl_flyby_set_property(_context,
+    ogl_flyby_set_property(_flyby,
                            OGL_FLYBY_PROPERTY_PITCH,
                           &camera_pitch);
-    ogl_flyby_set_property(_context,
+    ogl_flyby_set_property(_flyby,
                            OGL_FLYBY_PROPERTY_YAW,
                           &camera_yaw);
 

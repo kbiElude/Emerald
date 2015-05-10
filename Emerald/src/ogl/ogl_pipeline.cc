@@ -532,6 +532,7 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
                                                                        __in           uint32_t             n_stage,
                                                                        __in           system_timeline_time time)
 {
+    ogl_flyby                                                 flyby              = NULL;
     bool                                                      is_stage_dirty     = false;
     _ogl_pipeline*                                            pipeline_ptr       = (_ogl_pipeline*) instance;
     _ogl_pipeline_stage*                                      pipeline_stage_ptr = NULL;
@@ -539,6 +540,9 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points   = NULL;
     const ogl_context_gl_entrypoints*                         entry_points       = NULL;
 
+    ogl_context_get_property(pipeline_ptr->context,
+                             OGL_CONTEXT_PROPERTY_FLYBY,
+                            &flyby);
     ogl_context_get_property(pipeline_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
@@ -556,21 +560,18 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
         /* If the flyby is activated for the context the pipeline owns, update it now */
         bool is_flyby_active = false;
 
-        ogl_flyby_get_property(pipeline_ptr->context,
+        ogl_flyby_get_property(flyby,
                                OGL_FLYBY_PROPERTY_IS_ACTIVE,
                               &is_flyby_active);
 
         if (is_flyby_active)
         {
-            ogl_flyby_update(pipeline_ptr->context);
+            ogl_flyby_update(flyby);
         } /* if (ogl_flyby_is_active(pipeline_ptr->context) ) */
 
         /* Execute one step at a time. Launch a query for every step, so that we can gather execution times
          * after all steps finish running and show the times */
         _ogl_pipeline_stage_step* step_ptr = NULL;
-
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                          "Error before pipeline started.");
 
         for (size_t n_step = 0;
                     n_step < n_steps;
