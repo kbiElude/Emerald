@@ -196,18 +196,18 @@ typedef struct _postprocessing_blur_gaussian
             coeff_buffer_offsets = NULL;
         }
 
-        if (context != NULL)
-        {
-            ogl_context_release(context);
-
-            context = NULL;
-        }
-
         if (po != NULL)
         {
             ogl_program_release(po);
 
             po = NULL;
+        }
+
+        if (context != NULL)
+        {
+            ogl_context_release(context);
+
+            context = NULL;
         }
     }
 

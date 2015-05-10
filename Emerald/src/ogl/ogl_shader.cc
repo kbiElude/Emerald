@@ -158,8 +158,15 @@ PRIVATE void _ogl_shader_release(__in __notnull __deallocate(mem) void* shader)
                              OGL_CONTEXT_PROPERTY_SHADERS,
                             &shaders);
 
-    ogl_shaders_unregister_shader(shaders,
-                                  (ogl_shader) shader_ptr);
+    if (shaders != NULL)
+    {
+        ogl_shaders_unregister_shader(shaders,
+                                      (ogl_shader) shader_ptr);
+    }
+    else
+    {
+        LOG_FATAL("Shader manager is NULL. An ogl_shader instance will not be unregistered.")
+    }
 }
 
 /** Please see header for specification */

@@ -389,7 +389,8 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_copy(__in __notnull system
     {
         /* Copy relevant fields */
         new_material_ptr->dirty               = src_material_ptr->dirty;
-        new_material_ptr->name                = src_material_ptr->name;
+        new_material_ptr->name                = system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(src_material_ptr->name),
+                                                                                                        " copy");
         new_material_ptr->object_manager_path = src_material_ptr->object_manager_path;
         new_material_ptr->type                = src_material_ptr->type;
 
@@ -1244,6 +1245,7 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
                                                                material,
                                                                scene,
                                                                true); /* use_shadow_maps */
+
             material_ptr->uber_non_sm = ogl_materials_get_uber(materials,
                                                                material,
                                                                scene,
@@ -1258,7 +1260,6 @@ PUBLIC EMERALD_API ogl_uber mesh_material_get_ogl_uber(__in     __notnull mesh_m
                                                            true); /* use any value */
 
             material_ptr->uber_non_sm = material_ptr->uber_sm;
-            ogl_uber_retain(material_ptr->uber_sm);
         }
 
         /* Call back any subscribers & inform them about the event */

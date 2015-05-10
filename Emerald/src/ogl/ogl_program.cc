@@ -771,29 +771,29 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     {
         ogl_programs_unregister_program(programs,
                                         (ogl_program)program);
+    }
 
-        /* Do releasing stuff in GL context first */
-        ogl_context_request_callback_from_context_thread(program_ptr->context,
-                                                         _ogl_program_release_callback,
-                                                         program_ptr);
+    /* Do releasing stuff in GL context first */
+    ogl_context_request_callback_from_context_thread(program_ptr->context,
+                                                     _ogl_program_release_callback,
+                                                     program_ptr);
 
-        /* Release all attached shaders */
-        if (program_ptr->attached_shaders != NULL)
+    /* Release all attached shaders */
+    if (program_ptr->attached_shaders != NULL)
+    {
+        while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
         {
-            while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
-            {
-                ogl_shader shader     = NULL;
-                bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
-                                                                   &shader);
+            ogl_shader shader     = NULL;
+            bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
+                                                               &shader);
 
-                ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
+            ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
 
-                ogl_shader_release(shader);
-            }
-
-            system_resizable_vector_release(program_ptr->attached_shaders);
-            program_ptr->attached_shaders = NULL;
+            ogl_shader_release(shader);
         }
+
+        system_resizable_vector_release(program_ptr->attached_shaders);
+        program_ptr->attached_shaders = NULL;
     }
 
     /* Release resizable vectors */

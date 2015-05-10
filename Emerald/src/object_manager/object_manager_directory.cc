@@ -435,7 +435,8 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_
                                                    &current_item,
                                                     NULL) ) /* pOutHash */
                 {
-                    system_hashed_ansi_string current_item_name            = object_manager_item_get_name(current_item);
+                    system_hashed_ansi_string current_item_name            = object_manager_item_get_name       (current_item);
+                    void*                     current_item_object          = object_manager_item_get_raw_pointer(current_item);
                     system_hashed_ansi_string current_item_origin_filename = NULL;
                     int                       current_item_origin_line     = -1;
 
@@ -443,8 +444,9 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_
                                                           &current_item_origin_filename,
                                                           &current_item_origin_line);
 
-                    LOG_INFO("Item [%d]: [%s] created at [%s]:[%d]",
+                    LOG_INFO("Item [%d] (%p): [%s] created at [%s]:[%d]",
                               n_item,
+                              current_item_object,
                               system_hashed_ansi_string_get_buffer(current_item_name),
                               system_hashed_ansi_string_get_buffer(current_item_origin_filename),
                               current_item_origin_line);
