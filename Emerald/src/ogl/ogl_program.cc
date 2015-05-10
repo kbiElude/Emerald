@@ -28,7 +28,7 @@ typedef struct
     system_resizable_vector       active_attributes;
     system_resizable_vector       active_uniforms;
     system_resizable_vector       attached_shaders;
-    ogl_context                   context;
+    ogl_context                   context; /* DO NOT retain - context owns the instance! */
     GLuint                        id;
     bool                          link_status;
     system_hashed_ansi_string     name;
@@ -852,9 +852,6 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
         program_ptr->n_tf_varyings = 0;
         program_ptr->tf_varyings   = NULL;
     }
-
-    /* Release the context */
-    ogl_context_release(program_ptr->context);
 }
 
 /** TODO */
@@ -1400,7 +1397,6 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         }
 
         /* Carry on */
-        ogl_context_retain                              (context);
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_program_create_callback,
                                                          result);

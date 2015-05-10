@@ -419,10 +419,37 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_
         if (n_directories != 0 ||
             n_items       != 0)
         {
-            LOG_INFO("Directory [%s] has %d directories and %d items",
+            LOG_INFO("Directory [%s] has %d directories and %d items:",
                      system_hashed_ansi_string_get_buffer(directory_ptr->name),
                      n_directories,
                      n_items);
+
+            for (unsigned int n_item = 0;
+                              n_item < n_items;
+                            ++n_item)
+            {
+                object_manager_item current_item = NULL;
+
+                if (system_hash64map_get_element_at(directory_ptr->items,
+                                                    n_item,
+                                                   &current_item,
+                                                    NULL) ) /* pOutHash */
+                {
+                    system_hashed_ansi_string current_item_name            = object_manager_item_get_name(current_item);
+                    system_hashed_ansi_string current_item_origin_filename = NULL;
+                    int                       current_item_origin_line     = -1;
+
+                    object_manager_item_get_origin_details(current_item,
+                                                          &current_item_origin_filename,
+                                                          &current_item_origin_line);
+
+                    LOG_INFO("Item [%d]: [%s] created at [%s]:[%d]",
+                              n_item,
+                              system_hashed_ansi_string_get_buffer(current_item_name),
+                              system_hashed_ansi_string_get_buffer(current_item_origin_filename),
+                              current_item_origin_line);
+                }
+            } /* for (all dangling items) */
         }
 
         result = n_directories + n_items;

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * TODO
  *
@@ -11,13 +11,19 @@
 #include "system/system_types.h"
 
 /** TODO */
-PUBLIC object_manager_item object_manager_item_create(__in __notnull system_hashed_ansi_string name, __in __notnull system_hashed_ansi_string origin_file, __in int origin_line, __in object_manager_object_type, __in __notnull void*);
+PUBLIC object_manager_item object_manager_item_create(__in __notnull system_hashed_ansi_string  name,
+                                                      __in __notnull system_hashed_ansi_string  origin_file,
+                                                      __in           int                        origin_line,
+                                                      __in           object_manager_object_type,
+                                                      __in __notnull void*);
 
 /** TODO */
 PUBLIC EMERALD_API system_hashed_ansi_string object_manager_item_get_name(__in __notnull object_manager_item);
 
 /** TODO */
-PUBLIC EMERALD_API void object_manager_item_get_origin_details(__in __notnull object_manager_item, __out __notnull system_hashed_ansi_string*, __out __notnull int*);
+PUBLIC EMERALD_API void object_manager_item_get_origin_details(__in  __notnull object_manager_item,
+                                                               __out __notnull system_hashed_ansi_string*,
+                                                               __out __notnull int*);
 
 /** TODO */
 PUBLIC EMERALD_API void* object_manager_item_get_raw_pointer(__in __notnull object_manager_item);
