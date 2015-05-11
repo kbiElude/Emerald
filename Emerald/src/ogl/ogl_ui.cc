@@ -258,7 +258,7 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
                                        _ogl_ui_callback_on_mouse_move,
                                        ui_ptr);
 
-    /* Release GL stuff */
+    /* Release GL stuff. */
     ogl_context_request_callback_from_context_thread(ogl_text_get_context(ui_ptr->text_renderer),
                                                      _ogl_ui_deinit_gl_renderer_callback,
                                                      ui_ptr);

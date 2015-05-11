@@ -41,6 +41,11 @@ void _rendering_lbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
+PRIVATE void _window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
@@ -71,14 +76,21 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                        &_context);
     system_window_set_rendering_handler(_window,
                                         window_rendering_handler);
+
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
                                         _rendering_lbm_callback_handler,
                                         NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                        _window_closed_callback_handler,
+                                        NULL);
 
     /* Carry on */
-    ogl_rendering_handler_play(window_rendering_handler, 0);
+    ogl_rendering_handler_play(window_rendering_handler,
+                               0);
 
     system_event_wait_single_infinite(_window_closed_event);
 

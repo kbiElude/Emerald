@@ -182,6 +182,12 @@ bool _rendering_window_closed_callback_handler(system_window window)
     return true;
 }
 
+void _rendering_window_closing_callback_handler(system_window window)
+{
+    ui_deinit   ();
+    state_deinit();
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
@@ -220,6 +226,11 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
                                         _rendering_window_closed_callback_handler,
                                         NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                        _rendering_window_closing_callback_handler,
+                                        NULL);
 
     /* Initialize data required to run the demo */
     state_init();
@@ -232,9 +243,6 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 
     /* Clean up */
     ogl_rendering_handler_stop(_rendering_handler);
-
-    ui_deinit   ();
-    state_deinit();
 
     system_window_close (_window);
     system_event_release(_window_closed_event);

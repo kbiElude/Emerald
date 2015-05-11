@@ -545,6 +545,28 @@ bool _rendering_rbm_callback_handler(system_window           window,
     return true;
 }
 
+void _window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
+void _window_closing_callback_handler(system_window window)
+{
+    ogl_program_release                                   (_filmic_program);
+    ogl_program_release                                   (_filmic_customizable_program);
+    ogl_program_release                                   (_linear_program);
+    ogl_program_release                                   (_reinhardt_program);
+    ogl_text_release                                      (_text_renderer);
+    ogl_texture_release                                   (_texture);
+    shaders_fragment_texture2D_filmic_customizable_release(_filmic_customizable_fp);
+    shaders_fragment_texture2D_filmic_release             (_filmic_fp);
+    shaders_fragment_texture2D_reinhardt_release          (_reinhardt_fp);
+    shaders_fragment_texture2D_linear_release             (_linear_fp);
+    postprocessing_reinhard_tonemap_release               (_postprocessing_reinhard_tonemapper);
+    postprocessing_reinhard_tonemap_release               (_postprocessing_reinhard_tonemapper_crude);
+    shaders_vertex_fullscreen_release                     (_vp);
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle,
                    HINSTANCE,
@@ -697,6 +719,16 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                          _rendering_rbm_callback_handler,
+                                         NULL);
+    system_window_add_callback_func     (_window,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                         _window_closed_callback_handler,
+                                         NULL);
+    system_window_add_callback_func     (_window,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                         _window_closing_callback_handler,
                                          NULL);
 
     ogl_rendering_handler_set_fps_counter_visibility(window_rendering_handler,
@@ -894,35 +926,22 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);
 
-    curve_editor_hide                                     ();
-    curve_container_release                               (_alpha_curve);
-    curve_container_release                               (_exposure_curve);
-    curve_container_release                               (_filmic_customizable_a_curve);
-    curve_container_release                               (_filmic_customizable_b_curve);
-    curve_container_release                               (_filmic_customizable_c_curve);
-    curve_container_release                               (_filmic_customizable_d_curve);
-    curve_container_release                               (_filmic_customizable_e_curve);
-    curve_container_release                               (_filmic_customizable_exposure_bias_curve);
-    curve_container_release                               (_filmic_customizable_f_curve);
-    curve_container_release                               (_filmic_customizable_w_curve);
-    curve_container_release                               (_white_level_curve);
-    ogl_program_release                                   (_filmic_program);
-    ogl_program_release                                   (_filmic_customizable_program);
-    ogl_program_release                                   (_linear_program);
-    ogl_program_release                                   (_reinhardt_program);
-    ogl_text_release                                      (_text_renderer);
-    ogl_texture_release                                   (_texture);
-    shaders_fragment_texture2D_filmic_customizable_release(_filmic_customizable_fp);
-    shaders_fragment_texture2D_filmic_release             (_filmic_fp);
-    shaders_fragment_texture2D_reinhardt_release          (_reinhardt_fp);
-    shaders_fragment_texture2D_linear_release             (_linear_fp);
-    postprocessing_reinhard_tonemap_release               (_postprocessing_reinhard_tonemapper);
-    postprocessing_reinhard_tonemap_release               (_postprocessing_reinhard_tonemapper_crude);
-    shaders_vertex_fullscreen_release                     (_vp);
-    system_window_close                                   (_window);
-    gfx_image_release                                     (_texture_image);
-    system_event_release                                  (_window_closed_event);
-    system_variant_release                                (_float_variant);
+    curve_editor_hide      ();
+    curve_container_release(_alpha_curve);
+    curve_container_release(_exposure_curve);
+    curve_container_release(_filmic_customizable_a_curve);
+    curve_container_release(_filmic_customizable_b_curve);
+    curve_container_release(_filmic_customizable_c_curve);
+    curve_container_release(_filmic_customizable_d_curve);
+    curve_container_release(_filmic_customizable_e_curve);
+    curve_container_release(_filmic_customizable_exposure_bias_curve);
+    curve_container_release(_filmic_customizable_f_curve);
+    curve_container_release(_filmic_customizable_w_curve);
+    curve_container_release(_white_level_curve);
+    system_window_close    (_window);
+    gfx_image_release      (_texture_image);
+    system_event_release   (_window_closed_event);
+    system_variant_release (_float_variant);
 
     main_force_deinit();
 

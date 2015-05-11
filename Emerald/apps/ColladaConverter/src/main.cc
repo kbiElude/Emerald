@@ -239,6 +239,24 @@ void _setup_ui()
 
 }
 
+PRIVATE void _window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
+PRIVATE void _window_closing_callback_handler(system_window window)
+{
+    if (_pipeline != NULL)
+    {
+        ogl_pipeline_release(_pipeline);
+    }
+
+    if (_scene_renderer != NULL)
+    {
+        ogl_scene_renderer_release(_scene_renderer);
+    }
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle,
                    HINSTANCE,
@@ -279,6 +297,16 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                         _rendering_rbm_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                        _window_closed_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                        _window_closing_callback_handler,
                                         NULL);
 
     /* Let the user select the DAE file */
@@ -378,16 +406,6 @@ end:
     if (_test_collada_data != NULL)
     {
         collada_data_release(_test_collada_data);
-    }
-
-    if (_pipeline != NULL)
-    {
-        ogl_pipeline_release(_pipeline);
-    }
-
-    if (_scene_renderer != NULL)
-    {
-        ogl_scene_renderer_release(_scene_renderer);
     }
 
     system_window_close (_window);

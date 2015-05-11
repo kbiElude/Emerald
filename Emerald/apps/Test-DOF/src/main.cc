@@ -167,8 +167,7 @@ PRIVATE void _set_reflectivity(void*          user_arg,
 }
 
 
-void _deinit_gl(ogl_context context,
-                void*       not_used)
+void _deinit_gl(ogl_context context)
 {
     stage_step_background_deinit     (context);
     stage_step_julia_deinit          (context);
@@ -323,6 +322,25 @@ void _rendering_lbm_callback_handler(system_window           window,
                                      void*)
 {
     system_event_set(_window_closed_event);
+}
+
+/** "Window closed" call-back handler */
+PRIVATE void _window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
+/** "Window closing" call-back handler */
+PRIVATE void _window_closing_callback_handler(system_window window)
+{
+    ogl_context context = NULL;
+
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &context);
+
+    _deinit_gl          (context);
+    ogl_pipeline_release(_pipeline);
 }
 
 /** Please see header for specification */
@@ -485,6 +503,16 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                     _rendering_lbm_callback_handler,
                                     NULL);
+    system_window_add_callback_func(_window,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                    _window_closed_callback_handler,
+                                    NULL);
+    system_window_add_callback_func(_window,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                    _window_closing_callback_handler,
+                                    NULL);
 
     /* Initialize flyby */
     const float camera_movement_delta =  0.025f;
@@ -527,13 +555,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);
 
-    /* Deinitialize GL objects */
-    ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,
-                                                               _deinit_gl,
-                                                               NULL);
-
     system_matrix4x4_release(_projection_matrix);
-    ogl_pipeline_release    (_pipeline);
     system_window_close     (_window);
     system_event_release    (_window_closed_event);
 
