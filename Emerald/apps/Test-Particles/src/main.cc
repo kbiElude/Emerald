@@ -29,8 +29,7 @@ system_event  _window_closed_event = system_event_create(true,   /* manual_reset
 int           _window_size[2]      = {0};
 
 /* Forward declarations */
-PRIVATE void _deinit_gl                     (ogl_context             context,
-                                             void*                   arg);
+PRIVATE void _deinit_gl                     (ogl_context             context);
 PRIVATE void _get_decay_value               (void*                   user_arg,
                                              system_variant          result);
 PRIVATE void _get_dt_value                  (void*                   user_arg,
@@ -67,8 +66,7 @@ PRIVATE void _set_spread_value              (void*                   user_arg,
 
 
 /* GL deinitialization */
-PRIVATE void _deinit_gl(ogl_context context,
-                        void*       arg)
+PRIVATE void _deinit_gl(ogl_context context)
 {
     stage_particle_deinit(context,
                           _pipeline);
@@ -287,6 +285,25 @@ PRIVATE void _set_spread_value(void*          user_arg,
     stage_particle_set_spread(value);
 }
 
+/** "Window closed" call-back handler */
+PRIVATE void _window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
+/** "Window closing" call-back handler */
+PRIVATE void _window_closing_callback_handler(system_window window)
+{
+    ogl_context context = NULL;
+
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &context);
+
+    _deinit_gl          (context);
+    ogl_pipeline_release(_pipeline);
+}
+
 
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle,
@@ -329,6 +346,16 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
                                         _rendering_rbm_callback_handler,
                                         NULL); /* callback_func_user_arg */
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                        _window_closed_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                        _window_closing_callback_handler,
+                                        NULL);
 
     /* Initialize GL objects */
     ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,
@@ -344,11 +371,6 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);
 
-    ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,
-                                                               _deinit_gl,
-                                                               NULL); /* callback_user_arg */
-
-    ogl_pipeline_release(_pipeline);
     system_window_close (_window);
     system_event_release(_window_closed_event);
 

@@ -181,8 +181,7 @@ void                      _callback_on_previous_file_button_clicked   (void*    
 void                      _callback_on_rbm_up                         (void*                     arg);
 void                      _callback_on_save_file_button_clicked       (void*                     fire_proc_user_arg,
                                                                        void*                     event_user_arg);
-void                      _callback_renderer_deinit                   (ogl_context               context,
-                                                                       void*                     user_arg);
+void                      _callback_renderer_deinit                   (ogl_context               context);
 void                      _change_algorithm_callback                  (void*                     fire_proc_user_arg,
                                                                        void*                     event_user_arg);
 void                      _change_algorithm_renderer_callback         (ogl_context               context,
@@ -301,8 +300,7 @@ void _callback_on_save_file_button_clicked(void* fire_proc_user_arg,
     }
 }
 
-void _callback_renderer_deinit(ogl_context context,
-                               void*       user_arg)
+void _callback_renderer_deinit(ogl_context context)
 {
     if (_preview_fs != NULL)
     {
@@ -373,6 +371,22 @@ void _callback_renderer_deinit(ogl_context context,
 
         _whiteline_vs = NULL;
     }
+}
+
+PRIVATE void _callback_window_closed(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
+PRIVATE void _callback_window_closing(system_window window)
+{
+    ogl_context context = NULL;
+
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &context);
+
+    _callback_renderer_deinit(context);
 }
 
 void _change_algorithm_callback(void* fire_proc_user_arg,
@@ -1745,7 +1759,16 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
                                     _callback_on_rbm_up,
                                     NULL);
-
+    system_window_add_callback_func(_window,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                    _callback_window_closed,
+                                    NULL);
+    system_window_add_callback_func(_window,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                    SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                    _callback_window_closing,
+                                    NULL);
     /* Carry on */
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
@@ -1754,10 +1777,6 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);
-
-    ogl_context_request_callback_from_context_thread(_context,
-                                                     _callback_renderer_deinit,
-                                                     NULL);
 
 end:
     system_window_close (_window);

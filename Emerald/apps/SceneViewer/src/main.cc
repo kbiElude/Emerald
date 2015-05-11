@@ -328,6 +328,19 @@ void _rendering_rbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
+bool _rendering_window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+
+    return true;
+}
+
+void _rendering_window_closing_callback_handler(system_window window)
+{
+    ui_deinit   ();
+    state_deinit();
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 {
@@ -359,6 +372,7 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
 
     system_window_set_rendering_handler(_window,
                                         _rendering_handler);
+
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
@@ -368,6 +382,16 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
                                         _rendering_key_down_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                        _rendering_window_closed_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                        _rendering_window_closing_callback_handler,
                                         NULL);
 
     /* Let the user select the scene file */
@@ -412,9 +436,6 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     ogl_rendering_handler_stop(_rendering_handler);
 
 end:
-    ui_deinit   ();
-    state_deinit();
-
     system_window_close (_window);
     system_event_release(_window_closed_event);
 

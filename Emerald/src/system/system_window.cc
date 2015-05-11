@@ -43,6 +43,7 @@ typedef struct
     uint16_t fullscreen_freq;
 
     ogl_context_type           context_type;
+    bool                       is_closing; /* in the process of calling the "window closing" call-backs */
     bool                       is_cursor_visible;
     bool                       is_fullscreen;
     bool                       is_root_window;
@@ -92,6 +93,7 @@ typedef struct
     system_resizable_vector right_button_up_callbacks;           /* PFNWINDOWRIGHTBUTTONUPCALLBACKPROC      */
     system_resizable_vector right_button_double_click_callbacks; /* PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC  */
     system_resizable_vector window_closed_callbacks;             /* PFNWINDOWINDOWCLOSEDCALLBACKPROC        */
+    system_resizable_vector window_closing_callbacks;            /* PFNWINDOWWINDOWCLOSINGCALLBACKPROC      */
 } _system_window;
 
 /** Internal variables */
@@ -139,26 +141,28 @@ system_window         root_window                   = NULL;
 
 
 /* Forward declarations */
-PRIVATE void          _deinit_system_window                       (                           _system_window*                      descriptor);
-PRIVATE void          _init_system_window                         (                           _system_window*                      descriptor);
-PRIVATE VOID          _lock_system_window_message_pump            (                           _system_window*                      descriptor);
-PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnull             system_thread_pool_callback_argument arg);
-PRIVATE void          _system_window_thread_entrypoint            (     __notnull             void*                                in_arg);
-PRIVATE void          _system_window_create_root_window           (__in                       ogl_context_type                     context_type);
-PRIVATE system_window _system_window_create_shared                (__in __notnull             ogl_context_type                     context_type,
-                                                                   __in                       bool                                 is_fullscreen,
-                                                                   __in __notnull __ecount(4) const int*                           x1y1x2y2,
-                                                                   __in __notnull             system_hashed_ansi_string            title,
-                                                                   __in __notnull             bool                                 is_scalable,
-                                                                   __in __notnull             uint16_t                             n_multisampling_samples,
-                                                                   __in                       uint16_t                             fullscreen_bpp,
-                                                                   __in                       uint16_t                             fullscreen_freq,
-                                                                   __in                       bool                                 vsync_enabled,
-                                                                   __in __maybenull           HWND                                 parent_window_handle,
-                                                                   __in                       bool                                 multisampling_supported,
-                                                                   __in                       bool                                 visible,
-                                                                   __in                       bool                                 is_root_window);
-PRIVATE VOID          _unlock_system_window_message_pump          (                           _system_window*                      descriptor);
+PRIVATE void          _deinit_system_window                                    (                           _system_window*                      descriptor);
+PRIVATE void          _init_system_window                                      (                           _system_window*                      descriptor);
+PRIVATE VOID          _lock_system_window_message_pump                         (                           _system_window*                      descriptor);
+PRIVATE volatile void _system_window_teardown_thread_pool_callback             (__in __notnull             system_thread_pool_callback_argument arg);
+PRIVATE void          _system_window_thread_entrypoint                         (     __notnull             void*                                in_arg);
+PRIVATE void          _system_window_create_root_window                        (__in                       ogl_context_type                     context_type);
+PRIVATE system_window _system_window_create_shared                             (__in __notnull             ogl_context_type                     context_type,
+                                                                                __in                       bool                                 is_fullscreen,
+                                                                                __in __notnull __ecount(4) const int*                           x1y1x2y2,
+                                                                                __in __notnull             system_hashed_ansi_string            title,
+                                                                                __in __notnull             bool                                 is_scalable,
+                                                                                __in __notnull             uint16_t                             n_multisampling_samples,
+                                                                                __in                       uint16_t                             fullscreen_bpp,
+                                                                                __in                       uint16_t                             fullscreen_freq,
+                                                                                __in                       bool                                 vsync_enabled,
+                                                                                __in __maybenull           HWND                                 parent_window_handle,
+                                                                                __in                       bool                                 multisampling_supported,
+                                                                                __in                       bool                                 visible,
+                                                                                __in                       bool                                 is_root_window);
+PRIVATE void          _system_window_window_closing_rendering_thread_entrypoint(                           ogl_context                          context,
+                                                                                                           void*                                user_arg);
+PRIVATE VOID          _unlock_system_window_message_pump                       (                           _system_window*                      descriptor);
 
 /** TODO */
 PRIVATE void _deinit_system_window(_system_window* descriptor)
@@ -190,7 +194,8 @@ PRIVATE void _deinit_system_window(_system_window* descriptor)
         descriptor->right_button_double_click_callbacks,
         descriptor->right_button_down_callbacks,
         descriptor->right_button_up_callbacks,
-        descriptor->window_closed_callbacks
+        descriptor->window_closed_callbacks,
+        descriptor->window_closing_callbacks
     };
 
     for (uint32_t n = 0;
@@ -294,6 +299,8 @@ PRIVATE void _init_system_window(_system_window* descriptor)
                                                                                       sizeof(void*) );
     descriptor->window_closed_callbacks              = system_resizable_vector_create(1,
                                                                                       sizeof(void*) );
+    descriptor->window_closing_callbacks             = system_resizable_vector_create(1,
+                                                                                      sizeof(void*) );
 
     #ifdef INCLUDE_WEBCAM_MANAGER
         descriptor->webcam_device_notification_handle = NULL;
@@ -308,9 +315,13 @@ PRIVATE void _init_system_window(_system_window* descriptor)
 /** TODO */
 PRIVATE VOID _lock_system_window_message_pump(_system_window* descriptor)
 {
-    /* Only lock if not in message pump AND the window has not been marked for release. */
+    /* Only lock if not in message pump AND:
+     * 1. the window has not been marked for release, AND
+     * 2. the window is in the process of being closed (the window_closing call-back)
+     */
     if ( system_threads_get_thread_id () != descriptor->message_pump_thread_id   &&
-        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) )
+        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) &&
+        !descriptor->is_closing)
     {
         /* Only lock if the window is still alive! */
         system_event_reset(descriptor->message_pump_lock_event);
@@ -330,8 +341,10 @@ PRIVATE VOID _lock_system_window_message_pump(_system_window* descriptor)
 PRIVATE VOID _unlock_system_window_message_pump(_system_window* descriptor)
 {
     /* Only unlock if not in message pump */
-    if ( system_threads_get_thread_id() != descriptor->message_pump_thread_id   &&
-        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) )
+    if ( system_threads_get_thread_id() != descriptor->message_pump_thread_id    &&
+        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) &&
+        !descriptor->is_closing)
+
     {
         ASSERT_DEBUG_SYNC(descriptor->is_message_pump_locked,
                           "Cannot unlock system window message pump - not locked.");
@@ -985,6 +998,20 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                 {
                     ogl_rendering_handler_stop(window->rendering_handler);
                 } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+
+                /* For the "window closing" call-back, we need to work from the rendering thread, as the caller
+                 * may need to release GL stuff.
+                 *
+                 * This should work out of the box, since we've just stopped the play-back.
+                 */
+                ogl_context_request_callback_from_context_thread(window->system_ogl_context,
+                                                                 _system_window_window_closing_rendering_thread_entrypoint,
+                                                                 window);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Cannot fire the \"window closing\" call-back - no rendering handler available");
             }
 
             /* OK, safe to destroy the system window at this point */
@@ -992,7 +1019,8 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
             /* Now here's the trick: the call-backs can only be fired AFTER the window thread has shut down.
              * This lets us avoid various thread racing conditions which used to break all hell loose at the
-             * tear-down time in the past.
+             * tear-down time in the past, and which also let the window messages flow, which is necessary
+             * for the closure to finish correctly.
              *
              * The entry-point we're pointing the task at does exactly that.
              */
@@ -1051,6 +1079,38 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                             message_id,
                             wparam,
                             lparam);
+}
+
+/** TODO */
+PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
+                                                                       void*       user_arg)
+{
+    _system_window* window_ptr  = (_system_window*) user_arg;
+    const uint32_t  n_callbacks = system_resizable_vector_get_amount_of_elements(window_ptr->window_closing_callbacks);
+
+    ASSERT_DEBUG_SYNC(!window_ptr->is_closing,
+                      "Sanity check failed");
+
+    window_ptr->is_closing = true;
+
+    if (n_callbacks != 0)
+    {
+        for (uint32_t n_callback = 0;
+                      n_callback < n_callbacks;
+                    ++n_callback)
+        {
+            _callback_descriptor* descriptor_ptr = NULL;
+
+            if (system_resizable_vector_get_element_at(window_ptr->window_closing_callbacks,
+                                                       n_callback,
+                                                      &descriptor_ptr) )
+            {
+                ((PFNWINDOWWINDOWCLOSINGCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window_ptr);
+            }
+        } /* for (all registered call-backs) */
+    } /* if (n_callbacks != 0) */
+
+    window_ptr->is_closing = false;
 }
 
 /** TODO */
@@ -1387,6 +1447,7 @@ end:
     system_event_set(window->window_safe_to_release_event);
 }
 
+
 /** Please see header for specification */
 PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_window                        window,
                                                         __in           system_window_callback_func_priority priority,
@@ -1534,6 +1595,14 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                 case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED:
                 {
                     callback_container = window_ptr->window_closed_callbacks;
+                    result             = true;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING:
+                {
+                    callback_container = window_ptr->window_closing_callbacks;
                     result             = true;
 
                     break;
@@ -1782,6 +1851,7 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
         new_window->x1y1x2y2[1]             = x1y1x2y2[1];
         new_window->x1y1x2y2[2]             = x1y1x2y2[2];
         new_window->x1y1x2y2[3]             = x1y1x2y2[3];
+        new_window->is_closing              = false;
         new_window->is_cursor_visible       = false;
         new_window->is_fullscreen           = is_fullscreen;
         new_window->is_root_window          = is_root_window;

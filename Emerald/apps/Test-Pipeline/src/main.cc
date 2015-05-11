@@ -75,8 +75,7 @@ const char* fragment_shader_modification = "#version 420 core\n"
                                            "}\n";
 
 /* GL deinitialization */
-void _deinit_gl(ogl_context context,
-                void*       arg)
+void _deinit_gl(ogl_context context)
 {
     const ogl_context_gl_entrypoints* entry_points = NULL;
 
@@ -328,6 +327,23 @@ void _rendering_lbm_callback_handler(system_window           window,
     system_event_set(_window_closed_event);
 }
 
+PRIVATE void _window_closed_callback_handler(system_window window)
+{
+    system_event_set(_window_closed_event);
+}
+
+PRIVATE void _window_closing_callback_handler(system_window window)
+{
+    ogl_context context = NULL;
+
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                              &context);
+
+    _deinit_gl          (context);
+    ogl_pipeline_release(_pipeline);
+}
+
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle,
                    HINSTANCE,
@@ -368,6 +384,16 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
                                         _rendering_lbm_callback_handler,
                                         NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
+                                        _window_closed_callback_handler,
+                                        NULL);
+    system_window_add_callback_func    (_window,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
+                                        SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
+                                        _window_closing_callback_handler,
+                                        NULL);
 
     /* Create and configure pipeline object */
     uint32_t                   pipeline_stage_generate_data_step = -1;
@@ -405,11 +431,6 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);
 
-    ogl_rendering_handler_request_callback_from_context_thread(window_rendering_handler,
-                                                               _deinit_gl,
-                                                               NULL);
-
-    ogl_pipeline_release(_pipeline);
     system_window_close (_window);
     system_event_release(_window_closed_event);
 
