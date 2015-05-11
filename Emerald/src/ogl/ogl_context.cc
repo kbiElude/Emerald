@@ -2761,13 +2761,13 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                 _result->entry_points_gl.pGLGenVertexArrays(1,
                                                                            &_result->vao_no_vaas_id);
 
-                                /* Set up the buffer object manager */
-                                _result->buffers = ogl_buffers_create((ogl_context) _result,
-                                                                      system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
+                                /* Set up the context-wide flyby */
+                                _result->flyby = ogl_flyby_create( (ogl_context) _result);
                             } /* if (type == OGL_CONTEXT_TYPE_GL) */
 
-                            /* Set up the context-wide flyby */
-                            _result->flyby = ogl_flyby_create( (ogl_context) _result);
+                            /* Set up the buffer object manager */
+                            _result->buffers = ogl_buffers_create((ogl_context) _result,
+                                                                  system_hashed_ansi_string_create("Context-wide Buffer Object manager") );
 
                             /* Set context-specific vsync setting */
                             ogl_context_set_vsync( (ogl_context) _result,

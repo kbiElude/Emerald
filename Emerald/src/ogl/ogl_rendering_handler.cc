@@ -603,7 +603,8 @@ PUBLIC EMERALD_API bool ogl_rendering_handler_request_callback_from_context_thre
 
     if (rendering_handler_ptr->thread_id == system_threads_get_thread_id() )
     {
-        pfn_callback_proc(rendering_handler_ptr->context, user_arg);
+        pfn_callback_proc(rendering_handler_ptr->context,
+                          user_arg);
 
         result = true;
     }
