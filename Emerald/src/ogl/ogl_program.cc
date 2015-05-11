@@ -64,6 +64,7 @@ typedef struct
     PFNGLDETACHSHADERPROC              pGLDetachShader;
     PFNGLGETACTIVEATTRIBPROC           pGLGetActiveAttrib;
     PFNGLGETACTIVEUNIFORMPROC          pGLGetActiveUniform;
+    PFNGLGETACTIVEUNIFORMBLOCKIVPROC   pGLGetActiveUniformBlockiv;
     PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC pGLGetActiveUniformBlockName;
     PFNGLGETACTIVEUNIFORMSIVPROC       pGLGetActiveUniformsiv;
     PFNGLGETATTRIBLOCATIONPROC         pGLGetAttribLocation;
@@ -240,9 +241,42 @@ PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_pr
     program_ptr->pGLGetProgramiv(program_ptr->id,
                                  GL_ACTIVE_UNIFORM_BLOCKS,
                                 &n_active_uniform_blocks);
-    program_ptr->pGLGetProgramiv(program_ptr->id,
-                                 GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
-                                &n_active_uniform_block_max_length);
+
+    /* NOTE: As of driver version 10.18.14.4170, there's a bug in Intel driver which causes the
+     *       GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH query to throw a GL_INVALID_ENUM error.
+     *       We therefore take an alternative (slower) code-path, if that's what we're running.
+     */
+    bool is_intel_driver = false;
+
+    ogl_context_get_property(program_ptr->context,
+                             OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
+                            &is_intel_driver);
+
+    if (!is_intel_driver)
+    {
+        program_ptr->pGLGetProgramiv(program_ptr->id,
+                                     GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
+                                    &n_active_uniform_block_max_length);
+    }
+    else
+    {
+        for (unsigned int n_ub = 0;
+                          n_ub < n_active_uniform_blocks;
+                        ++n_ub)
+        {
+            GLint current_ub_name_length = 0;
+
+            program_ptr->pGLGetActiveUniformBlockiv(program_ptr->id,
+                                                    n_ub,
+                                                    GL_UNIFORM_BLOCK_NAME_LENGTH,
+                                                   &current_ub_name_length);
+
+            if (current_ub_name_length > n_active_uniform_block_max_length)
+            {
+                n_active_uniform_block_max_length = current_ub_name_length;
+            }
+        } /* for (all active uniform blocks) */
+    }
 
     uniform_block_name = new (std::nothrow) GLchar[n_active_uniform_block_max_length + 1];
 
@@ -1350,6 +1384,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLDetachShader              = entry_points->pGLDetachShader;
             result->pGLGetActiveAttrib           = entry_points->pGLGetActiveAttrib;
             result->pGLGetActiveUniform          = entry_points->pGLGetActiveUniform;
+            result->pGLGetActiveUniformBlockiv   = entry_points->pGLGetActiveUniformBlockiv;
             result->pGLGetActiveUniformBlockName = entry_points->pGLGetActiveUniformBlockName;
             result->pGLGetActiveUniformsiv       = entry_points->pGLGetActiveUniformsiv;
             result->pGLGetAttribLocation         = entry_points->pGLGetAttribLocation;
@@ -1381,6 +1416,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLDetachShader              = entry_points->pGLDetachShader;
             result->pGLGetActiveAttrib           = entry_points->pGLGetActiveAttrib;
             result->pGLGetActiveUniform          = entry_points->pGLGetActiveUniform;
+            result->pGLGetActiveUniformBlockiv   = entry_points->pGLGetActiveUniformBlockiv;
             result->pGLGetActiveUniformBlockName = entry_points->pGLGetActiveUniformBlockName;
             result->pGLGetActiveUniformsiv       = entry_points->pGLGetActiveUniformsiv;
             result->pGLGetAttribLocation         = entry_points->pGLGetAttribLocation;
