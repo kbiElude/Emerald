@@ -260,7 +260,7 @@ PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(__in      __notnull ogl
                       "The QO that is being peeked has not been ended yet.");
 
     /* Do we have any spare QO to use for the next begin operation? */
-    bool should_force = (query_ptr->index_current == query_ptr->index_peek);
+    bool should_force = ( (query_ptr->index_current + 1) % query_ptr->ring_buffer_size == query_ptr->index_peek);
 
     /* ES offers glGetQueryObjectuiv(), whereas under OpenGL we have glGetQueryObjectui64v() */
     if (query_ptr->pGLGetQueryObjectui64v != NULL)
