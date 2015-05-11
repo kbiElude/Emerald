@@ -322,7 +322,7 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
 
     /* Retrieve entry-points & platform-specific UB alignment requirement */
     ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
-    unsigned int     uniform_buffer_offset_alignment = 0;
+    GLint            uniform_buffer_offset_alignment = 0;
 
     ogl_context_get_property(ub_ptr->context,
                              OGL_CONTEXT_PROPERTY_TYPE,
@@ -359,14 +359,16 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
     {
         ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_ES,
                           "Unrecognized rendering context type");
-        ASSERT_DEBUG_SYNC(false,
-                          "TODO: limits for ES context");
 
         const ogl_context_es_entrypoints* entry_points = NULL;
 
         ogl_context_get_property(ub_ptr->context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_ES,
                                 &entry_points);
+
+        /* TODO: Create a limits array for ES contexts. */
+        entry_points->pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
+                                    &uniform_buffer_offset_alignment);
 
         ub_ptr->pGLBindBuffer              = entry_points->pGLBindBuffer;
         ub_ptr->pGLBufferSubData           = entry_points->pGLBufferSubData;
