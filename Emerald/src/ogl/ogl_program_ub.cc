@@ -43,7 +43,7 @@ typedef struct _ogl_program_ub
 
     PFNGLBINDBUFFERPROC              pGLBindBuffer;
     PFNGLBUFFERSUBDATAPROC           pGLBufferSubData;
-    PFNGLGETACTIVEUNIFORMBLOCKIVPROC pGLGetActiveUniformBlockiv;
+    PFNGLGETPROGRAMRESOURCEIVPROC    pGLGetProgramResourceiv;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC   pGLNamedBufferSubDataEXT;
     PFNGLUNIFORMBLOCKBINDINGPROC     pGLUniformBlockBinding;
 
@@ -84,7 +84,7 @@ typedef struct _ogl_program_ub
         offset_to_uniform_descriptor_map = system_hash64map_create       (sizeof(ogl_program_uniform_descriptor*) );
         owner                            = in_owner;
         pGLBufferSubData                 = NULL;
-        pGLGetActiveUniformBlockiv       = NULL;
+        pGLGetProgramResourceiv          = NULL;
         pGLNamedBufferSubDataEXT         = NULL;
         pGLUniformBlockBinding           = NULL;
         syncable                         = in_syncable;
@@ -330,13 +330,17 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
 
     if (context_type == OGL_CONTEXT_TYPE_GL)
     {
-        const ogl_context_gl_entrypoints*                         entry_points     = NULL;
-        const ogl_context_gl_entrypoints_ext_direct_state_access* entry_points_dsa = NULL;
-        const ogl_context_gl_limits*                              limits_ptr       = NULL;
+        const ogl_context_gl_entrypoints*                             entry_points     = NULL;
+        const ogl_context_gl_entrypoints_ext_direct_state_access*     entry_points_dsa = NULL;
+        const ogl_context_gl_entrypoints_arb_program_interface_query* entry_points_piq = NULL;
+        const ogl_context_gl_limits*                                  limits_ptr       = NULL;
 
         ogl_context_get_property(ub_ptr->context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
+        ogl_context_get_property(ub_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_PROGRAM_INTERFACE_QUERY,
+                                &entry_points_piq);
         ogl_context_get_property(ub_ptr->context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &entry_points_dsa);
@@ -344,11 +348,11 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
-        ub_ptr->pGLBindBuffer              = entry_points->pGLBindBuffer;
-        ub_ptr->pGLBufferSubData           = entry_points->pGLBufferSubData;
-        ub_ptr->pGLGetActiveUniformBlockiv = entry_points->pGLGetActiveUniformBlockiv;
-        ub_ptr->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
-        uniform_buffer_offset_alignment    = limits_ptr->uniform_buffer_offset_alignment;
+        ub_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
+        ub_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
+        ub_ptr->pGLGetProgramResourceiv = entry_points_piq->pGLGetProgramResourceiv;
+        ub_ptr->pGLUniformBlockBinding  = entry_points->pGLUniformBlockBinding;
+        uniform_buffer_offset_alignment = limits_ptr->uniform_buffer_offset_alignment;
 
         if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL)
         {
@@ -370,21 +374,28 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
         entry_points->pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
                                     &uniform_buffer_offset_alignment);
 
-        ub_ptr->pGLBindBuffer              = entry_points->pGLBindBuffer;
-        ub_ptr->pGLBufferSubData           = entry_points->pGLBufferSubData;
-        ub_ptr->pGLGetActiveUniformBlockiv = entry_points->pGLGetActiveUniformBlockiv;
-        ub_ptr->pGLUniformBlockBinding     = entry_points->pGLUniformBlockBinding;
+        ub_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
+        ub_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
+        ub_ptr->pGLGetProgramResourceiv = entry_points->pGLGetProgramResourceiv;
+        ub_ptr->pGLUniformBlockBinding  = entry_points->pGLUniformBlockBinding;
     }
 
     /* Retrieve UB uniform block properties */
-    GLint  n_active_uniform_blocks           = 0;
-    GLint  n_active_uniform_block_max_length = 0;
-    GLuint po_id                             = ogl_program_get_id(ub_ptr->owner);
+    static const GLenum ub_property_active_variables      = GL_ACTIVE_VARIABLES;
+    static const GLenum ub_property_buffer_data_size      = GL_BUFFER_DATA_SIZE;
+    static const GLenum ub_property_num_active_variables  = GL_NUM_ACTIVE_VARIABLES;
+                 GLint  n_active_uniform_blocks           = 0;
+                 GLint  n_active_uniform_block_max_length = 0;
+                 GLuint po_id                             = ogl_program_get_id(ub_ptr->owner);
 
-    ub_ptr->pGLGetActiveUniformBlockiv(po_id,
-                                       ub_ptr->index,
-                                       GL_UNIFORM_BLOCK_DATA_SIZE,
-                                      &ub_ptr->block_data_size);
+    ub_ptr->pGLGetProgramResourceiv(po_id,
+                                    GL_UNIFORM_BLOCK,
+                                    ub_ptr->index,
+                                    1, /* propCount */
+                                   &ub_property_buffer_data_size,
+                                    1,    /* bufSize */
+                                    NULL, /* length */
+                                   &ub_ptr->block_data_size);
 
     if (ub_ptr->block_data_size > 0 &&
         ub_ptr->syncable)
@@ -426,10 +437,14 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
     GLint* active_uniform_indices = NULL;
     GLint  n_active_ub_uniforms   = 0;
 
-    ub_ptr->pGLGetActiveUniformBlockiv(po_id,
-                                       ub_ptr->index,
-                                       GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS,
-                                      &n_active_ub_uniforms);
+    ub_ptr->pGLGetProgramResourceiv(po_id,
+                                    GL_UNIFORM_BLOCK,
+                                    ub_ptr->index,
+                                    1, /* propCount */
+                                   &ub_property_num_active_variables,
+                                    1,    /* bufSize */
+                                    NULL, /* length */
+                                   &n_active_ub_uniforms);
 
     if (n_active_ub_uniforms > 0)
     {
@@ -446,10 +461,14 @@ PRIVATE bool _ogl_program_ub_init(__in __notnull _ogl_program_ub* ub_ptr)
 
         if (active_uniform_indices != NULL)
         {
-            ub_ptr->pGLGetActiveUniformBlockiv(po_id,
-                                               ub_ptr->index,
-                                               GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
-                                               active_uniform_indices);
+            ub_ptr->pGLGetProgramResourceiv(po_id,
+                                    GL_UNIFORM_BLOCK,
+                                    ub_ptr->index,
+                                    1, /* propCount */
+                                   &ub_property_active_variables,
+                                    n_active_ub_uniforms,
+                                    NULL, /* length */
+                                    active_uniform_indices);
 
             for (int n_active_uniform = 0;
                      n_active_uniform < n_active_ub_uniforms;
