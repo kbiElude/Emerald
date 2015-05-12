@@ -275,7 +275,16 @@ PUBLIC RENDERING_CONTEXT_CALL bool ogl_query_peek_result(__in      __notnull ogl
         if (temp == -1 && should_force)
         {
             /* Got to stall the pipeline .. */
-            LOG_ERROR("Performance warning: ogl_query_peek_result() about to force an implicit finish.");
+            static system_timeline_time last_warning_time = 0;
+            static system_timeline_time one_sec_time      = system_time_get_timeline_time_for_s(1);
+            static system_timeline_time time_now          = system_time_now();
+
+            if (time_now - last_warning_time > one_sec_time)
+            {
+                LOG_ERROR("Performance warning: ogl_query_peek_result() about to force an implicit finish.");
+
+                last_warning_time = time_now;
+            }
 
             query_ptr->pGLGetQueryObjectui64v(query_ptr->qo_items[index_peek].gl_id,
                                               GL_QUERY_RESULT,
