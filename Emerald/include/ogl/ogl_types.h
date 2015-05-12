@@ -1749,6 +1749,7 @@ typedef enum
 
 /** Program handle */
 DECLARE_HANDLE(ogl_program);
+DECLARE_HANDLE(ogl_program_block);
 DECLARE_HANDLE(ogl_program_ub);
 DECLARE_HANDLE(ogl_programs);
 
