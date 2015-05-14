@@ -63,15 +63,13 @@ typedef struct
     PFNGLDELETEPROGRAMPROC             pGLDeleteProgram;
     PFNGLDETACHSHADERPROC              pGLDetachShader;
     PFNGLGETACTIVEATTRIBPROC           pGLGetActiveAttrib;
-    PFNGLGETACTIVEUNIFORMPROC          pGLGetActiveUniform;
-    PFNGLGETACTIVEUNIFORMBLOCKIVPROC   pGLGetActiveUniformBlockiv;
-    PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC pGLGetActiveUniformBlockName;
-    PFNGLGETACTIVEUNIFORMSIVPROC       pGLGetActiveUniformsiv;
     PFNGLGETATTRIBLOCATIONPROC         pGLGetAttribLocation;
     PFNGLGETERRORPROC                  pGLGetError;
     PFNGLGETPROGRAMBINARYPROC          pGLGetProgramBinary;
     PFNGLGETPROGRAMINFOLOGPROC         pGLGetProgramInfoLog;
     PFNGLGETPROGRAMIVPROC              pGLGetProgramiv;
+    PFNGLGETPROGRAMRESOURCEIVPROC      pGLGetProgramResourceiv;
+    PFNGLGETPROGRAMRESOURCENAMEPROC    pGLGetProgramResourceName;
     PFNGLGETUNIFORMLOCATIONPROC        pGLGetUniformLocation;
     PFNGLLINKPROGRAMPROC               pGLLinkProgram;
     PFNGLPROGRAMBINARYPROC             pGLProgramBinary;
@@ -260,16 +258,22 @@ PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_pr
     }
     else
     {
+        static const GLenum piq_property_name_length = GL_NAME_LENGTH;
+
         for (unsigned int n_ub = 0;
                           n_ub < n_active_uniform_blocks;
                         ++n_ub)
         {
             GLint current_ub_name_length = 0;
 
-            program_ptr->pGLGetActiveUniformBlockiv(program_ptr->id,
-                                                    n_ub,
-                                                    GL_UNIFORM_BLOCK_NAME_LENGTH,
-                                                   &current_ub_name_length);
+            program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                 GL_UNIFORM_BLOCK,
+                                                 n_ub,
+                                                 1, /* propCount */
+                                                 &piq_property_name_length,
+                                                 1,    /* bufSize */
+                                                 NULL, /* length */
+                                                &current_ub_name_length);
 
             if (current_ub_name_length > n_active_uniform_block_max_length)
             {
@@ -290,11 +294,12 @@ PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_pr
     {
         system_hashed_ansi_string uniform_block_name_has = NULL;
 
-        program_ptr->pGLGetActiveUniformBlockName(program_ptr->id,
-                                                  n_active_uniform_block,
-                                                  n_active_uniform_block_max_length + 1,
-                                                  NULL, /* length */
-                                                  uniform_block_name);
+        program_ptr->pGLGetProgramResourceName(program_ptr->id,
+                                               GL_UNIFORM_BLOCK,
+                                               n_active_uniform_block,
+                                               n_active_uniform_block_max_length + 1,
+                                               NULL, /* length */
+                                               uniform_block_name);
 
         uniform_block_name_has = system_hashed_ansi_string_create(uniform_block_name);
 
@@ -526,48 +531,96 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                    "Out of memory while allocating new uniform descriptor.");
                 if (new_uniform != NULL)
                 {
+                    static const GLenum piq_property_array_size    = GL_ARRAY_SIZE;
+                    static const GLenum piq_property_array_stride  = GL_ARRAY_STRIDE;
+                    static const GLenum piq_property_block_index   = GL_BLOCK_INDEX;
+                    static const GLenum piq_property_is_row_major  = GL_IS_ROW_MAJOR;
+                    static const GLenum piq_property_matrix_stride = GL_MATRIX_STRIDE;
+                    static const GLenum piq_property_name_length   = GL_NAME_LENGTH;
+                    static const GLenum piq_property_offset        = GL_OFFSET;
+                    static const GLenum piq_property_type          = GL_TYPE;
+
                     new_uniform->length   = 0;
                     new_uniform->location = 0;
                     new_uniform->name     = NULL;
                     new_uniform->size     = 0;
                     new_uniform->type     = PROGRAM_UNIFORM_TYPE_UNDEFINED;
 
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_array_size,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                         &new_uniform->size);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_name_length,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                         &new_uniform->length);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_type,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                               (GLint*) &new_uniform->type);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_array_stride,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                        &new_uniform->ub_array_stride);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_block_index,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                        &new_uniform->ub_id);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_is_row_major,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                        &new_uniform->is_row_major_matrix);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_matrix_stride,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                        &new_uniform->ub_matrix_stride);
+                    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                                         GL_UNIFORM,
+                                                         n_active_uniform,
+                                                         1, /* propCount */
+                                                        &piq_property_offset,
+                                                         1, /* bufSize */
+                                                         NULL, /* length */
+                                                        &new_uniform->ub_offset);
+
                     memset(uniform_name,
                            0,
                            new_uniform->length + 1);
 
-                    program_ptr->pGLGetActiveUniform   (program_ptr->id,
-                                                        n_active_uniform,
-                                                        n_active_uniform_max_length + 1,
-                                                       &new_uniform->length,
-                                                       &new_uniform->size,
-                                                        (GLenum*) &new_uniform->type,
-                                                        uniform_name);
-                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
-                                                        1,
-                                                        (const GLuint*) &n_active_uniform,
-                                                        GL_UNIFORM_ARRAY_STRIDE,
-                                                       &new_uniform->ub_array_stride);
-                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
-                                                        1,
-                                                        (const GLuint*) &n_active_uniform,
-                                                        GL_UNIFORM_BLOCK_INDEX,
-                                                       &new_uniform->ub_id);
-                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
-                                                        1,
-                                                        (const GLuint*) &n_active_uniform,
-                                                        GL_UNIFORM_IS_ROW_MAJOR,
-                                                       &new_uniform->is_row_major_matrix);
-                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
-                                                        1,
-                                                        (const GLuint*) &n_active_uniform,
-                                                        GL_UNIFORM_MATRIX_STRIDE,
-                                                       &new_uniform->ub_matrix_stride);
-                    program_ptr->pGLGetActiveUniformsiv(program_ptr->id,
-                                                        1,
-                                                        (const GLuint*) &n_active_uniform,
-                                                        GL_UNIFORM_OFFSET,
-                                                       &new_uniform->ub_offset);
+                    program_ptr->pGLGetProgramResourceName(program_ptr->id,
+                                                           GL_UNIFORM,
+                                                           n_active_uniform,
+                                                           new_uniform->length + 1,
+                                                           NULL, /* length */
+                                                           uniform_name);
 
                     new_uniform->name     = system_hashed_ansi_string_create  (uniform_name);
                     new_uniform->location = program_ptr->pGLGetUniformLocation(program_ptr->id,
@@ -1383,15 +1436,14 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLDeleteProgram             = entry_points->pGLDeleteProgram;
             result->pGLDetachShader              = entry_points->pGLDetachShader;
             result->pGLGetActiveAttrib           = entry_points->pGLGetActiveAttrib;
-            result->pGLGetActiveUniform          = entry_points->pGLGetActiveUniform;
-            result->pGLGetActiveUniformBlockiv   = entry_points->pGLGetActiveUniformBlockiv;
-            result->pGLGetActiveUniformBlockName = entry_points->pGLGetActiveUniformBlockName;
-            result->pGLGetActiveUniformsiv       = entry_points->pGLGetActiveUniformsiv;
+            result->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
             result->pGLGetAttribLocation         = entry_points->pGLGetAttribLocation;
             result->pGLGetError                  = entry_points->pGLGetError;
             result->pGLGetProgramBinary          = entry_points->pGLGetProgramBinary;
             result->pGLGetProgramInfoLog         = entry_points->pGLGetProgramInfoLog;
             result->pGLGetProgramiv              = entry_points->pGLGetProgramiv;
+            result->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
+            result->pGLGetProgramResourceName    = entry_points->pGLGetProgramResourceName;
             result->pGLGetUniformLocation        = entry_points->pGLGetUniformLocation;
             result->pGLLinkProgram               = entry_points->pGLLinkProgram;
             result->pGLProgramBinary             = entry_points->pGLProgramBinary;
@@ -1404,26 +1456,29 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
                               "Unrecognized context type");
 
-            const ogl_context_gl_entrypoints* entry_points = NULL;
+            const ogl_context_gl_entrypoints*                             entry_points     = NULL;
+            const ogl_context_gl_entrypoints_arb_program_interface_query* entry_points_piq = NULL;
 
             ogl_context_get_property(context,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_PROGRAM_INTERFACE_QUERY,
+                                    &entry_points_piq);
 
             result->pGLAttachShader              = entry_points->pGLAttachShader;
             result->pGLCreateProgram             = entry_points->pGLCreateProgram;
             result->pGLDeleteProgram             = entry_points->pGLDeleteProgram;
             result->pGLDetachShader              = entry_points->pGLDetachShader;
             result->pGLGetActiveAttrib           = entry_points->pGLGetActiveAttrib;
-            result->pGLGetActiveUniform          = entry_points->pGLGetActiveUniform;
-            result->pGLGetActiveUniformBlockiv   = entry_points->pGLGetActiveUniformBlockiv;
-            result->pGLGetActiveUniformBlockName = entry_points->pGLGetActiveUniformBlockName;
-            result->pGLGetActiveUniformsiv       = entry_points->pGLGetActiveUniformsiv;
+            result->pGLGetProgramResourceiv      = entry_points_piq->pGLGetProgramResourceiv;
             result->pGLGetAttribLocation         = entry_points->pGLGetAttribLocation;
             result->pGLGetError                  = entry_points->pGLGetError;
             result->pGLGetProgramBinary          = entry_points->pGLGetProgramBinary;
             result->pGLGetProgramInfoLog         = entry_points->pGLGetProgramInfoLog;
             result->pGLGetProgramiv              = entry_points->pGLGetProgramiv;
+            result->pGLGetProgramResourceiv      = entry_points_piq->pGLGetProgramResourceiv;
+            result->pGLGetProgramResourceName    = entry_points_piq->pGLGetProgramResourceName;
             result->pGLGetUniformLocation        = entry_points->pGLGetUniformLocation;
             result->pGLLinkProgram               = entry_points->pGLLinkProgram;
             result->pGLProgramBinary             = entry_points->pGLProgramBinary;
