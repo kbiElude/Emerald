@@ -593,8 +593,8 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     ASSERT_DEBUG_SYNC(uniform_ptr->ub_offset != -1,
                       "Uniform offset is -1");
 
-    ASSERT_DEBUG_SYNC(uniform_ptr->size == 1                                       ||
-                      uniform_ptr->size != 1 && uniform_ptr->ub_array_stride != -1,
+    ASSERT_DEBUG_SYNC(uniform_ptr->size == 1                                    ||
+                      uniform_ptr->size != 1 && uniform_ptr->array_stride != -1,
                       "Uniform's array stride is -1 but the uniform is an array.");
 
     /* Check if src_data_size is correct */
@@ -621,14 +621,14 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     unsigned int modified_region_end   = DIRTY_OFFSET_UNUSED;
     unsigned int modified_region_start = DIRTY_OFFSET_UNUSED;
 
-          unsigned char* dst_traveller_ptr = block_ptr->block_data + uniform_ptr->ub_offset                                                    +
-                                             ((uniform_ptr->ub_array_stride != -1) ? uniform_ptr->ub_array_stride : 0) * dst_array_start_index;
+          unsigned char* dst_traveller_ptr = block_ptr->block_data + uniform_ptr->ub_offset                                              +
+                                             ((uniform_ptr->array_stride != -1) ? uniform_ptr->array_stride : 0) * dst_array_start_index;
     const unsigned char* src_traveller_ptr = (const unsigned char*) src_data;
 
     if (is_uniform_matrix)
     {
         /* Matrix uniforms, yay */
-        if (_ogl_program_block_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride)
+        if (_ogl_program_block_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->matrix_stride)
         {
             /* NOTE: The following code may seem redundant but will be useful for code maintainability
              *       when we introduce transposed data support. */
@@ -659,7 +659,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
                         modified_region_end = dst_traveller_ptr - block_ptr->block_data + row_data_size;
                     }
 
-                    dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
+                    dst_traveller_ptr += uniform_ptr->matrix_stride;
                     src_traveller_ptr += row_data_size;
                 } /* for (all matrix rows) */
             }
@@ -690,11 +690,11 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
                         modified_region_end = dst_traveller_ptr - block_ptr->block_data + column_data_size;
                     }
 
-                    dst_traveller_ptr += uniform_ptr->ub_matrix_stride;
+                    dst_traveller_ptr += uniform_ptr->matrix_stride;
                     src_traveller_ptr += column_data_size;
                 } /* for (all matrix columns) */
             }
-        } /* if (_ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->ub_matrix_stride) */
+        } /* if (_ogl_program_ub_get_memcpy_friendly_matrix_stride(uniform_ptr) != uniform_ptr->matrix_stride) */
         else
         {
             /* Good to use the good old memcpy(), since the data is laid out linearly
@@ -717,8 +717,8 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     else
     {
         /* Non-matrix uniforms */
-        if (uniform_ptr->ub_array_stride != 0  && /* no padding             */
-            uniform_ptr->ub_array_stride != -1)   /* not an arrayed uniform */
+        if (uniform_ptr->array_stride != 0  && /* no padding             */
+            uniform_ptr->array_stride != -1)   /* not an arrayed uniform */
         {
             const unsigned int src_single_item_size = _ogl_program_block_get_expected_src_data_size(uniform_ptr,
                                                                                                     1);         /* n_array_items */
@@ -744,7 +744,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
                     modified_region_end = dst_traveller_ptr - block_ptr->block_data + src_single_item_size;
                 }
 
-                dst_traveller_ptr += uniform_ptr->ub_array_stride;
+                dst_traveller_ptr += uniform_ptr->array_stride;
                 src_traveller_ptr += src_single_item_size;
             } /* for (all array items) */
         }

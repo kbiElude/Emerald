@@ -286,7 +286,7 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                         &piq_property_array_stride,
                                          1, /* bufSize */
                                          NULL, /* length */
-                                        &variable_ptr->ub_array_stride);
+                                        &variable_ptr->array_stride);
     program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                          variable_interface_type,
                                          n_variable,
@@ -310,7 +310,7 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                         &piq_property_matrix_stride,
                                          1, /* bufSize */
                                          NULL, /* length */
-                                        &variable_ptr->ub_matrix_stride);
+                                        &variable_ptr->matrix_stride);
     program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                          variable_interface_type,
                                          n_variable,

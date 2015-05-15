@@ -275,14 +275,17 @@ typedef struct
  */
 typedef struct 
 {
+    /* Uniforms (default & regular uniform block): */
+    GLint                      array_stride;
     GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
+    GLint                      matrix_stride;
     system_hashed_ansi_string  name;
     GLsizei                    length;
     GLint                      location;
     GLint                      size;             /* array size for arrayed uniforms or 1 otherwise */
     ogl_program_uniform_type   type;
-    GLint                      ub_array_stride;
-    GLint                      ub_matrix_stride;
+
+    /* Regular uniform block uniforms only: */
     GLint                      ub_id;
     GLint                      ub_offset;
 } ogl_program_variable;
