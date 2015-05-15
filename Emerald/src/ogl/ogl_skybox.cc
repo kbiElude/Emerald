@@ -215,9 +215,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
     }
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* input_light_sh_data_uniform_descriptor = NULL;
-    const ogl_program_uniform_descriptor* inverse_projection_uniform_descriptor  = NULL;
-    const ogl_program_uniform_descriptor* mv_data_uniform_descriptor             = NULL;
+    const ogl_program_variable* input_light_sh_data_uniform_descriptor = NULL;
+    const ogl_program_variable* inverse_projection_uniform_descriptor  = NULL;
+    const ogl_program_variable* mv_data_uniform_descriptor             = NULL;
 
     ogl_program_get_uniform_by_name(skybox_ptr->program,
                                     system_hashed_ansi_string_create("input_light_sh_data"),
@@ -289,9 +289,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
     }
     
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* inverse_projection_uniform_descriptor  = NULL;
-    const ogl_program_uniform_descriptor* mv_data_uniform_descriptor             = NULL;
-    const ogl_program_uniform_descriptor* skybox_uniform_descriptor              = NULL;
+    const ogl_program_variable* inverse_projection_uniform_descriptor  = NULL;
+    const ogl_program_variable* mv_data_uniform_descriptor             = NULL;
+    const ogl_program_variable* skybox_uniform_descriptor              = NULL;
 
     ogl_program_get_uniform_by_name(skybox_ptr->program,
                                     system_hashed_ansi_string_create("inv_projection"),

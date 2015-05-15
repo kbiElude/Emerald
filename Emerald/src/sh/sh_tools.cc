@@ -1506,8 +1506,8 @@ RENDERING_CONTEXT_CALL PUBLIC EMERALD_API void sh_tools_generate_preview(__in  _
         ogl_program_link(_preview_generation_program);
 
 
-        const ogl_program_uniform_descriptor* input_light_samples_data_ptr = NULL;
-        const ogl_program_uniform_descriptor* input_vertex_data_ptr        = NULL;
+        const ogl_program_variable* input_light_samples_data_ptr = NULL;
+        const ogl_program_variable* input_vertex_data_ptr        = NULL;
 
         ogl_program_get_uniform_by_name(_preview_generation_program, system_hashed_ansi_string_create("input_light_samples_data"), &input_light_samples_data_ptr);
         ogl_program_get_uniform_by_name(_preview_generation_program, system_hashed_ansi_string_create("input_vertex_data"),        &input_vertex_data_ptr);

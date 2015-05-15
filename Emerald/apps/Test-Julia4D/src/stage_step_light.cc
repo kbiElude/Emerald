@@ -164,9 +164,9 @@ PUBLIC void stage_step_light_init(ogl_context  context,
     shaders_vertex_combinedmvp_generic_release(vertex_shader);
 
     /* Retrieve attribute/uniform locations */
-    const ogl_program_uniform_descriptor*   color_uniform_data         = NULL;
+    const ogl_program_variable*             color_uniform_data         = NULL;
     const ogl_program_attribute_descriptor* in_position_attribute_data = NULL;
-    const ogl_program_uniform_descriptor*   mvp_uniform_data           = NULL;
+    const ogl_program_variable*             mvp_uniform_data           = NULL;
 
     ogl_program_get_attribute_by_name(_light_program,
                                       system_hashed_ansi_string_create("in_position"),

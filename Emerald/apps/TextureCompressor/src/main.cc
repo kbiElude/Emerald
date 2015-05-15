@@ -798,8 +798,8 @@ void _rendering_handler(ogl_context          context,
         ogl_program_link(_preview_po);
 
         /* Retrieve uniforms */
-        const ogl_program_uniform_descriptor* uniform_texture  = NULL;
-        const ogl_program_uniform_descriptor* uniform_x1y1x2y2 = NULL;
+        const ogl_program_variable* uniform_texture  = NULL;
+        const ogl_program_variable* uniform_x1y1x2y2 = NULL;
 
         ogl_program_get_uniform_by_name(_preview_po,
                                         system_hashed_ansi_string_create("texture"),

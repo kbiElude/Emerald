@@ -2933,10 +2933,10 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                    &descriptor_ptr->static_color_program_ub_vs_bp);
 
         /* Retrieve static color program's attribute & uniform locations */
-        const ogl_program_uniform_descriptor* in_color_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* a_uniform_descriptor        = NULL;
-        const ogl_program_uniform_descriptor* b_uniform_descriptor        = NULL;
-        const ogl_program_uniform_descriptor* mvp_uniform_descriptor      = NULL;
+        const ogl_program_variable* in_color_uniform_descriptor = NULL;
+        const ogl_program_variable* a_uniform_descriptor        = NULL;
+        const ogl_program_variable* b_uniform_descriptor        = NULL;
+        const ogl_program_variable* mvp_uniform_descriptor      = NULL;
 
         ogl_program_get_uniform_by_name(_globals->static_color_program,
                                         system_hashed_ansi_string_create("in_color"),

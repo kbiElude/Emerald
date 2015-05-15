@@ -98,33 +98,33 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_program,
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _ogl_program_attach_shader_callback       (__in __notnull ogl_context                     context,
-                                                                       void*                           in_arg);
-PRIVATE void _ogl_program_create_callback              (__in __notnull ogl_context                     context,
-                                                                       void*                           in_arg);
-PRIVATE void _ogl_program_detach_shader_callback       (__in __notnull ogl_context                     context,
-                                                                       void*                           in_arg);
-PRIVATE char*_ogl_program_get_binary_blob_file_name    (__in __notnull _ogl_program*                   program_ptr);
-PRIVATE char*_ogl_program_get_source_code_file_name    (__in __notnull _ogl_program*                   program_ptr);
-PRIVATE void _ogl_program_get_variable_properties      (__in __notnull _ogl_program*                   program_ptr,
-                                                        __in __notnull char*                           temp_variable_name_storage,
-                                                        __in __notnull ogl_program_uniform_descriptor* variable_ptr,
-                                                        __in           GLenum                          variable_interface_type,
-                                                        __in           unsigned int                    n_variable)
-PRIVATE void _ogl_program_link_callback                (__in __notnull ogl_context                     context,
-                                                                       void*                           in_arg);
+PRIVATE void _ogl_program_attach_shader_callback       (__in __notnull ogl_context             context,
+                                                                       void*                   in_arg);
+PRIVATE void _ogl_program_create_callback              (__in __notnull ogl_context             context,
+                                                                       void*                   in_arg);
+PRIVATE void _ogl_program_detach_shader_callback       (__in __notnull ogl_context             context,
+                                                                       void*                   in_arg);
+PRIVATE char*_ogl_program_get_binary_blob_file_name    (__in __notnull _ogl_program*           program_ptr);
+PRIVATE char*_ogl_program_get_source_code_file_name    (__in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_get_variable_properties      (__in __notnull _ogl_program*           program_ptr,
+                                                        __in __notnull char*                   temp_variable_name_storage,
+                                                        __in __notnull ogl_program_variable*   variable_ptr,
+                                                        __in           GLenum                  variable_interface_type,
+                                                        __in           unsigned int            n_variable);
+PRIVATE void _ogl_program_link_callback                (__in __notnull ogl_context             context,
+                                                                       void*                   in_arg);
 PRIVATE bool _ogl_program_load_binary_blob             (__in __notnull ogl_context,
-                                                        __in __notnull _ogl_program*                   program_ptr);
-PRIVATE void _ogl_program_release                      (__in __notnull void*                           program);
-PRIVATE void _ogl_program_release_active_attributes    (               system_resizable_vector         active_attributes);
-PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*                   program_ptr,
-                                                        __in_opt       ogl_context                     owner_context = NULL);
-PRIVATE void _ogl_program_release_active_uniforms      (               system_resizable_vector         active_uniforms);
-PRIVATE void _ogl_program_release_callback             (__in __notnull ogl_context                     context,
-                                                                       void*                           in_arg);
+                                                        __in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release                      (__in __notnull void*                   program);
+PRIVATE void _ogl_program_release_active_attributes    (               system_resizable_vector active_attributes);
+PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr,
+                                                        __in_opt       ogl_context             owner_context = NULL);
+PRIVATE void _ogl_program_release_active_uniforms      (               system_resizable_vector active_uniforms);
+PRIVATE void _ogl_program_release_callback             (__in __notnull ogl_context             context,
+                                                                       void*                   in_arg);
 PRIVATE void _ogl_program_save_binary_blob             (__in __notnull ogl_context,
-                                                        __in __notnull _ogl_program*                   program_ptr);
-PRIVATE void _ogl_program_save_shader_sources          (__in __notnull _ogl_program*                   program_ptr);
+                                                        __in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_save_shader_sources          (__in __notnull _ogl_program*           program_ptr);
 
 
 /** TODO */
@@ -154,7 +154,7 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
     program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER,
                                                                         sizeof(ogl_program_attribute_descriptor*) );
     program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER,
-                                                                        sizeof(ogl_program_uniform_descriptor*) );
+                                                                        sizeof(ogl_program_variable*) );
     program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER,
                                                                         sizeof(ogl_shader) );
 
@@ -234,11 +234,11 @@ PRIVATE char*_ogl_program_get_source_code_file_name(__in __notnull _ogl_program*
 }
 
 /** TODO */
-PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*                   program_ptr,
-                                                  __in __notnull char*                           temp_variable_name_storage,
-                                                  __in __notnull ogl_program_uniform_descriptor* variable_ptr,
-                                                  __in           GLenum                          variable_interface_type,
-                                                  __in           unsigned int                    n_variable)
+PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*         program_ptr,
+                                                  __in __notnull char*                 temp_variable_name_storage,
+                                                  __in __notnull ogl_program_variable* variable_ptr,
+                                                  __in           GLenum                variable_interface_type,
+                                                  __in           unsigned int          n_variable)
 {
     static const GLenum piq_property_array_size    = GL_ARRAY_SIZE;
     static const GLenum piq_property_array_stride  = GL_ARRAY_STRIDE;
@@ -647,7 +647,7 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                        n_active_uniform < n_active_uniforms;
                      ++n_active_uniform)
             {
-                ogl_program_uniform_descriptor* new_uniform = new (std::nothrow) ogl_program_uniform_descriptor;
+                ogl_program_variable* new_uniform = new (std::nothrow) ogl_program_variable;
 
                 ASSERT_ALWAYS_SYNC(new_uniform != NULL,
                                    "Out of memory while allocating new uniform descriptor.");
@@ -918,7 +918,7 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
 
     /* Release resizable vectors */
     ogl_program_attribute_descriptor* attribute_ptr = NULL;
-    ogl_program_uniform_descriptor*   uniform_ptr   = NULL;
+    ogl_program_variable*             uniform_ptr   = NULL;
     ogl_program_ub                    uniform_block = NULL;
 
     _ogl_program_release_active_attributes    (program_ptr->active_attributes);
@@ -1132,9 +1132,9 @@ PRIVATE void _ogl_program_release_active_uniforms(system_resizable_vector active
 {
     while (system_resizable_vector_get_amount_of_elements(active_uniforms) > 0)
     {
-        ogl_program_uniform_descriptor* program_uniform_ptr = NULL;
-        bool                            result_get           = system_resizable_vector_pop(active_uniforms,
-                                                                                          &program_uniform_ptr);
+        ogl_program_variable* program_uniform_ptr = NULL;
+        bool                  result_get          = system_resizable_vector_pop(active_uniforms,
+                                                                               &program_uniform_ptr);
 
         ASSERT_DEBUG_SYNC(result_get,
                           "Could not retrieve program uniform descriptor.");
@@ -1690,9 +1690,9 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(__
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_program                            program,
-                                                         __in            size_t                                 n_uniform,
-                                                         __out __notnull const ogl_program_uniform_descriptor** out_uniform)
+PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_program                  program,
+                                                         __in            size_t                       n_uniform,
+                                                         __out __notnull const ogl_program_variable** out_uniform)
 {
     _ogl_program* program_ptr = (_ogl_program*) program;
     bool          result      = false;
@@ -1702,7 +1702,7 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_pro
 
     if (program_ptr->link_status)
     {
-        ogl_program_uniform_descriptor* descriptor = NULL;
+        ogl_program_variable* descriptor = NULL;
 
         result = system_resizable_vector_get_element_at(program_ptr->active_uniforms,
                                                         n_uniform,
@@ -1719,9 +1719,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_pro
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_program                            program,
-                                                        __in  __notnull system_hashed_ansi_string              name,
-                                                        __out __notnull const ogl_program_uniform_descriptor** out_uniform)
+PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_program                  program,
+                                                        __in  __notnull system_hashed_ansi_string    name,
+                                                        __out __notnull const ogl_program_variable** out_uniform)
 {
     _ogl_program* program_ptr = (_ogl_program*) program;
     bool          result      = false;
@@ -1737,7 +1737,7 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
                           n_uniform < n_uniforms;
                         ++n_uniform)
         {
-            ogl_program_uniform_descriptor* descriptor = NULL;
+            ogl_program_variable* descriptor = NULL;
 
             result = system_resizable_vector_get_element_at(program_ptr->active_uniforms,
                                                             n_uniform,

@@ -441,17 +441,17 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
     ogl_shader_release(vertex_shader);
 
     /* Retrieve attribute/uniform locations */
-    const ogl_program_uniform_descriptor*   data_uniform_data                      = NULL;
-    const ogl_program_uniform_descriptor*   epsilon_uniform_data                   = NULL;
-    const ogl_program_uniform_descriptor*   escape_uniform_data                    = NULL;
-    const ogl_program_uniform_descriptor*   eye_uniform_data                       = NULL;
-    const ogl_program_uniform_descriptor*   light_color_uniform_data               = NULL;
-    const ogl_program_uniform_descriptor*   light_position_uniform_data            = NULL;
-    const ogl_program_uniform_descriptor*   max_iterations_uniform_data            = NULL;
-    const ogl_program_uniform_descriptor*   mvp_uniform_data                       = NULL;
-    const ogl_program_uniform_descriptor*   raycast_radius_multiplier_uniform_data = NULL;
-    const ogl_program_uniform_descriptor*   shadows_uniform_data                   = NULL;
-    const ogl_program_uniform_descriptor*   specularity_uniform_data               = NULL;
+    const ogl_program_variable*             data_uniform_data                      = NULL;
+    const ogl_program_variable*             epsilon_uniform_data                   = NULL;
+    const ogl_program_variable*             escape_uniform_data                    = NULL;
+    const ogl_program_variable*             eye_uniform_data                       = NULL;
+    const ogl_program_variable*             light_color_uniform_data               = NULL;
+    const ogl_program_variable*             light_position_uniform_data            = NULL;
+    const ogl_program_variable*             max_iterations_uniform_data            = NULL;
+    const ogl_program_variable*             mvp_uniform_data                       = NULL;
+    const ogl_program_variable*             raycast_radius_multiplier_uniform_data = NULL;
+    const ogl_program_variable*             shadows_uniform_data                   = NULL;
+    const ogl_program_variable*             specularity_uniform_data               = NULL;
     const ogl_program_attribute_descriptor* vertex_attribute_data                  = NULL;
 
     ogl_program_get_attribute_by_name(_julia_program,

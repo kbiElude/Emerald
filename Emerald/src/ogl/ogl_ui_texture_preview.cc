@@ -380,10 +380,10 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                       text_xy);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* border_width_uniform = NULL;
-    const ogl_program_uniform_descriptor* layer_uniform        = NULL;
-    const ogl_program_uniform_descriptor* texture_uniform      = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_uniform     = NULL;
+    const ogl_program_variable* border_width_uniform = NULL;
+    const ogl_program_variable* layer_uniform        = NULL;
+    const ogl_program_variable* texture_uniform      = NULL;
+    const ogl_program_variable* x1y1x2y2_uniform     = NULL;
 
     ogl_program_get_uniform_by_name(texture_preview_ptr->program,
                                     system_hashed_ansi_string_create("border_width"),

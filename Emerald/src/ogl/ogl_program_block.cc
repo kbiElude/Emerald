@@ -38,8 +38,8 @@ typedef struct _ogl_program_block
     GLuint                 indexed_ub_bp;
 
     system_hashed_ansi_string name;
-    system_resizable_vector   members;                          /* pointers to const ogl_program_uniform_descriptor*. These are owned by owner - DO NOT release. */
-    system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_uniform_descriptor*. Rules as above apply. */
+    system_resizable_vector   members;                          /* pointers to const ogl_program_variable*. These are owned by owner - DO NOT release. */
+    system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_variable*. Rules as above apply. */
     bool                      syncable;
 
     PFNGLBINDBUFFERPROC              pGLBindBuffer;
@@ -83,8 +83,8 @@ typedef struct _ogl_program_block
         indexed_ub_bp                    = 0; /* default GL state value */
         name                             = in_name;
         members                          = system_resizable_vector_create(4, /* capacity */
-                                                                          sizeof(ogl_program_uniform_descriptor*) );
-        offset_to_uniform_descriptor_map = system_hash64map_create       (sizeof(ogl_program_uniform_descriptor*) );
+                                                                          sizeof(ogl_program_variable*) );
+        offset_to_uniform_descriptor_map = system_hash64map_create       (sizeof(ogl_program_variable*) );
         owner                            = in_owner;
         pGLBufferSubData                 = NULL;
         pGLGetProgramResourceiv          = NULL;
@@ -140,8 +140,8 @@ typedef struct _ogl_program_block
 
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr,
-                                                                   __in           unsigned int                          n_array_items)
+PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(__in __notnull const ogl_program_variable* uniform_ptr,
+                                                                   __in           unsigned int                n_array_items)
 {
     unsigned int result = 0;
 
@@ -188,7 +188,7 @@ PRIVATE unsigned int _ogl_program_block_get_expected_src_data_size(__in __notnul
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(__in __notnull const ogl_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -260,7 +260,7 @@ PRIVATE unsigned int _ogl_program_block_get_memcpy_friendly_matrix_stride(__in _
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(__in __notnull const ogl_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -288,7 +288,7 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_columns(__in __notnull cons
 }
 
 /** TODO */
-PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr)
+PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(__in __notnull const ogl_program_variable* uniform_ptr)
 {
     unsigned int result = 0;
 
@@ -477,7 +477,7 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
                      n_active_uniform < n_active_ub_uniforms;
                    ++n_active_uniform)
             {
-                const ogl_program_uniform_descriptor* uniform_ptr = NULL;
+                const ogl_program_variable* uniform_ptr = NULL;
 
                 if (!ogl_program_get_uniform_by_index(block_ptr->owner,
                                                       active_uniform_indices[n_active_uniform],
@@ -520,7 +520,7 @@ end:
 }
 
 /** TODO */
-PRIVATE bool _ogl_program_block_is_matrix_uniform(__in __notnull const ogl_program_uniform_descriptor* uniform_ptr)
+PRIVATE bool _ogl_program_block_is_matrix_uniform(__in __notnull const ogl_program_variable* uniform_ptr)
 {
     bool result = false;
 
@@ -572,7 +572,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     }
 
     /* Retrieve uniform descriptor */
-    const ogl_program_uniform_descriptor* uniform_ptr = NULL;
+    const ogl_program_variable* uniform_ptr = NULL;
 
     if (!system_hash64map_get(block_ptr->offset_to_uniform_descriptor_map,
                               (system_hash64) block_variable_offset,

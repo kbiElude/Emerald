@@ -216,7 +216,7 @@ PRIVATE void _create_callback(ogl_context context,
                               shaders_vertex_fullscreen_get_shader  (data->data_ptr->fullscreen_vertex_shader) );
     ogl_program_link         (data->data_ptr->rgb_to_Yxy_program);
 
-    const ogl_program_uniform_descriptor* tex_uniform_descriptor = NULL;
+    const ogl_program_variable* tex_uniform_descriptor = NULL;
 
     ogl_program_get_uniform_by_name(data->data_ptr->rgb_to_Yxy_program,
                                     system_hashed_ansi_string_create("tex"),
@@ -260,10 +260,10 @@ PRIVATE void _create_callback(ogl_context context,
                                          &data->data_ptr->operator_program_ub_bo_start_offset);
 
     /* Retrieve uniform properties */
-    const ogl_program_uniform_descriptor* alpha_uniform_descriptor                 = NULL;
-    const ogl_program_uniform_descriptor* luminance_texture_uniform_descriptor     = NULL;
-    const ogl_program_uniform_descriptor* luminance_texture_avg_uniform_descriptor = NULL;
-    const ogl_program_uniform_descriptor* white_level_uniform_descriptor           = NULL;
+    const ogl_program_variable* alpha_uniform_descriptor                 = NULL;
+    const ogl_program_variable* luminance_texture_uniform_descriptor     = NULL;
+    const ogl_program_variable* luminance_texture_avg_uniform_descriptor = NULL;
+    const ogl_program_variable* white_level_uniform_descriptor           = NULL;
 
     ogl_program_get_uniform_by_name(data->data_ptr->operator_program,
                                     system_hashed_ansi_string_create("alpha"),

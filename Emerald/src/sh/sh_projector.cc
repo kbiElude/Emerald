@@ -384,9 +384,9 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
     ogl_program_link(data->program);
 
     /* Retrieve general uniformn locations */
-    const ogl_program_uniform_descriptor* sh_coeffs_descriptor = NULL;
-    const ogl_program_uniform_descriptor* theta_phi_descriptor = NULL;
-    const ogl_program_uniform_descriptor* unit_vecs_descriptor = NULL;
+    const ogl_program_variable* sh_coeffs_descriptor = NULL;
+    const ogl_program_variable* theta_phi_descriptor = NULL;
+    const ogl_program_variable* unit_vecs_descriptor = NULL;
 
     ogl_program_get_uniform_by_name(data->program,
                                     system_hashed_ansi_string_create("sh_coeffs"),
@@ -430,17 +430,17 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_create_callback(__in __notnull
                   n < data->n_projections;
                 ++n)
     {
-        std::stringstream                     cutoff_stringstream;
-        std::stringstream                     linear_exposure_stringstream;
-        std::stringstream                     spherical_map_sampler_stringstream;
-        std::stringstream                     static_color_stringstream;
-        std::stringstream                     zenith_luminance_stringstream;
+        std::stringstream cutoff_stringstream;
+        std::stringstream linear_exposure_stringstream;
+        std::stringstream spherical_map_sampler_stringstream;
+        std::stringstream static_color_stringstream;
+        std::stringstream zenith_luminance_stringstream;
 
-        const ogl_program_uniform_descriptor* cutoff_descriptor                = NULL;
-        const ogl_program_uniform_descriptor* linear_exposure_descriptor       = NULL;
-        const ogl_program_uniform_descriptor* spherical_map_sampler_descriptor = NULL;
-        const ogl_program_uniform_descriptor* static_color_descriptor          = NULL;
-        const ogl_program_uniform_descriptor* zenith_luminance_descriptor      = NULL;
+        const ogl_program_variable* cutoff_descriptor                = NULL;
+        const ogl_program_variable* linear_exposure_descriptor       = NULL;
+        const ogl_program_variable* spherical_map_sampler_descriptor = NULL;
+        const ogl_program_variable* static_color_descriptor          = NULL;
+        const ogl_program_variable* zenith_luminance_descriptor      = NULL;
 
         cutoff_stringstream                << "cutoff"                << n;
         linear_exposure_stringstream       << "linear_exposure"       << n;
@@ -604,8 +604,8 @@ PRIVATE RENDERING_CONTEXT_CALL void _sh_projector_init_rgbrgb_to_rrggbbXX_conver
     ogl_program_link(data->rgbrgb_to_rrggbbXX_converter.program);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* input_data_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* n_sh_coeffs_descriptor  = NULL;
+    const ogl_program_variable* input_data_descriptor   = NULL;
+    const ogl_program_variable* n_sh_coeffs_descriptor  = NULL;
 
     ogl_program_get_uniform_by_name(data->rgbrgb_to_rrggbbXX_converter.program,
                                     system_hashed_ansi_string_create("input_data"),

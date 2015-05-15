@@ -561,11 +561,11 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             }
 
             /* Retrieve uniform locations */
-            const ogl_program_uniform_descriptor* fragment_shader_color_descriptor            = NULL;
-            const ogl_program_uniform_descriptor* fragment_shader_font_table_descriptor       = NULL;
-            const ogl_program_uniform_descriptor* vertex_shader_data_descriptor               = NULL;
-            const ogl_program_uniform_descriptor* vertex_shader_n_origin_character_descriptor = NULL;
-            const ogl_program_uniform_descriptor* vertex_shader_scale_descriptor              = NULL;
+            const ogl_program_variable* fragment_shader_color_descriptor            = NULL;
+            const ogl_program_variable* fragment_shader_font_table_descriptor       = NULL;
+            const ogl_program_variable* vertex_shader_data_descriptor               = NULL;
+            const ogl_program_variable* vertex_shader_n_origin_character_descriptor = NULL;
+            const ogl_program_variable* vertex_shader_scale_descriptor              = NULL;
 
             if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
                                                  system_hashed_ansi_string_create("color"),

@@ -758,20 +758,20 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
     } /* for (all programs) */
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* border_width_uniform              = NULL;
-    const ogl_program_uniform_descriptor* border_width_bg_uniform           = NULL;
-    const ogl_program_uniform_descriptor* brightness_uniform                = NULL;
-    const ogl_program_uniform_descriptor* button_start_u_uniform            = NULL;
-    const ogl_program_uniform_descriptor* button_start_uv_uniform           = NULL;
-    const ogl_program_uniform_descriptor* color_uniform                     = NULL;
-    const ogl_program_uniform_descriptor* highlighted_v1v2_uniform          = NULL;
-    const ogl_program_uniform_descriptor* selected_v1v2_uniform             = NULL;
-    const ogl_program_uniform_descriptor* stop_data_uniform                 = NULL;
-    const ogl_program_uniform_descriptor* x1_x2_y_uniform                   = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_program_bg_uniform       = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_program_label_bg_uniform = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_program_slider_uniform   = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_program_uniform          = NULL;
+    const ogl_program_variable* border_width_uniform              = NULL;
+    const ogl_program_variable* border_width_bg_uniform           = NULL;
+    const ogl_program_variable* brightness_uniform                = NULL;
+    const ogl_program_variable* button_start_u_uniform            = NULL;
+    const ogl_program_variable* button_start_uv_uniform           = NULL;
+    const ogl_program_variable* color_uniform                     = NULL;
+    const ogl_program_variable* highlighted_v1v2_uniform          = NULL;
+    const ogl_program_variable* selected_v1v2_uniform             = NULL;
+    const ogl_program_variable* stop_data_uniform                 = NULL;
+    const ogl_program_variable* x1_x2_y_uniform                   = NULL;
+    const ogl_program_variable* x1y1x2y2_program_bg_uniform       = NULL;
+    const ogl_program_variable* x1y1x2y2_program_label_bg_uniform = NULL;
+    const ogl_program_variable* x1y1x2y2_program_slider_uniform   = NULL;
+    const ogl_program_variable* x1y1x2y2_program_uniform          = NULL;
 
     ogl_program_get_uniform_by_name(dropdown_ptr->program,
                                     system_hashed_ansi_string_create("border_width"),

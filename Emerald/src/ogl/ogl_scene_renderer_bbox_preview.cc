@@ -229,8 +229,8 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     }
 
     /* Retrieve uniform block manager */
-    const ogl_program_uniform_descriptor* model_uniform_ptr = NULL;
-    const ogl_program_uniform_descriptor* vp_uniform_ptr    = NULL;
+    const ogl_program_variable* model_uniform_ptr = NULL;
+    const ogl_program_variable* vp_uniform_ptr    = NULL;
 
     ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
                                           system_hashed_ansi_string_create("data"),

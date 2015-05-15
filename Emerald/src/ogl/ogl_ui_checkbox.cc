@@ -202,10 +202,10 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
     border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* border_width_uniform    = NULL;
-    const ogl_program_uniform_descriptor* brightness_uniform      = NULL;
-    const ogl_program_uniform_descriptor* text_brightness_uniform = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_uniform        = NULL;
+    const ogl_program_variable* border_width_uniform    = NULL;
+    const ogl_program_variable* brightness_uniform      = NULL;
+    const ogl_program_variable* text_brightness_uniform = NULL;
+    const ogl_program_variable* x1y1x2y2_uniform        = NULL;
 
     ogl_program_get_uniform_by_name(checkbox_ptr->program,
                                     system_hashed_ansi_string_create("border_width"),

@@ -184,10 +184,10 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
     }
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* normal_matrix_uniform_descriptor_ptr = NULL;
-    const ogl_program_uniform_descriptor* start_offsets_uniform_descriptor_ptr = NULL;
-    const ogl_program_uniform_descriptor* stride_uniform_descriptor_ptr        = NULL;
-    const ogl_program_uniform_descriptor* vp_uniform_descriptor_ptr            = NULL;
+    const ogl_program_variable* normal_matrix_uniform_descriptor_ptr = NULL;
+    const ogl_program_variable* start_offsets_uniform_descriptor_ptr = NULL;
+    const ogl_program_variable* stride_uniform_descriptor_ptr        = NULL;
+    const ogl_program_variable* vp_uniform_descriptor_ptr            = NULL;
 
     ogl_program_get_uniform_by_name(preview_ptr->preview_program,
                                     system_hashed_ansi_string_create("normal_matrix"),

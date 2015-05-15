@@ -342,9 +342,9 @@ TEST(WebcamTest, CreationTest)
         ASSERT_NE(fullscreen_quad_program_id, -1);
 
         /* Retrieve uniform locations */
-        const ogl_program_uniform_descriptor* projection_matrix_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* cam_texture_uniform_descriptor       = NULL;
-        const ogl_program_uniform_descriptor* view_matrix_uniform_descriptor       = NULL; 
+        const ogl_program_variable* projection_matrix_uniform_descriptor = NULL;
+        const ogl_program_variable* cam_texture_uniform_descriptor       = NULL;
+        const ogl_program_variable* view_matrix_uniform_descriptor       = NULL; 
 
         ASSERT_TRUE(ogl_program_get_uniform_by_name(program, system_hashed_ansi_string_create("cam_texture"),       &cam_texture_uniform_descriptor)       );
         ASSERT_TRUE(ogl_program_get_uniform_by_name(program, system_hashed_ansi_string_create("view_matrix"),       &view_matrix_uniform_descriptor)       );

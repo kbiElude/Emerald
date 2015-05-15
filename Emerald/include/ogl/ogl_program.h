@@ -138,20 +138,20 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(__
  *
  *  Note: You need to call ogl_program_link() before using this function.
  *
- *  @param ogl_program                      Program to retrieve the uniform descriptor for.
- *  @param size_t                           Index of the uniform to retrieve the descriptor for.
- *  @param ogl_program_uniform_descriptor** Deref will be used to store the result, if successful.
+ *  @param ogl_program            Program to retrieve the uniform descriptor for.
+ *  @param size_t                 Index of the uniform to retrieve the descriptor for.
+ *  @param ogl_program_variable** Deref will be used to store the result, if successful.
  *
  *  @return true if successful, false otherwise.
  **/
 PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_program,
                                                          __in            size_t,
-                                                         __out __notnull const ogl_program_uniform_descriptor**);
+                                                         __out __notnull const ogl_program_variable**);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_program,
                                                         __in  __notnull system_hashed_ansi_string,
-                                                        __out __notnull const ogl_program_uniform_descriptor**);
+                                                        __out __notnull const ogl_program_variable**);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull ogl_program     program,

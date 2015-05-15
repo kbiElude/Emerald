@@ -268,10 +268,10 @@ typedef struct
     ogl_program_attribute_type type;
 } ogl_program_attribute_descriptor;
 
-/** Structure that describes properties of a program uniform.
+/** Structure that describes properties of a program uniform, or a shader storage block member, or the like.
  *
- *  This structure is used to describe both regular uniforms and
- *  members of uniform blocks.
+ *  For uniforms, this structure is used to describe both uniforms coming from the default uniform block,
+ *  and regular uniform blocks.
  */
 typedef struct 
 {
@@ -285,7 +285,7 @@ typedef struct
     GLint                      ub_matrix_stride;
     GLint                      ub_id;
     GLint                      ub_offset;
-} ogl_program_uniform_descriptor;
+} ogl_program_variable;
 
 /** Enumerator that describes type of a given shader */
 typedef enum

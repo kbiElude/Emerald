@@ -195,8 +195,8 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_uniform_descriptor* pos1_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* pos2_uniform_descriptor = NULL;
+        const ogl_program_variable* pos1_uniform_descriptor = NULL;
+        const ogl_program_variable* pos2_uniform_descriptor = NULL;
 
         b_result  = ogl_program_get_uniform_by_name      (result->program,
                                                           system_hashed_ansi_string_create("pos1"),

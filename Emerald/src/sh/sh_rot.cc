@@ -199,8 +199,8 @@ PRIVATE void _sh_rot_create_callback(__in __notnull ogl_context context, void* a
         ogl_program_link(data_ptr->rot_z_program);
 
         /* Retrieve program uniforms */
-        const ogl_program_uniform_descriptor* input_descriptor   = NULL;
-        const ogl_program_uniform_descriptor* z_angle_descriptor = NULL;
+        const ogl_program_variable* input_descriptor   = NULL;
+        const ogl_program_variable* z_angle_descriptor = NULL;
 
         ogl_program_get_uniform_by_name(data_ptr->rot_z_program, system_hashed_ansi_string_create("input"),   &input_descriptor);
         ogl_program_get_uniform_by_name(data_ptr->rot_z_program, system_hashed_ansi_string_create("z_angle"), &z_angle_descriptor);
@@ -245,10 +245,10 @@ PRIVATE void _sh_rot_create_callback(__in __notnull ogl_context context, void* a
         ogl_program_link(data_ptr->rot_xyz_program);
 
         /* Retrieve program uniforms */
-        const ogl_program_uniform_descriptor* input_descriptor   = NULL;
-        const ogl_program_uniform_descriptor* x_angle_descriptor = NULL;
-        const ogl_program_uniform_descriptor* y_angle_descriptor = NULL;
-        const ogl_program_uniform_descriptor* z_angle_descriptor = NULL;
+        const ogl_program_variable* input_descriptor   = NULL;
+        const ogl_program_variable* x_angle_descriptor = NULL;
+        const ogl_program_variable* y_angle_descriptor = NULL;
+        const ogl_program_variable* z_angle_descriptor = NULL;
 
         ogl_program_get_uniform_by_name(data_ptr->rot_xyz_program, system_hashed_ansi_string_create("input"),   &input_descriptor);
         ogl_program_get_uniform_by_name(data_ptr->rot_xyz_program, system_hashed_ansi_string_create("x_angle"), &x_angle_descriptor);
@@ -297,10 +297,10 @@ PRIVATE void _sh_rot_create_callback(__in __notnull ogl_context context, void* a
         ogl_program_link(data_ptr->rot_y_krivanek_program);
 
         /* Retrieve program uniforms */
-        const ogl_program_uniform_descriptor* ddy_diagonal_descriptor   = NULL;
-        const ogl_program_uniform_descriptor* dy_subdiagonal_descriptor = NULL;
-        const ogl_program_uniform_descriptor* input_descriptor          = NULL;
-        const ogl_program_uniform_descriptor* y_angle_descriptor        = NULL;
+        const ogl_program_variable* ddy_diagonal_descriptor   = NULL;
+        const ogl_program_variable* dy_subdiagonal_descriptor = NULL;
+        const ogl_program_variable* input_descriptor          = NULL;
+        const ogl_program_variable* y_angle_descriptor        = NULL;
 
         ogl_program_get_uniform_by_name(data_ptr->rot_y_krivanek_program, system_hashed_ansi_string_create("dy_subdiagonal"), &dy_subdiagonal_descriptor);
         ogl_program_get_uniform_by_name(data_ptr->rot_y_krivanek_program, system_hashed_ansi_string_create("ddy_diagonal"),   &ddy_diagonal_descriptor);

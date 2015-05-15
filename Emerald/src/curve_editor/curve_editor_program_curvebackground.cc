@@ -196,8 +196,8 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_uniform_descriptor* colors_uniform_descriptor    = NULL;
-        const ogl_program_uniform_descriptor* positions_uniform_descriptor = NULL;
+        const ogl_program_variable* colors_uniform_descriptor    = NULL;
+        const ogl_program_variable* positions_uniform_descriptor = NULL;
 
         b_result  = ogl_program_get_uniform_by_name      (result->program,
                                                           system_hashed_ansi_string_create("colors"),

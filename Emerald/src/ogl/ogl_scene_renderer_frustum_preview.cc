@@ -454,7 +454,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
                                &preview_ptr->po_ub_bo_start_offset);
 
     /* Retrieve PO uniform locations */
-    const ogl_program_uniform_descriptor* po_vp_descriptor = NULL;
+    const ogl_program_variable* po_vp_descriptor = NULL;
 
     if (!ogl_program_get_uniform_by_name(preview_ptr->po,
                                          system_hashed_ansi_string_create("vp"),

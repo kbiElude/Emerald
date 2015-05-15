@@ -148,7 +148,7 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
     ogl_program_link(poisson_ptr->program);
 
     /* Retrieve attribute & uniform locations */
-    const ogl_program_uniform_descriptor* blur_strength_uniform = NULL;
+    const ogl_program_variable* blur_strength_uniform = NULL;
 
     ogl_program_get_uniform_by_name(poisson_ptr->program,
                                     system_hashed_ansi_string_create("blur_strength"),

@@ -161,8 +161,8 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__i
                                &preview_ptr->preview_program_ub_bo_start_offset);
 
     /* Retrieve uniform properties */
-    const ogl_program_uniform_descriptor* color_uniform_ptr    = NULL;
-    const ogl_program_uniform_descriptor* position_uniform_ptr = NULL;
+    const ogl_program_variable* color_uniform_ptr    = NULL;
+    const ogl_program_variable* position_uniform_ptr = NULL;
 
     ogl_program_get_uniform_by_name(preview_ptr->preview_program,
                                     system_hashed_ansi_string_create("color"),

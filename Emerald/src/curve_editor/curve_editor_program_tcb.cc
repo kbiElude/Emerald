@@ -272,13 +272,13 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_uniform_descriptor* delta_time_uniform_descriptor   = NULL;
-        const ogl_program_uniform_descriptor* delta_x_uniform_descriptor      = NULL;
-        const ogl_program_uniform_descriptor* node_indexes_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* should_round_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* start_time_uniform_descriptor   = NULL;
-        const ogl_program_uniform_descriptor* start_x_uniform_descriptor      = NULL;
-        const ogl_program_uniform_descriptor* val_range_uniform_descriptor    = NULL;
+        const ogl_program_variable* delta_time_uniform_descriptor   = NULL;
+        const ogl_program_variable* delta_x_uniform_descriptor      = NULL;
+        const ogl_program_variable* node_indexes_uniform_descriptor = NULL;
+        const ogl_program_variable* should_round_uniform_descriptor = NULL;
+        const ogl_program_variable* start_time_uniform_descriptor   = NULL;
+        const ogl_program_variable* start_x_uniform_descriptor      = NULL;
+        const ogl_program_variable* val_range_uniform_descriptor    = NULL;
 
         b_result  = ogl_program_get_uniform_by_name      (result->program,
                                                           system_hashed_ansi_string_create("delta_time"),
