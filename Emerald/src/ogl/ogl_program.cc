@@ -240,85 +240,122 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                                   __in           GLenum                variable_interface_type,
                                                   __in           unsigned int          n_variable)
 {
-    static const GLenum piq_property_array_size    = GL_ARRAY_SIZE;
-    static const GLenum piq_property_array_stride  = GL_ARRAY_STRIDE;
-    static const GLenum piq_property_block_index   = GL_BLOCK_INDEX;
-    static const GLenum piq_property_is_row_major  = GL_IS_ROW_MAJOR;
-    static const GLenum piq_property_matrix_stride = GL_MATRIX_STRIDE;
-    static const GLenum piq_property_name_length   = GL_NAME_LENGTH;
-    static const GLenum piq_property_offset        = GL_OFFSET;
-    static const GLenum piq_property_type          = GL_TYPE;
+    static const GLenum piq_property_array_size             = GL_ARRAY_SIZE;
+    static const GLenum piq_property_array_stride           = GL_ARRAY_STRIDE;
+    static const GLenum piq_property_block_index            = GL_BLOCK_INDEX;
+    static const GLenum piq_property_is_row_major           = GL_IS_ROW_MAJOR;
+    static const GLenum piq_property_matrix_stride          = GL_MATRIX_STRIDE;
+    static const GLenum piq_property_name_length            = GL_NAME_LENGTH;
+    static const GLenum piq_property_offset                 = GL_OFFSET;
+    static const GLenum piq_property_top_level_array_size   = GL_TOP_LEVEL_ARRAY_SIZE;
+    static const GLenum piq_property_top_level_array_stride = GL_TOP_LEVEL_ARRAY_STRIDE;
+    static const GLenum piq_property_type                   = GL_TYPE;
 
-    variable_ptr->length   = 0;
-    variable_ptr->location = 0;
-    variable_ptr->name     = NULL;
-    variable_ptr->size     = 0;
-    variable_ptr->type     = PROGRAM_UNIFORM_TYPE_UNDEFINED;
+    variable_ptr->array_stride           = 0;
+    variable_ptr->is_row_major_matrix    = false;
+    variable_ptr->length                 = 0;
+    variable_ptr->location               = -1;
+    variable_ptr->matrix_stride          = 0;
+    variable_ptr->name                   = NULL;
+    variable_ptr->size                   = 0;
+    variable_ptr->top_level_array_size   = 0;
+    variable_ptr->top_level_array_stride = 0;
+    variable_ptr->type                   = PROGRAM_UNIFORM_TYPE_UNDEFINED;
+    variable_ptr->ub_id                  = -1;
+    variable_ptr->ub_offset              = -1;
 
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_array_size,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                         &variable_ptr->size);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_name_length,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                         &variable_ptr->length);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_type,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                               (GLint*) &variable_ptr->type);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_array_stride,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                        &variable_ptr->array_stride);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_block_index,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                        &variable_ptr->ub_id);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_is_row_major,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                        &variable_ptr->is_row_major_matrix);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_matrix_stride,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                        &variable_ptr->matrix_stride);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                         variable_interface_type,
-                                         n_variable,
-                                         1, /* propCount */
-                                        &piq_property_offset,
-                                         1, /* bufSize */
-                                         NULL, /* length */
-                                        &variable_ptr->ub_offset);
+    if (variable_interface_type == GL_BUFFER_VARIABLE ||
+        variable_interface_type == GL_UNIFORM)
+    {
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_array_size,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                             &variable_ptr->size);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_name_length,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                             &variable_ptr->length);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_type,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                   (GLint*) &variable_ptr->type);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_array_stride,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->array_stride);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_is_row_major,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->is_row_major_matrix);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_matrix_stride,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->matrix_stride);
+    }
+
+    if (variable_interface_type == GL_BUFFER_VARIABLE)
+    {
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_top_level_array_size,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->top_level_array_size);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_top_level_array_stride,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->top_level_array_stride);
+    }
+
+    if (variable_interface_type == GL_UNIFORM)
+    {
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_block_index,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->ub_id);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_offset,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->ub_offset);
+    }
 
     memset(temp_variable_name_storage,
            0,

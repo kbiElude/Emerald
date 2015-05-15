@@ -273,17 +273,23 @@ typedef struct
  *  For uniforms, this structure is used to describe both uniforms coming from the default uniform block,
  *  and regular uniform blocks.
  */
-typedef struct 
+typedef struct
 {
-    /* Uniforms (default & regular uniform block): */
+    /* Buffer variables */
+    GLint top_level_array_size;
+    GLint top_level_array_stride;
+
+    /* Buffer variables, uniforms (default & regular uniform block): */
     GLint                      array_stride;
     GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
     GLint                      matrix_stride;
     system_hashed_ansi_string  name;
     GLsizei                    length;
-    GLint                      location;
     GLint                      size;             /* array size for arrayed uniforms or 1 otherwise */
     ogl_program_uniform_type   type;
+
+    /* Uniforms (default & regular uniform block): */
+    GLint                      location;
 
     /* Regular uniform block uniforms only: */
     GLint                      ub_id;
