@@ -81,6 +81,17 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
 PUBLIC EMERALD_API bool ogl_program_detach_shader(__in __notnull ogl_program,
                                                   __in __notnull ogl_shader);
 
+/** TODO
+ *
+ *  Internal use only.
+ */
+PUBLIC void ogl_program_fill_ogl_program_variable(__in                                             __notnull ogl_program           program,
+                                                  __in                                                       unsigned int          temp_variable_name_storage_size,
+                                                  __in_bcount_opt(temp_variable_name_storage_size)           char*                 temp_variable_name_storage,
+                                                  __in                                             __notnull ogl_program_variable* variable_ptr,
+                                                  __in                                                       GLenum                variable_interface_type,
+                                                  __in                                                       unsigned int          n_variable);
+
 /** Retrieves a shader that has been successfully attached to the program. Note the indexes
  *  may differ from the ones reported by GL.
  *

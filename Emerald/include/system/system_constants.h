@@ -25,6 +25,9 @@
 /* Defines amount of precached entries for active attribute storage per program */
 #define BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER (4)
 
+/* Defines number of precached entries for active shader storage block storage per program */
+#define BASE_PROGRAM_ACTIVE_SHADER_STORAGE_BLOCKS_NUMBER (4)
+
 /* Defines number of precached entries for active uniform block storage per program */
 #define BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER (4)
 

@@ -14,6 +14,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_window.h"
 
+GLuint       _bo_id                = 0;
 ogl_context  _context              = NULL;
 GLuint       _read_fbo_id          = 0;
 int          _local_workgroup_size = 0;
@@ -25,21 +26,27 @@ const int    _window_size[2]       = {1280, 720};
 
 const char* _cs_body_preamble = "#version 420 core\n"
                                 "\n"
-                                "#extension GL_ARB_compute_shader    : require\n"
-                                "#extension GL_ARB_shader_image_size : require\n"
+                                "#extension GL_ARB_compute_shader               : require\n"
+                                "#extension GL_ARB_shader_image_size            : require\n"
+                                "#extension GL_ARB_shader_storage_buffer_object : require\n"
                                 "\n";
 
 const char* _cs_body_core     = "layout (local_size_x = LOCAL_SIZE, local_size_y = LOCAL_SIZE) in;\n"
                                 "\n"
                                 "layout(rgba8) restrict writeonly uniform image2D result;\n"
                                 "\n"
+                                "layout(std140) restrict readonly buffer dataBlock\n"
+                                "{\n"
+                                "    uint test_counter;"
+                                "};\n"
+                                "\n"
                                 "void main()\n"
                                 "{\n"
                                 "    const uvec2 current_xy   = gl_GlobalInvocationID.xy;\n"
                                 "    const uvec2 image_size   = imageSize(result);\n"
-                                "           vec4 result_value = vec4(float(current_xy.x)                / float(image_size.x),\n"
-                                "                                    float(current_xy.y)                / float(image_size.y),\n"
-                                "                                    float(current_xy.x + current_xy.y) / float(image_size.x + image_size.y),\n"
+                                "           vec4 result_value = vec4(float (test_counter + current_xy.x                 % image_size.x)                / float(image_size.x),\n"
+                                "                                    float (test_counter + current_xy.y                 % image_size.y)                / float(image_size.y),\n"
+                                "                                    float((test_counter + current_xy.x + current_xy.y) % image_size.x + image_size.y) / float(image_size.x + image_size.y),\n"
                                 "                                    1.0);\n"
                                 "\n"
                                 "    imageStore(result, ivec2(current_xy), result_value);\n"
@@ -112,6 +119,19 @@ void _rendering_handler(ogl_context          context,
 
     if (!has_initialized)
     {
+        /* Set up the data buffer object */
+        const int data_bo_contents = 0;
+
+        entry_points->pGLGenBuffers(1,
+                                   &_bo_id);
+        entry_points->pGLBindBuffer(GL_SHADER_STORAGE_BUFFER,
+                                    _bo_id);
+
+        entry_points->pGLBufferData(GL_SHADER_STORAGE_BUFFER,
+                                    sizeof(data_bo_contents),
+                                   &data_bo_contents,
+                                    GL_DYNAMIC_DRAW);
+
         /* Set up the compute shader object */
         ogl_shader cs = ogl_shader_create(context,
                                           SHADER_TYPE_COMPUTE,
@@ -188,6 +208,15 @@ void _rendering_handler(ogl_context          context,
                                         n_global_invocations[1],
                                         1); /* num_groups_z */
 
+    /* Update the test counter value */
+    entry_points->pGLBindBufferBase(GL_SHADER_STORAGE_BUFFER,
+                                    0,
+                                    _bo_id);
+    entry_points->pGLBufferSubData(GL_SHADER_STORAGE_BUFFER,
+                                   0, /* offset */
+                                   sizeof(n_frames_rendered),
+                                  &n_frames_rendered);
+
     /* Copy the result data to the back buffer */
     entry_points->pGLMemoryBarrier  (GL_FRAMEBUFFER_BARRIER_BIT);
     entry_points->pGLBlitFramebuffer(0,
@@ -221,7 +250,41 @@ PRIVATE void _window_closed_callback_handler(system_window window)
 
 PRIVATE void _window_closing_callback_handler(system_window window)
 {
-    /* TODO: Release GL stuff in here */
+    const ogl_context_gl_entrypoints* entry_points = NULL;
+
+    ogl_context_get_property(_context,
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entry_points);
+
+    if (_bo_id != 0)
+    {
+        entry_points->pGLDeleteBuffers(1,
+                                      &_bo_id);
+
+        _bo_id = 0;
+    }
+
+    if (_program != NULL)
+    {
+        ogl_program_release(_program);
+
+        _program = NULL;
+    }
+
+    if (_read_fbo_id != 0)
+    {
+        entry_points->pGLDeleteFramebuffers(1,
+                                           &_read_fbo_id);
+
+        _read_fbo_id = 0;
+    }
+
+    if (_texture != NULL)
+    {
+        ogl_texture_release(_texture);
+
+        _texture = NULL;
+    }
 
     system_event_set(_window_closed_event);
 }
@@ -270,7 +333,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closed_callback_handler,
+                                        _window_closing_callback_handler,
                                         NULL);
 
     ogl_rendering_handler_play(window_rendering_handler,

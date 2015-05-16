@@ -7,6 +7,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_block.h"
+#include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
@@ -36,10 +37,23 @@ typedef struct
     system_hashed_ansi_string     program_info_log;
     ogl_program_syncable_ubs_mode syncable_ubs_mode;
 
+    /* Stores ogl_program_ssb instances.
+     *
+     * NOTE: All rendering contexts in Emerald use a shared namespace. Since SSB content synchronization
+     *       is not currently supported, we need not use any sort of context->ssb mapping.
+     */
+    system_resizable_vector active_ssbs;
+
+    /* Maps shader storage block index to a corresponding ogl_program_ssb instance. */
+    system_hash64map ssb_index_to_ssb_map;
+
+    /* Maps shared storage block name to a corresponding ogl_program_ssb instnace. */
+    system_hash64map ssb_name_to_ssb_map;
+
     /* Maps ogl_context instances to ogl_program_ub instances.
      *
      * If syncable_ubs_mode is set to:
-     *   a) OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE:            this map is NULL.
+     *   a) OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE:            as _GLOBAL.
      *   b) OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL:      this map holds a single entry at key 0.
      *   c) OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT: this map holds as many entries, as there were contexts
      *                                                        that tried to access it. use ogl_context instances as keys.
@@ -76,6 +90,7 @@ typedef struct
     PFNGLLINKPROGRAMPROC                pGLLinkProgram;
     PFNGLPROGRAMBINARYPROC              pGLProgramBinary;
     PFNGLPROGRAMPARAMETERIPROC          pGLProgramParameteri;
+    PFNGLSHADERSTORAGEBLOCKBINDINGPROC  pGLShaderStorageBlockBinding;
     PFNGLTRANSFORMFEEDBACKVARYINGSPROC  pGLTransformFeedbackVaryings;
     PFNGLUNIFORMBLOCKBINDINGPROC        pGLUniformBlockBinding;
 
@@ -100,33 +115,29 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_program,
 /** Internal variables */
 
 /* Forward declarations */
-PRIVATE void _ogl_program_attach_shader_callback       (__in __notnull ogl_context             context,
-                                                                       void*                   in_arg);
-PRIVATE void _ogl_program_create_callback              (__in __notnull ogl_context             context,
-                                                                       void*                   in_arg);
-PRIVATE void _ogl_program_detach_shader_callback       (__in __notnull ogl_context             context,
-                                                                       void*                   in_arg);
-PRIVATE char*_ogl_program_get_binary_blob_file_name    (__in __notnull _ogl_program*           program_ptr);
-PRIVATE char*_ogl_program_get_source_code_file_name    (__in __notnull _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_get_variable_properties      (__in __notnull _ogl_program*           program_ptr,
-                                                        __in __notnull char*                   temp_variable_name_storage,
-                                                        __in __notnull ogl_program_variable*   variable_ptr,
-                                                        __in           GLenum                  variable_interface_type,
-                                                        __in           unsigned int            n_variable);
-PRIVATE void _ogl_program_link_callback                (__in __notnull ogl_context             context,
-                                                                       void*                   in_arg);
-PRIVATE bool _ogl_program_load_binary_blob             (__in __notnull ogl_context,
-                                                        __in __notnull _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_release                      (__in __notnull void*                   program);
-PRIVATE void _ogl_program_release_active_attributes    (               system_resizable_vector active_attributes);
-PRIVATE void _ogl_program_release_active_uniform_blocks(__in __notnull _ogl_program*           program_ptr,
-                                                        __in_opt       ogl_context             owner_context = NULL);
-PRIVATE void _ogl_program_release_active_uniforms      (               system_resizable_vector active_uniforms);
-PRIVATE void _ogl_program_release_callback             (__in __notnull ogl_context             context,
-                                                                       void*                   in_arg);
-PRIVATE void _ogl_program_save_binary_blob             (__in __notnull ogl_context,
-                                                        __in __notnull _ogl_program*           program_ptr);
-PRIVATE void _ogl_program_save_shader_sources          (__in __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_attach_shader_callback              (__in     __notnull ogl_context             context,
+                                                                                  void*                   in_arg);
+PRIVATE void _ogl_program_create_callback                     (__in     __notnull ogl_context             context,
+                                                                                  void*                   in_arg);
+PRIVATE void _ogl_program_detach_shader_callback              (__in     __notnull ogl_context             context,
+                                                                                  void*                   in_arg);
+PRIVATE char*_ogl_program_get_binary_blob_file_name           (__in     __notnull _ogl_program*           program_ptr);
+PRIVATE char*_ogl_program_get_source_code_file_name           (__in     __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_link_callback                       (__in     __notnull ogl_context             context,
+                                                                                  void*                   in_arg);
+PRIVATE bool _ogl_program_load_binary_blob                    (__in     __notnull ogl_context,
+                                                               __in     __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release                             (__in     __notnull void*                   program);
+PRIVATE void _ogl_program_release_active_attributes           (                   system_resizable_vector active_attributes);
+PRIVATE void _ogl_program_release_active_shader_storage_blocks(__in     __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_release_active_uniform_blocks       (__in     __notnull _ogl_program*           program_ptr,
+                                                               __in_opt           ogl_context             owner_context = NULL);
+PRIVATE void _ogl_program_release_active_uniforms             (                   system_resizable_vector active_uniforms);
+PRIVATE void _ogl_program_release_callback                    (__in     __notnull ogl_context             context,
+                                                                                  void*                   in_arg);
+PRIVATE void _ogl_program_save_binary_blob                    (__in     __notnull ogl_context,
+                                                               __in     __notnull _ogl_program*           program_ptr);
+PRIVATE void _ogl_program_save_shader_sources                 (__in     __notnull _ogl_program*           program_ptr);
 
 
 /** TODO */
@@ -236,142 +247,6 @@ PRIVATE char*_ogl_program_get_source_code_file_name(__in __notnull _ogl_program*
 }
 
 /** TODO */
-PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*         program_ptr,
-                                                  __in __notnull char*                 temp_variable_name_storage,
-                                                  __in __notnull ogl_program_variable* variable_ptr,
-                                                  __in           GLenum                variable_interface_type,
-                                                  __in           unsigned int          n_variable)
-{
-    static const GLenum piq_property_array_size             = GL_ARRAY_SIZE;
-    static const GLenum piq_property_array_stride           = GL_ARRAY_STRIDE;
-    static const GLenum piq_property_block_index            = GL_BLOCK_INDEX;
-    static const GLenum piq_property_is_row_major           = GL_IS_ROW_MAJOR;
-    static const GLenum piq_property_matrix_stride          = GL_MATRIX_STRIDE;
-    static const GLenum piq_property_name_length            = GL_NAME_LENGTH;
-    static const GLenum piq_property_offset                 = GL_OFFSET;
-    static const GLenum piq_property_top_level_array_size   = GL_TOP_LEVEL_ARRAY_SIZE;
-    static const GLenum piq_property_top_level_array_stride = GL_TOP_LEVEL_ARRAY_STRIDE;
-    static const GLenum piq_property_type                   = GL_TYPE;
-
-    variable_ptr->array_stride           = 0;
-    variable_ptr->block_index            = -1;
-    variable_ptr->block_offset           = -1;
-    variable_ptr->is_row_major_matrix    = false;
-    variable_ptr->length                 = 0;
-    variable_ptr->location               = -1;
-    variable_ptr->matrix_stride          = 0;
-    variable_ptr->name                   = NULL;
-    variable_ptr->size                   = 0;
-    variable_ptr->top_level_array_size   = 0;
-    variable_ptr->top_level_array_stride = 0;
-    variable_ptr->type                   = PROGRAM_UNIFORM_TYPE_UNDEFINED;
-
-    if (variable_interface_type == GL_BUFFER_VARIABLE ||
-        variable_interface_type == GL_UNIFORM)
-    {
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_array_size,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                             &variable_ptr->size);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_array_stride,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->array_stride);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_block_index,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->block_index);
-    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_is_row_major,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->is_row_major_matrix);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_matrix_stride,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->matrix_stride);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_offset,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->block_offset);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_name_length,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                             &variable_ptr->length);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_type,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                   (GLint*) &variable_ptr->type);
-    }
-
-    if (variable_interface_type == GL_BUFFER_VARIABLE)
-    {
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_top_level_array_size,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->top_level_array_size);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_top_level_array_stride,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->top_level_array_stride);
-    }
-
-    memset(temp_variable_name_storage,
-           0,
-           variable_ptr->length + 1);
-
-    program_ptr->pGLGetProgramResourceName(program_ptr->id,
-                                           GL_UNIFORM,
-                                           n_variable,
-                                           variable_ptr->length + 1,
-                                           NULL,
-                                           temp_variable_name_storage);
-
-    variable_ptr->name     = system_hashed_ansi_string_create          (temp_variable_name_storage);
-    variable_ptr->location = program_ptr->pGLGetProgramResourceLocation(program_ptr->id,
-                                                                        variable_interface_type,
-                                                                        temp_variable_name_storage);
-}
-/** TODO */
 PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_block_type block_type,
                                                   __in __notnull _ogl_program*          program_ptr,
                                                   __in __notnull ogl_context            context_map_key,
@@ -472,8 +347,57 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
         {
             case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER:
             {
-                ASSERT_DEBUG_SYNC(false,
-                                  "TODO");
+                ogl_program_ssb new_ssb = ogl_program_ssb_create(context,
+                                                                 (ogl_program) program_ptr,
+                                                                 n_active_block,
+                                                                 block_name_has);
+
+                ASSERT_ALWAYS_SYNC(new_ssb != NULL,
+                                   "ogl_program_ssb_create() returned NULL.");
+
+                /* Store the SSB info in the internal hash-maps */
+                if (program_ptr->active_ssbs          == NULL ||
+                    program_ptr->ssb_index_to_ssb_map == NULL ||
+                    program_ptr->ssb_name_to_ssb_map  == NULL)
+                {
+                    program_ptr->active_ssbs          = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_SHADER_STORAGE_BLOCKS_NUMBER,
+                                                                                       sizeof(ogl_program_ssb) );
+                    program_ptr->ssb_index_to_ssb_map = system_hash64map_create       (sizeof(ogl_program_ssb) );
+                    program_ptr->ssb_name_to_ssb_map  = system_hash64map_create       (sizeof(ogl_program_ssb) );
+
+                    ASSERT_DEBUG_SYNC(program_ptr->active_ssbs          != NULL &&
+                                      program_ptr->ssb_index_to_ssb_map != NULL &&
+                                      program_ptr->ssb_name_to_ssb_map  != NULL,
+                                      "Sanity check failed");
+                }
+
+                ASSERT_DEBUG_SYNC(system_resizable_vector_find(program_ptr->active_ssbs,
+                                                               new_ssb) == ITEM_NOT_FOUND,
+                                  "Sanity check failed");
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->ssb_index_to_ssb_map,
+                                                             (system_hash64) n_active_block),
+                                  "Sanity check failed");
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(program_ptr->ssb_name_to_ssb_map,
+                                                             system_hashed_ansi_string_get_hash(block_name_has) ),
+                                  "Sanity check failed");
+
+                system_resizable_vector_push(program_ptr->active_ssbs,
+                                             new_ssb);
+                system_hash64map_insert     (program_ptr->ssb_index_to_ssb_map,
+                                             n_active_block,
+                                             new_ssb,
+                                             NULL,  /* on_remove_callback */
+                                             NULL); /* on_remove_callback_user_arg */
+                system_hash64map_insert     (program_ptr->ssb_name_to_ssb_map,
+                                             system_hashed_ansi_string_get_hash(block_name_has),
+                                             new_ssb,
+                                             NULL,  /* on_remove_callback */
+                                             NULL); /* on_remove_callback_user_arg */
+
+                /* Set up the SSB block->binding mapping */
+                program_ptr->pGLShaderStorageBlockBinding(program_ptr->id,
+                                                          n_active_block,
+                                                          n_active_block);
 
                 break;
             }
@@ -533,13 +457,6 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
                                             context_ub_name_to_ub_map,
                                             NULL,  /* on_remove_callback          */
                                             NULL); /* on_remove_callback_user_arg */
-                }
-                else
-                {
-                    ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
-                                      context_ub_index_to_ub_map != NULL &&
-                                      context_ub_name_to_ub_map  != NULL,
-                                      "Sanity check failed");
                 }
 
                 ASSERT_DEBUG_SYNC(system_resizable_vector_find(context_active_ubs,
@@ -659,8 +576,10 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                     &n_active_uniform_max_length);
 
         /* Allocate temporary name buffers */
+        const unsigned int uniform_name_length = n_active_uniform_max_length + 1;
+
         GLchar* attribute_name = new (std::nothrow) GLchar[n_active_attribute_max_length + 1];
-        GLchar* uniform_name   = new (std::nothrow) GLchar[n_active_uniform_max_length   + 1];
+        GLchar* uniform_name   = new (std::nothrow) GLchar[uniform_name_length];
 
         ASSERT_ALWAYS_SYNC(attribute_name != NULL,
                            "Could not allocate [%d] bytes for active attribute name",
@@ -718,11 +637,12 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                                    "Out of memory while allocating new uniform descriptor.");
                 if (new_uniform != NULL)
                 {
-                    _ogl_program_get_variable_properties(program_ptr,
-                                                         uniform_name,
-                                                         new_uniform,
-                                                         GL_UNIFORM,
-                                                         n_active_uniform);
+                    ogl_program_fill_ogl_program_variable( (ogl_program) program_ptr,
+                                                          uniform_name_length,
+                                                          uniform_name,
+                                                          new_uniform,
+                                                          GL_UNIFORM,
+                                                          n_active_uniform);
                 }
 
                 system_resizable_vector_push(program_ptr->active_uniforms,
@@ -994,14 +914,21 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     ogl_program_variable*             uniform_ptr   = NULL;
     ogl_program_ub                    uniform_block = NULL;
 
-    _ogl_program_release_active_attributes    (program_ptr->active_attributes);
-    _ogl_program_release_active_uniforms      (program_ptr->active_uniforms);
-    _ogl_program_release_active_uniform_blocks(program_ptr);
+    _ogl_program_release_active_attributes           (program_ptr->active_attributes);
+    _ogl_program_release_active_shader_storage_blocks(program_ptr);
+    _ogl_program_release_active_uniforms             (program_ptr->active_uniforms);
+    _ogl_program_release_active_uniform_blocks       (program_ptr);
 
     if (program_ptr->active_attributes != NULL)
     {
         system_resizable_vector_release(program_ptr->active_attributes);
         program_ptr->active_attributes = NULL;
+    }
+
+    if (program_ptr->active_uniforms != NULL)
+    {
+        system_resizable_vector_release(program_ptr->active_uniforms);
+        program_ptr->active_uniforms = NULL;
     }
 
     if (program_ptr->context_to_active_ubs_map != NULL)
@@ -1020,12 +947,6 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     {
         system_hash64map_release(program_ptr->context_to_ub_name_to_ub_map);
         program_ptr->context_to_ub_name_to_ub_map = NULL;
-    }
-
-    if (program_ptr->active_uniforms != NULL)
-    {
-        system_resizable_vector_release(program_ptr->active_uniforms);
-        program_ptr->active_uniforms = NULL;
     }
 
     /* Release TF varying name array, if one was allocated */
@@ -1060,6 +981,40 @@ PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector acti
                           "Could not retrieve program attribute pointer.");
 
         delete program_attribute_ptr;
+    }
+}
+
+/** TODO */
+PRIVATE void _ogl_program_release_active_shader_storage_blocks(__in __notnull _ogl_program* program_ptr)
+{
+    if (program_ptr->active_ssbs != NULL)
+    {
+        ogl_program_ssb current_ssb = NULL;
+
+        while (system_resizable_vector_pop(program_ptr->active_ssbs,
+                                          &current_ssb))
+        {
+            ogl_program_ssb_release(current_ssb);
+
+            current_ssb = NULL;
+        }
+
+        system_resizable_vector_release(program_ptr->active_ssbs);
+        program_ptr->active_ssbs = NULL;
+    }
+
+    if (program_ptr->ssb_index_to_ssb_map != NULL)
+    {
+        system_hash64map_release(program_ptr->ssb_index_to_ssb_map);
+
+        program_ptr->ssb_index_to_ssb_map = NULL;
+    }
+
+    if (program_ptr->ssb_name_to_ssb_map != NULL)
+    {
+        system_hash64map_release(program_ptr->ssb_name_to_ssb_map);
+
+        program_ptr->ssb_name_to_ssb_map = NULL;
     }
 }
 
@@ -1198,6 +1153,10 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
             }
         } /* for (all recognized contexts) */
     } /* if (program_ptr->context_to_ub_name_to_ub_map != NULL) */
+
+    /* Do NOT release the maps in this function, as it can also be called right before
+     * linking time.
+     */
 }
 
 /** TODO */
@@ -1505,6 +1464,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
         result->active_attributes             = NULL;
+        result->active_ssbs                   = NULL;
         result->active_uniforms               = NULL;
         result->attached_shaders              = NULL;
         result->context                       = context;
@@ -1518,6 +1478,8 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
         result->link_status                   = false;
         result->name                          = name;
         result->n_tf_varyings                 = 0;
+        result->ssb_index_to_ssb_map          = NULL;
+        result->ssb_name_to_ssb_map           = NULL;
         result->syncable_ubs_mode             = syncable_ubs_mode;
         result->tf_mode                       = GL_NONE;
         result->tf_varyings                   = NULL;
@@ -1555,6 +1517,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
             result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
@@ -1591,6 +1554,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
+            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
             result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
@@ -1656,6 +1620,163 @@ PUBLIC EMERALD_API bool ogl_program_detach_shader(__in __notnull ogl_program pro
     }
 
     return result;
+}
+
+/** TODO */
+PUBLIC void ogl_program_fill_ogl_program_variable(__in                                             __notnull ogl_program           program,
+                                                  __in                                                       unsigned int          temp_variable_name_storage_size,
+                                                  __in_bcount_opt(temp_variable_name_storage_size)           char*                 temp_variable_name_storage,
+                                                  __in                                             __notnull ogl_program_variable* variable_ptr,
+                                                  __in                                                       GLenum                variable_interface_type,
+                                                  __in                                                       unsigned int          n_variable)
+{
+    bool                is_temp_variable_defined            = (temp_variable_name_storage != NULL) ? true
+                                                                                                   : false;
+    static const GLenum piq_property_array_size             = GL_ARRAY_SIZE;
+    static const GLenum piq_property_array_stride           = GL_ARRAY_STRIDE;
+    static const GLenum piq_property_block_index            = GL_BLOCK_INDEX;
+    static const GLenum piq_property_is_row_major           = GL_IS_ROW_MAJOR;
+    static const GLenum piq_property_matrix_stride          = GL_MATRIX_STRIDE;
+    static const GLenum piq_property_name_length            = GL_NAME_LENGTH;
+    static const GLenum piq_property_offset                 = GL_OFFSET;
+    static const GLenum piq_property_top_level_array_size   = GL_TOP_LEVEL_ARRAY_SIZE;
+    static const GLenum piq_property_top_level_array_stride = GL_TOP_LEVEL_ARRAY_STRIDE;
+    static const GLenum piq_property_type                   = GL_TYPE;
+    _ogl_program*       program_ptr                         = (_ogl_program*) program;
+
+    variable_ptr->array_stride           = 0;
+    variable_ptr->block_index            = -1;
+    variable_ptr->block_offset           = -1;
+    variable_ptr->is_row_major_matrix    = false;
+    variable_ptr->length                 = 0;
+    variable_ptr->location               = -1;
+    variable_ptr->matrix_stride          = 0;
+    variable_ptr->name                   = NULL;
+    variable_ptr->size                   = 0;
+    variable_ptr->top_level_array_size   = 0;
+    variable_ptr->top_level_array_stride = 0;
+    variable_ptr->type                   = PROGRAM_UNIFORM_TYPE_UNDEFINED;
+
+    if (variable_interface_type == GL_BUFFER_VARIABLE ||
+        variable_interface_type == GL_UNIFORM)
+    {
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_array_size,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                             &variable_ptr->size);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_array_stride,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->array_stride);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_block_index,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->block_index);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_is_row_major,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->is_row_major_matrix);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_matrix_stride,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->matrix_stride);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_offset,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->block_offset);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_name_length,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                             &variable_ptr->length);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_type,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                   (GLint*) &variable_ptr->type);
+    }
+
+    if (variable_interface_type == GL_BUFFER_VARIABLE)
+    {
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_top_level_array_size,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->top_level_array_size);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_top_level_array_stride,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->top_level_array_stride);
+    }
+
+    if (variable_interface_type == GL_UNIFORM)
+    {
+        variable_ptr->location = program_ptr->pGLGetProgramResourceLocation(program_ptr->id,
+                                                                            variable_interface_type,
+                                                                            temp_variable_name_storage);
+    }
+
+    if (!is_temp_variable_defined)
+    {
+        temp_variable_name_storage = new (std::nothrow) char[variable_ptr->length + 1];
+    }
+
+    memset(temp_variable_name_storage,
+           0,
+           variable_ptr->length + 1);
+
+    program_ptr->pGLGetProgramResourceName(program_ptr->id,
+                                           GL_UNIFORM,
+                                           n_variable,
+                                           variable_ptr->length + 1,
+                                           NULL,
+                                           temp_variable_name_storage);
+
+    variable_ptr->name     = system_hashed_ansi_string_create(temp_variable_name_storage);
+
+    if (!is_temp_variable_defined)
+    {
+        delete [] temp_variable_name_storage;
+
+        temp_variable_name_storage = NULL;
+    }
 }
 
 /** Please see header for specification */

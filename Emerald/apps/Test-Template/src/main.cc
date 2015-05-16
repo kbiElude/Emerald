@@ -111,7 +111,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closed_callback_handler,
+                                        _window_closing_callback_handler,
                                         NULL);
 
     ogl_rendering_handler_play(window_rendering_handler,

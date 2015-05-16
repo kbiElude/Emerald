@@ -94,6 +94,7 @@ typedef struct _ogl_program_block
         name                             = in_name;
         members                          = system_resizable_vector_create(4, /* capacity */
                                                                           sizeof(ogl_program_variable*) );
+        offset_to_uniform_descriptor_map = NULL;
         owner                            = in_owner;
         pGLBufferSubData                 = NULL;
         pGLGetProgramResourceiv          = NULL;
@@ -502,38 +503,60 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
                      n_active_variable < n_active_variables;
                    ++n_active_variable)
             {
-                const ogl_program_variable* variable_ptr = NULL;
+                ogl_program_variable* variable_ptr = NULL;
 
-                if (!ogl_program_get_uniform_by_index(block_ptr->owner,
-                                                      active_variable_indices[n_active_variable],
-                                                     &variable_ptr) )
+                /* Descriptors for uniforms coming from both default and general uniform blocks are
+                 * stored in ogl_program.
+                 *
+                 * However, this is not the case for SSBOs, so we need to fork here.
+                 */
+                if (block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER)
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve variable descriptor for index [%d]",
-                                      active_variable_indices[n_active_variable]);
+                    variable_ptr = new (std::nothrow) ogl_program_variable();
 
-                    result = false;
-                    goto end;
+                    ogl_program_fill_ogl_program_variable(block_ptr->owner,
+                                                          0,    /* temp_variable_name_storage */
+                                                          NULL, /* temp_variable_name */
+                                                          variable_ptr,
+                                                          GL_BUFFER_VARIABLE,
+                                                          active_variable_indices[n_active_variable]);
+
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(variable_ptr->block_offset != -1,
-                                      "Uniform block member offset is -1!");
-                    ASSERT_DEBUG_SYNC(!system_hash64map_contains(block_ptr->offset_to_uniform_descriptor_map,
-                                                                 (system_hash64) variable_ptr->block_offset),
-                                      "Uniform block offset [%d] is already occupied!",
-                                      variable_ptr->block_offset);
+                    ASSERT_DEBUG_SYNC(block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                      "Sanity check failed");
 
-                    system_hash64map_insert     (block_ptr->offset_to_uniform_descriptor_map,
-                                                 (system_hash64) variable_ptr->block_offset,
-                                                 (void*) variable_ptr,
-                                                 NULL,  /* on_remove_callback */
-                                                 NULL); /* on_remove_callback_user_arg */
-                    system_resizable_vector_push(block_ptr->members,
-                                                 (void*) variable_ptr);
+                    if (!ogl_program_get_uniform_by_index(block_ptr->owner,
+                                                          active_variable_indices[n_active_variable],
+                                                          (const ogl_program_variable**) &variable_ptr) )
+                    {
+                        ASSERT_DEBUG_SYNC(false,
+                                          "Could not retrieve variable descriptor for index [%d]",
+                                          active_variable_indices[n_active_variable]);
+
+                        result = false;
+                        goto end;
+                    }
+                    else
+                    {
+                        ASSERT_DEBUG_SYNC(variable_ptr->block_offset != -1,
+                                          "Uniform block member offset is -1!");
+                        ASSERT_DEBUG_SYNC(!system_hash64map_contains(block_ptr->offset_to_uniform_descriptor_map,
+                                                                     (system_hash64) variable_ptr->block_offset),
+                                          "Uniform block offset [%d] is already occupied!",
+                                          variable_ptr->block_offset);
+
+                        system_hash64map_insert     (block_ptr->offset_to_uniform_descriptor_map,
+                                                     (system_hash64) variable_ptr->block_offset,
+                                                     (void*) variable_ptr,
+                                                     NULL,  /* on_remove_callback */
+                                                     NULL); /* on_remove_callback_user_arg */
+                        system_resizable_vector_push(block_ptr->members,
+                                                     (void*) variable_ptr);
+                    }
                 }
             } /* for (all active variables) */
-
             delete [] active_variable_indices;
             active_variable_indices = NULL;
         }
