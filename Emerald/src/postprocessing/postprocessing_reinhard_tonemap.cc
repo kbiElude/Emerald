@@ -278,10 +278,10 @@ PRIVATE void _create_callback(ogl_context context,
                                     system_hashed_ansi_string_create("white_level"),
                                    &white_level_uniform_descriptor);
 
-    data->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_descriptor->ub_offset;
+    data->data_ptr->operator_program_alpha_ub_offset                = alpha_uniform_descriptor->block_offset;
     data->data_ptr->operator_program_luminance_texture_location     = luminance_texture_uniform_descriptor->location;
     data->data_ptr->operator_program_luminance_texture_avg_location = luminance_texture_avg_uniform_descriptor->location;
-    data->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_descriptor->ub_offset;
+    data->data_ptr->operator_program_white_level_ub_offset          = white_level_uniform_descriptor->block_offset;
 }
 
 /** TODO */

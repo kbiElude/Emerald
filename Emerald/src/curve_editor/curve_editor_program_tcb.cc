@@ -310,13 +310,13 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
 
         if (b_result)
         {
-            result->delta_time_ub_offset   = delta_time_uniform_descriptor->ub_offset;
-            result->delta_x_ub_offset      = delta_x_uniform_descriptor->ub_offset;
-            result->node_indexes_ub_offset = node_indexes_uniform_descriptor->ub_offset;
-            result->should_round_ub_offset = should_round_uniform_descriptor->ub_offset;
-            result->start_time_ub_offset   = start_time_uniform_descriptor->ub_offset;
-            result->start_x_ub_offset      = start_x_uniform_descriptor->ub_offset;
-            result->val_range_ub_offset    = val_range_uniform_descriptor->ub_offset;
+            result->delta_time_ub_offset   = delta_time_uniform_descriptor->block_offset;
+            result->delta_x_ub_offset      = delta_x_uniform_descriptor->block_offset;
+            result->node_indexes_ub_offset = node_indexes_uniform_descriptor->block_offset;
+            result->should_round_ub_offset = should_round_uniform_descriptor->block_offset;
+            result->start_time_ub_offset   = start_time_uniform_descriptor->block_offset;
+            result->start_x_ub_offset      = start_x_uniform_descriptor->block_offset;
+            result->val_range_ub_offset    = val_range_uniform_descriptor->block_offset;
 
             ASSERT_DEBUG_SYNC(result->delta_time_ub_offset   != -1 &&
                               result->delta_x_ub_offset      != -1 &&

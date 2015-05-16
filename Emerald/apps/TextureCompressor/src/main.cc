@@ -814,7 +814,7 @@ void _rendering_handler(ogl_context          context,
                            "x1y1x2y2 is not recognized");
 
         _preview_po_uniform_texture            = uniform_texture->location;
-        _preview_po_uniform_x1y1x2y2_ub_offset = uniform_x1y1x2y2->ub_offset;
+        _preview_po_uniform_x1y1x2y2_ub_offset = uniform_x1y1x2y2->block_offset;
 
         /* Retrieve uniform block data */
         ogl_program_get_uniform_block_by_name(_preview_po,

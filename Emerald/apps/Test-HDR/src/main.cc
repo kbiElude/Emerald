@@ -299,7 +299,7 @@ void _rendering_handler(ogl_context          context,
                                               0);
 
             ogl_program_ub_set_nonarrayed_uniform_value( _linear_program_ub,
-                                                         _linear_program_exposure_uniform->ub_offset,
+                                                         _linear_program_exposure_uniform->block_offset,
                                                         &variant_value,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
@@ -328,7 +328,7 @@ void _rendering_handler(ogl_context          context,
                                               0);
 
             ogl_program_ub_set_nonarrayed_uniform_value( _reinhardt_program_ub,
-                                                         _reinhardt_program_exposure_uniform->ub_offset,
+                                                         _reinhardt_program_exposure_uniform->block_offset,
                                                         &variant_value,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
@@ -378,7 +378,7 @@ void _rendering_handler(ogl_context          context,
                                               0);
 
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_program_ub,
-                                                         _filmic_program_exposure_uniform->ub_offset,
+                                                         _filmic_program_exposure_uniform->block_offset,
                                                         &variant_value,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
@@ -447,47 +447,47 @@ void _rendering_handler(ogl_context          context,
                                               _texture);
 
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_a_uniform->ub_offset,
+                                                         _filmic_customizable_program_a_uniform->block_offset,
                                                         &a,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_b_uniform->ub_offset,
+                                                         _filmic_customizable_program_b_uniform->block_offset,
                                                         &b,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_c_uniform->ub_offset,
+                                                         _filmic_customizable_program_c_uniform->block_offset,
                                                         &c,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_d_uniform->ub_offset,
+                                                         _filmic_customizable_program_d_uniform->block_offset,
                                                         &d,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_e_uniform->ub_offset,
+                                                         _filmic_customizable_program_e_uniform->block_offset,
                                                         &e,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_exposure_uniform->ub_offset,
+                                                         _filmic_customizable_program_exposure_uniform->block_offset,
                                                         &variant_value,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_exposure_bias_uniform->ub_offset,
+                                                         _filmic_customizable_program_exposure_bias_uniform->block_offset,
                                                         &exposure_bias,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_f_uniform->ub_offset,
+                                                         _filmic_customizable_program_f_uniform->block_offset,
                                                         &f,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );
             ogl_program_ub_set_nonarrayed_uniform_value( _filmic_customizable_program_ub,
-                                                         _filmic_customizable_program_w_uniform->ub_offset,
+                                                         _filmic_customizable_program_w_uniform->block_offset,
                                                         &w,
                                                          0, /* src_data_flags */
                                                          sizeof(float) );

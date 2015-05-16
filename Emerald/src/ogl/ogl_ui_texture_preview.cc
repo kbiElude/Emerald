@@ -400,7 +400,7 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 
     if (border_width_uniform != NULL)
     {
-        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform->ub_offset;
+        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform->block_offset;
     }
     else
     {
@@ -409,15 +409,15 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 
     if (layer_uniform != NULL)
     {
-        texture_preview_ptr->program_layer_ub_offset = layer_uniform->ub_offset;
+        texture_preview_ptr->program_layer_ub_offset = layer_uniform->block_offset;
     }
     else
     {
         texture_preview_ptr->program_layer_ub_offset = -1;
     }
 
-    texture_preview_ptr->program_texture_ub_offset  = texture_uniform->ub_offset;
-    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->ub_offset;
+    texture_preview_ptr->program_texture_ub_offset  = texture_uniform->block_offset;
+    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->block_offset;
 
     /* Set up uniform blocks */
     unsigned int ub_fs_index = -1;

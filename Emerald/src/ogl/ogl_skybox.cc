@@ -229,9 +229,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
                                     system_hashed_ansi_string_create("mv"),
                                    &mv_data_uniform_descriptor);
 
-    skybox_ptr->input_sh_light_data_uniform_location = (input_light_sh_data_uniform_descriptor != NULL) ? input_light_sh_data_uniform_descriptor->location : -1;
-    skybox_ptr->inverse_projection_ub_offset         = (inverse_projection_uniform_descriptor  != NULL) ? inverse_projection_uniform_descriptor->ub_offset : -1;
-    skybox_ptr->mv_ub_offset                         = (mv_data_uniform_descriptor             != NULL) ? mv_data_uniform_descriptor->ub_offset            : -1;
+    skybox_ptr->input_sh_light_data_uniform_location = (input_light_sh_data_uniform_descriptor != NULL) ? input_light_sh_data_uniform_descriptor->location    : -1;
+    skybox_ptr->inverse_projection_ub_offset         = (inverse_projection_uniform_descriptor  != NULL) ? inverse_projection_uniform_descriptor->block_offset : -1;
+    skybox_ptr->mv_ub_offset                         = (mv_data_uniform_descriptor             != NULL) ? mv_data_uniform_descriptor->block_offset            : -1;
 
     /* Retrieve uniform block info */
     _ogl_skybox_init_ub(skybox_ptr);
@@ -303,9 +303,9 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
                                     system_hashed_ansi_string_create("skybox"),
                                    &skybox_uniform_descriptor);
 
-    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_descriptor != NULL) ? inverse_projection_uniform_descriptor->ub_offset : -1;
-    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_descriptor            != NULL) ? mv_data_uniform_descriptor->ub_offset            : -1;
-    skybox_ptr->skybox_uniform_location      = (skybox_uniform_descriptor             != NULL) ? skybox_uniform_descriptor->location              : -1;
+    skybox_ptr->inverse_projection_ub_offset = (inverse_projection_uniform_descriptor != NULL) ? inverse_projection_uniform_descriptor->block_offset : -1;
+    skybox_ptr->mv_ub_offset                 = (mv_data_uniform_descriptor            != NULL) ? mv_data_uniform_descriptor->block_offset            : -1;
+    skybox_ptr->skybox_uniform_location      = (skybox_uniform_descriptor             != NULL) ? skybox_uniform_descriptor->location                 : -1;
 
     /* Retrieve uniform block info */
     _ogl_skybox_init_ub(skybox_ptr);

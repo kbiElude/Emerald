@@ -35,18 +35,19 @@ typedef struct _ogl_program_block
     unsigned char*         block_data;
     GLint                  block_data_size;
     ogl_program_block_type block_type;
-    GLuint                 indexed_ub_bp;
+    GLuint                 indexed_bp;
 
     system_hashed_ansi_string name;
     system_resizable_vector   members;                          /* pointers to const ogl_program_variable*. These are owned by owner - DO NOT release. */
-    system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_variable*. Rules as above apply. */
+    system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_variable*. Rules as above apply. Only used for UBs */
     bool                      syncable;
 
-    PFNGLBINDBUFFERPROC              pGLBindBuffer;
-    PFNGLBUFFERSUBDATAPROC           pGLBufferSubData;
-    PFNGLGETPROGRAMRESOURCEIVPROC    pGLGetProgramResourceiv;
-    PFNGLNAMEDBUFFERSUBDATAEXTPROC   pGLNamedBufferSubDataEXT;
-    PFNGLUNIFORMBLOCKBINDINGPROC     pGLUniformBlockBinding;
+    PFNGLBINDBUFFERPROC                pGLBindBuffer;
+    PFNGLBUFFERSUBDATAPROC             pGLBufferSubData;
+    PFNGLGETPROGRAMRESOURCEIVPROC      pGLGetProgramResourceiv;
+    PFNGLNAMEDBUFFERSUBDATAEXTPROC     pGLNamedBufferSubDataEXT;
+    PFNGLSHADERSTORAGEBLOCKBINDINGPROC pGLShaderStorageBlockBinding;
+    PFNGLUNIFORMBLOCKBINDINGPROC       pGLUniformBlockBinding;
 
     /* Delimits a region which needs to be re-uploaded to the GPU upon next
      * synchronisation request.
@@ -70,6 +71,15 @@ typedef struct _ogl_program_block
                                 __in           bool                      in_syncable,
                                 __in           ogl_program_block_type    in_type)
     {
+        /* Sanity checks.
+         *
+         * 1. Sync is not available yet for SSBs (todo?)
+         */
+        ASSERT_DEBUG_SYNC(in_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER && !in_syncable || 
+                          in_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                          "Sanity check failed");
+
+        /* Initialize fields with default values */
         block_bo_id                      = 0;
         block_bo_start_offset            = -1;
         block_data                       = NULL;
@@ -80,25 +90,30 @@ typedef struct _ogl_program_block
         dirty_offset_end                 = DIRTY_OFFSET_UNUSED;
         dirty_offset_start               = DIRTY_OFFSET_UNUSED;
         index                            = in_index;
-        indexed_ub_bp                    = 0; /* default GL state value */
+        indexed_bp                       = 0; /* default GL state value */
         name                             = in_name;
         members                          = system_resizable_vector_create(4, /* capacity */
                                                                           sizeof(ogl_program_variable*) );
-        offset_to_uniform_descriptor_map = system_hash64map_create       (sizeof(ogl_program_variable*) );
         owner                            = in_owner;
         pGLBufferSubData                 = NULL;
         pGLGetProgramResourceiv          = NULL;
         pGLNamedBufferSubDataEXT         = NULL;
+        pGLShaderStorageBlockBinding     = NULL;
         pGLUniformBlockBinding           = NULL;
         syncable                         = in_syncable;
 
-        ogl_context_get_property(context,
-                                 OGL_CONTEXT_PROPERTY_BUFFERS,
-                                &buffers);
+        if (in_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER)
+        {
+            offset_to_uniform_descriptor_map = system_hash64map_create(sizeof(ogl_program_variable*) );
 
-        ASSERT_DEBUG_SYNC(members                          != NULL &&
-                          offset_to_uniform_descriptor_map != NULL,
-                          "Out of memory");
+            ogl_context_get_property(context,
+                                     OGL_CONTEXT_PROPERTY_BUFFERS,
+                                    &buffers);
+
+            ASSERT_DEBUG_SYNC(members                          != NULL &&
+                              offset_to_uniform_descriptor_map != NULL,
+                              "Out of memory");
+        }
     }
 
     ~_ogl_program_block()
@@ -351,11 +366,12 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
-        block_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
-        block_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
-        block_ptr->pGLGetProgramResourceiv = entry_points_piq->pGLGetProgramResourceiv;
-        block_ptr->pGLUniformBlockBinding  = entry_points->pGLUniformBlockBinding;
-        uniform_buffer_offset_alignment    = limits_ptr->uniform_buffer_offset_alignment;
+        block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
+        block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
+        block_ptr->pGLGetProgramResourceiv      = entry_points_piq->pGLGetProgramResourceiv;
+        block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
+        block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
+        uniform_buffer_offset_alignment         = limits_ptr->uniform_buffer_offset_alignment;
 
         if (entry_points_dsa->pGLNamedBufferSubDataEXT != NULL)
         {
@@ -377,11 +393,20 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
         entry_points->pGLGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT,
                                     &uniform_buffer_offset_alignment);
 
-        block_ptr->pGLBindBuffer           = entry_points->pGLBindBuffer;
-        block_ptr->pGLBufferSubData        = entry_points->pGLBufferSubData;
-        block_ptr->pGLGetProgramResourceiv = entry_points->pGLGetProgramResourceiv;
-        block_ptr->pGLUniformBlockBinding  = entry_points->pGLUniformBlockBinding;
+        block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
+        block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
+        block_ptr->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
+        block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
+        block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
     }
+
+    /* Convert the block type to GL interface type */
+    const GLenum block_type_gl = (block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
+                                                                                                         : GL_UNIFORM_BLOCK;
+
+    ASSERT_DEBUG_SYNC(block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER ||
+                      block_ptr->block_type == OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                      "Unrecognized ogl_program_block type.");
 
     /* Retrieve UB uniform block properties */
     static const GLenum block_property_active_variables     = GL_ACTIVE_VARIABLES;
@@ -392,7 +417,7 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
                  GLuint po_id                               = ogl_program_get_id(block_ptr->owner);
 
     block_ptr->pGLGetProgramResourceiv(po_id,
-                                       GL_UNIFORM_BLOCK,
+                                       block_type_gl,
                                        block_ptr->index,
                                        1, /* propCount */
                                       &block_property_buffer_data_size,
@@ -436,83 +461,83 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
         ogl_program_block_sync( (ogl_program_block) block_ptr);
     } /* if (ub_ptr->block_data_size > 0 && ub_ptr->syncable) */
 
-    /* Determine all uniform members of the block */
-    GLint* active_uniform_indices = NULL;
-    GLint  n_active_ub_uniforms   = 0;
+    /* Determine all variables for the block */
+    GLint* active_variable_indices = NULL;
+    GLint  n_active_variables      = 0;
 
     block_ptr->pGLGetProgramResourceiv(po_id,
-                                       GL_UNIFORM_BLOCK,
+                                       block_type_gl,
                                        block_ptr->index,
                                        1, /* propCount */
                                       &block_property_num_active_variables,
                                        1,    /* bufSize */
                                        NULL, /* length */
-                                      &n_active_ub_uniforms);
+                                      &n_active_variables);
 
-    if (n_active_ub_uniforms > 0)
+    if (n_active_variables > 0)
     {
-        active_uniform_indices = new (std::nothrow) GLint[n_active_ub_uniforms];
+        active_variable_indices = new (std::nothrow) GLint[n_active_variables];
 
-        if (active_uniform_indices == NULL)
+        if (active_variable_indices == NULL)
         {
             ASSERT_ALWAYS_SYNC(false,
                                "Out of memory");
 
             result = false;
             goto end;
-        } /* if (active_uniform_indices == NULL) */
+        } /* if (active_variable_indices == NULL) */
 
-        if (active_uniform_indices != NULL)
+        if (active_variable_indices != NULL)
         {
             block_ptr->pGLGetProgramResourceiv(po_id,
-                                               GL_UNIFORM_BLOCK,
+                                               block_type_gl,
                                                block_ptr->index,
                                                1, /* propCount */
                                               &block_property_active_variables,
-                                               n_active_ub_uniforms,
+                                               n_active_variables,
                                                NULL, /* length */
-                                               active_uniform_indices);
+                                               active_variable_indices);
 
-            for (int n_active_uniform = 0;
-                     n_active_uniform < n_active_ub_uniforms;
-                   ++n_active_uniform)
+            for (int n_active_variable = 0;
+                     n_active_variable < n_active_variables;
+                   ++n_active_variable)
             {
-                const ogl_program_variable* uniform_ptr = NULL;
+                const ogl_program_variable* variable_ptr = NULL;
 
                 if (!ogl_program_get_uniform_by_index(block_ptr->owner,
-                                                      active_uniform_indices[n_active_uniform],
-                                                     &uniform_ptr) )
+                                                      active_variable_indices[n_active_variable],
+                                                     &variable_ptr) )
                 {
                     ASSERT_DEBUG_SYNC(false,
-                                      "Could not retrieve uniform descriptor for index [%d]",
-                                      active_uniform_indices[n_active_uniform]);
+                                      "Could not retrieve variable descriptor for index [%d]",
+                                      active_variable_indices[n_active_variable]);
 
                     result = false;
                     goto end;
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(uniform_ptr->ub_offset != -1,
+                    ASSERT_DEBUG_SYNC(variable_ptr->block_offset != -1,
                                       "Uniform block member offset is -1!");
                     ASSERT_DEBUG_SYNC(!system_hash64map_contains(block_ptr->offset_to_uniform_descriptor_map,
-                                                                 (system_hash64) uniform_ptr->ub_offset),
+                                                                 (system_hash64) variable_ptr->block_offset),
                                       "Uniform block offset [%d] is already occupied!",
-                                      uniform_ptr->ub_offset);
+                                      variable_ptr->block_offset);
 
                     system_hash64map_insert     (block_ptr->offset_to_uniform_descriptor_map,
-                                                 (system_hash64) uniform_ptr->ub_offset,
-                                                 (void*) uniform_ptr,
+                                                 (system_hash64) variable_ptr->block_offset,
+                                                 (void*) variable_ptr,
                                                  NULL,  /* on_remove_callback */
                                                  NULL); /* on_remove_callback_user_arg */
                     system_resizable_vector_push(block_ptr->members,
-                                                 (void*) uniform_ptr);
+                                                 (void*) variable_ptr);
                 }
-            } /* for (all uniform block members) */
+            } /* for (all active variables) */
 
-            delete [] active_uniform_indices;
-            active_uniform_indices = NULL;
+            delete [] active_variable_indices;
+            active_variable_indices = NULL;
         }
-    } /* if (n_active_ub_uniforms > 0) */
+    } /* if (n_active_variable > 0) */
 
     /* All done */
 end:
@@ -590,7 +615,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
                        dst_array_start_index >= 0 && dst_array_item_count >= 1  && (dst_array_start_index + dst_array_item_count <= uniform_ptr->size),
                       "Invalid dst array start index or dst array item count.");
 
-    ASSERT_DEBUG_SYNC(uniform_ptr->ub_offset != -1,
+    ASSERT_DEBUG_SYNC(uniform_ptr->block_offset != -1,
                       "Uniform offset is -1");
 
     ASSERT_DEBUG_SYNC(uniform_ptr->size == 1                                    ||
@@ -621,7 +646,7 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     unsigned int modified_region_end   = DIRTY_OFFSET_UNUSED;
     unsigned int modified_region_start = DIRTY_OFFSET_UNUSED;
 
-          unsigned char* dst_traveller_ptr = block_ptr->block_data + uniform_ptr->ub_offset                                              +
+          unsigned char* dst_traveller_ptr = block_ptr->block_data + uniform_ptr->block_offset                                           +
                                              ((uniform_ptr->array_stride != -1) ? uniform_ptr->array_stride : 0) * dst_array_start_index;
     const unsigned char* src_traveller_ptr = (const unsigned char*) src_data;
 
@@ -871,9 +896,9 @@ PUBLIC void ogl_program_block_get_property(__in  __notnull const ogl_program_blo
             break;
         }
 
-        case OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_UB_BP:
+        case OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP:
         {
-            *(GLuint*) out_result = block_ptr->indexed_ub_bp;
+            *(GLuint*) out_result = block_ptr->indexed_bp;
 
             break;
         }
@@ -945,9 +970,9 @@ PUBLIC void ogl_program_block_set_property(__in  __notnull const ogl_program_blo
 
     switch (property)
     {
-        case OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_UB_BP:
+        case OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP:
         {
-            block_ptr->indexed_ub_bp = *(GLuint*) data;
+            block_ptr->indexed_bp = *(GLuint*) data;
 
             break;
         }

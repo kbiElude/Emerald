@@ -218,8 +218,8 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
 
         if (b_result)
         {
-            result->alpha_ub_offset     = alpha_uniform_descriptor->ub_offset;
-            result->positions_ub_offset = positions_uniform_descriptor->ub_offset;
+            result->alpha_ub_offset     = alpha_uniform_descriptor->block_offset;
+            result->positions_ub_offset = positions_uniform_descriptor->block_offset;
 
             ASSERT_DEBUG_SYNC(result->alpha_ub_offset     != -1 &&
                               result->positions_ub_offset != -1,

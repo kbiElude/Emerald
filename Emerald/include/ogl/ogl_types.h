@@ -281,6 +281,8 @@ typedef struct
 
     /* Buffer variables, uniforms (default & regular uniform block): */
     GLint                      array_stride;
+    GLint                      block_index;
+    GLint                      block_offset;
     GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
     GLint                      matrix_stride;
     system_hashed_ansi_string  name;
@@ -290,10 +292,6 @@ typedef struct
 
     /* Uniforms (default & regular uniform block): */
     GLint                      location;
-
-    /* Regular uniform block uniforms only: */
-    GLint                      ub_id;
-    GLint                      ub_offset;
 } ogl_program_variable;
 
 /** Enumerator that describes type of a given shader */
@@ -1149,6 +1147,7 @@ typedef struct
     PFNGLSAMPLERPARAMETERIPROC                   pGLSamplerParameteri;
     PFNGLSAMPLERPARAMETERIVPROC                  pGLSamplerParameteriv;
     PFNGLSCISSORPROC                             pGLScissor;
+    PFNGLSHADERSTORAGEBLOCKBINDINGPROC           pGLShaderStorageBlockBinding;
     PFNGLSHADERSOURCEPROC                        pGLShaderSource;
     PFNGLSTENCILFUNCPROC                         pGLStencilFunc;
     PFNGLSTENCILFUNCSEPARATEPROC                 pGLStencilFuncSeparate;

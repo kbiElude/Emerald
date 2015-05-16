@@ -43,9 +43,9 @@ PRIVATE ogl_program_block_property _ogl_program_ub_get_block_property_for_ub_pro
             break;
         }
 
-        case OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP:
+        case OGL_PROGRAM_UB_PROPERTY_INDEXED_BP:
         {
-            result = OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_UB_BP;
+            result = OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP;
 
             break;
         }

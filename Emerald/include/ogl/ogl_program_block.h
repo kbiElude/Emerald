@@ -56,7 +56,7 @@ typedef enum
      *
      * Supported for: UBs.
      */
-    OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_UB_BP,
+    OGL_PROGRAM_BLOCK_PROPERTY_INDEXED_BP,
 
     /* system_hashed_ansi_string
      *
@@ -74,6 +74,9 @@ typedef enum
 
 typedef enum
 {
+    /* Shader storage buffer block */
+    OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
+
     /* Uniform buffer block */
     OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER
 

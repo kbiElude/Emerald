@@ -36,7 +36,7 @@ typedef enum
     OGL_PROGRAM_UB_PROPERTY_INDEX,
 
     /* GLuint */
-    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+    OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
 
     /* system_hashed_ansi_string */
     OGL_PROGRAM_UB_PROPERTY_NAME,

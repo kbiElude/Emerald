@@ -266,10 +266,10 @@ PRIVATE void _ogl_ui_scrollbar_init_renderer_callback(ogl_context context, void*
                                     system_hashed_ansi_string_create("x1y1x2y2"),
                                    &x1y1x2y2_uniform);
 
-    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform != NULL ? border_width_uniform->ub_offset : -1);
-    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform   != NULL ? brightness_uniform->ub_offset   : -1);
-    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform    != NULL ? is_handle_uniform->ub_offset    : -1);
-    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform     != NULL ? x1y1x2y2_uniform->ub_offset     : -1);
+    scrollbar_ptr->program_slider_border_width_ub_offset = (border_width_uniform != NULL ? border_width_uniform->block_offset : -1);
+    scrollbar_ptr->program_slider_brightness_ub_offset   = (brightness_uniform   != NULL ? brightness_uniform->block_offset   : -1);
+    scrollbar_ptr->program_slider_is_handle_ub_offset    = (is_handle_uniform    != NULL ? is_handle_uniform->block_offset    : -1);
+    scrollbar_ptr->program_slider_x1y1x2y2_ub_offset     = (x1y1x2y2_uniform     != NULL ? x1y1x2y2_uniform->block_offset     : -1);
 
     /* Set general uniforms */
     ogl_program_ub_set_nonarrayed_uniform_value(scrollbar_ptr->program_slider_ub_fs,

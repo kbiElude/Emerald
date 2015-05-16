@@ -213,7 +213,7 @@ void _init_gl(ogl_context context,
                                     system_hashed_ansi_string_create("input"),
                                    &input_descriptor);
 
-    _generation_po_time_ub_offset   = time_descriptor->ub_offset;
+    _generation_po_time_ub_offset   = time_descriptor->block_offset;
     _modification_po_input_location = input_descriptor->location;
 
     /* Retrieve uniform block data */

@@ -465,7 +465,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     }
     else
     {
-        preview_ptr->po_vp_ub_offset = po_vp_descriptor->ub_offset;
+        preview_ptr->po_vp_ub_offset = po_vp_descriptor->block_offset;
 
         ASSERT_DEBUG_SYNC(preview_ptr->po_vp_ub_offset != -1,
                           "VP UB offset is -1");

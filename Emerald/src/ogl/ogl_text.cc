@@ -608,11 +608,11 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             }
             else
             {
-                _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_descriptor->ub_offset;
+                _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_descriptor->block_offset;
                 _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_descriptor->location;
                 _global.draw_text_vertex_shader_data_location                = vertex_shader_data_descriptor->location;
-                _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_descriptor->ub_offset;
-                _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_descriptor->ub_offset;
+                _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_descriptor->block_offset;
+                _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_descriptor->block_offset;
 
                 ASSERT_DEBUG_SYNC(_global.draw_text_fragment_shader_color_ub_offset != -1,
                                   "FSData color uniform UB offset is -1");

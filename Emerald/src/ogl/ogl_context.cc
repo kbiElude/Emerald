@@ -2095,6 +2095,7 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
             {&context_ptr->entry_points_private.pGLSamplerParameteri,              "glSamplerParameteri"},
             {&context_ptr->entry_points_private.pGLSamplerParameteriv,             "glSamplerParameteriv"},
             {&context_ptr->entry_points_private.pGLScissor,                        "glScissor"},
+            {&context_ptr->entry_points_gl.pGLShaderStorageBlockBinding,           "glShaderStorageBlockBinding"},
             {&context_ptr->entry_points_gl.pGLShaderSource,                        "glShaderSource"},
             {&context_ptr->entry_points_gl.pGLStencilFunc,                         "glStencilFunc"},
             {&context_ptr->entry_points_gl.pGLStencilFuncSeparate,                 "glStencilFuncSeparate"},

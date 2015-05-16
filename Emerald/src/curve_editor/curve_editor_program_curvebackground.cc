@@ -214,8 +214,8 @@ PUBLIC curve_editor_program_curvebackground curve_editor_program_curvebackground
 
         if (b_result)
         {
-            result->colors_ub_offset    = colors_uniform_descriptor->ub_offset;
-            result->positions_ub_offset = positions_uniform_descriptor->ub_offset;
+            result->colors_ub_offset    = colors_uniform_descriptor->block_offset;
+            result->positions_ub_offset = positions_uniform_descriptor->block_offset;
 
             ASSERT_DEBUG_SYNC(result->colors_ub_offset    != -1 &&
                               result->positions_ub_offset != -1,

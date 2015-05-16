@@ -1401,7 +1401,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
             GLuint current_indexed_ub_bp = -1;
 
             ogl_program_ub_get_property(requested_ub,
-                                        OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                        OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                        &current_indexed_ub_bp);
 
             if (current_indexed_ub_bp != uniformBlockBinding)
@@ -1412,7 +1412,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
                                                                  uniformBlockBinding);
 
                 ogl_program_ub_set_property(requested_ub,
-                                            OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                            OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                            &uniformBlockBinding);
             } /* if (current_indexed_ub_bp != uniformBlockBinding) */
         } /* if (requested_ub != NULL) */

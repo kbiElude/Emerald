@@ -300,7 +300,7 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                         system_hashed_ansi_string_create("x1y1x2y2"),
                                        &x1y1x2y2_uniform);
 
-        new_frame->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->ub_offset;
+        new_frame->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->block_offset;
     } /* if (new_frame != NULL) */
 
     return (void*) new_frame;

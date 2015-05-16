@@ -171,8 +171,8 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__i
                                     system_hashed_ansi_string_create("position[0]"),
                                    &position_uniform_ptr);
 
-    preview_ptr->preview_program_color_ub_offset    = color_uniform_ptr->ub_offset;
-    preview_ptr->preview_program_position_ub_offset = position_uniform_ptr->ub_offset;
+    preview_ptr->preview_program_color_ub_offset    = color_uniform_ptr->block_offset;
+    preview_ptr->preview_program_position_ub_offset = position_uniform_ptr->block_offset;
 
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program_color_ub_offset    != -1 &&
                       preview_ptr->preview_program_position_ub_offset != -1,

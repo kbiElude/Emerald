@@ -154,10 +154,10 @@ PUBLIC void _postprocessing_blur_poisson_init_renderer_callback(__in __notnull o
                                     system_hashed_ansi_string_create("blur_strength"),
                                    &blur_strength_uniform);
 
-    ASSERT_DEBUG_SYNC(blur_strength_uniform->ub_offset != -1,
+    ASSERT_DEBUG_SYNC(blur_strength_uniform->block_offset != -1,
                       "Blur strength UB offset is -1");
 
-    poisson_ptr->blur_strength_ub_offset = blur_strength_uniform->ub_offset;
+    poisson_ptr->blur_strength_ub_offset = blur_strength_uniform->block_offset;
 
     /* Retrieve UB info */
     ogl_program_get_uniform_block_by_name(poisson_ptr->program,

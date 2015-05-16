@@ -213,8 +213,8 @@ PUBLIC curve_editor_program_lerp curve_editor_program_lerp_create(__in __notnull
 
         if (b_result)
         {
-            result->pos1_ub_offset = pos1_uniform_descriptor->ub_offset;
-            result->pos2_ub_offset = pos2_uniform_descriptor->ub_offset;
+            result->pos1_ub_offset = pos1_uniform_descriptor->block_offset;
+            result->pos2_ub_offset = pos2_uniform_descriptor->block_offset;
 
             ogl_program_ub_get_property(result->program_ub,
                                         OGL_PROGRAM_UB_PROPERTY_BO_ID,

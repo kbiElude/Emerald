@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_block.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_shader.h"
@@ -66,8 +67,9 @@ typedef struct
     PFNGLGETATTRIBLOCATIONPROC          pGLGetAttribLocation;
     PFNGLGETERRORPROC                   pGLGetError;
     PFNGLGETPROGRAMBINARYPROC           pGLGetProgramBinary;
-    PFNGLGETPROGRAMINFOLOGPROC          pGLGetProgramInfoLog;
     PFNGLGETPROGRAMIVPROC               pGLGetProgramiv;
+    PFNGLGETPROGRAMINFOLOGPROC          pGLGetProgramInfoLog;
+    PFNGLGETPROGRAMINTERFACEIVPROC      pGLGetProgramInterfaceiv;
     PFNGLGETPROGRAMRESOURCEIVPROC       pGLGetProgramResourceiv;
     PFNGLGETPROGRAMRESOURCELOCATIONPROC pGLGetProgramResourceLocation;
     PFNGLGETPROGRAMRESOURCENAMEPROC     pGLGetProgramResourceName;
@@ -252,6 +254,8 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
     static const GLenum piq_property_type                   = GL_TYPE;
 
     variable_ptr->array_stride           = 0;
+    variable_ptr->block_index            = -1;
+    variable_ptr->block_offset           = -1;
     variable_ptr->is_row_major_matrix    = false;
     variable_ptr->length                 = 0;
     variable_ptr->location               = -1;
@@ -261,8 +265,6 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
     variable_ptr->top_level_array_size   = 0;
     variable_ptr->top_level_array_stride = 0;
     variable_ptr->type                   = PROGRAM_UNIFORM_TYPE_UNDEFINED;
-    variable_ptr->ub_id                  = -1;
-    variable_ptr->ub_offset              = -1;
 
     if (variable_interface_type == GL_BUFFER_VARIABLE ||
         variable_interface_type == GL_UNIFORM)
@@ -279,27 +281,19 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
-                                            &piq_property_name_length,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                             &variable_ptr->length);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_type,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                   (GLint*) &variable_ptr->type);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
                                             &piq_property_array_stride,
                                              1, /* bufSize */
                                              NULL, /* length */
                                             &variable_ptr->array_stride);
         program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_block_index,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->block_index);
+    program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                              variable_interface_type,
                                              n_variable,
                                              1, /* propCount */
@@ -315,6 +309,30 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                              1, /* bufSize */
                                              NULL, /* length */
                                             &variable_ptr->matrix_stride);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_offset,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                            &variable_ptr->block_offset);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_name_length,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                             &variable_ptr->length);
+        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
+                                             variable_interface_type,
+                                             n_variable,
+                                             1, /* propCount */
+                                            &piq_property_type,
+                                             1, /* bufSize */
+                                             NULL, /* length */
+                                   (GLint*) &variable_ptr->type);
     }
 
     if (variable_interface_type == GL_BUFFER_VARIABLE)
@@ -337,26 +355,6 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                             &variable_ptr->top_level_array_stride);
     }
 
-    if (variable_interface_type == GL_UNIFORM)
-    {
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_block_index,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->ub_id);
-        program_ptr->pGLGetProgramResourceiv(program_ptr->id,
-                                             variable_interface_type,
-                                             n_variable,
-                                             1, /* propCount */
-                                            &piq_property_offset,
-                                             1, /* bufSize */
-                                             NULL, /* length */
-                                            &variable_ptr->ub_offset);
-    }
-
     memset(temp_variable_name_storage,
            0,
            variable_ptr->length + 1);
@@ -374,21 +372,34 @@ PRIVATE void _ogl_program_get_variable_properties(__in __notnull _ogl_program*  
                                                                         temp_variable_name_storage);
 }
 /** TODO */
-PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_program* program_ptr,
-                                                          __in __notnull ogl_context   context_map_key,
-                                                          __in __notnull ogl_context   context)
+PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_block_type block_type,
+                                                  __in __notnull _ogl_program*          program_ptr,
+                                                  __in __notnull ogl_context            context_map_key,
+                                                  __in __notnull ogl_context            context)
 {
-    GLint   n_active_uniform_blocks           = 0;
-    GLint   n_active_uniform_block_max_length = 0;
-    GLchar* uniform_block_name                = NULL;
+    const GLenum block_interface_gl        = (block_type == OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER) ? GL_SHADER_STORAGE_BLOCK
+                                                                                                          : GL_UNIFORM_BLOCK;
+    GLchar*      block_name                = NULL;
+    GLint        n_active_blocks           = 0;
+    GLint        n_active_block_max_length = 0;
 
+    program_ptr->pGLGetProgramInterfaceiv(program_ptr->id,
+                                          block_interface_gl,
+                                          GL_ACTIVE_RESOURCES, /* pname */
+                                          &n_active_blocks);
+
+#if 0
     program_ptr->pGLGetProgramiv(program_ptr->id,
                                  GL_ACTIVE_UNIFORM_BLOCKS,
                                 &n_active_uniform_blocks);
+#endif
 
-    /* NOTE: As of driver version 10.18.14.4170, there's a bug in Intel driver which causes the
-     *       GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH query to throw a GL_INVALID_ENUM error.
-     *       We therefore take an alternative (slower) code-path, if that's what we're running.
+    /* NOTE: As of driver version 10.18.14.4170, the glGetProgramInterfaceiv() call we're making below does not seem to 
+     *       raise some sort of an internal driver flag. This causes the subsequent glGetProgramResourceiv() call
+     *       to throw a mysterious bug, telling about the geometry shader not having been compiled. All good & well,
+     *       but this happens: a) for POs which do not have any GS attached, b) for POs whose all attached shaders
+     *       have been already compiled, since we wouldn't have landed here, had the PO not linked successfully.
+     *       Sigh.
      */
     bool is_intel_driver = false;
 
@@ -398,19 +409,20 @@ PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_pr
 
     if (!is_intel_driver)
     {
-        program_ptr->pGLGetProgramiv(program_ptr->id,
-                                     GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH,
-                                    &n_active_uniform_block_max_length);
+        program_ptr->pGLGetProgramInterfaceiv(program_ptr->id,
+                                              block_interface_gl,
+                                              GL_MAX_NAME_LENGTH,
+                                             &n_active_block_max_length);
     }
     else
     {
         static const GLenum piq_property_name_length = GL_NAME_LENGTH;
 
         for (unsigned int n_ub = 0;
-                          n_ub < n_active_uniform_blocks;
+                          n_ub < n_active_blocks;
                         ++n_ub)
         {
-            GLint current_ub_name_length = 0;
+            GLint current_block_name_length = 0;
 
             program_ptr->pGLGetProgramResourceiv(program_ptr->id,
                                                  GL_UNIFORM_BLOCK,
@@ -419,144 +431,160 @@ PRIVATE void _ogl_program_init_uniform_blocks_for_context(__in __notnull _ogl_pr
                                                  &piq_property_name_length,
                                                  1,    /* bufSize */
                                                  NULL, /* length */
-                                                &current_ub_name_length);
-#if 0
-            program_ptr->pGLGetActiveUniformBlockiv(program_ptr->id,
-                                                    n_ub,
-                                                    GL_UNIFORM_BLOCK_NAME_LENGTH,
-                                                   &current_ub_name_length);
-#endif
+                                                &current_block_name_length);
 
-            if (current_ub_name_length > n_active_uniform_block_max_length)
+            if (current_block_name_length > n_active_block_max_length)
             {
-                n_active_uniform_block_max_length = current_ub_name_length;
+                n_active_block_max_length = current_block_name_length;
             }
         } /* for (all active uniform blocks) */
     }
 
-    uniform_block_name = new (std::nothrow) GLchar[n_active_uniform_block_max_length + 1];
+    block_name = new (std::nothrow) GLchar[n_active_block_max_length + 1];
 
-    ASSERT_ALWAYS_SYNC(uniform_block_name != NULL,
-                       "Could not allocate [%d] bytes for active uniform block name",
-                       n_active_uniform_block_max_length + 1);
+    ASSERT_ALWAYS_SYNC(block_name != NULL,
+                       "Could not allocate [%d] bytes for active block name",
+                       n_active_block_max_length + 1);
 
-    for (GLint n_active_uniform_block = 0;
-               n_active_uniform_block < n_active_uniform_blocks;
-             ++n_active_uniform_block)
+    for (GLint n_active_block = 0;
+               n_active_block < n_active_blocks;
+             ++n_active_block)
     {
-        system_hashed_ansi_string uniform_block_name_has = NULL;
+        system_hashed_ansi_string block_name_has = NULL;
 
-        program_ptr->pGLGetProgramResourceName(program_ptr->id,
-                                               GL_UNIFORM_BLOCK,
-                                               n_active_uniform_block,
-                                               n_active_uniform_block_max_length + 1,
-                                               NULL, /* length */
-                                               uniform_block_name);
-#if 0
-        program_ptr->pGLGetActiveUniformBlockName(program_ptr->id,
-                                                  n_active_uniform_block,
-                                                  n_active_uniform_block_max_length + 1,
-                                                  NULL, /* length */
-                                                  uniform_block_name);
-#endif
-
-        uniform_block_name_has = system_hashed_ansi_string_create(uniform_block_name);
-
-        ogl_program_ub new_ub = ogl_program_ub_create(context,
-                                                      (ogl_program) program_ptr,
-                                                      n_active_uniform_block,
-                                                      uniform_block_name_has,
-                                                      program_ptr->syncable_ubs_mode != OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
-
-        ASSERT_ALWAYS_SYNC(new_ub != NULL,
-                           "ogl_program_ub_create() returned NULL.");
-
-        /* Go ahead and store the UB info */
-        system_resizable_vector context_active_ubs         = NULL;
-        system_hash64map        context_ub_index_to_ub_map = NULL;
-        system_hash64map        context_ub_name_to_ub_map  = NULL;
-
-        system_hash64map_get(program_ptr->context_to_active_ubs_map,
-                             (system_hash64) context_map_key,
-                            &context_active_ubs);
-        system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
-                             (system_hash64) context_map_key,
-                            &context_ub_index_to_ub_map);
-        system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
-                             (system_hash64) context_map_key,
-                            &context_ub_name_to_ub_map);
-
-        if (context_active_ubs         == NULL ||
-            context_ub_index_to_ub_map == NULL ||
-            context_ub_name_to_ub_map  == NULL)
+        if (n_active_block_max_length != 0)
         {
-            context_active_ubs         = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER,
-                                                                        sizeof(ogl_program_ub) );
-            context_ub_index_to_ub_map = system_hash64map_create       (sizeof(ogl_program_ub) );
-            context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(ogl_program_ub) );
+            program_ptr->pGLGetProgramResourceName(program_ptr->id,
+                                                   block_interface_gl,
+                                                   n_active_block,
+                                                   n_active_block_max_length + 1,
+                                                   NULL, /* length */
+                                                   block_name);
 
-            ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
-                              context_ub_index_to_ub_map != NULL &&
-                              context_ub_name_to_ub_map  != NULL,
-                              "Sanity check failed");
-
-            system_hash64map_insert(program_ptr->context_to_active_ubs_map,
-                                    (system_hash64) context_map_key,
-                                    context_active_ubs,
-                                    NULL,  /* on_remove_callback          */
-                                    NULL); /* on_remove_callback_user_arg */
-            system_hash64map_insert(program_ptr->context_to_ub_index_to_ub_map,
-                                    (system_hash64) context_map_key,
-                                    context_ub_index_to_ub_map,
-                                    NULL,  /* on_remove_callback          */
-                                    NULL); /* on_remove_callback_user_arg */
-            system_hash64map_insert(program_ptr->context_to_ub_name_to_ub_map,
-                                    (system_hash64) context_map_key,
-                                    context_ub_name_to_ub_map,
-                                    NULL,  /* on_remove_callback          */
-                                    NULL); /* on_remove_callback_user_arg */
+            block_name_has = system_hashed_ansi_string_create(block_name);
         }
         else
         {
-            ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
-                              context_ub_index_to_ub_map != NULL &&
-                              context_ub_name_to_ub_map  != NULL,
-                              "Sanity check failed");
+            block_name_has = system_hashed_ansi_string_get_default_empty_string();
         }
 
-        ASSERT_DEBUG_SYNC(system_resizable_vector_find(context_active_ubs,
-                                                       new_ub) == ITEM_NOT_FOUND,
-                          "Sanity check failed");
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_index_to_ub_map,
-                                                     (system_hash64) n_active_uniform_block),
-                          "Sanity check failed");
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_name_to_ub_map,
-                                                     system_hashed_ansi_string_get_hash(uniform_block_name_has) ),
-                          "Sanity check failed");
+        switch (block_type)
+        {
+            case OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "TODO");
 
-        system_resizable_vector_push(context_active_ubs,
-                                     new_ub);
-        system_hash64map_insert     (context_ub_index_to_ub_map,
-                                     n_active_uniform_block,
-                                     new_ub,
-                                     NULL,  /* on_remove_callback */
-                                     NULL); /* on_remove_callback_user_arg */
-        system_hash64map_insert     (context_ub_name_to_ub_map,
-                                     system_hashed_ansi_string_get_hash(uniform_block_name_has),
-                                     new_ub,
-                                     NULL,  /* on_remove_callback */
-                                     NULL); /* on_remove_callback_user_arg */
+                break;
+            }
 
-        /* Set up the UB block->binding mapping */
-        program_ptr->pGLUniformBlockBinding(program_ptr->id,
-                                            n_active_uniform_block,
-                                            n_active_uniform_block);
-    } /* for (all uniform blocks) */
+            case OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER:
+            {
+                ogl_program_ub new_ub = ogl_program_ub_create(context,
+                                                              (ogl_program) program_ptr,
+                                                              n_active_block,
+                                                              block_name_has,
+                                                              program_ptr->syncable_ubs_mode != OGL_PROGRAM_SYNCABLE_UBS_MODE_DISABLE);
 
-    if (uniform_block_name != NULL)
+                ASSERT_ALWAYS_SYNC(new_ub != NULL,
+                                   "ogl_program_ub_create() returned NULL.");
+
+                /* Go ahead and store the UB info */
+                system_resizable_vector context_active_ubs         = NULL;
+                system_hash64map        context_ub_index_to_ub_map = NULL;
+                system_hash64map        context_ub_name_to_ub_map  = NULL;
+
+                system_hash64map_get(program_ptr->context_to_active_ubs_map,
+                                     (system_hash64) context_map_key,
+                                    &context_active_ubs);
+                system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
+                                     (system_hash64) context_map_key,
+                                    &context_ub_index_to_ub_map);
+                system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,
+                                     (system_hash64) context_map_key,
+                                    &context_ub_name_to_ub_map);
+
+                if (context_active_ubs         == NULL ||
+                    context_ub_index_to_ub_map == NULL ||
+                    context_ub_name_to_ub_map  == NULL)
+                {
+                    context_active_ubs         = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER,
+                                                                                sizeof(ogl_program_ub) );
+                    context_ub_index_to_ub_map = system_hash64map_create       (sizeof(ogl_program_ub) );
+                    context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(ogl_program_ub) );
+
+                    ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
+                                      context_ub_index_to_ub_map != NULL &&
+                                      context_ub_name_to_ub_map  != NULL,
+                                      "Sanity check failed");
+
+                    system_hash64map_insert(program_ptr->context_to_active_ubs_map,
+                                            (system_hash64) context_map_key,
+                                            context_active_ubs,
+                                            NULL,  /* on_remove_callback          */
+                                            NULL); /* on_remove_callback_user_arg */
+                    system_hash64map_insert(program_ptr->context_to_ub_index_to_ub_map,
+                                            (system_hash64) context_map_key,
+                                            context_ub_index_to_ub_map,
+                                            NULL,  /* on_remove_callback          */
+                                            NULL); /* on_remove_callback_user_arg */
+                    system_hash64map_insert(program_ptr->context_to_ub_name_to_ub_map,
+                                            (system_hash64) context_map_key,
+                                            context_ub_name_to_ub_map,
+                                            NULL,  /* on_remove_callback          */
+                                            NULL); /* on_remove_callback_user_arg */
+                }
+                else
+                {
+                    ASSERT_DEBUG_SYNC(context_active_ubs         != NULL &&
+                                      context_ub_index_to_ub_map != NULL &&
+                                      context_ub_name_to_ub_map  != NULL,
+                                      "Sanity check failed");
+                }
+
+                ASSERT_DEBUG_SYNC(system_resizable_vector_find(context_active_ubs,
+                                                               new_ub) == ITEM_NOT_FOUND,
+                                  "Sanity check failed");
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_index_to_ub_map,
+                                                             (system_hash64) n_active_block),
+                                  "Sanity check failed");
+                ASSERT_DEBUG_SYNC(!system_hash64map_contains(context_ub_name_to_ub_map,
+                                                             system_hashed_ansi_string_get_hash(block_name_has) ),
+                                  "Sanity check failed");
+
+                system_resizable_vector_push(context_active_ubs,
+                                             new_ub);
+                system_hash64map_insert     (context_ub_index_to_ub_map,
+                                             n_active_block,
+                                             new_ub,
+                                             NULL,  /* on_remove_callback */
+                                             NULL); /* on_remove_callback_user_arg */
+                system_hash64map_insert     (context_ub_name_to_ub_map,
+                                             system_hashed_ansi_string_get_hash(block_name_has),
+                                             new_ub,
+                                             NULL,  /* on_remove_callback */
+                                             NULL); /* on_remove_callback_user_arg */
+
+                /* Set up the UB block->binding mapping */
+                program_ptr->pGLUniformBlockBinding(program_ptr->id,
+                                                    n_active_block,
+                                                    n_active_block);
+
+                break;
+            }
+
+            default:
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized block type");
+            }
+        } /* switch (block_type) */
+    } /* for (all blocks of the requested type) */
+
+    if (block_name != NULL)
     {
-        delete [] uniform_block_name;
-        uniform_block_name = NULL;
+        delete [] block_name;
+        block_name = NULL;
     }
 }
 
@@ -705,9 +733,17 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
             ogl_context context_map_key = (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_GLOBAL) ? 0
                                                                                                                           : context;
 
-            _ogl_program_init_uniform_blocks_for_context(program_ptr,
-                                                         context_map_key,
-                                                         context);
+            _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                                 program_ptr,
+                                                 context_map_key,
+                                                 context);
+
+            /* Finish with shader storage blocks. */
+            _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_SHADER_STORAGE_BUFFER,
+                                                 program_ptr,
+                                                 0, /* context_map_key */
+                                                 context);
+            
         } /* if (attribute_name != NULL && uniform_name != NULL) */
 
         /* Free the buffers. */
@@ -1511,6 +1547,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLGetError                   = entry_points->pGLGetError;
             result->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
             result->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
+            result->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
             result->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
             result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             result->pGLGetProgramResourceLocation = entry_points->pGLGetProgramResourceLocation;
@@ -1546,6 +1583,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLGetError                   = entry_points->pGLGetError;
             result->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
             result->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
+            result->pGLGetProgramInterfaceiv      = entry_points_piq->pGLGetProgramInterfaceiv;
             result->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
             result->pGLGetProgramResourceiv       = entry_points_piq->pGLGetProgramResourceiv;
             result->pGLGetProgramResourceLocation = entry_points_piq->pGLGetProgramResourceLocation;
@@ -1817,9 +1855,10 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull o
     if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
                                    (system_hash64) current_context) )
     {
-        _ogl_program_init_uniform_blocks_for_context(program_ptr,
-                                                     current_context,
-                                                     ogl_context_get_current_context() );
+        _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                             program_ptr,
+                                             current_context,
+                                             ogl_context_get_current_context() );
     }
 
     if (system_hash64map_get(program_ptr->context_to_ub_index_to_ub_map,
@@ -1852,9 +1891,10 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
     if (!system_hash64map_contains(program_ptr->context_to_ub_name_to_ub_map,
                                    (system_hash64) current_context) )
     {
-        _ogl_program_init_uniform_blocks_for_context(program_ptr,
-                                                     current_context,
-                                                     ogl_context_get_current_context() );
+        _ogl_program_init_blocks_for_context(OGL_PROGRAM_BLOCK_TYPE_UNIFORM_BUFFER,
+                                             program_ptr,
+                                             current_context,
+                                             ogl_context_get_current_context() );
     }
 
     if (system_hash64map_get(program_ptr->context_to_ub_name_to_ub_map,

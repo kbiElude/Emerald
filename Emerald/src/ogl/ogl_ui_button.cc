@@ -177,10 +177,10 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
                                     system_hashed_ansi_string_create("x1y1x2y2"),
                                    &x1y1x2y2_uniform);
 
-    button_ptr->program_border_width_ub_offset = border_width_uniform->ub_offset;
-    button_ptr->program_brightness_ub_offset   = brightness_uniform->ub_offset;
-    button_ptr->program_stop_data_ub_offset    = stop_data_uniform->ub_offset;
-    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform->ub_offset;
+    button_ptr->program_border_width_ub_offset = border_width_uniform->block_offset;
+    button_ptr->program_brightness_ub_offset   = brightness_uniform->block_offset;
+    button_ptr->program_stop_data_ub_offset    = stop_data_uniform->block_offset;
+    button_ptr->program_x1y1x2y2_ub_offset     = x1y1x2y2_uniform->block_offset;
 
     /* Retrieve uniform block data */
     unsigned int ub_fs_index = -1;
@@ -233,7 +233,7 @@ PRIVATE void _ogl_ui_button_init_renderer_callback(ogl_context context, void* bu
 
     /* Set them up */
     ogl_program_ub_set_arrayed_uniform_value(button_ptr->program_ub_fs,
-                                             stop_data_uniform->ub_offset,
+                                             stop_data_uniform->block_offset,
                                              stop_data,
                                              0, /* src_data_flags */
                                              sizeof(stop_data),

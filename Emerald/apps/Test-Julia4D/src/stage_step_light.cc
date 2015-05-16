@@ -178,9 +178,9 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                       system_hashed_ansi_string_create("mvp"),
                                      &mvp_uniform_data);
 
-    _light_color_ub_offset                = (color_uniform_data         != NULL) ? color_uniform_data->ub_offset        : -1;
+    _light_color_ub_offset                = (color_uniform_data         != NULL) ? color_uniform_data->block_offset     : -1;
     _light_in_position_attribute_location = (in_position_attribute_data != NULL) ? in_position_attribute_data->location : -1;
-    _light_mvp_ub_offset                  = (mvp_uniform_data           != NULL) ? mvp_uniform_data->ub_offset          : -1;
+    _light_mvp_ub_offset                  = (mvp_uniform_data           != NULL) ? mvp_uniform_data->block_offset       : -1;
 
     /* Retrieve uniform block properties */
     ogl_program_get_uniform_block_by_name(_light_program,
@@ -200,7 +200,7 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
                                &_light_program_datafs_ub_bo_start_offset);
     ogl_program_ub_get_property(_light_program_datafs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &_light_program_datafs_ub_bp);
 
     ogl_program_ub_get_property(_light_program_datavs_ub,
@@ -213,7 +213,7 @@ PUBLIC void stage_step_light_init(ogl_context  context,
                                 OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
                                &_light_program_datavs_ub_bo_start_offset);
     ogl_program_ub_get_property(_light_program_datavs_ub,
-                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &_light_program_datavs_ub_bp);
 
     /* Generate VAO */
