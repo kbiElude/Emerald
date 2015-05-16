@@ -294,13 +294,13 @@ PUBLIC void* ogl_ui_frame_init(__in           __notnull ogl_ui       instance,
                                           0); /* uniformBlockBinding */
 
         /* Retrieve the uniforms */
-        const ogl_program_uniform_descriptor* x1y1x2y2_uniform = NULL;
+        const ogl_program_variable* x1y1x2y2_uniform = NULL;
 
         ogl_program_get_uniform_by_name(new_frame->program,
                                         system_hashed_ansi_string_create("x1y1x2y2"),
                                        &x1y1x2y2_uniform);
 
-        new_frame->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->ub_offset;
+        new_frame->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->block_offset;
     } /* if (new_frame != NULL) */
 
     return (void*) new_frame;

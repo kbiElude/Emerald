@@ -268,24 +268,31 @@ typedef struct
     ogl_program_attribute_type type;
 } ogl_program_attribute_descriptor;
 
-/** Structure that describes properties of a program uniform.
+/** Structure that describes properties of a program uniform, or a shader storage block member, or the like.
  *
- *  This structure is used to describe both regular uniforms and
- *  members of uniform blocks.
+ *  For uniforms, this structure is used to describe both uniforms coming from the default uniform block,
+ *  and regular uniform blocks.
  */
-typedef struct 
+typedef struct
 {
+    /* Buffer variables */
+    GLint top_level_array_size;
+    GLint top_level_array_stride;
+
+    /* Buffer variables, uniforms (default & regular uniform block): */
+    GLint                      array_stride;
+    GLint                      block_index;
+    GLint                      block_offset;
     GLint                      is_row_major_matrix; /* 1 = row-major, 0 = column-major OR not a matrix */
+    GLint                      matrix_stride;
     system_hashed_ansi_string  name;
     GLsizei                    length;
-    GLint                      location;
     GLint                      size;             /* array size for arrayed uniforms or 1 otherwise */
     ogl_program_uniform_type   type;
-    GLint                      ub_array_stride;
-    GLint                      ub_matrix_stride;
-    GLint                      ub_id;
-    GLint                      ub_offset;
-} ogl_program_uniform_descriptor;
+
+    /* Uniforms (default & regular uniform block): */
+    GLint                      location;
+} ogl_program_variable;
 
 /** Enumerator that describes type of a given shader */
 typedef enum
@@ -1140,6 +1147,7 @@ typedef struct
     PFNGLSAMPLERPARAMETERIPROC                   pGLSamplerParameteri;
     PFNGLSAMPLERPARAMETERIVPROC                  pGLSamplerParameteriv;
     PFNGLSCISSORPROC                             pGLScissor;
+    PFNGLSHADERSTORAGEBLOCKBINDINGPROC           pGLShaderStorageBlockBinding;
     PFNGLSHADERSOURCEPROC                        pGLShaderSource;
     PFNGLSTENCILFUNCPROC                         pGLStencilFunc;
     PFNGLSTENCILFUNCSEPARATEPROC                 pGLStencilFuncSeparate;
@@ -1749,6 +1757,8 @@ typedef enum
 
 /** Program handle */
 DECLARE_HANDLE(ogl_program);
+DECLARE_HANDLE(ogl_program_block);
+DECLARE_HANDLE(ogl_program_ssb);
 DECLARE_HANDLE(ogl_program_ub);
 DECLARE_HANDLE(ogl_programs);
 

@@ -201,8 +201,8 @@ PRIVATE void _sh_samples_create_callback(__in __notnull ogl_context context, voi
     }
 
     /* Instantiate SH coeffs vertex shader */
-    const ogl_program_uniform_descriptor* sh_coeffs_n_samples_square_descriptor = NULL;
-    static const char*                    sh_coeffs_tf_output_data[]            = {"result.sh_coefficient"};
+    const ogl_program_variable* sh_coeffs_n_samples_square_descriptor = NULL;
+    static const char*          sh_coeffs_tf_output_data[]            = {"result.sh_coefficient"};
 
     data->sh_coeffs_vertex_shader = ogl_shader_create (data->context,
                                                        SHADER_TYPE_VERTEX,
@@ -218,8 +218,8 @@ PRIVATE void _sh_samples_create_callback(__in __notnull ogl_context context, voi
                                   NULL);
 
     /* Instantiate unit vec vertex shader */
-    const ogl_program_uniform_descriptor* unit_vec_n_samples_square_descriptor = NULL;
-    static const char*                    unit_vec_tf_output_data[]            = {"result.unit_vec", "result.theta_phi"};
+    const ogl_program_variable* unit_vec_n_samples_square_descriptor = NULL;
+    static const char*          unit_vec_tf_output_data[]            = {"result.unit_vec", "result.theta_phi"};
 
     data->unit_vec_vertex_shader = ogl_shader_create (data->context,
                                                       SHADER_TYPE_VERTEX,

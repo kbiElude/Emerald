@@ -1281,31 +1281,31 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* ambient_material_sampler_uniform_descriptor    = NULL;
-    const ogl_program_uniform_descriptor* ambient_material_uniform_descriptor            = NULL;
-    const ogl_program_uniform_descriptor* diffuse_material_sampler_uniform_descriptor    = NULL;
-    const ogl_program_uniform_descriptor* diffuse_material_uniform_descriptor            = NULL;
-    const ogl_program_uniform_descriptor* emission_material_sampler_uniform_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* emission_material_uniform_descriptor           = NULL;
-    const ogl_program_uniform_descriptor* far_near_plane_diff_uniform_descriptor         = NULL;
-    const ogl_program_uniform_descriptor* flip_z_uniform_descriptor                      = NULL;
-    const ogl_program_uniform_descriptor* glosiness_uniform_descriptor                   = NULL;
-    const ogl_program_uniform_descriptor* luminosity_material_sampler_uniform_descriptor = NULL;
-    const ogl_program_uniform_descriptor* luminosity_material_uniform_descriptor         = NULL;
-    const ogl_program_uniform_descriptor* max_variance_uniform_descriptor                = NULL;
-    const ogl_program_uniform_descriptor* mesh_sh3_uniform_descriptor                    = NULL;
-    const ogl_program_uniform_descriptor* mesh_sh3_data_offset_uniform_descriptor        = NULL;
-    const ogl_program_uniform_descriptor* mesh_sh4_uniform_descriptor                    = NULL;
-    const ogl_program_uniform_descriptor* mesh_sh4_data_offset_uniform_descriptor        = NULL;
-    const ogl_program_uniform_descriptor* model_uniform_descriptor                       = NULL;
-    const ogl_program_uniform_descriptor* near_plane_uniform_descriptor                  = NULL;
-    const ogl_program_uniform_descriptor* normal_matrix_uniform_descriptor               = NULL;
-    const ogl_program_uniform_descriptor* shininess_material_sampler_uniform_descriptor  = NULL;
-    const ogl_program_uniform_descriptor* shininess_material_uniform_descriptor          = NULL;
-    const ogl_program_uniform_descriptor* specular_material_sampler_uniform_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* specular_material_uniform_descriptor           = NULL;
-    const ogl_program_uniform_descriptor* vp_uniform_descriptor                          = NULL;
-    const ogl_program_uniform_descriptor* world_camera_uniform_descriptor                = NULL;
+    const ogl_program_variable* ambient_material_sampler_uniform_descriptor    = NULL;
+    const ogl_program_variable* ambient_material_uniform_descriptor            = NULL;
+    const ogl_program_variable* diffuse_material_sampler_uniform_descriptor    = NULL;
+    const ogl_program_variable* diffuse_material_uniform_descriptor            = NULL;
+    const ogl_program_variable* emission_material_sampler_uniform_descriptor   = NULL;
+    const ogl_program_variable* emission_material_uniform_descriptor           = NULL;
+    const ogl_program_variable* far_near_plane_diff_uniform_descriptor         = NULL;
+    const ogl_program_variable* flip_z_uniform_descriptor                      = NULL;
+    const ogl_program_variable* glosiness_uniform_descriptor                   = NULL;
+    const ogl_program_variable* luminosity_material_sampler_uniform_descriptor = NULL;
+    const ogl_program_variable* luminosity_material_uniform_descriptor         = NULL;
+    const ogl_program_variable* max_variance_uniform_descriptor                = NULL;
+    const ogl_program_variable* mesh_sh3_uniform_descriptor                    = NULL;
+    const ogl_program_variable* mesh_sh3_data_offset_uniform_descriptor        = NULL;
+    const ogl_program_variable* mesh_sh4_uniform_descriptor                    = NULL;
+    const ogl_program_variable* mesh_sh4_data_offset_uniform_descriptor        = NULL;
+    const ogl_program_variable* model_uniform_descriptor                       = NULL;
+    const ogl_program_variable* near_plane_uniform_descriptor                  = NULL;
+    const ogl_program_variable* normal_matrix_uniform_descriptor               = NULL;
+    const ogl_program_variable* shininess_material_sampler_uniform_descriptor  = NULL;
+    const ogl_program_variable* shininess_material_uniform_descriptor          = NULL;
+    const ogl_program_variable* specular_material_sampler_uniform_descriptor   = NULL;
+    const ogl_program_variable* specular_material_uniform_descriptor           = NULL;
+    const ogl_program_variable* vp_uniform_descriptor                          = NULL;
+    const ogl_program_variable* world_camera_uniform_descriptor                = NULL;
 
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("ambient_material_sampler"),
@@ -1390,10 +1390,10 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (ambient_material_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(ambient_material_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(ambient_material_uniform_descriptor->block_offset != -1,
                           "Ambient material UB offset is -1");
 
-        uber_ptr->ambient_material_ub_offset = ambient_material_uniform_descriptor->ub_offset;
+        uber_ptr->ambient_material_ub_offset = ambient_material_uniform_descriptor->block_offset;
     }
 
     if (diffuse_material_sampler_uniform_descriptor != NULL)
@@ -1403,26 +1403,26 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (diffuse_material_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(diffuse_material_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(diffuse_material_uniform_descriptor->block_offset != -1,
                           "Diffuse material UB offset is -1");
 
-        uber_ptr->diffuse_material_ub_offset = diffuse_material_uniform_descriptor->ub_offset;
+        uber_ptr->diffuse_material_ub_offset = diffuse_material_uniform_descriptor->block_offset;
     }
 
     if (far_near_plane_diff_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(far_near_plane_diff_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(far_near_plane_diff_uniform_descriptor->block_offset != -1,
                           "Far/near plane diff UB offset is -1");
 
-        uber_ptr->far_near_plane_diff_ub_offset = far_near_plane_diff_uniform_descriptor->ub_offset;
+        uber_ptr->far_near_plane_diff_ub_offset = far_near_plane_diff_uniform_descriptor->block_offset;
     }
 
     if (flip_z_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(flip_z_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(flip_z_uniform_descriptor->block_offset != -1,
                           "Flip Z UB offset is -1");
 
-        uber_ptr->flip_z_ub_offset = flip_z_uniform_descriptor->ub_offset;
+        uber_ptr->flip_z_ub_offset = flip_z_uniform_descriptor->block_offset;
     }
 
     if (luminosity_material_sampler_uniform_descriptor != NULL)
@@ -1432,18 +1432,18 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (luminosity_material_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(luminosity_material_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(luminosity_material_uniform_descriptor->block_offset != -1,
                           "Luminosity material UB offset is -1.");
 
-        uber_ptr->luminosity_material_ub_offset = luminosity_material_uniform_descriptor->ub_offset;
+        uber_ptr->luminosity_material_ub_offset = luminosity_material_uniform_descriptor->block_offset;
     }
 
     if (max_variance_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(max_variance_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(max_variance_uniform_descriptor->block_offset != -1,
                           "Max variance UB offset is -1");
 
-        uber_ptr->max_variance_ub_offset = max_variance_uniform_descriptor->ub_offset;
+        uber_ptr->max_variance_ub_offset = max_variance_uniform_descriptor->block_offset;
     }
 
     if (mesh_sh3_uniform_descriptor != NULL)
@@ -1466,26 +1466,26 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (model_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(model_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(model_uniform_descriptor->block_offset != -1,
                           "Model matrix UB offset is -1");
 
-        uber_ptr->model_ub_offset = model_uniform_descriptor->ub_offset;
+        uber_ptr->model_ub_offset = model_uniform_descriptor->block_offset;
     }
 
     if (near_plane_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(near_plane_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(near_plane_uniform_descriptor->block_offset != -1,
                           "Near plane UB offset is -1");
 
-        uber_ptr->near_plane_ub_offset = near_plane_uniform_descriptor->ub_offset;
+        uber_ptr->near_plane_ub_offset = near_plane_uniform_descriptor->block_offset;
     }
 
     if (normal_matrix_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(normal_matrix_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(normal_matrix_uniform_descriptor->block_offset != -1,
                           "Normal matrix UB offset is -1");
 
-        uber_ptr->normal_matrix_ub_offset = normal_matrix_uniform_descriptor->ub_offset;
+        uber_ptr->normal_matrix_ub_offset = normal_matrix_uniform_descriptor->block_offset;
     }
 
     if (shininess_material_sampler_uniform_descriptor != NULL)
@@ -1495,10 +1495,10 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (shininess_material_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(shininess_material_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(shininess_material_uniform_descriptor->block_offset != -1,
                           "Shininess material UB offset is -1");
 
-        uber_ptr->shininess_material_ub_offset = shininess_material_uniform_descriptor->ub_offset;
+        uber_ptr->shininess_material_ub_offset = shininess_material_uniform_descriptor->block_offset;
     }
 
     if (specular_material_sampler_uniform_descriptor != NULL)
@@ -1508,23 +1508,23 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
     if (specular_material_uniform_descriptor != NULL)
     {
-        uber_ptr->specular_material_ub_offset = specular_material_uniform_descriptor->ub_offset;
+        uber_ptr->specular_material_ub_offset = specular_material_uniform_descriptor->block_offset;
     }
 
     if (vp_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(vp_uniform_descriptor->ub_offset != -1,
+        ASSERT_DEBUG_SYNC(vp_uniform_descriptor->block_offset != -1,
                           "VP UB offset is -1");
 
-        uber_ptr->vp_ub_offset = vp_uniform_descriptor->ub_offset;
+        uber_ptr->vp_ub_offset = vp_uniform_descriptor->block_offset;
     }
 
     if (world_camera_uniform_descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(world_camera_uniform_descriptor->ub_id != -1,
+        ASSERT_DEBUG_SYNC(world_camera_uniform_descriptor->block_index != -1,
                           "World camera UB offset is -1");
 
-        uber_ptr->world_camera_ub_offset = world_camera_uniform_descriptor->ub_offset;
+        uber_ptr->world_camera_ub_offset = world_camera_uniform_descriptor->block_offset;
     }
 
     /* Retrieve uniform block IDs and their properties*/
@@ -1594,37 +1594,37 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
             case OGL_UBER_ITEM_LIGHT:
             {
                 /* Fragment shader stuff */
-                const ogl_program_uniform_descriptor* light_ambient_color_uniform_ptr = NULL;
-                std::stringstream                     light_attenuations_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_attenuations_uniform_ptr = NULL;
-                std::stringstream                     light_cone_angle_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_cone_angle_uniform_ptr = NULL;
-                std::stringstream                     light_diffuse_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_diffuse_uniform_ptr = NULL;
-                std::stringstream                     light_direction_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_direction_uniform_ptr = NULL;
-                std::stringstream                     light_edge_angle_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_edge_angle_uniform_ptr = NULL;
-                std::stringstream                     light_far_near_diff_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_far_near_diff_uniform_ptr = NULL;
-                std::stringstream                     light_location_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_location_uniform_ptr = NULL;
-                std::stringstream                     light_near_plane_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_near_plane_uniform_ptr = NULL;
-                std::stringstream                     light_projection_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_projection_uniform_ptr = NULL;
-                std::stringstream                     light_range_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_range_uniform_ptr = NULL;
-                std::stringstream                     light_shadow_map_color_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_shadow_map_color_uniform_ptr = NULL;
-                std::stringstream                     light_shadow_map_depth_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_shadow_map_depth_uniform_ptr = NULL;
-                std::stringstream                     light_shadow_map_vsm_cutoff_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_shadow_map_vsm_cutoff_uniform_ptr = NULL;
-                std::stringstream                     light_shadow_map_vsm_min_variance_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_shadow_map_vsm_min_variance_uniform_ptr = NULL;
-                std::stringstream                     light_view_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_view_uniform_ptr = NULL;
+                const ogl_program_variable* light_ambient_color_uniform_ptr = NULL;
+                std::stringstream           light_attenuations_uniform_name_sstream;
+                const ogl_program_variable* light_attenuations_uniform_ptr = NULL;
+                std::stringstream           light_cone_angle_uniform_name_sstream;
+                const ogl_program_variable* light_cone_angle_uniform_ptr = NULL;
+                std::stringstream           light_diffuse_uniform_name_sstream;
+                const ogl_program_variable* light_diffuse_uniform_ptr = NULL;
+                std::stringstream           light_direction_uniform_name_sstream;
+                const ogl_program_variable* light_direction_uniform_ptr = NULL;
+                std::stringstream           light_edge_angle_uniform_name_sstream;
+                const ogl_program_variable* light_edge_angle_uniform_ptr = NULL;
+                std::stringstream           light_far_near_diff_uniform_name_sstream;
+                const ogl_program_variable* light_far_near_diff_uniform_ptr = NULL;
+                std::stringstream           light_location_uniform_name_sstream;
+                const ogl_program_variable* light_location_uniform_ptr = NULL;
+                std::stringstream           light_near_plane_uniform_name_sstream;
+                const ogl_program_variable* light_near_plane_uniform_ptr = NULL;
+                std::stringstream           light_projection_uniform_name_sstream;
+                const ogl_program_variable* light_projection_uniform_ptr = NULL;
+                std::stringstream           light_range_uniform_name_sstream;
+                const ogl_program_variable* light_range_uniform_ptr = NULL;
+                std::stringstream           light_shadow_map_color_uniform_name_sstream;
+                const ogl_program_variable* light_shadow_map_color_uniform_ptr = NULL;
+                std::stringstream           light_shadow_map_depth_uniform_name_sstream;
+                const ogl_program_variable* light_shadow_map_depth_uniform_ptr = NULL;
+                std::stringstream           light_shadow_map_vsm_cutoff_uniform_name_sstream;
+                const ogl_program_variable* light_shadow_map_vsm_cutoff_uniform_ptr = NULL;
+                std::stringstream           light_shadow_map_vsm_min_variance_uniform_name_sstream;
+                const ogl_program_variable* light_shadow_map_vsm_min_variance_uniform_ptr = NULL;
+                std::stringstream           light_view_uniform_name_sstream;
+                const ogl_program_variable* light_view_uniform_ptr = NULL;
 
                 light_attenuations_uniform_name_sstream                << "light"
                                                                        << n_item
@@ -1723,57 +1723,57 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
                 if (light_ambient_color_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.ambient_color_ub_offset = light_ambient_color_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.ambient_color_ub_offset = light_ambient_color_uniform_ptr->block_offset;
                 }
 
                 if (light_attenuations_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_attenuations_ub_offset = light_attenuations_uniform_ptr->block_offset;
                 }
 
                 if (light_cone_angle_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset = light_cone_angle_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_cone_angle_ub_offset = light_cone_angle_uniform_ptr->block_offset;
                 }
 
                 if (light_direction_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_direction_ub_offset = light_direction_uniform_ptr->block_offset;
                 }
 
                 if (light_diffuse_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_diffuse_ub_offset  = light_diffuse_uniform_ptr->block_offset;
                 }
 
                 if (light_edge_angle_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset = light_edge_angle_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_edge_angle_ub_offset = light_edge_angle_uniform_ptr->block_offset;
                 }
 
                 if (light_far_near_diff_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset = light_far_near_diff_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_far_near_diff_ub_offset = light_far_near_diff_uniform_ptr->block_offset;
                 }
 
                 if (light_location_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_location_ub_offset = light_location_uniform_ptr->block_offset;
                 }
 
                 if (light_near_plane_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_near_plane_ub_offset = light_near_plane_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_near_plane_ub_offset = light_near_plane_uniform_ptr->block_offset;
                 }
 
                 if (light_projection_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_projection_ub_offset = light_projection_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_projection_ub_offset = light_projection_uniform_ptr->block_offset;
                 }
 
                 if (light_range_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_range_ub_offset = light_range_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_range_ub_offset = light_range_uniform_ptr->block_offset;
                 }
 
                 if (light_shadow_map_color_uniform_ptr != NULL)
@@ -1788,23 +1788,23 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
                 if (light_view_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_view_ub_offset = light_view_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_view_ub_offset = light_view_uniform_ptr->block_offset;
                 }
 
                 if (light_shadow_map_vsm_cutoff_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset = light_shadow_map_vsm_cutoff_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_cutoff_ub_offset = light_shadow_map_vsm_cutoff_uniform_ptr->block_offset;
                 }
 
                 if (light_shadow_map_vsm_min_variance_uniform_ptr != NULL)
                 {
-                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset = light_shadow_map_vsm_min_variance_uniform_ptr->ub_offset;
+                    item_ptr->fragment_shader_item.current_light_shadow_map_vsm_min_variance_ub_offset = light_shadow_map_vsm_min_variance_uniform_ptr->block_offset;
                 }
 
                 /* Vertex shader stuff */
-                std::stringstream                     light_depth_vb_uniform_name_sstream;
-                const ogl_program_uniform_descriptor* light_depth_vb_uniform_ptr = NULL;
-                shaders_vertex_uber_light             light_type                 = SHADERS_VERTEX_UBER_LIGHT_NONE;
+                std::stringstream           light_depth_vb_uniform_name_sstream;
+                const ogl_program_variable* light_depth_vb_uniform_ptr = NULL;
+                shaders_vertex_uber_light   light_type                 = SHADERS_VERTEX_UBER_LIGHT_NONE;
 
                 light_depth_vb_uniform_name_sstream << "light"
                                                     << n_item
@@ -1816,7 +1816,7 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
                 if (light_depth_vb_uniform_ptr != NULL)
                 {
-                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ptr->ub_offset;
+                    item_ptr->vertex_shader_item.current_light_depth_vp_ub_offset = light_depth_vb_uniform_ptr->block_offset;
                 }
 
                 /* Outdated SH stuff */
@@ -1827,9 +1827,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
                 if (light_type == SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS ||
                     light_type == SHADERS_VERTEX_UBER_LIGHT_SH_4_BANDS)
                 {
-                    GLint                                 sh_data_uniform_location = -1;
-                    std::stringstream                     sh_data_uniform_name_sstream;
-                    const ogl_program_uniform_descriptor* sh_data_uniform_ptr      = NULL;
+                    GLint                       sh_data_uniform_location = -1;
+                    std::stringstream           sh_data_uniform_name_sstream;
+                    const ogl_program_variable* sh_data_uniform_ptr      = NULL;
 
                     if (light_type == SHADERS_VERTEX_UBER_LIGHT_SH_3_BANDS)
                     {
@@ -1846,10 +1846,10 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 
                     ASSERT_DEBUG_SYNC(sh_data_uniform_ptr != NULL,
                                       "Could not retrieve SH data uniform descriptor");
-                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr->ub_offset != -1,
+                    ASSERT_DEBUG_SYNC(sh_data_uniform_ptr->block_offset != -1,
                                       "UB offset for SH data is -1");
 
-                    item_ptr->vertex_shader_item.current_light_sh_data_ub_offset = sh_data_uniform_ptr->ub_offset;
+                    item_ptr->vertex_shader_item.current_light_sh_data_ub_offset = sh_data_uniform_ptr->block_offset;
                 }
 
                 break;

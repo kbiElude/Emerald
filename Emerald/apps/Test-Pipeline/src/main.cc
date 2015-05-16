@@ -203,8 +203,8 @@ void _init_gl(ogl_context context,
     shaders_vertex_fullscreen_release(general_vs);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* input_descriptor = NULL;
-    const ogl_program_uniform_descriptor* time_descriptor  = NULL;
+    const ogl_program_variable* input_descriptor = NULL;
+    const ogl_program_variable* time_descriptor  = NULL;
 
     ogl_program_get_uniform_by_name(_generation_po,
                                     system_hashed_ansi_string_create("time"),
@@ -213,7 +213,7 @@ void _init_gl(ogl_context context,
                                     system_hashed_ansi_string_create("input"),
                                    &input_descriptor);
 
-    _generation_po_time_ub_offset   = time_descriptor->ub_offset;
+    _generation_po_time_ub_offset   = time_descriptor->block_offset;
     _modification_po_input_location = input_descriptor->location;
 
     /* Retrieve uniform block data */

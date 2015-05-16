@@ -11,6 +11,8 @@
  *    of values assigned to the embedded uniforms. Upon a sync request,
  *    ogl_program_ub uses available ES/GL functionality to update the changed
  *    regions in an optimal (coalesced) manner.
+ *
+ * Underneath it re-routes the incoming cals to a more generic ogl_program_block.
  */
 #ifndef OGL_PROGRAM_UB_H
 #define OGL_PROGRAM_UB_H
@@ -34,7 +36,7 @@ typedef enum
     OGL_PROGRAM_UB_PROPERTY_INDEX,
 
     /* GLuint */
-    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+    OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
 
     /* system_hashed_ansi_string */
     OGL_PROGRAM_UB_PROPERTY_NAME,

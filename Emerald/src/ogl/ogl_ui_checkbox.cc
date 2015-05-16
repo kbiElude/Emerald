@@ -202,10 +202,10 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
     border_width[1] = 1.0f / (float)((checkbox_ptr->x1y1x2y2[3] - checkbox_ptr->x1y1x2y2[1]) * window_size[1]);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* border_width_uniform    = NULL;
-    const ogl_program_uniform_descriptor* brightness_uniform      = NULL;
-    const ogl_program_uniform_descriptor* text_brightness_uniform = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_uniform        = NULL;
+    const ogl_program_variable* border_width_uniform    = NULL;
+    const ogl_program_variable* brightness_uniform      = NULL;
+    const ogl_program_variable* text_brightness_uniform = NULL;
+    const ogl_program_variable* x1y1x2y2_uniform        = NULL;
 
     ogl_program_get_uniform_by_name(checkbox_ptr->program,
                                     system_hashed_ansi_string_create("border_width"),
@@ -220,10 +220,10 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
                                     system_hashed_ansi_string_create("x1y1x2y2"),
                                    &x1y1x2y2_uniform);
 
-    checkbox_ptr->program_border_width_ub_offset    = border_width_uniform->ub_offset;
-    checkbox_ptr->program_brightness_ub_offset      = brightness_uniform->ub_offset;
-    checkbox_ptr->program_text_brightness_ub_offset = text_brightness_uniform->ub_offset;
-    checkbox_ptr->program_x1y1x2y2_ub_offset        = x1y1x2y2_uniform->ub_offset;
+    checkbox_ptr->program_border_width_ub_offset    = border_width_uniform->block_offset;
+    checkbox_ptr->program_brightness_ub_offset      = brightness_uniform->block_offset;
+    checkbox_ptr->program_text_brightness_ub_offset = text_brightness_uniform->block_offset;
+    checkbox_ptr->program_x1y1x2y2_ub_offset        = x1y1x2y2_uniform->block_offset;
 
     /* Set up uniform blocks */
     checkbox_ptr->program_ub_fs = NULL;
@@ -266,12 +266,12 @@ PRIVATE void _ogl_ui_checkbox_init_renderer_callback(ogl_context context,
     const float default_brightness = NONFOCUSED_BRIGHTNESS;
 
     ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
-                                                border_width_uniform->ub_offset,
+                                                border_width_uniform->block_offset,
                                                &border_width,
                                                 0, /* src_data_flags */
                                                 sizeof(float) * 2);
     ogl_program_ub_set_nonarrayed_uniform_value(checkbox_ptr->program_ub_fs,
-                                                text_brightness_uniform->ub_offset,
+                                                text_brightness_uniform->block_offset,
                                                &default_brightness,
                                                 0, /* src_data_flags */
                                                 sizeof(float) );

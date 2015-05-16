@@ -286,8 +286,8 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_NE(triangle_test_program_id, -1);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* projection_matrix_uniform_descriptor = NULL;
-    const ogl_program_uniform_descriptor* view_matrix_uniform_descriptor       = NULL; 
+    const ogl_program_variable* projection_matrix_uniform_descriptor = NULL;
+    const ogl_program_variable* view_matrix_uniform_descriptor       = NULL; 
 
     ASSERT_TRUE(ogl_program_get_uniform_by_name(test_program,
                                                 system_hashed_ansi_string_create("view_matrix"),

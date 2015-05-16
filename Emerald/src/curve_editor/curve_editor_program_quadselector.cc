@@ -200,8 +200,8 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_uniform_descriptor* alpha_uniform_descriptor     = NULL;
-        const ogl_program_uniform_descriptor* positions_uniform_descriptor = NULL;
+        const ogl_program_variable* alpha_uniform_descriptor     = NULL;
+        const ogl_program_variable* positions_uniform_descriptor = NULL;
 
         b_result  = ogl_program_get_uniform_by_name      (result->program,
                                                           system_hashed_ansi_string_create("alpha"),
@@ -218,8 +218,8 @@ PUBLIC curve_editor_program_quadselector curve_editor_program_quadselector_creat
 
         if (b_result)
         {
-            result->alpha_ub_offset     = alpha_uniform_descriptor->ub_offset;
-            result->positions_ub_offset = positions_uniform_descriptor->ub_offset;
+            result->alpha_ub_offset     = alpha_uniform_descriptor->block_offset;
+            result->positions_ub_offset = positions_uniform_descriptor->block_offset;
 
             ASSERT_DEBUG_SYNC(result->alpha_ub_offset     != -1 &&
                               result->positions_ub_offset != -1,

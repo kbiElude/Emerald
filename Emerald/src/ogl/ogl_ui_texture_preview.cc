@@ -380,10 +380,10 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
                                       text_xy);
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* border_width_uniform = NULL;
-    const ogl_program_uniform_descriptor* layer_uniform        = NULL;
-    const ogl_program_uniform_descriptor* texture_uniform      = NULL;
-    const ogl_program_uniform_descriptor* x1y1x2y2_uniform     = NULL;
+    const ogl_program_variable* border_width_uniform = NULL;
+    const ogl_program_variable* layer_uniform        = NULL;
+    const ogl_program_variable* texture_uniform      = NULL;
+    const ogl_program_variable* x1y1x2y2_uniform     = NULL;
 
     ogl_program_get_uniform_by_name(texture_preview_ptr->program,
                                     system_hashed_ansi_string_create("border_width"),
@@ -400,7 +400,7 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 
     if (border_width_uniform != NULL)
     {
-        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform->ub_offset;
+        texture_preview_ptr->program_border_width_ub_offset = border_width_uniform->block_offset;
     }
     else
     {
@@ -409,15 +409,15 @@ PRIVATE void _ogl_ui_texture_preview_init_texture_renderer_callback(ogl_context 
 
     if (layer_uniform != NULL)
     {
-        texture_preview_ptr->program_layer_ub_offset = layer_uniform->ub_offset;
+        texture_preview_ptr->program_layer_ub_offset = layer_uniform->block_offset;
     }
     else
     {
         texture_preview_ptr->program_layer_ub_offset = -1;
     }
 
-    texture_preview_ptr->program_texture_ub_offset  = texture_uniform->ub_offset;
-    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->ub_offset;
+    texture_preview_ptr->program_texture_ub_offset  = texture_uniform->block_offset;
+    texture_preview_ptr->program_x1y1x2y2_ub_offset = x1y1x2y2_uniform->block_offset;
 
     /* Set up uniform blocks */
     unsigned int ub_fs_index = -1;

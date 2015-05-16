@@ -229,8 +229,8 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     }
 
     /* Retrieve uniform block manager */
-    const ogl_program_uniform_descriptor* model_uniform_ptr = NULL;
-    const ogl_program_uniform_descriptor* vp_uniform_ptr    = NULL;
+    const ogl_program_variable* model_uniform_ptr = NULL;
+    const ogl_program_variable* vp_uniform_ptr    = NULL;
 
     ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
                                           system_hashed_ansi_string_create("data"),
@@ -249,13 +249,13 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     ASSERT_DEBUG_SYNC(vp_uniform_ptr != NULL,
                       "Vp uniform descriptor is NULL");
 
-    ASSERT_DEBUG_SYNC(model_uniform_ptr->ub_offset != -1,
+    ASSERT_DEBUG_SYNC(model_uniform_ptr->block_offset != -1,
                       "Model matrix UB offset is -1");
-    ASSERT_DEBUG_SYNC(vp_uniform_ptr->ub_offset != -1,
+    ASSERT_DEBUG_SYNC(vp_uniform_ptr->block_offset != -1,
                       "View matrix UB offset is -1");
 
-    preview_ptr->preview_program_ub_offset_model = model_uniform_ptr->ub_offset;
-    preview_ptr->preview_program_ub_offset_vp    = vp_uniform_ptr->ub_offset;
+    preview_ptr->preview_program_ub_offset_model = model_uniform_ptr->block_offset;
+    preview_ptr->preview_program_ub_offset_vp    = vp_uniform_ptr->block_offset;
 
     /* Set up UBO bindings */
     preview_ptr->pGLUniformBlockBinding(ogl_program_get_id(preview_ptr->preview_program),

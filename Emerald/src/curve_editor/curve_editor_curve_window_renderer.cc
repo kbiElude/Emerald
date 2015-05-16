@@ -2916,7 +2916,7 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
                                    &descriptor_ptr->static_color_program_ub_fs_bo_start_offset);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_fs,
-                                    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                    OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                    &descriptor_ptr->static_color_program_ub_fs_bp);
 
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
@@ -2929,14 +2929,14 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                     OGL_PROGRAM_UB_PROPERTY_BO_START_OFFSET,
                                    &descriptor_ptr->static_color_program_ub_vs_bo_start_offset);
         ogl_program_ub_get_property(descriptor_ptr->static_color_program_ub_vs,
-                                    OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                    OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                    &descriptor_ptr->static_color_program_ub_vs_bp);
 
         /* Retrieve static color program's attribute & uniform locations */
-        const ogl_program_uniform_descriptor* in_color_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* a_uniform_descriptor        = NULL;
-        const ogl_program_uniform_descriptor* b_uniform_descriptor        = NULL;
-        const ogl_program_uniform_descriptor* mvp_uniform_descriptor      = NULL;
+        const ogl_program_variable* in_color_uniform_descriptor = NULL;
+        const ogl_program_variable* a_uniform_descriptor        = NULL;
+        const ogl_program_variable* b_uniform_descriptor        = NULL;
+        const ogl_program_variable* mvp_uniform_descriptor      = NULL;
 
         ogl_program_get_uniform_by_name(_globals->static_color_program,
                                         system_hashed_ansi_string_create("in_color"),
@@ -2951,10 +2951,10 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                                         system_hashed_ansi_string_create("mvp"),
                                        &mvp_uniform_descriptor);
 
-        descriptor_ptr->static_color_program_color_ub_offset = in_color_uniform_descriptor->ub_offset;
-        descriptor_ptr->static_color_program_a_ub_offset     = a_uniform_descriptor->ub_offset;
-        descriptor_ptr->static_color_program_b_ub_offset     = b_uniform_descriptor->ub_offset;
-        descriptor_ptr->static_color_program_mvp_ub_offset   = mvp_uniform_descriptor->ub_offset;
+        descriptor_ptr->static_color_program_color_ub_offset = in_color_uniform_descriptor->block_offset;
+        descriptor_ptr->static_color_program_a_ub_offset     = a_uniform_descriptor->block_offset;
+        descriptor_ptr->static_color_program_b_ub_offset     = b_uniform_descriptor->block_offset;
+        descriptor_ptr->static_color_program_mvp_ub_offset   = mvp_uniform_descriptor->block_offset;
     }
 
     /* If globals are not initialized DO NOT continue */

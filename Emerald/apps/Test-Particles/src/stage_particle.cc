@@ -558,10 +558,10 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
                                          _particle_data_bo_id);
 
     /******************************************* PARTICLE DRAW *****************************************************************/
-    const ogl_program_uniform_descriptor* draw_data_particles_ptr    = NULL;
-    const ogl_program_uniform_descriptor* draw_n_total_particles_ptr = NULL;
-    const ogl_program_uniform_descriptor* draw_projection_view_ptr   = NULL;
-    GLuint                                draw_program_gl_id         = 0;
+    const ogl_program_variable* draw_data_particles_ptr    = NULL;
+    const ogl_program_variable* draw_n_total_particles_ptr = NULL;
+    const ogl_program_variable* draw_projection_view_ptr   = NULL;
+    GLuint                      draw_program_gl_id         = 0;
 
     _particle_draw_fshader = ogl_shader_create (context,
                                                 SHADER_TYPE_FRAGMENT,
@@ -634,10 +634,10 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
                                      N_PARTICLES_ALIGNED_4);
 
     /**************************************** PARTICLE GENERATE 1 **************************************************************/
-    const ogl_program_uniform_descriptor* generate1_max_mass_delta_ptr    = NULL;
-    const ogl_program_uniform_descriptor* generate1_min_mass_ptr          = NULL;
-    const ogl_program_uniform_descriptor* generate1_n_total_particles_ptr = NULL;
-    const ogl_program_uniform_descriptor* generate1_spread_ptr            = NULL;
+    const ogl_program_variable* generate1_max_mass_delta_ptr    = NULL;
+    const ogl_program_variable* generate1_min_mass_ptr          = NULL;
+    const ogl_program_variable* generate1_n_total_particles_ptr = NULL;
+    const ogl_program_variable* generate1_spread_ptr            = NULL;
 
     const char* generate1_tf_variables[] =
     {
@@ -774,11 +774,11 @@ PUBLIC RENDERING_CONTEXT_CALL void stage_particle_init(__in __notnull ogl_contex
     ogl_shader_compile (_particle_update_vshader);
 
     /* Set up particle update program */
-    const ogl_program_uniform_descriptor* data_ptr              = NULL;
-    const ogl_program_uniform_descriptor* decay_ptr             = NULL;
-    const ogl_program_uniform_descriptor* dt_ptr                = NULL;
-    const ogl_program_uniform_descriptor* gravity_ptr           = NULL;
-    const ogl_program_uniform_descriptor* n_total_particles_ptr = NULL;
+    const ogl_program_variable* data_ptr              = NULL;
+    const ogl_program_variable* decay_ptr             = NULL;
+    const ogl_program_variable* dt_ptr                = NULL;
+    const ogl_program_variable* gravity_ptr           = NULL;
+    const ogl_program_variable* n_total_particles_ptr = NULL;
 
     const char* update_tf_variables[] =
     {

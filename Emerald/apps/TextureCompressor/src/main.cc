@@ -798,8 +798,8 @@ void _rendering_handler(ogl_context          context,
         ogl_program_link(_preview_po);
 
         /* Retrieve uniforms */
-        const ogl_program_uniform_descriptor* uniform_texture  = NULL;
-        const ogl_program_uniform_descriptor* uniform_x1y1x2y2 = NULL;
+        const ogl_program_variable* uniform_texture  = NULL;
+        const ogl_program_variable* uniform_x1y1x2y2 = NULL;
 
         ogl_program_get_uniform_by_name(_preview_po,
                                         system_hashed_ansi_string_create("texture"),
@@ -814,7 +814,7 @@ void _rendering_handler(ogl_context          context,
                            "x1y1x2y2 is not recognized");
 
         _preview_po_uniform_texture            = uniform_texture->location;
-        _preview_po_uniform_x1y1x2y2_ub_offset = uniform_x1y1x2y2->ub_offset;
+        _preview_po_uniform_x1y1x2y2_ub_offset = uniform_x1y1x2y2->block_offset;
 
         /* Retrieve uniform block data */
         ogl_program_get_uniform_block_by_name(_preview_po,

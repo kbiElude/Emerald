@@ -170,10 +170,10 @@ PRIVATE void _sh_shaders_object_create_per_vertex_ubo_buffertexture_rendering_ca
     ogl_program_link         (ptr->program);
 
     /* Set up preview UBO */
-    const ogl_program_uniform_descriptor* program_light_sh_coefficients_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* program_object_sh_coefficients_descriptor  = NULL;
-    const ogl_program_uniform_descriptor* program_position_descriptor                = NULL;
-    GLuint                                program_id                                 = ogl_program_get_id(ptr->program);
+    const ogl_program_variable* program_light_sh_coefficients_descriptor   = NULL;
+    const ogl_program_variable* program_object_sh_coefficients_descriptor  = NULL;
+    const ogl_program_variable* program_position_descriptor                = NULL;
+    GLuint                      program_id                                 = ogl_program_get_id(ptr->program);
 
     ogl_program_get_uniform_by_name(ptr->program, system_hashed_ansi_string_create("light_sh_coefficients_sampler"),  &program_light_sh_coefficients_descriptor);
     ogl_program_get_uniform_by_name(ptr->program, system_hashed_ansi_string_create("object_sh_coefficients_sampler"), &program_object_sh_coefficients_descriptor);

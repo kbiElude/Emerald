@@ -441,17 +441,17 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
     ogl_shader_release(vertex_shader);
 
     /* Retrieve attribute/uniform locations */
-    const ogl_program_uniform_descriptor*   data_uniform_data                      = NULL;
-    const ogl_program_uniform_descriptor*   epsilon_uniform_data                   = NULL;
-    const ogl_program_uniform_descriptor*   escape_uniform_data                    = NULL;
-    const ogl_program_uniform_descriptor*   eye_uniform_data                       = NULL;
-    const ogl_program_uniform_descriptor*   light_color_uniform_data               = NULL;
-    const ogl_program_uniform_descriptor*   light_position_uniform_data            = NULL;
-    const ogl_program_uniform_descriptor*   max_iterations_uniform_data            = NULL;
-    const ogl_program_uniform_descriptor*   mvp_uniform_data                       = NULL;
-    const ogl_program_uniform_descriptor*   raycast_radius_multiplier_uniform_data = NULL;
-    const ogl_program_uniform_descriptor*   shadows_uniform_data                   = NULL;
-    const ogl_program_uniform_descriptor*   specularity_uniform_data               = NULL;
+    const ogl_program_variable*             data_uniform_data                      = NULL;
+    const ogl_program_variable*             epsilon_uniform_data                   = NULL;
+    const ogl_program_variable*             escape_uniform_data                    = NULL;
+    const ogl_program_variable*             eye_uniform_data                       = NULL;
+    const ogl_program_variable*             light_color_uniform_data               = NULL;
+    const ogl_program_variable*             light_position_uniform_data            = NULL;
+    const ogl_program_variable*             max_iterations_uniform_data            = NULL;
+    const ogl_program_variable*             mvp_uniform_data                       = NULL;
+    const ogl_program_variable*             raycast_radius_multiplier_uniform_data = NULL;
+    const ogl_program_variable*             shadows_uniform_data                   = NULL;
+    const ogl_program_variable*             specularity_uniform_data               = NULL;
     const ogl_program_attribute_descriptor* vertex_attribute_data                  = NULL;
 
     ogl_program_get_attribute_by_name(_julia_program,
@@ -491,18 +491,18 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                       system_hashed_ansi_string_create("specularity"),
                                      &specularity_uniform_data);
 
-    _julia_data_ub_offset                      = (data_uniform_data                      != NULL) ? data_uniform_data->ub_offset                      : -1;
-    _julia_epsilon_ub_offset                   = (epsilon_uniform_data                   != NULL) ? epsilon_uniform_data->ub_offset                   : -1;
-    _julia_escape_ub_offset                    = (escape_uniform_data                    != NULL) ? escape_uniform_data->ub_offset                    : -1;
-    _julia_eye_ub_offset                       = (eye_uniform_data                       != NULL) ? eye_uniform_data->ub_offset                       : -1;
-    _julia_light_color_ub_offset               = (light_color_uniform_data               != NULL) ? light_color_uniform_data->ub_offset               : -1;
-    _julia_light_position_ub_offset            = (light_position_uniform_data            != NULL) ? light_position_uniform_data->ub_offset            : -1;
-    _julia_max_iterations_ub_offset            = (max_iterations_uniform_data            != NULL) ? max_iterations_uniform_data->ub_offset            : -1;
-    _julia_mvp_ub_offset                       = (mvp_uniform_data                       != NULL) ? mvp_uniform_data->ub_offset                       : -1;
-    _julia_raycast_radius_multiplier_ub_offset = (raycast_radius_multiplier_uniform_data != NULL) ? raycast_radius_multiplier_uniform_data->ub_offset : -1;
-    _julia_shadows_ub_offset                   = (shadows_uniform_data                   != NULL) ? shadows_uniform_data->ub_offset                   : -1;
-    _julia_specularity_ub_offset               = (specularity_uniform_data               != NULL) ? specularity_uniform_data->ub_offset               : -1;
-    _julia_vertex_attribute_location           = (vertex_attribute_data                  != NULL) ? vertex_attribute_data->location                   : -1;
+    _julia_data_ub_offset                      = (data_uniform_data                      != NULL) ? data_uniform_data->block_offset                      : -1;
+    _julia_epsilon_ub_offset                   = (epsilon_uniform_data                   != NULL) ? epsilon_uniform_data->block_offset                   : -1;
+    _julia_escape_ub_offset                    = (escape_uniform_data                    != NULL) ? escape_uniform_data->block_offset                    : -1;
+    _julia_eye_ub_offset                       = (eye_uniform_data                       != NULL) ? eye_uniform_data->block_offset                       : -1;
+    _julia_light_color_ub_offset               = (light_color_uniform_data               != NULL) ? light_color_uniform_data->block_offset               : -1;
+    _julia_light_position_ub_offset            = (light_position_uniform_data            != NULL) ? light_position_uniform_data->block_offset            : -1;
+    _julia_max_iterations_ub_offset            = (max_iterations_uniform_data            != NULL) ? max_iterations_uniform_data->block_offset            : -1;
+    _julia_mvp_ub_offset                       = (mvp_uniform_data                       != NULL) ? mvp_uniform_data->block_offset                       : -1;
+    _julia_raycast_radius_multiplier_ub_offset = (raycast_radius_multiplier_uniform_data != NULL) ? raycast_radius_multiplier_uniform_data->block_offset : -1;
+    _julia_shadows_ub_offset                   = (shadows_uniform_data                   != NULL) ? shadows_uniform_data->block_offset                   : -1;
+    _julia_specularity_ub_offset               = (specularity_uniform_data               != NULL) ? specularity_uniform_data->block_offset               : -1;
+    _julia_vertex_attribute_location           = (vertex_attribute_data                  != NULL) ? vertex_attribute_data->location                      : -1;
 
     /* Retrieve uniform block data */
     ogl_program_get_uniform_block_by_name(_julia_program,

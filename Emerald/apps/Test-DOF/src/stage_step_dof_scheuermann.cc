@@ -398,11 +398,11 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
                                &_dof_scheuermann_combination_po_ub_bo_start_offset);
 
     /* Retrieve combination program uniform locations */
-    const ogl_program_uniform_descriptor* bg_uniform_descriptor         = NULL;
-    const ogl_program_uniform_descriptor* data_high_uniform_descriptor  = NULL;
-    const ogl_program_uniform_descriptor* data_low_uniform_descriptor   = NULL;
-    const ogl_program_uniform_descriptor* depth_high_uniform_descriptor = NULL;
-    const ogl_program_uniform_descriptor* max_coc_px_uniform_descriptor = NULL;
+    const ogl_program_variable* bg_uniform_descriptor         = NULL;
+    const ogl_program_variable* data_high_uniform_descriptor  = NULL;
+    const ogl_program_variable* data_low_uniform_descriptor   = NULL;
+    const ogl_program_variable* depth_high_uniform_descriptor = NULL;
+    const ogl_program_variable* max_coc_px_uniform_descriptor = NULL;
 
     ogl_program_get_uniform_by_name(_dof_scheuermann_combination_po,
                                     system_hashed_ansi_string_create("bg"),
@@ -420,11 +420,11 @@ PUBLIC void stage_step_dof_scheuermann_init(ogl_context  context,
                                     system_hashed_ansi_string_create("max_coc_px"),
                                    &max_coc_px_uniform_descriptor);
 
-    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_descriptor         != NULL) ? bg_uniform_descriptor->location          : -1;
-    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_descriptor  != NULL) ? data_high_uniform_descriptor->location   : -1;
-    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_descriptor   != NULL) ? data_low_uniform_descriptor->location    : -1;
-    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_descriptor != NULL) ? depth_high_uniform_descriptor->location  : -1;
-    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_descriptor != NULL) ? max_coc_px_uniform_descriptor->ub_offset : -1;
+    _dof_scheuermann_combination_po_bg_uniform_location         = (bg_uniform_descriptor         != NULL) ? bg_uniform_descriptor->location             : -1;
+    _dof_scheuermann_combination_po_data_high_uniform_location  = (data_high_uniform_descriptor  != NULL) ? data_high_uniform_descriptor->location      : -1;
+    _dof_scheuermann_combination_po_data_low_uniform_location   = (data_low_uniform_descriptor   != NULL) ? data_low_uniform_descriptor->location       : -1;
+    _dof_scheuermann_combination_po_depth_high_uniform_location = (depth_high_uniform_descriptor != NULL) ? depth_high_uniform_descriptor->location     : -1;
+    _dof_scheuermann_combination_po_ub_max_coc_px_ub_offset     = (max_coc_px_uniform_descriptor != NULL) ? max_coc_px_uniform_descriptor->block_offset : -1;
 
     entrypoints->pGLProgramUniform1i(ogl_program_get_id(_dof_scheuermann_combination_po),
                                      data_high_uniform_descriptor->location,

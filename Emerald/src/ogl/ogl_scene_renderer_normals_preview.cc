@@ -184,10 +184,10 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
     }
 
     /* Retrieve uniform locations */
-    const ogl_program_uniform_descriptor* normal_matrix_uniform_descriptor_ptr = NULL;
-    const ogl_program_uniform_descriptor* start_offsets_uniform_descriptor_ptr = NULL;
-    const ogl_program_uniform_descriptor* stride_uniform_descriptor_ptr        = NULL;
-    const ogl_program_uniform_descriptor* vp_uniform_descriptor_ptr            = NULL;
+    const ogl_program_variable* normal_matrix_uniform_descriptor_ptr = NULL;
+    const ogl_program_variable* start_offsets_uniform_descriptor_ptr = NULL;
+    const ogl_program_variable* stride_uniform_descriptor_ptr        = NULL;
+    const ogl_program_variable* vp_uniform_descriptor_ptr            = NULL;
 
     ogl_program_get_uniform_by_name(preview_ptr->preview_program,
                                     system_hashed_ansi_string_create("normal_matrix"),
@@ -213,22 +213,22 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
 
     if (normal_matrix_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_descriptor_ptr->ub_offset;
+        preview_ptr->preview_program_normal_matrix_ub_offset = normal_matrix_uniform_descriptor_ptr->block_offset;
     }
 
     if (start_offsets_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_descriptor_ptr->ub_offset;
+        preview_ptr->preview_program_start_offsets_ub_offset = start_offsets_uniform_descriptor_ptr->block_offset;
     }
 
     if (stride_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_stride_ub_offset = stride_uniform_descriptor_ptr->ub_offset;
+        preview_ptr->preview_program_stride_ub_offset = stride_uniform_descriptor_ptr->block_offset;
     }
 
     if (vp_uniform_descriptor_ptr != NULL)
     {
-        preview_ptr->preview_program_vp_ub_offset = vp_uniform_descriptor_ptr->ub_offset;
+        preview_ptr->preview_program_vp_ub_offset = vp_uniform_descriptor_ptr->block_offset;
     }
 
     /* Retrieve UB properties */
@@ -268,10 +268,10 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
                                &preview_ptr->preview_program_ub_vs_bo_start_offset);
 
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_gs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &preview_ptr->preview_program_ub_gs_ub_bp);
     ogl_program_ub_get_property(preview_ptr->preview_program_ub_vs,
-                                OGL_PROGRAM_UB_PROPERTY_INDEXED_UB_BP,
+                                OGL_PROGRAM_UB_PROPERTY_INDEXED_BP,
                                &preview_ptr->preview_program_ub_vs_ub_bp);
 
     /* Set up SSBO bindings */

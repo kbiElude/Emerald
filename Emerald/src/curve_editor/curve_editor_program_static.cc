@@ -195,8 +195,8 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __not
         }
 
         /* Retrieve uniform locations */
-        const ogl_program_uniform_descriptor* pos1_uniform_descriptor = NULL;
-        const ogl_program_uniform_descriptor* pos2_uniform_descriptor = NULL;
+        const ogl_program_variable* pos1_uniform_descriptor = NULL;
+        const ogl_program_variable* pos2_uniform_descriptor = NULL;
 
         b_result  = ogl_program_get_uniform_by_name      (result->program,
                                                           system_hashed_ansi_string_create("pos1"),
@@ -213,8 +213,8 @@ PUBLIC curve_editor_program_static curve_editor_program_static_create(__in __not
 
         if (b_result)
         {
-            result->pos1_ub_offset = pos1_uniform_descriptor->ub_offset;
-            result->pos2_ub_offset = pos2_uniform_descriptor->ub_offset;
+            result->pos1_ub_offset = pos1_uniform_descriptor->block_offset;
+            result->pos2_ub_offset = pos2_uniform_descriptor->block_offset;
 
             ASSERT_DEBUG_SYNC(result->pos1_ub_offset != -1 &&
                               result->pos2_ub_offset != -1,

@@ -81,6 +81,17 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
 PUBLIC EMERALD_API bool ogl_program_detach_shader(__in __notnull ogl_program,
                                                   __in __notnull ogl_shader);
 
+/** TODO
+ *
+ *  Internal use only.
+ */
+PUBLIC void ogl_program_fill_ogl_program_variable(__in                                             __notnull ogl_program           program,
+                                                  __in                                                       unsigned int          temp_variable_name_storage_size,
+                                                  __in_bcount_opt(temp_variable_name_storage_size)           char*                 temp_variable_name_storage,
+                                                  __in                                             __notnull ogl_program_variable* variable_ptr,
+                                                  __in                                                       GLenum                variable_interface_type,
+                                                  __in                                                       unsigned int          n_variable);
+
 /** Retrieves a shader that has been successfully attached to the program. Note the indexes
  *  may differ from the ones reported by GL.
  *
@@ -138,20 +149,20 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(__
  *
  *  Note: You need to call ogl_program_link() before using this function.
  *
- *  @param ogl_program                      Program to retrieve the uniform descriptor for.
- *  @param size_t                           Index of the uniform to retrieve the descriptor for.
- *  @param ogl_program_uniform_descriptor** Deref will be used to store the result, if successful.
+ *  @param ogl_program            Program to retrieve the uniform descriptor for.
+ *  @param size_t                 Index of the uniform to retrieve the descriptor for.
+ *  @param ogl_program_variable** Deref will be used to store the result, if successful.
  *
  *  @return true if successful, false otherwise.
  **/
 PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_program,
                                                          __in            size_t,
-                                                         __out __notnull const ogl_program_uniform_descriptor**);
+                                                         __out __notnull const ogl_program_variable**);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_program,
                                                         __in  __notnull system_hashed_ansi_string,
-                                                        __out __notnull const ogl_program_uniform_descriptor**);
+                                                        __out __notnull const ogl_program_variable**);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull ogl_program     program,
