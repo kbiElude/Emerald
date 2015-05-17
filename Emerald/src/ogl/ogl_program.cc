@@ -823,6 +823,15 @@ PRIVATE bool _ogl_program_load_binary_blob(__in __notnull  ogl_context  context,
                                                       program_binary_ptr,
                                                       program_binary_length);
 
+                        /* Is the program considered linked at this point? */
+                        GLint link_status = GL_FALSE;
+
+                        program_ptr->pGLGetProgramiv(program_ptr->id,
+                                                     GL_LINK_STATUS,
+                                                    &link_status);
+
+                        result = (link_status != GL_FALSE);
+
                         /* Program binary is no longer needed */
                         delete [] program_binary_ptr;
 
