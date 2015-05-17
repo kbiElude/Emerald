@@ -521,6 +521,8 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
                                                           GL_BUFFER_VARIABLE,
                                                           active_variable_indices[n_active_variable]);
 
+                    system_resizable_vector_push(block_ptr->members,
+                                                 (void*) variable_ptr);
                 }
                 else
                 {
@@ -871,6 +873,21 @@ PUBLIC ogl_program_block ogl_program_block_create(__in __notnull ogl_context    
     } /* if (new_ub_ptr != NULL) */
 
     return (ogl_program_block) new_block_ptr;
+}
+
+/** Please see header for spec */
+PUBLIC bool ogl_program_block_get_block_variable(__in  __notnull ogl_program_block            block,
+                                                 __in            unsigned int                 index,
+                                                 __out __notnull const ogl_program_variable** out_variable_ptr)
+{
+    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
+    bool                result    = false;
+
+    result = system_resizable_vector_get_element_at(block_ptr->members,
+                                                    index,
+                                                    out_variable_ptr);
+
+    return result;
 }
 
 /** Please see header for spec */

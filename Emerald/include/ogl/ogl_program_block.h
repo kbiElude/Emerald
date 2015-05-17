@@ -97,6 +97,11 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_program_block ogl_program_block_create(__in __
                                                                          __in           bool                      support_sync_behavior);
 
 /** TODO */
+PUBLIC bool ogl_program_block_get_block_variable(__in  __notnull ogl_program_block            block,
+                                                 __in            unsigned int                 index,
+                                                 __out __notnull const ogl_program_variable** out_variable_ptr);
+
+/** TODO */
 PUBLIC void ogl_program_block_get_property(__in  __notnull const ogl_program_block    block,
                                            __in            ogl_program_block_property property,
                                            __out __notnull void*                      out_result);

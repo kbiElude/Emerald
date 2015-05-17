@@ -86,6 +86,16 @@ PUBLIC EMERALD_API void ogl_program_ssb_get_property(__in  __notnull const ogl_p
 }
 
 /** Please see header for spec */
+PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(__in  __notnull const ogl_program_ssb        ssb,
+                                                              __in            unsigned int                 n_variable,
+                                                              __out __notnull const ogl_program_variable** out_variable_ptr)
+{
+    return ogl_program_block_get_block_variable((ogl_program_block) ssb,
+                                                n_variable,
+                                                out_variable_ptr);
+}
+
+/** Please see header for spec */
 PUBLIC void ogl_program_ssb_release(__in __notnull ogl_program_ssb ssb)
 {
     ogl_program_block_release( (ogl_program_block) ssb);

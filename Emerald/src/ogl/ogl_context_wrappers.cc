@@ -1389,9 +1389,9 @@ PUBLIC void APIENTRY ogl_context_wrappers_glUniformBlockBinding(GLuint program,
     {
         ogl_program_ub requested_ub = NULL;
 
-        ogl_program_get_uniform_block_by_index(program_instance,
-                                               uniformBlockIndex,
-                                              &requested_ub);
+        ogl_program_get_uniform_block_by_ub_index(program_instance,
+                                                  uniformBlockIndex,
+                                                 &requested_ub);
 
         ASSERT_DEBUG_SYNC(requested_ub != NULL,
                           "ogl_program_ub instance for requested uniform block index was not found.");

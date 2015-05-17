@@ -1895,6 +1895,43 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(__
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_sb_index(__in  __notnull ogl_program      program,
+                                                                         __in            unsigned int     index,
+                                                                         __out __notnull ogl_program_ssb* out_ssb_ptr)
+{
+    _ogl_program*   program_ptr = (_ogl_program*) program;
+    bool            result      = false;
+    ogl_program_ssb result_ssb  = NULL;
+
+    result = system_hash64map_get_element_at(program_ptr->ssb_index_to_ssb_map,
+                                  index,
+                                 &result_ssb,
+                                  NULL); /* pOutHash */
+
+    if (result)
+    {
+        *out_ssb_ptr = result_ssb;
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(__in  __notnull ogl_program               program,
+                                                                     __in  __notnull system_hashed_ansi_string name,
+                                                                     __out __notnull ogl_program_ssb*          out_ssb_ptr)
+{
+    _ogl_program* program_ptr = (_ogl_program*) program;
+    bool          result      = false;
+
+    result = system_hash64map_get(program_ptr->ssb_name_to_ssb_map,
+                                  system_hashed_ansi_string_get_hash(name),
+                                  out_ssb_ptr);
+
+    return result;
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_by_index(__in  __notnull ogl_program                  program,
                                                          __in            size_t                       n_uniform,
                                                          __out __notnull const ogl_program_variable** out_uniform)
@@ -1968,13 +2005,14 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull ogl_program     program,
-                                                               __in            unsigned int    index,
-                                                               __out __notnull ogl_program_ub* out_ub_ptr)
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(__in  __notnull ogl_program     program,
+                                                                  __in            unsigned int    index,
+                                                                  __out __notnull ogl_program_ub* out_ub_ptr)
 {
     ogl_context      current_context    = NULL;
     _ogl_program*    program_ptr        = (_ogl_program*) program;
     bool             result             = false;
+    ogl_program_ub   result_ub          = NULL;
     system_hash64map ub_index_to_ub_map = NULL;
 
     if (program_ptr->syncable_ubs_mode == OGL_PROGRAM_SYNCABLE_UBS_MODE_ENABLE_PER_CONTEXT)
@@ -1997,7 +2035,12 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull o
     {
         result = system_hash64map_get(ub_index_to_ub_map,
                                       index,
-                                      out_ub_ptr);
+                                     &result_ub);
+
+        if (result)
+        {
+            *out_ub_ptr = result_ub;
+        }
     }
 
     return result;

@@ -50,6 +50,11 @@ PUBLIC RENDERING_CONTEXT_CALL ogl_program_ssb ogl_program_ssb_create(__in __notn
                                                                      __in __notnull system_hashed_ansi_string ssb_name);
 
 /** TODO */
+PUBLIC EMERALD_API bool ogl_program_ssb_get_variable_by_index(__in  __notnull const ogl_program_ssb        ssb,
+                                                              __in            unsigned int                 n_variable,
+                                                              __out __notnull const ogl_program_variable** out_variable_ptr);
+
+/** TODO */
 PUBLIC EMERALD_API void ogl_program_ssb_get_property(__in  __notnull const ogl_program_ssb    ssb,
                                                      __in            ogl_program_ssb_property property,
                                                      __out __notnull void*                    out_result);

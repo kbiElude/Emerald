@@ -145,6 +145,16 @@ PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_name(__in __notnull
  */
 PUBLIC EMERALD_API system_hashed_ansi_string ogl_program_get_program_info_log(__in __notnull ogl_program);
 
+/** TODO */
+PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_sb_index(__in  __notnull ogl_program      program,
+                                                                         __in            unsigned int     index,
+                                                                         __out __notnull ogl_program_ssb* out_ssb_ptr);
+
+/** TODO */
+PUBLIC EMERALD_API bool ogl_program_get_shader_storage_block_by_name(__in  __notnull ogl_program               program,
+                                                                     __in  __notnull system_hashed_ansi_string name,
+                                                                     __out __notnull ogl_program_ssb*          out_ssb_ptr);
+
 /** Retrieves uniform descriptor for a particular index of user-provided program object.
  *
  *  Note: You need to call ogl_program_link() before using this function.
@@ -165,9 +175,9 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
                                                         __out __notnull const ogl_program_variable**);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_index(__in  __notnull ogl_program     program,
-                                                               __in            unsigned int    index,
-                                                               __out __notnull ogl_program_ub* out_ub_ptr);
+PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_ub_index(__in  __notnull ogl_program     program,
+                                                                  __in            unsigned int    index,
+                                                                  __out __notnull ogl_program_ub* out_ub_ptr);
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull ogl_program               program,
