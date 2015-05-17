@@ -1666,6 +1666,10 @@ PUBLIC void ogl_program_fill_ogl_program_variable(__in                          
     variable_ptr->top_level_array_stride = 0;
     variable_ptr->type                   = PROGRAM_UNIFORM_TYPE_UNDEFINED;
 
+    ASSERT_DEBUG_SYNC(variable_interface_type == GL_BUFFER_VARIABLE ||
+                      variable_interface_type == GL_UNIFORM,
+                      "Sanity check failed");
+
     if (variable_interface_type == GL_BUFFER_VARIABLE ||
         variable_interface_type == GL_UNIFORM)
     {
@@ -1755,13 +1759,6 @@ PUBLIC void ogl_program_fill_ogl_program_variable(__in                          
                                             &variable_ptr->top_level_array_stride);
     }
 
-    if (variable_interface_type == GL_UNIFORM)
-    {
-        variable_ptr->location = program_ptr->pGLGetProgramResourceLocation(program_ptr->id,
-                                                                            variable_interface_type,
-                                                                            temp_variable_name_storage);
-    }
-
     if (!is_temp_variable_defined)
     {
         temp_variable_name_storage = new (std::nothrow) char[variable_ptr->length + 1];
@@ -1772,13 +1769,20 @@ PUBLIC void ogl_program_fill_ogl_program_variable(__in                          
            variable_ptr->length + 1);
 
     program_ptr->pGLGetProgramResourceName(program_ptr->id,
-                                           GL_UNIFORM,
+                                           variable_interface_type,
                                            n_variable,
                                            variable_ptr->length + 1,
                                            NULL,
                                            temp_variable_name_storage);
 
-    variable_ptr->name     = system_hashed_ansi_string_create(temp_variable_name_storage);
+    if (variable_interface_type == GL_UNIFORM)
+    {
+        variable_ptr->location = program_ptr->pGLGetProgramResourceLocation(program_ptr->id,
+                                                                            variable_interface_type,
+                                                                            temp_variable_name_storage);
+    }
+
+    variable_ptr->name = system_hashed_ansi_string_create(temp_variable_name_storage);
 
     if (!is_temp_variable_defined)
     {
@@ -2095,9 +2099,10 @@ PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program program)
     if (n_attached_shaders > 0)
     {
         /* Clean up */
-        _ogl_program_release_active_attributes    (program_ptr->active_attributes);
-        _ogl_program_release_active_uniform_blocks(program_ptr);
-        _ogl_program_release_active_uniforms      (program_ptr->active_uniforms);
+        _ogl_program_release_active_attributes           (program_ptr->active_attributes);
+        _ogl_program_release_active_shader_storage_blocks(program_ptr);
+        _ogl_program_release_active_uniform_blocks       (program_ptr);
+        _ogl_program_release_active_uniforms             (program_ptr->active_uniforms);
 
         /* Run through all the attached shaders and make sure these are compiled.
         *
