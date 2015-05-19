@@ -2,7 +2,7 @@
  *
  * Emerald (kbi/elude @2012-2015)
  *
- * Texture buffer data layout is as follows
+ * Shader storage buffer data layout is as follows
  *
  * # Horizontal delta (float)
  * # Top-left  U      (float) taken from font table texture.
@@ -12,15 +12,18 @@
  * # Font width       (float) in pixels.
  * # Font height      (float) in pixels.
  *
- * Repeated as many times as there are characters in the strng.
+ * Repeated as many times as there are characters in the string.
  *
- * NOTE: For ES contexts, this implementation requires GL_EXT_texture_buffer support.
+ * NOTE: Text rendering used to be implemented with buffer textures, but these
+ *       misbehaved on a certain vendor's hardware. This implementation could
+ *       benefit from a re-write for the sake of improving the code readability.
  */
 #include "shared.h"
 #include "gfx/gfx_bfg_font_table.h"
 #include "ogl/ogl_buffers.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ssb.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_shader.h"
@@ -57,9 +60,8 @@ typedef struct
     void*        data_buffer_contents;
     uint32_t     data_buffer_contents_length;
     uint32_t     data_buffer_contents_size;
-    ogl_texture  data_buffer_to;
     bool         dirty;
-    unsigned int texture_buffer_offset_alignment;
+    unsigned int shader_storage_buffer_offset_alignment;
 
     GLuint      data_buffer_id; /* managed by ogl_buffers */
     GLuint      data_buffer_offset;
@@ -130,16 +132,16 @@ typedef struct
 
 typedef struct _global_per_context_variables
 {
-    ogl_program_ub draw_text_program_ub_fsdata;
-    GLuint         draw_text_program_ub_fsdata_bo_id;
-    GLuint         draw_text_program_ub_fsdata_bo_size;
-    GLuint         draw_text_program_ub_fsdata_bo_start_offset;
-    GLuint         draw_text_program_ub_fsdata_index;
-    ogl_program_ub draw_text_program_ub_vsdata;
-    GLuint         draw_text_program_ub_vsdata_bo_id;
-    GLuint         draw_text_program_ub_vsdata_bo_size;
-    GLuint         draw_text_program_ub_vsdata_bo_start_offset;
-    GLuint         draw_text_program_ub_vsdata_index;
+    ogl_program_ub  draw_text_program_ub_fsdata;
+    GLuint          draw_text_program_ub_fsdata_bo_id;
+    GLuint          draw_text_program_ub_fsdata_bo_size;
+    GLuint          draw_text_program_ub_fsdata_bo_start_offset;
+    GLuint          draw_text_program_ub_fsdata_index;
+    ogl_program_ub  draw_text_program_ub_vsdata;
+    GLuint          draw_text_program_ub_vsdata_bo_id;
+    GLuint          draw_text_program_ub_vsdata_bo_size;
+    GLuint          draw_text_program_ub_vsdata_bo_start_offset;
+    GLuint          draw_text_program_ub_vsdata_index;
 
     _global_per_context_variables()
     {
@@ -158,13 +160,14 @@ typedef struct _global_per_context_variables
 
 typedef struct
 {
-    ogl_program    draw_text_program; /* ogl_program_ub instances are PER-CONTEXT */
+    ogl_program     draw_text_program;          /* ogl_program_ub instances are PER-CONTEXT */
+    ogl_program_ssb draw_text_program_data_ssb; /* NOT per-context */
+
     ogl_shader     draw_text_fragment_shader;
     ogl_shader     draw_text_vertex_shader;
 
     GLuint      draw_text_fragment_shader_color_ub_offset;
     GLuint      draw_text_fragment_shader_font_table_location;
-    GLuint      draw_text_vertex_shader_data_location;
     GLuint      draw_text_vertex_shader_n_origin_character_ub_offset;
     GLuint      draw_text_vertex_shader_scale_ub_offset;
 
@@ -207,13 +210,16 @@ const char* fragment_shader_template = "#ifdef GL_ES\n"
                                        "}\n";
 
 const char* vertex_shader_template = "#ifdef GL_ES\n"
-                                     "    #extension GL_EXT_texture_buffer : require\n"
-                                     "\n"
                                      "    precision highp float;\n"
                                      "    precision highp samplerBuffer;\n"
+                                     "#else\n"
+                                     "    #extension GL_ARB_shader_storage_buffer_object : require\n"
                                      "#endif\n"
                                      "\n"
-                                     "uniform samplerBuffer data;\n"
+                                     "buffer dataSSB\n"
+                                     "{\n"
+                                     "    restrict readonly vec4 data[];\n"
+                                     "};\n"
                                      "\n"
                                      "uniform VSData\n"
                                      "{\n"
@@ -239,19 +245,19 @@ const char* vertex_shader_template = "#ifdef GL_ES\n"
                                      "        case 5: vertex_data = vec2(0.0, 1.0); break;\n"
                                      "    }\n"
                                      "\n"
-                                     "   vec2  x1_y1_origin = texelFetch(data, n_origin_character * 2).xy;\n"
-                                     "   vec4  x1_y1_u1_v1  = texelFetch(data, character_id * 2);\n"
-                                     "   vec4  u2_v2_w_h    = texelFetch(data, character_id * 2 + 1);\n"
+                                     "   vec2  x1_y1_origin = data[n_origin_character * 2].xy;\n"
+                                     "   vec4  x1_y1_u1_v1  = data[character_id * 2];\n"
+                                     "   vec4  u2_v2_w_h    = data[character_id * 2 + 1];\n"
                                      "   float u_delta      = u2_v2_w_h.x - x1_y1_u1_v1.z;\n"
                                      "   float v_delta      = u2_v2_w_h.y - x1_y1_u1_v1.w;\n"
                                      "\n"
                                      /* Scale x1/y1 to <-1, 1> */
-                                     "   x1_y1_u1_v1.xy   = x1_y1_u1_v1.xy * 2.0 - 1.0;\n"
-                                     "   x1_y1_origin     = x1_y1_origin   * 2.0 - 1.0;\n"
+                                     "   x1_y1_u1_v1.xy   = x1_y1_u1_v1.xy * vec2(2.0) - vec2(1.0);\n"
+                                     "   x1_y1_origin     = x1_y1_origin   * vec2(2.0) - vec2(1.0);\n"
                                      /* Output */
                                      "   gl_Position      = vec4(x1_y1_u1_v1.x + (1.0 - scale) * (x1_y1_origin.x - x1_y1_u1_v1.x) + scale * (vertex_data.x * u2_v2_w_h.z * 2.0),\n"
                                      "                           x1_y1_u1_v1.y + (1.0 - scale) * (x1_y1_origin.y - x1_y1_u1_v1.y) + scale * (vertex_data.y * u2_v2_w_h.w * 2.0),\n"
-                                     "                           0, 1);\n"
+                                     "                           0.0, 1.0);\n"
                                      "   vertex_shader_uv = vec2(vertex_data.x * u_delta +       x1_y1_u1_v1.z, \n"
                                      "                          -vertex_data.y * v_delta + 1.0 - x1_y1_u1_v1.w);\n"
                                      "}\n";
@@ -334,22 +340,6 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
         }
     } /* for (uint32_t n_text_string = 0; n_text_string < n_text_strings; ++n_text_string) */
 
-    if (text_ptr->data_buffer_to == NULL)
-    {
-        /* Generate texture buffer we will use to map the texture object onto the data buffer object*/
-        text_ptr->data_buffer_to = ogl_texture_create_empty(context,
-                                                            system_hashed_ansi_string_create_by_merging_two_strings("System text renderer ",
-                                                                                                                    system_hashed_ansi_string_get_buffer(text_ptr->name) ));
-
-        ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Could not create a texture object for texture buffer.");
-
-        /* We need to retain the ogl_texture instance since we will need to manually manage
-         * the lifetime of this object.
-         */
-        ogl_texture_retain(text_ptr->data_buffer_to);
-    }
-
     if (text_ptr->data_buffer_contents_length < summed_text_length)
     {
         /* Need to reallocate */
@@ -385,7 +375,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
 
         bool alloc_result = ogl_buffers_allocate_buffer_memory(text_ptr->buffers,
                                                                text_ptr->data_buffer_contents_size,
-                                                               text_ptr->texture_buffer_offset_alignment,
+                                                               text_ptr->shader_storage_buffer_offset_alignment,
                                                                OGL_BUFFERS_MAPPABILITY_NONE,
                                                                OGL_BUFFERS_USAGE_MISCELLANEOUS,
                                                                OGL_BUFFERS_FLAGS_NONE,
@@ -394,27 +384,6 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
 
         ASSERT_DEBUG_SYNC(alloc_result,
                           "Text data buffer allocation failed.");
-
-        /* Set up the contents */
-        if (context_type == OGL_CONTEXT_TYPE_GL)
-        {
-            text_ptr->gl_pGLTextureBufferRangeEXT(text_ptr->data_buffer_to,
-                                                  GL_TEXTURE_BUFFER,
-                                                  GL_RGBA32F,
-                                                  text_ptr->data_buffer_id,
-                                                  text_ptr->data_buffer_offset,
-                                                  text_ptr->data_buffer_contents_size);
-        }
-        else
-        {
-            text_ptr->pGLBindBuffer    (GL_ARRAY_BUFFER,
-                                        text_ptr->data_buffer_id);
-            text_ptr->pGLTexBufferRange(GL_TEXTURE_BUFFER,
-                                        GL_RGBA32F,
-                                        text_ptr->data_buffer_id,
-                                        text_ptr->data_buffer_offset,
-                                        text_ptr->data_buffer_contents_size);
-        }
     } /* if (text_ptr->data_buffer_contents_length < summed_text_length) */
 
     /* Iterate through each character and prepare the data for uploading */
@@ -584,14 +553,6 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             }
             else
             if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
-                                                 system_hashed_ansi_string_create("data"),
-                                                &vertex_shader_data_descriptor) )
-            {
-                LOG_ERROR        ("Could not retrieve data uniform descriptor.");
-                ASSERT_DEBUG_SYNC(false, "");
-            }
-            else
-            if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
                                                  system_hashed_ansi_string_create("n_origin_character"),
                                                 &vertex_shader_n_origin_character_descriptor))
             {
@@ -607,10 +568,17 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                 ASSERT_DEBUG_SYNC(false, "");
             }
             else
+            if (!ogl_program_get_shader_storage_block_by_name(_global.draw_text_program,
+                                                              system_hashed_ansi_string_create("dataSSB"),
+                                                             &_global.draw_text_program_data_ssb))
+            {
+                LOG_ERROR        ("Could not retrieve dataSSB shader storage block descriptor.");
+                ASSERT_DEBUG_SYNC(false, "");
+            }
+            else
             {
                 _global.draw_text_fragment_shader_color_ub_offset            = fragment_shader_color_descriptor->block_offset;
                 _global.draw_text_fragment_shader_font_table_location        = fragment_shader_font_table_descriptor->location;
-                _global.draw_text_vertex_shader_data_location                = vertex_shader_data_descriptor->location;
                 _global.draw_text_vertex_shader_n_origin_character_ub_offset = vertex_shader_n_origin_character_descriptor->block_offset;
                 _global.draw_text_vertex_shader_scale_ub_offset              = vertex_shader_scale_descriptor->block_offset;
 
@@ -626,9 +594,6 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             text_ptr->pGLProgramUniform1i(ogl_program_get_id(_global.draw_text_program),
                                           _global.draw_text_fragment_shader_font_table_location,
                                           1);
-            text_ptr->pGLProgramUniform1i(ogl_program_get_id(_global.draw_text_program),
-                                          _global.draw_text_vertex_shader_data_location,
-                                          0);
         }
 
         /* Retrieve uniform block instances.
@@ -787,9 +752,6 @@ PRIVATE void _ogl_text_create_font_table_to_callback_from_renderer(__in __notnul
                                    GL_TEXTURE_SWIZZLE_B,
                                    GL_RED);
 
-        ASSERT_DEBUG_SYNC(text_ptr->pGLGetError() == GL_NO_ERROR,
-                          "Error initializing TO for font table.");
-
         /* We need to retain the ogl_texture instance since we will need to manually manage
          * the lifetime of this object.
          */
@@ -816,11 +778,6 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
         text_ptr->data_buffer_offset = 0;
     }
 
-    if (text_ptr->data_buffer_to != NULL)
-    {
-        ogl_texture_release(text_ptr->data_buffer_to);
-    }
-
     /* Moving on to global variables, check if we're the only owner remaining */
     system_critical_section_enter(_global_cs);
     {
@@ -839,9 +796,10 @@ PRIVATE void _ogl_text_destruction_callback_from_renderer(__in __notnull ogl_con
             }
             _global.font_tables.clear();
 
-            _global.draw_text_fragment_shader = NULL;
-            _global.draw_text_program         = NULL;
-            _global.draw_text_vertex_shader   = NULL;
+            _global.draw_text_fragment_shader  = NULL;
+            _global.draw_text_program          = NULL;
+            _global.draw_text_program_data_ssb = NULL;
+            _global.draw_text_vertex_shader    = NULL;
         }
         else
         {
@@ -921,26 +879,12 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
 
                 text_ptr->pGLUseProgram (program_id);
 
-                /* Bind data texture buffer to zeroth active texture unit */
-                text_ptr->pGLActiveTexture(GL_TEXTURE0);
-
-                if (context_type == OGL_CONTEXT_TYPE_ES)
-                {
-                    GLint to_id = 0;
-
-                    ogl_texture_get_property(text_ptr->data_buffer_to,
-                                             OGL_TEXTURE_PROPERTY_ID,
-                                            &to_id);
-
-                    text_ptr->pGLBindTexture(GL_TEXTURE_BUFFER,
-                                             to_id);
-                }
-                else
-                {
-                    text_ptr->gl_pGLBindTexture(GL_TEXTURE_BUFFER,
-                                                text_ptr->data_buffer_to);
-                }
-
+                /* Bind data BO to the 0-th SSBO BP */
+                text_ptr->pGLBindBufferRange(GL_SHADER_STORAGE_BUFFER,
+                                             0, /* index */
+                                             text_ptr->data_buffer_id,
+                                             text_ptr->data_buffer_offset,
+                                             text_ptr->data_buffer_contents_size);
 
                 /* Set up texture units */
                 ASSERT_DEBUG_SYNC(_global.font_tables.find(text_ptr->font_table) != _global.font_tables.end(),
@@ -1172,7 +1116,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
-        result->texture_buffer_offset_alignment = limits_ptr->texture_buffer_offset_alignment;
+        result->shader_storage_buffer_offset_alignment = limits_ptr->shader_storage_buffer_offset_alignment;
 
         /* Initialize GL func pointers */
         ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
