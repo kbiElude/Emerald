@@ -7,8 +7,10 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_materials.h"
 #include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_program.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_scene_renderer.h"
+#include "ogl/ogl_shader.h"
 #include "postprocessing/postprocessing_blur_gaussian.h"
 #include "scene/scene.h"
 #include "scene/scene_camera.h"
@@ -60,6 +62,46 @@ void _rendering_handler_entrypoint(ogl_context          context,
     entry_points->pGLClear     (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     entry_points->pGLEnable    (GL_DEPTH_TEST);
     entry_points->pGLEnable    (GL_CULL_FACE);
+
+#if 0
+    /* Test */
+    const char* vs_body = "#version 430 core\n"
+        "\n"
+        "out uint vertex_id;\n"
+        "\n"
+        "void main()\n"
+        "{\n"
+        "    vertex_id = gl_VertexID;\n"
+        "}\n";
+
+    ogl_program po = ogl_program_create(_context,
+                                        system_hashed_ansi_string_create("t") );
+    ogl_shader so = ogl_shader_create(_context, SHADER_TYPE_VERTEX, system_hashed_ansi_string_create("vs"));
+
+    const char* varying = "vertex_id";
+
+    ogl_shader_set_body(so, system_hashed_ansi_string_create(vs_body) );
+    ogl_program_attach_shader(po, so);
+    ogl_program_set_tf_varyings(po, 1, &varying, GL_INTERLEAVED_ATTRIBS);
+    ogl_program_link(po);
+
+    GLuint bo = 0;
+    GLuint vao = 0;
+
+    entry_points->pGLGenBuffers(1, &bo);
+    entry_points->pGLGenVertexArrays(1, &vao);
+    entry_points->pGLBindVertexArray(vao);
+    entry_points->pGLBindBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, bo);
+    entry_points->pGLBufferData(GL_TRANSFORM_FEEDBACK_BUFFER, 64, NULL, GL_STATIC_DRAW);
+    entry_points->pGLBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, bo);
+    entry_points->pGLUseProgram(ogl_program_get_id(po) );
+    entry_points->pGLBeginTransformFeedback(GL_POINTS);
+    entry_points->pGLDrawArrays(GL_POINTS, 0, 3);
+    entry_points->pGLDrawArrays(GL_POINTS, 0, 3);
+    entry_points->pGLEndTransformFeedback();
+
+    unsigned int* dupsko = (unsigned int*) entry_points->pGLMapBuffer(GL_TRANSFORM_FEEDBACK_BUFFER, GL_READ_ONLY);
+#endif
 
     /* Render the scene */
     ogl_pipeline_draw_stage(state_get_pipeline(),

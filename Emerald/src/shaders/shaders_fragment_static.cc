@@ -13,7 +13,7 @@
 #include <sstream>
 
 /* Internal variables */
-const char* fragment_shader_body = "#version 420 core\n"
+const char* fragment_shader_body = "#version 430 core\n"
                                    "\n"
                                    "uniform dataFS\n"
                                    "{\n"

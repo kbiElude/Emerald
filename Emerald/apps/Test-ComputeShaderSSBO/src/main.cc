@@ -25,7 +25,7 @@ system_event _window_closed_event  = system_event_create(true,  /* manual_reset 
                                                          false);/* start_state */
 const int    _window_size[2]       = {1280, 720};
 
-const char* _cs_body_preamble = "#version 420 core\n"
+const char* _cs_body_preamble = "#version 430 core\n"
                                 "\n"
                                 "#extension GL_ARB_compute_shader               : require\n"
                                 "#extension GL_ARB_shader_image_size            : require\n"

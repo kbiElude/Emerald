@@ -13,7 +13,7 @@
 #include <sstream>
 
 /* Internal variables */
-const char* tex2D_fragment_reinhardt_shader_body_not_reverted = "#version 420 core\n"
+const char* tex2D_fragment_reinhardt_shader_body_not_reverted = "#version 430 core\n"
                                                                 "\n"
                                                                 "in vec2 uv;\n"
                                                                 "\n"
@@ -33,7 +33,7 @@ const char* tex2D_fragment_reinhardt_shader_body_not_reverted = "#version 420 co
                                                                 "    result = vec4(pow(tex / (1 + tex), vec3(1/2.2) ), 1);\n"
                                                                 "}\n";
 
-const char* tex2D_fragment_reinhardt_shader_body_reverted = "#version 420 core\n"
+const char* tex2D_fragment_reinhardt_shader_body_reverted = "#version 430 core\n"
                                                             "\n"
                                                             "in vec2 uv;\n"
                                                             "\n"

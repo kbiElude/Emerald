@@ -26,7 +26,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_Yxy_to_rgb,
                               _shaders_fragment_Yxy_to_rgb);
 
 /* Internal variables */
-const char* yxy_to_rgb_shader_body = "#version 420 core\n"
+const char* yxy_to_rgb_shader_body = "#version 430 core\n"
                                      "\n"
                                      "in vec2 uv;\n"
                                      "\n"

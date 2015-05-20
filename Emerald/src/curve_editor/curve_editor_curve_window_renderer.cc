@@ -187,7 +187,7 @@ typedef struct
 _curve_window_renderer_globals* _globals                = NULL;
 bool                            _is_globals_initialized = false;
 
-system_hashed_ansi_string _bg_fragment_shader_body = system_hashed_ansi_string_create("#version 420 core\n"
+system_hashed_ansi_string _bg_fragment_shader_body = system_hashed_ansi_string_create("#version 430 core\n"
                                                                                       "\n"
                                                                                       "in  vec2 uv;\n"
                                                                                       "out vec4 color;\n"
@@ -197,7 +197,7 @@ system_hashed_ansi_string _bg_fragment_shader_body = system_hashed_ansi_string_c
                                                                                       "   color = vec4(vec3(uv.y * 0.25), 1);\n"
                                                                                       "}\n"
                                                                                      );
-system_hashed_ansi_string _static_color_fragment_shader_body = system_hashed_ansi_string_create("#version 420 core\n"
+system_hashed_ansi_string _static_color_fragment_shader_body = system_hashed_ansi_string_create("#version 430 core\n"
                                                                                                 "\n"
                                                                                                 "uniform dataFS\n"
                                                                                                 "{\n"

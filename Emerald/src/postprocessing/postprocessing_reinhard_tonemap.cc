@@ -62,7 +62,7 @@ typedef struct
 } _create_callback_data;
 
 /** Internal variables */
-system_hashed_ansi_string reinhard_tonemap_fragment_shader_body = system_hashed_ansi_string_create("#version 420 core\n"
+system_hashed_ansi_string reinhard_tonemap_fragment_shader_body = system_hashed_ansi_string_create("#version 430 core\n"
                                                                                                    "\n"
                                                                                                    "uniform data\n"
                                                                                                    "{\n"

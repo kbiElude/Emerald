@@ -2450,7 +2450,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
 
                     /* Okay, try creating the context */
                     int context_major_version      = 4;
-                    int context_minor_version      = 2;
+                    int context_minor_version      = 3;
                     int context_profile_mask_key   = 0;
                     int context_profile_mask_value = 0;
 

@@ -35,7 +35,7 @@ const  float                     _ui_scrollbar_text_color[]        = {1, 1, 1, 1
 #define NONFOCUSED_TO_FOCUSED_TRANSITION_TIME (system_time_get_timeline_time_for_msec(450) )
 
 /* Loosely based around concepts described in http://thndl.com/?5 */
-static const char* ui_scrollbar_fragment_shader_body = "#version 420 core\n"
+static const char* ui_scrollbar_fragment_shader_body = "#version 430 core\n"
                                                        "\n"
                                                        "in  vec2  uv;\n"
                                                        "out vec4  result;\n"

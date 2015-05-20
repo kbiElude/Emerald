@@ -28,7 +28,7 @@
 #define DATA_SAMPLER_UNIFORM_LOCATION   (0)
 #define OTHER_DATA_UB_BP                (1)
 
-static const char* fs_preamble = "#version 420 core\n"
+static const char* fs_preamble = "#version 430 core\n"
                                  "\n"
                                  "#extension GL_ARB_explicit_uniform_location : require\n"
                                  "\n";
@@ -87,7 +87,7 @@ static const char* fs_body =     "layout(binding = 0, std140) uniform coeffs_dat
                                  "                             0.0) * tap_weight;\n"
                                  "    }\n"
                                  "}\n";
-static const char* vs_body =     "#version 420 core\n"
+static const char* vs_body =     "#version 430 core\n"
                                  "\n"
                                  "#extension GL_ARB_explicit_uniform_location : require\n"
                                  "\n"

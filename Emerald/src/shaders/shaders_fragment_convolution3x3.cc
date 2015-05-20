@@ -27,7 +27,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_convolution3x3, shaders_fragment
 
 
 /* Internal variables */
-const char* convolution3x3_fragment_shader_body_prefix = "#version 420 core\n"
+const char* convolution3x3_fragment_shader_body_prefix = "#version 430 core\n"
                                                          "\n"
                                                          "in vec2 uv;\n"
                                                          "\n"

@@ -43,7 +43,7 @@
 #define N_UPDATE_OUT_VELOCITY_TF_INDEX (1)
 #define N_UPDATE_OUT_FORCE_TF_INDEX    (2)
 
-const char* _particle_draw_fragment_shader_body = "#version 420 core\n"
+const char* _particle_draw_fragment_shader_body = "#version 430 core\n"
                                                   "\n"
                                                   "in  vec4 fp_color;\n"
                                                   "out vec4 result;\n"
@@ -54,7 +54,7 @@ const char* _particle_draw_fragment_shader_body = "#version 420 core\n"
                                                   "    result = vec4(fp_color.xy, alpha, alpha * fp_color.w);\n"
                                                   "}\n";
 
-const char* _particle_draw_vertex_shader_body = "#version 420 core\n"
+const char* _particle_draw_vertex_shader_body = "#version 430 core\n"
                                                 "\n"
                                                 "uniform samplerBuffer data;\n"
                                                 "uniform int           n_total_particles;\n"
@@ -72,7 +72,7 @@ const char* _particle_draw_vertex_shader_body = "#version 420 core\n"
                                                 "}\n";
 
 /* Generation is split into two passes, because nvidia driver supports up to 4 maximum separate attrib streams */
-const char* _particle_generate1_vertex_shader_body = "#version 420 core\n"
+const char* _particle_generate1_vertex_shader_body = "#version 430 core\n"
                                                      "\n"
                                                      "uniform float     max_mass_delta;\n"
                                                      "uniform float     min_mass;\n"
@@ -105,7 +105,7 @@ const char* _particle_generate1_vertex_shader_body = "#version 420 core\n"
                                                      "   out_color.z = float(rand_value_int % 237) / 237.0f;\n"
                                                      "}\n";
 
-const char* _particle_generate2_vertex_shader_body = "#version 420 core\n"
+const char* _particle_generate2_vertex_shader_body = "#version 430 core\n"
                                                      "\n"
                                                      "out vec4 out_position;\n"
                                                      "\n"
@@ -114,7 +114,7 @@ const char* _particle_generate2_vertex_shader_body = "#version 420 core\n"
                                                      "   out_position = vec4(0, 10, 0, 1);\n"
                                                      "}\n";
 
-const char* _particle_update_vertex_shader_body = "#version 420 core\n"
+const char* _particle_update_vertex_shader_body = "#version 430 core\n"
                                                   "\n"
                                                   "uniform samplerBuffer data;\n"
                                                   "uniform float         decay;\n"

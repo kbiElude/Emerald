@@ -117,7 +117,7 @@ const int                       _window_size[2]                        = {1280, 
 float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 
 /** Shaders: preview */
-const char* preview_fs_code = "#version 420 core\n"
+const char* preview_fs_code = "#version 430 core\n"
                               "\n"
                               "out     vec4      result;\n"
                               "in      vec2      uv;\n"
@@ -127,7 +127,7 @@ const char* preview_fs_code = "#version 420 core\n"
                               "{\n"
                               "    result = textureLod(texture, uv, 0);\n"
                               "}\n";
-const char* preview_vs_code = "#version 420 core\n"
+const char* preview_vs_code = "#version 430 core\n"
                               "\n"
                               "out vec2 uv;\n"
                               "\n"
@@ -148,7 +148,7 @@ const char* preview_vs_code = "#version 420 core\n"
                               "}\n";
 
 /** Shaders: white line */
-const char* whiteline_fs_code = "#version 420 core\n"
+const char* whiteline_fs_code = "#version 430 core\n"
                                 "\n"
                                 "out vec4 result;\n"
                                 "\n"
@@ -156,7 +156,7 @@ const char* whiteline_fs_code = "#version 420 core\n"
                                 "{\n"
                                 "    result = vec4(1.0);\n"
                                 "}\n";
-const char* whiteline_vs_code = "#version 420 core\n"
+const char* whiteline_vs_code = "#version 430 core\n"
                                 "\n"
                                 "void main()\n"
                                 "{\n"

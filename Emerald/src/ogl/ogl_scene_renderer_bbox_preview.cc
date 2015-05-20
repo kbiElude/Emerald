@@ -18,7 +18,7 @@
 #include <string>
 #include <sstream>
 
-static const char* preview_fragment_shader = "#version 420 core\n"
+static const char* preview_fragment_shader = "#version 430 core\n"
                                              "\n"
                                              "out vec4 result;\n"
                                              "\n"
@@ -26,7 +26,7 @@ static const char* preview_fragment_shader = "#version 420 core\n"
                                              "{\n"
                                              "    result = vec4(1, 1, 1, 1);\n"
                                              "}\n";
-static const char* preview_geometry_shader = "#version 420 core\n"
+static const char* preview_geometry_shader = "#version 430 core\n"
                                              "\n"
                                              "#define N_MESHES (__value)\n"
                                              "\n"
@@ -98,7 +98,7 @@ static const char* preview_geometry_shader = "#version 420 core\n"
                                              "    EmitVertex();\n"
                                              "    EndPrimitive();\n"
                                              "}\n";
-static const char* preview_vertex_shader   = "#version 420 core\n"
+static const char* preview_vertex_shader   = "#version 430 core\n"
                                              "\n"
                                              "out uint vertex_id;\n"
                                              "\n"
