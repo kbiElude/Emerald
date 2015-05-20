@@ -37,6 +37,7 @@ typedef struct _ogl_program_block
     ogl_program_block_type block_type;
     GLuint                 indexed_bp;
 
+    bool                      is_intel_driver;
     system_hashed_ansi_string name;
     system_resizable_vector   members;                          /* pointers to const ogl_program_variable*. These are owned by owner - DO NOT release. */
     system_hash64map          offset_to_uniform_descriptor_map; /* uniform offset -> const ogl_program_variable*. Rules as above apply. Only used for UBs */
@@ -44,6 +45,7 @@ typedef struct _ogl_program_block
 
     PFNGLBINDBUFFERPROC                pGLBindBuffer;
     PFNGLBUFFERSUBDATAPROC             pGLBufferSubData;
+    PFNGLFINISHPROC                    pGLFinish;
     PFNGLGETPROGRAMRESOURCEIVPROC      pGLGetProgramResourceiv;
     PFNGLNAMEDBUFFERSUBDATAEXTPROC     pGLNamedBufferSubDataEXT;
     PFNGLSHADERSTORAGEBLOCKBINDINGPROC pGLShaderStorageBlockBinding;
@@ -91,12 +93,14 @@ typedef struct _ogl_program_block
         dirty_offset_start               = DIRTY_OFFSET_UNUSED;
         index                            = in_index;
         indexed_bp                       = 0; /* default GL state value */
+        is_intel_driver                  = false; /* updated later */
         name                             = in_name;
         members                          = system_resizable_vector_create(4, /* capacity */
                                                                           sizeof(ogl_program_variable*) );
         offset_to_uniform_descriptor_map = NULL;
         owner                            = in_owner;
         pGLBufferSubData                 = NULL;
+        pGLFinish                        = NULL;
         pGLGetProgramResourceiv          = NULL;
         pGLNamedBufferSubDataEXT         = NULL;
         pGLShaderStorageBlockBinding     = NULL;
@@ -364,11 +368,15 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &entry_points_dsa);
         ogl_context_get_property(block_ptr->context,
+                                 OGL_CONTEXT_PROPERTY_IS_INTEL_DRIVER,
+                                &block_ptr->is_intel_driver);
+        ogl_context_get_property(block_ptr->context,
                                  OGL_CONTEXT_PROPERTY_LIMITS,
                                 &limits_ptr);
 
         block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
         block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
+        block_ptr->pGLFinish                    = entry_points->pGLFinish;
         block_ptr->pGLGetProgramResourceiv      = entry_points_piq->pGLGetProgramResourceiv;
         block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
         block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
@@ -396,6 +404,7 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
 
         block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
         block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
+        block_ptr->pGLFinish                    = entry_points->pGLFinish;
         block_ptr->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
         block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
         block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
@@ -1068,6 +1077,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_program_block_sync(__in __notnull ogl_pro
                                     block_ptr->block_bo_start_offset + block_ptr->dirty_offset_start,
                                     block_ptr->dirty_offset_end      - block_ptr->dirty_offset_start,
                                     block_ptr->block_data            + block_ptr->dirty_offset_start);
+    }
+
+    if (block_ptr->is_intel_driver)
+    {
+        /* Sigh. */
+        block_ptr->pGLFinish();
     }
 
     /* Reset the offsets */
