@@ -90,9 +90,7 @@ typedef struct
     PFNGLLINKPROGRAMPROC                pGLLinkProgram;
     PFNGLPROGRAMBINARYPROC              pGLProgramBinary;
     PFNGLPROGRAMPARAMETERIPROC          pGLProgramParameteri;
-    PFNGLSHADERSTORAGEBLOCKBINDINGPROC  pGLShaderStorageBlockBinding;
     PFNGLTRANSFORMFEEDBACKVARYINGSPROC  pGLTransformFeedbackVaryings;
-    PFNGLUNIFORMBLOCKBINDINGPROC        pGLUniformBlockBinding;
 
     REFCOUNT_INSERT_VARIABLES
 } _ogl_program;
@@ -394,11 +392,6 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
                                              NULL,  /* on_remove_callback */
                                              NULL); /* on_remove_callback_user_arg */
 
-                /* Set up the SSB block->binding mapping */
-                program_ptr->pGLShaderStorageBlockBinding(program_ptr->id,
-                                                          n_active_block,
-                                                          n_active_block);
-
                 break;
             }
 
@@ -481,11 +474,6 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
                                              new_ub,
                                              NULL,  /* on_remove_callback */
                                              NULL); /* on_remove_callback_user_arg */
-
-                /* Set up the UB block->binding mapping */
-                program_ptr->pGLUniformBlockBinding(program_ptr->id,
-                                                    n_active_block,
-                                                    n_active_block);
 
                 break;
             }
@@ -1526,9 +1514,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
-            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
-            result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
         else
         {
@@ -1563,9 +1549,7 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;
-            result->pGLShaderStorageBlockBinding  = entry_points->pGLShaderStorageBlockBinding;
             result->pGLTransformFeedbackVaryings  = entry_points->pGLTransformFeedbackVaryings;
-            result->pGLUniformBlockBinding        = entry_points->pGLUniformBlockBinding;
         }
 
         /* Carry on */
