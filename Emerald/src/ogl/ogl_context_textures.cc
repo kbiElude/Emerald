@@ -801,29 +801,24 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_
                                  released_texture);
 
     /* Finally, invalidate the texture contents */
-    const ogl_context_gl_entrypoints_arb_invalidate_subdata* entrypoints_is = NULL;
+    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    GLuint                            texture_id  = 0;
 
     ogl_context_get_property(context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA,
-                            &entrypoints_is);
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints);
+    ogl_texture_get_property(released_texture,
+                             OGL_TEXTURE_PROPERTY_ID,
+                            &texture_id);
 
-    if (entrypoints_is                        != NULL &&
-        entrypoints_is->pGLInvalidateTexImage != NULL)
+    for (unsigned int n_mipmap = 0;
+                      n_mipmap < texture_n_mipmaps;
+                    ++n_mipmap)
     {
-        GLuint texture_id = 0;
+        entrypoints->pGLInvalidateTexImage(texture_id,
+                                           n_mipmap);
+    } /* for (all mipmaps) */
 
-        ogl_texture_get_property(released_texture,
-                                 OGL_TEXTURE_PROPERTY_ID,
-                                &texture_id);
-
-        for (unsigned int n_mipmap = 0;
-                          n_mipmap < texture_n_mipmaps;
-                        ++n_mipmap)
-        {
-            entrypoints_is->pGLInvalidateTexImage(texture_id,
-                                                  n_mipmap);
-        } /* for (all mipmaps) */
-    } /* if (entrypoints_is != NULL) */
 end:
     ;
 }

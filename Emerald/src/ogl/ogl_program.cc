@@ -1521,31 +1521,27 @@ PUBLIC EMERALD_API ogl_program ogl_program_create(__in __notnull ogl_context    
             ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
                               "Unrecognized context type");
 
-            const ogl_context_gl_entrypoints*                             entry_points     = NULL;
-            const ogl_context_gl_entrypoints_arb_program_interface_query* entry_points_piq = NULL;
+            const ogl_context_gl_entrypoints* entry_points = NULL;
 
             ogl_context_get_property(context,
                                      OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                     &entry_points);
-            ogl_context_get_property(context,
-                                     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_PROGRAM_INTERFACE_QUERY,
-                                    &entry_points_piq);
 
             result->pGLAttachShader               = entry_points->pGLAttachShader;
             result->pGLCreateProgram              = entry_points->pGLCreateProgram;
             result->pGLDeleteProgram              = entry_points->pGLDeleteProgram;
             result->pGLDetachShader               = entry_points->pGLDetachShader;
             result->pGLGetActiveAttrib            = entry_points->pGLGetActiveAttrib;
-            result->pGLGetProgramResourceiv       = entry_points_piq->pGLGetProgramResourceiv;
+            result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
             result->pGLGetAttribLocation          = entry_points->pGLGetAttribLocation;
             result->pGLGetError                   = entry_points->pGLGetError;
             result->pGLGetProgramBinary           = entry_points->pGLGetProgramBinary;
             result->pGLGetProgramInfoLog          = entry_points->pGLGetProgramInfoLog;
-            result->pGLGetProgramInterfaceiv      = entry_points_piq->pGLGetProgramInterfaceiv;
+            result->pGLGetProgramInterfaceiv      = entry_points->pGLGetProgramInterfaceiv;
             result->pGLGetProgramiv               = entry_points->pGLGetProgramiv;
-            result->pGLGetProgramResourceiv       = entry_points_piq->pGLGetProgramResourceiv;
-            result->pGLGetProgramResourceLocation = entry_points_piq->pGLGetProgramResourceLocation;
-            result->pGLGetProgramResourceName     = entry_points_piq->pGLGetProgramResourceName;
+            result->pGLGetProgramResourceiv       = entry_points->pGLGetProgramResourceiv;
+            result->pGLGetProgramResourceLocation = entry_points->pGLGetProgramResourceLocation;
+            result->pGLGetProgramResourceName     = entry_points->pGLGetProgramResourceName;
             result->pGLLinkProgram                = entry_points->pGLLinkProgram;
             result->pGLProgramBinary              = entry_points->pGLProgramBinary;
             result->pGLProgramParameteri          = entry_points->pGLProgramParameteri;

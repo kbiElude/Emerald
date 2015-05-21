@@ -51,47 +51,11 @@ typedef enum ogl_context_property
      */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_BUFFER_STORAGE,
 
-    /* not settable, ogl_context_entrypoints_arb_compute_shader*
-     *
-     * Only accessible for GL contexts
-     */
-    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_COMPUTE_SHADER,
-
-    /* not settable, ogl_context_entrypoints_arb_framebuffer_no_attachments*
-     *
-     * Only accessible for GL contexts
-     */
-    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_FRAMEBUFFER_NO_ATTACHMENTS,
-
-    /* not settable, ogl_context_entrypoints_arb_invalidate_subdata*
-     *
-     * Only accessible for GL contexts
-     */
-    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA,
-
-    /* not settable, ogl_context_entrypoints_arb_program_interface_query*
-     *
-     * Only accessible for GL contexts
-     */
-    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_PROGRAM_INTERFACE_QUERY,
-
-    /* not settable, ogl_context_entrypoints_arb_shader_storage_buffer_object*
-     *
-     * Only accessible for GL contexts
-     */
-    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT,
-
     /* not settable, ogl_context_entrypoints_arb_sparse_buffer*
      *
      * Only accessible for GL contexts
      */
     OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SPARSE_BUFFER,
-
-    /* not settable, ogl_context_entrypoints_arb_texture_storage_multisample*
-     *
-     * Only accessible for GL contexts
-     */
-    OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_TEXTURE_STORAGE_MULTISAMPLE,
 
     /* not settable, ogl_context_entrypoints_ext_direct_state_access*
      *
@@ -117,15 +81,6 @@ typedef enum ogl_context_property
 
     /* not settable, ogl_context_limits* */
     OGL_CONTEXT_PROPERTY_LIMITS,
-
-    /* not settable, ogl_context_limits_arb_compute_shader* */
-    OGL_CONTEXT_PROPERTY_LIMITS_ARB_COMPUTE_SHADER,
-
-    /* not settable, ogl_context_limits_arb_framebuffer_no_attachments* */
-    OGL_CONTEXT_PROPERTY_LIMITS_ARB_FRAMEBUFFER_NO_ATTACHMENTS,
-
-    /* not settable, ogl_context_limits_arb_shader_storage_buffer_object* */
-    OGL_CONTEXT_PROPERTY_LIMITS_ARB_SHADER_STORAGE_BUFFER_OBJECT,
 
     /* not settable, ogl_context_limits_arb_sparse_buffer* */
     OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER,
@@ -161,19 +116,7 @@ typedef enum ogl_context_property
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_BUFFER_STORAGE,
 
     /* not settable, bool */
-    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_FRAMEBUFFER_NO_ATTACHMENTS,
-
-    /* not settable, bool */
-    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_PROGRAM_INTERFACE_QUERY,
-
-    /* not settable, bool */
-    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT,
-
-    /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_SPARSE_BUFFERS,
-
-    /* not settable, bool */
-    OGL_CONTEXT_PROPERTY_SUPPORT_GL_ARB_TEXTURE_STORAGE_MULTISAMPLE,
 
     /* not settable, bool */
     OGL_CONTEXT_PROPERTY_SUPPORT_GL_EXT_DIRECT_STATE_ACCESS,

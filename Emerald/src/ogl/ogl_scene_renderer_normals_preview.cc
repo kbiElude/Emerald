@@ -275,15 +275,15 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
                                &preview_ptr->preview_program_ub_vs_ub_bp);
 
     /* Set up SSBO bindings */
-    const ogl_context_gl_entrypoints_arb_shader_storage_buffer_object* ssbo_entrypoints_ptr = NULL;
+    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
 
     ogl_context_get_property(preview_ptr->context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_SHADER_STORAGE_BUFFER_OBJECT,
-                            &ssbo_entrypoints_ptr);
+                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
+                            &entrypoints_ptr);
 
-    ssbo_entrypoints_ptr->pGLShaderStorageBlockBinding(ogl_program_get_id(preview_ptr->preview_program),
-                                                       0,  /* storageBlockIndex */
-                                                       0); /* storageBlockBinding */
+    entrypoints_ptr->pGLShaderStorageBlockBinding(ogl_program_get_id(preview_ptr->preview_program),
+                                                  0,  /* storageBlockIndex */
+                                                  0); /* storageBlockBinding */
 
     /* All done */
     goto end;
