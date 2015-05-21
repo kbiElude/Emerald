@@ -51,7 +51,7 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
     /* Create the body */
     std::stringstream body_stream;
 
-    body_stream << "#version 420 core\n"
+    body_stream << "#version 430 core\n"
                    "\n"
                    "layout(std140) uniform Matrices\n"
                    "{\n"

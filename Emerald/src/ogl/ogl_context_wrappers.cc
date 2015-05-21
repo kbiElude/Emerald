@@ -259,6 +259,7 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBindFramebuffer(GLenum target,
     } /* switch (target) */
 }
 
+/** Please see header for spec */
 PUBLIC void APIENTRY ogl_context_wrappers_glBlendColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
@@ -4387,6 +4388,92 @@ PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferDrawBuffersEXT(      GLui
                                                            bufs);
 }
 
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferParameteri(GLenum target,
+                                                                  GLenum pname,
+                                                                  GLint  param)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        case GL_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
+
+    _private_entrypoints_ptr->pGLFramebufferParameteri(target,
+                                                       pname,
+                                                       param);
+}
+
+/* Please see header for specification */
+PUBLIC void APIENTRY ogl_context_wrappers_glGetFramebufferParameteriv(GLenum target,
+                                                                      GLenum pname,
+                                                                      GLint* params)
+{
+    ogl_context             context     = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        case GL_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
+
+    _private_entrypoints_ptr->pGLGetFramebufferParameteriv(target,
+                                                           pname,
+                                                           params);
+}
+
 /* Please see header for specification */
 PUBLIC void APIENTRY ogl_context_wrappers_glFramebufferReadBufferEXT(GLuint framebuffer,
                                                                      GLenum mode)
@@ -5005,6 +5092,100 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetTextureParameterIuiv(ogl_texture 
                                                          target,
                                                          pname,
                                                          params);
+}
+
+/** Please see header for spec */
+PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateFramebuffer(GLenum        target,
+                                                                  GLsizei       numAttachments,
+                                                                  const GLenum* attachments)
+{
+    ogl_context             context        = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache    = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        case GL_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
+
+    _private_entrypoints_ptr->pGLInvalidateFramebuffer(target,
+                                                       numAttachments,
+                                                       attachments);
+}
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glInvalidateSubFramebuffer(GLenum        target,
+                                                                     GLsizei       numAttachments,
+                                                                     const GLenum* attachments,
+                                                                     GLint         x,
+                                                                     GLint         y,
+                                                                     GLsizei       width,
+                                                                     GLsizei       height)
+{
+    ogl_context             context        = ogl_context_get_current_context();
+    ogl_context_state_cache state_cache    = NULL;
+
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_STATE_CACHE,
+                            &state_cache);
+
+    switch (target)
+    {
+        case GL_DRAW_FRAMEBUFFER:
+        case GL_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_DRAW_FRAMEBUFFER);
+
+            break;
+        }
+
+        case GL_READ_FRAMEBUFFER:
+        {
+            ogl_context_state_cache_sync(state_cache,
+                                         STATE_CACHE_SYNC_BIT_ACTIVE_READ_FRAMEBUFFER);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized FB BP");
+        }
+    } /* switch (target) */
+
+    _private_entrypoints_ptr->pGLInvalidateSubFramebuffer(target,
+                                                          numAttachments,
+                                                          attachments,
+                                                          x,
+                                                          y,
+                                                          width,
+                                                          height);
 }
 
 /* Please see header for specification */

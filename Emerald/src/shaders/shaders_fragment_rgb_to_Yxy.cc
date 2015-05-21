@@ -24,7 +24,7 @@ typedef struct
 REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_rgb_to_Yxy, shaders_fragment_rgb_to_Yxy, _shaders_fragment_rgb_to_Yxy);
 
 /* Internal variables */
-const char* shader_body_wo_log = "#version 420 core\n"
+const char* shader_body_wo_log = "#version 430 core\n"
                                  "\n"
                                  "in vec2 uv;\n"
                                  "\n"
@@ -48,7 +48,7 @@ const char* shader_body_wo_log = "#version 420 core\n"
                                  "    result = vec4(Y, X / (X + Y + Z) , Y / (X + Y + Z), input.w);\n"
                                  "}\n";
 
-const char* shader_body_w_log = "#version 420 core\n"
+const char* shader_body_w_log = "#version 430 core\n"
                                 "\n"
                                 "in vec2 uv;\n"
                                 "\n"

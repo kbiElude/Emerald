@@ -820,7 +820,7 @@ typedef struct
     const GLubyte*  version;
 } ogl_context_gl_info;
 
-/** Structure that contains context-specific maximum parameter values of GL4.2 */
+/** Structure that contains context-specific maximum parameter values of GL4.3 */
 typedef struct
 {
     GLfloat aliased_line_width_range[2];
@@ -834,12 +834,25 @@ typedef struct
     GLint   max_color_texture_samples;
     GLint   max_combined_atomic_counter_buffers;
     GLint   max_combined_atomic_counters;
+    GLint   max_combined_compute_uniform_components;
     GLint   max_combined_fragment_uniform_components;
+    GLint   max_combined_geometry_uniform_components;
     GLint   max_combined_image_units_and_fragment_outputs;
+    GLint   max_combined_shader_storage_blocks;
     GLint   max_combined_texture_image_units;
     GLint   max_combined_vertex_uniform_components;
-    GLint   max_combined_geometry_uniform_components;
     GLint   max_combined_uniform_blocks;
+    GLint   max_compute_atomic_counter_buffers;
+    GLint   max_compute_atomic_counters;
+    GLint   max_compute_image_uniforms;
+    GLint   max_compute_shader_storage_blocks;
+    GLint   max_compute_shared_memory_size;
+    GLint   max_compute_texture_image_units;
+    GLint   max_compute_uniform_blocks;
+    GLint   max_compute_uniform_components;
+    GLint   max_compute_work_group_count[3];
+    GLint   max_compute_work_group_invocations;
+    GLint   max_compute_work_group_size[3];
     GLint   max_cube_map_texture_size;
     GLint   max_depth_texture_samples;
     GLint   max_draw_buffers;
@@ -847,13 +860,19 @@ typedef struct
     GLint   max_elements_vertices;
     GLint   max_fragment_atomic_counter_buffers;
     GLint   max_fragment_atomic_counters;
+    GLint   max_fragment_input_components;
+    GLint   max_fragment_shader_storage_blocks;
     GLint   max_fragment_uniform_components;
     GLint   max_fragment_uniform_blocks;
-    GLint   max_fragment_input_components;
+    GLint   max_framebuffer_height;
+    GLint   max_framebuffer_layers;
+    GLint   max_framebuffer_samples;
+    GLint   max_framebuffer_width;
     GLint   max_geometry_atomic_counter_buffers;
     GLint   max_geometry_atomic_counters;
     GLint   max_geometry_input_components;
     GLint   max_geometry_output_vertices;
+    GLint   max_geometry_shader_storage_blocks;
     GLint   max_geometry_texture_image_units;
     GLint   max_geometry_uniform_blocks;
     GLint   max_geometry_uniform_components;
@@ -865,11 +884,14 @@ typedef struct
     GLint   max_renderbuffer_size;
     GLint   max_sample_mask_words;
     GLint   max_server_wait_timeout;
+    GLint   max_shader_storage_block_size;
     GLint   max_shader_storage_buffer_bindings;
     GLint   max_tess_control_atomic_counter_buffers;
     GLint   max_tess_control_atomic_counters;
+    GLint   max_tess_control_shader_storage_blocks;
     GLint   max_tess_evaluation_atomic_counter_buffers;
     GLint   max_tess_evaluation_atomic_counters;
+    GLint   max_tess_evaluation_shader_storage_blocks;
     GLint   max_texture_buffer_size;
     GLint   max_texture_image_units;
     GLfloat max_texture_lod_bias;
@@ -882,10 +904,11 @@ typedef struct
     GLint   max_vertex_atomic_counter_buffers;
     GLint   max_vertex_atomic_counters;
     GLint   max_vertex_attribs;
-    GLint   max_vertex_texture_image_units;
-    GLint   max_vertex_uniform_components;
     GLint   max_vertex_output_components;
+    GLint   max_vertex_shader_storage_blocks;
+    GLint   max_vertex_texture_image_units;
     GLint   max_vertex_uniform_blocks;
+    GLint   max_vertex_uniform_components;
     GLint   min_program_texel_offset;
     GLint   minor_version;
     GLint   num_compressed_texture_formats;
@@ -900,7 +923,7 @@ typedef struct
     GLint   uniform_buffer_offset_alignment;
 } ogl_context_gl_limits;
 
-/** Structure that contains context-specific GL4.2 function entry points */
+/** Structure that contains context-specific GL4.3 function entry points */
 typedef struct
 {
     PFNGLACTIVESHADERPROGRAMPROC                 pGLActiveShaderProgram;
@@ -958,6 +981,10 @@ typedef struct
     PFNGLCREATESHADERPROC                        pGLCreateShader;
     PFNGLCREATESHADERPROGRAMVPROC                pGLCreateShaderProgramv;
     PFNGLCULLFACEPROC                            pGLCullFace;
+    PFNGLDEBUGMESSAGECALLBACKPROC                pGLDebugMessageCallback;
+    PFNGLDEBUGMESSAGECONTROLPROC                 pGLDebugMessageControl;
+    PFNGLDEBUGMESSAGEINSERTPROC                  pGLDebugMessageInsert;
+    PFNGLGETDEBUGMESSAGELOGPROC                  pGLGetDebugMessageLog;
     PFNGLDELETEBUFFERSPROC                       pGLDeleteBuffers;
     PFNGLDELETEFRAMEBUFFERSPROC                  pGLDeleteFramebuffers;
     PFNGLDELETEPROGRAMPROC                       pGLDeleteProgram;
@@ -975,6 +1002,8 @@ typedef struct
     PFNGLDISABLEPROC                             pGLDisable;
     PFNGLDISABLEIPROC                            pGLDisablei;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC            pGLDisableVertexAttribArray;
+    PFNGLDISPATCHCOMPUTEPROC                     pGLDispatchCompute;
+    PFNGLDISPATCHCOMPUTEINDIRECTPROC             pGLDispatchComputeIndirect;
     PFNGLDRAWARRAYSPROC                          pGLDrawArrays;
     PFNGLDRAWARRAYSINSTANCEDPROC                 pGLDrawArraysInstanced;
     PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC     pGLDrawArraysInstancedBaseInstance;
@@ -992,6 +1021,8 @@ typedef struct
     PFNGLENDTRANSFORMFEEDBACKPROC                pGLEndTransformFeedback;
     PFNGLFINISHPROC                              pGLFinish;
     PFNGLFLUSHPROC                               pGLFlush;
+    PFNGLFRAMEBUFFERPARAMETERIPROC               pGLFramebufferParameteri;
+    PFNGLGETFRAMEBUFFERPARAMETERIVPROC           pGLGetFramebufferParameteriv;
     PFNWRAPPEDGLFRAMEBUFFERTEXTUREPROC           pGLFramebufferTexture;
     PFNWRAPPEDGLFRAMEBUFFERTEXTURE1DPROC         pGLFramebufferTexture1D;
     PFNWRAPPEDGLFRAMEBUFFERTEXTURE2DPROC         pGLFramebufferTexture2D;
@@ -1032,6 +1063,12 @@ typedef struct
     PFNGLGETPROGRAMBINARYPROC                    pGLGetProgramBinary;
     PFNGLGETPROGRAMIVPROC                        pGLGetProgramiv;
     PFNGLGETPROGRAMINFOLOGPROC                   pGLGetProgramInfoLog;
+    PFNGLGETPROGRAMINTERFACEIVPROC               pGLGetProgramInterfaceiv;
+    PFNGLGETPROGRAMRESOURCEINDEXPROC             pGLGetProgramResourceIndex;
+    PFNGLGETPROGRAMRESOURCEIVPROC                pGLGetProgramResourceiv;
+    PFNGLGETPROGRAMRESOURCELOCATIONPROC          pGLGetProgramResourceLocation;
+    PFNGLGETPROGRAMRESOURCELOCATIONINDEXPROC     pGLGetProgramResourceLocationIndex;
+    PFNGLGETPROGRAMRESOURCENAMEPROC              pGLGetProgramResourceName;
     PFNGLGETSAMPLERPARAMETERFVPROC               pGLGetSamplerParameterfv;
     PFNGLGETSAMPLERPARAMETERIVPROC               pGLGetSamplerParameteriv;
     PFNGLGETSAMPLERPARAMETERIIVPROC              pGLGetSamplerParameterIiv;
@@ -1065,6 +1102,12 @@ typedef struct
     PFNGLGETVERTEXATTRIBIVPROC                   pGLGetVertexAttribiv;
     PFNGLGETVERTEXATTRIBPOINTERVPROC             pGLGetVertexAttribPointerv;
     PFNGLHINTPROC                                pGLHint;
+    PFNGLINVALIDATEBUFFERDATAPROC                pGLInvalidateBufferData;
+    PFNGLINVALIDATEBUFFERSUBDATAPROC             pGLInvalidateBufferSubData;
+    PFNGLINVALIDATEFRAMEBUFFERPROC               pGLInvalidateFramebuffer;
+    PFNGLINVALIDATESUBFRAMEBUFFERPROC            pGLInvalidateSubFramebuffer;
+    PFNGLINVALIDATETEXIMAGEPROC                  pGLInvalidateTexImage;
+    PFNGLINVALIDATETEXSUBIMAGEPROC               pGLInvalidateTexSubImage;
     PFNGLISBUFFERPROC                            pGLIsBuffer;
     PFNGLISENABLEDPROC                           pGLIsEnabled;
     PFNGLISENABLEDIPROC                          pGLIsEnabledi;
@@ -1168,7 +1211,9 @@ typedef struct
     PFNWRAPPEDGLTEXPARAMETERIVPROC               pGLTexParameteriv;
     PFNWRAPPEDGLTEXSTORAGE1DPROC                 pGLTexStorage1D;
     PFNWRAPPEDGLTEXSTORAGE2DPROC                 pGLTexStorage2D;
+    PFNWRAPPEDGLTEXSTORAGE2DMULTISAMPLEPROC      pGLTexStorage2DMultisample;
     PFNWRAPPEDGLTEXSTORAGE3DPROC                 pGLTexStorage3D;
+    PFNWRAPPEDGLTEXSTORAGE3DMULTISAMPLEPROC      pGLTexStorage3DMultisample;
     PFNWRAPPEDGLTEXSUBIMAGE1DPROC                pGLTexSubImage1D;
     PFNWRAPPEDGLTEXSUBIMAGE2DPROC                pGLTexSubImage2D;
     PFNWRAPPEDGLTEXSUBIMAGE3DPROC                pGLTexSubImage3D;
@@ -1284,6 +1329,8 @@ typedef struct
     PFNGLDISABLEPROC                         pGLDisable;
     PFNGLDISABLEIPROC                        pGLDisablei;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC        pGLDisableVertexAttribArray;
+    PFNGLDISPATCHCOMPUTEPROC                 pGLDispatchCompute;
+    PFNGLDISPATCHCOMPUTEINDIRECTPROC         pGLDispatchComputeIndirect;
     PFNGLDRAWARRAYSPROC                      pGLDrawArrays;
     PFNGLDRAWARRAYSINSTANCEDPROC             pGLDrawArraysInstanced;
     PFNGLDRAWARRAYSINSTANCEDBASEINSTANCEPROC pGLDrawArraysInstancedBaseInstance;
@@ -1296,6 +1343,7 @@ typedef struct
     PFNGLENABLEPROC                          pGLEnable;
     PFNGLENABLEIPROC                         pGLEnablei;
     PFNGLENABLEVERTEXATTRIBARRAYPROC         pGLEnableVertexAttribArray;
+    PFNGLFRAMEBUFFERPARAMETERIPROC           pGLFramebufferParameteri;
     PFNGLFRAMEBUFFERTEXTUREPROC              pGLFramebufferTexture;
     PFNGLFRAMEBUFFERTEXTURE1DPROC            pGLFramebufferTexture1D;
     PFNGLFRAMEBUFFERTEXTURE2DPROC            pGLFramebufferTexture2D;
@@ -1313,6 +1361,7 @@ typedef struct
     PFNGLGETCOMPRESSEDTEXIMAGEPROC           pGLGetCompressedTexImage;
     PFNGLGETDOUBLEVPROC                      pGLGetDoublev;
     PFNGLGETFLOATVPROC                       pGLGetFloatv;
+    PFNGLGETFRAMEBUFFERPARAMETERIVPROC       pGLGetFramebufferParameteriv;
     PFNGLGETINTEGER64I_VPROC                 pGLGetInteger64i_v;
     PFNGLGETINTEGERI_VPROC                   pGLGetIntegeri_v;
     PFNGLGETINTEGERVPROC                     pGLGetIntegerv;
@@ -1328,6 +1377,8 @@ typedef struct
     PFNGLGETVERTEXATTRIBIIVPROC              pGLGetVertexAttribIiv;
     PFNGLGETVERTEXATTRIBIUIVPROC             pGLGetVertexAttribIuiv;
     PFNGLGETVERTEXATTRIBPOINTERVPROC         pGLGetVertexAttribPointerv;
+    PFNGLINVALIDATEFRAMEBUFFERPROC           pGLInvalidateFramebuffer;
+    PFNGLINVALIDATESUBFRAMEBUFFERPROC        pGLInvalidateSubFramebuffer;
     PFNGLMAPBUFFERPROC                       pGLMapBuffer;
     PFNGLMAPBUFFERRANGEPROC                  pGLMapBufferRange;
     PFNGLMULTIDRAWARRAYSPROC                 pGLMultiDrawArrays;
@@ -1350,7 +1401,9 @@ typedef struct
     PFNGLTEXPARAMETERIUIVPROC                pGLTexParameterIuiv;
     PFNGLTEXSTORAGE1DPROC                    pGLTexStorage1D;
     PFNGLTEXSTORAGE2DPROC                    pGLTexStorage2D;
+    PFNGLTEXSTORAGE2DMULTISAMPLEPROC         pGLTexStorage2DMultisample;
     PFNGLTEXSTORAGE3DPROC                    pGLTexStorage3D;
+    PFNGLTEXSTORAGE3DMULTISAMPLEPROC         pGLTexStorage3DMultisample;
     PFNGLTEXSUBIMAGE1DPROC                   pGLTexSubImage1D;
     PFNGLTEXSUBIMAGE2DPROC                   pGLTexSubImage2D;
     PFNGLTEXSUBIMAGE3DPROC                   pGLTexSubImage3D;
@@ -1425,10 +1478,6 @@ typedef struct
     PFNGLBUFFERSTORAGEPROC         pGLBufferStorage;
     PFNGLNAMEDBUFFERSTORAGEEXTPROC pGLNamedBufferStorageEXT;
 
-    /* GL_ARB_compute_shader */
-    PFNGLDISPATCHCOMPUTEPROC         pGLDispatchCompute;
-    PFNGLDISPATCHCOMPUTEINDIRECTPROC pGLDispatchComputeIndirect;
-
     /* GL_ARB_multi_bind */
     PFNGLBINDBUFFERSBASEPROC  pGLBindBuffersBase;
     PFNGLBINDBUFFERSRANGEPROC pGLBindBuffersRange;
@@ -1437,10 +1486,6 @@ typedef struct
 
     /* GL_ARB_texture_buffer_range */
     PFNGLTEXTUREBUFFERRANGEEXTPROC pGLTextureBufferRangeEXT;
-
-    /* GL_ARB_texture_storage_multisample */
-    PFNGLTEXSTORAGE2DMULTISAMPLEPROC pGLTexStorage2DMultisample;
-    PFNGLTEXSTORAGE3DMULTISAMPLEPROC pGLTexStorage3DMultisample;
 
     PFNGLGETTEXIMAGEPROC            pGLGetTexImage;
     PFNGLGETTEXLEVELPARAMETERFVPROC pGLGetTexLevelParameterfv;
@@ -1470,57 +1515,6 @@ typedef struct
 
 typedef struct
 {
-
-    GLint max_combined_compute_uniform_components;
-    GLint max_compute_atomic_counter_buffers;
-    GLint max_compute_atomic_counters;
-    GLint max_compute_image_uniforms;
-    GLint max_compute_shared_memory_size;
-    GLint max_compute_texture_image_units;
-    GLint max_compute_uniform_blocks;
-    GLint max_compute_uniform_components;
-    GLint max_compute_work_group_count[3];
-    GLint max_compute_work_group_invocations;
-    GLint max_compute_work_group_size[3];
-
-} ogl_context_gl_limits_arb_compute_shader;
-
-typedef struct
-{
-
-    PFNGLDEBUGMESSAGECALLBACKARBPROC pGLDebugMessageCallbackARB;
-    PFNGLDEBUGMESSAGECONTROLARBPROC  pGLDebugMessageControlARB;
-    PFNGLDEBUGMESSAGEINSERTARBPROC   pGLDebugMessageInsertARB;
-    PFNGLGETDEBUGMESSAGELOGARBPROC   pGLGetDebugMessageLogARB;
-
-} ogl_context_gl_entrypoints_arb_debug_output;
-
-typedef struct
-{
-    PFNGLFRAMEBUFFERPARAMETERIPROC     pGLFramebufferParameteri;
-    PFNGLGETFRAMEBUFFERPARAMETERIVPROC pGLGetFramebufferParameteriv;
-} ogl_context_gl_entrypoints_arb_framebuffer_no_attachments;
-
-typedef struct
-{
-    GLint max_framebuffer_height;
-    GLint max_framebuffer_layers;
-    GLint max_framebuffer_samples;
-    GLint max_framebuffer_width;
-} ogl_context_gl_limits_arb_framebuffer_no_attachments;
-
-typedef struct
-{
-    PFNGLINVALIDATEBUFFERDATAPROC     pGLInvalidateBufferData;
-    PFNGLINVALIDATEBUFFERSUBDATAPROC  pGLInvalidateBufferSubData;
-    PFNGLINVALIDATEFRAMEBUFFERPROC    pGLInvalidateFramebuffer;
-    PFNGLINVALIDATESUBFRAMEBUFFERPROC pGLInvalidateSubFramebuffer;
-    PFNGLINVALIDATETEXIMAGEPROC       pGLInvalidateTexImage;
-    PFNGLINVALIDATETEXSUBIMAGEPROC    pGLInvalidateTexSubImage;
-} ogl_context_gl_entrypoints_arb_invalidate_subdata;
-
-typedef struct
-{
     PFNGLBINDBUFFERSBASEPROC     pGLBindBuffersBase;
     PFNGLBINDBUFFERSRANGEPROC    pGLBindBuffersRange;
     PFNGLBINDIMAGETEXTURESPROC   pGLBindImageTextures;
@@ -1538,12 +1532,6 @@ typedef struct
 {
     GLint sparse_buffer_page_size;
 } ogl_context_gl_limits_arb_sparse_buffer;
-
-typedef struct
-{
-    PFNWRAPPEDGLTEXSTORAGE2DMULTISAMPLEPROC pGLTexStorage2DMultisample;
-    PFNWRAPPEDGLTEXSTORAGE3DMULTISAMPLEPROC pGLTexStorage3DMultisample;
-} ogl_context_gl_entrypoints_arb_texture_storage_multisample;
 
 typedef struct
 {
@@ -1620,41 +1608,6 @@ typedef struct
 
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
-typedef struct
-{
-
-    PFNGLGETPROGRAMINTERFACEIVPROC           pGLGetProgramInterfaceiv;
-    PFNGLGETPROGRAMRESOURCEINDEXPROC         pGLGetProgramResourceIndex;
-    PFNGLGETPROGRAMRESOURCEIVPROC            pGLGetProgramResourceiv;
-    PFNGLGETPROGRAMRESOURCELOCATIONPROC      pGLGetProgramResourceLocation;
-    PFNGLGETPROGRAMRESOURCELOCATIONINDEXPROC pGLGetProgramResourceLocationIndex;
-    PFNGLGETPROGRAMRESOURCENAMEPROC          pGLGetProgramResourceName;
-
-} ogl_context_gl_entrypoints_arb_program_interface_query;
-
-typedef struct
-{
-
-    PFNGLSHADERSTORAGEBLOCKBINDINGPROC pGLShaderStorageBlockBinding;
-
-} ogl_context_gl_entrypoints_arb_shader_storage_buffer_object;
-
-
-typedef struct
-{
-
-    GLint max_combined_shader_storage_blocks;
-    GLint max_compute_shader_storage_blocks;
-    GLint max_fragment_shader_storage_blocks;
-    GLint max_geometry_shader_storage_blocks;
-    GLint max_shader_storage_block_size;
-    GLint max_shader_storage_buffer_bindings;
-    GLint max_tess_control_shader_storage_blocks;
-    GLint max_tess_evaluation_shader_storage_blocks;
-    GLint max_vertex_shader_storage_blocks;
-    GLint shader_storage_buffer_offset_alignment;
-
-} ogl_context_gl_limits_arb_shader_storage_buffer_object;
 
 /** Enumerator that can be used to define property caller wants to find out more details on. */
 typedef enum

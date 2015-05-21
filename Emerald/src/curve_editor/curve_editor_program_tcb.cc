@@ -91,7 +91,7 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
         std::stringstream fp_body_stream;
         std::stringstream vp_body_stream;
 
-        fp_body_stream << "#version 420 core\n"
+        fp_body_stream << "#version 430 core\n"
                           "\n"
                           "out vec4 color;\n"
                           "\n"
@@ -100,7 +100,7 @@ PUBLIC curve_editor_program_tcb curve_editor_program_tcb_create(__in __notnull o
                           "    color = vec4(1, 1, 0, 1);\n"
                           "}\n";
 
-        vp_body_stream << "#version 420 core\n"
+        vp_body_stream << "#version 430 core\n"
                           "\n"
                           "const int max_nodes = 64;\n"
                           "\n"

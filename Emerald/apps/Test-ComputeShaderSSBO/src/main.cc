@@ -25,10 +25,9 @@ system_event _window_closed_event  = system_event_create(true,  /* manual_reset 
                                                          false);/* start_state */
 const int    _window_size[2]       = {1280, 720};
 
-const char* _cs_body_preamble = "#version 420 core\n"
+const char* _cs_body_preamble = "#version 430 core\n"
                                 "\n"
                                 "#extension GL_ARB_compute_shader               : require\n"
-                                "#extension GL_ARB_shader_image_size            : require\n"
                                 "#extension GL_ARB_shader_storage_buffer_object : require\n"
                                 "\n";
 
@@ -56,13 +55,13 @@ const char* _cs_body_core     = "layout (local_size_x = LOCAL_SIZE, local_size_y
 /** TODO */
 system_hashed_ansi_string _get_cs_body()
 {
-    const ogl_context_gl_limits_arb_compute_shader* limits_ptr                       = NULL;
-    const GLint*                                    max_local_work_group_dimensions  = NULL;
-          GLint                                     max_local_work_group_invocations = 0;
-          system_hashed_ansi_string                 result                           = NULL;
+    const ogl_context_gl_limits*    limits_ptr                       = NULL;
+    const GLint*                    max_local_work_group_dimensions  = NULL;
+          GLint                     max_local_work_group_invocations = 0;
+          system_hashed_ansi_string result                           = NULL;
 
     ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_LIMITS_ARB_COMPUTE_SHADER,
+                             OGL_CONTEXT_PROPERTY_LIMITS,
                             &limits_ptr);
 
     max_local_work_group_invocations = limits_ptr->max_compute_work_group_invocations;
@@ -107,16 +106,12 @@ void _rendering_handler(ogl_context          context,
                         system_timeline_time frame_time,
                         void*                renderer)
 {
-    const  ogl_context_gl_entrypoints*                    entry_points    = NULL;
-    const  ogl_context_gl_entrypoints_arb_compute_shader* entry_points_cs = NULL;
-    static bool                                           has_initialized = false;
+    const  ogl_context_gl_entrypoints* entry_points    = NULL;
+    static bool                        has_initialized = false;
 
     ogl_context_get_property(_context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                              &entry_points);
-    ogl_context_get_property(_context,
-                             OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_COMPUTE_SHADER,
-                            &entry_points_cs);
 
     if (!has_initialized)
     {
@@ -204,10 +199,10 @@ void _rendering_handler(ogl_context          context,
         (_window_size[1] + _local_workgroup_size - 1) / _local_workgroup_size
     };
 
-    entry_points->pGLUseProgram        (ogl_program_get_id(_program) );
-    entry_points_cs->pGLDispatchCompute(n_global_invocations[0],
-                                        n_global_invocations[1],
-                                        1); /* num_groups_z */
+    entry_points->pGLUseProgram     (ogl_program_get_id(_program) );
+    entry_points->pGLDispatchCompute(n_global_invocations[0],
+                                     n_global_invocations[1],
+                                     1); /* num_groups_z */
 
     /* Update the test counter value */
     entry_points->pGLBindBufferBase(GL_SHADER_STORAGE_BUFFER,

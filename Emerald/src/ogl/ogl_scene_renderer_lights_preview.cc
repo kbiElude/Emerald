@@ -16,9 +16,7 @@
 #include <sstream>
 
 /* This is pretty basic stuff to draw white splats in clip space */
-static const char* preview_fragment_shader = "#version 420 core\n"
-                                             "\n"
-                                             "#extension GL_ARB_explicit_uniform_location : enable\n"
+static const char* preview_fragment_shader = "#version 430 core\n"
                                              "\n"
                                              "uniform data\n"
                                              "{\n"
@@ -32,9 +30,7 @@ static const char* preview_fragment_shader = "#version 420 core\n"
                                              "{\n"
                                              "    result = vec4(color, 1.0);\n"
                                              "}\n";
-static const char* preview_vertex_shader   = "#version 420 core\n"
-                                             "\n"
-                                             "#extension GL_ARB_explicit_uniform_location : enable\n"
+static const char* preview_vertex_shader   = "#version 430 core\n"
                                              "\n"
                                              "uniform data\n"
                                              "{\n"

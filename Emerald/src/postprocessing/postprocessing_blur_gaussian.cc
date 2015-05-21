@@ -28,9 +28,7 @@
 #define DATA_SAMPLER_UNIFORM_LOCATION   (0)
 #define OTHER_DATA_UB_BP                (1)
 
-static const char* fs_preamble = "#version 420 core\n"
-                                 "\n"
-                                 "#extension GL_ARB_explicit_uniform_location : require\n"
+static const char* fs_preamble = "#version 430 core\n"
                                  "\n";
 static const char* fs_body =     "layout(binding = 0, std140) uniform coeffs_data\n"
                                  "{\n"
@@ -87,9 +85,7 @@ static const char* fs_body =     "layout(binding = 0, std140) uniform coeffs_dat
                                  "                             0.0) * tap_weight;\n"
                                  "    }\n"
                                  "}\n";
-static const char* vs_body =     "#version 420 core\n"
-                                 "\n"
-                                 "#extension GL_ARB_explicit_uniform_location : require\n"
+static const char* vs_body =     "#version 430 core\n"
                                  "\n"
                                  "layout(location = 0, binding = 0)      uniform sampler2DArray data_sampler;\n"
                                  "                                  flat out     int            read_layer_id;\n"
@@ -877,7 +873,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
     _postprocessing_blur_gaussian*                            blur_ptr                      = (_postprocessing_blur_gaussian*) blur;
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints_ptr           = NULL;
     const ogl_context_gl_entrypoints*                         entrypoints_ptr               = NULL;
-    const ogl_context_gl_entrypoints_arb_invalidate_subdata*  is_entrypoints_ptr            = NULL;
     ogl_texture_dimensionality                                src_texture_dimensionality    = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
     unsigned int                                              src_texture_height            = 0;
     GLenum                                                    src_texture_internalformat    = GL_NONE;
@@ -892,9 +887,6 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                       n_taps <= blur_ptr->n_max_taps,
                       "Invalid number of taps requested");
 
-    ogl_context_get_property            (blur_ptr->context,
-                                         OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_INVALIDATE_SUBDATA,
-                                        &is_entrypoints_ptr);
     ogl_context_get_property            (blur_ptr->context,
                                          OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                         &dsa_entrypoints_ptr);
@@ -1334,8 +1326,8 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void postprocessing_blur_gaussian_exec
                              OGL_TEXTURE_PROPERTY_ID,
                             &temp_2d_array_texture_id);
 
-    is_entrypoints_ptr->pGLInvalidateTexImage(temp_2d_array_texture_id,
-                                              0); /* level */
+    entrypoints_ptr->pGLInvalidateTexImage(temp_2d_array_texture_id,
+                                           0); /* level */
 
     entrypoints_ptr->pGLBindFramebuffer(GL_DRAW_FRAMEBUFFER,
                                         0);

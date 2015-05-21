@@ -190,7 +190,7 @@ typedef struct
 } _ogl_ui_dropdown;
 
 /** Internal variables */
-static const char* ui_dropdown_bg_fragment_shader_body        = "#version 420 core\n"
+static const char* ui_dropdown_bg_fragment_shader_body        = "#version 430 core\n"
                                                                 "\n"
                                                                 "in  vec2 uv;\n"
                                                                 "out vec3 result;\n"
@@ -241,7 +241,7 @@ static const char* ui_dropdown_bg_fragment_shader_body        = "#version 420 co
                                                                 "    }\n"
                                                                 "}\n";
 
-static const char* ui_dropdown_fragment_shader_body           = "#version 420 core\n"
+static const char* ui_dropdown_fragment_shader_body           = "#version 430 core\n"
                                                                 "\n"
                                                                 "in  vec2 uv;\n"
                                                                 "out vec3 result;\n"
@@ -276,7 +276,7 @@ static const char* ui_dropdown_fragment_shader_body           = "#version 420 co
                                                                 "    }\n"
                                                                 "}\n";
 
-static const char* ui_dropdown_label_bg_fragment_shader_body  = "#version 420 core\n"
+static const char* ui_dropdown_label_bg_fragment_shader_body  = "#version 430 core\n"
                                                                 "\n"
                                                                 "out vec4 result;\n"
                                                                 "\n"
@@ -285,7 +285,7 @@ static const char* ui_dropdown_label_bg_fragment_shader_body  = "#version 420 co
                                                                 "    result = vec4(0.1f, 0.1f, 0.2f, 0.8f);\n"
                                                                 "}\n";
 
-static const char* ui_dropdown_separator_fragment_shader_body = "#version 420 core\n"
+static const char* ui_dropdown_separator_fragment_shader_body = "#version 430 core\n"
                                                                 "\n"
                                                                 "out vec3 result;\n"
                                                                 "\n"
@@ -293,7 +293,7 @@ static const char* ui_dropdown_separator_fragment_shader_body = "#version 420 co
                                                                 "{\n"
                                                                 "    result = vec3(0.42f, 0.41f, 0.41f);\n"
                                                                 "}";
-static const char* ui_dropdown_separator_vertex_shader_body   = "#version 420 core\n"
+static const char* ui_dropdown_separator_vertex_shader_body   = "#version 430 core\n"
                                                                 "\n"
                                                                 "uniform dataVS\n"
                                                                 "{\n"
@@ -311,7 +311,7 @@ static const char* ui_dropdown_separator_vertex_shader_body   = "#version 420 co
                                                                 "    gl_Position = vec4(x, x1_x2_y.z, 0.0, 1.0);\n"
                                                                 "}";
 
-static const char* ui_dropdown_slider_fragment_shader_body    = "#version 420 core\n"
+static const char* ui_dropdown_slider_fragment_shader_body    = "#version 430 core\n"
                                                                 "\n"
                                                                 "in  vec2 uv;\n"
                                                                 "out vec4 result;\n"

@@ -24,7 +24,7 @@
 /* Internal variables */
 
 /** Internal type definition */
-const char* preview_generation_template_body = "#version 420 core\n"
+const char* preview_generation_template_body = "#version 430 core\n"
                                                "\n"
                                                "#define N_BANDS (%d)\n"
                                                /** SH code goes here ==> */

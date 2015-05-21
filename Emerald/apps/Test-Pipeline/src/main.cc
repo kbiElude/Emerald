@@ -40,7 +40,7 @@ ogl_texture    _to_1                             = 0;
 ogl_texture    _to_2                             = 0;
 GLuint         _vao_id                           = 0;
 
-const char* fragment_shader_generation = "#version 420 core\n"
+const char* fragment_shader_generation = "#version 430 core\n"
                                          "\n"
                                          "in  vec2 uv;\n"
                                          "out vec4 result;\n"
@@ -54,7 +54,7 @@ const char* fragment_shader_generation = "#version 420 core\n"
                                          "{\n"
                                          "    result += vec4(cos(uv + vec2(time) ) * 0.5 + 0.5, sin(time) * 0.5 + 0.5, 1);\n"
                                          "}\n";
-const char* fragment_shader_modification = "#version 420 core\n"
+const char* fragment_shader_modification = "#version 430 core\n"
                                            "\n"
                                            "in      vec2      uv;\n"
                                            "out     vec4      result;\n"

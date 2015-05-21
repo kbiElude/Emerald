@@ -76,7 +76,7 @@ typedef struct
 } _ogl_ui_button;
 
 /** Internal variables */
-static const char* ui_button_fragment_shader_body = "#version 420 core\n"
+static const char* ui_button_fragment_shader_body = "#version 430 core\n"
                                                     "\n"
                                                     "in  vec2 uv;\n"
                                                     "out vec3 result;\n"

@@ -248,7 +248,7 @@ PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constr
                       "Baking body for a non-dirty constructor");
 
     /* Add version information */
-    body_sstream << "#version 420 core\n\n";
+    body_sstream << "#version 430 core\n\n";
 
     /* Add structure declarations */
     const unsigned int n_structures = system_resizable_vector_get_amount_of_elements(constructor_ptr->structures);

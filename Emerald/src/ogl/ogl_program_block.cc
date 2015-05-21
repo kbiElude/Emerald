@@ -353,17 +353,13 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
 
     if (context_type == OGL_CONTEXT_TYPE_GL)
     {
-        const ogl_context_gl_entrypoints*                             entry_points     = NULL;
-        const ogl_context_gl_entrypoints_ext_direct_state_access*     entry_points_dsa = NULL;
-        const ogl_context_gl_entrypoints_arb_program_interface_query* entry_points_piq = NULL;
-        const ogl_context_gl_limits*                                  limits_ptr       = NULL;
+        const ogl_context_gl_entrypoints*                         entry_points     = NULL;
+        const ogl_context_gl_entrypoints_ext_direct_state_access* entry_points_dsa = NULL;
+        const ogl_context_gl_limits*                              limits_ptr       = NULL;
 
         ogl_context_get_property(block_ptr->context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                 &entry_points);
-        ogl_context_get_property(block_ptr->context,
-                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_ARB_PROGRAM_INTERFACE_QUERY,
-                                &entry_points_piq);
         ogl_context_get_property(block_ptr->context,
                                  OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
                                 &entry_points_dsa);
@@ -377,7 +373,7 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
         block_ptr->pGLBindBuffer                = entry_points->pGLBindBuffer;
         block_ptr->pGLBufferSubData             = entry_points->pGLBufferSubData;
         block_ptr->pGLFinish                    = entry_points->pGLFinish;
-        block_ptr->pGLGetProgramResourceiv      = entry_points_piq->pGLGetProgramResourceiv;
+        block_ptr->pGLGetProgramResourceiv      = entry_points->pGLGetProgramResourceiv;
         block_ptr->pGLShaderStorageBlockBinding = entry_points->pGLShaderStorageBlockBinding;
         block_ptr->pGLUniformBlockBinding       = entry_points->pGLUniformBlockBinding;
         uniform_buffer_offset_alignment         = limits_ptr->uniform_buffer_offset_alignment;

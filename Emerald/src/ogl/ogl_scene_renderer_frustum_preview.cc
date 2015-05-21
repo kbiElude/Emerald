@@ -237,7 +237,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
 } _ogl_scene_renderer_frustum_preview;
 
 
-PRIVATE const char* po_fs = "#version 420 core\n"
+PRIVATE const char* po_fs = "#version 430 core\n"
                             "\n"
                             "out vec4 result;\n"
                             "\n"
@@ -245,7 +245,7 @@ PRIVATE const char* po_fs = "#version 420 core\n"
                             "{\n"
                             "    result = vec4(1.0, 1.0, 1.0, 1.0);\n"
                             "}\n";
-PRIVATE const char* po_vs = "#version 420 core\n"
+PRIVATE const char* po_vs = "#version 430 core\n"
                             "\n"
                             "in vec4 position;\n"
                             "\n"

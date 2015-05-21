@@ -53,7 +53,7 @@ REFCOUNT_INSERT_IMPLEMENTATION(sh_shaders_object, sh_shaders_object, _sh_shaders
 
 
 /* Internal variables */
-const char* _multidraw_mvp_per_vertex_ubo_model_buffer_texture_shader_body = "#version 420 core\n"
+const char* _multidraw_mvp_per_vertex_ubo_model_buffer_texture_shader_body = "#version 430 core\n"
                                                                              "\n"
                                                                              "#define N_COEFFS                (%d)\n"
                                                                              "#define N_MAX_INSTANCES         (%d)\n"

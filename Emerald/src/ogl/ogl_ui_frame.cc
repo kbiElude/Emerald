@@ -44,7 +44,7 @@ typedef struct
 } _ogl_ui_frame;
 
 /** Internal variables */
-static const char* ui_frame_fragment_shader_body = "#version 420 core\n"
+static const char* ui_frame_fragment_shader_body = "#version 430 core\n"
                                                    "\n"
                                                    "out vec4 result;\n"
                                                    "\n"
