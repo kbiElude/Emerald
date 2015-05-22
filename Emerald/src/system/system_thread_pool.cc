@@ -139,8 +139,7 @@ void _init_system_thread_pool_task_group_descriptor(__in __notnull system_resour
 {
     _system_thread_pool_task_group_descriptor* task_group_descriptor = (_system_thread_pool_task_group_descriptor*) task_group_descriptor_block;
 
-    task_group_descriptor->tasks = system_resizable_vector_create(THREAD_POOL_PREALLOCATED_TASK_SLOTS,
-                                                                  sizeof(system_thread_pool_task_descriptor) );
+    task_group_descriptor->tasks = system_resizable_vector_create(THREAD_POOL_PREALLOCATED_TASK_SLOTS);
 
     ASSERT_ALWAYS_SYNC(task_group_descriptor->tasks != NULL,
                        "Could not preallocate task slots for task group descriptor.");
@@ -586,8 +585,7 @@ PUBLIC void _system_thread_pool_init()
                     n_priority < THREAD_POOL_TASK_PRIORITY_COUNT;
                   ++n_priority)
         {
-            queued_tasks[n_priority] = system_resizable_vector_create(THREAD_POOL_PREALLOCATED_TASK_CONTAINERS,
-                                                                      sizeof(_system_thread_pool_order_descriptor_ptr) );
+            queued_tasks[n_priority] = system_resizable_vector_create(THREAD_POOL_PREALLOCATED_TASK_CONTAINERS);
 
             ASSERT_ALWAYS_SYNC(queued_tasks[n_priority] != NULL,
                                "Could not create a queued tasks resizable vector.");

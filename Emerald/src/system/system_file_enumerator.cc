@@ -24,8 +24,7 @@ typedef struct _system_file_enumerator
 
     explicit _system_file_enumerator(system_hashed_ansi_string in_file_pattern)
     {
-        entries      = system_resizable_vector_create(4, /* capacity */
-                                                      sizeof(_system_file_enumerator_entry*) );
+        entries      = system_resizable_vector_create(4 /* capacity */);
         file_pattern = in_file_pattern;
     }
 

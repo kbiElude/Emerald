@@ -400,8 +400,7 @@ PRIVATE void _ogl_scene_renderer_init_resizable_vector_for_resource_pool(system_
 {
     system_resizable_vector* vector_ptr = (system_resizable_vector*) block;
 
-    *vector_ptr = system_resizable_vector_create(64 /* capacity */,
-                                                 sizeof(mesh_material) );
+    *vector_ptr = system_resizable_vector_create(64 /* capacity */);
 }
 
 /** TODO */
@@ -537,8 +536,7 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
             ASSERT_ALWAYS_SYNC(uber_ptr != NULL,
                                "Out of memory");
 
-            uber_ptr->meshes = system_resizable_vector_create(64 /* capacity */,
-                                                              sizeof(_ogl_scene_renderer_mesh*));
+            uber_ptr->meshes = system_resizable_vector_create(64 /* capacity */);
 
             system_hash64map_insert(renderer_ptr->ubers_map,
                                     (system_hash64) mesh_uber,

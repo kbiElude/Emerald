@@ -251,8 +251,7 @@ _ogl_uber::_ogl_uber(__in __notnull ogl_context               in_context,
                      __in __notnull system_hashed_ansi_string in_name,
                      __in           _ogl_uber_type            in_type)
 {
-    added_items                    = system_resizable_vector_create(4 /* capacity */,
-                                                                    sizeof(_ogl_uber_item*) );
+    added_items                    = system_resizable_vector_create(4 /* capacity */);
     context                        = in_context;    /* DO NOT retain, or face circular dependencies! */
     current_vp                     = system_matrix4x4_create();
     dirty                          = true;

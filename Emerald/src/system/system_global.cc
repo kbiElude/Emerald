@@ -16,11 +16,9 @@ typedef struct _system_global
 
     _system_global()
     {
-        asset_paths    = system_resizable_vector_create(4, /* capacity */
-                                                        sizeof(system_hashed_ansi_string),
+        asset_paths    = system_resizable_vector_create(4,     /* capacity              */
                                                         true); /* should_be_thread_safe */
-        file_unpackers = system_resizable_vector_create(4, /* capacity */
-                                                        sizeof(system_file_unpacker),
+        file_unpackers = system_resizable_vector_create(4,     /* capacity              */
                                                         true); /* should_be_thread_safe */
 
         ASSERT_DEBUG_SYNC(asset_paths != NULL,

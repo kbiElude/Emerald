@@ -35,8 +35,7 @@ typedef struct _ogl_context_texture_compression
 
     _ogl_context_texture_compression()
     {
-        algorithms            = system_resizable_vector_create(4, /* capacity */
-                                                               sizeof(_ogl_context_texture_compression_algorithm*) );
+        algorithms            = system_resizable_vector_create(4 /* capacity */);
         compression_enums_map = system_hash64map_create       (sizeof(GLenum) );
         context               = NULL;
     }

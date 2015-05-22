@@ -38,8 +38,7 @@ volatile void ExtractVMapDataWorkerThreadEntryPoint(__in __notnull void* not_use
     char text_buffer[1024];
 
     /* Initialize containers */
-    uv_maps_vector = system_resizable_vector_create(4, /* capacity */
-                                                    sizeof(_vmap*) );
+    uv_maps_vector = system_resizable_vector_create(4 /* capacity */);
 
     /* Iterate over all vertex maps */
     const int n_uv_vmaps = object_funcs_ptr->numVMaps(LWVMAP_TXUV);

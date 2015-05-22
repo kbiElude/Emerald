@@ -405,8 +405,7 @@ PRIVATE void _ogl_ui_init(__in __notnull _ogl_ui*                  ui_ptr,
 {
     ogl_context context = ogl_text_get_context(text_renderer);
 
-    ui_ptr->controls                        = system_resizable_vector_create(N_START_CONTROLS,
-                                                                             sizeof(_ogl_ui_control*) );
+    ui_ptr->controls                        = system_resizable_vector_create(N_START_CONTROLS);
     ui_ptr->controls_rw_mutex               = system_read_write_mutex_create();
     ui_ptr->current_lbm_status              = false;
     ui_ptr->current_mouse_xy[0]             = 0;
@@ -1398,8 +1397,7 @@ PUBLIC EMERALD_API void ogl_ui_register_control_callback(__in __notnull ogl_ui  
                               (system_hash64) internal_control_ptr,
                              &callback_vector) )
     {
-        callback_vector = system_resizable_vector_create(4, /* capacity */
-                                                         sizeof(_ogl_ui_callback*) );
+        callback_vector = system_resizable_vector_create(4 /* capacity */);
 
         ASSERT_ALWAYS_SYNC(callback_vector != NULL,
                            "Could not create a callback vector");

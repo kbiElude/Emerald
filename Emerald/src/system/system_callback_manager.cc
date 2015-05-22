@@ -128,8 +128,7 @@ PRIVATE void _add_callback_support(__in __notnull system_callback_manager callba
                                                                         4,     /* n_elements */
                                                                         NULL,  /* init_fn */
                                                                         NULL); /* deinit_fn */
-    descriptor.subscriptions           = system_resizable_vector_create(4 /* capacity */,
-                                                                        sizeof(_system_callback_manager_callback_subscription*) );
+    descriptor.subscriptions           = system_resizable_vector_create(4 /* capacity */);
 
     ASSERT_ALWAYS_SYNC(descriptor.resource_pool != NULL && descriptor.subscriptions != NULL,
                        "Out of memory");

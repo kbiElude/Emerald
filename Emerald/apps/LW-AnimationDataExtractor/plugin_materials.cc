@@ -36,11 +36,9 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
     char             text_buffer[1024];
 
     /* Initialize containers */
-    materials_vector                 = system_resizable_vector_create(4, /* capacity */
-                                                                      sizeof(scene_material) );
+    materials_vector                 = system_resizable_vector_create(4 /* capacity */);
     surface_id_to_scene_material_map = system_hash64map_create       (sizeof(scene_material) );
-    texture_filenames_vector         = system_resizable_vector_create(4, /* capacity */
-                                                                      sizeof(system_hashed_ansi_string) );
+    texture_filenames_vector         = system_resizable_vector_create(4 /* capacity */);
 
     /* Iterate over all surfaces.
      *

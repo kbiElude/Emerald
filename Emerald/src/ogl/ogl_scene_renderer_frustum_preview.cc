@@ -146,8 +146,7 @@ typedef struct _ogl_scene_renderer_frustum_preview
 
     _ogl_scene_renderer_frustum_preview()
     {
-        assigned_cameras                = system_resizable_vector_create(4, /* capacity */
-                                                                         sizeof(_ogl_scene_renderer_frustum_preview_camera*) );
+        assigned_cameras                = system_resizable_vector_create(4 /* capacity */);
         context                         = NULL;
         data_bo_buffer                  = NULL;
         data_bo_buffer_size             = 0;

@@ -83,7 +83,7 @@ typedef struct _collada_mesh_generator_input_data
         array_data      = NULL;
         array_data_size = 0;
         n_indices       = 0;
-        streams         = system_resizable_vector_create(4 /* capacity */, sizeof(_collada_mesh_generator_input_data_stream*) );
+        streams         = system_resizable_vector_create(4 /* capacity */);
         type            = COLLADA_DATA_INPUT_TYPE_UNDEFINED;
     }
 

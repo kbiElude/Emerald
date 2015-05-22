@@ -48,7 +48,6 @@ typedef struct _system_file_unpacker
     explicit _system_file_unpacker(__in __notnull system_hashed_ansi_string in_packed_filename)
     {
         files               = system_resizable_vector_create(4,     /* capacity */
-                                                             sizeof(_system_file_unpacker_file*),
                                                              true); /* should_be_thread_safe */
         packed_filename     = in_packed_filename;
         unpacked_buffer_ptr = NULL;

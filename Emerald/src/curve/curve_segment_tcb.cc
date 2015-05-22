@@ -232,10 +232,8 @@ PRIVATE void _init_curve_segment_data_tcb(                 curve_segment_data*  
 
         data_ptr->curve           = curve;
         data_ptr->id              = segment_id;
-        data_ptr->nodes           = system_resizable_vector_create(START_NODES_AMOUNT,
-                                                                   sizeof(void*) );
-        data_ptr->nodes_order     = system_resizable_vector_create(START_NODES_AMOUNT,
-                                                                   sizeof(unsigned int) );
+        data_ptr->nodes           = system_resizable_vector_create(START_NODES_AMOUNT);
+        data_ptr->nodes_order     = system_resizable_vector_create(START_NODES_AMOUNT);
 
         ASSERT_DEBUG_SYNC(data_ptr->nodes != NULL,
                           "Could not create nodes resizable vector");

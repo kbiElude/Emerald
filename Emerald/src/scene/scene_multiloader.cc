@@ -123,8 +123,7 @@ typedef struct _scene_multiloader
 _scene_multiloader_scene::_scene_multiloader_scene()
 {
     enqueued_gfx_image_to_scene_texture_assignment_ops = system_resizable_vector_create(4,     /* capacity */
-                                                                                    sizeof(_scene_multiloader_deferred_gfx_image_to_scene_texture_assignment_op*),
-                                                                                    true); /* thread_safe */
+                                                                                        true); /* thread_safe */
     loader_ptr                                         = NULL;
     result_scene                                       = NULL;
     serializer                                         = NULL;
@@ -179,17 +178,14 @@ _scene_multiloader::_scene_multiloader(__in __notnull ogl_context  in_context,
     context                               = in_context;
     cs                                    = system_critical_section_create();
     enqueued_gfx_image_load_ops           = system_resizable_vector_create(4,     /* capacity */
-                                                                           sizeof(_scene_multiloader_deferred_gfx_image_load_op*),
                                                                            true);  /* should_be_thread_safe */
     enqueued_image_file_names_vector      = system_resizable_vector_create(4,      /* capacity */
-                                                                           sizeof(system_hashed_ansi_string),
                                                                            true); /* should_be_thread_safe */
     free_serializers_at_release_time      = in_free_serializers_at_release_time;
     image_filename_to_gfx_image_map       = system_hash64map_create       (4,     /* capacity */
                                                                            true); /* should_be_thread_safe */
     state                                 = SCENE_MULTILOADER_STATE_CREATED;
-    scenes                                = system_resizable_vector_create(in_n_scenes,
-                                                                           sizeof(system_hashed_ansi_string) );
+    scenes                                = system_resizable_vector_create(in_n_scenes);
 }
 
 /** TODO */
@@ -1086,12 +1082,9 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
     system_hash64map        mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*)         );
     system_hash64map        mesh_name_to_mesh_map             = system_hash64map_create(sizeof(mesh)          );
     bool                    result                            = true;
-    system_resizable_vector serialized_scene_cameras          = system_resizable_vector_create(4 /* capacity */,
-                                                                                               sizeof(void*) );
-    system_resizable_vector serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */,
-                                                                                               sizeof(void*) );
-    system_resizable_vector serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */,
-                                                                                               sizeof(void*) );
+    system_resizable_vector serialized_scene_cameras          = system_resizable_vector_create(4 /* capacity */);
+    system_resizable_vector serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */);
+    system_resizable_vector serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */);
     system_hash64map        scene_material_to_material_id_map = system_hash64map_create       (sizeof(unsigned int) );
     system_hash64map        texture_id_to_ogl_texture_map     = system_hash64map_create       (sizeof(void*) );
 

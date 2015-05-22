@@ -346,8 +346,7 @@ PUBLIC gfx_image gfx_image_create(__in __notnull system_hashed_ansi_string name)
     {
         new_gfx_image->filename        = NULL;
         new_gfx_image->filename_actual = NULL;
-        new_gfx_image->mipmaps         = system_resizable_vector_create(1, /* capacity */
-                                                                        sizeof(_gfx_image_mipmap*) );
+        new_gfx_image->mipmaps         = system_resizable_vector_create(1 /* capacity */);
         new_gfx_image->name            = name;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_gfx_image,

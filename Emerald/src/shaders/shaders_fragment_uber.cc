@@ -1393,8 +1393,7 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
         goto end;
     }
 
-    result_object->added_items                   = system_resizable_vector_create(4 /* capacity */,
-                                                                                  sizeof(_shaders_fragment_uber_item*) );
+    result_object->added_items                   = system_resizable_vector_create(4 /* capacity */);
     result_object->dirty                         = true;
     result_object->fragment_shader_properties_ub = fragment_shader_properties_ub;
     result_object->shader                        = embedded_shader;

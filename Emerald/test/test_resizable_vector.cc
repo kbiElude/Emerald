@@ -105,8 +105,7 @@ bool pop_item(std::vector<int>&       ref,
 
 TEST(ResizableVectorTest, RandomOperations)
 {
-    system_resizable_vector vec = system_resizable_vector_create(4, /* capacity */
-                                                                 sizeof(void*) );
+    system_resizable_vector vec = system_resizable_vector_create(4 /* capacity */);
     std::vector<int>        ref;
 
     srand( (unsigned int) time(0) );

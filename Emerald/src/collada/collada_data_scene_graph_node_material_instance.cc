@@ -32,7 +32,7 @@ typedef struct _collada_data_scene_graph_node_material_instance
 /** TODO */
 _collada_data_scene_graph_node_material_instance::_collada_data_scene_graph_node_material_instance()
 {
-    bindings    = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_geometry_material_binding) );
+    bindings    = system_resizable_vector_create(4 /* capacity */);
     material    = NULL;
     symbol_name = NULL;
 }

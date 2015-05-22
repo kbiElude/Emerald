@@ -477,24 +477,18 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
         new_scene->callback_manager       = system_callback_manager_create( (_callback_id) SCENE_CALLBACK_ID_LIGHT_ADDED);
         new_scene->shadow_mapping_enabled = true;
 
-        new_scene->cameras                = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(void*) );
+        new_scene->cameras                = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY);
         new_scene->curves_map             = system_hash64map_create       (sizeof(scene_curve) );
         new_scene->fps                    = 0;
         new_scene->graph                  = scene_graph_create( (scene) new_scene,
                                                                 name);
-        new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(void*) );
-        new_scene->materials              = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(void*) );
+        new_scene->lights                 = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY);
+        new_scene->materials              = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY);
         new_scene->max_animation_duration = 0.0f;
-        new_scene->mesh_instances         = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(void*) );
+        new_scene->mesh_instances         = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY);
         new_scene->name                   = name;
-        new_scene->textures               = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(void*) );
-        new_scene->unique_meshes          = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY,
-                                                                           sizeof(mesh) );
+        new_scene->textures               = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY);
+        new_scene->unique_meshes          = system_resizable_vector_create(BASE_OBJECT_STORAGE_CAPACITY);
 
         if (new_scene->cameras        == NULL || new_scene->curves_map == NULL ||
             new_scene->lights         == NULL || new_scene->materials  == NULL ||

@@ -68,16 +68,14 @@ typedef struct _ogl_buffers
         entry_points_gl_sb              = NULL;
         name                            = in_name;
         page_size                       = 0;
-        sparse_buffers                  = system_resizable_vector_create(16, /* capacity */
-                                                                         sizeof(_ogl_buffers_buffer*) );
+        sparse_buffers                  = system_resizable_vector_create(16); /* capacity */
 
         /* Initialize non-sparse buffer vectors */
         for (unsigned int n_buffer_usage = 0;
                           n_buffer_usage < OGL_BUFFERS_USAGE_COUNT;
                         ++n_buffer_usage)
         {
-            nonsparse_buffers[n_buffer_usage] = system_resizable_vector_create(4, /* capacity */
-                                                                               sizeof(_ogl_buffers_buffer*) );
+            nonsparse_buffers[n_buffer_usage] = system_resizable_vector_create(4); /* capacity */
         } /* for (all buffer usage types) */
 
         /* Cache the entry-points */

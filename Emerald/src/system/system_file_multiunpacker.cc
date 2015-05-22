@@ -46,7 +46,6 @@ typedef struct _system_file_multiunpacker
     {
         sync_barrier = system_barrier_create         (n_unpackers);
         unpackers    = system_resizable_vector_create(n_unpackers,
-                                                      sizeof(_system_file_multipacker_unpacker*),
                                                       false); /* should_be_thread_safe */
     }
 
@@ -118,7 +117,6 @@ PUBLIC EMERALD_API system_file_multiunpacker system_file_multiunpacker_create(__
     {
         new_multiunpacker_ptr->sync_barrier = system_barrier_create         (n_packed_filenames);
         new_multiunpacker_ptr->unpackers    = system_resizable_vector_create(n_packed_filenames,
-                                                                             sizeof(system_file_unpacker),
                                                                              true); /* should_be_thread_safe */
 
         ASSERT_DEBUG_SYNC(new_multiunpacker_ptr->sync_barrier != NULL,

@@ -760,8 +760,7 @@ PUBLIC EMERALD_API ogl_primitive_renderer ogl_primitive_renderer_create(__in __n
 
         renderer_ptr->bo_mvp   = system_matrix4x4_create       ();
         renderer_ptr->context  = context; /* DO NOT retain the context - otherwise you'll get a circular dependency! */
-        renderer_ptr->datasets = system_resizable_vector_create(4, /* capacity */
-                                                                sizeof(_ogl_primitive_renderer_dataset*) );
+        renderer_ptr->datasets = system_resizable_vector_create(4 /* capacity */);
         renderer_ptr->dirty    = true;
         renderer_ptr->name     = name;
 

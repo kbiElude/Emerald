@@ -267,40 +267,23 @@ PRIVATE void _init_system_window(_system_window* descriptor)
     descriptor->window_initialized_event            = system_event_create(true,   /* manual_reset */
                                                                           false); /* start_state */
 
-    descriptor->char_callbacks                       = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->exit_size_move_callbacks             = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->key_down_callbacks                   = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->key_up_callbacks                     = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->left_button_double_click_callbacks   = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->left_button_down_callbacks           = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->left_button_up_callbacks             = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->middle_button_double_click_callbacks = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->middle_button_down_callbacks         = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->middle_button_up_callbacks           = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->mouse_move_callbacks                 = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->mouse_wheel_callbacks                = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->right_button_double_click_callbacks  = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->right_button_down_callbacks          = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->right_button_up_callbacks            = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->window_closed_callbacks              = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
-    descriptor->window_closing_callbacks             = system_resizable_vector_create(1,
-                                                                                      sizeof(void*) );
+    descriptor->char_callbacks                       = system_resizable_vector_create(1);
+    descriptor->exit_size_move_callbacks             = system_resizable_vector_create(1);
+    descriptor->key_down_callbacks                   = system_resizable_vector_create(1);
+    descriptor->key_up_callbacks                     = system_resizable_vector_create(1);
+    descriptor->left_button_double_click_callbacks   = system_resizable_vector_create(1);
+    descriptor->left_button_down_callbacks           = system_resizable_vector_create(1);
+    descriptor->left_button_up_callbacks             = system_resizable_vector_create(1);
+    descriptor->middle_button_double_click_callbacks = system_resizable_vector_create(1);
+    descriptor->middle_button_down_callbacks         = system_resizable_vector_create(1);
+    descriptor->middle_button_up_callbacks           = system_resizable_vector_create(1);
+    descriptor->mouse_move_callbacks                 = system_resizable_vector_create(1);
+    descriptor->mouse_wheel_callbacks                = system_resizable_vector_create(1);
+    descriptor->right_button_double_click_callbacks  = system_resizable_vector_create(1);
+    descriptor->right_button_down_callbacks          = system_resizable_vector_create(1);
+    descriptor->right_button_up_callbacks            = system_resizable_vector_create(1);
+    descriptor->window_closed_callbacks              = system_resizable_vector_create(1);
+    descriptor->window_closing_callbacks             = system_resizable_vector_create(1);
 
     #ifdef INCLUDE_WEBCAM_MANAGER
         descriptor->webcam_device_notification_handle = NULL;
@@ -2464,8 +2447,7 @@ PUBLIC EMERALD_API bool system_window_set_size(__in __notnull system_window wind
 /** Please see header for specification */
 PUBLIC void _system_window_init()
 {
-    spawned_windows      = system_resizable_vector_create(BASE_WINDOW_STORAGE,
-                                                          sizeof(system_window) );
+    spawned_windows      = system_resizable_vector_create(BASE_WINDOW_STORAGE);
     spawned_windows_cs   = system_critical_section_create();
     n_windows_spawned_cs = system_critical_section_create();
 }

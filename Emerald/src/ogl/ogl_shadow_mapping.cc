@@ -124,7 +124,6 @@ typedef struct _ogl_shadow_mapping
         fbo_id                    = 0;
         is_enabled                = false;
         meshes_to_render          = system_resizable_vector_create(16,                                     /* capacity */
-                                                                   sizeof(_ogl_shadow_mapping_mesh_item*),
                                                                    false);                                 /* should_be_thread_safe */
         mesh_item_pool            = system_resource_pool_create   (sizeof(_ogl_shadow_mapping_mesh_item),
                                                                    64 ,                                    /* n_elements_to_preallocate */

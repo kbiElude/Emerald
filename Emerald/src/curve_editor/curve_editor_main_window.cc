@@ -352,8 +352,7 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
 
     if (n_subdirectories != 0)
     {
-        system_resizable_vector subdirectory_names = system_resizable_vector_create(n_subdirectories,
-                                                                                    sizeof(system_hashed_ansi_string) );
+        system_resizable_vector subdirectory_names = system_resizable_vector_create(n_subdirectories);
 
         ASSERT_DEBUG_SYNC(subdirectory_names != NULL,
                           "Could not create subdirectory names' resizable vector.");
@@ -425,7 +424,7 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
 
     /* Add item nodes: first sort their names, then add in alphabetical order. */
     uint32_t                n_items    = object_manager_directory_get_amount_of_children_for_directory(parent_directory) - n_subdirectories;
-    system_resizable_vector item_names = system_resizable_vector_create(n_items, sizeof(system_hashed_ansi_string) );
+    system_resizable_vector item_names = system_resizable_vector_create(n_items);
 
     ASSERT_DEBUG_SYNC(item_names != NULL,
                       "Could not create item names' resizable vector");

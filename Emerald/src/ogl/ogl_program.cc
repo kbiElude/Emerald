@@ -162,12 +162,9 @@ PRIVATE void _ogl_program_create_callback(__in __notnull ogl_context context,
     _ogl_program* program_ptr = (_ogl_program*) in_arg;
 
     program_ptr->id                    = program_ptr->pGLCreateProgram();
-    program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER,
-                                                                        sizeof(ogl_program_attribute_descriptor*) );
-    program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER,
-                                                                        sizeof(ogl_program_variable*) );
-    program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER,
-                                                                        sizeof(ogl_shader) );
+    program_ptr->active_attributes     = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_ATTRIBUTES_NUMBER);
+    program_ptr->active_uniforms       = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORMS_NUMBER);
+    program_ptr->attached_shaders      = system_resizable_vector_create(BASE_PROGRAM_ATTACHED_SHADERS_NUMBER);
 
     ASSERT_ALWAYS_SYNC(program_ptr->active_attributes != NULL,
                        "Out of memory while allocating active attributes resizable vector");
@@ -352,8 +349,7 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
                     program_ptr->ssb_index_to_ssb_map == NULL ||
                     program_ptr->ssb_name_to_ssb_map  == NULL)
                 {
-                    program_ptr->active_ssbs          = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_SHADER_STORAGE_BLOCKS_NUMBER,
-                                                                                       sizeof(ogl_program_ssb) );
+                    program_ptr->active_ssbs          = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_SHADER_STORAGE_BLOCKS_NUMBER);
                     program_ptr->ssb_index_to_ssb_map = system_hash64map_create       (sizeof(ogl_program_ssb) );
                     program_ptr->ssb_name_to_ssb_map  = system_hash64map_create       (sizeof(ogl_program_ssb) );
 
@@ -419,8 +415,7 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
                     context_ub_index_to_ub_map == NULL ||
                     context_ub_name_to_ub_map  == NULL)
                 {
-                    context_active_ubs         = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER,
-                                                                                sizeof(ogl_program_ub) );
+                    context_active_ubs         = system_resizable_vector_create(BASE_PROGRAM_ACTIVE_UNIFORM_BLOCKS_NUMBER);
                     context_ub_index_to_ub_map = system_hash64map_create       (sizeof(ogl_program_ub) );
                     context_ub_name_to_ub_map  = system_hash64map_create       (sizeof(ogl_program_ub) );
 

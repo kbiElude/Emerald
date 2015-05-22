@@ -475,11 +475,9 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
         {
             /* <profile_COMMON> node should define exactly one technique */
             tinyxml2::XMLElement*   child_element_ptr        = profile_common_element_ptr->FirstChildElement();
-            system_resizable_vector samplers                 = system_resizable_vector_create(4 /* capacity */,
-                                                                                              sizeof(collada_data_sampler2D) );
+            system_resizable_vector samplers                 = system_resizable_vector_create(4 /* capacity */);
             system_hash64map        samplers_by_id_map       = system_hash64map_create       (4 /* capacity */);
-            system_resizable_vector surfaces                 = system_resizable_vector_create(4 /* capacity */,
-                                                                                              sizeof(collada_data_surface) );
+            system_resizable_vector surfaces                 = system_resizable_vector_create(4 /* capacity */);
             system_hash64map        surfaces_by_id_map       = system_hash64map_create       (4 /* capacity */);
 
             while (child_element_ptr != NULL)

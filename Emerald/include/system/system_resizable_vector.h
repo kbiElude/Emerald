@@ -2,6 +2,7 @@
  *
  * Emerald (kbi/elude @2012-2015)
  *
+ * Vector container implementation. Can only hold pointer-sized items.
  */
 #ifndef SYSTEM_RESIZABLE_VECTOR_H
 #define SYSTEM_RESIZABLE_VECTOR_H
@@ -25,7 +26,6 @@ PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resi
  *  @return Resizable vector instance.
  */
 PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(__in size_t capacity,
-                                                                          __in size_t element_size,
                                                                           __in bool   should_be_thread_safe = false);
 
 /** TODO */

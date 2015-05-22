@@ -1244,8 +1244,7 @@ void _setup_compression_algorithms(ogl_context context)
                                                 &n_compressed_internalformats);
 
     /* Allocate global vector */
-    _compression_algorithms = system_resizable_vector_create(n_compressed_internalformats,
-                                                             sizeof(_compression_algorithm*) );
+    _compression_algorithms = system_resizable_vector_create(n_compressed_internalformats);
 
     for (unsigned int n_internalformat = 0;
                       n_internalformat < n_compressed_internalformats;

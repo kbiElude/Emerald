@@ -99,7 +99,7 @@ _collada_data_geometry::_collada_data_geometry()
     emerald_mesh       = NULL;
     geometry_mesh      = NULL;
     id                 = system_hashed_ansi_string_get_default_empty_string();
-    material_instances = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_scene_graph_node_material_instance) );
+    material_instances = system_resizable_vector_create(4 /* capacity */);
     name               = system_hashed_ansi_string_get_default_empty_string();
 }
 

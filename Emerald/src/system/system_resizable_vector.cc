@@ -127,14 +127,13 @@ PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resi
 
 /** Please see header for specification */
 PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(__in size_t capacity,
-                                                                          __in size_t element_size,
                                                                           __in bool   should_be_thread_safe)
 {
     _resizable_vector_descriptor* result = new _resizable_vector_descriptor;
 
     _init_resizable_vector_descriptor(result,
                                       capacity,
-                                      element_size,
+                                      sizeof(void*),
                                       should_be_thread_safe);
 
     return (system_resizable_vector) result;

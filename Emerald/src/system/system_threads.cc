@@ -122,8 +122,7 @@ PUBLIC void _system_threads_init()
         active_threads_vector_cs == NULL &&
         thread_descriptor_pool    == NULL)
     {
-        active_threads_vector    = system_resizable_vector_create(BASE_THREADS_CAPACITY,
-                                                                  sizeof(HANDLE) );
+        active_threads_vector    = system_resizable_vector_create(BASE_THREADS_CAPACITY);
         active_threads_vector_cs = system_critical_section_create();
         thread_descriptor_pool   = system_resource_pool_create   (sizeof(_system_threads_thread_descriptor),
                                                                   BASE_THREADS_CAPACITY,

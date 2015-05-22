@@ -884,10 +884,8 @@ PRIVATE void _mesh_init_mesh(__in __notnull _mesh*                    new_mesh,
     new_mesh->gl_tbo                                = 0;
     new_mesh->gl_thread_fill_gl_buffers_call_needed = false;
     new_mesh->instantiation_parent                  = NULL;
-    new_mesh->layers                                = system_resizable_vector_create(START_LAYERS,
-                                                                                     sizeof(void*) );
-    new_mesh->materials                             = system_resizable_vector_create(4 /* capacity */,
-                                                                                     sizeof(mesh_material) );
+    new_mesh->layers                                = system_resizable_vector_create(START_LAYERS);
+    new_mesh->materials                             = system_resizable_vector_create(4 /* capacity */);
     new_mesh->n_gl_unique_vertices                  = 0;
     new_mesh->n_sh_bands                            = 0;
     new_mesh->n_sh_components                       = SH_COMPONENTS_UNDEFINED;
@@ -1351,8 +1349,7 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(__in __notnull mesh instance)
     {
         _mesh_init_mesh_layer(new_layer);
 
-        new_layer->passes = system_resizable_vector_create(4,
-                                                           sizeof(_mesh_layer_pass*) );
+        new_layer->passes = system_resizable_vector_create(4);
 
         ASSERT_DEBUG_SYNC(new_layer->passes != NULL,
                           "Out of memory");
@@ -2484,8 +2481,7 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 {
     /* TODO: Should we move this to mesh_normal_data_generation.cc or sth? */
-    system_resizable_vector allocated_polygon_vectors  = system_resizable_vector_create                (4, /* capacity */
-                                                                                                        sizeof(system_resizable_vector) );
+    system_resizable_vector allocated_polygon_vectors  = system_resizable_vector_create                (4);
     system_resource_pool    mesh_polygon_resource_pool = system_resource_pool_create                   (sizeof(_mesh_polygon),
                                                                                                         4,     /* n_elements_to_preallocate */
                                                                                                         NULL,  /* init_fn */
@@ -2654,8 +2650,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
 
                             if (vertex_to_polygon_vector_bst == NULL)
                             {
-                                system_resizable_vector new_vector = system_resizable_vector_create(4, /* capacity */
-                                                                                                    sizeof(_mesh_polygon*) );
+                                system_resizable_vector new_vector = system_resizable_vector_create(4 /* capacity */);
 
                                 system_resizable_vector_push(allocated_polygon_vectors,
                                                              new_vector);
@@ -2682,8 +2677,7 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                                     (system_bst_key)     vertex_data[n_vertex_index],
                                                     (system_bst_value*) &polygon_vector) )
                                 {
-                                    polygon_vector = system_resizable_vector_create(4, /* capacity */
-                                                                                    sizeof(_mesh_polygon*) );
+                                    polygon_vector = system_resizable_vector_create(4 /* capacity */);
 
                                     system_resizable_vector_push(allocated_polygon_vectors,
                                                                  polygon_vector);

@@ -79,24 +79,24 @@ typedef struct _collada_data
     /* Constructor */
     _collada_data()
     {
-        animations                     = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_animation) );
-        cameras                        = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_camera) );
+        animations                     = system_resizable_vector_create(4 /* capacity */);
+        cameras                        = system_resizable_vector_create(4 /* capacity */);
         cameras_by_id_map              = system_hash64map_create       (sizeof(collada_data_camera) );
-        effects                        = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_effect) );
+        effects                        = system_resizable_vector_create(4 /* capacity */);
         effects_by_id_map              = system_hash64map_create       (sizeof(collada_data_effect) );
-        geometries                     = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_geometry), true);
+        geometries                     = system_resizable_vector_create(4 /* capacity */, true);
         geometries_by_id_map           = system_hash64map_create       (sizeof(collada_data_geometry), true);
-        images                         = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_image) );
+        images                         = system_resizable_vector_create(4 /* capacity */);
         images_by_id_map               = system_hash64map_create       (sizeof(collada_data_image) );
         is_lw10_collada_file           = false;
-        lights                         = system_resizable_vector_create(1 /* capacity */, sizeof(collada_data_light) );
+        lights                         = system_resizable_vector_create(1 /* capacity */);
         lights_by_id_map               = system_hash64map_create       (sizeof(collada_data_light) );
-        materials                      = system_resizable_vector_create(4 /* capacity */, sizeof(collada_data_material) );
+        materials                      = system_resizable_vector_create(4 /* capacity */);
         materials_by_id_map            = system_hash64map_create       (sizeof(collada_data_material) );
         max_animation_duration         = 0.0f;
         nodes_by_id_map                = system_hash64map_create       (sizeof(_collada_data_node*) );
         object_to_animation_vector_map = system_hash64map_create       (sizeof(system_resizable_vector) );
-        scenes                         = system_resizable_vector_create(1 /* capacity */, sizeof(collada_data_scene) );
+        scenes                         = system_resizable_vector_create(1 /* capacity */);
         scenes_by_id_map               = system_hash64map_create       (sizeof(collada_data_scene) );
         serializer                     = NULL;
         up_axis                        = COLLADA_DATA_UP_AXIS_UNDEFINED;
@@ -797,8 +797,7 @@ PRIVATE void _collada_data_init_animations(__in __notnull tinyxml2::XMLDocument*
                                       &target_vector) )
             {
                 /* Spawn a new vector and store it under the target's address */
-                target_vector = system_resizable_vector_create(4, /* capacity */
-                                                               sizeof(collada_data_animation) );
+                target_vector = system_resizable_vector_create(4 /* capacity */);
 
                 system_hash64map_insert(result_object_to_animation_vector_map,
                                         (system_hash64) new_animation_target,

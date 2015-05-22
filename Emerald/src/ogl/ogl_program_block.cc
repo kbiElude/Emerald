@@ -95,8 +95,7 @@ typedef struct _ogl_program_block
         indexed_bp                       = 0; /* default GL state value */
         is_intel_driver                  = false; /* updated later */
         name                             = in_name;
-        members                          = system_resizable_vector_create(4, /* capacity */
-                                                                          sizeof(ogl_program_variable*) );
+        members                          = system_resizable_vector_create(4 /* capacity */);
         offset_to_uniform_descriptor_map = NULL;
         owner                            = in_owner;
         pGLBufferSubData                 = NULL;

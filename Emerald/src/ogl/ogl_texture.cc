@@ -55,8 +55,7 @@ typedef struct _ogl_texture
         has_been_bound            = false;
         has_had_mipmaps_generated = false;
         internalformat            = OGL_TEXTURE_INTERNALFORMAT_UNKNOWN;
-        mipmaps                   = system_resizable_vector_create(1,
-                                                                   sizeof(_ogl_texture_mipmap*) );
+        mipmaps                   = system_resizable_vector_create(1);
         name                      = in_name;
         n_samples                 = 0;
         n_max_mipmaps             = 0;

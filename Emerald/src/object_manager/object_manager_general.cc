@@ -167,8 +167,7 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
 
     if (n_subdirectories != 0)
     {
-        system_resizable_vector subdirectories = system_resizable_vector_create(n_subdirectories,
-                                                                                sizeof(object_manager_directory) );
+        system_resizable_vector subdirectories = system_resizable_vector_create(n_subdirectories);
 
         /* Cache subdirectory names */
         for (uint32_t n = 0;

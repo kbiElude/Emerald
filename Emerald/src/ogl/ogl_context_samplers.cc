@@ -22,8 +22,7 @@ typedef struct _ogl_context_samplers
     _ogl_context_samplers()
     {
         context  = NULL;
-        samplers = system_resizable_vector_create(4 /* capacity */,
-                                                  sizeof(ogl_sampler) );
+        samplers = system_resizable_vector_create(4); /* capacity */
     }
 
     ~_ogl_context_samplers()
@@ -187,8 +186,7 @@ PUBLIC ogl_context_samplers ogl_context_samplers_create(__in __notnull ogl_conte
     if (samplers_ptr != NULL)
     {
         samplers_ptr->context  = context;
-        samplers_ptr->samplers = system_resizable_vector_create(4 /* capacity */,
-                                                                sizeof(ogl_sampler) );
+        samplers_ptr->samplers = system_resizable_vector_create(4 /* capacity */);
     }
 
     return (ogl_context_samplers) samplers_ptr;

@@ -168,8 +168,7 @@ PUBLIC EMERALD_API system_dag_node system_dag_add_node(__in __notnull system_dag
         goto end;
     }
 
-    new_node->adjacent_nodes   = system_resizable_vector_create(4 /* capacity */,
-                                                               sizeof(_system_dag_node*) );
+    new_node->adjacent_nodes   = system_resizable_vector_create(4 /* capacity */);
     new_node->status           = STATUS_UNVISITED;
     new_node->time_processed   = 0;
     new_node->value            = value;
@@ -200,15 +199,11 @@ PUBLIC EMERALD_API system_dag system_dag_create()
         goto end;
     }
 
-    result->connections      = system_resizable_vector_create(4 /* capacity */,
-                                                              sizeof(_system_dag_connection*) );
+    result->connections      = system_resizable_vector_create(4 /* capacity */);
     result->dirty            = false;
-    result->nodes            = system_resizable_vector_create(4 /* capacity */,
-                                                              sizeof(_system_dag_node*) );
-    result->nodes_to_process = system_resizable_vector_create(4 /* capacity */,
-                                                              sizeof(_system_dag_node*) );
-    result->sorted_nodes     = system_resizable_vector_create(4 /* capacity */,
-                                                              sizeof(_system_dag_node*) );
+    result->nodes            = system_resizable_vector_create(4 /* capacity */);
+    result->nodes_to_process = system_resizable_vector_create(4 /* capacity */);
+    result->sorted_nodes     = system_resizable_vector_create(4 /* capacity */);
 
 end:
     return (system_dag) result;

@@ -158,8 +158,7 @@ PRIVATE _collada_data_sampler_input* _collada_data_sampler_create_sampler_input(
                           "0 values stored in a name array");
         if (n_values != 0)
         {
-            source_interpolation_data = system_resizable_vector_create(n_values,
-                                                                       sizeof(collada_data_sampler_input_interpolation) );
+            source_interpolation_data = system_resizable_vector_create(n_values);
 
             for (uint32_t n_value = 0;
                           n_value < n_values;

@@ -42,9 +42,9 @@ PRIVATE  void _collada_data_init_geometry_mesh      (__in __notnull tinyxml2::XM
 _collada_data_geometry_mesh::_collada_data_geometry_mesh(__in __notnull collada_data_geometry in_parent_geometry)
 {
     parent_geometry   = in_parent_geometry;
-    polylists         = system_resizable_vector_create(4 /* capacity */, sizeof(struct _collada_data_polylist*) );
-    sources           = system_resizable_vector_create(4 /* capacity */, sizeof(struct _collada_data_geometry_mesh_source*) );
-    sources_map_by_id = system_hash64map_create       (                  sizeof(struct _collada_data_geometry_mesh_source*) );
+    polylists         = system_resizable_vector_create(4 /* capacity */);
+    sources           = system_resizable_vector_create(4 /* capacity */);
+    sources_map_by_id = system_hash64map_create       (sizeof(struct _collada_data_geometry_mesh_source*) );
 }
 
 /** TODO */

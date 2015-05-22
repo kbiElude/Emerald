@@ -602,8 +602,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                 } _node_descriptor;
 
                 uint32_t                n_segment_nodes = 0;
-                system_resizable_vector nodes           = system_resizable_vector_create(4,
-                                                                                         sizeof(void*) );
+                system_resizable_vector nodes           = system_resizable_vector_create(4);
 
                 if (!system_file_serializer_read(serializer,
                                                  sizeof(n_segment_nodes),

@@ -72,8 +72,7 @@ PRIVATE void _init_cameras()
                       &n_cameras);
 
     /* Iterate over all cameras and create a descriptor for each entry */
-    _cameras = system_resizable_vector_create(4, /* capacity */
-                                              sizeof(_camera*) );
+    _cameras = system_resizable_vector_create(4 /* capacity */);
 
     for (unsigned int n_camera = 0;
                       n_camera < n_cameras;

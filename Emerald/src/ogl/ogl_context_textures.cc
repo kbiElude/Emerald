@@ -25,8 +25,7 @@ typedef struct _ogl_context_textures
     {
         context                                        = NULL;
         reusable_texture_key_to_ogl_texture_vector_map = system_hash64map_create       (sizeof(system_resizable_vector) );
-        reusable_textures                              = system_resizable_vector_create(4, /* capacity */
-                                                                                        sizeof(ogl_texture) );
+        reusable_textures                              = system_resizable_vector_create(4 /* capacity */);
         textures_by_filename                           = system_hash64map_create       (sizeof(ogl_texture) );
         textures_by_name                               = system_hash64map_create       (sizeof(ogl_texture) );
     }
@@ -602,8 +601,7 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(__in _
                              &reusable_textures) )
     {
         /* No vector available. Let's spawn one. */
-        reusable_textures = system_resizable_vector_create(4, /* capacity */
-                                                           sizeof(ogl_texture) );
+        reusable_textures = system_resizable_vector_create(4 /* capacity */);
 
         system_hash64map_insert(textures_ptr->reusable_texture_key_to_ogl_texture_vector_map,
                                 texture_key,

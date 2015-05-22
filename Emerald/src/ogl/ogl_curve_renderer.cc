@@ -418,8 +418,7 @@ PUBLIC EMERALD_API ogl_curve_renderer ogl_curve_renderer_create(__in __notnull o
         ogl_primitive_renderer_retain(new_instance->primitive_renderer);
 
         new_instance->conversion_array_items   = NULL;
-        new_instance->items                    = system_resizable_vector_create(4, /* capacity */
-                                                                                sizeof(_ogl_curve_renderer_item*) );
+        new_instance->items                    = system_resizable_vector_create(4 /* capacity */);
         new_instance->n_conversion_array_items = 0;
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_instance,

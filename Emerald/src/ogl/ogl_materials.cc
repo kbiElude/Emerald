@@ -114,10 +114,8 @@ typedef struct _ogl_materials
     _ogl_materials()
     {
         context                       = NULL;
-        forced_mesh_material_settings = system_resizable_vector_create(4 /* capacity */,
-                                                                       sizeof(_ogl_materials_mesh_material_setting*) );
-        ubers                         = system_resizable_vector_create(4 /* capacity */,
-                                                                       sizeof(_ogl_materials_uber*) );
+        forced_mesh_material_settings = system_resizable_vector_create(4 /* capacity */);
+        ubers                         = system_resizable_vector_create(4 /* capacity */);
 
         memset(special_materials,
                0,

@@ -532,8 +532,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
            0,
            sizeof(_shaders_vertex_uber) );
 
-    result_object->added_items        = system_resizable_vector_create(4 /* capacity */,
-                                                                       sizeof(_shaders_vertex_uber_item*) );
+    result_object->added_items        = system_resizable_vector_create(4 /* capacity */);
     result_object->dirty              = true;
     result_object->shader_constructor = shader_constructor;
     result_object->vertex_shader      = vertex_shader;

@@ -249,8 +249,7 @@ PRIVATE void _init_curve_container_data(__in __notnull _curve_container_data* da
     data->post_behavior                      = CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED;
     data->segments                           = system_hash64map_create       (sizeof(_curve_container_segment*) );
     data->segments_read_write_mutex          = system_read_write_mutex_create();
-    data->segments_order                     = system_resizable_vector_create(CURVE_CONTAINER_START_SEGMENTS_AMOUNT,
-                                                                              sizeof(curve_segment_id) );
+    data->segments_order                     = system_resizable_vector_create(CURVE_CONTAINER_START_SEGMENTS_AMOUNT);
 
     switch (data_type)
     {
@@ -1647,8 +1646,7 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
     ASSERT_DEBUG_SYNC(result,
                       "Could not retrieve amount of curve nodes.");
 
-    internal_node_order = system_resizable_vector_create(n_nodes,
-                                                         sizeof(uint32_t) );
+    internal_node_order = system_resizable_vector_create(n_nodes);
 
     for (uint32_t n_node = 0;
                   n_node < n_nodes;

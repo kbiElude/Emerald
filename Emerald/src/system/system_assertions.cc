@@ -117,8 +117,7 @@ PUBLIC void _system_assertions_init()
         if (internals != NULL)
         {
             internals->cs       = system_critical_section_create();
-            internals->messages = system_resizable_vector_create(ASSERTIONS_BASE_CAPACITY,
-                                                                 sizeof(void*) );
+            internals->messages = system_resizable_vector_create(ASSERTIONS_BASE_CAPACITY);
         }
     }
 }

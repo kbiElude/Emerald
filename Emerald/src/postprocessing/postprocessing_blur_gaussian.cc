@@ -348,8 +348,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
     } /* for (all factorial values) */
 
     /* Generate binomial data array. The number of coeffs is equal to: 2*sum(n_min_tap + (n_min_tap + 1) + .. + 3 * n_taps) */
-    system_resizable_vector coeff_vector              = system_resizable_vector_create(4, /* capacity */
-                                                                                       sizeof(float) );
+    system_resizable_vector coeff_vector              = system_resizable_vector_create(4 /* capacity */);
           unsigned int      n_max_data_coeffs         = 0;
     const unsigned int      n_max_taps_plus_1         = instance_ptr->n_max_taps + 1;
     const unsigned int      n_max_taps_plus_1_half_2  = (instance_ptr->n_max_taps + 1) / 2;

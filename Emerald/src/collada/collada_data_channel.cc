@@ -95,8 +95,7 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
     collada_data_scene_graph_node current_node = NULL;
     bool                          has_found    = false;
     uint32_t                      n_scenes     = 0;
-    system_resizable_vector       nodes        = system_resizable_vector_create(4, /* capacity */
-                                                                                sizeof(collada_data_scene_graph_node) );
+    system_resizable_vector       nodes        = system_resizable_vector_create(4 /* capacity */);
     collada_data_scene_graph_node root_node    = NULL;
     collada_data_scene            scene        = NULL;
 

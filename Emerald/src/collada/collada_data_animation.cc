@@ -35,8 +35,7 @@ _collada_data_animation::_collada_data_animation()
     channel           = NULL;
     id                = system_hashed_ansi_string_get_default_empty_string();
     sampler           = NULL;
-    sources           = system_resizable_vector_create(4, /* capacity */
-                                                       sizeof(collada_data_source) );
+    sources           = system_resizable_vector_create(4 /* capacity */);
     sources_by_id_map = system_hash64map_create       (sizeof(collada_data_source) );
 }
 

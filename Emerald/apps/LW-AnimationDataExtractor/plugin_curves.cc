@@ -97,8 +97,7 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
     /* Extract all keys and store them in a vector. After all keys are determined, we
      * will be able to create an actual Emerald curve container. */
     LWEnvKeyframeID         currentKey = envelope_ptr->findKey(envelope, 0.0);
-    system_resizable_vector keys       = system_resizable_vector_create(4, /* capacity */
-                                                                        sizeof(_curve_key*) );
+    system_resizable_vector keys       = system_resizable_vector_create(4 /* capacity */);
 
     if (currentKey == NULL)
     {
@@ -508,8 +507,7 @@ volatile void InitCurveDataWorkerThreadEntryPoint(__in __notnull void* not_used)
     const unsigned int n_items = sizeof(items) / sizeof(items[0]);
 
     /* Initialize internal data structures */
-    curve_containers                   = system_resizable_vector_create(4, /* capacity */
-                                                                        sizeof(curve_container) );
+    curve_containers                   = system_resizable_vector_create(4 /* capacity */);
     envelope_id_to_curve_container_map = system_hash64map_create       (sizeof(curve_container),
                                                                         true); /* must be thread-safe because of AddCurveContainerToEnvelopeIDToCurveContainerHashMap() */
 

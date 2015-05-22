@@ -348,8 +348,7 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
     system_timeline_time    last_update_time                    = 0;
     system_hash64map        lw_surface_id_to_scene_material_map = GetLWSurfaceIDToSceneMaterialMap();
     const uint32_t          n_lw_mesh_layers                    = object_funcs_ptr->maxLayers     (lw_object_id);
-    system_resizable_vector layer_polygon_ids_vector            = system_resizable_vector_create  (64,
-                                                                                                   sizeof(LWPolID) );
+    system_resizable_vector layer_polygon_ids_vector            = system_resizable_vector_create  (64);
 
     /* Iterate over all LW mesh layers */
     bool layer_data_extracted = false;
@@ -568,7 +567,6 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                                          &material_polygon_vector) )
                 {
                     material_polygon_vector = system_resizable_vector_create(64, /* capacity */
-                                                                             sizeof(_polygon_instance*),
                                                                              true);
 
                     system_hash64map_insert(instance_ptr->material_to_polygon_instance_vector_map,
@@ -1170,8 +1168,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
      * NOTE: This heavily benefits from parallelization, as the baking process
      *       is time-consuming.
      */
-    job_done_events = system_resizable_vector_create(n_objects,
-                                                     sizeof(system_event) );
+    job_done_events = system_resizable_vector_create(n_objects);
 
     for (uint32_t n_iteration = 0;
                   n_iteration < 2;
@@ -1394,7 +1391,6 @@ PUBLIC void InitMeshData()
     item_id_to_mesh_instance_map    = system_hash64map_create       (sizeof(scene_mesh),
                                                                      true);                   /* should_be_thread_safe */
     objects                         = system_resizable_vector_create(4,                       /* capacity */
-                                                                     sizeof(_mesh_instance*),
                                                                      true);                   /* should_be_thread_safe */
     mesh_instance_to_scene_mesh_map = system_hash64map_create       (sizeof(scene_mesh),
                                                                      true);                   /* should_be_thread_safe */

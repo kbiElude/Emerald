@@ -114,8 +114,7 @@ TEST(MemoryManagerTest, AlignedPageSizeAllocations)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     for (unsigned int n_allocation = 0;
                       n_allocation < n_allocations;
@@ -180,8 +179,7 @@ TEST(MemoryManagerTest, UnalignedNonPageSizeAllocations)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     while (alloced_data_size < total_available_size)
     {
@@ -260,8 +258,7 @@ TEST(MemoryManagerTest, AlignedNonPageSizeAllocations)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     while (alloced_data_size < total_available_size)
     {
@@ -334,8 +331,7 @@ TEST(MemoryManagerTest, AllocReleaseAlloc)
     const unsigned int      alloc_size           = total_available_size / 4;
     const unsigned int      page_size            = total_available_size / 16;
     const unsigned int      n_allocable_blocks   = total_available_size / alloc_size;
-    system_resizable_vector alloc_offsets        = system_resizable_vector_create(n_allocable_blocks,
-                                                                                  sizeof(int) );
+    system_resizable_vector alloc_offsets        = system_resizable_vector_create(n_allocable_blocks);
 
     system_memory_manager manager = system_memory_manager_create(total_available_size,           /* memory_region_size */
                                                                  page_size,
@@ -344,8 +340,7 @@ TEST(MemoryManagerTest, AllocReleaseAlloc)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     /* 1. Alloc blocks of size alloc_size */
     for (unsigned int n_block = 0;
@@ -431,8 +426,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
         1024,
         4096
     };
-    system_resizable_vector alloc_offsets      = system_resizable_vector_create(4, /* capacity */
-                                                                                sizeof(unsigned int) );
+    system_resizable_vector alloc_offsets      = system_resizable_vector_create(4 /* capacity */);
     const unsigned int      memory_size        = 4096 * 2 + 1024;
     const unsigned int      n_allocations      = sizeof(allocations) / sizeof(allocations[0]);
     const unsigned int      page_size          = 4096;
@@ -444,8 +438,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     /* 1. Alloc the blocks */
     for (unsigned int n_block = 0;
@@ -548,8 +541,7 @@ TEST(MemoryManagerTest, AlignedRegionDealloc)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     /* Make two alloc requests. If we had only issued one request, the result block
      * would have always ended up aligned to an offset of 0, which is not the case
@@ -606,8 +598,7 @@ TEST(MemoryManagerTest, FunctionalTest1)
                                                                  NULL,                           /* user_arg */
                                                                  false);                         /* should_be_thread_safe */
 
-    memory_blocks = system_resizable_vector_create(4, /* capacity */
-                                                   sizeof(_memory_block*) );
+    memory_blocks = system_resizable_vector_create(4 /* capacity */);
 
     system_memory_manager_alloc_block(manager, 16, 256, &temp);
     system_memory_manager_alloc_block(manager, 16, 256, &temp);

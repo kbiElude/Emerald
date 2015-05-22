@@ -29,8 +29,7 @@ typedef struct _ogl_shader_constructor_function
 
     _ogl_shader_constructor_function()
     {
-        arguments           = system_resizable_vector_create(4 /* capacity */,
-                                                             sizeof(_ogl_shader_constructor_function_argument*) );
+        arguments           = system_resizable_vector_create(4 /* capacity */);
         body                = NULL;
         returned_value_type = TYPE_UNKNOWN;
         name                = NULL;
@@ -116,8 +115,7 @@ typedef struct _ogl_shader_constructor_structure
 
     _ogl_shader_constructor_structure()
     {
-        members = system_resizable_vector_create(4 /* capacity */,
-                                                 sizeof(_ogl_shader_constructor_variable*) );
+        members = system_resizable_vector_create(4 /* capacity */);
         name    = NULL;
     }
 
@@ -144,8 +142,7 @@ typedef struct _ogl_shader_constructor_uniform_block
     {
         is_default_ub = false;
         name          = NULL;
-        variables     = system_resizable_vector_create(4 /* capacity */,
-                                                       sizeof(_ogl_shader_constructor_variable*) );
+        variables     = system_resizable_vector_create(4 /* capacity */);
     }
 
     ~_ogl_shader_constructor_uniform_block()
@@ -181,14 +178,11 @@ typedef struct _ogl_shader_constructor
     {
         body           = system_hashed_ansi_string_get_default_empty_string();
         dirty          = true;
-        functions      = system_resizable_vector_create(4 /* capacity */,
-                                                        sizeof(_ogl_shader_constructor_function*) );
+        functions      = system_resizable_vector_create(4 /* capacity */);
         name           = NULL;
         shader_type    = SHADER_TYPE_UNKNOWN;
-        structures     = system_resizable_vector_create(4 /* capacity */,
-                                                        sizeof(_ogl_shader_constructor_structure*) );
-        uniform_blocks = system_resizable_vector_create(4 /* capacity */,
-                                                        sizeof(_ogl_shader_constructor_uniform_block*) );
+        structures     = system_resizable_vector_create(4 /* capacity */);
+        uniform_blocks = system_resizable_vector_create(4 /* capacity */);
     }
 
     ~_ogl_shader_constructor()

@@ -67,7 +67,7 @@ _collada_data_scene_graph_node::_collada_data_scene_graph_node(void* parent)
     name = system_hashed_ansi_string_get_default_empty_string();
     type = COLLADA_DATA_NODE_TYPE_NODE;
 
-    node_items = system_resizable_vector_create(1, sizeof(_collada_data_scene_graph_node_item*) );
+    node_items = system_resizable_vector_create(1);
 
     this->parent = parent;
 }

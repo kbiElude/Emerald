@@ -52,8 +52,7 @@ PUBLIC EMERALD_API system_resource_pool system_resource_pool_create(__in size_t 
         result->cs              = system_critical_section_create();
         result->deinit_block_fn = deinit_block_fn;
         result->init_block_fn   = init_block_fn;
-        result->released_blocks = system_resizable_vector_create(n_elements_per_blob,
-                                                                 sizeof(void*) );
+        result->released_blocks = system_resizable_vector_create(n_elements_per_blob);
 
         ASSERT_ALWAYS_SYNC(result->allocator != NULL,
                            "Allocator could not have been created.");

@@ -388,8 +388,7 @@ PUBLIC EMERALD_API system_context_menu system_context_menu_create(__in __notnull
 
     if (instance != NULL)
     {
-        instance->entries        = system_resizable_vector_create(N_BASE_ITEMS,
-                                                                  sizeof(_system_context_menu*) );
+        instance->entries        = system_resizable_vector_create(N_BASE_ITEMS);
         instance->has_been_shown = false;
 
         ASSERT_DEBUG_SYNC(instance->entries != NULL,

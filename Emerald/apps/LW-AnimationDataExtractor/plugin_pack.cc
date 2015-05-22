@@ -45,8 +45,7 @@ PUBLIC void InitPackData()
     ASSERT_DEBUG_SYNC(enqueued_files_vector == NULL,
                       "Enqueued files vector already initialized");
 
-    enqueued_files_vector = system_resizable_vector_create(4, /* capacity */
-                                                           sizeof(system_hashed_ansi_string) );
+    enqueued_files_vector = system_resizable_vector_create(4 /* capacity */);
 }
 
 /* Please see header for spec */

@@ -67,8 +67,7 @@ PRIVATE void _system_hash64map_init_descriptor(_system_hash64map_descriptor* des
                   n_bin < n_bins;
                 ++n_bin)
     {
-        descriptor->bins[n_bin] = system_resizable_vector_create(HASH64MAP_BIN_ENTRIES_AMOUNT,
-                                                                 sizeof(_system_hash64map_bin_entry_descriptor*) );
+        descriptor->bins[n_bin] = system_resizable_vector_create(HASH64MAP_BIN_ENTRIES_AMOUNT);
     }
 
     if (should_be_thread_safe)

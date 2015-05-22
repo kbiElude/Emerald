@@ -1112,8 +1112,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
         result->owner_context    = context;
         result->screen_width     = screen_width;
         result->screen_height    = screen_height;
-        result->strings          = system_resizable_vector_create(4 /* default capacity */,
-                                                                  sizeof(_ogl_text_string*) );
+        result->strings          = system_resizable_vector_create(4 /* default capacity */);
 
         /* Cache the buffer manager */
         ogl_context_get_property(context,

@@ -221,8 +221,7 @@ PRIVATE void _ogl_pipeline_init_pipeline(__in __notnull _ogl_pipeline*          
     pipeline_ptr->context                         = context;
     pipeline_ptr->name                            = name;
     pipeline_ptr->should_overlay_performance_info = should_overlay_performance_info;
-    pipeline_ptr->stages                          = system_resizable_vector_create(DEFAULT_STAGES_CAPACITY,
-                                                                                   sizeof(_ogl_pipeline_stage*) );
+    pipeline_ptr->stages                          = system_resizable_vector_create(DEFAULT_STAGES_CAPACITY);
     pipeline_ptr->ui                              = ogl_ui_create                 (pipeline_ptr->text_renderer,
                                                                                    system_hashed_ansi_string_create("Pipeline UI") );
     pipeline_ptr->text_y_delta                    = (uint32_t) (gfx_bfg_font_table_get_maximum_character_height(font_table) * TEXT_SCALE);
@@ -246,8 +245,7 @@ PRIVATE void _ogl_pipeline_init_pipeline_stage(__in __notnull _ogl_pipeline_stag
 {
     /* Counter is set to 1 for each stage, because the zeroth index is used for "total frame time" string */
     stage_ptr->max_text_width_px    = 0;
-    stage_ptr->steps                = system_resizable_vector_create(DEFAULT_STAGE_STEPS_CAPACITY,
-                                                                     sizeof(_ogl_pipeline_stage_step*) );
+    stage_ptr->steps                = system_resizable_vector_create(DEFAULT_STAGE_STEPS_CAPACITY);
     stage_ptr->text_strings_counter = 1;
 }
 

@@ -344,9 +344,9 @@ typedef struct _scene_graph_node
 
     _scene_graph_node(__in_opt __maybenull _scene_graph_node* in_parent_node)
     {
-        attached_cameras = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_lights  = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
-        attached_meshes  = system_resizable_vector_create(4 /* capacity */, sizeof(void*) );
+        attached_cameras = system_resizable_vector_create(4 /* capacity */);
+        attached_lights  = system_resizable_vector_create(4 /* capacity */);
+        attached_meshes  = system_resizable_vector_create(4 /* capacity */);
         dag_node         = NULL;
         last_update_time = -1;
         parent_node      = in_parent_node;
@@ -2222,8 +2222,7 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
 
     if (graph_ptr->node_compute_vector == NULL)
     {
-        graph_ptr->node_compute_vector = system_resizable_vector_create(4, /* capacity */
-                                                                        sizeof(_scene_graph_node*) );
+        graph_ptr->node_compute_vector = system_resizable_vector_create(4 /* capacity */);
 
         ASSERT_DEBUG_SYNC(graph_ptr->node_compute_vector != NULL,
                           "Could not create a node compute vector");
@@ -2296,12 +2295,10 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene          
 
     /* Initialize the descriptor. */
     new_graph->dag                   = system_dag_create             ();
-    new_graph->nodes                 = system_resizable_vector_create(4 /* capacity */,
-                                                                      sizeof(_scene_graph_node*) );
+    new_graph->nodes                 = system_resizable_vector_create(4 /* capacity */);
     new_graph->object_manager_path   = object_manager_path;
     new_graph->owner_scene           = owner_scene;
-    new_graph->sorted_nodes          = system_resizable_vector_create(4 /* capacity */,
-                                                                      sizeof(_scene_graph_node*) );
+    new_graph->sorted_nodes          = system_resizable_vector_create(4 /* capacity */);
     new_graph->sorted_nodes_rw_mutex = system_read_write_mutex_create();
     new_graph->root_node_ptr         = new (std::nothrow) _scene_graph_node(NULL /* no parent */);
 
@@ -2635,8 +2632,7 @@ PUBLIC scene_graph scene_graph_load(__in __notnull scene                     own
      * so we should be just fine to add the nodes in the order defined in the file.
      **/
     unsigned int            n_nodes          = 0;
-    system_resizable_vector serialized_nodes = system_resizable_vector_create(4, /* capacity */
-                                                                              sizeof(scene_graph_node) );
+    system_resizable_vector serialized_nodes = system_resizable_vector_create(4 /* capacity */);
 
     if (!system_file_serializer_read(serializer,
                                      sizeof(n_nodes),
@@ -2697,8 +2693,7 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                                                               __in __notnull scene_graph_node node)
     {
         const uint32_t          n_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->nodes);
-        system_resizable_vector result  = system_resizable_vector_create                (4, /* capacity */
-                                                                                         sizeof(scene_graph_node) );
+        system_resizable_vector result  = system_resizable_vector_create                (4 /* capacity */);
 
         for (uint32_t n_node = 0;
                       n_node < n_nodes;

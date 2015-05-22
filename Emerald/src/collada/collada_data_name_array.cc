@@ -23,8 +23,7 @@ typedef struct _collada_data_name_array
 /** TODO */
 _collada_data_name_array::_collada_data_name_array()
 {
-    strings = system_resizable_vector_create(4 /* capacity */,
-                                             sizeof(system_hashed_ansi_string) );
+    strings = system_resizable_vector_create(4 /* capacity */);
 }
 
 /* TODO */

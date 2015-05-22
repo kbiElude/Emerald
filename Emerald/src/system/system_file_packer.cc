@@ -46,7 +46,6 @@ typedef struct _system_file_packer
         buffer_packed   = new (std::nothrow) char[INTERNAL_BUFFER_SIZE];
         buffer_unpacked = new (std::nothrow) char[INTERNAL_BUFFER_SIZE];
         files           = system_resizable_vector_create(4,     /* capacity */
-                                                         sizeof(_system_file_packer_file*),
                                                          true); /* should_be_thread_safe */
         total_filesize  = 0;
 

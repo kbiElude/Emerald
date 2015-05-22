@@ -1707,8 +1707,7 @@ PUBLIC void* ogl_ui_dropdown_init(__in                   __notnull   ogl_ui     
                sizeof(_ogl_ui_dropdown) );
 
         new_dropdown->context             = ogl_ui_get_context(instance);
-        new_dropdown->entries             = system_resizable_vector_create(4, /* capacity */
-                                                                           sizeof(_ogl_ui_dropdown_entry*) );
+        new_dropdown->entries             = system_resizable_vector_create(4 /* capacity */);
         new_dropdown->fire_proc_user_arg  = fire_proc_user_arg;
         new_dropdown->is_button_lbm       = false;
         new_dropdown->is_droparea_lbm     = false;
