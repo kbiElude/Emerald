@@ -23,14 +23,14 @@ EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_cap
  *
  *  @param system_semaphore Semaphore to release.
  */
-EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphore);
+EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphore semaphore);
 
 /** Enters a semaphore. This function will block if semaphore is fully occupied and will return
  *  to caller only after sufficient number of semaphore slots become available.
  *
  *  @param system_semaphore Semaphore object to use.
  */
-EMERALD_API void system_semaphore_enter(__in system_semaphore);
+EMERALD_API void system_semaphore_enter(__in system_semaphore semaphore);
 
 /** Enters a semaphore @param count times. This function will block if semaphore is fully occupied and will return
  *  to caller only after sufficient number of semaphore slots become available.

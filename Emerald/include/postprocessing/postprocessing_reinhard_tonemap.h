@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  * 
  * TODO
  *
@@ -14,7 +14,8 @@
 #include "postprocessing/postprocessing_types.h"
 
 
-REFCOUNT_INSERT_DECLARATIONS(postprocessing_reinhard_tonemap, postprocessing_reinhard_tonemap)
+REFCOUNT_INSERT_DECLARATIONS(postprocessing_reinhard_tonemap,
+                             postprocessing_reinhard_tonemap)
 
 
 /** TODO */

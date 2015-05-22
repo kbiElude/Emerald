@@ -441,6 +441,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_create_mesh_materials(__in _
 
         ASSERT_DEBUG_SYNC(new_mesh_material != NULL,
                           "Could not create a mesh_material out of a scene_material");
+
         if (new_mesh_material == NULL)
         {
             result = false;
@@ -543,6 +544,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_camera_data(__in __notnu
 
         ASSERT_DEBUG_SYNC(new_camera != NULL,
                           "Cannot spawn new camera instance");
+
         if (new_camera == NULL)
         {
             result = false;
@@ -741,6 +743,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_mesh_data(__in __notnull
 
         ASSERT_DEBUG_SYNC(mesh_gpu != NULL,
                           "Could not load mesh data");
+
         if (mesh_gpu == NULL)
         {
             result = false;
@@ -1306,6 +1309,7 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
 
     ASSERT_DEBUG_SYNC(new_graph != NULL,
                       "Could not load scene graph");
+
     if (new_graph == NULL)
     {
         result = false;

@@ -113,7 +113,8 @@ PUBLIC EMERALD_API void scene_texture_get(__in  __notnull scene_texture         
 
         default:
         {
-            ASSERT_ALWAYS_SYNC(false, "Unrecognized texture property requested");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unrecognized texture property requested");
         }
     } /* switch (property) */
 }

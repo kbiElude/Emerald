@@ -11,7 +11,8 @@
 #include "mesh/mesh_types.h"
 #include "scene/scene_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(scene, scene)
+REFCOUNT_INSERT_DECLARATIONS(scene, 
+                             scene)
 
 enum scene_property
 {
@@ -47,23 +48,23 @@ typedef enum
 } scene_callback_id;
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context,
-                                      __in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               context,
+                                      __in __notnull system_hashed_ansi_string name);
 
 /** TODO */
-PUBLIC EMERALD_API bool scene_add_camera(__in __notnull scene,
-                                         __in __notnull scene_camera);
+PUBLIC EMERALD_API bool scene_add_camera(__in __notnull scene        scene_instance,
+                                         __in __notnull scene_camera new_camera);
 
 /** TODO */
-PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene,
-                                        __in __notnull scene_curve);
+PUBLIC EMERALD_API bool scene_add_curve(__in __notnull scene       scene_instance,
+                                        __in __notnull scene_curve curve_instance);
 
 /** TODO */
-PUBLIC EMERALD_API bool scene_add_light(__in __notnull scene,
-                                        __in __notnull scene_light);
+PUBLIC EMERALD_API bool scene_add_light(__in __notnull scene       scene_instance,
+                                        __in __notnull scene_light light_instance);
 
 /** TODO */
-PUBLIC EMERALD_API bool scene_add_material(__in __notnull scene          scene,
+PUBLIC EMERALD_API bool scene_add_material(__in __notnull scene          scene_instance,
                                            __in __notnull scene_material material);
 /** TODO */
 PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene                     scene,
@@ -77,8 +78,8 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance_defined(__in __notnull scene    
 /** TODO. Sets texture id for given @param scene_texture instance.
  *
  **/
-PUBLIC EMERALD_API bool scene_add_texture(__in __notnull scene,
-                                          __in __notnull scene_texture);
+PUBLIC EMERALD_API bool scene_add_texture(__in __notnull scene         scene_instance,
+                                          __in __notnull scene_texture texture_instance);
 
 
 /** TODO */
@@ -139,11 +140,11 @@ PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(__in __notnull scene     
                                                        __in           unsigned int index);
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context,
+PUBLIC EMERALD_API scene scene_load(__in __notnull ogl_context               context,
                                     __in __notnull system_hashed_ansi_string full_file_name_with_path);
 
 /** TODO */
-PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context,
+PUBLIC EMERALD_API scene scene_load_with_serializer(__in __notnull ogl_context            context,
                                                     __in __notnull system_file_serializer serializer);
 
 /** TODO.

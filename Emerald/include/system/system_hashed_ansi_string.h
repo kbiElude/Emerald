@@ -15,8 +15,8 @@
  *
  *  @return true if found, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system_hashed_ansi_string,
-                                                           __in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system_hashed_ansi_string has_1,
+                                                           __in __notnull system_hashed_ansi_string has_2);
 
 /** Creates a new hashed ansi string instance. Such strings cannot be released and modified. 
  *  Text is copied by value so make sure input argument is valid.
@@ -28,19 +28,20 @@ PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system
  *
  *  @return Hashed ansi string instance.
  */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create(__in __notnull const char*);
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create(__in __notnull const char* raw);
 
 /** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_substring(__in __notnull const char*,
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_strings(               uint32_t     n_strings,
+                                                                                                 __in __notnull const char** strings);
+
+/** TODO */
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_two_strings(__in __notnull const char* src1,
+                                                                                                     __in __notnull const char* src2);
+
+/** TODO */
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_substring(__in __notnull const char* string,
                                                                                         __in           uint32_t    start_offset,
                                                                                         __in           uint32_t    length);
-
-/** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_strings(uint32_t, __in __notnull const char**);
-
-/** TODO */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_two_strings(__in __notnull const char*,
-                                                                                                     __in __notnull const char*);
 
 /** Retrieves an empty hashed ansi string.
  *
@@ -54,7 +55,7 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_get_defau
  * 
  *  @return Length.
  */
-PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(__in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(__in __notnull system_hashed_ansi_string string);
 
 /** Retrieves text stored for a given hashed ansi string.
  *
@@ -62,7 +63,7 @@ PUBLIC EMERALD_API uint32_t system_hashed_ansi_string_get_length(__in __notnull 
  *
  *  @return Raw data pointer.
  */
-PUBLIC EMERALD_API const char* system_hashed_ansi_string_get_buffer(__in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API const char* system_hashed_ansi_string_get_buffer(__in __notnull system_hashed_ansi_string string);
 
 /** Tells whether given hashed ansi string encapsulates the same text as stored at user-provided location.
  *
@@ -71,8 +72,8 @@ PUBLIC EMERALD_API const char* system_hashed_ansi_string_get_buffer(__in __notnu
  *
  *  @return true if strings match, false otehrwise.
  */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __notnull system_hashed_ansi_string,
-                                                                         __in __notnull const char*);
+PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __notnull system_hashed_ansi_string string,
+                                                                         __in __notnull const char*               raw_text);
 
 /** Retrieves hash for a given hashed ansi string.
  *
@@ -80,7 +81,7 @@ PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __
  *
  *  @return Hash for the string.
  */
-PUBLIC EMERALD_API system_hash64 system_hashed_ansi_string_get_hash(__in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API system_hash64 system_hashed_ansi_string_get_hash(__in __notnull system_hashed_ansi_string string);
 
 /** Tells whether two hashed ansi strings are equal.
  *
@@ -89,8 +90,8 @@ PUBLIC EMERALD_API system_hash64 system_hashed_ansi_string_get_hash(__in __notnu
  *
  *  @return true if strings match, false otherwise. 
  */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in __notnull system_hashed_ansi_string,
-                                                                          __in __notnull system_hashed_ansi_string);
+PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in __notnull system_hashed_ansi_string has_1,
+                                                                          __in __notnull system_hashed_ansi_string has_2);
 
 /** Initializes dictionary used by hashed ansi string implementation. Should be called once from DLL entry point. */
 PUBLIC void system_hashed_ansi_string_init();

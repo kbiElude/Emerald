@@ -517,7 +517,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_directional(__in     __notnull
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+                      "Out of memory");
+
     if (new_scene_light != NULL)
     {
         memset(new_scene_light,
@@ -547,7 +549,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_point(__in     __notnull syste
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+                      "Out of memory");
+
     if (new_scene_light != NULL)
     {
         memset(new_scene_light,
@@ -577,7 +581,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_spot(__in     __notnull system
 {
     _scene_light* new_scene_light = new (std::nothrow) _scene_light;
 
-    ASSERT_DEBUG_SYNC(new_scene_light != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_light != NULL,
+                      "Out of memory");
+
     if (new_scene_light != NULL)
     {
         memset(new_scene_light,
@@ -1368,7 +1374,8 @@ PUBLIC scene_light scene_light_load(__in __notnull system_file_serializer    ser
 
         if (!result)
         {
-            ASSERT_DEBUG_SYNC(false, "Light data serialization failed");
+            ASSERT_DEBUG_SYNC(false,
+                              "Light data serialization failed");
 
             goto end_error;
         }
@@ -1840,7 +1847,7 @@ PUBLIC EMERALD_API void scene_light_set_property(__in __notnull scene_light     
         default:
         {
             ASSERT_DEBUG_SYNC(false,
-                              "Unrecgonized scene_light property");
+                              "Unrecognized scene_light property");
 
             break;
         }

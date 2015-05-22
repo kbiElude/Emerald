@@ -29,8 +29,8 @@ PUBLIC EMERALD_API system_hash64map system_hash64map_create(__in size_t element_
  *
  *  @return True if the item was found, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map,
-                                                  __in system_hash64);
+PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map hash_map,
+                                                  __in system_hash64    hash);
 
 /** Retrieves an item identified by user-provided hash from user-provided hash-map.
  *
@@ -40,9 +40,9 @@ PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map,
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool	system_hash64map_get(__in      system_hash64map,
-                                             __in      system_hash64,
-                                             __out_opt void*);
+PUBLIC EMERALD_API bool	system_hash64map_get(__in      system_hash64map map,
+                                             __in      system_hash64    hash,
+                                             __out_opt void*            result_element);
 
 /** Retrieves amount of elements in the 64-bit hash-map.
  *
@@ -50,7 +50,7 @@ PUBLIC EMERALD_API bool	system_hash64map_get(__in      system_hash64map,
  *
  *  @return Amount of elements in the hash-map.
  */
-PUBLIC EMERALD_API size_t system_hash64map_get_amount_of_elements(__in system_hash64map);
+PUBLIC EMERALD_API size_t system_hash64map_get_amount_of_elements(__in system_hash64map map);
 
 /** Retrieves element at a given index of the 64-bit hash-map.
  *
@@ -61,10 +61,10 @@ PUBLIC EMERALD_API size_t system_hash64map_get_amount_of_elements(__in system_ha
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in                  system_hash64map,
-                                                                              size_t,
-                                                        __out_opt __maybenull void*,
-                                                        __out_opt __maybenull system_hash64* _pOutHash);
+PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in      system_hash64map map,
+                                                                  size_t           n_element,
+                                                        __out_opt void*            result_element,
+                                                        __out_opt system_hash64*   result_hash);
 
 /** Compares two 64-bit hash-maps.
  *
@@ -73,8 +73,8 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in                  sy
  *
  *  @return true if equal, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map,
-                                                  __in system_hash64map);
+PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map map_1,
+                                                  __in system_hash64map map_2);
 
 /** Inserts a new element into a 64-bit hash-map.
  *
@@ -86,11 +86,11 @@ PUBLIC EMERALD_API bool system_hash64map_is_equal(__in system_hash64map,
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_insert(__in                 system_hash64map,
-                                                __in                 system_hash64,
-                                                __in_opt             void*,
-                                                __in     __maybenull PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC,
-                                                __in     __maybenull _system_hash64map_on_remove_callback_argument);
+PUBLIC EMERALD_API bool system_hash64map_insert(__in             system_hash64map                              map,
+                                                __in             system_hash64                                 hash,
+                                                __in_opt         void*                                         element,
+                                                __in __maybenull PFNSYSTEMHASH64MAPONREMOVECALLBACKPROC        callback,
+                                                __in __maybenull _system_hash64map_on_remove_callback_argument callback_argument);
 
 /** TODO */
 PUBLIC EMERALD_API void system_hash64map_lock(__in system_hash64map                    map,
@@ -103,14 +103,14 @@ PUBLIC EMERALD_API void system_hash64map_lock(__in system_hash64map             
  *
  *  @return true if successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_hash64map_remove(__in system_hash64map,
-                                                __in system_hash64);
+PUBLIC EMERALD_API bool system_hash64map_remove(__in system_hash64map map,
+                                                __in system_hash64    hash);
 
 /** Release a 64-bit hash-map. Do not use the object after calling this function.
  *
  *  @param system_hash64map 64-bit hash-map to release.
  */
-PUBLIC EMERALD_API void system_hash64map_release(__in __deallocate(mem) system_hash64map);
+PUBLIC EMERALD_API void system_hash64map_release(__in __deallocate(mem) system_hash64map map);
 
 /** TODO */
 PUBLIC EMERALD_API void system_hash64map_unlock(__in system_hash64map                    map,

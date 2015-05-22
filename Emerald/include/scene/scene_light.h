@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef SCENE_LIGHT_H
@@ -8,7 +8,8 @@
 
 #include "scene/scene_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(scene_light, scene_light)
+REFCOUNT_INSERT_DECLARATIONS(scene_light,
+                             scene_light)
 
 
 typedef enum scene_light_callback
@@ -304,9 +305,9 @@ PUBLIC EMERALD_API scene_light scene_light_create_spot(__in     __notnull system
                                                        __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light,
-                                                 __in            scene_light_property,
-                                                 __out __notnull void*);
+PUBLIC EMERALD_API void scene_light_get_property(__in  __notnull scene_light          light,
+                                                 __in            scene_light_property property,
+                                                 __out __notnull void*                out_result);
 
 /** TODO
  *

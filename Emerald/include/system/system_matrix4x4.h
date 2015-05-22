@@ -75,7 +75,7 @@ PUBLIC EMERALD_API bool system_matrix4x4_is_equal(__in __notnull const system_ma
  *
  *  @param system_matrix4x4 Isntance of a 4x4 matrix object. Cannot be null.
  */
-PUBLIC EMERALD_API void system_matrix4x4_release(__in __notnull __deallocate(mem) system_matrix4x4);
+PUBLIC EMERALD_API void system_matrix4x4_release(__in __notnull __deallocate(mem) system_matrix4x4 matrix);
 
 /** Retrieves column-major data stored in 4x4 matrix object.
  *
@@ -83,7 +83,7 @@ PUBLIC EMERALD_API void system_matrix4x4_release(__in __notnull __deallocate(mem
  *
  *  @return Matrix contents in column-major order.
  */
-PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(__in __notnull system_matrix4x4);
+PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(__in __notnull system_matrix4x4 matrix);
 
 /** Retrieves row-major data stored in 4x4 matrix object.
  *
@@ -91,7 +91,7 @@ PUBLIC EMERALD_API const float* system_matrix4x4_get_column_major_data(__in __no
  *
  *  @return Matrix contents in row-major order.
  */
-PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(__in __notnull system_matrix4x4);
+PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(__in __notnull system_matrix4x4 matrix);
 
 /** Creates a new isntance of 4x4 matrix object by multiplying two 4x4 matrix objects (A*B).
  *
@@ -103,8 +103,8 @@ PUBLIC EMERALD_API const float* system_matrix4x4_get_row_major_data(__in __notnu
  *
  *  @return New instance of a matrix4x4 containing the result of multiplication.
  */
-PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnull system_matrix4x4,
-                                                                   __in __notnull system_matrix4x4);
+PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnull system_matrix4x4 a,
+                                                                   __in __notnull system_matrix4x4 b);
 
 /** Inverts a 4x4 matrix object.
  *
@@ -112,7 +112,7 @@ PUBLIC EMERALD_API system_matrix4x4 system_matrix4x4_create_by_mul(__in __notnul
  *
  *  @return True if inversion operation was successful, false otherwise.
  */
-PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4);
+PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4 matrix);
 
 /** Multiplies 4x4 matrix object by a look-at matrix. Result is stored within the matrix.
  *
@@ -123,10 +123,10 @@ PUBLIC EMERALD_API bool system_matrix4x4_invert(__in __notnull system_matrix4x4)
  *  @param const float*     Look at point.
  *  @param const float*     Up vector.
  */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull             system_matrix4x4,
-                                                            __in __notnull __ecount(3) const float*,
-                                                            __in __notnull __ecount(3) const float*,
-                                                            __in __notnull __ecount(3) const float*);
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_lookat(__in __notnull system_matrix4x4         matrix,
+                                                            __in __notnull __ecount(3) const float* camera_position,
+                                                            __in __notnull __ecount(3) const float* look_at_point,
+                                                            __in __notnull __ecount(3) const float* up_vector);
 
 /** TODO
  *
@@ -142,9 +142,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_matrix4x4(__in __notnull sy
  *  @param const float*     Vector to multiply the matrix with.
  *  @param const float*     Result will be stored in dereference of the pointer. Msut have space for 4 elements.
  */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(__in  __notnull             system_matrix4x4,
-                                                             __in  __notnull __ecount(4) const float*,
-                                                             __out __notnull __ecount(4) float*);
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(__in  __notnull system_matrix4x4         matrix,
+                                                             __in  __notnull __ecount(4) const float* vector,
+                                                             __out __notnull __ecount(4) float*       result);
 
 /** Multiples 4x4 matrix object by 3-dimensional user vector. 4th element is set to 0. 
  *  Result is stored in user-provided vector.
@@ -153,9 +153,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector4(__in  __notnull    
  *  @param const float*     Vector to multiply the matrix with.
  *  @param const float*     Result will be stored in dereference of the pointer. Must have space for 3 elements.
  */
-PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(__in  __notnull             system_matrix4x4,
-                                                             __in  __notnull __ecount(3) const float*,
-                                                             __out __notnull __ecount(3) float*);
+PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(__in  __notnull system_matrix4x4         matrix,
+                                                             __in  __notnull __ecount(3) const float* vector,
+                                                             __out __notnull __ecount(4) float*       result);
 
 /** Rotates 4x4 matrix object using user provided angle and 3-diemnsional rotation vector.
  *  Result is stored in the object.
@@ -164,9 +164,9 @@ PUBLIC EMERALD_API void system_matrix4x4_multiply_by_vector3(__in  __notnull    
  *  @param float            Rotation angle.
  *  @param const float*     3-dimensional rotation vector.
  */
-PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull system_matrix4x4,
-                                                __in                       float,
-                                                __in __notnull __ecount(3) const float* xyz);
+PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull             system_matrix4x4 matrix,
+                                                __in                       float            angle,
+                                                __in __notnull __ecount(3) const float*     xyz);
 
 /** Scales 4x4 matrix object using user provided 3-diemnsional XYZ scale vector.
  *  Result is stored in the object.
@@ -174,18 +174,18 @@ PUBLIC EMERALD_API void system_matrix4x4_rotate(__in __notnull system_matrix4x4,
  *  @param system_matrix4x4 4x4 matrix to rotate.
  *  @param const float*     3-dimensional scale vector.
  */
-PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system_matrix4x4,
-                                               __in __notnull __ecount(3) const float* xyz);
+PUBLIC EMERALD_API void system_matrix4x4_scale(__in __notnull             system_matrix4x4 matrix,
+                                               __in __notnull __ecount(3) const float*     xyz);
 
 /** TODO */
-PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matrix4x4,
-                                                      __in           float);
+PUBLIC EMERALD_API void system_matrix4x4_set_to_float(__in __notnull system_matrix4x4 matrix,
+                                                      __in           float            value);
 
 /** Resets 4x4 matrix object to identity matrix. Result is stored in the object.
  *
  *  @param system_matrix4x4 4x4 matrix object to set to identity amtrix.
  */
-PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_matrix4x4);
+PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_matrix4x4 matrix);
 
 /** Sets a single element of a 4x4 matrix object to user-defined value.
  *
@@ -194,47 +194,47 @@ PUBLIC EMERALD_API void system_matrix4x4_set_to_identity(__in __notnull system_m
  *                          the pair.
  *  @param float            New value to use.
  */
-PUBLIC EMERALD_API void system_matrix4x4_set_element(__in __notnull system_matrix4x4,
-                                                     __in           unsigned char,
-                                                     __in           float);
+PUBLIC EMERALD_API void system_matrix4x4_set_element(__in __notnull system_matrix4x4 matrix,
+                                                     __in           unsigned char    location_data,
+                                                     __in           float            value);
 
 /** Sets a 4x4 matrix contents, using user-provided raw data stored in column-major order.
  *
  *  @param system_matrix4x4 4x4 matrix to set.
  *  @param const float*     Data to set, stored in column-,ajor order.
  */
-PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(__in __notnull              system_matrix4x4,
-                                                                   __in __notnull __ecount(16) const float*);
+PUBLIC EMERALD_API void system_matrix4x4_set_from_column_major_raw(__in __notnull              system_matrix4x4 matrix,
+                                                                   __in __notnull __ecount(16) const float*     data);
 
 /** Sets a 4x4 matrix contents, using user-provided raw data stored in row-major order.
  *
  *  @param system_matrix4x4 4x4 matrix to set.
  *  @param const float*     Data to set, stored in row-major order.
  */
-PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(__in __notnull system_matrix4x4,
-    __in __notnull __ecount(16) const float*);
+PUBLIC EMERALD_API void system_matrix4x4_set_from_row_major_raw(__in __notnull              system_matrix4x4 matrix,
+                                                                __in __notnull __ecount(16) const float*     data);
 
 /** Sets a 4x4 matrix contents by copying data from another 4x4 matrix.
  *
  *  @param system_matrix4x4 Destination 4x4 matrix.
  *  @param system_matrix4x4 Source 4x4 matrix
  */
-PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(__in __notnull system_matrix4x4,
-                                                            __in __notnull system_matrix4x4);
+PUBLIC EMERALD_API void system_matrix4x4_set_from_matrix4x4(__in __notnull system_matrix4x4 dst_matrix,
+                                                            __in __notnull system_matrix4x4 src_matrix);
 
 /** Multiples 4x4 matrix object with translatino matrix. Result is stored in the object.
  *
  *  @param system_matrix4x4 4x4 matrix to translate.
  *  @param xyz              3-dimensional vector containing the translation vector.
  */
-PUBLIC EMERALD_API void system_matrix4x4_translate(__in __notnull             system_matrix4x4,
-                                                   __in __notnull __ecount(3) const float* xyz);
+PUBLIC EMERALD_API void system_matrix4x4_translate(__in __notnull             system_matrix4x4 matrix,
+                                                   __in __notnull __ecount(3) const float*     xyz);
 
 /** Transposes a 4x4 matrix object. Result is stored in the object.
  *
  *  @param system_matrix4x4 4x4 matrix to transpose.
  */
-PUBLIC EMERALD_API void system_matrix4x4_transpose(__in __notnull system_matrix4x4);
+PUBLIC EMERALD_API void system_matrix4x4_transpose(__in __notnull system_matrix4x4 matrix);
 
 /** Initializes matrix pool. Should only be called once from DLL entry point */
 PUBLIC void _system_matrix4x4_init();

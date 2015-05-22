@@ -60,7 +60,9 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in     __notnull system_hashed
 {
     _scene_mesh* new_scene_mesh = new (std::nothrow) _scene_mesh;
 
-    ASSERT_DEBUG_SYNC(new_scene_mesh != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_mesh != NULL,
+                      "Out of memory");
+
     if (new_scene_mesh != NULL)
     {
         _scene_mesh_init(new_scene_mesh,

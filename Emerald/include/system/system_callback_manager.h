@@ -63,7 +63,7 @@ PUBLIC void system_callback_manager_init();
  *
  *  Internal usage only.
  **/
-PUBLIC void system_callback_manager_release(__in __notnull system_callback_manager);
+PUBLIC void system_callback_manager_release(__in __notnull system_callback_manager callback_manager);
 
 /** TODO */
 PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __notnull system_callback_manager callback_manager,

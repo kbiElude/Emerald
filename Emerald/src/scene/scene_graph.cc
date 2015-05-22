@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -814,7 +814,9 @@ PRIVATE float _scene_graph_get_float_time_from_timeline_time(system_timeline_tim
     float    time_float = 0.0f;
     uint32_t time_msec  = 0;
 
-    system_time_get_msec_for_timeline_time(time, &time_msec);
+    system_time_get_msec_for_timeline_time(time,
+                                          &time_msec);
+
     time_float = float(time_msec) / 1000.0f;
 
     return time_float;
@@ -832,7 +834,9 @@ PRIVATE system_hash64map _scene_graph_get_node_hashmap(__in __notnull _scene_gra
 
         result = system_hash64map_create(sizeof(unsigned int) );
 
-        ASSERT_DEBUG_SYNC(result != NULL, "Could not create a hash map");
+        ASSERT_DEBUG_SYNC(result != NULL,
+                          "Could not create a hash map");
+
         if (result == NULL)
         {
             goto end;
@@ -1043,7 +1047,8 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
 
     if (new_node == NULL)
     {
-        ASSERT_DEBUG_SYNC(false, "Node serialization error");
+        ASSERT_DEBUG_SYNC(false,
+                          "Node serialization error");
 
         goto end_error;
     }
@@ -1197,12 +1202,14 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     }
 
     /* All done */
-    system_resizable_vector_push(serialized_nodes, new_node);
+    system_resizable_vector_push(serialized_nodes,
+                                 new_node);
 
     goto end;
 
 end_error:
-    ASSERT_DEBUG_SYNC(false, "Node serialization failed");
+    ASSERT_DEBUG_SYNC(false,
+                      "Node serialization failed");
 
     result = false;
 
@@ -1219,8 +1226,11 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_matrix4x4_static(__i
     system_matrix4x4     serialized_matrix = NULL;
     scene_graph_node_tag serialized_tag    = SCENE_GRAPH_NODE_TAG_UNDEFINED;
 
-    if (system_file_serializer_read_matrix4x4(serializer,                         &serialized_matrix) &&
-        system_file_serializer_read          (serializer, sizeof(serialized_tag), &serialized_tag) )
+    if (system_file_serializer_read_matrix4x4(serializer,
+                                             &serialized_matrix) &&
+        system_file_serializer_read          (serializer,
+                                              sizeof(serialized_tag),
+                                             &serialized_tag) )
     {
         result_node = scene_graph_create_static_matrix4x4_transformation_node(result_graph,
                                                                               serialized_matrix,
@@ -1472,7 +1482,7 @@ PRIVATE scene_graph_node _scene_graph_load_scene_graph_node_translation_static(_
 
     if (!system_file_serializer_read(serializer,
                                      sizeof(serialized_translation),
-                                     serialized_translation) ||
+                                     serialized_translation)         ||
         !system_file_serializer_read(serializer,
                                      sizeof(serialized_tag),
                                     &serialized_tag) )
@@ -1526,7 +1536,8 @@ PRIVATE bool _scene_graph_save_scene_graph_node_rotation_dynamic(__in __notnull 
 {
     bool result = true;
 
-    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 4, "");
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 4,
+                      "");
 
     for (unsigned int n = 0;
                       n < 4;
@@ -1554,7 +1565,8 @@ PRIVATE bool _scene_graph_save_scene_graph_node_scale_dynamic(__in __notnull sys
 {
     bool result = true;
 
-    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3,
+                      "");
 
     for (unsigned int n = 0;
                       n < 3;
@@ -1579,7 +1591,8 @@ PRIVATE bool _scene_graph_save_scene_graph_node_translation_dynamic(__in __notnu
 {
     bool result = true;
 
-    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3, "");
+    ASSERT_DEBUG_SYNC(sizeof(data_ptr->curves) / sizeof(data_ptr->curves[0]) == 3,
+                      "");
 
     for (unsigned int n = 0;
                       n < 3;
@@ -1971,7 +1984,9 @@ PRIVATE bool _scene_graph_update_sorted_nodes(__in __notnull _scene_graph* graph
         {
             LOG_FATAL("Could not compute scene graph - graph is not a DAG?");
 
-            ASSERT_DEBUG_SYNC(false, "");
+            ASSERT_DEBUG_SYNC(false,
+                              "");
+
             goto end;
         }
     }
@@ -1997,13 +2012,15 @@ PUBLIC EMERALD_API void scene_graph_add_node(__in __notnull scene_graph      gra
                       "Parent node is NULL?");
     ASSERT_DEBUG_SYNC(node_ptr->parent_node == NULL,
                       "Node already has a parent");
+
     node_ptr->parent_node = (_scene_graph_node*) parent_node;
 
     if (!system_dag_add_connection(graph_ptr->dag,
                                    parent_node_ptr->dag_node,
                                    node_ptr->dag_node) )
     {
-        ASSERT_ALWAYS_SYNC(false, "Could not add connection to DAG");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not add connection to DAG");
 
         goto end;
     }
@@ -2094,7 +2111,9 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
     {
         LOG_FATAL("Could not retrieve topologically sorted node values");
 
-        ASSERT_DEBUG_SYNC(false, "");
+        ASSERT_DEBUG_SYNC(false,
+                          "");
+
         goto end;
     }
 
@@ -2121,7 +2140,9 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
             {
                 LOG_FATAL("Could not retrieve topologically sorted node");
 
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
+
                 goto end_unlock_sorted_nodes;
             }
 
@@ -2206,6 +2227,7 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
 
         ASSERT_DEBUG_SYNC(graph_ptr->node_compute_vector != NULL,
                           "Could not create a node compute vector");
+
         if (graph_ptr->node_compute_vector == NULL)
         {
             goto end;
@@ -2263,7 +2285,8 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene          
 
     if (new_graph == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
@@ -2296,7 +2319,8 @@ PUBLIC EMERALD_API scene_graph scene_graph_create(__in __notnull scene          
                                  new_graph->root_node_ptr);
 
     /* Set up root node */
-    new_graph->root_node_ptr->dag_node      = system_dag_add_node(new_graph->dag, new_graph->root_node_ptr);
+    new_graph->root_node_ptr->dag_node      = system_dag_add_node(new_graph->dag,
+                                                                  new_graph->root_node_ptr);
     new_graph->root_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_ROOT;
     new_graph->root_node_ptr->pUpdateMatrix = _scene_graph_compute_root_node;
 
@@ -2319,7 +2343,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_rotation_dynamic_node(__i
 
     if (new_node_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
@@ -2346,13 +2371,16 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_scale_dynamic_node(__in  
 
     if (new_node_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
 
-    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_scale_dynamic(scale_vector_curves, tag);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->data          = new (std::nothrow) _scene_graph_node_scale_dynamic(scale_vector_curves,
+                                                                                     tag);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag,
+                                                      new_node_ptr);
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_SCALE_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_scale_dynamic;
@@ -2372,7 +2400,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
 
     if (new_node_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
@@ -2380,7 +2409,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_dynamic_node(
     new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_dynamic(translation_vector_curves,
                                                                                            tag,
                                                                                            negate_xyz_vectors);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag,
+                                                      new_node_ptr);
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_TRANSLATION_DYNAMIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_dynamic;
@@ -2399,14 +2429,16 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_translation_static_node(_
 
     if (new_node_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
 
     new_node_ptr->data          = new (std::nothrow) _scene_graph_node_translation_static(translation_vector,
                                                                                           tag);
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag,
+                                                      new_node_ptr);
     new_node_ptr->tag           = tag;
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_TRANSLATION_STATIC;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_translation_static;
@@ -2423,12 +2455,14 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_general_node(__in __notnu
 
     if (new_node_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
 
-    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag, new_node_ptr);
+    new_node_ptr->dag_node      = system_dag_add_node(graph_ptr->dag,
+                                                      new_node_ptr);
     new_node_ptr->type          = SCENE_GRAPH_NODE_TYPE_GENERAL;
     new_node_ptr->pUpdateMatrix = _scene_graph_compute_general;
 
@@ -2446,7 +2480,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_create_static_matrix4x4_transfor
 
     if (new_node_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }
@@ -2490,7 +2525,8 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnu
     {
         if (!_scene_graph_update_sorted_nodes(graph_ptr))
         {
-            ASSERT_DEBUG_SYNC(false, "Sorted nodes update failed");
+            ASSERT_DEBUG_SYNC(false,
+                              "Sorted nodes update failed");
 
             goto end;
         }
@@ -2793,7 +2829,8 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                       "+ Camera:[%s]",
                       system_hashed_ansi_string_get_buffer(camera_name) );
 
-            LOG_INFO("%s", tmp);
+            LOG_INFO("%s",
+                     tmp);
         } /* for (all attached cameras) */
 
         for (uint32_t n_attached_light = 0;
@@ -2820,7 +2857,8 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                       "+ Light:[%s]",
                       system_hashed_ansi_string_get_buffer(light_name) );
 
-            LOG_INFO("%s", tmp);
+            LOG_INFO("%s",
+                     tmp);
         } /* for (all attached lights) */
 
         for (uint32_t n_attached_mesh = 0;
@@ -2847,7 +2885,8 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
                       "+ Mesh:[%s]",
                       system_hashed_ansi_string_get_buffer(mesh_name) );
 
-            LOG_INFO("%s", tmp);
+            LOG_INFO("%s",
+                     tmp);
         } /* for (all attached meshes) */
 
         /* Iterate over children */
@@ -3187,7 +3226,9 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                                                         n_sorted_node,
                                                        &node_ptr) )
             {
-                ASSERT_ALWAYS_SYNC(false, "Could not retrieve sorted node at index [%d]", n_sorted_node);
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Could not retrieve sorted node at index [%d]",
+                                   n_sorted_node);
 
                 goto end;
             }
@@ -3211,7 +3252,9 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                                                         n_sorted_node,
                                                        &node_ptr) )
             {
-                ASSERT_ALWAYS_SYNC(false, "Could not retrieve sorted node at index [%d]", n_sorted_node);
+                ASSERT_ALWAYS_SYNC(false,
+                                   "Could not retrieve sorted node at index [%d]",
+                                   n_sorted_node);
 
                 goto end;
             }
@@ -3261,7 +3304,9 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
                                                             (n_iteration == 1) ? node_ptr->attached_meshes  :
                                                                                  node_ptr->attached_lights;
 
-                        for (unsigned int n_object = 0; n_object < n_objects; ++n_object)
+                        for (unsigned int n_object = 0;
+                                           n_object < n_objects;
+                                         ++n_object)
                         {
                             void* object = NULL;
 

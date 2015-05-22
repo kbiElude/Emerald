@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  * Represents a single mesh instance.
  */
@@ -9,7 +9,8 @@
 
 #include "scene/scene_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(scene_mesh, scene_mesh)
+REFCOUNT_INSERT_DECLARATIONS(scene_mesh,
+                             scene_mesh)
 
 enum scene_mesh_property
 {
@@ -26,9 +27,9 @@ PUBLIC EMERALD_API scene_mesh scene_mesh_create(__in     __notnull system_hashed
                                                 __in               mesh                      geometry);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_mesh_get_property(__in  __notnull scene_mesh,
-                                                __in            scene_mesh_property,
-                                                __out __notnull void*);
+PUBLIC EMERALD_API void scene_mesh_get_property(__in  __notnull scene_mesh          mesh_instance,
+                                                __in            scene_mesh_property property,
+                                                __out __notnull void*               out_result);
 
 /** TODO.
  *
@@ -50,8 +51,8 @@ PUBLIC bool scene_mesh_save(__in __notnull system_file_serializer serializer,
                             __in __notnull system_hash64map       gpu_mesh_to_id_map);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_mesh_set_property(__in __notnull scene_mesh,
-                                                __in           scene_mesh_property,
-                                                __in __notnull const void*);
+PUBLIC EMERALD_API void scene_mesh_set_property(__in __notnull scene_mesh          mesh,
+                                                __in           scene_mesh_property property,
+                                                __in __notnull const void*         data);
 
 #endif /* SCENE_MESH_H */

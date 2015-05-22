@@ -77,23 +77,6 @@ PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(__in system_read
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_read_write_mutex_release(__in __deallocate(mem) system_read_write_mutex mutex)
-{
-    ASSERT_DEBUG_SYNC(mutex != NULL,
-                      "Cannot release a NULL mutex");
-
-    if (mutex != NULL)
-    {
-        _read_write_mutex_descriptor* descriptor = (_read_write_mutex_descriptor*) mutex;
-
-        _deinit_read_write_mutex(descriptor);
-
-        delete mutex;
-    }
-
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mutex             mutex,
                                                      __in system_read_write_mutex_access_type access_type)
 {
@@ -148,6 +131,23 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mute
         }
         system_critical_section_leave(descriptor->cs_write);
     }
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void system_read_write_mutex_release(__in __deallocate(mem) system_read_write_mutex mutex)
+{
+    ASSERT_DEBUG_SYNC(mutex != NULL,
+                      "Cannot release a NULL mutex");
+
+    if (mutex != NULL)
+    {
+        _read_write_mutex_descriptor* descriptor = (_read_write_mutex_descriptor*) mutex;
+
+        _deinit_read_write_mutex(descriptor);
+
+        delete mutex;
+    }
+
 }
 
 /** Please see header for specification */

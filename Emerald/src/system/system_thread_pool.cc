@@ -353,7 +353,8 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
     bool             should_live       = true;
 
     /* Enter wait loop */
-    LOG_INFO("Worker thread [%d] starting.", current_thread_id);
+    LOG_INFO("Worker thread [%d] starting.",
+             current_thread_id);
     {
         /* Wait till all thread events become available */
         system_event_wait_single_infinite(threads_spawned_event);
@@ -398,7 +399,8 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
 
                 default:
                 {
-                    ASSERT_DEBUG_SYNC(false, "Should never happen");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "Should never happen");
                 } /* default: */
             }
         }

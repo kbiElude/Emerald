@@ -23,8 +23,8 @@ PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id();
  *
  *  @return Thread if successful, 0 otherwise.
  */
-PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSYSTEMTHREADSENTRYPOINTPROC,
-                                                         __in  __maybenull system_threads_entry_point_argument,
+PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
+                                                         __in  __maybenull system_threads_entry_point_argument callback_func_argument,
                                                          __out __maybenull system_event*                       thread_wait_event);
 
 /** Initializes threads module. Should only be called once from DLL entry point */

@@ -1057,7 +1057,8 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull ogl_context            
     goto end;
 
 end_error:
-    ASSERT_DEBUG_SYNC(false, "Scene camera serialization failed.");
+    ASSERT_DEBUG_SYNC(false,
+                      "Scene camera serialization failed.");
 
     if (result != NULL)
     {

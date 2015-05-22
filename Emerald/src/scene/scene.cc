@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -52,7 +52,9 @@ typedef struct
 } _scene;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(scene, scene, _scene);
+REFCOUNT_INSERT_IMPLEMENTATION(scene,
+                               scene,
+                              _scene);
 
 /* Please see header for specification */
 PRIVATE void _scene_release(__in __notnull __post_invalid void* arg)
@@ -457,7 +459,9 @@ PUBLIC EMERALD_API scene scene_create(__in_opt       ogl_context               c
 {
     _scene* new_scene = new (std::nothrow) _scene;
 
-    ASSERT_DEBUG_SYNC(new_scene != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene != NULL,
+                      "Out of memory");
+
     if (new_scene != NULL)
     {
         memset(new_scene,

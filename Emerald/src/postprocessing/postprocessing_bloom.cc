@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -23,7 +23,9 @@ typedef struct
 /** Internal variables */ 
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_bloom, postprocessing_bloom, _postprocessing_bloom);
+REFCOUNT_INSERT_IMPLEMENTATION(postprocessing_bloom,
+                               postprocessing_bloom,
+                              _postprocessing_bloom);
 
 
 /** TODO */
@@ -42,7 +44,9 @@ PUBLIC EMERALD_API postprocessing_bloom postprocessing_bloom_create(__in __notnu
     /* Instantiate the object */
     _postprocessing_bloom* result_object = new (std::nothrow) _postprocessing_bloom;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory");
@@ -53,7 +57,8 @@ PUBLIC EMERALD_API postprocessing_bloom postprocessing_bloom_create(__in __notnu
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
                                                    _postprocessing_bloom_release,
                                                    OBJECT_TYPE_POSTPROCESSING_BLOOM,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Post-processing Bloom\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Post-processing Bloom\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (postprocessing_bloom) result_object;

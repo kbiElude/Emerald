@@ -22,17 +22,17 @@ PUBLIC EMERALD_API scene_curve scene_curve_create(__in __notnull system_hashed_a
                                                   __in __notnull curve_container           instance);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_curve_get(__in  __notnull   scene_curve,
-                                          __in            scene_curve_property,
-                                          __out __notnull void*);
+PUBLIC EMERALD_API void scene_curve_get(__in  __notnull scene_curve          curve,
+                                        __in            scene_curve_property property,
+                                        __out __notnull void*                out_result);
 
 /** TODO */
 PUBLIC EMERALD_API scene_curve scene_curve_load(__in     __notnull system_file_serializer    serializer,
                                                 __in_opt           system_hashed_ansi_string object_manager_path);
 
 /** TODO */
-PUBLIC EMERALD_API bool scene_curve_save(__in __notnull system_file_serializer,
-                                         __in __notnull scene_curve);
+PUBLIC EMERALD_API bool scene_curve_save(__in __notnull system_file_serializer serializer,
+                                         __in __notnull scene_curve            curve);
 
 
 #endif /* SCENE_CURVE_H */

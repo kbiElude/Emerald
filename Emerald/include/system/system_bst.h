@@ -29,6 +29,6 @@ PUBLIC EMERALD_API void system_bst_insert(__in __notnull system_bst       bst,
                                           __in __notnull system_bst_value value);
 
 /** TODO */
-PUBLIC EMERALD_API void system_bst_release(__in __notnull system_bst);
+PUBLIC EMERALD_API void system_bst_release(__in __notnull system_bst bst);
 
 #endif /* SYSTEM_BST_H */

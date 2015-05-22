@@ -79,6 +79,6 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_un
                                                                                        __out_opt      unsigned int*             out_file_index);
 
 /** TODO */
-PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_file_enumerator);
+PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_file_enumerator enumerator);
 
 #endif /* SYSTEM_FILE_ENUMERATOR_H */

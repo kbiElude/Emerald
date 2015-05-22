@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  * Represents a single scene material.
  */
@@ -83,8 +83,8 @@ PUBLIC bool scene_material_save(__in     __notnull system_file_serializer serial
                                 __in_opt           scene                  owner_scene);
 
 /** TODO */
-PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_material,
-                                                    __in           scene_material_property,
-                                                    __in __notnull const void*);
+PUBLIC EMERALD_API void scene_material_set_property(__in __notnull scene_material          material,
+                                                    __in           scene_material_property property,
+                                                    __in __notnull const void*             data);
 
 #endif /* SCENE_MESH_H */

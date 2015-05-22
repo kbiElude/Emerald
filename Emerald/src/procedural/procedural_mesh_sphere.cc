@@ -132,19 +132,19 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
                 uint32_t next_n_theta_iteration = ((n_theta_iteration + 1) != n_theta_iterations ? (n_theta_iteration + 1) : 0);
 
                 *ordered_indexes_traveller = n_phi_iteration      * n_theta_iterations + n_theta_iteration;
-                ordered_indexes_traveller++;
+                 ordered_indexes_traveller++;
 
                 *ordered_indexes_traveller = next_n_phi_iteration * n_theta_iterations + next_n_theta_iteration;
-                ordered_indexes_traveller++;
+                 ordered_indexes_traveller++;
                 *ordered_indexes_traveller = next_n_phi_iteration * n_theta_iterations + (n_theta_iteration);
-                ordered_indexes_traveller++;
+                 ordered_indexes_traveller++;
 
                 *ordered_indexes_traveller = n_phi_iteration      * n_theta_iterations + n_theta_iteration;
-                ordered_indexes_traveller++;
+                 ordered_indexes_traveller++;
                 *ordered_indexes_traveller = n_phi_iteration      * n_theta_iterations + next_n_theta_iteration;
-                ordered_indexes_traveller++;
+                 ordered_indexes_traveller++;
                 *ordered_indexes_traveller = next_n_phi_iteration * n_theta_iterations + next_n_theta_iteration;
-                ordered_indexes_traveller++;
+                 ordered_indexes_traveller++;
             }
         }
     }
@@ -168,11 +168,11 @@ PRIVATE void _procedural_mesh_sphere_create_renderer_callback(ogl_context contex
                                   "Out of points");
 
                 *triangles_traveller = nonindexed_points[new_index*3  ];
-                triangles_traveller++;
+                 triangles_traveller++;
                 *triangles_traveller = nonindexed_points[new_index*3+1];
-                triangles_traveller++;
+                 triangles_traveller++;
                 *triangles_traveller = nonindexed_points[new_index*3+2];
-                triangles_traveller++;
+                 triangles_traveller++;
             } /* for (uint32_t n_index = 0; n_index < n_ordered_indexes; ++n_index)*/
 
             /* Store the data. */
@@ -240,9 +240,6 @@ PRIVATE void _procedural_mesh_sphere_get_arrays_tbo_renderer_callback(ogl_contex
                                                ptr->arrays_bo_id,
                                                ptr->arrays_bo_start_offset,
                                                ptr->arrays_bo_size);
-
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "Could not create a TBO out of sphere BO.");
 }
 
 /** TODO */

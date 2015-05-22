@@ -241,6 +241,7 @@ PUBLIC EMERALD_API scene_material scene_material_create(__in     __notnull syste
 
     ASSERT_DEBUG_SYNC(new_scene_material != NULL,
                       "Out of memory");
+
     if (new_scene_material != NULL)
     {
         _scene_material_init(new_scene_material,
