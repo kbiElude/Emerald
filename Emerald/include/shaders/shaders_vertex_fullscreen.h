@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * This shader can be used for performing a full-screen off-screen rendering pass. It can optionally
  * pass UV data to other shaders.

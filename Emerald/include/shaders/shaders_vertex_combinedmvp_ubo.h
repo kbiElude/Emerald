@@ -11,7 +11,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_ubo, shaders_vertex_combinedmvp_ubo)
+REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_combinedmvp_ubo,
+                             shaders_vertex_combinedmvp_ubo)
 
 
 /** Creates a new combined mvp UBO vertex shader object instance.

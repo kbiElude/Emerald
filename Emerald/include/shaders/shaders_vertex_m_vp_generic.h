@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * TODO
  *
@@ -11,7 +11,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_m_vp_generic, shaders_vertex_m_vp_generic)
+REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_m_vp_generic,
+                             shaders_vertex_m_vp_generic)
 
 
 /** Creates a new model+vp generic vertex shader object instance.

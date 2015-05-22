@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -22,7 +22,9 @@ typedef struct
 } _shaders_vertex_m_vp_generic;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_m_vp_generic, shaders_vertex_m_vp_generic, _shaders_vertex_m_vp_generic);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_m_vp_generic,
+                               shaders_vertex_m_vp_generic,
+                              _shaders_vertex_m_vp_generic);
 
 
 /** Function called back when reference counter drops to zero. Releases the shader object.
@@ -43,7 +45,8 @@ PRIVATE void _shaders_vertex_m_vp_generic_release(__in __notnull __deallocate(me
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_create(__in __notnull ogl_context               context,
+                                                                                  __in __notnull system_hashed_ansi_string name)
 {
     _shaders_vertex_m_vp_generic* result_object = NULL;
     shaders_vertex_m_vp_generic   result_shader = NULL;
@@ -66,9 +69,13 @@ PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_creat
                    "}\n";
 
     /* Create the shader */
-    ogl_shader vertex_shader = ogl_shader_create(context, SHADER_TYPE_VERTEX, name);
+    ogl_shader vertex_shader = ogl_shader_create(context,
+                                                 SHADER_TYPE_VERTEX,
+                                                 name);
 
-    ASSERT_DEBUG_SYNC(vertex_shader != NULL, "ogl_shader_create() failed");
+    ASSERT_DEBUG_SYNC(vertex_shader != NULL,
+                      "ogl_shader_create() failed");
+
     if (vertex_shader == NULL)
     {
         LOG_ERROR("Could not create m+vp generic vertex shader.");
@@ -78,9 +85,12 @@ PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_creat
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
-    bool                      result      = ogl_shader_set_body(vertex_shader, shader_body);
+    bool                      result      = ogl_shader_set_body             (vertex_shader,
+                                                                             shader_body);
 
-    ASSERT_DEBUG_SYNC(result, "ogl_shader_set_body() failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "ogl_shader_set_body() failed");
+
     if (!result)
     {
         LOG_ERROR("Could not set m+vp generic vertex shader body.");
@@ -91,7 +101,9 @@ PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_creat
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_vertex_m_vp_generic;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_vertex_m_vp_generic object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_vertex_m_vp_generic object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating m+vp generic vertex shader object instance.");
@@ -102,10 +114,11 @@ PUBLIC EMERALD_API shaders_vertex_m_vp_generic shaders_vertex_m_vp_generic_creat
     result_object->body          = shader_body;
     result_object->vertex_shader = vertex_shader;
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_vertex_m_vp_generic_release,
                                                    OBJECT_TYPE_SHADERS_VERTEX_M_VP_GENERIC,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\M+VP Generic Vertex Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\M+VP Generic Vertex Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (shaders_vertex_m_vp_generic) result_object;

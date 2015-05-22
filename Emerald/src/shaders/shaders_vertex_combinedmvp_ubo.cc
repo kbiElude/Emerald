@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -22,7 +22,9 @@ typedef struct
 } _shaders_vertex_combinedmvp_ubo;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_combinedmvp_ubo, shaders_vertex_combinedmvp_ubo, _shaders_vertex_combinedmvp_ubo);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_vertex_combinedmvp_ubo,
+                               shaders_vertex_combinedmvp_ubo,
+                              _shaders_vertex_combinedmvp_ubo);
 
 
 /** Function called back when reference counter drops to zero. Releases the shader object.
@@ -43,7 +45,9 @@ PRIVATE void _shaders_vertex_combinedmvp_ubo_release(__in __notnull __deallocate
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo_create(__in __notnull ogl_context context, __in uint32_t n_matrices, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo_create(__in __notnull ogl_context               context,
+                                                                                        __in           uint32_t                  n_matrices,
+                                                                                        __in __notnull system_hashed_ansi_string name)
 {
     _shaders_vertex_combinedmvp_ubo* result_object = NULL;
     shaders_vertex_combinedmvp_ubo   result_shader = NULL;
@@ -73,9 +77,13 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
                    "}\n";
 
     /* Create the shader */
-    ogl_shader vertex_shader = ogl_shader_create(context, SHADER_TYPE_VERTEX, name);
+    ogl_shader vertex_shader = ogl_shader_create(context,
+                                                 SHADER_TYPE_VERTEX,
+                                                 name);
 
-    ASSERT_DEBUG_SYNC(vertex_shader != NULL, "ogl_shader_create() failed");
+    ASSERT_DEBUG_SYNC(vertex_shader != NULL,
+                      "ogl_shader_create() failed");
+
     if (vertex_shader == NULL)
     {
         LOG_ERROR("Could not create UBO combinedmvp vertex shader.");
@@ -85,9 +93,12 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
-    bool                      result      = ogl_shader_set_body(vertex_shader, shader_body);
+    bool                      result      = ogl_shader_set_body             (vertex_shader,
+                                                                             shader_body);
 
-    ASSERT_DEBUG_SYNC(result, "ogl_shader_set_body() failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "ogl_shader_set_body() failed");
+
     if (!result)
     {
         LOG_ERROR("Could not set UBO combinedmvp vertex shader body.");
@@ -98,7 +109,9 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_vertex_combinedmvp_ubo;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_vertex_combinedmvp_ubo object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_vertex_combinedmvp_ubo object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating combinedmvp UBO vertex shader object instance.");
@@ -112,7 +125,8 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_ubo shaders_vertex_combinedmvp_ubo
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object,
                                                    _shaders_vertex_combinedmvp_ubo_release,
                                                    OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_UBO,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Combined MVP UBO Vertex Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\Combined MVP UBO Vertex Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (shaders_vertex_combinedmvp_ubo) result_object;

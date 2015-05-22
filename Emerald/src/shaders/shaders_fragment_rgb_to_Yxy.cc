@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -21,7 +21,9 @@ typedef struct
 } _shaders_fragment_rgb_to_Yxy;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_rgb_to_Yxy, shaders_fragment_rgb_to_Yxy, _shaders_fragment_rgb_to_Yxy);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_rgb_to_Yxy,
+                               shaders_fragment_rgb_to_Yxy,
+                              _shaders_fragment_rgb_to_Yxy);
 
 /* Internal variables */
 const char* shader_body_wo_log = "#version 430 core\n"
@@ -90,15 +92,21 @@ PRIVATE void _shaders_fragment_rgb_to_Yxy_release(__in __notnull __deallocate(me
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name, __in bool convert_to_log_Yxy)
+PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_create(__in __notnull ogl_context               context,
+                                                                                  __in __notnull system_hashed_ansi_string name,
+                                                                                  __in           bool                      convert_to_log_Yxy)
 {
     _shaders_fragment_rgb_to_Yxy* result_object = NULL;
     shaders_fragment_rgb_to_Yxy   result_shader = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, name);
+    ogl_shader shader = ogl_shader_create(context,
+                                          SHADER_TYPE_FRAGMENT,
+                                          name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "Could not create a fragment shader.");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "Could not create a fragment shader.");
+
     if (shader == NULL)
     {
         LOG_ERROR("Could not create a fragment shader for RGB=>Yxy shader object.");
@@ -107,10 +115,12 @@ PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_creat
     }
 
     /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader, system_hashed_ansi_string_create(convert_to_log_Yxy ? shader_body_w_log : shader_body_wo_log)) )
+    if (!ogl_shader_set_body(shader,
+                             system_hashed_ansi_string_create(convert_to_log_Yxy ? shader_body_w_log : shader_body_wo_log)) )
     {
-        LOG_ERROR("Could not set body of RGB=>Yxy fragment shader.");
-        ASSERT_DEBUG_SYNC(false, "");
+        LOG_ERROR        ("Could not set body of RGB=>Yxy fragment shader.");
+        ASSERT_DEBUG_SYNC(false,
+                          "");
 
         goto end;
     }
@@ -118,7 +128,9 @@ PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_creat
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_rgb_to_Yxy;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_rgb_to_yxy object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_rgb_to_yxy object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating RGB=>Yxy shader object instance.");
@@ -131,7 +143,8 @@ PUBLIC EMERALD_API shaders_fragment_rgb_to_Yxy shaders_fragment_rgb_to_Yxy_creat
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(result_object, 
                                                    _shaders_fragment_rgb_to_Yxy_release,
                                                    OBJECT_TYPE_SHADERS_FRAGMENT_RGB_TO_YXY,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\RGB to Yxy Shaders\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\RGB to Yxy Shaders\\",
+                                                                                                           system_hashed_ansi_string_get_buffer(name)) );
 
     /* Return the object */
     return (shaders_fragment_rgb_to_Yxy) result_object;

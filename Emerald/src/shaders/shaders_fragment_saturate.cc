@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -39,11 +39,10 @@ typedef struct
 } _shaders_fragment_saturate;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_saturate, shaders_fragment_saturate, _shaders_fragment_saturate);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_saturate,
+                               shaders_fragment_saturate,
+                              _shaders_fragment_saturate);
 
-
-/* Internal variables */
-                          
 
 /** Function called back when reference counter drops to zero. Releases the laplacian shader object.
  *
@@ -63,15 +62,20 @@ PRIVATE void _shaders_fragment_saturate_release(__in __notnull __deallocate(mem)
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(__in __notnull ogl_context               context,
+                                                                              __in __notnull system_hashed_ansi_string name)
 {
     _shaders_fragment_saturate* result_object = NULL;
     shaders_fragment_saturate   result_shader = NULL;
 
     /* Create the shader */
-    ogl_shader shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, name);
+    ogl_shader shader = ogl_shader_create(context,
+                                          SHADER_TYPE_FRAGMENT,
+                                          name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "Could not create a fragment shader.");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "Could not create a fragment shader.");
+
     if (shader == NULL)
     {
         LOG_ERROR("Could not create a fragment shader for Saturate shader object.");
@@ -80,29 +84,22 @@ PUBLIC EMERALD_API shaders_fragment_saturate shaders_fragment_saturate_create(__
     }
 
     /* Attach body to the shader */
-    if (!ogl_shader_set_body(shader, system_hashed_ansi_string_create(saturate_fragment_shader_body) ))
+    if (!ogl_shader_set_body(shader,
+                             system_hashed_ansi_string_create(saturate_fragment_shader_body) ))
     {
-        LOG_ERROR("Could not set body of saturation fragment shader.");
-        ASSERT_DEBUG_SYNC(false, "");
+        LOG_ERROR        ("Could not set body of saturation fragment shader.");
+        ASSERT_DEBUG_SYNC(false,
+                          "");
 
         goto end;
     }
-    
-    /* Compile the shader */
-    /*
-    if (!ogl_shader_compile(shader) )
-    {
-        LOG_ERROR("Could not compile saturation fragment shader.");
-        ASSERT_DEBUG_SYNC(false, "");
-
-        goto end;
-    }
-    */
 
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_saturate;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_saturate object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_saturate object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Laplacian object instance.");

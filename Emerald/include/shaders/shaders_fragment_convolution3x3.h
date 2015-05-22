@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * Generic 3x3 convolution fragment shader. The user must provide the following output variables in a 
  * vertex shader assigned to the same program as the fragment shader:
@@ -17,7 +17,8 @@
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_convolution3x3, shaders_fragment_convolution3x3)
+REFCOUNT_INSERT_DECLARATIONS(shaders_fragment_convolution3x3,
+                             shaders_fragment_convolution3x3)
 
 
 /** Creates and compiles a 3x3 convolution fragment shader, using user's mask.

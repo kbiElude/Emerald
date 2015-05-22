@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  * 
  * Yxy=>RGB color space conversion implementation. Uses "tex" sampler2D uniform, passes unmodified alpha channel.
  *

@@ -22,7 +22,9 @@ typedef struct
 } _shaders_fragment_laplacian;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_laplacian, shaders_fragment_laplacian, _shaders_fragment_laplacian);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_laplacian,
+                               shaders_fragment_laplacian,
+                              _shaders_fragment_laplacian);
 
 
 /* Internal variables */
@@ -49,15 +51,20 @@ PRIVATE void _shaders_fragment_laplacian_release(__in __notnull __deallocate(mem
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(__in __notnull ogl_context               context,
+                                                                                __in __notnull system_hashed_ansi_string name)
 {
     _shaders_fragment_laplacian* result_object = NULL;
     shaders_fragment_laplacian   result_shader = NULL;
 
     /* Create the shader */
-    shaders_fragment_convolution3x3 shader = shaders_fragment_convolution3x3_create(context, laplacian, name);
+    shaders_fragment_convolution3x3 shader = shaders_fragment_convolution3x3_create(context,
+                                                                                    laplacian,
+                                                                                    name);
 
-    ASSERT_DEBUG_SYNC(shader != NULL, "shaders_fragment_convolution3x3_create() failed");
+    ASSERT_DEBUG_SYNC(shader != NULL,
+                      "shaders_fragment_convolution3x3_create() failed");
+
     if (shader == NULL)
     {
         LOG_ERROR("Could not create shader object.");
@@ -68,7 +75,9 @@ PUBLIC EMERALD_API shaders_fragment_laplacian shaders_fragment_laplacian_create(
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_laplacian;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_laplacian object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_laplacian object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Laplacian object instance.");

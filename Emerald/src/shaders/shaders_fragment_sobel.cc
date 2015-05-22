@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -23,7 +23,9 @@ typedef struct
 } _shaders_fragment_sobel;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_sobel, shaders_fragment_sobel, _shaders_fragment_sobel);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_sobel,
+                               shaders_fragment_sobel,
+                              _shaders_fragment_sobel);
 
 
 /* Internal variables */
@@ -62,18 +64,22 @@ PRIVATE void _shaders_fragment_sobel_release(__in __notnull __deallocate(mem) vo
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __notnull ogl_context context, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __notnull ogl_context               context,
+                                                                        __in __notnull system_hashed_ansi_string name)
 {
     _shaders_fragment_sobel* result_object = NULL;
     shaders_fragment_sobel   result_shader = NULL;
 
     /* Create the shaders */
-    shaders_fragment_convolution3x3 dx_shader = shaders_fragment_convolution3x3_create(context, 
-                                                                                       sobel_dx, 
-                                                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name), " DX")
+    shaders_fragment_convolution3x3 dx_shader = shaders_fragment_convolution3x3_create(context,
+                                                                                       sobel_dx,
+                                                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                                               " DX")
                                                                                       );
 
-    ASSERT_DEBUG_SYNC(dx_shader != NULL, "shaders_fragment_convolution3x3_create() failed");
+    ASSERT_DEBUG_SYNC(dx_shader != NULL,
+                      "shaders_fragment_convolution3x3_create() failed");
+
     if (dx_shader == NULL)
     {
         LOG_ERROR("Could not create DX sobel object.");
@@ -83,10 +89,13 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __n
 
     shaders_fragment_convolution3x3 dy_shader = shaders_fragment_convolution3x3_create(context, 
                                                                                        sobel_dy,
-                                                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name), " DY")
+                                                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                                                               " DY")
                                                                                       );
 
-    ASSERT_DEBUG_SYNC(dy_shader != NULL, "shaders_fragment_convolution3x3_create() failed");
+    ASSERT_DEBUG_SYNC(dy_shader != NULL,
+                      "shaders_fragment_convolution3x3_create() failed");
+
     if (dy_shader == NULL)
     {
         LOG_ERROR("Could not create DY sobel object.");
@@ -97,7 +106,9 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __n
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_sobel;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_sobel object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_sobel object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating Sobel object instance.");

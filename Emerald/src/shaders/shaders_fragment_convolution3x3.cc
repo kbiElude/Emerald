@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -23,7 +23,9 @@ typedef struct
 } _shaders_fragment_convolution3x3;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_convolution3x3, shaders_fragment_convolution3x3, _shaders_fragment_convolution3x3);
+REFCOUNT_INSERT_IMPLEMENTATION(shaders_fragment_convolution3x3,
+                               shaders_fragment_convolution3x3,
+                              _shaders_fragment_convolution3x3);
 
 
 /* Internal variables */
@@ -61,7 +63,9 @@ PRIVATE void _shaders_fragment_convolution3x3_release(__in __notnull __deallocat
 
 
 /** Please see header for specification */
-PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3x3_create(__in __notnull ogl_context context, __in __notnull __ecount(9) const float* input_mask, __in __notnull system_hashed_ansi_string name)
+PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3x3_create(__in __notnull             ogl_context               context,
+                                                                                          __in __notnull __ecount(9) const float*              input_mask,
+                                                                                          __in __notnull             system_hashed_ansi_string name)
 {
     _shaders_fragment_convolution3x3* result_object = NULL;
     shaders_fragment_convolution3x3   result_shader = NULL;
@@ -71,7 +75,9 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
 
     body_stream << convolution3x3_fragment_shader_body_prefix;
 
-    for (unsigned int n = 0; n < 3 * 3; ++n)
+    for (unsigned int n = 0;
+                      n < 3 * 3;
+                    ++n)
     {
         int dx = ((n % 3) - 1);
         int dy = ((n / 3) - 1);
@@ -87,9 +93,13 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
     body_stream << convolution3x3_fragment_shader_body_suffix;
 
     /* Create the shader */
-    ogl_shader convolution_shader = ogl_shader_create(context, SHADER_TYPE_FRAGMENT, name);
+    ogl_shader convolution_shader = ogl_shader_create(context,
+                                                      SHADER_TYPE_FRAGMENT,
+                                                      name);
 
-    ASSERT_DEBUG_SYNC(convolution_shader != NULL, "ogl_shader_create() failed");
+    ASSERT_DEBUG_SYNC(convolution_shader != NULL,
+                      "ogl_shader_create() failed");
+
     if (convolution_shader == NULL)
     {
         LOG_ERROR("Could not create 3x3 convolution fragment shader.");
@@ -99,9 +109,12 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
 
     /* Set the shader's body */
     system_hashed_ansi_string shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
-    bool                      result      = ogl_shader_set_body(convolution_shader, shader_body);
+    bool                      result      = ogl_shader_set_body             (convolution_shader,
+                                                                             shader_body);
 
-    ASSERT_DEBUG_SYNC(result, "ogl_shader_set_body() failed");
+    ASSERT_DEBUG_SYNC(result,
+                      "ogl_shader_set_body() failed");
+
     if (!result)
     {
         LOG_ERROR("Could not set 3x3 convolution fragment shader body.");
@@ -112,7 +125,9 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_fragment_convolution3x3;
 
-    ASSERT_DEBUG_SYNC(result_object != NULL, "Out of memory while instantiating _shaders_fragment_convolution3x3 object.");
+    ASSERT_DEBUG_SYNC(result_object != NULL,
+                      "Out of memory while instantiating _shaders_fragment_convolution3x3 object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating convolution3x3 object instance.");
@@ -120,7 +135,10 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
         goto end;
     }
 
-    memcpy(result_object->mask, input_mask, sizeof(float) * 9);
+    memcpy(result_object->mask,
+           input_mask,
+           sizeof(float) * 9);
+
     result_object->body            = shader_body;
     result_object->fragment_shader = convolution_shader;
 

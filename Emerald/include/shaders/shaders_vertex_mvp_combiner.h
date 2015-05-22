@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  * TODO
  *
@@ -11,7 +11,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_mvp_combiner, shaders_vertex_mvp_combiner)
+REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_mvp_combiner,
+                             shaders_vertex_mvp_combiner)
 
 
 /** Creates a new mvp combiner vertex shader object instance.

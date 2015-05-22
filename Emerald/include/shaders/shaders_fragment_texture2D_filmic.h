@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  * 
  * Filmic tone mapping operator. Only exposes "exposure" float uniform.
  *

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  * The implementation is reference counter-based.
  */
@@ -9,7 +9,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_uber, shaders_vertex_uber)
+REFCOUNT_INSERT_DECLARATIONS(shaders_vertex_uber,
+                             shaders_vertex_uber)
 
 enum shaders_vertex_uber_light
 {
