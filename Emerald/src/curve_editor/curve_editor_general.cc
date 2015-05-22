@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -51,7 +51,8 @@ PRIVATE void _curve_editor_on_main_window_release()
 {
     system_critical_section_enter(global_cs);
     {
-        ASSERT_DEBUG_SYNC(main_window != NULL, "Release notification received for an unrecognized object.");
+        ASSERT_DEBUG_SYNC(main_window != NULL,
+                          "Release notification received for an unrecognized object.");
         
         main_window = NULL;
     }
@@ -117,9 +118,12 @@ PUBLIC EMERALD_API bool curve_editor_show(ogl_context context)
     {
         if (main_window == NULL)
         {
-            main_window = curve_editor_main_window_create(_curve_editor_on_main_window_release, context);
+            main_window = curve_editor_main_window_create(_curve_editor_on_main_window_release,
+                                                          context);
 
-            ASSERT_DEBUG_SYNC(main_window != NULL, "Could not create curve editor's main window");
+            ASSERT_DEBUG_SYNC(main_window != NULL,
+                              "Could not create curve editor's main window");
+
             result = (main_window != NULL);
         }
     }

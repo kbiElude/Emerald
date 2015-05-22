@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -210,7 +210,9 @@ PRIVATE void _curve_editor_dialog_handle_edit_request(_curve_editor_main_window*
     /* Retrieve selected curve container */
     curve_container selected_curve = _curve_editor_dialog_get_selected_curve(descriptor_ptr);
 
-    ASSERT_DEBUG_SYNC(selected_curve != NULL, "Could not retrieve selected curve's container.");
+    ASSERT_DEBUG_SYNC(selected_curve != NULL,
+                      "Could not retrieve selected curve's container.");
+
     if (selected_curve != NULL)
     {
         /* Verify curve editor has not already been spawned for the dimension */
@@ -279,7 +281,9 @@ PRIVATE void _curve_editor_dialog_on_curve_window_release(void*           owner,
     bool     has_found = false;
     uint32_t n_windows = system_hash64map_get_amount_of_elements(owner_ptr->curve_node_handle_to_curve_window_map_array_descriptor);
 
-    for (uint32_t n_window = 0; n_window < n_windows; ++n_window)
+    for (uint32_t n_window = 0;
+                  n_window < n_windows;
+                ++n_window)
     {
         _window_map_array_descriptor* descriptor      = NULL;
         system_hash64                 descriptor_hash = NULL;
@@ -423,7 +427,9 @@ PRIVATE void _curve_editor_dialog_update_curve_tree(_curve_editor_main_window* d
     uint32_t                n_items    = object_manager_directory_get_amount_of_children_for_directory(parent_directory) - n_subdirectories;
     system_resizable_vector item_names = system_resizable_vector_create(n_items, sizeof(system_hashed_ansi_string) );
 
-    ASSERT_DEBUG_SYNC(item_names != NULL, "Could not create item names' resizable vector");
+    ASSERT_DEBUG_SYNC(item_names != NULL,
+                      "Could not create item names' resizable vector");
+
     if (item_names != NULL)
     {
         for (uint32_t n_item = 0;
@@ -527,12 +533,46 @@ PRIVATE void _curve_editor_dialog_update_ui_curve_details(_curve_editor_main_win
     /* Set format */
     switch (data_variant_type)
     {
-        case SYSTEM_VARIANT_ANSI_STRING: ::SetWindowTextA(descriptor_ptr->format_static_window_handle, "Ansi string"); break;
-        case SYSTEM_VARIANT_BOOL:        ::SetWindowTextA(descriptor_ptr->format_static_window_handle, "Boolean");     break;
-        case SYSTEM_VARIANT_INTEGER:     ::SetWindowTextA(descriptor_ptr->format_static_window_handle, "Integer");     break;
-        case SYSTEM_VARIANT_FLOAT:       ::SetWindowTextA(descriptor_ptr->format_static_window_handle, "Float");       break;
-        default:                         ::SetWindowTextA(descriptor_ptr->format_static_window_handle, "Unknown (!)"); break;
-    }
+        case SYSTEM_VARIANT_ANSI_STRING:
+        {
+            ::SetWindowTextA(descriptor_ptr->format_static_window_handle,
+                             "Ansi string");
+
+            break;
+            }
+
+        case SYSTEM_VARIANT_BOOL:
+        {
+            ::SetWindowTextA(descriptor_ptr->format_static_window_handle,
+                             "Boolean");
+
+            break;
+        }
+
+        case SYSTEM_VARIANT_INTEGER:
+        {
+            ::SetWindowTextA(descriptor_ptr->format_static_window_handle,
+                             "Integer");
+
+            break;
+        }
+
+        case SYSTEM_VARIANT_FLOAT:
+        {
+            ::SetWindowTextA(descriptor_ptr->format_static_window_handle,
+                             "Float");
+
+            break;
+        }
+
+        default:
+        {
+            ::SetWindowTextA(descriptor_ptr->format_static_window_handle,
+                             "Unknown (!)");
+
+            break;
+        }
+    } /* switch (data_variant_type) */
 
     /* Set type */
     ::SetWindowTextA(descriptor_ptr->type_static_window_handle,
@@ -563,8 +603,10 @@ PRIVATE void _curve_editor_dialog_update_ui_curve_details(_curve_editor_main_win
     system_variant_release(default_variant);
 
     /* Configure default value editboxes' visibility */
-    ::EnableWindow(descriptor_ptr->curve_editbox_window_handle,     TRUE);
-    ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle, TRUE);
+    ::EnableWindow(descriptor_ptr->curve_editbox_window_handle,
+                   TRUE);
+    ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle,
+                   TRUE);
 }
 
 /** TODO */
@@ -589,10 +631,14 @@ PRIVATE void _curve_editor_dialog_update_ui(_curve_editor_main_window* descripto
     if (has_selected_curve)
     {
         /* Enable all components */
-        ::EnableWindow(descriptor_ptr->format_static_window_handle, TRUE);
-        ::EnableWindow(descriptor_ptr->name_static_window_handle,   TRUE);
-        ::EnableWindow(descriptor_ptr->type_static_window_handle,   TRUE);
-        ::EnableWindow(descriptor_ptr->curve_editbox_window_handle, TRUE);
+        ::EnableWindow(descriptor_ptr->format_static_window_handle,
+                       TRUE);
+        ::EnableWindow(descriptor_ptr->name_static_window_handle,
+                       TRUE);
+        ::EnableWindow(descriptor_ptr->type_static_window_handle,
+                       TRUE);
+        ::EnableWindow(descriptor_ptr->curve_editbox_window_handle,
+                       TRUE);
 
         /* Retrieve curve object in question */
         object_manager_item selected_item = object_manager_directory_find_item_recursive(object_manager_get_root_directory(),
@@ -613,27 +659,37 @@ PRIVATE void _curve_editor_dialog_update_ui(_curve_editor_main_window* descripto
         else
         {
             /* Could not retrieve curve container - disable edit buttons */
-            ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle, FALSE);
+            ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle,
+                           FALSE);
         }
     }
     else
     {
         /* Disable all components */
-        ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle, FALSE);
-        ::EnableWindow(descriptor_ptr->format_static_window_handle,     FALSE);
-        ::EnableWindow(descriptor_ptr->name_static_window_handle,       FALSE);
-        ::EnableWindow(descriptor_ptr->type_static_window_handle,       FALSE);
-        ::EnableWindow(descriptor_ptr->curve_editbox_window_handle,     FALSE);
+        ::EnableWindow(descriptor_ptr->edit_curve_button_window_handle,
+                       FALSE);
+        ::EnableWindow(descriptor_ptr->format_static_window_handle,
+                       FALSE);
+        ::EnableWindow(descriptor_ptr->name_static_window_handle,
+                       FALSE);
+        ::EnableWindow(descriptor_ptr->type_static_window_handle,
+                       FALSE);
+        ::EnableWindow(descriptor_ptr->curve_editbox_window_handle,
+                       FALSE);
 
         /* Reset values shown */
-        ::SetWindowTextA(descriptor_ptr->format_static_window_handle, "");
-        ::SetWindowTextA(descriptor_ptr->name_static_window_handle,   "");
-        ::SetWindowTextA(descriptor_ptr->type_static_window_handle,   "");
+        ::SetWindowTextA(descriptor_ptr->format_static_window_handle,
+                         "");
+        ::SetWindowTextA(descriptor_ptr->name_static_window_handle,
+                         "");
+        ::SetWindowTextA(descriptor_ptr->type_static_window_handle,
+                         "");
 
         /* Reset edit-box values */
         descriptor_ptr->should_handle_en_change_notifications = false;
         {
-            ::SetWindowTextA(descriptor_ptr->curve_editbox_window_handle, "");
+            ::SetWindowTextA(descriptor_ptr->curve_editbox_window_handle,
+                              "");
         }
         descriptor_ptr->should_handle_en_change_notifications = true;
     }
@@ -657,7 +713,8 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
     {
         case WM_COMMAND:
         {
-            _curve_editor_main_window* descriptor = (_curve_editor_main_window*) ::GetWindowLongPtr(dialog_handle, GWLP_USERDATA);
+            _curve_editor_main_window* descriptor = (_curve_editor_main_window*) ::GetWindowLongPtr(dialog_handle,
+                                                                                                    GWLP_USERDATA);
 
             switch (HIWORD(wparam) )
             {
@@ -667,15 +724,20 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
                     {
                         switch (LOWORD(wparam) )
                         {
-                            case IDC_CURVE_EDITOR_MAIN_X_CURVE: _curve_editor_dialog_handle_default_value_change(descriptor); break;
+                            case IDC_CURVE_EDITOR_MAIN_X_CURVE:
+                            {
+                                _curve_editor_dialog_handle_default_value_change(descriptor);
+
+                                break;
+                            }
 
                             default:
                             {
                                 ASSERT_DEBUG_SYNC(false,
                                                   "Unrecognized EN_CHANGE owner");
                             }
-                        }
-                    }
+                        } /* switch (LOWORD(wparam) ) */
+                    } /* if (descriptor->should_handle_en_change_notifications) */
 
                     break;
                 }
@@ -684,7 +746,12 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
                 {
                     switch ( LOWORD(wparam) )
                     {
-                        case IDC_CURVE_EDITOR_MAIN_EDIT_CURVE: _curve_editor_dialog_handle_edit_request(descriptor); break;
+                        case IDC_CURVE_EDITOR_MAIN_EDIT_CURVE:
+                        {
+                            _curve_editor_dialog_handle_edit_request(descriptor);
+
+                            break;
+                        }
                     } /* switch(lParam) */
 
                     break;
@@ -692,7 +759,7 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
             } /* switch (wParam) */
 
             break;
-        }
+        } /* case WM_COMMAND: */
 
         case WM_CUSTOMIZED_SHUT_DOWN:
         {
@@ -712,7 +779,8 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
                                                                                                                    descriptor);
 
             /* Disable close button first */
-            ::EnableMenuItem(::GetSystemMenu(descriptor->window_handle, FALSE),
+            ::EnableMenuItem(::GetSystemMenu(descriptor->window_handle,
+                                             FALSE), /* bRevert */
                              SC_CLOSE,
                              MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
 
@@ -755,7 +823,8 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
 
         case WM_NOTIFY:
         {
-            _curve_editor_main_window* descriptor          = (_curve_editor_main_window*) ::GetWindowLongPtr(dialog_handle, GWLP_USERDATA);
+            _curve_editor_main_window* descriptor          = (_curve_editor_main_window*) ::GetWindowLongPtr(dialog_handle,
+                                                                                                             GWLP_USERDATA);
             NMHDR*                     notification_header = (NMHDR*) lparam;
             
             if (notification_header->code == TVN_SELCHANGED)
@@ -772,7 +841,7 @@ PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_
 
             break;
         }
-    }
+    } /* switch (message_id) */
 
     return 0;
 }
@@ -785,7 +854,8 @@ PRIVATE void _curve_editor_init_descriptor(_curve_editor_main_window*           
     descriptor->context                                                = context;
     descriptor->curve_node_handle_to_curve_window_map_array_descriptor = system_hash64map_create(sizeof(_window_map_array_descriptor*) );
     descriptor->curves_tree_window_handle                              = NULL;
-    descriptor->dialog_created_event                                   = system_event_create(true, false);
+    descriptor->dialog_created_event                                   = system_event_create(true,   /* manual_reset */
+                                                                                             false); /* start_state  */
     descriptor->edit_curve_button_window_handle                        = NULL;
     descriptor->format_static_window_handle                            = NULL;
     descriptor->name_static_window_handle                              = NULL;
@@ -808,12 +878,18 @@ PRIVATE void _curve_editor_main_window_initialize_dialog(_curve_editor_main_wind
 
     descriptor->window_handle = dialog_handle;
 
-    descriptor->curves_tree_window_handle       = ::GetDlgItem(dialog_handle, IDC_CURVE_EDITOR_MAIN_CURVES_TREE);
-    descriptor->edit_curve_button_window_handle = ::GetDlgItem(dialog_handle, IDC_CURVE_EDITOR_MAIN_EDIT_CURVE);
-    descriptor->format_static_window_handle     = ::GetDlgItem(dialog_handle, IDC_CURVE_EDITOR_MAIN_FORMAT);
-    descriptor->name_static_window_handle       = ::GetDlgItem(dialog_handle, IDC_CURVE_EDITOR_MAIN_NAME);
-    descriptor->type_static_window_handle       = ::GetDlgItem(dialog_handle, IDC_CURVE_EDITOR_MAIN_TYPE);
-    descriptor->curve_editbox_window_handle     = ::GetDlgItem(dialog_handle, IDC_CURVE_EDITOR_MAIN_X_CURVE);
+    descriptor->curves_tree_window_handle       = ::GetDlgItem(dialog_handle,
+                                                               IDC_CURVE_EDITOR_MAIN_CURVES_TREE);
+    descriptor->edit_curve_button_window_handle = ::GetDlgItem(dialog_handle,
+                                                               IDC_CURVE_EDITOR_MAIN_EDIT_CURVE);
+    descriptor->format_static_window_handle     = ::GetDlgItem(dialog_handle,
+                                                               IDC_CURVE_EDITOR_MAIN_FORMAT);
+    descriptor->name_static_window_handle       = ::GetDlgItem(dialog_handle,
+                                                               IDC_CURVE_EDITOR_MAIN_NAME);
+    descriptor->type_static_window_handle       = ::GetDlgItem(dialog_handle,
+                                                               IDC_CURVE_EDITOR_MAIN_TYPE);
+    descriptor->curve_editbox_window_handle     = ::GetDlgItem(dialog_handle,
+                                                               IDC_CURVE_EDITOR_MAIN_X_CURVE);
 
     if (descriptor->curves_tree_window_handle       == NULL ||
         descriptor->edit_curve_button_window_handle == NULL ||
@@ -912,7 +988,7 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
             system_hash64                 descriptor_hash = 0;
 
             system_hash64map_get_element_at(main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
-                                            0,
+                                            0, /* index */
                                            &descriptor,
                                            &descriptor_hash);
 
@@ -933,8 +1009,7 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
                                         descriptor_hash);
             }
         }
-
-    }
+    } /* if (main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor != NULL) */
 
     /* Release the context - we are cool if it was to be released now */
     ogl_context_release(main_window_ptr->context);

@@ -410,7 +410,8 @@ PRIVATE void _curve_editor_curve_window_remove_segment_handler(void* arg)
                                                                renderer_ptr);
 
     /* Issue a redraw */
-    ogl_rendering_handler_play(renderer_ptr->rendering_handler, 0);
+    ogl_rendering_handler_play(renderer_ptr->rendering_handler,
+                               0);
 }
 
 /** TODO */
