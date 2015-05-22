@@ -77,10 +77,7 @@ static const system_hashed_ansi_string _object_type_shaders_fragment_uber       
 static const system_hashed_ansi_string _object_type_shaders_fragment_Yxy_to_rgb                              = system_hashed_ansi_string_create("Yxy to RGB Shaders");
 static const system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_generic                       = system_hashed_ansi_string_create("Combined MVP Generic Vertex Shaders");
 static const system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_simplified_two_point          = system_hashed_ansi_string_create("Combined MVP Simplified 2-point Vertex Shaders");
-static const system_hashed_ansi_string _object_type_shaders_vertex_combinedmvp_ubo                           = system_hashed_ansi_string_create("Combiend MVP UBO Vertex Shaders");
 static const system_hashed_ansi_string _object_type_shaders_vertex_fullscreen                                = system_hashed_ansi_string_create("Full-screen Vertex Shaders");
-static const system_hashed_ansi_string _object_type_shaders_vertex_m_vp_generic                              = system_hashed_ansi_string_create("M+VP Generic Vertex Shaders");
-static const system_hashed_ansi_string _object_type_shaders_vertex_mvp_combiner                              = system_hashed_ansi_string_create("MVP Combiner Vertex Shaders");
 static const system_hashed_ansi_string _object_type_shaders_vertex_uber                                      = system_hashed_ansi_string_create("Uber Vertex Shaders");
 static const system_hashed_ansi_string _object_type_system_randomizer_hashed_ansi_string                     = system_hashed_ansi_string_create("System Randomizers");
 static const system_hashed_ansi_string _object_type_system_window_hashed_ansi_string                         = system_hashed_ansi_string_create("System Windows"); 
@@ -155,9 +152,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_SHADERS_VERTEX_FULLSCREEN:                       return _object_type_shaders_vertex_fullscreen;
         case OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_GENERIC:              return _object_type_shaders_vertex_combinedmvp_generic;
         case OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_SIMPLIFIED_TWO_POINT: return _object_type_shaders_vertex_combinedmvp_simplified_two_point;
-        case OBJECT_TYPE_SHADERS_VERTEX_COMBINEDMVP_UBO:                  return _object_type_shaders_vertex_combinedmvp_ubo;
-        case OBJECT_TYPE_SHADERS_VERTEX_M_VP_GENERIC:                     return _object_type_shaders_vertex_m_vp_generic;
-        case OBJECT_TYPE_SHADERS_VERTEX_MVP_COMBINER:                     return _object_type_shaders_vertex_mvp_combiner;
         case OBJECT_TYPE_SHADERS_VERTEX_UBER:                             return _object_type_shaders_vertex_uber;
         case OBJECT_TYPE_SYSTEM_RANDOMIZER:                               return _object_type_system_randomizer_hashed_ansi_string;
         case OBJECT_TYPE_SYSTEM_WINDOW:                                   return _object_type_system_window_hashed_ansi_string;

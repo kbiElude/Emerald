@@ -1735,11 +1735,7 @@ DECLARE_HANDLE(shaders_fragment_uber);
 DECLARE_HANDLE(shaders_fragment_Yxy_to_rgb);
 DECLARE_HANDLE(shaders_vertex_combinedmvp_generic);
 DECLARE_HANDLE(shaders_vertex_combinedmvp_simplified_twopoint);
-DECLARE_HANDLE(shaders_vertex_combinedmvp_ubo);
 DECLARE_HANDLE(shaders_vertex_fullscreen);
-DECLARE_HANDLE(shaders_vertex_m_vp_generic);
-DECLARE_HANDLE(shaders_vertex_model_mvp_combiner);
-DECLARE_HANDLE(shaders_vertex_mvp_combiner);
 DECLARE_HANDLE(shaders_vertex_uber);
 
 /** Rendering handler handle */
