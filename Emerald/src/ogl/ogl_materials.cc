@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -65,7 +65,8 @@ typedef struct _ogl_materials_mesh_material_setting
 
                 default:
                 {
-                    ASSERT_DEBUG_SYNC(false, "Unrecognized mesh material property attachment type");
+                    ASSERT_DEBUG_SYNC(false, 
+                                      "Unrecognized mesh material property attachment type");
                 }
             } /* switch (attachment) */
         } /* if (attachment_data != NULL) */
@@ -281,7 +282,7 @@ PRIVATE ogl_uber _ogl_materials_bake_uber(__in __notnull ogl_materials materials
                     };
                     const unsigned int n_mappings = sizeof(mappings) / sizeof(mappings[0]);
 
-                    unsigned int n_uber_fragment_property_value_pairs     = 0;
+                    unsigned int n_uber_fragment_property_value_pairs = 0;
                     unsigned int uber_fragment_property_value_pairs[(n_mappings + 1 /* view vector setting */) * 2];
 
                     /* Add ambient/diffuse/emission factors */

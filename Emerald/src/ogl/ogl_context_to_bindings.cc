@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -49,7 +49,9 @@ typedef struct _ogl_context_to_bindings_texture_unit
 
     _ogl_context_to_bindings_texture_unit()
     {
-        memset(dirty, 0, sizeof(dirty) );
+        memset(dirty,
+               0,
+               sizeof(dirty) );
     }
 } _ogl_context_to_bindings_texture_unit;
 
@@ -260,7 +262,9 @@ PUBLIC ogl_context_to_bindings ogl_context_to_bindings_create(__in __notnull ogl
 {
     _ogl_context_to_bindings* new_bindings = new (std::nothrow) _ogl_context_to_bindings;
 
-    ASSERT_ALWAYS_SYNC(new_bindings != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_bindings != NULL,
+                       "Out of memory");
+
     if (new_bindings != NULL)
     {
         new_bindings->context = context;
@@ -279,12 +283,14 @@ PUBLIC ogl_texture ogl_context_to_bindings_get_bound_texture(__in __notnull cons
 
     ASSERT_DEBUG_SYNC(texture_unit < to_bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit requested");
+
     if (texture_unit < to_bindings_ptr->gl_max_texture_image_units_value)
     {
         _ogl_context_to_binding_target internal_target = _ogl_context_to_bindings_get_ogl_context_to_binding_target_from_glenum(target);
 
         ASSERT_DEBUG_SYNC(internal_target < BINDING_TARGET_COUNT,
                           "Unrecognized texture target");
+
         if (internal_target < BINDING_TARGET_COUNT)
         {
             result = to_bindings_ptr->texture_units[texture_unit].bindings[internal_target].texture_local;
@@ -447,6 +453,7 @@ PUBLIC void ogl_context_to_bindings_set_binding(__in __notnull ogl_context_to_bi
 
     ASSERT_DEBUG_SYNC(texture_unit < bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit requested");
+
     if (texture_unit < bindings_ptr->gl_max_texture_image_units_value)
     {
         _ogl_context_to_binding_target    local_target = _ogl_context_to_bindings_get_ogl_context_to_binding_target_from_glenum(target);
@@ -504,11 +511,13 @@ PUBLIC void ogl_context_to_bindings_sync(__in __notnull ogl_context_to_bindings 
 
         if (bindings_ptr->is_arb_multi_bind_supported)
         {
-            _ogl_context_to_bindings_sync_multi_bind_process(bindings, sync_bits);
+            _ogl_context_to_bindings_sync_multi_bind_process(bindings,
+                                                             sync_bits);
         }
         else
         {
-            _ogl_context_to_bindings_sync_non_multi_bind_process(bindings, sync_bits);
+            _ogl_context_to_bindings_sync_non_multi_bind_process(bindings,
+                                                                 sync_bits);
         }
     } /* if (bindings != NULL) */
 }

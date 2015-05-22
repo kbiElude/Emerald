@@ -357,7 +357,9 @@ PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(__in __notn
         } /* if (system_resizable_vector_get_element_at(arguments, n_argument, &argument_ptr) ) */
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve function argument at index [%d]", n_argument);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve function argument at index [%d]",
+                              n_argument);
         }
     } /* for (all arguments) */
 
@@ -475,7 +477,9 @@ PRIVATE std::string _ogl_shader_constructor_get_shader_argument_qualifier_string
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized shader argument qualifier [%d]", qualifier);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized shader argument qualifier [%d]",
+                              qualifier);
         }
     } /* switch (qualifier) */
 
@@ -509,7 +513,8 @@ PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(__i
         }
         else
         {
-            LOG_ERROR("Could not retrieve structure member descriptor at index [%d]", n_member);
+            LOG_ERROR("Could not retrieve structure member descriptor at index [%d]",
+                      n_member);
         }
     } /* for (all members) */
 
@@ -879,7 +884,9 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(__in __notn
     /* Form the new descriptor */
     _ogl_shader_constructor_function_argument* new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function_argument;
 
-    ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL,
+                       "Out of memory");
+
     if (new_descriptor_ptr != NULL)
     {
         new_descriptor_ptr->qualifier                 = qualifier;
@@ -1034,7 +1041,9 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in  
     /* Form new variable descriptor */
     _ogl_shader_constructor_variable* variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
 
-    ASSERT_ALWAYS_SYNC(variable_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
+                       "Out of memory");
+
     if (variable_ptr == NULL)
     {
         goto end;
@@ -1290,7 +1299,8 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(__
 
     if (ub_ptr == NULL)
     {
-        ASSERT_ALWAYS_SYNC(false, "Out of memory");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Out of memory");
 
         goto end;
     }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -103,12 +103,14 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
     uint32_t duration_ms = 0;
     uint32_t n_samples   = 0;
 
-    system_time_get_msec_for_timeline_time(duration, &duration_ms);
+    system_time_get_msec_for_timeline_time(duration,
+                                          &duration_ms);
 
     n_samples = duration_ms * n_samples_per_second / 1000 /* ms in 1 s */;
 
     /* Allocate vertex data. This will hold the vertices making up the node-defined path */
-    ASSERT_DEBUG_SYNC(n_samples != 0, "n_samples is 0");
+    ASSERT_DEBUG_SYNC(n_samples != 0,
+                      "n_samples is 0");
 
     result_vertex_data = new float[3 /* x, y, z */ * n_samples];
 

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef OGL_CURVE_RENDERER_H
@@ -9,7 +9,8 @@
 #include "scene/scene_types.h"
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_curve_renderer, ogl_curve_renderer)
+REFCOUNT_INSERT_DECLARATIONS(ogl_curve_renderer,
+                             ogl_curve_renderer)
 
 
 /** TODO */

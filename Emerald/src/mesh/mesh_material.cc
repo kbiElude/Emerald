@@ -495,6 +495,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "mesh_material_create() failed.");
+
     if (result_material == NULL)
     {
         goto end;
@@ -820,6 +821,7 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_shader_bodies(__in __
 
     ASSERT_DEBUG_SYNC(result_material != NULL,
                       "mesh_material_create() failed.");
+
     if (result_material == NULL)
     {
         goto end;

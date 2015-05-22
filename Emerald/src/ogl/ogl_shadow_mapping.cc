@@ -268,7 +268,7 @@ PRIVATE void _ogl_shadow_mapping_add_constructor_variable(__in __notnull ogl_sha
                                                       shader_var_type,
                                                       0,     /* array_size */
                                                       ub_id,
-                                                      *out_var_name,
+                                                     *out_var_name,
                                                       NULL); /* out_variable_id */
 }
 

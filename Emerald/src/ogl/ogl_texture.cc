@@ -222,7 +222,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
                    base_image_row_alignment);
 
     /* Use immutable storage to avoid texture completeness checks during draw calls */
-    const unsigned int levels = 1 + log2_uint32( (base_image_width > base_image_height) ? base_image_width : base_image_height);
+    const unsigned int levels = 1 + log2_uint32( (base_image_width > base_image_height) ? base_image_width :
+                                                                                          base_image_height);
 
     texture_ptr->n_max_mipmaps = levels;
 
@@ -528,7 +529,8 @@ PRIVATE void _ogl_texture_init_renderer_callback(__in __notnull ogl_context cont
     }
 
     /* Generate a new texture id */
-    pGLGenTextures(1, &texture_ptr->gl_id);
+    pGLGenTextures(1,
+                  &texture_ptr->gl_id);
 }
 
 /** TODO */
@@ -803,9 +805,12 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_text
     /* Retrieve mipmap container for requested index */
     _ogl_texture_mipmap* mipmap_ptr = NULL;
 
-    if (system_resizable_vector_get_element_at(texture_ptr->mipmaps, (size_t) mipmap_level, &mipmap_ptr) )
+    if (system_resizable_vector_get_element_at(texture_ptr->mipmaps,
+                                               (size_t) mipmap_level,
+                                              &mipmap_ptr) )
     {
-        ASSERT_DEBUG_SYNC(mipmap_ptr != NULL, "Mipmap container is NULL");
+        ASSERT_DEBUG_SYNC(mipmap_ptr != NULL,
+                          "Mipmap container is NULL");
 
         switch (property_value)
         {

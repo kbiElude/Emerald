@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  */
 #ifndef OGL_CONTEXT_TEXTURE_COMPRESSION_H
 #define OGL_CONTEXT_TEXTURE_COMPRESSION_H

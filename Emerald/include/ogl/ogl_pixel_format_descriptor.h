@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_PIXEL_FORMAT_DESCRIPTOR_H
@@ -8,7 +8,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_pixel_format_descriptor, ogl_pixel_format_descriptor)
+REFCOUNT_INSERT_DECLARATIONS(ogl_pixel_format_descriptor,
+                             ogl_pixel_format_descriptor)
 
 /** TODO */
 PUBLIC EMERALD_API ogl_pixel_format_descriptor ogl_pixel_format_descriptor_create(__in __notnull system_hashed_ansi_string name,

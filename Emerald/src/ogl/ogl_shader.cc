@@ -49,10 +49,6 @@ PRIVATE void _ogl_shader_compile_callback(__in __notnull ogl_context context,
 
     shader_ptr->pGLCompileShader(shader_ptr->id);
 
-    /* Make sure everything went as expected */
-    ASSERT_DEBUG_SYNC(shader_ptr->pGLGetError() == GL_NO_ERROR,
-                      "Error occurred while compiling shader");
-
     /* Retrieve compile status and shader info log */
     GLint   compile_status_result  = 0;
     GLsizei shader_info_log_length = 0;
@@ -93,9 +89,6 @@ PRIVATE void _ogl_shader_compile_callback(__in __notnull ogl_context context,
             LOG_ERROR("Shader info log for shader [%d] follows: \n>>\n%s\n<<",
                       shader_ptr->id,
                       shader_ptr->shader_info_log);
-
-            ASSERT_DEBUG_SYNC(shader_ptr->pGLGetError() == GL_NO_ERROR,
-                              "Error occurred while retrieving compile status or shader info log.");
         }
     }
 }

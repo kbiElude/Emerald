@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -27,7 +27,9 @@ typedef struct
 } _ogl_pixel_format_descriptor;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(ogl_pixel_format_descriptor, ogl_pixel_format_descriptor, _ogl_pixel_format_descriptor);
+REFCOUNT_INSERT_IMPLEMENTATION(ogl_pixel_format_descriptor,
+                               ogl_pixel_format_descriptor,
+                              _ogl_pixel_format_descriptor);
 
 /** Please see header for specification */
 PRIVATE void _ogl_pixel_format_descriptor_release(__in __notnull __deallocate(mem) void* descriptor)
@@ -36,11 +38,18 @@ PRIVATE void _ogl_pixel_format_descriptor_release(__in __notnull __deallocate(me
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API ogl_pixel_format_descriptor ogl_pixel_format_descriptor_create(__in __notnull system_hashed_ansi_string name, __in unsigned char color_buffer_red_bits, __in unsigned char color_buffer_green_bits, __in unsigned char color_buffer_blue_bits, __in unsigned char color_buffer_alpha_bits, __in unsigned char depth_buffer_bits)
+PUBLIC EMERALD_API ogl_pixel_format_descriptor ogl_pixel_format_descriptor_create(__in __notnull system_hashed_ansi_string name,
+                                                                                  __in           unsigned char             color_buffer_red_bits,
+                                                                                  __in           unsigned char             color_buffer_green_bits,
+                                                                                  __in           unsigned char             color_buffer_blue_bits,
+                                                                                  __in           unsigned char             color_buffer_alpha_bits,
+                                                                                  __in           unsigned char             depth_buffer_bits)
 {
     _ogl_pixel_format_descriptor* descriptor = new (std::nothrow) _ogl_pixel_format_descriptor;
 
-    ASSERT_ALWAYS_SYNC(descriptor != NULL, "Out of memory while allocating pixel format descriptor.");
+    ASSERT_ALWAYS_SYNC(descriptor != NULL,
+                       "Out of memory while allocating pixel format descriptor.");
+
     if (descriptor != NULL)
     {
         descriptor->color_red_bits   = color_buffer_red_bits;
@@ -67,27 +76,66 @@ PUBLIC EMERALD_API ogl_pixel_format_descriptor ogl_pixel_format_descriptor_creat
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(descriptor,
                                                        _ogl_pixel_format_descriptor_release, 
                                                        OBJECT_TYPE_OGL_PIXEL_FORMAT_DESCRIPTOR, 
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Pixel Format Descriptors\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Pixel Format Descriptors\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (ogl_pixel_format_descriptor) descriptor;
 }
-                                      
+
 /** Please see header for specification */
-PUBLIC EMERALD_API bool ogl_pixel_format_descriptor_get(__in ogl_pixel_format_descriptor_field field, __in __notnull ogl_pixel_format_descriptor descriptor, __out __notnull void* out_result)
+PUBLIC EMERALD_API bool ogl_pixel_format_descriptor_get(__in            ogl_pixel_format_descriptor_field field,
+                                                        __in  __notnull ogl_pixel_format_descriptor       descriptor,
+                                                        __out __notnull void*                             out_result)
 {
     _ogl_pixel_format_descriptor* pfd_descriptor = (_ogl_pixel_format_descriptor*) descriptor;
 
     switch (field)
     {
-        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS:   *(unsigned char*)out_result = pfd_descriptor->color_red_bits;   return true;
-        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS: *(unsigned char*)out_result = pfd_descriptor->color_green_bits; return true;
-        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS:  *(unsigned char*)out_result = pfd_descriptor->color_blue_bits;  return true;
-        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS: *(unsigned char*)out_result = pfd_descriptor->color_alpha_bits; return true;
-        case OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS:              *(unsigned char*)out_result = pfd_descriptor->depth_bits;       return true;
+        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS:
+        {
+            *(unsigned char*)out_result = pfd_descriptor->color_red_bits;
 
-        default: ASSERT_DEBUG_SYNC(false, "Unrecognized field [%d] requested", field); return false;
-    }
+            return true;
+        }
+
+        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS:
+        {
+            *(unsigned char*)out_result = pfd_descriptor->color_green_bits;
+
+            return true;
+        }
+
+        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS:
+        {
+            *(unsigned char*)out_result = pfd_descriptor->color_blue_bits;
+
+            return true;
+        }
+
+        case OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS:
+        {
+            *(unsigned char*)out_result = pfd_descriptor->color_alpha_bits;
+
+            return true;
+        }
+
+        case OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS:
+        {
+            *(unsigned char*)out_result = pfd_descriptor->depth_bits;
+
+            return true;
+        }
+
+        default: 
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized field [%d] requested",
+                              field);
+
+            return false;
+        }
+    } /* switch (field) */
 }
 
 #ifdef _WIN32

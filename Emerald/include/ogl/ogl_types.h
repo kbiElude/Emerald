@@ -1793,15 +1793,4 @@ typedef void (*PFNOGLRENDERINGHANDLERRENDERINGCALLBACK)   (ogl_context          
 typedef void (*PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC)(ogl_context          context,
                                                            void*                user_arg);
 
-/*************** Type handlers ***********************/
-/** Releases all fields of an _ogl_context_gl_info structure without actually releasing
- *  the @param info ptr.
- *
- *  @param info Descriptor to deinitialize.
- */
-PUBLIC void deinit_ogl_context_gl_info(__in __notnull __deallocate(mem) ogl_context_gl_info* info);
-
-PUBLIC void init_ogl_context_gl_info(__in __notnull       ogl_context_gl_info*   info,
-                                     __in __notnull const ogl_context_gl_limits* limits);
-
 #endif /* OGL_TYPES_H */

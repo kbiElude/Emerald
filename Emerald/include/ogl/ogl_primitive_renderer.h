@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  * This object lets the caller submit multiple line strip data sets. Each submitted data set
  * is cached in RAM and VRAM. The data sets can be modified after having been submitted, but

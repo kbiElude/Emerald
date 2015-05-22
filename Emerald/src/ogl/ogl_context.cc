@@ -127,11 +127,12 @@ REFCOUNT_INSERT_IMPLEMENTATION(ogl_context,
                               _ogl_context);
 
 /* Forward declarations */
-PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers     (__inout __notnull _ogl_context* context_ptr);
-PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers         (__inout __notnull _ogl_context* context_ptr);
-PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers      (__inout __notnull _ogl_context* context_ptr);
-PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                 (__inout __notnull _ogl_context* context_ptr);
-PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(__inout __notnull _ogl_context* context_ptr);
+PRIVATE void _ogl_context_gl_info_deinit                                       (__in    __notnull __post_invalid ogl_context_gl_info* info_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_buffer_storage_function_pointers     (__inout __notnull                _ogl_context*        context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_multi_bind_function_pointers         (__inout __notnull                _ogl_context*        context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_function_pointers      (__inout __notnull                _ogl_context*        context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_ARB_sparse_buffer_limits                 (__inout __notnull                _ogl_context*        context_ptr);
+PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(__inout __notnull                _ogl_context*        context_ptr);
 
 /** TODO */
 PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __notnull void*                     user_arg,
@@ -345,7 +346,7 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
 
     ogl_context_release_managers( (ogl_context) ptr);
 
-    deinit_ogl_context_gl_info         (&context_ptr->info);
+    _ogl_context_gl_info_deinit        (&context_ptr->info);
     ogl_pixel_format_descriptor_release(context_ptr->pfd);
 
     if (::wglDeleteContext(context_ptr->wgl_rendering_context) == FALSE)
@@ -618,6 +619,43 @@ PRIVATE void _ogl_context_initialize_wgl_extensions(__inout __notnull _ogl_conte
         context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions,
                                                              "WGL_EXT_swap_control_tear") != NULL);
     } /* if (pWGLGetExtensionsString != NULL) */
+}
+
+/** Please see header for specification */
+PUBLIC void _ogl_context_gl_info_deinit(__in __post_invalid ogl_context_gl_info* info_ptr)
+{
+    ASSERT_DEBUG_SYNC(info_ptr != NULL,
+                      "Input argument is NULL");
+
+    if (info_ptr != NULL)
+    {
+        delete [] info_ptr->extensions;
+        info_ptr->extensions = NULL;
+
+        info_ptr->renderer                 = NULL;
+        info_ptr->shading_language_version = NULL;
+        info_ptr->vendor                   = NULL;
+        info_ptr->version                  = NULL;
+    }
+}
+
+/** Please see header for specification */
+PUBLIC void _ogl_context_gl_info_init(__in __notnull       ogl_context_gl_info*   info_ptr,
+                                      __in __notnull const ogl_context_gl_limits* limits_ptr)
+{
+    ASSERT_DEBUG_SYNC(info_ptr   != NULL &&
+                      limits_ptr != NULL,
+                      "Input arguments are NULL.");
+
+    if (info_ptr   != NULL &&
+        limits_ptr != NULL)
+    {
+        info_ptr->extensions = new (std::nothrow) const GLubyte*[limits_ptr->num_extensions];
+
+        ASSERT_ALWAYS_SYNC(info_ptr->extensions != NULL, 
+                           "Out of memory while allocating extension name array (%d entries)", 
+                           limits_ptr->num_extensions);
+    }
 }
 
 /** TODO */
@@ -1045,8 +1083,8 @@ PRIVATE void _ogl_context_retrieve_GL_info(__inout __notnull _ogl_context* conte
                                                          &context_ptr->limits.num_extensions);
     }
 
-    init_ogl_context_gl_info(&context_ptr->info,
-                             &context_ptr->limits);
+    _ogl_context_gl_info_init(&context_ptr->info,
+                              &context_ptr->limits);
 
     if (context_ptr->info.extensions != NULL)
     {
@@ -1291,12 +1329,7 @@ PRIVATE void _ogl_context_retrieve_GL_limits(__inout __notnull _ogl_context* con
         context_ptr->entry_points_private.pGLGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS,
                                                         &context_ptr->limits.num_program_binary_formats);
 
-        GLenum error_code = context_ptr->entry_points_gl.pGLGetError();
-
-        ASSERT_DEBUG_SYNC(error_code == GL_NO_ERROR,
-                          "Could not retrieve GL_NUM_PROGRAM_BINARY_FORMATS");
-
-        if (error_code == GL_NO_ERROR)
+        if (context_ptr->limits.num_program_binary_formats != 0)
         {
             context_ptr->limits.program_binary_formats = new (std::nothrow) GLint[context_ptr->limits.num_program_binary_formats];
 
@@ -1307,12 +1340,11 @@ PRIVATE void _ogl_context_retrieve_GL_limits(__inout __notnull _ogl_context* con
             {
                 context_ptr->entry_points_private.pGLGetIntegerv(GL_PROGRAM_BINARY_FORMATS,
                                                                  context_ptr->limits.program_binary_formats);
-
-                error_code = context_ptr->entry_points_gl.pGLGetError();
-
-                ASSERT_DEBUG_SYNC(error_code == GL_NO_ERROR,
-                                  "Could not retrieve GL_PROGRAM_BINARY_FORMATS");
             }
+        } /* if (context_ptr->limits.num_program_binary_formats != 0) */
+        else
+        {
+            context_ptr->limits.program_binary_formats = NULL;
         }
     }
 }
@@ -2187,7 +2219,7 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                 /* Okay, let's check the func ptr */
                 if (pWGLCreateContextAttribs == NULL)
                 {
-                    LOG_FATAL("OpenGL 4.2 is unavailable - could not obtain func ptr to wglCreateContextAttribsARB! Update your drivers.");
+                    LOG_FATAL("OpenGL 4.3 is unavailable - could not obtain func ptr to wglCreateContextAttribsARB! Update your drivers.");
                 }
                 else
                 {

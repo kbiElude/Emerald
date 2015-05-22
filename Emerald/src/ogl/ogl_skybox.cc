@@ -205,7 +205,8 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_p
     if (!ogl_program_attach_shader(skybox_ptr->program, fragment_shader) ||
         !ogl_program_attach_shader(skybox_ptr->program, vertex_shader))
     {
-        ASSERT_DEBUG_SYNC(false, "Could not attach shaders to the skybox program");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not attach shaders to the skybox program");
     }
 
     if (!ogl_program_link(skybox_ptr->program) )
@@ -275,8 +276,10 @@ PRIVATE void _ogl_skybox_init_ogl_skybox_spherical_projection_texture(__in __not
     ASSERT_DEBUG_SYNC(skybox_ptr->program != NULL,
                       "Could not create skybox program");
 
-    if (!ogl_program_attach_shader(skybox_ptr->program, fragment_shader) ||
-        !ogl_program_attach_shader(skybox_ptr->program, vertex_shader))
+    if (!ogl_program_attach_shader(skybox_ptr->program,
+                                   fragment_shader)     ||
+        !ogl_program_attach_shader(skybox_ptr->program,
+                                   vertex_shader))
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not attach shaders to the skybox program");
@@ -417,6 +420,7 @@ PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(__in __notnu
 
     ASSERT_DEBUG_SYNC(new_instance != NULL,
                       "Out of memory");
+
     if (new_instance != NULL)
     {
         _ogl_skybox_init_ogl_skybox(new_instance,
@@ -447,6 +451,7 @@ PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(__i
 
     ASSERT_DEBUG_SYNC(new_instance != NULL,
                       "Out of memory");
+
     if (new_instance != NULL)
     {
         _ogl_skybox_init_ogl_skybox(new_instance,
@@ -539,7 +544,4 @@ PUBLIC EMERALD_API void ogl_skybox_draw(__in __notnull ogl_skybox       skybox,
                                     4);
     }
     entry_points->pGLDepthMask(GL_TRUE);
-
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "Could not draw skybox");
 }

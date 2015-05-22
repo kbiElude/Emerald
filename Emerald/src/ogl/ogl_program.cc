@@ -261,12 +261,6 @@ PRIVATE void _ogl_program_init_blocks_for_context(__in           ogl_program_blo
                                           GL_ACTIVE_RESOURCES, /* pname */
                                           &n_active_blocks);
 
-#if 0
-    program_ptr->pGLGetProgramiv(program_ptr->id,
-                                 GL_ACTIVE_UNIFORM_BLOCKS,
-                                &n_active_uniform_blocks);
-#endif
-
     /* NOTE: As of driver version 10.18.14.4170, the glGetProgramInterfaceiv() call we're making below does not seem to 
      *       raise some sort of an internal driver flag. This causes the subsequent glGetProgramResourceiv() call
      *       to throw a mysterious bug, telling about the geometry shader not having been compiled. All good & well,
@@ -595,7 +589,9 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
                     new_attribute->size   = 0;
                     new_attribute->type   = PROGRAM_ATTRIBUTE_TYPE_UNDEFINED;
 
-                    memset(attribute_name, 0, new_attribute->length + 1);
+                    memset(attribute_name,
+                           0,
+                           new_attribute->length + 1);
 
                     program_ptr->pGLGetActiveAttrib(program_ptr->id,
                                                     n_active_attribute,
@@ -681,6 +677,7 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
 
         ASSERT_ALWAYS_SYNC(program_info_log != NULL,
                            "Out of memory while allocating buffer for program info log");
+
         if (program_info_log != NULL)
         {
             program_ptr->pGLGetProgramInfoLog(program_ptr->id,
@@ -705,7 +702,8 @@ PRIVATE void _ogl_program_link_callback(__in __notnull ogl_context context,
     system_time_get_msec_for_timeline_time(end_time - start_time,
                                           &execution_time_msec);
 
-    LOG_INFO("Linking time: %d ms", execution_time_msec);
+    LOG_INFO("Linking time: %d ms",
+             execution_time_msec);
 }
 
 /** TODO */
@@ -897,7 +895,8 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
             bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
                                                                &shader);
 
-            ASSERT_DEBUG_SYNC(result_get, "Could not retrieve shader instance.");
+            ASSERT_DEBUG_SYNC(result_get,
+                              "Could not retrieve shader instance.");
 
             ogl_shader_release(shader);
         }

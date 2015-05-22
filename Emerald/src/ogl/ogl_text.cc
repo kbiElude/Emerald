@@ -356,6 +356,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
 
         ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != NULL,
                            "Out of memory");
+
         if (text_ptr->data_buffer_contents == NULL)
         {
             return;
@@ -526,7 +527,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
             if (!ogl_program_link(_global.draw_text_program) )
             {
                 LOG_ERROR        ("Could not link text drawing program.");
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false, 
+                                  "");
             }
 
             /* Retrieve uniform locations */
@@ -541,7 +543,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                 &fragment_shader_color_descriptor) )
             {
                 LOG_ERROR        ("Could not retrieve color uniform descriptor.");
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
             }
             else
             if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
@@ -549,7 +552,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                 &fragment_shader_font_table_descriptor) )
             {
                 LOG_ERROR        ("Could not retrieve font table uniform descriptor.");
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
             }
             else
             if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
@@ -557,7 +561,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                 &vertex_shader_n_origin_character_descriptor))
             {
                 LOG_ERROR        ("Could not retrieve n origin character uniform descriptor.");
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
             }
             else
             if (!ogl_program_get_uniform_by_name(_global.draw_text_program,
@@ -565,7 +570,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                 &vertex_shader_scale_descriptor) )
             {
                 LOG_ERROR        ("Could not retrieve scale uniform descriptor.");
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
             }
             else
             if (!ogl_program_get_shader_storage_block_by_name(_global.draw_text_program,
@@ -573,7 +579,8 @@ PRIVATE void _ogl_text_construction_callback_from_renderer(__in __notnull ogl_co
                                                              &_global.draw_text_program_data_ssb))
             {
                 LOG_ERROR        ("Could not retrieve dataSSB shader storage block descriptor.");
-                ASSERT_DEBUG_SYNC(false, "");
+                ASSERT_DEBUG_SYNC(false,
+                                  "");
             }
             else
             {
@@ -1016,7 +1023,9 @@ PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(__in __notnull ogl_tex
 
     text_string_ptr = new (std::nothrow) _ogl_text_string;
 
-    ASSERT_DEBUG_SYNC(text_string_ptr != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(text_string_ptr != NULL,
+                      "Out of memory");
+
     if (text_string_ptr != NULL)
     {
         memcpy(text_string_ptr->color,
@@ -1064,6 +1073,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(context != NULL,
                       "Input context is null!");
+
     if (context == NULL)
     {
         LOG_ERROR("Input context is null - cannot create text instance.");
@@ -1076,6 +1086,7 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
 
     ASSERT_ALWAYS_SYNC(result != NULL,
                        "Could not allocate memory for text instance.");
+
     if (result == NULL)
     {
         LOG_FATAL("Could not allocate memory for text instance.");
@@ -1237,7 +1248,8 @@ end:
 PUBLIC EMERALD_API void ogl_text_delete_string(__in __notnull ogl_text           text,
                                                __in           ogl_text_string_id text_id)
 {
-    ASSERT_DEBUG_SYNC(false, "TODO");
+    ASSERT_DEBUG_SYNC(false,
+                      "TODO");
 }
 
 /** Please see header for specification */
@@ -1498,6 +1510,7 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
 
         ASSERT_ALWAYS_SYNC(text_string_ptr->string != NULL,
                            "Could not reallocate memory block used for raw text storage!");
+
         if (text_string_ptr->string == NULL)
         {
             LOG_ERROR("Could not reallocate memory block used for raw text storage");

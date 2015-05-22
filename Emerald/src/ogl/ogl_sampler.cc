@@ -31,7 +31,9 @@ typedef struct _ogl_sampler
 
     explicit _ogl_sampler(ogl_context in_context)
     {
-        memset(border_color, 0, sizeof(border_color) );
+        memset(border_color,
+               0,
+               sizeof(border_color) );
 
         context              = in_context;
         gl_id                = 0;
@@ -76,7 +78,8 @@ PRIVATE void _ogl_sampler_release(__in __notnull __post_invalid void* arg)
 
     if (sampler_ptr->gl_id != 0)
     {
-        entrypoints->pGLDeleteSamplers(1 /* n */, &sampler_ptr->gl_id);
+        entrypoints->pGLDeleteSamplers(1 /* n */,
+                                      &sampler_ptr->gl_id);
 
         sampler_ptr->gl_id = 0;
     }
@@ -106,7 +109,9 @@ PUBLIC ogl_sampler ogl_sampler_create(__in __notnull ogl_context               c
 
     _ogl_sampler_verify_context_type(context);
 
-    ASSERT_ALWAYS_SYNC(new_sampler != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_sampler != NULL,
+                       "Out of memory");
+
     if (new_sampler != NULL)
     {
         const ogl_context_gl_entrypoints* entry_points = NULL;
@@ -115,7 +120,9 @@ PUBLIC ogl_sampler ogl_sampler_create(__in __notnull ogl_context               c
                                 OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                                &entry_points);
 
-        memset(new_sampler, 0, sizeof(_ogl_sampler) );
+        memset(new_sampler,
+               0,
+               sizeof(_ogl_sampler) );
 
         new_sampler->context = context;
         new_sampler->name    = name;

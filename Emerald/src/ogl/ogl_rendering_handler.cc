@@ -167,7 +167,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             system_event_set(rendering_handler->playback_waiting_event);
             {
                 event_set = system_event_wait_multiple_infinite(wait_events,
-                                                                4,
+                                                                4, /* n_elements */
                                                                 false);
             }
             system_event_reset(rendering_handler->playback_waiting_event);

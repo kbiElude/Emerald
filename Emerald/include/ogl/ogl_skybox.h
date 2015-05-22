@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef OGL_SKYBOX_H
@@ -9,7 +9,8 @@
 #include "ogl/ogl_types.h"
 #include "sh/sh_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_skybox, ogl_skybox)
+REFCOUNT_INSERT_DECLARATIONS(ogl_skybox,
+                             ogl_skybox)
 
 typedef enum
 {

@@ -337,7 +337,9 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
 {
     _ogl_scene_renderer_normals_preview* new_instance = new (std::nothrow) _ogl_scene_renderer_normals_preview;
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+                       "Out of memory");
+
     if (new_instance != NULL)
     {
         /* Do not allocate any GL objects at this point. We will only create GL objects if we

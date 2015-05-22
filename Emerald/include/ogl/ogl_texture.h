@@ -9,7 +9,8 @@
 #include "gfx/gfx_types.h"
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_texture, ogl_texture)
+REFCOUNT_INSERT_DECLARATIONS(ogl_texture,
+                             ogl_texture)
 
 typedef enum _ogl_texture_mipmap_property
 {

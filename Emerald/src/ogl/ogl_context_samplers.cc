@@ -95,6 +95,7 @@ PRIVATE void _ogl_context_samplers_create_renderer_callback(__in __notnull ogl_c
 
      ASSERT_DEBUG_SYNC(user_arg_ptr->result != NULL,
                        "Could not create a new ogl_sampler instance");
+
      if (user_arg_ptr->result != NULL)
      {
          bool should_lock = true;

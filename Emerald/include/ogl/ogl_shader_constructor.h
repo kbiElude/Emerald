@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef OGL_SHADER_CONSTRUCTOR_H
@@ -9,7 +9,8 @@
 #include "ogl/ogl_types.h"
 #include "system/system_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_shader_constructor, ogl_shader_constructor)
+REFCOUNT_INSERT_DECLARATIONS(ogl_shader_constructor,
+                             ogl_shader_constructor)
 
 typedef enum
 {

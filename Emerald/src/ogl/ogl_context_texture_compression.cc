@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -47,7 +47,8 @@ typedef struct _ogl_context_texture_compression
         {
             _ogl_context_texture_compression_algorithm* entry = NULL;
 
-            while (system_resizable_vector_pop(algorithms, &entry) )
+            while (system_resizable_vector_pop(algorithms,
+                                              &entry) )
             {
                 delete entry;
 
@@ -443,7 +444,7 @@ PRIVATE void _ogl_context_texture_compression_init_rgtc_support(__in __notnull _
     else
     {
         ASSERT_ALWAYS_SYNC(false,
-                           "GL_ARB_texture_compression_rgtc not reported for an OpenGL 4.2 context");
+                           "GL_ARB_texture_compression_rgtc not reported for an OpenGL 4.3 context");
 
         for (uint32_t n_algorithm = 0;
                       n_algorithm < n_algorithms;
@@ -484,7 +485,9 @@ PUBLIC ogl_context_texture_compression ogl_context_texture_compression_create(__
 {
     _ogl_context_texture_compression* new_instance = new (std::nothrow) _ogl_context_texture_compression;
 
-    ASSERT_ALWAYS_SYNC(new_instance != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_instance != NULL,
+                       "Out of memory");
+
     if (new_instance != NULL)
     {
         new_instance->context = context;
@@ -582,6 +585,7 @@ PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_text
 
     entrypoints_private_ptr->pGLGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS,
                                            &n_compressed_texture_formats);
+
     ASSERT_ALWAYS_SYNC(n_compressed_texture_formats != 0,
                        "Zero compressed texture formats reported as supported");
 
@@ -597,12 +601,12 @@ PUBLIC void ogl_context_texture_compression_init(__in __notnull ogl_context_text
             entrypoints_private_ptr->pGLGetIntegerv(GL_COMPRESSED_TEXTURE_FORMATS,
                                                     (GLint*) compressed_texture_formats);
 
-            /* OpenGL 4.2 context implies support for GL_ARB_texture_compression_bptc */
+            /* OpenGL 4.3 context implies support for GL_ARB_texture_compression_bptc */
             _ogl_context_texture_compression_init_bptc_support(texture_compression_ptr,
                                                                compressed_texture_formats,
                                                                n_compressed_texture_formats);
 
-            /* OpenGL 4.2 context implies support for GL_ARB_texture_compression_rgtc */
+            /* OpenGL 4.3 context implies support for GL_ARB_texture_compression_rgtc */
             _ogl_context_texture_compression_init_rgtc_support(texture_compression_ptr,
                                                                compressed_texture_formats,
                                                                n_compressed_texture_formats);

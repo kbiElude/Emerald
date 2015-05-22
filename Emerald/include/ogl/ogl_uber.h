@@ -13,8 +13,8 @@
 #include "shaders/shaders_vertex_uber.h"
 #include "system/system_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_uber, ogl_uber)
-
+REFCOUNT_INSERT_DECLARATIONS(ogl_uber,
+                             ogl_uber)
 
 typedef enum
 {

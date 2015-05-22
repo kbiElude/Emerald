@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -138,7 +138,9 @@ PUBLIC ogl_context_sampler_bindings ogl_context_sampler_bindings_create(__in __n
 {
     _ogl_context_sampler_bindings* new_bindings = new (std::nothrow) _ogl_context_sampler_bindings;
 
-    ASSERT_ALWAYS_SYNC(new_bindings != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_bindings != NULL,
+                       "Out of memory");
+
     if (new_bindings != NULL)
     {
         new_bindings->context = context;
@@ -156,6 +158,7 @@ PUBLIC GLuint ogl_context_sampler_bindings_get_binding(__in __notnull const ogl_
 
     ASSERT_DEBUG_SYNC(texture_unit < bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit requested");
+
     if (texture_unit < bindings_ptr->gl_max_texture_image_units_value)
     {
         result = bindings_ptr->bindings_local[texture_unit].so_id;
@@ -249,6 +252,7 @@ PUBLIC void ogl_context_sampler_bindings_set_binding(__in __notnull ogl_context_
 
     ASSERT_DEBUG_SYNC(texture_unit < bindings_ptr->gl_max_texture_image_units_value,
                       "Invalid texture unit requested");
+
     if (texture_unit < bindings_ptr->gl_max_texture_image_units_value)
     {
         if (bindings_ptr->bindings_local[texture_unit].so_id != sampler)

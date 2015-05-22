@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef OGL_SAMPLER_H
@@ -8,7 +8,8 @@
 
 #include "ogl/ogl_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(ogl_sampler, ogl_sampler)
+REFCOUNT_INSERT_DECLARATIONS(ogl_sampler,
+                             ogl_sampler)
 
 
 typedef enum _ogl_sampler_property

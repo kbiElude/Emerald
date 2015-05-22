@@ -544,8 +544,8 @@ PUBLIC void ogl_context_textures_add_texture(__in __notnull ogl_context_textures
         system_hash64map_insert(textures_ptr->textures_by_filename,
                                 texture_src_filename_hash,
                                 texture,
-                                NULL,
-                                NULL);
+                                NULL,  /* on_remove_callback          */
+                                NULL); /* on_remove_callback_argument */
     }
 
 end:

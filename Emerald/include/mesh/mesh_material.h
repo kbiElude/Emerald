@@ -11,7 +11,8 @@
 #include "ogl/ogl_types.h"
 #include "scene/scene_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(mesh_material, mesh_material)
+REFCOUNT_INSERT_DECLARATIONS(mesh_material,
+                             mesh_material)
 
 typedef enum
 {

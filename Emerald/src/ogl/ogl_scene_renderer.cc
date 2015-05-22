@@ -986,6 +986,7 @@ PRIVATE void _ogl_scene_renderer_update_ogl_uber_light_properties(__in __notnull
                                     &current_light_view_matrix);
 
             current_light_plane_diff = current_light_far_plane - current_light_near_plane;
+
             ASSERT_DEBUG_SYNC(current_light_plane_diff >= 0.0f,
                               "Something's wrong with far/near plane distance settings for one of the lights");
 
@@ -1997,9 +1998,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                   n_light < n_scene_lights;
                                 ++n_light)
                 {
-                    scene_light      current_light              = scene_get_light_by_index(renderer_ptr->scene,
-                                                                                          n_light);
-                    scene_light_type current_light_type         = SCENE_LIGHT_TYPE_UNKNOWN;
+                    scene_light      current_light      = scene_get_light_by_index(renderer_ptr->scene,
+                                                                                  n_light);
+                    scene_light_type current_light_type = SCENE_LIGHT_TYPE_UNKNOWN;
 
                     scene_light_get_property(current_light,
                                              SCENE_LIGHT_PROPERTY_TYPE,
