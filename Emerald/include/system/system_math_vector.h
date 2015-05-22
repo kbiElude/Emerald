@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #ifndef SYSTEM_MATH_VECTOR
@@ -52,4 +52,4 @@ PUBLIC EMERALD_API void system_math_vector_normalize3(__in_ecount(3)  const floa
 PUBLIC EMERALD_API void system_math_vector_normalize4_use_vec3_length(__in_ecount(4)  const float* a,
                                                                       __out_ecount(4)       float* result);
 
-#endif /* SYSTEM_RANDOMIZER */
+#endif /* SYSTEM_MATH_VECTOR */

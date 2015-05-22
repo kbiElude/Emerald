@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_READ_WRITE_MUTEX
@@ -32,7 +32,8 @@ PUBLIC EMERALD_API bool system_read_write_mutex_is_write_locked(__in system_read
  *  @param system_read_write_mutex Mutex to perform the operation on.
  *  @param system_read_write_mutex_access_type Access type to lock the mutex for.
  */
-PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mutex, __in system_read_write_mutex_access_type);
+PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mutex,
+                                                     __in system_read_write_mutex_access_type);
 
 /** Unlocks a read/write mutex object from either read or write access.
  *
@@ -44,6 +45,7 @@ PUBLIC EMERALD_API void system_read_write_mutex_lock(__in system_read_write_mute
  *  @param system_read_write_mutex Mutex to perform the operation on.
  *  @param system_read_write_mutex_access_type Access type to unlock the mutex from.
  */
-PUBLIC EMERALD_API void system_read_write_mutex_unlock(__in system_read_write_mutex, __in system_read_write_mutex_access_type);
+PUBLIC EMERALD_API void system_read_write_mutex_unlock(__in system_read_write_mutex,
+                                                       __in system_read_write_mutex_access_type);
 
 #endif /* SYSTEM_READ_WRITE_MUTEX */

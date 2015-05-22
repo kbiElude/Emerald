@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_SEMAPHORE_H
@@ -26,19 +26,20 @@ EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_cap
 EMERALD_API void system_semaphore_release(__in __deallocate(mem) system_semaphore);
 
 /** Enters a semaphore. This function will block if semaphore is fully occupied and will return
- *  to caller only after sufficient amonut of semaphore slots become available.
+ *  to caller only after sufficient number of semaphore slots become available.
  *
  *  @param system_semaphore Semaphore object to use.
  */
 EMERALD_API void system_semaphore_enter(__in system_semaphore);
 
 /** Enters a semaphore @param count times. This function will block if semaphore is fully occupied and will return
- *  to caller only after sufficient amonut of semaphore slots become available.
+ *  to caller only after sufficient number of semaphore slots become available.
  *
  *  @param system_semaphore Semaphore object to use.
- *  @param count            Amount of enters to do on the semaphore object.
+ *  @param count            Number of enters to do on the semaphore object.
  */
-EMERALD_API void system_semaphore_enter_multiple(__in system_semaphore semaphore, __in uint32_t count);
+EMERALD_API void system_semaphore_enter_multiple(__in system_semaphore semaphore,
+                                                 __in uint32_t         count);
 
 /** Leaves a semaphore.
  *
@@ -49,8 +50,9 @@ EMERALD_API void system_semaphore_leave(__in system_semaphore);
 /** Leaves a semaphore @param count times.
  *
  *  @param system_semaphore Semaphore object to use.
- *  @param count            Amount of leaves to do on the semaphore object.
+ *  @param count            Number of leaves to do on the semaphore object.
  */
-EMERALD_API void system_semaphore_leave_multiple(__in system_semaphore semaphore, __in uint32_t count);
+EMERALD_API void system_semaphore_leave_multiple(__in system_semaphore semaphore,
+                                                 __in uint32_t         count);
 
 #endif /* SYSTEM_SEMAPHORE_H */

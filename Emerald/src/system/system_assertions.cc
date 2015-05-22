@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -26,7 +26,11 @@ void _show_assertion_failure(const char* message);
 
 
 /** Please see header for specfication */
-PUBLIC EMERALD_API void system_assertions_assert(bool is_blocking, system_assertion_type type, bool condition, const char* message, ...)
+PUBLIC EMERALD_API void system_assertions_assert(bool                  is_blocking,
+                                                 system_assertion_type type,
+                                                 bool                  condition,
+                                                 const char*           message,
+                                                 ...)
 {
     #ifdef _DEBUG
         static const bool is_debug = true;
@@ -49,14 +53,21 @@ PUBLIC EMERALD_API void system_assertions_assert(bool is_blocking, system_assert
         char    formatted_message[ASSERTION_FAILURE_MAX_LENGTH];
         va_list arguments;
 
-        memset(formatted_message, 0, ASSERTION_FAILURE_MAX_LENGTH);
+        memset(formatted_message,
+               0,
+               ASSERTION_FAILURE_MAX_LENGTH);
 
-        va_start  (arguments, message);
-        vsprintf_s(formatted_message, ASSERTION_FAILURE_MAX_LENGTH, message, arguments);
+        va_start  (arguments,
+                   message);
+        vsprintf_s(formatted_message,
+                   ASSERTION_FAILURE_MAX_LENGTH,
+                   message,
+                   arguments);
         va_end    (arguments);
 
         /* Insert a log entry */
-        system_log_write(LOGLEVEL_ERROR, formatted_message);
+        system_log_write(LOGLEVEL_ERROR,
+                         formatted_message);
 
         /* Alloc message container */
         size_t message_length    = strlen(formatted_message);
@@ -64,7 +75,9 @@ PUBLIC EMERALD_API void system_assertions_assert(bool is_blocking, system_assert
 
         if (message_container != NULL)
         {
-            memcpy(message_container, formatted_message, message_length);
+            memcpy(message_container,
+                   formatted_message,
+                   message_length);
             
             message_container[message_length] = 0x00;
 
@@ -80,7 +93,8 @@ PUBLIC EMERALD_API void system_assertions_assert(bool is_blocking, system_assert
                 system_critical_section_enter(internals->cs);
                 {
                     /* Push the message onto our internal messages queue */
-                    system_resizable_vector_push(internals->messages, &message_container);
+                    system_resizable_vector_push(internals->messages,
+                                                &message_container);
 
                     /* Obtain the message's index */
                     unsigned int message_index = system_resizable_vector_get_amount_of_elements(internals->messages);
@@ -103,7 +117,8 @@ PUBLIC void _system_assertions_init()
         if (internals != NULL)
         {
             internals->cs       = system_critical_section_create();
-            internals->messages = system_resizable_vector_create(ASSERTIONS_BASE_CAPACITY, sizeof(void*) );
+            internals->messages = system_resizable_vector_create(ASSERTIONS_BASE_CAPACITY,
+                                                                 sizeof(void*) );
         }
     }
 }
@@ -127,7 +142,10 @@ PRIVATE void _show_assertion_failure(const char* message)
     {
         __debugbreak();
 
-        ::MessageBoxA(HWND_DESKTOP, message, "Assertion failure", MB_OK | MB_ICONWARNING);
+        ::MessageBoxA(HWND_DESKTOP,
+                      message,
+                      "Assertion failure",
+                      MB_OK | MB_ICONWARNING);
     }
     #endif /* _DEBUG */
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -158,7 +158,8 @@ PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(_
     result->n_elements   = existing_vector_ptr->n_elements;
     result->swap_helper  = new (std::nothrow) char[existing_vector_ptr->element_size];
 
-    if (result->elements == NULL || result->swap_helper == NULL)
+    if (result->elements    == NULL ||
+        result->swap_helper == NULL)
     {
         system_resizable_vector_release( (system_resizable_vector) result);
         result = NULL;
@@ -186,14 +187,16 @@ PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vect
 
     if (vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(vector_ptr->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(vector_ptr->access_mutex,
+                                     ACCESS_WRITE);
     }
 
     vector_ptr->n_elements = 0;
 
     if (vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(vector_ptr->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(vector_ptr->access_mutex,
+                                       ACCESS_WRITE);
     }
 }
 
@@ -206,10 +209,14 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_re
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_WRITE);
     }
 
-    ASSERT_DEBUG_SYNC(descriptor->n_elements > index, "Requested element (%d) unavailable", index);
+    ASSERT_DEBUG_SYNC(descriptor->n_elements > index,
+                      "Requested element (%d) unavailable",
+                      index);
+
     if (descriptor->n_elements > index)
     {
         if (descriptor->n_elements > index + 1)
@@ -218,7 +225,9 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_re
             char* start_element_ptr   = (char*) removed_element_ptr  + descriptor->element_size;
             char* end_element_ptr     = (char*) descriptor->elements + descriptor->n_elements * descriptor->element_size;
 
-            MoveMemory(removed_element_ptr, start_element_ptr, end_element_ptr - start_element_ptr);
+            MoveMemory(removed_element_ptr,
+                       start_element_ptr,
+                       end_element_ptr - start_element_ptr);
         }
 
         descriptor->n_elements--;
@@ -227,7 +236,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_re
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_WRITE);
     }
 
     return result;
@@ -243,12 +253,17 @@ PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vec
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_READ);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_READ);
     }
 
-    for (size_t n_element = 0; n_element < n_elements; ++n_element)
+    for (size_t n_element = 0;
+                n_element < n_elements;
+              ++n_element)
     {
-        if (memcmp( (char*) descriptor->elements + n_element * descriptor->element_size, &item, descriptor->element_size) == 0)
+        if (memcmp( (char*) descriptor->elements + n_element * descriptor->element_size,
+                   &item,
+                   descriptor->element_size) == 0)
         {
             result = n_element;
 
@@ -258,7 +273,8 @@ PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vec
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_READ);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_READ);
     }
 
     return result;
@@ -272,14 +288,16 @@ PUBLIC EMERALD_API unsigned int system_resizable_vector_get_amount_of_elements(_
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_READ);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_READ);
     }
 
     result = descriptor->n_elements;
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_READ);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_READ);
     }
 
     return result;
@@ -419,12 +437,14 @@ PUBLIC EMERALD_API bool system_resizable_vector_is_equal(__in system_resizable_v
 
     if (descriptor_1->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor_1->access_mutex, ACCESS_READ);
+        system_read_write_mutex_lock(descriptor_1->access_mutex,
+                                     ACCESS_READ);
     }
 
     if (descriptor_2->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor_2->access_mutex, ACCESS_READ);
+        system_read_write_mutex_lock(descriptor_2->access_mutex,
+                                     ACCESS_READ);
     }
 
     if (descriptor_1->n_elements   == descriptor_2->n_elements   &&
@@ -443,12 +463,14 @@ PUBLIC EMERALD_API bool system_resizable_vector_is_equal(__in system_resizable_v
 
     if (descriptor_1->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor_1->access_mutex, ACCESS_READ);
+        system_read_write_mutex_unlock(descriptor_1->access_mutex,
+                                       ACCESS_READ);
     }
 
     if (descriptor_2->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor_2->access_mutex, ACCESS_READ);
+        system_read_write_mutex_unlock(descriptor_2->access_mutex,
+                                       ACCESS_READ);
     }
 
     return result;
@@ -460,7 +482,8 @@ PUBLIC EMERALD_API void system_resizable_vector_lock(__in __notnull system_resiz
 {
     _resizable_vector_descriptor* vector_ptr = (_resizable_vector_descriptor*) vector;
 
-    ASSERT_DEBUG_SYNC(vector_ptr->access_mutex != NULL, "Vector not initialized for thread-safe access");
+    ASSERT_DEBUG_SYNC(vector_ptr->access_mutex != NULL,
+                      "Vector not initialized for thread-safe access");
 
     system_read_write_mutex_lock(vector_ptr->access_mutex,
                                  access_type);
@@ -475,7 +498,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_pop(__in            system_resiz
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_WRITE);
     }
 
     if (descriptor->n_elements >= 1)
@@ -490,7 +514,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_pop(__in            system_resiz
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_WRITE);
     }
 
     return bool_result;
@@ -504,7 +529,8 @@ PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_v
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_WRITE);
     }
 
     if (descriptor->n_elements < descriptor->capacity)
@@ -517,7 +543,8 @@ PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_v
     }
     else
     {
-        _system_resizable_vector_resize(resizable_vector, (descriptor->capacity << 1));
+        _system_resizable_vector_resize(resizable_vector,
+                                        (descriptor->capacity << 1));
 
         // Store new element
         CopyMemory( (char*) descriptor->elements + (descriptor->n_elements) * descriptor->element_size,
@@ -529,7 +556,8 @@ PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_v
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_WRITE);
     }
 }
 
@@ -548,18 +576,24 @@ PUBLIC EMERALD_API void system_resizable_vector_set_element_at(__in             
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(descriptor->access_mutex,
+                                     ACCESS_WRITE);
     }
 
-    ASSERT_DEBUG_SYNC(descriptor->n_elements > index, "Element %d unavailable", index);
+    ASSERT_DEBUG_SYNC(descriptor->n_elements > index,
+                      "Element %d unavailable", index);
+
     if (descriptor->n_elements > index)
     {
-        CopyMemory( (char*) descriptor->elements + descriptor->element_size * index, &element, descriptor->element_size);
+        CopyMemory( (char*) descriptor->elements + descriptor->element_size * index,
+                   &element,
+                   descriptor->element_size);
     }
 
     if (descriptor->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(descriptor->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(descriptor->access_mutex,
+                                       ACCESS_WRITE);
     }
 }
 
@@ -584,8 +618,12 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
     bool  result    = false;
     void* element_x = NULL;
 
-    result = system_resizable_vector_get_element_at(resizable_vector, x, &element_x);
-    ASSERT_DEBUG_SYNC(result, "Could not retrieve reference element [%d] from the vector", x);
+    result = system_resizable_vector_get_element_at(resizable_vector,
+                                                    x,
+                                                   &element_x);
+
+    ASSERT_DEBUG_SYNC(result,
+                      "Could not retrieve reference element [%d] from the vector", x);
 
     do
     {
@@ -594,10 +632,16 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
 
         while (true)
         {
-            result = system_resizable_vector_get_element_at(resizable_vector, left, &element);
-            ASSERT_DEBUG_SYNC(result, "Could not retrieve %dth element from the vector", left);
+            result = system_resizable_vector_get_element_at(resizable_vector,
+                                                            left,
+                                                           &element);
 
-            if (!(comparator_func_ptr(element, element_x) < 0))
+            ASSERT_DEBUG_SYNC(result,
+                              "Could not retrieve %dth element from the vector",
+                              left);
+
+            if (!(comparator_func_ptr(element,
+                                      element_x) < 0))
             {
                 break;
             }
@@ -617,10 +661,16 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
         /* While (T[j] > x) --j; */
         while (true)
         {
-            result = system_resizable_vector_get_element_at(resizable_vector, right, &element);
-            ASSERT_DEBUG_SYNC(result, "Could not retrieve %dth element from the vector", right);
+            result = system_resizable_vector_get_element_at(resizable_vector,
+                                                            right,
+                                                           &element);
 
-            if (!(comparator_func_ptr(element, element_x) > 0))
+            ASSERT_DEBUG_SYNC(result,
+                              "Could not retrieve %dth element from the vector",
+                              right);
+
+            if (!(comparator_func_ptr(element,
+                                      element_x) > 0))
             {
                 break;
             }
@@ -639,7 +689,9 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
 
         if (left <= right)
         {
-            system_resizable_vector_swap(resizable_vector, left, right);
+            system_resizable_vector_swap(resizable_vector,
+                                         left,
+                                         right);
 
             ++left;
             --right;
@@ -649,11 +701,17 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
 
     if (start_index < right)
     {
-        _system_resizable_vector_sort_recursive(resizable_vector, comparator_func_ptr, start_index, right);
+        _system_resizable_vector_sort_recursive(resizable_vector,
+                                                comparator_func_ptr,
+                                                start_index,
+                                                right);
     }
     if (end_index > left)
     {
-        _system_resizable_vector_sort_recursive(resizable_vector, comparator_func_ptr, left, end_index);
+        _system_resizable_vector_sort_recursive(resizable_vector,
+                                                comparator_func_ptr,
+                                                left,
+                                                end_index);
     }
 }
 
@@ -665,7 +723,8 @@ PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resiz
 
     if (vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(vector_ptr->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(vector_ptr->access_mutex,
+                                     ACCESS_WRITE);
     }
 
     _system_resizable_vector_sort_recursive(resizable_vector,
@@ -675,7 +734,8 @@ PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resiz
 
     if (vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(vector_ptr->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(vector_ptr->access_mutex,
+                                       ACCESS_WRITE);
     }
 }
 
@@ -687,12 +747,19 @@ PUBLIC EMERALD_API bool system_resizable_vector_swap(__in __notnull system_resiz
     _resizable_vector_descriptor* resizable_vector_ptr = (_resizable_vector_descriptor*) resizable_vector;
     bool                          result               = true;
 
-    ASSERT_DEBUG_SYNC(index_a < resizable_vector_ptr->n_elements, "A index [%d] is too large [%d]", index_a, resizable_vector_ptr->n_elements);
-    ASSERT_DEBUG_SYNC(index_b < resizable_vector_ptr->n_elements, "B index [%d] is too large [%d]", index_b, resizable_vector_ptr->n_elements);
+    ASSERT_DEBUG_SYNC(index_a < resizable_vector_ptr->n_elements,
+                      "A index [%d] is too large [%d]",
+                      index_a,
+                      resizable_vector_ptr->n_elements);
+    ASSERT_DEBUG_SYNC(index_b < resizable_vector_ptr->n_elements,
+                      "B index [%d] is too large [%d]",
+                      index_b,
+                      resizable_vector_ptr->n_elements);
 
     if (resizable_vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_lock(resizable_vector_ptr->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_lock(resizable_vector_ptr->access_mutex,
+                                     ACCESS_WRITE);
     }
 
     memcpy(       resizable_vector_ptr->swap_helper,
@@ -707,7 +774,8 @@ PUBLIC EMERALD_API bool system_resizable_vector_swap(__in __notnull system_resiz
 
     if (resizable_vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(resizable_vector_ptr->access_mutex, ACCESS_WRITE);
+        system_read_write_mutex_unlock(resizable_vector_ptr->access_mutex,
+                                       ACCESS_WRITE);
     }
 
     return result;
@@ -719,7 +787,8 @@ PUBLIC EMERALD_API void system_resizable_vector_unlock(__in __notnull system_res
 {
     _resizable_vector_descriptor* vector_ptr = (_resizable_vector_descriptor*) vector;
 
-    ASSERT_DEBUG_SYNC(vector_ptr->access_mutex != NULL, "Vector not initialized for thread-safe access");
+    ASSERT_DEBUG_SYNC(vector_ptr->access_mutex != NULL,
+                      "Vector not initialized for thread-safe access");
 
     system_read_write_mutex_unlock(vector_ptr->access_mutex,
                                    access_type);

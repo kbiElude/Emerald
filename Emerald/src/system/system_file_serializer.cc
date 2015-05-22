@@ -105,6 +105,7 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
 
         ASSERT_ALWAYS_SYNC(path != NULL,
                            "Out of memory");
+
         if (path != NULL)
         {
             char* file_inside_path = NULL;
@@ -337,7 +338,8 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             }
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Serializer was not created for reading purposes");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Serializer was not created for reading purposes");
             }
 
             *(char**) out_data = serializer_ptr->contents;
@@ -427,7 +429,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
 
         if (*result_container == NULL)
         {
-            ASSERT_DEBUG_SYNC(false, "Out of memory");
+            ASSERT_DEBUG_SYNC(false,
+                              "Out of memory");
 
             goto end;
         }
@@ -443,7 +446,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
         !system_file_serializer_read_variant(serializer,
                                              temp_variant) )
     {
-        ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+        ASSERT_DEBUG_SYNC(false,
+                          "Reading operation failed");
 
         goto end;
     }
@@ -452,7 +456,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
     if (!curve_container_set_default_value(*result_container,
                                            temp_variant) )
     {
-        ASSERT_DEBUG_SYNC(false, "Could not set default value");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not set default value");
 
         goto end;
     }
@@ -498,7 +503,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                                          sizeof(segment_type),
                                         &segment_type) )
         {
-            ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+            ASSERT_DEBUG_SYNC(false,
+                              "Reading operation failed");
 
             goto end;
         }
@@ -512,7 +518,8 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                                              sizeof(segment_threshold),
                                             &segment_threshold) )
             {
-                ASSERT_DEBUG_SYNC(false, "Reading operation failed");
+                ASSERT_DEBUG_SYNC(false,
+                                  "Reading operation failed");
 
                 goto end;
             }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2013)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_RANDOMIZER
@@ -9,7 +9,8 @@
 #include "dll_exports.h"
 #include "system_types.h"
 
-REFCOUNT_INSERT_DECLARATIONS(system_randomizer, system_randomizer)
+REFCOUNT_INSERT_DECLARATIONS(system_randomizer,
+                             system_randomizer)
 
 /** TODO */
 PUBLIC EMERALD_API system_randomizer system_randomizer_create(__in __notnull system_hashed_ansi_string name,

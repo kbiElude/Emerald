@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -20,17 +20,23 @@ typedef struct
 } _system_randomizer;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(system_randomizer, system_randomizer, _system_randomizer);
+REFCOUNT_INSERT_IMPLEMENTATION(system_randomizer,
+                               system_randomizer,
+                               _system_randomizer);
 
 
 /** TODO */
-PRIVATE void _system_randomizer_init(_system_randomizer* data_ptr, __int64 seed)
+PRIVATE void _system_randomizer_init(_system_randomizer* data_ptr,
+                                     __int64             seed)
 {
-    memset(data_ptr, 0, sizeof(_system_randomizer) );
+    memset(data_ptr,
+           0,
+           sizeof(_system_randomizer) );
 
     data_ptr->seed = seed;
 
-    system_randomizer_reset( (system_randomizer) data_ptr, seed);
+    system_randomizer_reset((system_randomizer) data_ptr,
+                            seed);
 }
 
 /** TODO */
@@ -46,15 +52,19 @@ PUBLIC EMERALD_API system_randomizer system_randomizer_create(__in __notnull sys
 {
     _system_randomizer* randomizer_ptr = new (std::nothrow) _system_randomizer;
 
-    ASSERT_DEBUG_SYNC(randomizer_ptr != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(randomizer_ptr != NULL,
+                      "Out of memory");
+
     if (randomizer_ptr != NULL)
     {
-        _system_randomizer_init(randomizer_ptr, seed);
+        _system_randomizer_init(randomizer_ptr,
+                                seed);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(randomizer_ptr,
                                                        _system_randomizer_release, 
                                                        OBJECT_TYPE_SYSTEM_RANDOMIZER, 
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\System Randomizers\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\System Randomizers\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (system_randomizer) randomizer_ptr;

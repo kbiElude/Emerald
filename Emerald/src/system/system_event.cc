@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -9,14 +9,16 @@
 #include "system/system_time.h"
 
 /** Please see header for specification */
-PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset, bool start_state)
+PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset,
+                                                                bool start_state)
 {
     HANDLE result = ::CreateEventA(NULL,         /* no special security attributes */
                                    manual_reset, 
                                    start_state, 
                                    0);           /* no name */
 
-    ASSERT_ALWAYS_SYNC(result != NULL, "Could not create an event object.");
+    ASSERT_ALWAYS_SYNC(result != NULL,
+                       "Could not create an event object.");
 
     return (system_event) result;
 }
@@ -47,7 +49,8 @@ PUBLIC EMERALD_API void system_event_set(__in __notnull system_event event)
 /** Please see header for specification */
 PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_event event)
 {
-    return (::WaitForSingleObject( (HANDLE) event, 0) == WAIT_OBJECT_0);
+    return (::WaitForSingleObject((HANDLE) event,
+                                  0) == WAIT_OBJECT_0);
 }
 
 /** Please see header for specification */
@@ -68,12 +71,15 @@ PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_e
     uint32_t n_secs = 0;
     DWORD    result = 0;
 
-    system_time_get_s_for_timeline_time(timeout, &n_secs);
+    system_time_get_s_for_timeline_time(timeout,
+                                       &n_secs);
 
-    result = ::WaitForSingleObject(event, n_secs * 1000);
+    result = ::WaitForSingleObject(event,
+                                   n_secs * 1000);
 
     ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
                       "WaitForSingleObject() failed.");
+
     return (result == WAIT_TIMEOUT);
 }
 
@@ -158,7 +164,8 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in __notnull __ec
     uint32_t n_secs            = 0;
     DWORD    wait_leave_result = 0;
 
-    system_time_get_s_for_timeline_time(timeout, &n_secs);
+    system_time_get_s_for_timeline_time(timeout,
+                                       &n_secs);
 
     wait_leave_result = ::WaitForMultipleObjects( (DWORD) n_elements,
                                                   (const HANDLE*) events,

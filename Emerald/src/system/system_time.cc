@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -32,31 +32,38 @@ PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_s(__in
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_ms(__in uint32_t minutes, __in uint8_t seconds)
+PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_ms(__in uint32_t minutes,
+                                                                             __in uint8_t  seconds)
 {
     return (minutes * 60 + seconds) * HZ_PER_SEC;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_hms(__in uint32_t hours, __in uint8_t minutes, __in uint8_t seconds)
+PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_hms(__in uint32_t hours,
+                                                                              __in uint8_t  minutes,
+                                                                              __in uint8_t  seconds)
 {
     return (hours * 3600 + minutes * 60 + seconds) * HZ_PER_SEC;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_time_get_msec_for_timeline_time(__in system_timeline_time time, __out __notnull uint32_t* result_miliseconds)
+PUBLIC EMERALD_API void system_time_get_msec_for_timeline_time(__in            system_timeline_time time,
+                                                               __out __notnull uint32_t*            result_miliseconds)
 {
     *result_miliseconds = time * 1000 / HZ_PER_SEC;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_time_get_s_for_timeline_time(__in system_timeline_time time, __out __notnull uint32_t* result_seconds)
+PUBLIC EMERALD_API void system_time_get_s_for_timeline_time(__in            system_timeline_time time,
+                                                            __out __notnull uint32_t*            result_seconds)
 {
     *result_seconds = time / HZ_PER_SEC;
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_time_get_ms_for_timeline_time(__in system_timeline_time time, __out __notnull uint32_t* result_minutes, __out __notnull uint8_t* result_seconds)
+PUBLIC EMERALD_API void system_time_get_ms_for_timeline_time(__in            system_timeline_time time,
+                                                             __out __notnull uint32_t*            result_minutes,
+                                                             __out __notnull uint8_t*             result_seconds)
 {
     register uint32_t time_in_sec = time / HZ_PER_SEC;
 
@@ -65,7 +72,10 @@ PUBLIC EMERALD_API void system_time_get_ms_for_timeline_time(__in system_timelin
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_time_get_hms_for_timeline_time(__in system_timeline_time time, __out __notnull uint32_t* result_hours, __out __notnull uint8_t* result_minutes, __out __notnull uint8_t* result_seconds)
+PUBLIC EMERALD_API void system_time_get_hms_for_timeline_time(__in            system_timeline_time time,
+                                                              __out __notnull uint32_t*            result_hours,
+                                                              __out __notnull uint8_t*             result_minutes,
+                                                              __out __notnull uint8_t*             result_seconds)
 {
     register uint32_t time_in_sec         = time / HZ_PER_SEC;
     register uint32_t result_hours_temp   = 0;

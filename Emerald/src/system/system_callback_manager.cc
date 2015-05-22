@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -65,7 +65,8 @@ typedef struct _system_callback_manager_callback
         {
             _system_callback_manager_callback_subscription* subscription_ptr = NULL;
 
-            while (system_resizable_vector_pop(subscriptions, &subscription_ptr) )
+            while (system_resizable_vector_pop(subscriptions,
+                                              &subscription_ptr) )
             {
                 delete subscription_ptr;
 
@@ -183,7 +184,8 @@ PRIVATE volatile void _system_callback_manager_call_back_handler(__in __notnull 
     _system_callback_manager_callback_subscription* subscription_ptr = (_system_callback_manager_callback_subscription*) descriptor;
     const unsigned char*                            callback_data    = (unsigned char*) descriptor + sizeof(_system_callback_manager_callback_subscription);
 
-    subscription_ptr->callback_proc(callback_data, subscription_ptr->user_arg);
+    subscription_ptr->callback_proc(callback_data,
+                                    subscription_ptr->user_arg);
 
     system_resource_pool_return_to_pool(subscription_ptr->owner_ptr->resource_pool,
                                         (system_resource_pool_block) descriptor);
@@ -197,7 +199,8 @@ PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_man
     _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
 
     /* Sanity checks */
-    ASSERT_DEBUG_SYNC(callback_manager_ptr->max_callback_id >= callback_id, "Requested callback ID is invalid");
+    ASSERT_DEBUG_SYNC(callback_manager_ptr->max_callback_id >= callback_id,
+                      "Requested callback ID is invalid");
 
     /* Issue the call-backs */
     _system_callback_manager_callback& callback_descriptor = callback_manager_ptr->callbacks[callback_id];
@@ -272,13 +275,17 @@ PUBLIC system_callback_manager system_callback_manager_create(__in _callback_id 
     /* Carry on */
     _system_callback_manager* manager_ptr = new (std::nothrow) _system_callback_manager;
 
-    ASSERT_ALWAYS_SYNC(manager_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(manager_ptr != NULL,
+                       "Out of memory");
+
     if (manager_ptr != NULL)
     {
         manager_ptr->callbacks       = new (std::nothrow) _system_callback_manager_callback[max_callback_id + 1];
         manager_ptr->max_callback_id = max_callback_id;
 
-        ASSERT_ALWAYS_SYNC(manager_ptr->callbacks != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(manager_ptr->callbacks != NULL,
+                           "Out of memory");
+
         if (manager_ptr->callbacks == NULL)
         {
             delete manager_ptr;
@@ -370,7 +377,8 @@ PUBLIC EMERALD_API void system_callback_manager_subscribe_for_callbacks(__in __n
     /* Create a new descriptor */
     _system_callback_manager_callback_subscription* subscription_ptr = new (std::nothrow) _system_callback_manager_callback_subscription;
 
-    ASSERT_ALWAYS_SYNC(subscription_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(subscription_ptr != NULL,
+                       "Out of memory");
     if (subscription_ptr != NULL)
     {
         subscription_ptr->callback_proc = pfn_callback_proc;

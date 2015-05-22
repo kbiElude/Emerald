@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -48,32 +48,44 @@ typedef struct
 } _system_context_menu;
 
 /** Reference counter impl */
-REFCOUNT_INSERT_IMPLEMENTATION(system_context_menu, system_context_menu, _system_context_menu);
+REFCOUNT_INSERT_IMPLEMENTATION(system_context_menu,
+                               system_context_menu,
+                              _system_context_menu);
 
 
 /* Forward declarations */
-PRIVATE bool         _system_context_menu_call_back_owner                       (__in __notnull _system_context_menu*       menu_ptr,  __in int id);
-PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation     (__in __notnull _system_context_menu_entry* entry_ptr, __in int id);
+PRIVATE bool         _system_context_menu_call_back_owner                       (__in __notnull _system_context_menu*       menu_ptr,
+                                                                                 __in           int                         id);
+PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation     (__in __notnull _system_context_menu_entry* entry_ptr,
+                                                                                 __in           int                         id);
 PRIVATE void         _system_context_menu_create_menu_system_representation     (__in __notnull _system_context_menu*       menu_ptr);
-PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(__in __notnull _system_context_menu_entry* entry_ptr, __in int id);
-PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation  (__in __notnull _system_context_menu_entry* entry_ptr, __in int id);
+PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
+                                                                                 __in           int                         id);
+PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation  (__in __notnull _system_context_menu_entry* entry_ptr,
+                                                                                 __in           int                         id);
 
 /* Private functions */
 /** TODO */
-PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context_menu* menu_ptr, __in int id)
+PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context_menu* menu_ptr,
+                                                  __in           int                   id)
 {
     bool         result    = false;
     unsigned int n_entries = system_resizable_vector_get_amount_of_elements(menu_ptr->entries);
 
-    for (unsigned int n = 0; n < n_entries; ++n)
+    for (unsigned int n = 0;
+                      n < n_entries;
+                    ++n)
     {
         _system_context_menu_entry* entry_ptr = NULL;
 
-        system_resizable_vector_get_element_at(menu_ptr->entries, n, &entry_ptr);
+        system_resizable_vector_get_element_at(menu_ptr->entries,
+                                               n,
+                                              &entry_ptr);
 
         if (entry_ptr != NULL)
         {
-            if (entry_ptr->type == CONTEXT_MENU_ENTRY_ITEM && entry_ptr->id == id)
+            if (entry_ptr->type == CONTEXT_MENU_ENTRY_ITEM &&
+                entry_ptr->id   == id)
             {
                 entry_ptr->item_callback_func(entry_ptr->item_callback_func_argument);
 
@@ -83,7 +95,8 @@ PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context
             else
             if (entry_ptr->type == CONTEXT_MENU_ENTRY_MENU)
             {
-                result = _system_context_menu_call_back_owner( (_system_context_menu*) entry_ptr->menu, id);
+                result = _system_context_menu_call_back_owner((_system_context_menu*) entry_ptr->menu,
+                                                              id);
 
                 if (result)
                 {
@@ -93,7 +106,8 @@ PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context
         }
         else
         {
-            LOG_ERROR("Could not retrieve %dth context menu entry.", n);
+            LOG_ERROR("Could not retrieve %dth context menu entry.",
+                      n);
         }
     }
 
@@ -101,14 +115,17 @@ PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context
 }
 
 /** TODO */
-PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(__in __notnull _system_context_menu_entry* entry_ptr, __in int id)
+PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
+                                                                            __in           int                         id)
 {
     MENUITEMINFO result;
 
-    memset(&result, 0, sizeof(MENUITEMINFO) );
+    memset(&result,
+           0,
+           sizeof(MENUITEMINFO) );
 
     result.cbSize     = sizeof(MENUITEMINFO);
-    result.cch        = system_hashed_ansi_string_get_length(entry_ptr->item_name);
+    result.cch        =         system_hashed_ansi_string_get_length(entry_ptr->item_name);
     result.dwTypeData = (char*) system_hashed_ansi_string_get_buffer(entry_ptr->item_name);
     result.fMask      = MIIM_ID | MIIM_TYPE;
     result.fType      = MFT_STRING;
@@ -138,11 +155,15 @@ PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnu
 
     menu_ptr->system_handle = ::CreatePopupMenu();
 
-    for (unsigned int n = 0; n < n_entries; ++n)
+    for (unsigned int n = 0;
+                      n < n_entries;
+                    ++n)
     {
         _system_context_menu_entry* entry_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(menu_ptr->entries, n, &entry_ptr) )
+        if (system_resizable_vector_get_element_at(menu_ptr->entries,
+                                                   n,
+                                                  &entry_ptr) )
         {
             entry_ptr->id = counter++;
 
@@ -150,9 +171,13 @@ PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnu
             {
                 case CONTEXT_MENU_ENTRY_ITEM:
                 {
-                    MENUITEMINFO menu_item_info = _system_context_menu_create_item_system_representation(entry_ptr, entry_ptr->id);
+                    MENUITEMINFO menu_item_info = _system_context_menu_create_item_system_representation(entry_ptr,
+                                                                                                         entry_ptr->id);
 
-                    if (::InsertMenuItemA(menu_ptr->system_handle, 0xFFFF /* append mode */, FALSE, &menu_item_info) == 0)
+                    if (::InsertMenuItemA(menu_ptr->system_handle,
+                                          0xFFFF /* append mode */,
+                                          FALSE, /* fByPosition */
+                                         &menu_item_info) == 0)
                     {
                         LOG_ERROR("Could not insert item to context menu.");
                     }
@@ -162,9 +187,13 @@ PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnu
 
                 case CONTEXT_MENU_ENTRY_MENU:
                 {
-                    MENUITEMINFO menu_item_info = _system_context_menu_create_submenu_system_representation(entry_ptr, entry_ptr->id);
+                    MENUITEMINFO menu_item_info = _system_context_menu_create_submenu_system_representation(entry_ptr,
+                                                                                                            entry_ptr->id);
 
-                    if (::InsertMenuItemA(menu_ptr->system_handle, 0xFFFF /* append mode */, FALSE, &menu_item_info) == 0)
+                    if (::InsertMenuItemA(menu_ptr->system_handle,
+                                          0xFFFF /* append mode */,
+                                          FALSE, /* fByPosition  */
+                                         &menu_item_info) == 0)
                     {
                         LOG_ERROR("Could not insert menu to context menu.");
                     }
@@ -174,9 +203,13 @@ PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnu
 
                 case CONTEXT_MENU_ENTRY_SEPARATOR:
                 {
-                    MENUITEMINFO menu_item_info = _system_context_menu_create_separator_system_representation(entry_ptr, entry_ptr->id);
+                    MENUITEMINFO menu_item_info = _system_context_menu_create_separator_system_representation(entry_ptr,
+                                                                                                              entry_ptr->id);
                     
-                    if (::InsertMenuItemA(menu_ptr->system_handle, 0xFFFF /* append mode */, FALSE, &menu_item_info) == 0)
+                    if (::InsertMenuItemA(menu_ptr->system_handle,
+                                          0xFFFF /* append mode */,
+                                          FALSE, /* fByPosition */
+                                         &menu_item_info) == 0)
                     {
                         LOG_ERROR("Could not insert separator to context menu.");
                     }
@@ -186,25 +219,32 @@ PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnu
 
                 default:
                 {
-                    LOG_ERROR("Unrecognized context menu entry type [%d]", entry_ptr->type);
+                    LOG_ERROR("Unrecognized context menu entry type [%d]",
+                              entry_ptr->type);
 
-                    ASSERT_DEBUG_SYNC(false, "");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "");
                 }
-            }
-        }
+            } /* switch (entry_ptr->type) */
+        } /* if (entry exists) */
         else
         {
-            LOG_ERROR("Could not retrieve %dth entry of context menu.", n);
+            LOG_ERROR("Could not retrieve %dth entry of context menu.",
+                      n);
         }
     }
 }
 
 /** TODO */
-PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(__in __notnull _system_context_menu_entry* entry_ptr, __in int id)
+PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
+                                                                                 __in           int                         id)
 {
     MENUITEMINFO result;
 
-    memset(&result, 0, sizeof(MENUITEMINFO));
+    memset(&result,
+           0,
+           sizeof(MENUITEMINFO));
+
     result.cbSize  = sizeof(MENUITEMINFO);
     result.fMask   = MIIM_TYPE;
     result.fType   = MFT_SEPARATOR;
@@ -213,17 +253,20 @@ PRIVATE MENUITEMINFO _system_context_menu_create_separator_system_representation
 }
 
 /** TODO */
-PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(__in __notnull _system_context_menu_entry* entry_ptr, __in int id)
+PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(__in __notnull _system_context_menu_entry* entry_ptr,
+                                                                               __in           int                         id)
 {
     MENUITEMINFO          result;
     _system_context_menu* submenu_ptr = (_system_context_menu*) entry_ptr->menu;
     
     _system_context_menu_create_menu_system_representation(submenu_ptr);
 
-    memset(&result, 0, sizeof(MENUITEMINFO) );
+    memset(&result,
+           0,
+           sizeof(MENUITEMINFO) );
 
     result.cbSize     = sizeof(MENUITEMINFO);
-    result.cch        = system_hashed_ansi_string_get_length(entry_ptr->item_name);
+    result.cch        =         system_hashed_ansi_string_get_length(entry_ptr->item_name);
     result.dwTypeData = (char*) system_hashed_ansi_string_get_buffer(entry_ptr->item_name);
     result.fMask      = MIIM_ID | MIIM_SUBMENU | MIIM_TYPE;
     result.fType      = MFT_STRING;
@@ -239,11 +282,15 @@ PUBLIC void _system_context_menu_release(__in __notnull __post_invalid void* men
     _system_context_menu* menu_ptr  = (_system_context_menu*) menu;
     unsigned int          n_entries = system_resizable_vector_get_amount_of_elements(menu_ptr->entries);
 
-    for (unsigned int n = 0; n < n_entries; ++n)
+    for (unsigned int n = 0;
+                      n < n_entries;
+                    ++n)
     {
         _system_context_menu_entry* menu_entry_ptr = NULL;
 
-        system_resizable_vector_get_element_at(menu_ptr->entries, n, &menu_entry_ptr);
+        system_resizable_vector_get_element_at(menu_ptr->entries,
+                                               n,
+                                              &menu_entry_ptr);
 
         if (menu_entry_ptr != NULL)
         {
@@ -266,12 +313,19 @@ PUBLIC void _system_context_menu_release(__in __notnull __post_invalid void* men
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void system_context_menu_append_item(__in __notnull system_context_menu menu, __in __notnull system_hashed_ansi_string name, __in __notnull PFNCONTEXTMENUCALLBACK callback_func, __in __maybenull system_context_menu_callback_argument callback_func_argument, bool is_checked, bool is_enabled)
+PUBLIC EMERALD_API void system_context_menu_append_item(__in __notnull   system_context_menu                   menu,
+                                                        __in __notnull   system_hashed_ansi_string             name,
+                                                        __in __notnull   PFNCONTEXTMENUCALLBACK                callback_func,
+                                                        __in __maybenull system_context_menu_callback_argument callback_func_argument,
+                                                                         bool                                  is_checked,
+                                                                         bool                                  is_enabled)
 {
     _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
 
-    ASSERT_DEBUG_SYNC(new_entry != NULL, "Out of memory while allocating space for context menu entry.");
+    ASSERT_DEBUG_SYNC(new_entry != NULL,
+                      "Out of memory while allocating space for context menu entry.");
+
     if (new_entry != NULL)
     {
         new_entry->type                        = CONTEXT_MENU_ENTRY_ITEM;
@@ -281,23 +335,28 @@ PUBLIC EMERALD_API void system_context_menu_append_item(__in __notnull system_co
         new_entry->item_enabled                = is_enabled;
         new_entry->item_name                   = name;
 
-        system_resizable_vector_push(menu_ptr->entries, new_entry);
+        system_resizable_vector_push(menu_ptr->entries,
+                                     new_entry);
     }
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API void context_menu_append_menu(__in __notnull system_context_menu menu, __in __notnull system_context_menu menu_to_append)
+PUBLIC EMERALD_API void context_menu_append_menu(__in __notnull system_context_menu menu,
+                                                 __in __notnull system_context_menu menu_to_append)
 {
     _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
 
-    ASSERT_DEBUG_SYNC(new_entry != NULL, "Out of memory while allocating space for context menu entry.");
+    ASSERT_DEBUG_SYNC(new_entry != NULL,
+                      "Out of memory while allocating space for context menu entry.");
+
     if (new_entry != NULL)
     {
         new_entry->type = CONTEXT_MENU_ENTRY_MENU;
         new_entry->menu = menu_to_append;
 
-        system_resizable_vector_push(menu_ptr->entries, new_entry);
+        system_resizable_vector_push(menu_ptr->entries,
+                                     new_entry);
     }
 }
 
@@ -307,12 +366,15 @@ PUBLIC EMERALD_API void system_context_menu_append_separator(__in __notnull syst
     _system_context_menu*       menu_ptr  = (_system_context_menu*) menu;
     _system_context_menu_entry* new_entry = new (std::nothrow) _system_context_menu_entry;
 
-    ASSERT_DEBUG_SYNC(new_entry != NULL, "Out of memory while allocating space for context menu entry.");
+    ASSERT_DEBUG_SYNC(new_entry != NULL,
+                      "Out of memory while allocating space for context menu entry.");
+
     if (new_entry != NULL)
     {
         new_entry->type = CONTEXT_MENU_ENTRY_SEPARATOR;
 
-        system_resizable_vector_push(menu_ptr->entries, new_entry);
+        system_resizable_vector_push(menu_ptr->entries,
+                                     new_entry);
     }
 }
 
@@ -321,18 +383,23 @@ PUBLIC EMERALD_API system_context_menu system_context_menu_create(__in __notnull
 {
     _system_context_menu* instance = new (std::nothrow) _system_context_menu;
 
-    ASSERT_DEBUG_SYNC(instance != NULL, "Out of memory while allocating space for context menu");
+    ASSERT_DEBUG_SYNC(instance != NULL,
+                      "Out of memory while allocating space for context menu");
+
     if (instance != NULL)
     {
-        instance->entries        = system_resizable_vector_create(N_BASE_ITEMS, sizeof(_system_context_menu*) );
+        instance->entries        = system_resizable_vector_create(N_BASE_ITEMS,
+                                                                  sizeof(_system_context_menu*) );
         instance->has_been_shown = false;
 
-        ASSERT_DEBUG_SYNC(instance->entries != NULL, "Out of memory while allocating space for context menu entries");
+        ASSERT_DEBUG_SYNC(instance->entries != NULL,
+                          "Out of memory while allocating space for context menu entries");
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(instance, 
                                                        _system_context_menu_release,
                                                        OBJECT_TYPE_CONTEXT_MENU, 
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Context Menus\\", system_hashed_ansi_string_get_buffer(name) )
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\Context Menus\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name) )
                                                       );
     }
 
@@ -340,7 +407,10 @@ PUBLIC EMERALD_API system_context_menu system_context_menu_create(__in __notnull
 }
 
 /** TODO */
-PUBLIC void system_context_menu_show(__in __notnull system_context_menu menu, __in system_window_handle parent_window_handle, __in int x, __in int y)
+PUBLIC void system_context_menu_show(__in __notnull system_context_menu  menu,
+                                     __in           system_window_handle parent_window_handle,
+                                     __in           int                  x,
+                                     __in           int                  y)
 {
     int                   id_clicked = 0;
     _system_context_menu* menu_ptr   = (_system_context_menu*) menu;
@@ -349,9 +419,16 @@ PUBLIC void system_context_menu_show(__in __notnull system_context_menu menu, __
     {
         _system_context_menu_create_menu_system_representation(menu_ptr);
 
-        if ( (id_clicked = ::TrackPopupMenu(menu_ptr->system_handle, TPM_LEFTALIGN | TPM_RETURNCMD, x, y, 0 /* reserved */, parent_window_handle, NULL /* no specific rect */)) > 0)
+        if ( (id_clicked = ::TrackPopupMenu(menu_ptr->system_handle,
+                                            TPM_LEFTALIGN | TPM_RETURNCMD,
+                                            x,
+                                            y,
+                                            0 /* reserved */,
+                                            parent_window_handle,
+                                            NULL /* no specific rect */)) > 0)
         {
-            _system_context_menu_call_back_owner(menu_ptr, id_clicked);
+            _system_context_menu_call_back_owner(menu_ptr,
+                                                 id_clicked);
         }
 
         menu_ptr->has_been_shown = true;

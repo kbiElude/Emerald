@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -18,9 +18,14 @@ EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_cap
 {
     _system_semaphore_descriptor* new_descriptor = new _system_semaphore_descriptor;
 
-    new_descriptor->semaphore = ::CreateSemaphore(0, semaphore_capacity, semaphore_capacity, 0);
+    new_descriptor->semaphore = ::CreateSemaphore(0,                  /* lpSemaphoreAttributes */
+                                                  semaphore_capacity, /* lInitialCount */
+                                                  semaphore_capacity, /* lMaximumCount */
+                                                  0);                 /* lpName */
     
-    ASSERT_DEBUG_SYNC(new_descriptor->semaphore != NULL, "Could not create the semaphore");
+    ASSERT_DEBUG_SYNC(new_descriptor->semaphore != NULL,
+                      "Could not create the semaphore");
+
     return (system_semaphore) new_descriptor;
 }
 
@@ -55,9 +60,12 @@ EMERALD_API void system_semaphore_enter_multiple(__in system_semaphore semaphore
 
     if (descriptor != NULL)
     {
-        for (uint32_t n_release = 0; n_release < count; ++n_release)
+        for (uint32_t n_release = 0;
+                      n_release < count;
+                    ++n_release)
         {
-            ::WaitForSingleObject(descriptor->semaphore, INFINITE);
+            ::WaitForSingleObject(descriptor->semaphore,
+                                  INFINITE);
         }
     }
 }
@@ -69,17 +77,22 @@ EMERALD_API void system_semaphore_leave(__in system_semaphore semaphore)
 
     if (descriptor != NULL)
     {
-        ::ReleaseSemaphore(descriptor->semaphore, 1, 0);
+        ::ReleaseSemaphore(descriptor->semaphore,
+                           1,  /* lReleaseCount   */
+                           0); /* lpPreviousCount */
     }
 }
 
 /** Please see header for specification */
-EMERALD_API void system_semaphore_leave_multiple(__in system_semaphore semaphore, __in uint32_t count)
+EMERALD_API void system_semaphore_leave_multiple(__in system_semaphore semaphore,
+                                                 __in uint32_t         count)
 {
     _system_semaphore_descriptor* descriptor = (_system_semaphore_descriptor*) semaphore;
 
     if (descriptor != NULL)
     {
-        ::ReleaseSemaphore(descriptor->semaphore, count, 0);
+        ::ReleaseSemaphore(descriptor->semaphore,
+                           count, /* lReleaseCount   */
+                           0);    /* lpPreviousCount */
     }
 }

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_TIME_H
@@ -15,7 +15,7 @@
 PUBLIC EMERALD_API uint32_t system_time_get_hz_per_sec();
 
 /** TODO */
-PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_msec(__in uint32_t);
+PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_msec(__in uint32_t msec);
 
 /** Converts seconds to system_timeline_time value.
  *
@@ -23,7 +23,7 @@ PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_msec(_
  *
  *  @return Corresponding system_timeline_time value.
  */
-PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_s(__in uint32_t);
+PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_s(__in uint32_t seconds);
 
 /** Converts amount of time represented in ms format to system_timeline_t value.
  *
@@ -32,7 +32,8 @@ PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_s(__in
  *
  *  @return Corresponding system_timeline_time value.
  */
-PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_ms(__in uint32_t, __in uint8_t);
+PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_ms(__in uint32_t minutes,
+                                                                             __in uint8_t  seconds);
 
 /** Converts amount of time represented in hms format to system_timeline_t value.
  *
@@ -42,10 +43,13 @@ PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_ms(__i
  *
  *  @return Corresponding system_timeline_time value.
  */
-PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_hms(__in uint32_t, __in uint8_t, __in uint8_t);
+PUBLIC EMERALD_API system_timeline_time system_time_get_timeline_time_for_hms(__in uint32_t hours,
+                                                                              __in uint8_t  minutes,
+                                                                              __in uint8_t  seconds);
 
 /** TODO */
-PUBLIC EMERALD_API void system_time_get_msec_for_timeline_time(__in system_timeline_time time, __out __notnull uint32_t* result_miliseconds);
+PUBLIC EMERALD_API void system_time_get_msec_for_timeline_time(__in            system_timeline_time time,
+                                                               __out __notnull uint32_t*            result_miliseconds);
 
 /** Converts system_timeline_time to amount of seconds corresponding to the value.
  *
@@ -53,7 +57,8 @@ PUBLIC EMERALD_API void system_time_get_msec_for_timeline_time(__in system_timel
  *  @param uint32_t*            Deref will be used to store amount of seconds the value corresponds to.
  *                              CANNOT be null.
  */
-PUBLIC EMERALD_API void system_time_get_s_for_timeline_time(__in system_timeline_time, __out __notnull uint32_t*);
+PUBLIC EMERALD_API void system_time_get_s_for_timeline_time(__in            system_timeline_time time,
+                                                            __out __notnull uint32_t*            result_seconds);
 
 /** Converts system_timeline_time to amount of minutes + seconds corresponding to the value.
  *
@@ -63,7 +68,9 @@ PUBLIC EMERALD_API void system_time_get_s_for_timeline_time(__in system_timeline
  *  @param uint8_t *            Deref will be used to store amount of minutes the value corresponds to.
  *                              CANNOT be null. Result avlue will be from range [0, 2^32-1].
  */
-PUBLIC EMERALD_API void system_time_get_ms_for_timeline_time(__in system_timeline_time, __out __notnull uint32_t*, __out __notnull uint8_t*);
+PUBLIC EMERALD_API void system_time_get_ms_for_timeline_time(__in            system_timeline_time time,
+                                                             __out __notnull uint32_t*            result_minutes,
+                                                             __out __notnull uint8_t*             result_seconds);
 
 /** Converts system_timeline_time to amount of hours + minutes + seconds corresponding to the value.
  *
@@ -75,7 +82,10 @@ PUBLIC EMERALD_API void system_time_get_ms_for_timeline_time(__in system_timelin
  *  @param uint32_t*            Deref will be used to store amount of hours the value corresponds to.
  *                              CANNOT be null. Result avlue will be from range [0, 2^32-1].
  */
-PUBLIC EMERALD_API void system_time_get_hms_for_timeline_time(__in system_timeline_time, __out __notnull uint32_t*, __out __notnull uint8_t*, __out __notnull uint8_t*);
+PUBLIC EMERALD_API void system_time_get_hms_for_timeline_time(__in            system_timeline_time time,
+                                                              __out __notnull uint32_t*            result_hours,
+                                                              __out __notnull uint8_t*             result_minutes,
+                                                              __out __notnull uint8_t*             result_seconds);
 
 /** Retrieves system_timeline_time for the time of call.
  *

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -80,7 +80,9 @@ PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       
             {
                 if (adjacent_node_ptr->status == STATUS_UNVISITED)
                 {
-                    result = _system_dag_process_node(adjacent_node_ptr, time_ptr, processed_nodes_vector);
+                    result = _system_dag_process_node(adjacent_node_ptr,
+                                                      time_ptr,
+                                                      processed_nodes_vector);
 
                     if (!result)
                     {
@@ -93,7 +95,8 @@ PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       
                     /* This is a returning edge indicating that the graph we're operating on
                      * ain't a DAG!
                      */
-                    ASSERT_DEBUG_SYNC(false, "system_dag operating on a graph that's not a DAG");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "system_dag operating on a graph that's not a DAG");
 
                     result = false;
                     goto end;
@@ -101,7 +104,9 @@ PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       
             }
             else
             {
-                ASSERT_DEBUG_SYNC(false, "Could not retrieve adjacent node at index [%d]", n_adjacent_node);
+                ASSERT_DEBUG_SYNC(false,
+                                  "Could not retrieve adjacent node at index [%d]",
+                                  n_adjacent_node);
             }
         } /* for (all adjacent nodes) */
 
@@ -110,7 +115,9 @@ PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       
         node_ptr->status         = STATUS_PROCESSED;
         node_ptr->time_processed = *time_ptr;
 
-        system_resizable_vector_insert_element_at(processed_nodes_vector, 0, node_ptr);
+        system_resizable_vector_insert_element_at(processed_nodes_vector,
+                                                  0,
+                                                  node_ptr);
 
 end:
         return result;
@@ -126,7 +133,8 @@ PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(__in __notnul
 
     if (new_connection == NULL)
     {
-        ASSERT_ALWAYS_SYNC(0, "Out of memory");
+        ASSERT_ALWAYS_SYNC(0,
+                           "Out of memory");
 
         goto end;
     }
@@ -137,7 +145,9 @@ PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(__in __notnul
     /* Associate the connection with DAG */
     _system_dag* dag_ptr = (_system_dag*) dag;
 
-    system_resizable_vector_push(dag_ptr->connections, new_connection);
+    system_resizable_vector_push(dag_ptr->connections,
+                                 new_connection);
+
     dag_ptr->dirty = true;
 end:
     return new_connection;
@@ -152,12 +162,14 @@ PUBLIC EMERALD_API system_dag_node system_dag_add_node(__in __notnull system_dag
 
     if (new_node == NULL)
     {
-        ASSERT_ALWAYS_SYNC(0, "Out of memory");
+        ASSERT_ALWAYS_SYNC(0, 
+                           "Out of memory");
 
         goto end;
     }
 
-    new_node->adjacent_nodes   = system_resizable_vector_create(4 /* capacity */, sizeof(_system_dag_node*) );
+    new_node->adjacent_nodes   = system_resizable_vector_create(4 /* capacity */,
+                                                               sizeof(_system_dag_node*) );
     new_node->status           = STATUS_UNVISITED;
     new_node->time_processed   = 0;
     new_node->value            = value;
@@ -165,7 +177,9 @@ PUBLIC EMERALD_API system_dag_node system_dag_add_node(__in __notnull system_dag
     /* Associate the node with DAG */
     _system_dag* dag_ptr = (_system_dag*) dag;
 
-    system_resizable_vector_push(dag_ptr->nodes, new_node);
+    system_resizable_vector_push(dag_ptr->nodes,
+                                 new_node);
+
     dag_ptr->dirty = true;
 
     /* Done */
@@ -180,16 +194,21 @@ PUBLIC EMERALD_API system_dag system_dag_create()
 
     if (result == NULL)
     {
-        ASSERT_ALWAYS_SYNC(0, "Out of memory");
+        ASSERT_ALWAYS_SYNC(0,
+                           "Out of memory");
 
         goto end;
     }
 
-    result->connections      = system_resizable_vector_create(4 /* capacity */, sizeof(_system_dag_connection*) );
+    result->connections      = system_resizable_vector_create(4 /* capacity */,
+                                                              sizeof(_system_dag_connection*) );
     result->dirty            = false;
-    result->nodes            = system_resizable_vector_create(4 /* capacity */, sizeof(_system_dag_node*) );
-    result->nodes_to_process = system_resizable_vector_create(4 /* capacity */, sizeof(_system_dag_node*) );
-    result->sorted_nodes     = system_resizable_vector_create(4 /* capacity */, sizeof(_system_dag_node*) );
+    result->nodes            = system_resizable_vector_create(4 /* capacity */,
+                                                              sizeof(_system_dag_node*) );
+    result->nodes_to_process = system_resizable_vector_create(4 /* capacity */,
+                                                              sizeof(_system_dag_node*) );
+    result->sorted_nodes     = system_resizable_vector_create(4 /* capacity */,
+                                                              sizeof(_system_dag_node*) );
 
 end:
     return (system_dag) result;
@@ -223,15 +242,20 @@ PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(__in    
     {
         system_dag_node node = NULL;
 
-        if (system_resizable_vector_get_element_at(dag_ptr->sorted_nodes, n_result_node, &node) )
+        if (system_resizable_vector_get_element_at(dag_ptr->sorted_nodes,
+                                                   n_result_node,
+                                                  &node) )
         {
             _system_dag_node* node_ptr = (_system_dag_node*) node;
 
-            system_resizable_vector_push(result, node_ptr->value);
+            system_resizable_vector_push(result,
+                                         node_ptr->value);
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not get sorted node at index [%d]", n_result_node);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not get sorted node at index [%d]",
+                              n_result_node);
 
             goto end;
         }
@@ -302,7 +326,8 @@ PUBLIC EMERALD_API void system_dag_reset_connections(__in __notnull system_dag d
     _system_dag*            dag_ptr        = (_system_dag*) dag;
     _system_dag_connection* connection_ptr = NULL;
 
-    while (!system_resizable_vector_pop(dag_ptr->connections, &connection_ptr) )
+    while (!system_resizable_vector_pop(dag_ptr->connections,
+                                       &connection_ptr) )
     {
         delete connection_ptr;
 
@@ -322,11 +347,15 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
      */
     const unsigned int n_nodes = system_resizable_vector_get_amount_of_elements(dag_ptr->nodes);
 
-    for (unsigned int n_node = 0; n_node < n_nodes; ++n_node)
+    for (unsigned int n_node = 0;
+                      n_node < n_nodes;
+                    ++n_node)
     {
         _system_dag_node* node_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(dag_ptr->nodes, n_node, &node_ptr) )
+        if (system_resizable_vector_get_element_at(dag_ptr->nodes,
+                                                   n_node,
+                                                  &node_ptr) )
         {
             system_resizable_vector_empty(node_ptr->adjacent_nodes);
 
@@ -334,7 +363,9 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve node at index [%d]", n_node);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve node at index [%d]",
+                              n_node);
 
             goto end;
         }
@@ -343,20 +374,27 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
     /* 2. Fill adjacent node storage */
     const unsigned int n_connections = system_resizable_vector_get_amount_of_elements(dag_ptr->connections);
 
-    for (unsigned int n_connection = 0; n_connection < n_connections; ++n_connection)
+    for (unsigned int n_connection = 0;
+                      n_connection < n_connections;
+                    ++n_connection)
     {
         _system_dag_connection* connection_ptr = NULL;
 
-        if (system_resizable_vector_get_element_at(dag_ptr->connections, n_connection, &connection_ptr) )
+        if (system_resizable_vector_get_element_at(dag_ptr->connections,
+                                                   n_connection,
+                                                  &connection_ptr) )
         {
             _system_dag_node* dst_node_ptr = (_system_dag_node*) connection_ptr->dst;
             _system_dag_node* src_node_ptr = (_system_dag_node*) connection_ptr->src;
 
-            system_resizable_vector_push(src_node_ptr->adjacent_nodes, dst_node_ptr);
+            system_resizable_vector_push(src_node_ptr->adjacent_nodes,
+                                         dst_node_ptr);
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve connection at index [%d]", n_connection);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve connection at index [%d]",
+                              n_connection);
 
             goto end;
         }
@@ -365,17 +403,24 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
     /* 3. Store all nodes in a vector that we'll be modifying as we go */
     system_resizable_vector_empty(dag_ptr->nodes_to_process);
 
-    for (unsigned int n_node = 0; n_node < n_nodes; ++n_node)
+    for (unsigned int n_node = 0;
+                      n_node < n_nodes;
+                    ++n_node)
     {
         system_dag_node node = NULL;
 
-        if (system_resizable_vector_get_element_at(dag_ptr->nodes, n_node, &node) )
+        if (system_resizable_vector_get_element_at(dag_ptr->nodes,
+                                                   n_node,
+                                                  &node) )
         {
-            system_resizable_vector_push(dag_ptr->nodes_to_process, node);
+            system_resizable_vector_push(dag_ptr->nodes_to_process,
+                                         node);
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve node at index [%d]", n_node);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve node at index [%d]",
+                              n_node);
 
             goto end;
         }
@@ -387,11 +432,14 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
 
     result = true;
 
-    while (system_resizable_vector_pop(dag_ptr->nodes_to_process, &current_node_ptr) )
+    while (system_resizable_vector_pop(dag_ptr->nodes_to_process,
+                                      &current_node_ptr) )
     {
         if (current_node_ptr->status == STATUS_UNVISITED)
         {
-            result = _system_dag_process_node(current_node_ptr, &time, dag_ptr->sorted_nodes);
+            result = _system_dag_process_node(current_node_ptr,
+                                             &time,
+                                              dag_ptr->sorted_nodes);
         }
 
         if (!result)

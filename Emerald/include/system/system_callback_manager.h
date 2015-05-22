@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_CALLBACK_MANAGER_H
@@ -33,7 +33,8 @@ typedef enum
 } _callback_synchronicity;
 
 /** Defines a call-back function pointer type */
-typedef void (*PFNSYSTEMCALLBACKPROC)(const void* callback_data, void* user_arg);
+typedef void (*PFNSYSTEMCALLBACKPROC)(const void* callback_data,
+                                            void* user_arg);
 
 /** TODO.
  *

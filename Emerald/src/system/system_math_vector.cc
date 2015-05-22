@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -25,8 +25,10 @@ PUBLIC EMERALD_API void system_math_vector_cross3(__in_ecount(3)  const float* a
                                                   __in_ecount(3)  const float* b,
                                                   __out_ecount(3)       float* result)
 {
-    ASSERT_DEBUG_SYNC(a != result, "Illegal assumption: a == result");
-    ASSERT_DEBUG_SYNC(b != result, "Illegal assumption: b == result");
+    ASSERT_DEBUG_SYNC(a != result,
+                      "Illegal assumption: a == result");
+    ASSERT_DEBUG_SYNC(b != result,
+                      "Illegal assumption: b == result");
 
     result[0] = a[1] * b[2] - a[2] * b[1];
     result[1] = a[2] * b[0] - a[0] * b[2];

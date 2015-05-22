@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -25,14 +25,17 @@ system_hashed_ansi_string _empty_string  = NULL;
 
 /* Internal functions */
 /** TODO */
-PRIVATE void _init_system_hashed_ansi_string_descriptor(__in __notnull const char* text, __out _system_hashed_ansi_string_descriptor* descriptor)
+PRIVATE void _init_system_hashed_ansi_string_descriptor(__in  __notnull const char*                            text,
+                                                        __out           _system_hashed_ansi_string_descriptor* descriptor)
 {
     size_t length = strlen(text);
 
     descriptor->contents         = new char[length + 1];
     descriptor->contents[length] = 0;
 
-    memcpy(descriptor->contents, text, length);
+    memcpy(descriptor->contents,
+           text,
+           length);
     
     descriptor->length = length;
     descriptor->hash   = system_hash64_calculate(text, (uint32_t) length);
@@ -46,12 +49,14 @@ PRIVATE VOID _deinit_system_hashed_ansi_string_descriptor(__in __notnull _system
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system_hashed_ansi_string has_1, __in __notnull system_hashed_ansi_string has_2)
+PUBLIC EMERALD_API bool system_hashed_ansi_string_contains(__in __notnull system_hashed_ansi_string has_1,
+                                                           __in __notnull system_hashed_ansi_string has_2)
 {
     _system_hashed_ansi_string_descriptor* descriptor_1 = (_system_hashed_ansi_string_descriptor*) has_1;
     _system_hashed_ansi_string_descriptor* descriptor_2 = (_system_hashed_ansi_string_descriptor*) has_2;
 
-    if (strstr(descriptor_1->contents, descriptor_2->contents) == 0)
+    if (strstr(descriptor_1->contents,
+               descriptor_2->contents) == 0)
     {
         return false;
     }
@@ -84,9 +89,12 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create(__
         {
             /* Check if the entry has not already been created. */
             void*                     found_entry = 0;
-            system_hash64             hash        = system_hash64_calculate(raw, (uint32_t) strlen(raw) );
+            system_hash64             hash        = system_hash64_calculate(raw,
+                                                                            (uint32_t) strlen(raw) );
 
-            if (system_hash64map_get(_dictionary, hash, &found_entry) )
+            if (system_hash64map_get(_dictionary,
+                                     hash,
+                                    &found_entry) )
             {
                 result = (system_hashed_ansi_string) found_entry;
             }
@@ -94,8 +102,13 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create(__
             {
                 _system_hashed_ansi_string_descriptor* new_descriptor = new _system_hashed_ansi_string_descriptor;
 
-                _init_system_hashed_ansi_string_descriptor(raw, new_descriptor);
-                system_hash64map_insert                   (_dictionary, hash, new_descriptor, 0, 0);
+                _init_system_hashed_ansi_string_descriptor(raw,
+                                                           new_descriptor);
+                system_hash64map_insert                   (_dictionary,
+                                                           hash,
+                                                           new_descriptor,
+                                                           0,  /* on_remove_callback_proc          */
+                                                           0); /* on_remove_callback_proc_user_arg */
 
                 result = (system_hashed_ansi_string) new_descriptor;
             }
@@ -108,19 +121,23 @@ end:
 }
 
 /* Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_strings(uint32_t n_strings, __in __notnull const char** strings)
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_strings(               uint32_t     n_strings,
+                                                                                                 __in __notnull const char** strings)
 {
     if (_dictionary == NULL)
     {
         system_hashed_ansi_string_init();
     };
 
-    ASSERT_DEBUG_SYNC(_dictionary != NULL, "Dictionary not initialized.");
+    ASSERT_DEBUG_SYNC(_dictionary != NULL,
+                      "Dictionary not initialized.");
 
     /* Sum length of all strings*/
     size_t total_length = 0;
 
-    for (uint32_t n_string = 0; n_string < n_strings; ++n_string)
+    for (uint32_t n_string = 0;
+                  n_string < n_strings;
+                ++n_string)
     {
         total_length += strlen(strings[n_string]);
     }
@@ -129,16 +146,23 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
     system_hashed_ansi_string result     = NULL;
     char*                     new_string = new (std::nothrow) char[total_length+1];
 
-    ASSERT_DEBUG_SYNC(new_string != NULL, "Out of memory while allocating temporary space for merged stngs.");
+    ASSERT_DEBUG_SYNC(new_string != NULL,
+                      "Out of memory while allocating temporary space for merged stngs.");
+
     if (new_string != NULL)
     {
         char* traveller_ptr = new_string;
 
-        for (uint32_t n_string = 0; n_string < n_strings; ++n_string)
+        for (uint32_t n_string = 0;
+                      n_string < n_strings;
+                    ++n_string)
         {
             size_t string_length = strlen(strings[n_string]);
 
-            memcpy(traveller_ptr, strings[n_string], string_length);
+            memcpy(traveller_ptr,
+                   strings[n_string],
+                   string_length);
+
             traveller_ptr += string_length;
         }
 
@@ -156,14 +180,16 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_two_strings(__in __notnull const char* src1, __in __notnull const char* src2)
+PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by_merging_two_strings(__in __notnull const char* src1,
+                                                                                                     __in __notnull const char* src2)
 {
     if (_dictionary == NULL)
     {
         system_hashed_ansi_string_init();
     };
 
-    ASSERT_DEBUG_SYNC(_dictionary != NULL, "Dictionary not initialized.");
+    ASSERT_DEBUG_SYNC(_dictionary != NULL,
+                      "Dictionary not initialized.");
 
     /* Go for it */
     size_t                    src1_length = strlen(src1);
@@ -171,11 +197,17 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_by
     char*                     new_src     = new (std::nothrow) char[src1_length + src2_length + 1];
     system_hashed_ansi_string result      = NULL;
 
-    ASSERT_DEBUG_SYNC(new_src != NULL, "Out of memory while allocating temporary space for merged string.");
+    ASSERT_DEBUG_SYNC(new_src != NULL,
+                      "Out of memory while allocating temporary space for merged string.");
+
     if (new_src != NULL)
     {
-        memcpy(new_src,               src1, src1_length);
-        memcpy(new_src + src1_length, src2, src2_length);
+        memcpy(new_src,
+               src1,
+               src1_length);
+        memcpy(new_src + src1_length,
+               src2,
+               src2_length);
 
         new_src[src1_length + src2_length] = 0;
         result                             = system_hashed_ansi_string_create(new_src);
@@ -198,7 +230,9 @@ PUBLIC EMERALD_API system_hashed_ansi_string system_hashed_ansi_string_create_su
 
     if (buffer != NULL)
     {
-        memcpy(buffer, string + start_offset, length);
+        memcpy(buffer,
+               string + start_offset,
+               length);
 
         buffer[length] = 0;
         result         = system_hashed_ansi_string_create(buffer);
@@ -237,17 +271,20 @@ PUBLIC EMERALD_API const char* system_hashed_ansi_string_get_buffer(__in __notnu
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __notnull system_hashed_ansi_string string, __in __notnull const char* raw_text)
+PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_raw_string(__in __notnull system_hashed_ansi_string string,
+                                                                         __in __notnull const char*               raw_text)
 {
     _system_hashed_ansi_string_descriptor* descriptor = (_system_hashed_ansi_string_descriptor*) string;
 
-    if (descriptor->hash != system_hash64_calculate(raw_text, (uint32_t) strlen(raw_text) ) )
+    if (descriptor->hash != system_hash64_calculate(raw_text,
+                                                    (uint32_t) strlen(raw_text) ) )
     {
         return false;
     }
     else
     {
-        return (strcmp(descriptor->contents, raw_text) == 0);
+        return (strcmp(descriptor->contents,
+                       raw_text) == 0);
     }
 }
 
@@ -258,7 +295,8 @@ PUBLIC EMERALD_API system_hash64 system_hashed_ansi_string_get_hash(__in __notnu
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in __notnull system_hashed_ansi_string has_1, __in __notnull system_hashed_ansi_string has_2)
+PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in __notnull system_hashed_ansi_string has_1,
+                                                                          __in __notnull system_hashed_ansi_string has_2)
 {
     _system_hashed_ansi_string_descriptor* has_1_descriptor = (_system_hashed_ansi_string_descriptor*) has_1;
     _system_hashed_ansi_string_descriptor* has_2_descriptor = (_system_hashed_ansi_string_descriptor*) has_2;
@@ -280,7 +318,8 @@ PUBLIC EMERALD_API bool system_hashed_ansi_string_is_equal_to_hash_string(__in _
     }
     else
     {
-        result = (strcmp(has_1_descriptor->contents, has_2_descriptor->contents) == 0);
+        result = (strcmp(has_1_descriptor->contents,
+                         has_2_descriptor->contents) == 0);
     }
 
     return result;
@@ -297,12 +336,15 @@ PUBLIC void system_hashed_ansi_string_init()
 /** Please see header for specification */
 PUBLIC void system_hashed_ansi_string_deinit()
 {
-    ASSERT_DEBUG_SYNC(_dictionary   != NULL, "Dictionary not initialized");
-    ASSERT_DEBUG_SYNC(_empty_string != NULL, "Empty string not initialized.");
+    ASSERT_DEBUG_SYNC(_dictionary != NULL,
+                      "Dictionary not initialized");
+    ASSERT_DEBUG_SYNC(_empty_string != NULL,
+                      "Empty string not initialized.");
 
     if (_dictionary != NULL)
     {
         system_hash64map_release(_dictionary);
+
         _dictionary = NULL;
     }
 

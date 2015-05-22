@@ -166,6 +166,7 @@ PUBLIC void _system_threads_deinit()
 
                 ASSERT_ALWAYS_SYNC(threads != NULL,
                                    "Could not alloc handle table");
+
                 if (threads != NULL)
                 {
                     for (unsigned int n_thread = 0;

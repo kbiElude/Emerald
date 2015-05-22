@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -488,7 +488,8 @@ PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_c
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_thread_pool_submit_single_task(__notnull system_thread_pool_task_descriptor task_descriptor)
 {
-    _system_thread_pool_submit_single_task(task_descriptor, true);
+    _system_thread_pool_submit_single_task(task_descriptor,
+                                           true); /* enter_cs */
 }
 
 /** Please see header for specification */
@@ -562,8 +563,8 @@ PUBLIC void _system_thread_pool_init()
     {
         order_pool                 = system_resource_pool_create(sizeof(_system_thread_pool_order_descriptor),
                                                                  THREAD_POOL_PREALLOCATED_ORDER_DESCRIPTORS,
-                                                                 0,
-                                                                 0);
+                                                                 0,  /* init_fn   */
+                                                                 0); /* deinit_fn */
         task_descriptor_pool       = system_resource_pool_create(sizeof(_system_thread_pool_task_descriptor),
                                                                  THREAD_POOL_PREALLOCATED_TASK_DESCRIPTORS,
                                                                  _init_system_thread_pool_task_descriptor,

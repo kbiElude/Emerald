@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_CRITICAL_LOG_H
@@ -18,28 +18,49 @@
     static system_critical_section log_file_handle_cs = NULL;
 #endif
 
-#define _LOG(level,file,line,text,...)                                                                  \
-    if (level >= LOGLEVEL_BASE)                                                                         \
-    {                                                                                                   \
-        system_critical_section_enter(log_file_handle_cs);                                              \
-                                                                                                        \
-        static char log_helper[LOG_MAX_LENGTH];                                                         \
-                                                                                                        \
-        memset(log_helper, 0, LOG_MAX_LENGTH);                                                          \
-        sprintf_s(log_helper, LOG_MAX_LENGTH, "[File %s // line %d]: " text, file, line, __VA_ARGS__);  \
-        system_log_write(level, log_helper);                                                            \
-                                                                                                        \
-        system_critical_section_leave(log_file_handle_cs);                                              \
+#define _LOG(level,file,line,text,...)                     \
+    if (level >= LOGLEVEL_BASE)                            \
+    {                                                      \
+        system_critical_section_enter(log_file_handle_cs); \
+                                                           \
+        static char log_helper[LOG_MAX_LENGTH];            \
+                                                           \
+        memset   (log_helper,                              \
+                  0,                                       \
+                  LOG_MAX_LENGTH);                         \
+        sprintf_s(log_helper,                              \
+                  LOG_MAX_LENGTH,                          \
+                  "[File %s // line %d]: " text,           \
+                  file,                                    \
+                  line,                                    \
+                  __VA_ARGS__);                            \
+                                                           \
+        system_log_write(level,                            \
+                         log_helper);                      \
+                                                           \
+        system_critical_section_leave(log_file_handle_cs); \
     }
 
-#define LOG_TRACE(text,...) \
-    _LOG(LOGLEVEL_TRACE, __FILE__, __LINE__, text,__VA_ARGS__)
-#define LOG_INFO(text,...) \
-    _LOG(LOGLEVEL_INFORMATION,__FILE__, __LINE__, text,__VA_ARGS__)
-#define LOG_ERROR(text,...) \
-    _LOG(LOGLEVEL_ERROR, __FILE__, __LINE__, text,__VA_ARGS__)
-#define LOG_FATAL(text,...) \
-    _LOG(LOGLEVEL_FATAL, __FILE__, __LINE__, text,__VA_ARGS__)
+#define LOG_TRACE(text,...) _LOG(LOGLEVEL_TRACE,       \
+                                 __FILE__,             \
+                                 __LINE__,             \
+                                 text,                 \
+                                 __VA_ARGS__)
+#define LOG_INFO(text,...)  _LOG(LOGLEVEL_INFORMATION, \
+                                 __FILE__,             \
+                                 __LINE__,             \
+                                 text,                 \
+                                 __VA_ARGS__)
+#define LOG_ERROR(text,...) _LOG(LOGLEVEL_ERROR,       \
+                                 __FILE__,             \
+                                 __LINE__,             \
+                                 text,                 \
+                                 __VA_ARGS__)
+#define LOG_FATAL(text,...) _LOG(LOGLEVEL_FATAL,       \
+                                 __FILE__,             \
+                                 __LINE__,             \
+                                 text,                 \
+                                 __VA_ARGS__)
 
 
 /** Creates a new log file, initalizes cache, starts logging thread.
@@ -66,6 +87,7 @@ PUBLIC void _system_log_deinit();
  *  @param system_log_priority Entry priority
  *  @param const char*         Entry
  */
-EMERALD_API void system_log_write(system_log_priority, const char*);
+EMERALD_API void system_log_write(system_log_priority,
+                                  const char*);
 
 #endif /* SYSTEM_CRITICAL_LOG_H */

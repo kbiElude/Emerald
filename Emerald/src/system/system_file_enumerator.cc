@@ -89,6 +89,7 @@ PRIVATE bool _system_file_enumerator_fill(__in __notnull _system_file_enumerator
 
             ASSERT_ALWAYS_SYNC(entry_ptr != NULL,
                                "Out of memory");
+
             if (entry_ptr == NULL)
             {
                 result = false;
@@ -258,6 +259,7 @@ PUBLIC EMERALD_API system_file_enumerator system_file_enumerator_create(__in __n
 
     ASSERT_ALWAYS_SYNC(file_enumerator_ptr != NULL,
                        "Out of memory");
+
     if (file_enumerator_ptr == NULL)
     {
         goto end;

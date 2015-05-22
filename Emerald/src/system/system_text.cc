@@ -1,3 +1,8 @@
+/**
+ *
+ * Emerald (kbi/elude @2015)
+ *
+ */
 #include "shared.h"
 #include "system/system_assertions.h"
 #include "system/system_text.h"

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -35,7 +35,9 @@ PUBLIC EMERALD_API system_thread_id system_critical_section_get_owner(__in syste
     _critical_section_descriptor* descriptor = (_critical_section_descriptor*) critical_section;
     system_thread_id              result     = 0;
 
-    ASSERT_DEBUG_SYNC(descriptor != NULL, "CS to release is null");
+    ASSERT_DEBUG_SYNC(descriptor != NULL,
+                      "CS to release is null");
+
     if (descriptor != NULL)
     {
         result = descriptor->thread_id;
@@ -49,12 +51,16 @@ EMERALD_API void system_critical_section_release(__in __deallocate(mem) system_c
 {
     _critical_section_descriptor* descriptor = (_critical_section_descriptor*) critical_section;
 
-    ASSERT_DEBUG_SYNC(descriptor != NULL, "CS to release is null");
+    ASSERT_DEBUG_SYNC(descriptor != NULL,
+                      "CS to release is null");
+
     if (descriptor != NULL)
     {
         ::DeleteCriticalSection(&descriptor->cs);
 
-        ASSERT_DEBUG_SYNC(descriptor->thread_id == 0, "CS taken but about to be released.");
+        ASSERT_DEBUG_SYNC(descriptor->thread_id == 0,
+                          "CS taken but about to be released.");
+
         delete descriptor;
     }
 }
@@ -91,11 +97,15 @@ EMERALD_API void system_critical_section_leave(__in system_critical_section crit
 
     if (descriptor != NULL)
     {
-        ASSERT_DEBUG_SYNC(descriptor->n_enters  >  0,              "Cannot leave - not entered.");
-        ASSERT_DEBUG_SYNC(descriptor->thread_id != 0,              "CS not taken but about to be left.");
-        ASSERT_DEBUG_SYNC(descriptor->thread_id == curr_thread_id, "Leave() request from a non-owner!");
+        ASSERT_DEBUG_SYNC(descriptor->n_enters  >  0,
+                          "Cannot leave - not entered.");
+        ASSERT_DEBUG_SYNC(descriptor->thread_id != 0,
+                          "CS not taken but about to be left.");
+        ASSERT_DEBUG_SYNC(descriptor->thread_id == curr_thread_id,
+                          "Leave() request from a non-owner!");
 
-        if (descriptor->n_enters > 0 && descriptor->thread_id == curr_thread_id)
+        if (descriptor->n_enters  >  0               &&
+            descriptor->thread_id == curr_thread_id)
         {
             descriptor->n_enters--;
 

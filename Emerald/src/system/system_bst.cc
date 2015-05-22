@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2014)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #include "shared.h"
@@ -58,20 +58,30 @@ PUBLIC EMERALD_API system_bst system_bst_create(__in           size_t           
     ASSERT_ALWAYS_SYNC(new_instance != NULL, "Out of memory");
     if (new_instance != NULL)
     {
-        new_instance->key_allocator   = system_linear_alloc_pin_create(key_size, 512, 1);
+        new_instance->key_allocator   = system_linear_alloc_pin_create(key_size,
+                                                                       512, /* n_entries_to_prealloc */
+                                                                       1);  /* n_pins_to_prealloc    */
         new_instance->key_equals_func = key_equals_func;
         new_instance->key_lower_func  = key_lower_func;
         new_instance->key_size        = key_size;
-        new_instance->node_allocator  = system_linear_alloc_pin_create(sizeof(_system_bst_node), 512, 1);
-        new_instance->value_allocator = system_linear_alloc_pin_create(value_size, 512, 1);
+        new_instance->node_allocator  = system_linear_alloc_pin_create(sizeof(_system_bst_node),
+                                                                       512, /* n_entries_to_prealloc */
+                                                                       1);  /* n_pins_to_prealloc    */
+        new_instance->value_allocator = system_linear_alloc_pin_create(value_size,
+                                                                       512, /* n_entries_to_prealloc */
+                                                                       1);  /* n_pins_to_prealloc    */
         new_instance->value_size      = value_size;
 
         /* Create key & value copies */
         void* key_copy   = system_linear_alloc_pin_get_from_pool(new_instance->key_allocator);
         void* value_copy = system_linear_alloc_pin_get_from_pool(new_instance->value_allocator);
 
-        memcpy(key_copy,   initial_key,   key_size);
-        memcpy(value_copy, initial_value, value_size);
+        memcpy(key_copy,
+               initial_key,
+               key_size);
+        memcpy(value_copy,
+               initial_value,
+               value_size);
 
         _init_system_bst_node(&new_instance->root,
                               (system_bst_key) key_copy,
