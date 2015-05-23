@@ -1614,363 +1614,368 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
     {
         func_ptr_table_entry func_ptr_table[] =
         {
-            {&context_ptr->entry_points_gl.pGLActiveShaderProgram,                 "glActiveShaderProgram"},
-            {&context_ptr->entry_points_private.pGLActiveTexture,                  "glActiveTexture"},
-            {&context_ptr->entry_points_gl.pGLAttachShader,                        "glAttachShader"},
-            {&context_ptr->entry_points_gl.pGLBeginConditionalRender,              "glBeginConditionalRender"},
-            {&context_ptr->entry_points_gl.pGLBeginQuery,                          "glBeginQuery"},
-            {&context_ptr->entry_points_private.pGLBeginTransformFeedback,         "glBeginTransformFeedback"},
-            {&context_ptr->entry_points_gl.pGLBindAttribLocation,                  "glBindAttribLocation"},
-            {&context_ptr->entry_points_private.pGLBindBuffer,                     "glBindBuffer"},
-            {&context_ptr->entry_points_private.pGLBindBufferBase,                 "glBindBufferBase"},
-            {&context_ptr->entry_points_private.pGLBindBufferRange,                "glBindBufferRange"},
-            {&context_ptr->entry_points_gl.pGLBindFragDataLocation,                "glBindFragDataLocation"},
-            {&context_ptr->entry_points_private.pGLBindFramebuffer,                "glBindFramebuffer"},
-            {&context_ptr->entry_points_private.pGLBindImageTexture,               "glBindImageTexture"},
-            {&context_ptr->entry_points_gl.pGLBindProgramPipeline,                 "glBindProgramPipeline"},
-            {&context_ptr->entry_points_private.pGLBindSampler,                    "glBindSampler"},
-            {&context_ptr->entry_points_private.pGLBindTexture,                    "glBindTexture"},
-            {&context_ptr->entry_points_gl.pGLBindTransformFeedback,               "glBindTransformFeedback"},
-            {&context_ptr->entry_points_private.pGLBindVertexArray,                "glBindVertexArray"},
-            {&context_ptr->entry_points_private.pGLBlendColor,                     "glBlendColor"},
-            {&context_ptr->entry_points_private.pGLBlendEquation,                  "glBlendEquation"},
-            {&context_ptr->entry_points_private.pGLBlendEquationSeparate,          "glBlendEquationSeparate"},
-            {&context_ptr->entry_points_private.pGLBlendFunc,                      "glBlendFunc"},
-            {&context_ptr->entry_points_private.pGLBlendFuncSeparate,              "glBlendFuncSeparate"},
-            {&context_ptr->entry_points_private.pGLBlitFramebuffer,                "glBlitFramebuffer"},
-            {&context_ptr->entry_points_private.pGLBufferData,                     "glBufferData"},
-            {&context_ptr->entry_points_private.pGLGetBufferParameteriv,           "glGetBufferParameteriv"},
-            {&context_ptr->entry_points_private.pGLGetBufferPointerv,              "glGetBufferPointerv"},
-            {&context_ptr->entry_points_private.pGLBufferSubData,                  "glBufferSubData"},
-            {&context_ptr->entry_points_gl.pGLCheckFramebufferStatus,              "glCheckFramebufferStatus"},
-            {&context_ptr->entry_points_gl.pGLClampColor,                          "glClampColor"},
-            {&context_ptr->entry_points_private.pGLClear,                          "glClear"},
-            {&context_ptr->entry_points_gl.pGLClearBufferfv,                       "glClearBufferfv"},
-            {&context_ptr->entry_points_gl.pGLClearBufferfi,                       "glClearBufferfi"},
-            {&context_ptr->entry_points_gl.pGLClearBufferiv,                       "glClearBufferiv"},
-            {&context_ptr->entry_points_gl.pGLClearBufferuiv,                      "glClearBufferuiv"},
-            {&context_ptr->entry_points_private.pGLClearColor,                     "glClearColor"},
-            {&context_ptr->entry_points_gl.pGLClearStencil,                        "glClearStencil"},
-            {&context_ptr->entry_points_private.pGLClearDepth,                     "glClearDepth"},
-            {&context_ptr->entry_points_private.pGLColorMask,                      "glColorMask"},
-            {&context_ptr->entry_points_gl.pGLColorMaski,                          "glColorMaski"},
-            {&context_ptr->entry_points_gl.pGLCompileShader,                       "glCompileShader"},
-            {&context_ptr->entry_points_private.pGLCompressedTexImage1D,           "glCompressedTexImage1D"},
-            {&context_ptr->entry_points_private.pGLCompressedTexImage2D,           "glCompressedTexImage2D"},
-            {&context_ptr->entry_points_private.pGLCompressedTexImage3D,           "glCompressedTexImage3D"},
-            {&context_ptr->entry_points_private.pGLCompressedTexSubImage1D,        "glCompressedTexSubImage1D"},
-            {&context_ptr->entry_points_private.pGLCompressedTexSubImage2D,        "glCompressedTexSubImage2D"},
-            {&context_ptr->entry_points_private.pGLCompressedTexSubImage3D,        "glCompressedTexSubImage3D"},
-            {&context_ptr->entry_points_private.pGLCopyBufferSubData,              "glCopyBufferSubData"},
-            {&context_ptr->entry_points_private.pGLCopyTexImage1D,                 "glCopyTexImage1D"},
-            {&context_ptr->entry_points_private.pGLCopyTexImage2D,                 "glCopyTexImage2D"},
-            {&context_ptr->entry_points_private.pGLCopyTexSubImage1D,              "glCopyTexSubImage1D"},
-            {&context_ptr->entry_points_private.pGLCopyTexSubImage2D,              "glCopyTexSubImage2D"},
-            {&context_ptr->entry_points_private.pGLCopyTexSubImage3D,              "glCopyTexSubImage3D"},
-            {&context_ptr->entry_points_gl.pGLCreateProgram,                       "glCreateProgram"},
-            {&context_ptr->entry_points_gl.pGLCreateShader,                        "glCreateShader"},
-            {&context_ptr->entry_points_gl.pGLCreateShaderProgramv,                "glCreateShaderProgramv"},
-            {&context_ptr->entry_points_private.pGLCullFace,                       "glCullFace"},
-            {&context_ptr->entry_points_private.pGLDeleteBuffers,                  "glDeleteBuffers"},
-            {&context_ptr->entry_points_gl.pGLDebugMessageCallback,                "glDebugMessageCallback"},
-            {&context_ptr->entry_points_gl.pGLDebugMessageControl,                 "glDebugMessageControl"},
-            {&context_ptr->entry_points_gl.pGLDebugMessageInsert,                  "glDebugMessageInsert"},
-            {&context_ptr->entry_points_gl.pGLDeleteFramebuffers,                  "glDeleteFramebuffers"},
-            {&context_ptr->entry_points_gl.pGLDeleteProgram,                       "glDeleteProgram"},
-            {&context_ptr->entry_points_gl.pGLDeleteProgramPipelines,              "glDeleteProgramPipelines"},
-            {&context_ptr->entry_points_gl.pGLDeleteSamplers,                      "glDeleteSamplers"},
-            {&context_ptr->entry_points_gl.pGLDeleteShader,                        "glDeleteShader"},
-            {&context_ptr->entry_points_gl.pGLDeleteTextures,                      "glDeleteTextures"},
-            {&context_ptr->entry_points_gl.pGLDeleteTransformFeedbacks,            "glDeleteTransformFeedbacks"},
-            {&context_ptr->entry_points_gl.pGLDeleteQueries,                       "glDeleteQueries"},
-            {&context_ptr->entry_points_private.pGLDeleteVertexArrays,             "glDeleteVertexArrays"},
-            {&context_ptr->entry_points_private.pGLDepthFunc,                      "glDepthFunc"},
-            {&context_ptr->entry_points_private.pGLDepthMask,                      "glDepthMask"},
-            {&context_ptr->entry_points_gl.pGLDepthRange,                          "glDepthRange"},
-            {&context_ptr->entry_points_gl.pGLDetachShader,                        "glDetachShader"},
-            {&context_ptr->entry_points_private.pGLDisable,                        "glDisable"},
-            {&context_ptr->entry_points_private.pGLDisablei,                       "glDisablei"},
-            {&context_ptr->entry_points_private.pGLDisableVertexAttribArray,       "glDisableVertexAttribArray"},
-            {&context_ptr->entry_points_private.pGLDispatchCompute,                "glDispatchCompute"},
-            {&context_ptr->entry_points_private.pGLDispatchComputeIndirect,        "glDispatchComputeIndirect"},
-            {&context_ptr->entry_points_private.pGLDrawArrays,                     "glDrawArrays"},
-            {&context_ptr->entry_points_private.pGLDrawArraysInstanced,            "glDrawArraysInstanced"},
-            {&context_ptr->entry_points_private.pGLDrawArraysInstancedBaseInstance,"glDrawArraysInstancedBaseInstance"},
-            {&context_ptr->entry_points_private.pGLDrawBuffer,                     "glDrawBuffer"},
-            {&context_ptr->entry_points_private.pGLDrawBuffers,                    "glDrawBuffers"},
-            {&context_ptr->entry_points_private.pGLDrawElements,                   "glDrawElements"},
-            {&context_ptr->entry_points_private.pGLDrawElementsInstanced,          "glDrawElementsInstanced"},
-            {&context_ptr->entry_points_private.pGLDrawRangeElements,              "glDrawRangeElements"},
-            {&context_ptr->entry_points_private.pGLDrawTransformFeedback,          "glDrawTransformFeedback"},
-            {&context_ptr->entry_points_private.pGLEnable,                         "glEnable"},
-            {&context_ptr->entry_points_private.pGLEnablei,                        "glEnablei"},
-            {&context_ptr->entry_points_private.pGLEnableVertexAttribArray,        "glEnableVertexAttribArray"},
-            {&context_ptr->entry_points_gl.pGLEndConditionalRender,                "glEndConditionalRender"},
-            {&context_ptr->entry_points_gl.pGLEndQuery,                            "glEndQuery"},
-            {&context_ptr->entry_points_gl.pGLEndTransformFeedback,                "glEndTransformFeedback"},
-            {&context_ptr->entry_points_gl.pGLFinish,                              "glFinish"},
-            {&context_ptr->entry_points_gl.pGLFlush,                               "glFlush"},
-            {&context_ptr->entry_points_private.pGLFramebufferParameteri,          "glFramebufferParameteri"},
-            {&context_ptr->entry_points_private.pGLFramebufferTexture,             "glFramebufferTexture"},
-            {&context_ptr->entry_points_private.pGLFramebufferTexture1D,           "glFramebufferTexture1D"},
-            {&context_ptr->entry_points_private.pGLFramebufferTexture2D,           "glFramebufferTexture2D"},
-            {&context_ptr->entry_points_private.pGLFramebufferTexture3D,           "glFramebufferTexture3D"},
-            {&context_ptr->entry_points_private.pGLFramebufferTextureLayer,        "glFramebufferTextureLayer"},
-            {&context_ptr->entry_points_private.pGLFrontFace,                      "glFrontFace"},
-            {&context_ptr->entry_points_gl.pGLGenBuffers,                          "glGenBuffers"},
-            {&context_ptr->entry_points_gl.pGLGenerateMipmap,                      "glGenerateMipmap"},
-            {&context_ptr->entry_points_gl.pGLGenFramebuffers,                     "glGenFramebuffers"},
-            {&context_ptr->entry_points_gl.pGLGenProgramPipelines,                 "glGenProgramPipelines"},
-            {&context_ptr->entry_points_gl.pGLGenSamplers,                         "glGenSamplers"},
-            {&context_ptr->entry_points_gl.pGLGenTextures,                         "glGenTextures"},
-            {&context_ptr->entry_points_gl.pGLGenTransformFeedbacks,               "glGenTransformFeedbacks"},
-            {&context_ptr->entry_points_gl.pGLGenQueries,                          "glGenQueries"},
-            {&context_ptr->entry_points_private.pGLGenVertexArrays,                "glGenVertexArrays"},
-            {&context_ptr->entry_points_private.pGLGetActiveAtomicCounterBufferiv, "glGetActiveAtomicCounterBufferiv"},
-            {&context_ptr->entry_points_gl.pGLGetActiveAttrib,                     "glGetActiveAttrib"},
-            {&context_ptr->entry_points_gl.pGLGetActiveUniform,                    "glGetActiveUniform"},
-            {&context_ptr->entry_points_gl.pGLGetActiveUniformBlockName,           "glGetActiveUniformBlockName"},
-            {&context_ptr->entry_points_gl.pGLGetActiveUniformBlockiv,             "glGetActiveUniformBlockiv"},
-            {&context_ptr->entry_points_gl.pGLGetActiveUniformsiv,                 "glGetActiveUniformsiv"},
-            {&context_ptr->entry_points_gl.pGLGetAttribLocation,                   "glGetAttribLocation"},
-            {&context_ptr->entry_points_gl.pGLGetAttachedShaders,                  "glGetAttachedShaders"},
-            {&context_ptr->entry_points_private.pGLGetBooleani_v,                  "glGetBooleani_v"},
-            {&context_ptr->entry_points_private.pGLGetBooleanv,                    "glGetBooleanv"},
-            {&context_ptr->entry_points_private.pGLGetBufferParameteri64v,         "glGetBufferParameteri64v"},
-            {&context_ptr->entry_points_private.pGLGetBufferSubData,               "glGetBufferSubData"},
-            {&context_ptr->entry_points_private.pGLGetCompressedTexImage,          "glGetCompressedTexImage"},
-            {&context_ptr->entry_points_gl.pGLGetDebugMessageLog,                  "glGetDebugMessageLog"},
-            {&context_ptr->entry_points_private.pGLGetDoublev,                     "glGetDoublev"},
-            {&context_ptr->entry_points_gl.pGLGetError,                            "glGetError"},
-            {&context_ptr->entry_points_private.pGLGetFloatv,                      "glGetFloatv"},
-            {&context_ptr->entry_points_gl.pGLGetFragDataLocation,                 "glGetFragDataLocation"},
-            {&context_ptr->entry_points_private.pGLGetInteger64i_v,                "glGetInteger64i_v"},
-            {&context_ptr->entry_points_private.pGLGetFramebufferParameteriv,      "glGetFramebufferParameteriv"},
-            {&context_ptr->entry_points_private.pGLGetIntegeri_v,                  "glGetIntegeri_v"},
-            {&context_ptr->entry_points_private.pGLGetIntegerv,                    "glGetIntegerv"},
-            {&context_ptr->entry_points_gl.pGLGetProgramBinary,                    "glGetProgramBinary"},
-            {&context_ptr->entry_points_gl.pGLGetProgramiv,                        "glGetProgramiv"},
-            {&context_ptr->entry_points_gl.pGLGetProgramInfoLog,                   "glGetProgramInfoLog"},
-            {&context_ptr->entry_points_gl.pGLGetProgramInterfaceiv,               "glGetProgramInterfaceiv"},
-            {&context_ptr->entry_points_gl.pGLGetProgramResourceIndex,             "glGetProgramResourceIndex"},
-            {&context_ptr->entry_points_gl.pGLGetProgramResourceName,              "glGetProgramResourceName"},
-            {&context_ptr->entry_points_gl.pGLGetProgramResourceiv,                "glGetProgramResourceiv"},
-            {&context_ptr->entry_points_gl.pGLGetProgramResourceLocation,          "glGetProgramResourceLocation"},
-            {&context_ptr->entry_points_gl.pGLGetProgramResourceLocationIndex,     "glGetProgramResourceLocationIndex"},
-            {&context_ptr->entry_points_gl.pGLGetShaderiv,                         "glGetShaderiv"},
-            {&context_ptr->entry_points_gl.pGLGetShaderInfoLog,                    "glGetShaderInfoLog"},
-            {&context_ptr->entry_points_gl.pGLGetShaderSource,                     "glGetShaderSource"},
-            {&context_ptr->entry_points_gl.pGLGetString,                           "glGetString"},
-            {&context_ptr->entry_points_gl.pGLGetStringi,                          "glGetStringi"},
-            {&context_ptr->entry_points_private.pGLGetTexLevelParameterfv,         "glGetTexLevelParameterfv"},
-            {&context_ptr->entry_points_private.pGLGetTexLevelParameteriv,         "glGetTexLevelParameteriv"},
-            {&context_ptr->entry_points_private.pGLGetTexParameterfv,              "glGetTexParameterfv"},
-            {&context_ptr->entry_points_private.pGLGetTexParameteriv,              "glGetTexParameteriv"},
-            {&context_ptr->entry_points_private.pGLGetTexParameterIiv,             "glGetTexParameterIiv"},
-            {&context_ptr->entry_points_private.pGLGetTexParameterIuiv,            "glGetTexParameterIuiv"},
-            {&context_ptr->entry_points_private.pGLGetTexImage,                    "glGetTexImage"},
-            {&context_ptr->entry_points_gl.pGLGetTransformFeedbackVarying,         "glGetTransformFeedbackVarying"},
-            {&context_ptr->entry_points_gl.pGLGetUniformBlockIndex,                "glGetUniformBlockIndex"},
-            {&context_ptr->entry_points_gl.pGLGetUniformfv,                        "glGetUniformfv"},
-            {&context_ptr->entry_points_gl.pGLGetUniformiv,                        "glGetUniformiv"},
-            {&context_ptr->entry_points_gl.pGLGetUniformLocation,                  "glGetUniformLocation"},
-            {&context_ptr->entry_points_gl.pGLGetUniformuiv,                       "glGetUniformuiv"},
-            {&context_ptr->entry_points_gl.pGLGetQueryiv,                          "glGetQueryiv"},
-            {&context_ptr->entry_points_gl.pGLGetQueryObjectiv,                    "glGetQueryObjectiv"},
-            {&context_ptr->entry_points_gl.pGLGetQueryObjectuiv,                   "glGetQueryObjectuiv"},
-            {&context_ptr->entry_points_gl.pGLGetQueryObjectui64v,                 "glGetQueryObjectui64v"},
-            {&context_ptr->entry_points_private.pGLGetSamplerParameterfv,          "glGetSamplerParameterfv"},
-            {&context_ptr->entry_points_private.pGLGetSamplerParameteriv,          "glGetSamplerParameteriv"},
-            {&context_ptr->entry_points_private.pGLGetSamplerParameterIiv,         "glGetSamplerParameterIiv"},
-            {&context_ptr->entry_points_private.pGLGetSamplerParameterIuiv,        "glGetSamplerParameterIuiv"},
-            {&context_ptr->entry_points_private.pGLGetVertexAttribdv,              "glGetVertexAttribdv"},
-            {&context_ptr->entry_points_private.pGLGetVertexAttribfv,              "glGetVertexAttribfv"},
-            {&context_ptr->entry_points_private.pGLGetVertexAttribIiv,             "glGetVertexAttribIiv"},
-            {&context_ptr->entry_points_private.pGLGetVertexAttribIuiv,            "glGetVertexAttribIuiv"},
-            {&context_ptr->entry_points_private.pGLGetVertexAttribiv,              "glGetVertexAttribiv"},
-            {&context_ptr->entry_points_private.pGLGetVertexAttribPointerv,        "glGetVertexAttribPointerv"},
-            {&context_ptr->entry_points_gl.pGLHint,                                "glHint"},
-            {&context_ptr->entry_points_gl.pGLInvalidateBufferData,                "glInvalidateBufferData"},
-            {&context_ptr->entry_points_gl.pGLInvalidateBufferSubData,             "glInvalidateBufferSubData"},
-            {&context_ptr->entry_points_private.pGLInvalidateFramebuffer,          "glInvalidateFramebuffer"},
-            {&context_ptr->entry_points_private.pGLInvalidateSubFramebuffer,       "glInvalidateSubFramebuffer"},
-            {&context_ptr->entry_points_gl.pGLInvalidateTexImage,                  "glInvalidateTexImage"},
-            {&context_ptr->entry_points_gl.pGLInvalidateTexSubImage,               "glInvalidateTexSubImage"},
-            {&context_ptr->entry_points_gl.pGLIsBuffer,                            "glIsBuffer"},
-            {&context_ptr->entry_points_gl.pGLIsEnabled,                           "glIsEnabled"},
-            {&context_ptr->entry_points_gl.pGLIsEnabledi,                          "glIsEnabledi"},
-            {&context_ptr->entry_points_gl.pGLIsProgram,                           "glIsProgram"},
-            {&context_ptr->entry_points_gl.pGLIsShader,                            "glIsShader"},
-            {&context_ptr->entry_points_gl.pGLIsTexture,                           "glIsTexture"},
-            {&context_ptr->entry_points_gl.pGLIsTransformFeedback,                 "glIsTransformFeedback"},
-            {&context_ptr->entry_points_gl.pGLIsQuery,                             "glIsQuery"},
-            {&context_ptr->entry_points_gl.pGLLineWidth,                           "glLineWidth"},
-            {&context_ptr->entry_points_gl.pGLLinkProgram,                         "glLinkProgram"},
-            {&context_ptr->entry_points_gl.pGLLogicOp,                             "glLogicOp"},
-            {&context_ptr->entry_points_private.pGLMapBuffer,                      "glMapBuffer"},
-            {&context_ptr->entry_points_private.pGLMapBufferRange,                 "glMapBufferRange"},
-            {&context_ptr->entry_points_gl.pGLMemoryBarrier,                       "glMemoryBarrier"},
-            {&context_ptr->entry_points_private.pGLMultiDrawArrays,                "glMultiDrawArrays"},
-            {&context_ptr->entry_points_private.pGLMultiDrawElements,              "glMultiDrawElements"},
-            {&context_ptr->entry_points_private.pGLMultiDrawElementsBaseVertex,    "glMultiDrawElementsBaseVertex"},
-            {&context_ptr->entry_points_gl.pGLPauseTransformFeedback,              "glPauseTransformFeedback"},
-            {&context_ptr->entry_points_gl.pGLPixelStoref,                         "glPixelStoref"},
-            {&context_ptr->entry_points_gl.pGLPixelStorei,                         "glPixelStorei"},
-            {&context_ptr->entry_points_gl.pGLPointParameterf,                     "glPointParameterf"},
-            {&context_ptr->entry_points_gl.pGLPointParameterfv,                    "glPointParameterfv"},
-            {&context_ptr->entry_points_gl.pGLPointParameteri,                     "glPointParameteri"},
-            {&context_ptr->entry_points_gl.pGLPointParameteriv,                    "glPointParameteriv"},
-            {&context_ptr->entry_points_gl.pGLPolygonMode,                         "glPolygonMode"},
-            {&context_ptr->entry_points_gl.pGLPolygonOffset,                       "glPolygonOffset"},
-            {&context_ptr->entry_points_gl.pGLPrimitiveRestartIndex,               "glPrimitiveRestartIndex"},
-            {&context_ptr->entry_points_gl.pGLProgramBinary,                       "glProgramBinary"},
-            {&context_ptr->entry_points_gl.pGLProgramParameteri,                   "glProgramParameteri"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1d,                    "glProgramUniform1d"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1dv,                   "glProgramUniform1dv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1f,                    "glProgramUniform1f"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1fv,                   "glProgramUniform1fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1i,                    "glProgramUniform1i"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1iv,                   "glProgramUniform1iv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1ui,                   "glProgramUniform1ui"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform1uiv,                  "glProgramUniform1uiv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2d,                    "glProgramUniform2d"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2dv,                   "glProgramUniform2dv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2f,                    "glProgramUniform2f"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2fv,                   "glProgramUniform2fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2i,                    "glProgramUniform2i"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2iv,                   "glProgramUniform2iv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2ui,                   "glProgramUniform2ui"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform2uiv,                  "glProgramUniform2uiv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3d,                    "glProgramUniform3d"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3dv,                   "glProgramUniform3dv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3f,                    "glProgramUniform3f"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3fv,                   "glProgramUniform3fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3i,                    "glProgramUniform3i"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3iv,                   "glProgramUniform3iv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3ui,                   "glProgramUniform3ui"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform3uiv,                  "glProgramUniform3uiv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4d,                    "glProgramUniform4d"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4dv,                   "glProgramUniform4dv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4f,                    "glProgramUniform4f"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4fv,                   "glProgramUniform4fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4i,                    "glProgramUniform4i"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4iv,                   "glProgramUniform4iv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4ui,                   "glProgramUniform4ui"},
-            {&context_ptr->entry_points_gl.pGLProgramUniform4uiv,                  "glProgramUniform4uiv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix2fv,             "glProgramUniformMatrix2fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix2x3fv,           "glProgramUniformMatrix2x3fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix2x4fv,           "glProgramUniformMatrix2x4fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix3fv,             "glProgramUniformMatrix3fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix3x2fv,           "glProgramUniformMatrix3x2fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix3x4fv,           "glProgramUniformMatrix3x4fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4fv,             "glProgramUniformMatrix4fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x2fv,           "glProgramUniformMatrix4x2fv"},
-            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x3fv,           "glProgramUniformMatrix4x3fv"},
-            {&context_ptr->entry_points_private.pGLReadBuffer,                     "glReadBuffer"},
-            {&context_ptr->entry_points_private.pGLReadPixels,                     "glReadPixels"},
-            {&context_ptr->entry_points_private.pGLResumeTransformFeedback,        "glResumeTransformFeedback"},
-            {&context_ptr->entry_points_gl.pGLPointSize,                           "glPointSize"},
-            {&context_ptr->entry_points_gl.pGLSampleCoverage,                      "glSampleCoverage"},
-            {&context_ptr->entry_points_private.pGLSamplerParameterf,              "glSamplerParameterf"},
-            {&context_ptr->entry_points_private.pGLSamplerParameterfv,             "glSamplerParameterfv"},
-            {&context_ptr->entry_points_private.pGLSamplerParameterIiv,            "glSamplerParameterIiv"},
-            {&context_ptr->entry_points_private.pGLSamplerParameterIuiv,           "glSamplerParameterIuiv"},
-            {&context_ptr->entry_points_private.pGLSamplerParameteri,              "glSamplerParameteri"},
-            {&context_ptr->entry_points_private.pGLSamplerParameteriv,             "glSamplerParameteriv"},
-            {&context_ptr->entry_points_private.pGLScissor,                        "glScissor"},
-            {&context_ptr->entry_points_gl.pGLShaderStorageBlockBinding,           "glShaderStorageBlockBinding"},
-            {&context_ptr->entry_points_gl.pGLShaderSource,                        "glShaderSource"},
-            {&context_ptr->entry_points_gl.pGLStencilFunc,                         "glStencilFunc"},
-            {&context_ptr->entry_points_gl.pGLStencilFuncSeparate,                 "glStencilFuncSeparate"},
-            {&context_ptr->entry_points_gl.pGLStencilMask,                         "glStencilMask"},
-            {&context_ptr->entry_points_gl.pGLStencilMaskSeparate,                 "glStencilMaskSeparate"},
-            {&context_ptr->entry_points_gl.pGLStencilOp,                           "glStencilOp"},
-            {&context_ptr->entry_points_gl.pGLStencilOpSeparate,                   "glStencilOpSeparate"},
-            {&context_ptr->entry_points_private.pGLTexBuffer,                      "glTexBuffer"},
-            {&context_ptr->entry_points_private.pGLTexBufferRange,                 "glTexBufferRange"},
-            {&context_ptr->entry_points_private.pGLTexImage1D,                     "glTexImage1D"},
-            {&context_ptr->entry_points_private.pGLTexImage2D,                     "glTexImage2D"},
-            {&context_ptr->entry_points_private.pGLTexImage3D,                     "glTexImage3D"},
-            {&context_ptr->entry_points_private.pGLTexParameterf,                  "glTexParameterf"},
-            {&context_ptr->entry_points_private.pGLTexParameterfv,                 "glTexParameterfv"},
-            {&context_ptr->entry_points_private.pGLTexParameteri,                  "glTexParameteri"},
-            {&context_ptr->entry_points_private.pGLTexParameteriv,                 "glTexParameteriv"},
-            {&context_ptr->entry_points_private.pGLTexParameterIiv,                "glTexParameterIiv"},
-            {&context_ptr->entry_points_private.pGLTexParameterIuiv,               "glTexParameterIuiv"},
-            {&context_ptr->entry_points_private.pGLTexStorage1D,                   "glTexStorage1D"},
-            {&context_ptr->entry_points_private.pGLTexStorage2D,                   "glTexStorage2D"},
-            {&context_ptr->entry_points_private.pGLTexStorage2DMultisample,        "glTexStorage2DMultisample"},
-            {&context_ptr->entry_points_private.pGLTexStorage3D,                   "glTexStorage3D"},
-            {&context_ptr->entry_points_private.pGLTexStorage3DMultisample,        "glTexStorage3DMultisample"},
-            {&context_ptr->entry_points_private.pGLTexSubImage1D,                  "glTexSubImage1D"},
-            {&context_ptr->entry_points_private.pGLTexSubImage2D,                  "glTexSubImage2D"},
-            {&context_ptr->entry_points_private.pGLTexSubImage3D,                  "glTexSubImage3D"},
-            {&context_ptr->entry_points_gl.pGLTransformFeedbackVaryings,           "glTransformFeedbackVaryings"},
-            {&context_ptr->entry_points_private.pGLUniformBlockBinding,            "glUniformBlockBinding"},
-            {&context_ptr->entry_points_private.pGLUnmapBuffer,                    "glUnmapBuffer"},
-            {&context_ptr->entry_points_private.pGLUseProgram,                     "glUseProgram"},
-            {&context_ptr->entry_points_gl.pGLUseProgramStages,                    "glUseProgramStages"},
-            {&context_ptr->entry_points_gl.pGLValidateProgram,                     "glValidateProgram"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib1d,                      "glVertexAttrib1d"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib1dv,                     "glVertexAttrib1dv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib1f,                      "glVertexAttrib1f"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib1fv,                     "glVertexAttrib1fv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib1s,                      "glVertexAttrib1s"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib1sv,                     "glVertexAttrib1sv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib2d,                      "glVertexAttrib2d"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib2dv,                     "glVertexAttrib2dv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib2f,                      "glVertexAttrib2f"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib2fv,                     "glVertexAttrib2fv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib2s,                      "glVertexAttrib2s"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib2sv,                     "glVertexAttrib2sv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib3d,                      "glVertexAttrib3d"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib3dv,                     "glVertexAttrib3dv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib3f,                      "glVertexAttrib3f"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib3fv,                     "glVertexAttrib3fv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib3s,                      "glVertexAttrib3s"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib3sv,                     "glVertexAttrib3sv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nbv,                    "glVertexAttrib4Nbv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Niv,                    "glVertexAttrib4Niv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nsv,                    "glVertexAttrib4Nsv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nub,                    "glVertexAttrib4Nub"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nubv,                   "glVertexAttrib4Nubv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nuiv,                   "glVertexAttrib4Nuiv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nusv,                   "glVertexAttrib4Nusv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4bv,                     "glVertexAttrib4bv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4d,                      "glVertexAttrib4d"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4dv,                     "glVertexAttrib4dv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4f,                      "glVertexAttrib4f"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4fv,                     "glVertexAttrib4fv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4iv,                     "glVertexAttrib4iv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4s,                      "glVertexAttrib4s"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4sv,                     "glVertexAttrib4sv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4ubv,                    "glVertexAttrib4ubv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4uiv,                    "glVertexAttrib4uiv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttrib4usv,                    "glVertexAttrib4usv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribDivisor,                 "glVertexAttribDivisor"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI1i,                     "glVertexAttribI1i"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI1iv,                    "glVertexAttribI1iv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI1ui,                    "glVertexAttribI1ui"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI1uiv,                   "glVertexAttribI1uiv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI2i,                     "glVertexAttribI2i"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI2iv,                    "glVertexAttribI2iv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI2ui,                    "glVertexAttribI2ui"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI2uiv,                   "glVertexAttribI2uiv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI3i,                     "glVertexAttribI3i"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI3iv,                    "glVertexAttribI3iv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI3ui,                    "glVertexAttribI3ui"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI3uiv,                   "glVertexAttribI3uiv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4bv,                    "glVertexAttribI4bv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4i,                     "glVertexAttribI4i"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4iv,                    "glVertexAttribI4iv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4sv,                    "glVertexAttribI4sv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4ubv,                   "glVertexAttribI4ubv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4ui,                    "glVertexAttribI4ui"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4uiv,                   "glVertexAttribI4uiv"},
-            {&context_ptr->entry_points_gl.pGLVertexAttribI4usv,                   "glVertexAttribI4usv"},
-            {&context_ptr->entry_points_private.pGLVertexAttribIPointer,           "glVertexAttribIPointer"},
-            {&context_ptr->entry_points_private.pGLVertexAttribPointer,            "glVertexAttribPointer"},
-            {&context_ptr->entry_points_private.pGLViewport,                       "glViewport"}
+            {&context_ptr->entry_points_gl.pGLActiveShaderProgram,                              "glActiveShaderProgram"},
+            {&context_ptr->entry_points_private.pGLActiveTexture,                               "glActiveTexture"},
+            {&context_ptr->entry_points_gl.pGLAttachShader,                                     "glAttachShader"},
+            {&context_ptr->entry_points_gl.pGLBeginConditionalRender,                           "glBeginConditionalRender"},
+            {&context_ptr->entry_points_gl.pGLBeginQuery,                                       "glBeginQuery"},
+            {&context_ptr->entry_points_private.pGLBeginTransformFeedback,                      "glBeginTransformFeedback"},
+            {&context_ptr->entry_points_gl.pGLBindAttribLocation,                               "glBindAttribLocation"},
+            {&context_ptr->entry_points_private.pGLBindBuffer,                                  "glBindBuffer"},
+            {&context_ptr->entry_points_private.pGLBindBufferBase,                              "glBindBufferBase"},
+            {&context_ptr->entry_points_private.pGLBindBufferRange,                             "glBindBufferRange"},
+            {&context_ptr->entry_points_gl.pGLBindFragDataLocation,                             "glBindFragDataLocation"},
+            {&context_ptr->entry_points_private.pGLBindFramebuffer,                             "glBindFramebuffer"},
+            {&context_ptr->entry_points_private.pGLBindImageTexture,                            "glBindImageTexture"},
+            {&context_ptr->entry_points_gl.pGLBindProgramPipeline,                              "glBindProgramPipeline"},
+            {&context_ptr->entry_points_private.pGLBindSampler,                                 "glBindSampler"},
+            {&context_ptr->entry_points_private.pGLBindTexture,                                 "glBindTexture"},
+            {&context_ptr->entry_points_gl.pGLBindTransformFeedback,                            "glBindTransformFeedback"},
+            {&context_ptr->entry_points_private.pGLBindVertexArray,                             "glBindVertexArray"},
+            {&context_ptr->entry_points_private.pGLBlendColor,                                  "glBlendColor"},
+            {&context_ptr->entry_points_private.pGLBlendEquation,                               "glBlendEquation"},
+            {&context_ptr->entry_points_private.pGLBlendEquationSeparate,                       "glBlendEquationSeparate"},
+            {&context_ptr->entry_points_private.pGLBlendFunc,                                   "glBlendFunc"},
+            {&context_ptr->entry_points_private.pGLBlendFuncSeparate,                           "glBlendFuncSeparate"},
+            {&context_ptr->entry_points_private.pGLBlitFramebuffer,                             "glBlitFramebuffer"},
+            {&context_ptr->entry_points_private.pGLBufferData,                                  "glBufferData"},
+            {&context_ptr->entry_points_private.pGLGetBufferParameteriv,                        "glGetBufferParameteriv"},
+            {&context_ptr->entry_points_private.pGLGetBufferPointerv,                           "glGetBufferPointerv"},
+            {&context_ptr->entry_points_private.pGLBufferSubData,                               "glBufferSubData"},
+            {&context_ptr->entry_points_gl.pGLCheckFramebufferStatus,                           "glCheckFramebufferStatus"},
+            {&context_ptr->entry_points_gl.pGLClampColor,                                       "glClampColor"},
+            {&context_ptr->entry_points_private.pGLClear,                                       "glClear"},
+            {&context_ptr->entry_points_gl.pGLClearBufferfv,                                    "glClearBufferfv"},
+            {&context_ptr->entry_points_gl.pGLClearBufferfi,                                    "glClearBufferfi"},
+            {&context_ptr->entry_points_gl.pGLClearBufferiv,                                    "glClearBufferiv"},
+            {&context_ptr->entry_points_gl.pGLClearBufferuiv,                                   "glClearBufferuiv"},
+            {&context_ptr->entry_points_private.pGLClearColor,                                  "glClearColor"},
+            {&context_ptr->entry_points_gl.pGLClearStencil,                                     "glClearStencil"},
+            {&context_ptr->entry_points_private.pGLClearDepth,                                  "glClearDepth"},
+            {&context_ptr->entry_points_private.pGLColorMask,                                   "glColorMask"},
+            {&context_ptr->entry_points_gl.pGLColorMaski,                                       "glColorMaski"},
+            {&context_ptr->entry_points_gl.pGLCompileShader,                                    "glCompileShader"},
+            {&context_ptr->entry_points_private.pGLCompressedTexImage1D,                        "glCompressedTexImage1D"},
+            {&context_ptr->entry_points_private.pGLCompressedTexImage2D,                        "glCompressedTexImage2D"},
+            {&context_ptr->entry_points_private.pGLCompressedTexImage3D,                        "glCompressedTexImage3D"},
+            {&context_ptr->entry_points_private.pGLCompressedTexSubImage1D,                     "glCompressedTexSubImage1D"},
+            {&context_ptr->entry_points_private.pGLCompressedTexSubImage2D,                     "glCompressedTexSubImage2D"},
+            {&context_ptr->entry_points_private.pGLCompressedTexSubImage3D,                     "glCompressedTexSubImage3D"},
+            {&context_ptr->entry_points_private.pGLCopyBufferSubData,                           "glCopyBufferSubData"},
+            {&context_ptr->entry_points_private.pGLCopyTexImage1D,                              "glCopyTexImage1D"},
+            {&context_ptr->entry_points_private.pGLCopyTexImage2D,                              "glCopyTexImage2D"},
+            {&context_ptr->entry_points_private.pGLCopyTexSubImage1D,                           "glCopyTexSubImage1D"},
+            {&context_ptr->entry_points_private.pGLCopyTexSubImage2D,                           "glCopyTexSubImage2D"},
+            {&context_ptr->entry_points_private.pGLCopyTexSubImage3D,                           "glCopyTexSubImage3D"},
+            {&context_ptr->entry_points_gl.pGLCreateProgram,                                    "glCreateProgram"},
+            {&context_ptr->entry_points_gl.pGLCreateShader,                                     "glCreateShader"},
+            {&context_ptr->entry_points_gl.pGLCreateShaderProgramv,                             "glCreateShaderProgramv"},
+            {&context_ptr->entry_points_private.pGLCullFace,                                    "glCullFace"},
+            {&context_ptr->entry_points_private.pGLDeleteBuffers,                               "glDeleteBuffers"},
+            {&context_ptr->entry_points_gl.pGLDebugMessageCallback,                             "glDebugMessageCallback"},
+            {&context_ptr->entry_points_gl.pGLDebugMessageControl,                              "glDebugMessageControl"},
+            {&context_ptr->entry_points_gl.pGLDebugMessageInsert,                               "glDebugMessageInsert"},
+            {&context_ptr->entry_points_gl.pGLDeleteFramebuffers,                               "glDeleteFramebuffers"},
+            {&context_ptr->entry_points_gl.pGLDeleteProgram,                                    "glDeleteProgram"},
+            {&context_ptr->entry_points_gl.pGLDeleteProgramPipelines,                           "glDeleteProgramPipelines"},
+            {&context_ptr->entry_points_gl.pGLDeleteSamplers,                                   "glDeleteSamplers"},
+            {&context_ptr->entry_points_gl.pGLDeleteShader,                                     "glDeleteShader"},
+            {&context_ptr->entry_points_gl.pGLDeleteTextures,                                   "glDeleteTextures"},
+            {&context_ptr->entry_points_gl.pGLDeleteTransformFeedbacks,                         "glDeleteTransformFeedbacks"},
+            {&context_ptr->entry_points_gl.pGLDeleteQueries,                                    "glDeleteQueries"},
+            {&context_ptr->entry_points_private.pGLDeleteVertexArrays,                          "glDeleteVertexArrays"},
+            {&context_ptr->entry_points_private.pGLDepthFunc,                                   "glDepthFunc"},
+            {&context_ptr->entry_points_private.pGLDepthMask,                                   "glDepthMask"},
+            {&context_ptr->entry_points_gl.pGLDepthRange,                                       "glDepthRange"},
+            {&context_ptr->entry_points_gl.pGLDetachShader,                                     "glDetachShader"},
+            {&context_ptr->entry_points_private.pGLDisable,                                     "glDisable"},
+            {&context_ptr->entry_points_private.pGLDisablei,                                    "glDisablei"},
+            {&context_ptr->entry_points_private.pGLDisableVertexAttribArray,                    "glDisableVertexAttribArray"},
+            {&context_ptr->entry_points_private.pGLDispatchCompute,                             "glDispatchCompute"},
+            {&context_ptr->entry_points_private.pGLDispatchComputeIndirect,                     "glDispatchComputeIndirect"},
+            {&context_ptr->entry_points_private.pGLDrawArrays,                                  "glDrawArrays"},
+            {&context_ptr->entry_points_private.pGLDrawArraysInstanced,                         "glDrawArraysInstanced"},
+            {&context_ptr->entry_points_private.pGLDrawArraysInstancedBaseInstance,             "glDrawArraysInstancedBaseInstance"},
+            {&context_ptr->entry_points_private.pGLDrawBuffer,                                  "glDrawBuffer"},
+            {&context_ptr->entry_points_private.pGLDrawBuffers,                                 "glDrawBuffers"},
+            {&context_ptr->entry_points_private.pGLDrawElements,                                "glDrawElements"},
+            {&context_ptr->entry_points_private.pGLDrawElementsInstanced,                       "glDrawElementsInstanced"},
+            {&context_ptr->entry_points_private.pGLDrawElementsInstancedBaseInstance,           "glDrawElementsInstancedBaseInstance"},
+            {&context_ptr->entry_points_private.pGLDrawElementsInstancedBaseVertexBaseInstance, "glDrawElementsInstancedBaseVertexBaseInstance"},
+            {&context_ptr->entry_points_private.pGLDrawRangeElements,                           "glDrawRangeElements"},
+            {&context_ptr->entry_points_private.pGLDrawTransformFeedback,                       "glDrawTransformFeedback"},
+            {&context_ptr->entry_points_private.pGLDrawTransformFeedbackInstanced,              "glDrawTransformFeedbackInstanced"},
+            {&context_ptr->entry_points_private.pGLDrawTransformFeedbackStreamInstanced,        "glDrawTransformFeedbackStreamInstanced"},
+            {&context_ptr->entry_points_private.pGLEnable,                                      "glEnable"},
+            {&context_ptr->entry_points_private.pGLEnablei,                                     "glEnablei"},
+            {&context_ptr->entry_points_private.pGLEnableVertexAttribArray,                     "glEnableVertexAttribArray"},
+            {&context_ptr->entry_points_gl.pGLEndConditionalRender,                             "glEndConditionalRender"},
+            {&context_ptr->entry_points_gl.pGLEndQuery,                                         "glEndQuery"},
+            {&context_ptr->entry_points_gl.pGLEndTransformFeedback,                             "glEndTransformFeedback"},
+            {&context_ptr->entry_points_gl.pGLFinish,                                           "glFinish"},
+            {&context_ptr->entry_points_gl.pGLFlush,                                            "glFlush"},
+            {&context_ptr->entry_points_private.pGLFramebufferParameteri,                       "glFramebufferParameteri"},
+            {&context_ptr->entry_points_private.pGLFramebufferTexture,                          "glFramebufferTexture"},
+            {&context_ptr->entry_points_private.pGLFramebufferTexture1D,                        "glFramebufferTexture1D"},
+            {&context_ptr->entry_points_private.pGLFramebufferTexture2D,                        "glFramebufferTexture2D"},
+            {&context_ptr->entry_points_private.pGLFramebufferTexture3D,                        "glFramebufferTexture3D"},
+            {&context_ptr->entry_points_private.pGLFramebufferTextureLayer,                     "glFramebufferTextureLayer"},
+            {&context_ptr->entry_points_private.pGLFrontFace,                                   "glFrontFace"},
+            {&context_ptr->entry_points_gl.pGLGenBuffers,                                       "glGenBuffers"},
+            {&context_ptr->entry_points_gl.pGLGenerateMipmap,                                   "glGenerateMipmap"},
+            {&context_ptr->entry_points_gl.pGLGenFramebuffers,                                  "glGenFramebuffers"},
+            {&context_ptr->entry_points_gl.pGLGenProgramPipelines,                              "glGenProgramPipelines"},
+            {&context_ptr->entry_points_gl.pGLGenSamplers,                                      "glGenSamplers"},
+            {&context_ptr->entry_points_gl.pGLGenTextures,                                      "glGenTextures"},
+            {&context_ptr->entry_points_gl.pGLGenTransformFeedbacks,                            "glGenTransformFeedbacks"},
+            {&context_ptr->entry_points_gl.pGLGenQueries,                                       "glGenQueries"},
+            {&context_ptr->entry_points_private.pGLGenVertexArrays,                             "glGenVertexArrays"},
+            {&context_ptr->entry_points_private.pGLGetActiveAtomicCounterBufferiv,              "glGetActiveAtomicCounterBufferiv"},
+            {&context_ptr->entry_points_gl.pGLGetActiveAttrib,                                  "glGetActiveAttrib"},
+            {&context_ptr->entry_points_gl.pGLGetActiveUniform,                                 "glGetActiveUniform"},
+            {&context_ptr->entry_points_gl.pGLGetActiveUniformBlockName,                        "glGetActiveUniformBlockName"},
+            {&context_ptr->entry_points_gl.pGLGetActiveUniformBlockiv,                          "glGetActiveUniformBlockiv"},
+            {&context_ptr->entry_points_gl.pGLGetActiveUniformsiv,                              "glGetActiveUniformsiv"},
+            {&context_ptr->entry_points_gl.pGLGetAttribLocation,                                "glGetAttribLocation"},
+            {&context_ptr->entry_points_gl.pGLGetAttachedShaders,                               "glGetAttachedShaders"},
+            {&context_ptr->entry_points_private.pGLGetBooleani_v,                               "glGetBooleani_v"},
+            {&context_ptr->entry_points_private.pGLGetBooleanv,                                 "glGetBooleanv"},
+            {&context_ptr->entry_points_private.pGLGetBufferParameteri64v,                      "glGetBufferParameteri64v"},
+            {&context_ptr->entry_points_private.pGLGetBufferSubData,                            "glGetBufferSubData"},
+            {&context_ptr->entry_points_private.pGLGetCompressedTexImage,                       "glGetCompressedTexImage"},
+            {&context_ptr->entry_points_gl.pGLGetDebugMessageLog,                               "glGetDebugMessageLog"},
+            {&context_ptr->entry_points_private.pGLGetDoublev,                                  "glGetDoublev"},
+            {&context_ptr->entry_points_gl.pGLGetError,                                         "glGetError"},
+            {&context_ptr->entry_points_private.pGLGetFloatv,                                   "glGetFloatv"},
+            {&context_ptr->entry_points_gl.pGLGetFragDataLocation,                              "glGetFragDataLocation"},
+            {&context_ptr->entry_points_private.pGLGetInteger64i_v,                             "glGetInteger64i_v"},
+            {&context_ptr->entry_points_private.pGLGetFramebufferParameteriv,                   "glGetFramebufferParameteriv"},
+            {&context_ptr->entry_points_private.pGLGetIntegeri_v,                               "glGetIntegeri_v"},
+            {&context_ptr->entry_points_private.pGLGetIntegerv,                                 "glGetIntegerv"},
+            {&context_ptr->entry_points_gl.pGLGetInternalformativ,                              "glGetInternalformativ"},
+            {&context_ptr->entry_points_gl.pGLGetProgramBinary,                                 "glGetProgramBinary"},
+            {&context_ptr->entry_points_gl.pGLGetProgramiv,                                     "glGetProgramiv"},
+            {&context_ptr->entry_points_gl.pGLGetProgramInfoLog,                                "glGetProgramInfoLog"},
+            {&context_ptr->entry_points_gl.pGLGetProgramInterfaceiv,                            "glGetProgramInterfaceiv"},
+            {&context_ptr->entry_points_gl.pGLGetProgramResourceIndex,                          "glGetProgramResourceIndex"},
+            {&context_ptr->entry_points_gl.pGLGetProgramResourceName,                           "glGetProgramResourceName"},
+            {&context_ptr->entry_points_gl.pGLGetProgramResourceiv,                             "glGetProgramResourceiv"},
+            {&context_ptr->entry_points_gl.pGLGetProgramResourceLocation,                       "glGetProgramResourceLocation"},
+            {&context_ptr->entry_points_gl.pGLGetProgramResourceLocationIndex,                  "glGetProgramResourceLocationIndex"},
+            {&context_ptr->entry_points_gl.pGLGetShaderiv,                                      "glGetShaderiv"},
+            {&context_ptr->entry_points_gl.pGLGetShaderInfoLog,                                 "glGetShaderInfoLog"},
+            {&context_ptr->entry_points_gl.pGLGetShaderSource,                                  "glGetShaderSource"},
+            {&context_ptr->entry_points_gl.pGLGetString,                                        "glGetString"},
+            {&context_ptr->entry_points_gl.pGLGetStringi,                                       "glGetStringi"},
+            {&context_ptr->entry_points_private.pGLGetTexLevelParameterfv,                      "glGetTexLevelParameterfv"},
+            {&context_ptr->entry_points_private.pGLGetTexLevelParameteriv,                      "glGetTexLevelParameteriv"},
+            {&context_ptr->entry_points_private.pGLGetTexParameterfv,                           "glGetTexParameterfv"},
+            {&context_ptr->entry_points_private.pGLGetTexParameteriv,                           "glGetTexParameteriv"},
+            {&context_ptr->entry_points_private.pGLGetTexParameterIiv,                          "glGetTexParameterIiv"},
+            {&context_ptr->entry_points_private.pGLGetTexParameterIuiv,                         "glGetTexParameterIuiv"},
+            {&context_ptr->entry_points_private.pGLGetTexImage,                                 "glGetTexImage"},
+            {&context_ptr->entry_points_gl.pGLGetTransformFeedbackVarying,                      "glGetTransformFeedbackVarying"},
+            {&context_ptr->entry_points_gl.pGLGetUniformBlockIndex,                             "glGetUniformBlockIndex"},
+            {&context_ptr->entry_points_gl.pGLGetUniformfv,                                     "glGetUniformfv"},
+            {&context_ptr->entry_points_gl.pGLGetUniformiv,                                     "glGetUniformiv"},
+            {&context_ptr->entry_points_gl.pGLGetUniformLocation,                               "glGetUniformLocation"},
+            {&context_ptr->entry_points_gl.pGLGetUniformuiv,                                    "glGetUniformuiv"},
+            {&context_ptr->entry_points_gl.pGLGetQueryiv,                                       "glGetQueryiv"},
+            {&context_ptr->entry_points_gl.pGLGetQueryObjectiv,                                 "glGetQueryObjectiv"},
+            {&context_ptr->entry_points_gl.pGLGetQueryObjectuiv,                                "glGetQueryObjectuiv"},
+            {&context_ptr->entry_points_gl.pGLGetQueryObjectui64v,                              "glGetQueryObjectui64v"},
+            {&context_ptr->entry_points_private.pGLGetSamplerParameterfv,                       "glGetSamplerParameterfv"},
+            {&context_ptr->entry_points_private.pGLGetSamplerParameteriv,                       "glGetSamplerParameteriv"},
+            {&context_ptr->entry_points_private.pGLGetSamplerParameterIiv,                      "glGetSamplerParameterIiv"},
+            {&context_ptr->entry_points_private.pGLGetSamplerParameterIuiv,                     "glGetSamplerParameterIuiv"},
+            {&context_ptr->entry_points_private.pGLGetVertexAttribdv,                           "glGetVertexAttribdv"},
+            {&context_ptr->entry_points_private.pGLGetVertexAttribfv,                           "glGetVertexAttribfv"},
+            {&context_ptr->entry_points_private.pGLGetVertexAttribIiv,                          "glGetVertexAttribIiv"},
+            {&context_ptr->entry_points_private.pGLGetVertexAttribIuiv,                         "glGetVertexAttribIuiv"},
+            {&context_ptr->entry_points_private.pGLGetVertexAttribiv,                           "glGetVertexAttribiv"},
+            {&context_ptr->entry_points_private.pGLGetVertexAttribPointerv,                     "glGetVertexAttribPointerv"},
+            {&context_ptr->entry_points_gl.pGLHint,                                             "glHint"},
+            {&context_ptr->entry_points_gl.pGLInvalidateBufferData,                             "glInvalidateBufferData"},
+            {&context_ptr->entry_points_gl.pGLInvalidateBufferSubData,                          "glInvalidateBufferSubData"},
+            {&context_ptr->entry_points_private.pGLInvalidateFramebuffer,                       "glInvalidateFramebuffer"},
+            {&context_ptr->entry_points_private.pGLInvalidateSubFramebuffer,                    "glInvalidateSubFramebuffer"},
+            {&context_ptr->entry_points_gl.pGLInvalidateTexImage,                               "glInvalidateTexImage"},
+            {&context_ptr->entry_points_gl.pGLInvalidateTexSubImage,                            "glInvalidateTexSubImage"},
+            {&context_ptr->entry_points_gl.pGLIsBuffer,                                         "glIsBuffer"},
+            {&context_ptr->entry_points_gl.pGLIsEnabled,                                        "glIsEnabled"},
+            {&context_ptr->entry_points_gl.pGLIsEnabledi,                                       "glIsEnabledi"},
+            {&context_ptr->entry_points_gl.pGLIsProgram,                                        "glIsProgram"},
+            {&context_ptr->entry_points_gl.pGLIsShader,                                         "glIsShader"},
+            {&context_ptr->entry_points_gl.pGLIsTexture,                                        "glIsTexture"},
+            {&context_ptr->entry_points_gl.pGLIsTransformFeedback,                              "glIsTransformFeedback"},
+            {&context_ptr->entry_points_gl.pGLIsQuery,                                          "glIsQuery"},
+            {&context_ptr->entry_points_gl.pGLLineWidth,                                        "glLineWidth"},
+            {&context_ptr->entry_points_gl.pGLLinkProgram,                                      "glLinkProgram"},
+            {&context_ptr->entry_points_gl.pGLLogicOp,                                          "glLogicOp"},
+            {&context_ptr->entry_points_private.pGLMapBuffer,                                   "glMapBuffer"},
+            {&context_ptr->entry_points_private.pGLMapBufferRange,                              "glMapBufferRange"},
+            {&context_ptr->entry_points_gl.pGLMemoryBarrier,                                    "glMemoryBarrier"},
+            {&context_ptr->entry_points_private.pGLMultiDrawArrays,                             "glMultiDrawArrays"},
+            {&context_ptr->entry_points_private.pGLMultiDrawElements,                           "glMultiDrawElements"},
+            {&context_ptr->entry_points_private.pGLMultiDrawElementsBaseVertex,                 "glMultiDrawElementsBaseVertex"},
+            {&context_ptr->entry_points_gl.pGLPauseTransformFeedback,                           "glPauseTransformFeedback"},
+            {&context_ptr->entry_points_gl.pGLPixelStoref,                                      "glPixelStoref"},
+            {&context_ptr->entry_points_gl.pGLPixelStorei,                                      "glPixelStorei"},
+            {&context_ptr->entry_points_gl.pGLPointParameterf,                                  "glPointParameterf"},
+            {&context_ptr->entry_points_gl.pGLPointParameterfv,                                 "glPointParameterfv"},
+            {&context_ptr->entry_points_gl.pGLPointParameteri,                                  "glPointParameteri"},
+            {&context_ptr->entry_points_gl.pGLPointParameteriv,                                 "glPointParameteriv"},
+            {&context_ptr->entry_points_gl.pGLPolygonMode,                                      "glPolygonMode"},
+            {&context_ptr->entry_points_gl.pGLPolygonOffset,                                    "glPolygonOffset"},
+            {&context_ptr->entry_points_gl.pGLPrimitiveRestartIndex,                            "glPrimitiveRestartIndex"},
+            {&context_ptr->entry_points_gl.pGLProgramBinary,                                    "glProgramBinary"},
+            {&context_ptr->entry_points_gl.pGLProgramParameteri,                                "glProgramParameteri"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1d,                                 "glProgramUniform1d"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1dv,                                "glProgramUniform1dv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1f,                                 "glProgramUniform1f"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1fv,                                "glProgramUniform1fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1i,                                 "glProgramUniform1i"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1iv,                                "glProgramUniform1iv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1ui,                                "glProgramUniform1ui"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform1uiv,                               "glProgramUniform1uiv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2d,                                 "glProgramUniform2d"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2dv,                                "glProgramUniform2dv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2f,                                 "glProgramUniform2f"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2fv,                                "glProgramUniform2fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2i,                                 "glProgramUniform2i"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2iv,                                "glProgramUniform2iv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2ui,                                "glProgramUniform2ui"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform2uiv,                               "glProgramUniform2uiv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3d,                                 "glProgramUniform3d"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3dv,                                "glProgramUniform3dv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3f,                                 "glProgramUniform3f"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3fv,                                "glProgramUniform3fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3i,                                 "glProgramUniform3i"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3iv,                                "glProgramUniform3iv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3ui,                                "glProgramUniform3ui"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform3uiv,                               "glProgramUniform3uiv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4d,                                 "glProgramUniform4d"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4dv,                                "glProgramUniform4dv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4f,                                 "glProgramUniform4f"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4fv,                                "glProgramUniform4fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4i,                                 "glProgramUniform4i"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4iv,                                "glProgramUniform4iv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4ui,                                "glProgramUniform4ui"},
+            {&context_ptr->entry_points_gl.pGLProgramUniform4uiv,                               "glProgramUniform4uiv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix2fv,                          "glProgramUniformMatrix2fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix2x3fv,                        "glProgramUniformMatrix2x3fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix2x4fv,                        "glProgramUniformMatrix2x4fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix3fv,                          "glProgramUniformMatrix3fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix3x2fv,                        "glProgramUniformMatrix3x2fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix3x4fv,                        "glProgramUniformMatrix3x4fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4fv,                          "glProgramUniformMatrix4fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x2fv,                        "glProgramUniformMatrix4x2fv"},
+            {&context_ptr->entry_points_gl.pGLProgramUniformMatrix4x3fv,                        "glProgramUniformMatrix4x3fv"},
+            {&context_ptr->entry_points_private.pGLReadBuffer,                                  "glReadBuffer"},
+            {&context_ptr->entry_points_private.pGLReadPixels,                                  "glReadPixels"},
+            {&context_ptr->entry_points_private.pGLResumeTransformFeedback,                     "glResumeTransformFeedback"},
+            {&context_ptr->entry_points_gl.pGLPointSize,                                        "glPointSize"},
+            {&context_ptr->entry_points_gl.pGLSampleCoverage,                                   "glSampleCoverage"},
+            {&context_ptr->entry_points_private.pGLSamplerParameterf,                           "glSamplerParameterf"},
+            {&context_ptr->entry_points_private.pGLSamplerParameterfv,                          "glSamplerParameterfv"},
+            {&context_ptr->entry_points_private.pGLSamplerParameterIiv,                         "glSamplerParameterIiv"},
+            {&context_ptr->entry_points_private.pGLSamplerParameterIuiv,                        "glSamplerParameterIuiv"},
+            {&context_ptr->entry_points_private.pGLSamplerParameteri,                           "glSamplerParameteri"},
+            {&context_ptr->entry_points_private.pGLSamplerParameteriv,                          "glSamplerParameteriv"},
+            {&context_ptr->entry_points_private.pGLScissor,                                     "glScissor"},
+            {&context_ptr->entry_points_gl.pGLShaderStorageBlockBinding,                        "glShaderStorageBlockBinding"},
+            {&context_ptr->entry_points_gl.pGLShaderSource,                                     "glShaderSource"},
+            {&context_ptr->entry_points_gl.pGLStencilFunc,                                      "glStencilFunc"},
+            {&context_ptr->entry_points_gl.pGLStencilFuncSeparate,                              "glStencilFuncSeparate"},
+            {&context_ptr->entry_points_gl.pGLStencilMask,                                      "glStencilMask"},
+            {&context_ptr->entry_points_gl.pGLStencilMaskSeparate,                              "glStencilMaskSeparate"},
+            {&context_ptr->entry_points_gl.pGLStencilOp,                                        "glStencilOp"},
+            {&context_ptr->entry_points_gl.pGLStencilOpSeparate,                                "glStencilOpSeparate"},
+            {&context_ptr->entry_points_private.pGLTexBuffer,                                   "glTexBuffer"},
+            {&context_ptr->entry_points_private.pGLTexBufferRange,                              "glTexBufferRange"},
+            {&context_ptr->entry_points_private.pGLTexImage1D,                                  "glTexImage1D"},
+            {&context_ptr->entry_points_private.pGLTexImage2D,                                  "glTexImage2D"},
+            {&context_ptr->entry_points_private.pGLTexImage3D,                                  "glTexImage3D"},
+            {&context_ptr->entry_points_private.pGLTexParameterf,                               "glTexParameterf"},
+            {&context_ptr->entry_points_private.pGLTexParameterfv,                              "glTexParameterfv"},
+            {&context_ptr->entry_points_private.pGLTexParameteri,                               "glTexParameteri"},
+            {&context_ptr->entry_points_private.pGLTexParameteriv,                              "glTexParameteriv"},
+            {&context_ptr->entry_points_private.pGLTexParameterIiv,                             "glTexParameterIiv"},
+            {&context_ptr->entry_points_private.pGLTexParameterIuiv,                            "glTexParameterIuiv"},
+            {&context_ptr->entry_points_private.pGLTexStorage1D,                                "glTexStorage1D"},
+            {&context_ptr->entry_points_private.pGLTexStorage2D,                                "glTexStorage2D"},
+            {&context_ptr->entry_points_private.pGLTexStorage2DMultisample,                     "glTexStorage2DMultisample"},
+            {&context_ptr->entry_points_private.pGLTexStorage3D,                                "glTexStorage3D"},
+            {&context_ptr->entry_points_private.pGLTexStorage3DMultisample,                     "glTexStorage3DMultisample"},
+            {&context_ptr->entry_points_private.pGLTexSubImage1D,                               "glTexSubImage1D"},
+            {&context_ptr->entry_points_private.pGLTexSubImage2D,                               "glTexSubImage2D"},
+            {&context_ptr->entry_points_private.pGLTexSubImage3D,                               "glTexSubImage3D"},
+            {&context_ptr->entry_points_gl.pGLTransformFeedbackVaryings,                        "glTransformFeedbackVaryings"},
+            {&context_ptr->entry_points_private.pGLUniformBlockBinding,                         "glUniformBlockBinding"},
+            {&context_ptr->entry_points_private.pGLUnmapBuffer,                                 "glUnmapBuffer"},
+            {&context_ptr->entry_points_private.pGLUseProgram,                                  "glUseProgram"},
+            {&context_ptr->entry_points_gl.pGLUseProgramStages,                                 "glUseProgramStages"},
+            {&context_ptr->entry_points_gl.pGLValidateProgram,                                  "glValidateProgram"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib1d,                                   "glVertexAttrib1d"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib1dv,                                  "glVertexAttrib1dv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib1f,                                   "glVertexAttrib1f"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib1fv,                                  "glVertexAttrib1fv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib1s,                                   "glVertexAttrib1s"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib1sv,                                  "glVertexAttrib1sv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib2d,                                   "glVertexAttrib2d"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib2dv,                                  "glVertexAttrib2dv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib2f,                                   "glVertexAttrib2f"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib2fv,                                  "glVertexAttrib2fv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib2s,                                   "glVertexAttrib2s"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib2sv,                                  "glVertexAttrib2sv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib3d,                                   "glVertexAttrib3d"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib3dv,                                  "glVertexAttrib3dv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib3f,                                   "glVertexAttrib3f"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib3fv,                                  "glVertexAttrib3fv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib3s,                                   "glVertexAttrib3s"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib3sv,                                  "glVertexAttrib3sv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nbv,                                 "glVertexAttrib4Nbv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Niv,                                 "glVertexAttrib4Niv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nsv,                                 "glVertexAttrib4Nsv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nub,                                 "glVertexAttrib4Nub"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nubv,                                "glVertexAttrib4Nubv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nuiv,                                "glVertexAttrib4Nuiv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4Nusv,                                "glVertexAttrib4Nusv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4bv,                                  "glVertexAttrib4bv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4d,                                   "glVertexAttrib4d"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4dv,                                  "glVertexAttrib4dv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4f,                                   "glVertexAttrib4f"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4fv,                                  "glVertexAttrib4fv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4iv,                                  "glVertexAttrib4iv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4s,                                   "glVertexAttrib4s"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4sv,                                  "glVertexAttrib4sv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4ubv,                                 "glVertexAttrib4ubv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4uiv,                                 "glVertexAttrib4uiv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttrib4usv,                                 "glVertexAttrib4usv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribDivisor,                              "glVertexAttribDivisor"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI1i,                                  "glVertexAttribI1i"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI1iv,                                 "glVertexAttribI1iv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI1ui,                                 "glVertexAttribI1ui"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI1uiv,                                "glVertexAttribI1uiv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI2i,                                  "glVertexAttribI2i"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI2iv,                                 "glVertexAttribI2iv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI2ui,                                 "glVertexAttribI2ui"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI2uiv,                                "glVertexAttribI2uiv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI3i,                                  "glVertexAttribI3i"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI3iv,                                 "glVertexAttribI3iv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI3ui,                                 "glVertexAttribI3ui"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI3uiv,                                "glVertexAttribI3uiv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4bv,                                 "glVertexAttribI4bv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4i,                                  "glVertexAttribI4i"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4iv,                                 "glVertexAttribI4iv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4sv,                                 "glVertexAttribI4sv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4ubv,                                "glVertexAttribI4ubv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4ui,                                 "glVertexAttribI4ui"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4uiv,                                "glVertexAttribI4uiv"},
+            {&context_ptr->entry_points_gl.pGLVertexAttribI4usv,                                "glVertexAttribI4usv"},
+            {&context_ptr->entry_points_private.pGLVertexAttribIPointer,                        "glVertexAttribIPointer"},
+            {&context_ptr->entry_points_private.pGLVertexAttribPointer,                         "glVertexAttribPointer"},
+            {&context_ptr->entry_points_private.pGLViewport,                                    "glViewport"}
         };
         const uint32_t n_func_ptr_table_entries = sizeof(func_ptr_table) / sizeof(func_ptr_table[0]);
 
@@ -1979,143 +1984,147 @@ PRIVATE void _ogl_context_retrieve_GL_function_pointers(__inout __notnull _ogl_c
                                            n_func_ptr_table_entries);
 
         /* Configure wrapper functions */
-        context_ptr->entry_points_gl.pGLActiveTexture                   = ogl_context_wrappers_glActiveTexture;
-        context_ptr->entry_points_gl.pGLBeginTransformFeedback          = ogl_context_wrappers_glBeginTransformFeedback;
-        context_ptr->entry_points_gl.pGLBindBuffer                      = ogl_context_wrappers_glBindBuffer;
-        context_ptr->entry_points_gl.pGLBindBufferBase                  = ogl_context_wrappers_glBindBufferBase;
-        context_ptr->entry_points_gl.pGLBindBufferRange                 = ogl_context_wrappers_glBindBufferRange;
-        context_ptr->entry_points_gl.pGLBindFramebuffer                 = ogl_context_wrappers_glBindFramebuffer;
-        context_ptr->entry_points_gl.pGLBindImageTexture                = ogl_context_wrappers_glBindImageTextureEXT;
-        context_ptr->entry_points_gl.pGLBindSampler                     = ogl_context_wrappers_glBindSampler;
-        context_ptr->entry_points_gl.pGLBindTexture                     = ogl_context_wrappers_glBindTexture;
-        context_ptr->entry_points_gl.pGLBindVertexArray                 = ogl_context_wrappers_glBindVertexArray;
-        context_ptr->entry_points_gl.pGLBlendColor                      = ogl_context_wrappers_glBlendColor;
-        context_ptr->entry_points_gl.pGLBlendEquation                   = ogl_context_wrappers_glBlendEquation;
-        context_ptr->entry_points_gl.pGLBlendEquationSeparate           = ogl_context_wrappers_glBlendEquationSeparate;
-        context_ptr->entry_points_gl.pGLBlendFunc                       = ogl_context_wrappers_glBlendFunc;
-        context_ptr->entry_points_gl.pGLBlendFuncSeparate               = ogl_context_wrappers_glBlendFuncSeparate;
-        context_ptr->entry_points_gl.pGLBlitFramebuffer                 = ogl_context_wrappers_glBlitFramebuffer;
-        context_ptr->entry_points_gl.pGLBufferData                      = ogl_context_wrappers_glBufferData;
-        context_ptr->entry_points_gl.pGLBufferSubData                   = ogl_context_wrappers_glBufferSubData;
-        context_ptr->entry_points_gl.pGLClear                           = ogl_context_wrappers_glClear;
-        context_ptr->entry_points_gl.pGLClearColor                      = ogl_context_wrappers_glClearColor;
-        context_ptr->entry_points_gl.pGLClearDepth                      = ogl_context_wrappers_glClearDepth;
-        context_ptr->entry_points_gl.pGLColorMask                       = ogl_context_wrappers_glColorMask;
-        context_ptr->entry_points_gl.pGLCompressedTexImage1D            = ogl_context_wrappers_glCompressedTexImage1D;
-        context_ptr->entry_points_gl.pGLCompressedTexImage2D            = ogl_context_wrappers_glCompressedTexImage2D;
-        context_ptr->entry_points_gl.pGLCompressedTexImage3D            = ogl_context_wrappers_glCompressedTexImage3D;
-        context_ptr->entry_points_gl.pGLCompressedTexSubImage1D         = ogl_context_wrappers_glCompressedTexSubImage1D;
-        context_ptr->entry_points_gl.pGLCompressedTexSubImage2D         = ogl_context_wrappers_glCompressedTexSubImage2D;
-        context_ptr->entry_points_gl.pGLCompressedTexSubImage3D         = ogl_context_wrappers_glCompressedTexSubImage3D;
-        context_ptr->entry_points_gl.pGLCopyBufferSubData               = ogl_context_wrappers_glCopyBufferSubData;
-        context_ptr->entry_points_gl.pGLCopyTexImage1D                  = ogl_context_wrappers_glCopyTexImage1D;
-        context_ptr->entry_points_gl.pGLCopyTexImage2D                  = ogl_context_wrappers_glCopyTexImage2D;
-        context_ptr->entry_points_gl.pGLCopyTexSubImage1D               = ogl_context_wrappers_glCopyTexSubImage1D;
-        context_ptr->entry_points_gl.pGLCopyTexSubImage2D               = ogl_context_wrappers_glCopyTexSubImage2D;
-        context_ptr->entry_points_gl.pGLCopyTexSubImage3D               = ogl_context_wrappers_glCopyTexSubImage3D;
-        context_ptr->entry_points_gl.pGLCullFace                        = ogl_context_wrappers_glCullFace;
-        context_ptr->entry_points_gl.pGLDeleteBuffers                   = ogl_context_wrappers_glDeleteBuffers;
-        context_ptr->entry_points_gl.pGLDeleteVertexArrays              = ogl_context_wrappers_glDeleteVertexArrays;
-        context_ptr->entry_points_gl.pGLDepthFunc                       = ogl_context_wrappers_glDepthFunc;
-        context_ptr->entry_points_gl.pGLDepthMask                       = ogl_context_wrappers_glDepthMask;
-        context_ptr->entry_points_gl.pGLDisable                         = ogl_context_wrappers_glDisable;
-        context_ptr->entry_points_gl.pGLDisablei                        = ogl_context_wrappers_glDisablei;
-        context_ptr->entry_points_gl.pGLDisableVertexAttribArray        = ogl_context_wrappers_glDisableVertexAttribArray;
-        context_ptr->entry_points_gl.pGLDispatchCompute                 = ogl_context_wrappers_glDispatchCompute;
-        context_ptr->entry_points_gl.pGLDispatchComputeIndirect         = ogl_context_wrappers_glDispatchComputeIndirect;
-        context_ptr->entry_points_gl.pGLDrawArrays                      = ogl_context_wrappers_glDrawArrays;
-        context_ptr->entry_points_gl.pGLDrawArraysInstanced             = ogl_context_wrappers_glDrawArraysInstanced;
-        context_ptr->entry_points_gl.pGLDrawArraysInstancedBaseInstance = ogl_context_wrappers_glDrawArraysInstancedBaseInstance;
-        context_ptr->entry_points_gl.pGLDrawBuffer                      = ogl_context_wrappers_glDrawBuffer;
-        context_ptr->entry_points_gl.pGLDrawBuffers                     = ogl_context_wrappers_glDrawBuffers;
-        context_ptr->entry_points_gl.pGLDrawElements                    = ogl_context_wrappers_glDrawElements;
-        context_ptr->entry_points_gl.pGLDrawElementsInstanced           = ogl_context_wrappers_glDrawElementsInstanced;
-        context_ptr->entry_points_gl.pGLDrawRangeElements               = ogl_context_wrappers_glDrawRangeElements;
-        context_ptr->entry_points_gl.pGLDrawTransformFeedback           = ogl_context_wrappers_glDrawTransformFeedback;
-        context_ptr->entry_points_gl.pGLEnable                          = ogl_context_wrappers_glEnable;
-        context_ptr->entry_points_gl.pGLEnablei                         = ogl_context_wrappers_glEnablei;
-        context_ptr->entry_points_gl.pGLEnableVertexAttribArray         = ogl_context_wrappers_glEnableVertexAttribArray;
-        context_ptr->entry_points_gl.pGLFramebufferParameteri           = ogl_context_wrappers_glFramebufferParameteri;
-        context_ptr->entry_points_gl.pGLFramebufferTexture              = ogl_context_wrappers_glFramebufferTexture;
-        context_ptr->entry_points_gl.pGLFramebufferTexture1D            = ogl_context_wrappers_glFramebufferTexture1D;
-        context_ptr->entry_points_gl.pGLFramebufferTexture2D            = ogl_context_wrappers_glFramebufferTexture2D;
-        context_ptr->entry_points_gl.pGLFramebufferTexture3D            = ogl_context_wrappers_glFramebufferTexture3D;
-        context_ptr->entry_points_gl.pGLFramebufferTextureLayer         = ogl_context_wrappers_glFramebufferTextureLayer;
-        context_ptr->entry_points_gl.pGLFrontFace                       = ogl_context_wrappers_glFrontFace;
-        context_ptr->entry_points_gl.pGLGenVertexArrays                 = ogl_context_wrappers_glGenVertexArrays;
-        context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv  = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
-        context_ptr->entry_points_gl.pGLGetBooleani_v                   = ogl_context_wrappers_glGetBooleani_v;
-        context_ptr->entry_points_gl.pGLGetBooleanv                     = ogl_context_wrappers_glGetBooleanv;
-        context_ptr->entry_points_gl.pGLGetBufferParameteriv            = ogl_context_wrappers_glGetBufferParameteriv;
-        context_ptr->entry_points_gl.pGLGetBufferParameteri64v          = ogl_context_wrappers_glGetBufferParameteri64v;
-        context_ptr->entry_points_gl.pGLGetBufferPointerv               = ogl_context_wrappers_glGetBufferPointerv;
-        context_ptr->entry_points_gl.pGLGetBufferSubData                = ogl_context_wrappers_glGetBufferSubData;
-        context_ptr->entry_points_gl.pGLGetCompressedTexImage           = ogl_context_wrappers_glGetCompressedTexImage;
-        context_ptr->entry_points_gl.pGLGetDoublev                      = ogl_context_wrappers_glGetDoublev;
-        context_ptr->entry_points_gl.pGLGetFloatv                       = ogl_context_wrappers_glGetFloatv;
-        context_ptr->entry_points_gl.pGLGetFramebufferParameteriv       = ogl_context_wrappers_glGetFramebufferParameteriv;
-        context_ptr->entry_points_gl.pGLGetInteger64i_v                 = ogl_context_wrappers_glGetInteger64i_v;
-        context_ptr->entry_points_gl.pGLGetIntegeri_v                   = ogl_context_wrappers_glGetIntegeri_v;
-        context_ptr->entry_points_gl.pGLGetIntegerv                     = ogl_context_wrappers_glGetIntegerv;
-        context_ptr->entry_points_gl.pGLGetSamplerParameterfv           = ogl_context_wrappers_glGetSamplerParameterfv;
-        context_ptr->entry_points_gl.pGLGetSamplerParameteriv           = ogl_context_wrappers_glGetSamplerParameteriv;
-        context_ptr->entry_points_gl.pGLGetSamplerParameterIiv          = ogl_context_wrappers_glGetSamplerParameterIiv;
-        context_ptr->entry_points_gl.pGLGetSamplerParameterIuiv         = ogl_context_wrappers_glGetSamplerParameterIuiv;
-        context_ptr->entry_points_gl.pGLGetTexImage                     = ogl_context_wrappers_glGetTexImage;
-        context_ptr->entry_points_gl.pGLGetTexLevelParameterfv          = ogl_context_wrappers_glGetTexLevelParameterfv;
-        context_ptr->entry_points_gl.pGLGetTexLevelParameteriv          = ogl_context_wrappers_glGetTexLevelParameteriv;
-        context_ptr->entry_points_gl.pGLGetTexParameterfv               = ogl_context_wrappers_glGetTexParameterfv;
-        context_ptr->entry_points_gl.pGLGetTexParameterIiv              = ogl_context_wrappers_glGetTexParameterIiv;
-        context_ptr->entry_points_gl.pGLGetTexParameterIuiv             = ogl_context_wrappers_glGetTexParameterIuiv;
-        context_ptr->entry_points_gl.pGLGetTexParameteriv               = ogl_context_wrappers_glGetTexParameteriv;
-        context_ptr->entry_points_gl.pGLGetVertexAttribdv               = ogl_context_wrappers_glGetVertexAttribdv;
-        context_ptr->entry_points_gl.pGLGetVertexAttribfv               = ogl_context_wrappers_glGetVertexAttribfv;
-        context_ptr->entry_points_gl.pGLGetVertexAttribIiv              = ogl_context_wrappers_glGetVertexAttribIiv;
-        context_ptr->entry_points_gl.pGLGetVertexAttribIuiv             = ogl_context_wrappers_glGetVertexAttribIuiv;
-        context_ptr->entry_points_gl.pGLGetVertexAttribiv               = ogl_context_wrappers_glGetVertexAttribiv;
-        context_ptr->entry_points_gl.pGLGetVertexAttribPointerv         = ogl_context_wrappers_glGetVertexAttribPointerv;
-        context_ptr->entry_points_gl.pGLInvalidateFramebuffer           = ogl_context_wrappers_glInvalidateFramebuffer;
-        context_ptr->entry_points_gl.pGLInvalidateSubFramebuffer        = ogl_context_wrappers_glInvalidateSubFramebuffer;
-        context_ptr->entry_points_gl.pGLMapBuffer                       = ogl_context_wrappers_glMapBuffer;
-        context_ptr->entry_points_gl.pGLMapBufferRange                  = ogl_context_wrappers_glMapBufferRange;
-        context_ptr->entry_points_gl.pGLMultiDrawArrays                 = ogl_context_wrappers_glMultiDrawArrays;
-        context_ptr->entry_points_gl.pGLMultiDrawElements               = ogl_context_wrappers_glMultiDrawElements;
-        context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex     = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
-        context_ptr->entry_points_gl.pGLReadBuffer                      = ogl_context_wrappers_glReadBuffer;
-        context_ptr->entry_points_gl.pGLReadPixels                      = ogl_context_wrappers_glReadPixels;
-        context_ptr->entry_points_gl.pGLResumeTransformFeedback         = ogl_context_wrappers_glResumeTransformFeedback;
-        context_ptr->entry_points_gl.pGLSamplerParameterf               = ogl_context_wrappers_glSamplerParameterf;
-        context_ptr->entry_points_gl.pGLSamplerParameterfv              = ogl_context_wrappers_glSamplerParameterfv;
-        context_ptr->entry_points_gl.pGLSamplerParameterIiv             = ogl_context_wrappers_glSamplerParameterIiv;
-        context_ptr->entry_points_gl.pGLSamplerParameterIuiv            = ogl_context_wrappers_glSamplerParameterIuiv;
-        context_ptr->entry_points_gl.pGLSamplerParameteri               = ogl_context_wrappers_glSamplerParameteri;
-        context_ptr->entry_points_gl.pGLSamplerParameteriv              = ogl_context_wrappers_glSamplerParameteriv;
-        context_ptr->entry_points_gl.pGLScissor                         = ogl_context_wrappers_glScissor;
-        context_ptr->entry_points_gl.pGLTexBuffer                       = ogl_context_wrappers_glTexBuffer;
-        context_ptr->entry_points_gl.pGLTexBufferRange                  = ogl_context_wrappers_glTexBufferRange;
-        context_ptr->entry_points_gl.pGLTexImage1D                      = ogl_context_wrappers_glTexImage1D;
-        context_ptr->entry_points_gl.pGLTexImage2D                      = ogl_context_wrappers_glTexImage2D;
-        context_ptr->entry_points_gl.pGLTexImage3D                      = ogl_context_wrappers_glTexImage3D;
-        context_ptr->entry_points_gl.pGLTexParameterf                   = ogl_context_wrappers_glTexParameterf;
-        context_ptr->entry_points_gl.pGLTexParameterfv                  = ogl_context_wrappers_glTexParameterfv;
-        context_ptr->entry_points_gl.pGLTexParameterIiv                 = ogl_context_wrappers_glTexParameterIiv;
-        context_ptr->entry_points_gl.pGLTexParameterIuiv                = ogl_context_wrappers_glTexParameterIuiv;
-        context_ptr->entry_points_gl.pGLTexParameteri                   = ogl_context_wrappers_glTexParameteri;
-        context_ptr->entry_points_gl.pGLTexParameteriv                  = ogl_context_wrappers_glTexParameteriv;
-        context_ptr->entry_points_gl.pGLTexStorage1D                    = ogl_context_wrappers_glTexStorage1D;
-        context_ptr->entry_points_gl.pGLTexStorage2D                    = ogl_context_wrappers_glTexStorage2D;
-        context_ptr->entry_points_gl.pGLTexStorage2DMultisample         = ogl_context_wrappers_glTexStorage2DMultisample;
-        context_ptr->entry_points_gl.pGLTexStorage3D                    = ogl_context_wrappers_glTexStorage3D;
-        context_ptr->entry_points_gl.pGLTexStorage3DMultisample         = ogl_context_wrappers_glTexStorage3DMultisample;
-        context_ptr->entry_points_gl.pGLTexSubImage1D                   = ogl_context_wrappers_glTexSubImage1D;
-        context_ptr->entry_points_gl.pGLTexSubImage2D                   = ogl_context_wrappers_glTexSubImage2D;
-        context_ptr->entry_points_gl.pGLTexSubImage3D                   = ogl_context_wrappers_glTexSubImage3D;
-        context_ptr->entry_points_gl.pGLUniformBlockBinding             = ogl_context_wrappers_glUniformBlockBinding;
-        context_ptr->entry_points_gl.pGLUnmapBuffer                     = ogl_context_wrappers_glUnmapBuffer;
-        context_ptr->entry_points_gl.pGLUseProgram                      = ogl_context_wrappers_glUseProgram;
-        context_ptr->entry_points_gl.pGLVertexAttribIPointer            = ogl_context_wrappers_glVertexAttribIPointer;
-        context_ptr->entry_points_gl.pGLVertexAttribPointer             = ogl_context_wrappers_glVertexAttribPointer;
-        context_ptr->entry_points_gl.pGLViewport                        = ogl_context_wrappers_glViewport;
+        context_ptr->entry_points_gl.pGLActiveTexture                               = ogl_context_wrappers_glActiveTexture;
+        context_ptr->entry_points_gl.pGLBeginTransformFeedback                      = ogl_context_wrappers_glBeginTransformFeedback;
+        context_ptr->entry_points_gl.pGLBindBuffer                                  = ogl_context_wrappers_glBindBuffer;
+        context_ptr->entry_points_gl.pGLBindBufferBase                              = ogl_context_wrappers_glBindBufferBase;
+        context_ptr->entry_points_gl.pGLBindBufferRange                             = ogl_context_wrappers_glBindBufferRange;
+        context_ptr->entry_points_gl.pGLBindFramebuffer                             = ogl_context_wrappers_glBindFramebuffer;
+        context_ptr->entry_points_gl.pGLBindImageTexture                            = ogl_context_wrappers_glBindImageTextureEXT;
+        context_ptr->entry_points_gl.pGLBindSampler                                 = ogl_context_wrappers_glBindSampler;
+        context_ptr->entry_points_gl.pGLBindTexture                                 = ogl_context_wrappers_glBindTexture;
+        context_ptr->entry_points_gl.pGLBindVertexArray                             = ogl_context_wrappers_glBindVertexArray;
+        context_ptr->entry_points_gl.pGLBlendColor                                  = ogl_context_wrappers_glBlendColor;
+        context_ptr->entry_points_gl.pGLBlendEquation                               = ogl_context_wrappers_glBlendEquation;
+        context_ptr->entry_points_gl.pGLBlendEquationSeparate                       = ogl_context_wrappers_glBlendEquationSeparate;
+        context_ptr->entry_points_gl.pGLBlendFunc                                   = ogl_context_wrappers_glBlendFunc;
+        context_ptr->entry_points_gl.pGLBlendFuncSeparate                           = ogl_context_wrappers_glBlendFuncSeparate;
+        context_ptr->entry_points_gl.pGLBlitFramebuffer                             = ogl_context_wrappers_glBlitFramebuffer;
+        context_ptr->entry_points_gl.pGLBufferData                                  = ogl_context_wrappers_glBufferData;
+        context_ptr->entry_points_gl.pGLBufferSubData                               = ogl_context_wrappers_glBufferSubData;
+        context_ptr->entry_points_gl.pGLClear                                       = ogl_context_wrappers_glClear;
+        context_ptr->entry_points_gl.pGLClearColor                                  = ogl_context_wrappers_glClearColor;
+        context_ptr->entry_points_gl.pGLClearDepth                                  = ogl_context_wrappers_glClearDepth;
+        context_ptr->entry_points_gl.pGLColorMask                                   = ogl_context_wrappers_glColorMask;
+        context_ptr->entry_points_gl.pGLCompressedTexImage1D                        = ogl_context_wrappers_glCompressedTexImage1D;
+        context_ptr->entry_points_gl.pGLCompressedTexImage2D                        = ogl_context_wrappers_glCompressedTexImage2D;
+        context_ptr->entry_points_gl.pGLCompressedTexImage3D                        = ogl_context_wrappers_glCompressedTexImage3D;
+        context_ptr->entry_points_gl.pGLCompressedTexSubImage1D                     = ogl_context_wrappers_glCompressedTexSubImage1D;
+        context_ptr->entry_points_gl.pGLCompressedTexSubImage2D                     = ogl_context_wrappers_glCompressedTexSubImage2D;
+        context_ptr->entry_points_gl.pGLCompressedTexSubImage3D                     = ogl_context_wrappers_glCompressedTexSubImage3D;
+        context_ptr->entry_points_gl.pGLCopyBufferSubData                           = ogl_context_wrappers_glCopyBufferSubData;
+        context_ptr->entry_points_gl.pGLCopyTexImage1D                              = ogl_context_wrappers_glCopyTexImage1D;
+        context_ptr->entry_points_gl.pGLCopyTexImage2D                              = ogl_context_wrappers_glCopyTexImage2D;
+        context_ptr->entry_points_gl.pGLCopyTexSubImage1D                           = ogl_context_wrappers_glCopyTexSubImage1D;
+        context_ptr->entry_points_gl.pGLCopyTexSubImage2D                           = ogl_context_wrappers_glCopyTexSubImage2D;
+        context_ptr->entry_points_gl.pGLCopyTexSubImage3D                           = ogl_context_wrappers_glCopyTexSubImage3D;
+        context_ptr->entry_points_gl.pGLCullFace                                    = ogl_context_wrappers_glCullFace;
+        context_ptr->entry_points_gl.pGLDeleteBuffers                               = ogl_context_wrappers_glDeleteBuffers;
+        context_ptr->entry_points_gl.pGLDeleteVertexArrays                          = ogl_context_wrappers_glDeleteVertexArrays;
+        context_ptr->entry_points_gl.pGLDepthFunc                                   = ogl_context_wrappers_glDepthFunc;
+        context_ptr->entry_points_gl.pGLDepthMask                                   = ogl_context_wrappers_glDepthMask;
+        context_ptr->entry_points_gl.pGLDisable                                     = ogl_context_wrappers_glDisable;
+        context_ptr->entry_points_gl.pGLDisablei                                    = ogl_context_wrappers_glDisablei;
+        context_ptr->entry_points_gl.pGLDisableVertexAttribArray                    = ogl_context_wrappers_glDisableVertexAttribArray;
+        context_ptr->entry_points_gl.pGLDispatchCompute                             = ogl_context_wrappers_glDispatchCompute;
+        context_ptr->entry_points_gl.pGLDispatchComputeIndirect                     = ogl_context_wrappers_glDispatchComputeIndirect;
+        context_ptr->entry_points_gl.pGLDrawArrays                                  = ogl_context_wrappers_glDrawArrays;
+        context_ptr->entry_points_gl.pGLDrawArraysInstanced                         = ogl_context_wrappers_glDrawArraysInstanced;
+        context_ptr->entry_points_gl.pGLDrawArraysInstancedBaseInstance             = ogl_context_wrappers_glDrawArraysInstancedBaseInstance;
+        context_ptr->entry_points_gl.pGLDrawBuffer                                  = ogl_context_wrappers_glDrawBuffer;
+        context_ptr->entry_points_gl.pGLDrawBuffers                                 = ogl_context_wrappers_glDrawBuffers;
+        context_ptr->entry_points_gl.pGLDrawElements                                = ogl_context_wrappers_glDrawElements;
+        context_ptr->entry_points_gl.pGLDrawElementsInstanced                       = ogl_context_wrappers_glDrawElementsInstanced;
+        context_ptr->entry_points_gl.pGLDrawElementsInstancedBaseInstance           = ogl_context_wrappers_glDrawElementsInstancedBaseInstance;
+        context_ptr->entry_points_gl.pGLDrawElementsInstancedBaseVertexBaseInstance = ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseInstance;
+        context_ptr->entry_points_gl.pGLDrawRangeElements                           = ogl_context_wrappers_glDrawRangeElements;
+        context_ptr->entry_points_gl.pGLDrawTransformFeedback                       = ogl_context_wrappers_glDrawTransformFeedback;
+        context_ptr->entry_points_gl.pGLDrawTransformFeedbackInstanced              = ogl_context_wrappers_glDrawTransformFeedbackInstanced;
+        context_ptr->entry_points_gl.pGLDrawTransformFeedbackStreamInstanced        = ogl_context_wrappers_glDrawTransformFeedbackStreamInstanced;
+        context_ptr->entry_points_gl.pGLEnable                                      = ogl_context_wrappers_glEnable;
+        context_ptr->entry_points_gl.pGLEnablei                                     = ogl_context_wrappers_glEnablei;
+        context_ptr->entry_points_gl.pGLEnableVertexAttribArray                     = ogl_context_wrappers_glEnableVertexAttribArray;
+        context_ptr->entry_points_gl.pGLFramebufferParameteri                       = ogl_context_wrappers_glFramebufferParameteri;
+        context_ptr->entry_points_gl.pGLFramebufferTexture                          = ogl_context_wrappers_glFramebufferTexture;
+        context_ptr->entry_points_gl.pGLFramebufferTexture1D                        = ogl_context_wrappers_glFramebufferTexture1D;
+        context_ptr->entry_points_gl.pGLFramebufferTexture2D                        = ogl_context_wrappers_glFramebufferTexture2D;
+        context_ptr->entry_points_gl.pGLFramebufferTexture3D                        = ogl_context_wrappers_glFramebufferTexture3D;
+        context_ptr->entry_points_gl.pGLFramebufferTextureLayer                     = ogl_context_wrappers_glFramebufferTextureLayer;
+        context_ptr->entry_points_gl.pGLFrontFace                                   = ogl_context_wrappers_glFrontFace;
+        context_ptr->entry_points_gl.pGLGenVertexArrays                             = ogl_context_wrappers_glGenVertexArrays;
+        context_ptr->entry_points_gl.pGLGetActiveAtomicCounterBufferiv              = ogl_context_wrappers_glGetActiveAtomicCounterBufferiv;
+        context_ptr->entry_points_gl.pGLGetBooleani_v                               = ogl_context_wrappers_glGetBooleani_v;
+        context_ptr->entry_points_gl.pGLGetBooleanv                                 = ogl_context_wrappers_glGetBooleanv;
+        context_ptr->entry_points_gl.pGLGetBufferParameteriv                        = ogl_context_wrappers_glGetBufferParameteriv;
+        context_ptr->entry_points_gl.pGLGetBufferParameteri64v                      = ogl_context_wrappers_glGetBufferParameteri64v;
+        context_ptr->entry_points_gl.pGLGetBufferPointerv                           = ogl_context_wrappers_glGetBufferPointerv;
+        context_ptr->entry_points_gl.pGLGetBufferSubData                            = ogl_context_wrappers_glGetBufferSubData;
+        context_ptr->entry_points_gl.pGLGetCompressedTexImage                       = ogl_context_wrappers_glGetCompressedTexImage;
+        context_ptr->entry_points_gl.pGLGetDoublev                                  = ogl_context_wrappers_glGetDoublev;
+        context_ptr->entry_points_gl.pGLGetFloatv                                   = ogl_context_wrappers_glGetFloatv;
+        context_ptr->entry_points_gl.pGLGetFramebufferParameteriv                   = ogl_context_wrappers_glGetFramebufferParameteriv;
+        context_ptr->entry_points_gl.pGLGetInteger64i_v                             = ogl_context_wrappers_glGetInteger64i_v;
+        context_ptr->entry_points_gl.pGLGetIntegeri_v                               = ogl_context_wrappers_glGetIntegeri_v;
+        context_ptr->entry_points_gl.pGLGetIntegerv                                 = ogl_context_wrappers_glGetIntegerv;
+        context_ptr->entry_points_gl.pGLGetSamplerParameterfv                       = ogl_context_wrappers_glGetSamplerParameterfv;
+        context_ptr->entry_points_gl.pGLGetSamplerParameteriv                       = ogl_context_wrappers_glGetSamplerParameteriv;
+        context_ptr->entry_points_gl.pGLGetSamplerParameterIiv                      = ogl_context_wrappers_glGetSamplerParameterIiv;
+        context_ptr->entry_points_gl.pGLGetSamplerParameterIuiv                     = ogl_context_wrappers_glGetSamplerParameterIuiv;
+        context_ptr->entry_points_gl.pGLGetTexImage                                 = ogl_context_wrappers_glGetTexImage;
+        context_ptr->entry_points_gl.pGLGetTexLevelParameterfv                      = ogl_context_wrappers_glGetTexLevelParameterfv;
+        context_ptr->entry_points_gl.pGLGetTexLevelParameteriv                      = ogl_context_wrappers_glGetTexLevelParameteriv;
+        context_ptr->entry_points_gl.pGLGetTexParameterfv                           = ogl_context_wrappers_glGetTexParameterfv;
+        context_ptr->entry_points_gl.pGLGetTexParameterIiv                          = ogl_context_wrappers_glGetTexParameterIiv;
+        context_ptr->entry_points_gl.pGLGetTexParameterIuiv                         = ogl_context_wrappers_glGetTexParameterIuiv;
+        context_ptr->entry_points_gl.pGLGetTexParameteriv                           = ogl_context_wrappers_glGetTexParameteriv;
+        context_ptr->entry_points_gl.pGLGetVertexAttribdv                           = ogl_context_wrappers_glGetVertexAttribdv;
+        context_ptr->entry_points_gl.pGLGetVertexAttribfv                           = ogl_context_wrappers_glGetVertexAttribfv;
+        context_ptr->entry_points_gl.pGLGetVertexAttribIiv                          = ogl_context_wrappers_glGetVertexAttribIiv;
+        context_ptr->entry_points_gl.pGLGetVertexAttribIuiv                         = ogl_context_wrappers_glGetVertexAttribIuiv;
+        context_ptr->entry_points_gl.pGLGetVertexAttribiv                           = ogl_context_wrappers_glGetVertexAttribiv;
+        context_ptr->entry_points_gl.pGLGetVertexAttribPointerv                     = ogl_context_wrappers_glGetVertexAttribPointerv;
+        context_ptr->entry_points_gl.pGLInvalidateFramebuffer                       = ogl_context_wrappers_glInvalidateFramebuffer;
+        context_ptr->entry_points_gl.pGLInvalidateSubFramebuffer                    = ogl_context_wrappers_glInvalidateSubFramebuffer;
+        context_ptr->entry_points_gl.pGLMapBuffer                                   = ogl_context_wrappers_glMapBuffer;
+        context_ptr->entry_points_gl.pGLMapBufferRange                              = ogl_context_wrappers_glMapBufferRange;
+        context_ptr->entry_points_gl.pGLMultiDrawArrays                             = ogl_context_wrappers_glMultiDrawArrays;
+        context_ptr->entry_points_gl.pGLMultiDrawElements                           = ogl_context_wrappers_glMultiDrawElements;
+        context_ptr->entry_points_gl.pGLMultiDrawElementsBaseVertex                 = ogl_context_wrappers_glMultiDrawElementsBaseVertex;
+        context_ptr->entry_points_gl.pGLReadBuffer                                  = ogl_context_wrappers_glReadBuffer;
+        context_ptr->entry_points_gl.pGLReadPixels                                  = ogl_context_wrappers_glReadPixels;
+        context_ptr->entry_points_gl.pGLResumeTransformFeedback                     = ogl_context_wrappers_glResumeTransformFeedback;
+        context_ptr->entry_points_gl.pGLSamplerParameterf                           = ogl_context_wrappers_glSamplerParameterf;
+        context_ptr->entry_points_gl.pGLSamplerParameterfv                          = ogl_context_wrappers_glSamplerParameterfv;
+        context_ptr->entry_points_gl.pGLSamplerParameterIiv                         = ogl_context_wrappers_glSamplerParameterIiv;
+        context_ptr->entry_points_gl.pGLSamplerParameterIuiv                        = ogl_context_wrappers_glSamplerParameterIuiv;
+        context_ptr->entry_points_gl.pGLSamplerParameteri                           = ogl_context_wrappers_glSamplerParameteri;
+        context_ptr->entry_points_gl.pGLSamplerParameteriv                          = ogl_context_wrappers_glSamplerParameteriv;
+        context_ptr->entry_points_gl.pGLScissor                                     = ogl_context_wrappers_glScissor;
+        context_ptr->entry_points_gl.pGLTexBuffer                                   = ogl_context_wrappers_glTexBuffer;
+        context_ptr->entry_points_gl.pGLTexBufferRange                              = ogl_context_wrappers_glTexBufferRange;
+        context_ptr->entry_points_gl.pGLTexImage1D                                  = ogl_context_wrappers_glTexImage1D;
+        context_ptr->entry_points_gl.pGLTexImage2D                                  = ogl_context_wrappers_glTexImage2D;
+        context_ptr->entry_points_gl.pGLTexImage3D                                  = ogl_context_wrappers_glTexImage3D;
+        context_ptr->entry_points_gl.pGLTexParameterf                               = ogl_context_wrappers_glTexParameterf;
+        context_ptr->entry_points_gl.pGLTexParameterfv                              = ogl_context_wrappers_glTexParameterfv;
+        context_ptr->entry_points_gl.pGLTexParameterIiv                             = ogl_context_wrappers_glTexParameterIiv;
+        context_ptr->entry_points_gl.pGLTexParameterIuiv                            = ogl_context_wrappers_glTexParameterIuiv;
+        context_ptr->entry_points_gl.pGLTexParameteri                               = ogl_context_wrappers_glTexParameteri;
+        context_ptr->entry_points_gl.pGLTexParameteriv                              = ogl_context_wrappers_glTexParameteriv;
+        context_ptr->entry_points_gl.pGLTexStorage1D                                = ogl_context_wrappers_glTexStorage1D;
+        context_ptr->entry_points_gl.pGLTexStorage2D                                = ogl_context_wrappers_glTexStorage2D;
+        context_ptr->entry_points_gl.pGLTexStorage2DMultisample                     = ogl_context_wrappers_glTexStorage2DMultisample;
+        context_ptr->entry_points_gl.pGLTexStorage3D                                = ogl_context_wrappers_glTexStorage3D;
+        context_ptr->entry_points_gl.pGLTexStorage3DMultisample                     = ogl_context_wrappers_glTexStorage3DMultisample;
+        context_ptr->entry_points_gl.pGLTexSubImage1D                               = ogl_context_wrappers_glTexSubImage1D;
+        context_ptr->entry_points_gl.pGLTexSubImage2D                               = ogl_context_wrappers_glTexSubImage2D;
+        context_ptr->entry_points_gl.pGLTexSubImage3D                               = ogl_context_wrappers_glTexSubImage3D;
+        context_ptr->entry_points_gl.pGLUniformBlockBinding                         = ogl_context_wrappers_glUniformBlockBinding;
+        context_ptr->entry_points_gl.pGLUnmapBuffer                                 = ogl_context_wrappers_glUnmapBuffer;
+        context_ptr->entry_points_gl.pGLUseProgram                                  = ogl_context_wrappers_glUseProgram;
+        context_ptr->entry_points_gl.pGLVertexAttribIPointer                        = ogl_context_wrappers_glVertexAttribIPointer;
+        context_ptr->entry_points_gl.pGLVertexAttribPointer                         = ogl_context_wrappers_glVertexAttribPointer;
+        context_ptr->entry_points_gl.pGLViewport                                    = ogl_context_wrappers_glViewport;
     }
     else
     {

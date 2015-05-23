@@ -460,6 +460,23 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawElements(GLenum        mode,
                                                          const GLvoid* indices);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseInstance(GLenum      mode,
+                                                                              GLsizei     count,
+                                                                              GLenum      type,
+                                                                              const void* indices,
+                                                                              GLsizei     instancecount,
+                                                                              GLuint      baseinstance);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstancedBaseVertexBaseInstance(GLenum      mode,
+                                                                                        GLsizei     count,
+                                                                                        GLenum      type,
+                                                                                        const void* indices,
+                                                                                        GLsizei     instancecount,
+                                                                                        GLint       basevertex,
+                                                                                        GLuint      baseinstance);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawElementsInstanced(GLenum        mode,
                                                                   GLsizei       count,
                                                                   GLenum        type,
@@ -477,6 +494,17 @@ PUBLIC void APIENTRY ogl_context_wrappers_glDrawRangeElements(GLenum        mode
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedback(GLenum mode,
                                                                   GLuint id);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackInstanced(GLenum  mode,
+                                                                           GLuint  id,
+                                                                           GLsizei instancecount);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glDrawTransformFeedbackStreamInstanced(GLenum  mode,
+                                                                                 GLuint  id,
+                                                                                 GLuint  stream,
+                                                                                 GLsizei instancecount);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glEnable(GLenum cap);
@@ -609,6 +637,13 @@ PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegeri_v(GLenum target,
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetIntegerv(GLenum pname,
                                                         GLint* params);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glGetInternalformativ(GLenum  target,
+                                                                GLenum  internalformat,
+                                                                GLenum  pname,
+                                                                GLsizei bufSize,
+                                                                GLint*  params);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glGetNamedBufferParameterivEXT(GLuint buffer,
