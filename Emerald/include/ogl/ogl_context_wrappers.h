@@ -140,6 +140,22 @@ PUBLIC void APIENTRY ogl_context_wrappers_glBufferSubData(GLenum        target,
 PUBLIC void APIENTRY ogl_context_wrappers_glClear(GLbitfield mask);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glClearBufferData(GLenum      target,
+                                                            GLenum      internalformat,
+                                                            GLenum      format,
+                                                            GLenum      type,
+                                                            const void* data);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glClearBufferSubData(GLenum      target,
+                                                               GLenum      internalformat,
+                                                               GLintptr    offset,
+                                                               GLsizeiptr  size,
+                                                               GLenum      format,
+                                                               GLenum      type,
+                                                               const void* data);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glClearColor(GLfloat red,
                                                        GLfloat green,
                                                        GLfloat blue,
@@ -834,6 +850,12 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawArrays(GLenum         mod
                                                               GLsizei        primcount);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawArraysIndirect(GLenum      mode,
+                                                                    const void* indirect,
+                                                                    GLsizei     drawcount,
+                                                                    GLsizei     stride);
+
+/** TODO */
 PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElements(GLenum               mode,
                                                                 const GLsizei*       count,
                                                                 GLenum               type,
@@ -847,6 +869,13 @@ PUBLIC GLvoid APIENTRY ogl_context_wrappers_glMultiDrawElementsBaseVertex(GLenum
                                                                           const GLvoid* const* indices,
                                                                           GLsizei              drawcount,
                                                                           const GLint*         basevertex);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glMultiDrawElementsIndirect(GLenum      mode,
+                                                                      GLenum      type,
+                                                                      const void* indirect,
+                                                                      GLsizei     drawcount,
+                                                                      GLsizei     stride);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glNamedBufferDataEXT(GLuint      buffer,
@@ -1304,11 +1333,33 @@ PUBLIC void APIENTRY ogl_context_wrappers_glVertexArrayVertexAttribOffsetEXT(GLu
                                                                              GLintptr  offset);
 
 /** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribBinding(GLuint attribindex,
+                                                                GLuint bindingindex);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribFormat(GLuint    attribindex,
+                                                               GLint     size,
+                                                               GLenum    type,
+                                                               GLboolean normalized,
+                                                               GLuint    relativeoffset);
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIFormat(GLuint attribindex,
+                                                                GLint  size,
+                                                                GLenum type,
+                                                                GLuint relativeoffset);
+
+/** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribIPointer(GLuint        index,
                                                                  GLint         size,
                                                                  GLenum        type,
                                                                  GLsizei       stride,
                                                                  const GLvoid* pointer);
+
+/** TODO */
+PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribLFormat(GLuint attribindex,
+                                                                GLint  size,
+                                                                GLenum type,
+                                                                GLuint relativeoffset);
 
 /** TODO */
 PUBLIC void APIENTRY ogl_context_wrappers_glVertexAttribPointer(GLuint index,
