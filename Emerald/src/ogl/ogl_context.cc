@@ -429,26 +429,16 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
                                                              const GLchar* message,
                                                              const void*   userParam)
 {
-    static char local_message[4096];
+    _ogl_context* context_ptr = (_ogl_context*) userParam;
+    static char   local_message[4096];
 
-    /* Disable 131185, which basically is:
-       
-       [Id:131185] [Source:OpenGL] Type:[Other event] Severity:[!]: Buffer detailed info: Buffer object 14 (bound to GL_TRANSFORM_FEEDBACK_BUFFER_NV (0), and GL_TRANSFORM_FEEDBACK_BUFFER_NV, usage hint is GL_STATIC_DRAW) will use VIDEO memory as the source for buffer object operations.
-       
-       */
-    /* 131204 which goes like:
-
-       [File C:\!Programming\DeStereo\Emerald\src\ogl\ogl_context.cc // line 187]: [Id:131204] [Source:OpenGL] Type:[Other event] Severity:[!]: Texture state usage warning: Waste of memory: Texture 1 has mipmaps, while it's min filter is inconsistent with mipmaps.
-
-       is invalid for texture buffers, yet is reported. 
-    */
-    /* 131154:
-
-        [Id:131154] [Source:OpenGL] Type:[Performance warning] Severity:[!!]: Pixel-path performance warning: Pixel transfer is synchronized with 3D rendering.
-
-        Happens in Cammuxer so disabling.
-    */
-    /* 131184:
+    /* 1280: shader compilation failure. (Intel & NVIDIA)
+     *
+     * Most importantly, thrown when switching between driver versions or vendors, when the blobs
+     * become incompatible. Since shader compilation is handled by ogl_shader which by default is
+     * pretty verbose, this call-back is useless for our purposes.
+     */
+    /* 131184: (NVIDIA)
      *
      * [Id:131184] [Source:OpenGL] Type:[Other event] Severity:[!]: Buffer info: 
      *  Total VBO memory usage in the system:
@@ -460,10 +450,16 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
      *   memType: PAGED, 41.16 Mb Allocated, numAllocations: 9.
      *
      */
-    if (id != 131185 &&
-        id != 131204 &&
-        id != 131154 &&
-        id != 131184)
+    /* 131185: (NVIDIA)
+     *
+     * [Id:131185] [Source:OpenGL] Type:[Other event] Severity:[!]: Buffer detailed info: Buffer object 14 (bound to GL_TRANSFORM_FEEDBACK_BUFFER_NV (0), and GL_TRANSFORM_FEEDBACK_BUFFER_NV, usage hint is GL_STATIC_DRAW) will use VIDEO memory as the source for buffer object operations.
+     *
+     */
+    if ( context_ptr->is_intel_driver && (id != 1280)   ||
+         context_ptr->is_nv_driver    && (id != 1280    &&
+                                          id != 131184  &&
+                                          id != 131185) ||
+        !context_ptr->is_intel_driver && !context_ptr->is_nv_driver)
     {
         /* This function is called back from within driver layer! Do not issue GL commands from here! */
         _ogl_context* context_ptr   = (_ogl_context*) userParam;
