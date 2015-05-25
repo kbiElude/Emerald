@@ -2619,19 +2619,22 @@ PUBLIC EMERALD_API void ogl_uber_set_shader_general_property(__in __notnull ogl_
     {
         case OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION:
         {
-            const float location[4] =
+            if (uber_ptr->world_camera_ub_offset != -1)
             {
-                ((float*) data)[0],
-                ((float*) data)[1],
-                ((float*) data)[2],
-                1.0f
-            };
+                const float location[4] =
+                {
+                    ((float*) data)[0],
+                    ((float*) data)[1],
+                    ((float*) data)[2],
+                    1.0f
+                };
 
-            ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
-                                                        uber_ptr->world_camera_ub_offset,
-                                                        location,
-                                                        0, /* src_data_flags */
-                                                        sizeof(float) * 4);
+                ogl_program_ub_set_nonarrayed_uniform_value(uber_ptr->ub_vs,
+                                                            uber_ptr->world_camera_ub_offset,
+                                                            location,
+                                                            0, /* src_data_flags */
+                                                            sizeof(float) * 4);
+            }
 
             break;
         }

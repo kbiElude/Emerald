@@ -357,7 +357,8 @@ PRIVATE void _ogl_scene_renderer_get_ogl_uber_for_render_mode(__in            _o
 {
     switch (render_mode)
     {
-        case RENDER_MODE_FORWARD:
+        case RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS:
+        case RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS:
         {
             /* Do not over-write the uber instance! */
 
@@ -1787,7 +1788,8 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     entry_points->pGLEnable   (GL_CULL_FACE);
     entry_points->pGLEnable   (GL_DEPTH_TEST);
 
-    if (render_mode == RENDER_MODE_FORWARD)
+    if (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS ||
+        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS)
     {
         entry_points->pGLEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
         entry_points->pGLEnable(GL_FRAMEBUFFER_SRGB);
@@ -1810,161 +1812,262 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
         system_hash64             material_hash     = 0;
         ogl_uber                  material_uber     = NULL;
         uint32_t                  n_iteration_items = 0;
-        uint32_t                  n_iterations      = system_hash64map_get_amount_of_elements(renderer_ptr->ubers_map);
         _ogl_scene_renderer_uber* uber_details_ptr  = NULL;
 
-        for (uint32_t n_iteration = 0;
-                      n_iteration < n_iterations;
-                    ++n_iteration)
+        /* Forward renderer can work in two modes:
+         *
+         * 1) With a depth pre-pass. In this case, we need to render all the meshes twice.
+         *    For the first pass, we only render the depth information. For the other one,
+         *    we re-use that depth information to perform actual shading.
+         * 2) Without a depth pre-pass. In this case, the meshes need to be rendered once.
+         */
+        const uint32_t n_passes = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS) ? 2 : 1;
+
+        for (uint32_t n_pass = 0;
+                      n_pass < n_passes;
+                    ++n_pass)
         {
-            /* Retrieve ogl_uber instance */
-            if (render_mode == RENDER_MODE_FORWARD)
+            const bool is_depth_prepass  = (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 0);
+            const bool use_material_uber = (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS                ||
+                                            render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 1);
+
+            const uint32_t n_iterations  = (is_depth_prepass) ? 1
+                                                              : system_hash64map_get_amount_of_elements(renderer_ptr->ubers_map);
+
+            /* Set up the "depth pre-pass" rendering state */
+            if (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS)
             {
-                system_hash64map_get_element_at(renderer_ptr->ubers_map,
-                                                n_iteration,
-                                                &uber_details_ptr,
-                                                &material_hash);
+                if (n_pass == 0)
+                {
+                    entry_points->pGLColorMask(GL_FALSE,  /* red   */
+                                               GL_FALSE,  /* green */
+                                               GL_FALSE,  /* blue  */
+                                               GL_FALSE); /* alpha */
+                    entry_points->pGLDepthFunc(GL_LESS);  /* func  */
+                    entry_points->pGLDepthMask(GL_TRUE);  /* flag  */
+                }
+                else
+                {
+                    ASSERT_DEBUG_SYNC(n_pass == 1,
+                                      "Sanity check failed");
 
-                ASSERT_DEBUG_SYNC(material_hash != 0,
-                                  "No ogl_uber instance available!");
+                    entry_points->pGLColorMask(GL_TRUE,  /* red   */
+                                               GL_TRUE,  /* green */
+                                               GL_TRUE,  /* blue  */
+                                               GL_TRUE); /* alpha */
+                    entry_points->pGLDepthFunc(GL_EQUAL);
+                    entry_points->pGLDepthMask(GL_FALSE);
+                }
+            } /* if (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS) */
 
-                material_uber     = (ogl_uber) material_hash;
-                n_iteration_items = system_resizable_vector_get_amount_of_elements(uber_details_ptr->meshes);
-
-                _ogl_scene_renderer_update_ogl_uber_light_properties(material_uber,
-                                                                     renderer_ptr->scene,
-                                                                     renderer_ptr->current_view,
-                                                                     frame_time,
-                                                                     renderer_ptr->temp_variant_float);
-            }
-            else
+            for (uint32_t n_iteration = 0;
+                          n_iteration < n_iterations; /* n_iterations = no of separate ogl_ubers needed to render the scene */
+                        ++n_iteration)
             {
-                _ogl_scene_renderer_get_ogl_uber_for_render_mode(render_mode,
-                                                                 materials,
-                                                                 renderer_ptr->scene,
-                                                                &material_uber);
+                if (use_material_uber)
+                {
+                    /* Retrieve ogl_uber instance */
+                    system_hash64map_get_element_at(renderer_ptr->ubers_map,
+                                                    n_iteration,
+                                                    &uber_details_ptr,
+                                                    &material_hash);
 
-                ASSERT_DEBUG_SYNC(material_uber != NULL,
-                                  "No ogl_uber instance available!");
+                    ASSERT_DEBUG_SYNC(material_hash != 0,
+                                      "No ogl_uber instance available!");
 
-                system_hash64map_get(renderer_ptr->ubers_map,
-                                     (system_hash64) material_uber,
-                                     &uber_details_ptr);
+                    material_uber     = (ogl_uber) material_hash;
+                    n_iteration_items = system_resizable_vector_get_amount_of_elements(uber_details_ptr->meshes);
 
-                n_iteration_items = system_resizable_vector_get_amount_of_elements(uber_details_ptr->meshes);
-            }
+                    _ogl_scene_renderer_update_ogl_uber_light_properties(material_uber,
+                                                                         renderer_ptr->scene,
+                                                                         renderer_ptr->current_view,
+                                                                         frame_time,
+                                                                         renderer_ptr->temp_variant_float);
+                } /* if (use_material_uber) */
+                else
+                {
+                    /* If this is not a "depth pre-pass" pass .. */
+                    if (!is_depth_prepass)
+                    {
+                        _ogl_scene_renderer_get_ogl_uber_for_render_mode(render_mode,
+                                                                         materials,
+                                                                         renderer_ptr->scene,
+                                                                        &material_uber);
+                    }
+                    else
+                    {
+                        /* Use the 'clip depth' material to output the clip-space depth data */
+                        material_uber = mesh_material_get_ogl_uber(ogl_materials_get_special_material(materials,
+                                                                                                      SPECIAL_MATERIAL_DEPTH_CLIP),
+                                                                   renderer_ptr->scene,
+                                                                   false); /* use_shadow_maps */
+                    }
 
-            /* Update global properties of ogl_uber's vertex shader  */
-            ogl_uber_set_shader_general_property(material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
-                                                 camera_location);
-            ogl_uber_set_shader_general_property(material_uber,
-                                                 OGL_UBER_GENERAL_PROPERTY_VP,
-                                                 vp);
+                    ASSERT_DEBUG_SYNC(material_uber != NULL,
+                                      "No ogl_uber instance available!");
+                }
 
-            /* Okay. Go on with the rendering */
-            ogl_uber_rendering_start(material_uber);
+                /* Update global properties of ogl_uber's vertex shader  */
+                ogl_uber_set_shader_general_property(material_uber,
+                                                     OGL_UBER_GENERAL_PROPERTY_CAMERA_LOCATION,
+                                                     camera_location);
+                ogl_uber_set_shader_general_property(material_uber,
+                                                     OGL_UBER_GENERAL_PROPERTY_VP,
+                                                     vp);
+
+                /* Okay. Go on with the rendering */
+                ogl_uber_rendering_start(material_uber);
+                {
+                    if (is_depth_prepass)
+                    {
+                        const uint32_t n_uber_map_items = system_hash64map_get_amount_of_elements(renderer_ptr->ubers_map);
+
+                        for (uint32_t n_uber_map_item = 0;
+                                      n_uber_map_item < n_uber_map_items;
+                                    ++n_uber_map_item)
+                        {
+                            uint32_t                  n_meshes      = 0;
+                            _ogl_scene_renderer_uber* uber_item_ptr = NULL;
+
+                            if (!system_hash64map_get_element_at(renderer_ptr->ubers_map,
+                                                                 n_uber_map_item,
+                                                                &uber_item_ptr,
+                                                                 NULL) ) /* result_hash */
+                            {
+                                continue;
+                            }
+
+                            n_meshes = system_resizable_vector_get_amount_of_elements(uber_item_ptr->meshes);
+
+                            for (uint32_t n_mesh = 0;
+                                          n_mesh < n_meshes;
+                                        ++n_mesh)
+                            {
+                                _ogl_scene_renderer_mesh* mesh_ptr = NULL;
+
+                                if (!system_resizable_vector_get_element_at(uber_item_ptr->meshes,
+                                                                            n_mesh,
+                                                                           &mesh_ptr) )
+                                {
+                                    continue;
+                                }
+
+                                ogl_uber_rendering_render_mesh(mesh_ptr->mesh_instance,
+                                                               mesh_ptr->model_matrix,
+                                                               mesh_ptr->normal_matrix,
+                                                               material_uber,
+                                                               mesh_ptr->material,
+                                                               frame_time);
+                            } /* for (all items) */
+                        }
+                    } /* if (is_depth_prepass) */
+                    else
+                    {
+                        _ogl_scene_renderer_mesh* item_ptr = NULL;
+
+                        for (uint32_t n_iteration_item = 0;
+                                      n_iteration_item < n_iteration_items;
+                                    ++n_iteration_item)
+                        {
+                            system_resizable_vector_get_element_at(uber_details_ptr->meshes,
+                                                                   n_iteration_item,
+                                                                  &item_ptr);
+
+                            ogl_uber_rendering_render_mesh(item_ptr->mesh_instance,
+                                                           item_ptr->model_matrix,
+                                                           item_ptr->normal_matrix,
+                                                           material_uber,
+                                                           item_ptr->material,
+                                                           frame_time);
+                        } /* for (all meshes to be rendered with the material uber instance) */
+                    }
+                }
+                ogl_uber_rendering_stop(material_uber);
+
+                if (use_material_uber)
+                {
+                    /* Clean up */
+                    _ogl_scene_renderer_mesh* mesh_ptr = NULL;
+
+                    while (system_resizable_vector_pop(uber_details_ptr->meshes,
+                                                      &mesh_ptr) )
+                    {
+                        if (mesh_ptr->model_matrix != NULL)
+                        {
+                            system_matrix4x4_release(mesh_ptr->model_matrix);
+                        }
+
+                        if (mesh_ptr->normal_matrix != NULL)
+                        {
+                            system_matrix4x4_release(mesh_ptr->normal_matrix);
+                        }
+
+                        system_resource_pool_return_to_pool(renderer_ptr->scene_renderer_mesh_pool,
+                                                            (system_resource_pool_block) mesh_ptr);
+                    }
+                }
+            } /* for (all required rendering passes <depth pre-pass, rendering pass>) */
+        } /* for (all uber instances) */
+
+        /* Any helper visualization, handle it at this point */
+        if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES &&
+            n_iteration_items > 0)
+        {
+            if (renderer_ptr->bbox_preview == NULL)
+            {
+                renderer_ptr->bbox_preview = ogl_scene_renderer_bbox_preview_create(renderer_ptr->context,
+                                                                                    renderer_ptr->scene,
+                                                                                    (ogl_scene_renderer) renderer_ptr);
+            } /* if (renderer_ptr->bbox_preview == NULL) */
+
+            ogl_scene_renderer_bbox_preview_start(renderer_ptr->bbox_preview,
+                                                  vp);
             {
                 _ogl_scene_renderer_mesh* item_ptr = NULL;
 
-                for (uint32_t n_iteration_item = 0;
-                              n_iteration_item < n_iteration_items;
-                            ++n_iteration_item)
+                for (uint32_t n_vector_item = 0;
+                              n_vector_item < n_iteration_items;
+                            ++n_vector_item)
                 {
                     system_resizable_vector_get_element_at(uber_details_ptr->meshes,
-                                                           n_iteration_item,
+                                                           n_vector_item,
                                                           &item_ptr);
 
-                    ogl_uber_rendering_render_mesh(item_ptr->mesh_instance,
-                                                   item_ptr->model_matrix,
-                                                   item_ptr->normal_matrix,
-                                                   material_uber,
-                                                   item_ptr->material,
-                                                   frame_time);
+                    ogl_scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
+                                                           item_ptr->mesh_id);
                 }
             }
-            ogl_uber_rendering_stop(material_uber);
+            ogl_scene_renderer_bbox_preview_stop(renderer_ptr->bbox_preview);
+        } /* if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES && n_iteration_items > 0) */
 
-            /* Any helper visualization, handle it at this point */
-            if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES &&
-                n_iteration_items > 0)
+        if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0)
+        {
+            if (renderer_ptr->normals_preview == NULL)
             {
-                if (renderer_ptr->bbox_preview == NULL)
-                {
-                    renderer_ptr->bbox_preview = ogl_scene_renderer_bbox_preview_create(renderer_ptr->context,
-                                                                                        renderer_ptr->scene,
-                                                                                        (ogl_scene_renderer) renderer_ptr);
-                } /* if (renderer_ptr->bbox_preview == NULL) */
+                renderer_ptr->normals_preview = ogl_scene_renderer_normals_preview_create(renderer_ptr->context,
+                                                                                          renderer_ptr->scene,
+                                                                                          (ogl_scene_renderer) renderer_ptr);
+            } /* if (renderer_ptr->normals_preview == NULL) */
 
-                ogl_scene_renderer_bbox_preview_start(renderer_ptr->bbox_preview,
-                                                      vp);
-                {
-                    _ogl_scene_renderer_mesh* item_ptr = NULL;
-
-                    for (uint32_t n_vector_item = 0;
-                                  n_vector_item < n_iteration_items;
-                                ++n_vector_item)
-                    {
-                        system_resizable_vector_get_element_at(uber_details_ptr->meshes,
-                                                               n_vector_item,
-                                                              &item_ptr);
-
-                        ogl_scene_renderer_bbox_preview_render(renderer_ptr->bbox_preview,
-                                                               item_ptr->mesh_id);
-                    }
-                }
-                ogl_scene_renderer_bbox_preview_stop(renderer_ptr->bbox_preview);
-            } /* if (helper_visualization & HELPER_VISUALIZATION_BOUNDING_BOXES && n_iteration_items > 0) */
-
-            if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0)
+            ogl_scene_renderer_normals_preview_start(renderer_ptr->normals_preview,
+                                                     vp);
             {
-                if (renderer_ptr->normals_preview == NULL)
+                _ogl_scene_renderer_mesh* item_ptr = NULL;
+
+                for (uint32_t n_vector_item = 0;
+                              n_vector_item < n_iteration_items;
+                            ++n_vector_item)
                 {
-                    renderer_ptr->normals_preview = ogl_scene_renderer_normals_preview_create(renderer_ptr->context,
-                                                                                              renderer_ptr->scene,
-                                                                                              (ogl_scene_renderer) renderer_ptr);
-                } /* if (renderer_ptr->normals_preview == NULL) */
+                    system_resizable_vector_get_element_at(uber_details_ptr->meshes,
+                                                           n_vector_item,
+                                                          &item_ptr);
 
-                ogl_scene_renderer_normals_preview_start(renderer_ptr->normals_preview,
-                                                         vp);
-                {
-                    _ogl_scene_renderer_mesh* item_ptr = NULL;
-
-                    for (uint32_t n_vector_item = 0;
-                                  n_vector_item < n_iteration_items;
-                                ++n_vector_item)
-                    {
-                        system_resizable_vector_get_element_at(uber_details_ptr->meshes,
-                                                               n_vector_item,
-                                                              &item_ptr);
-
-                        ogl_scene_renderer_normals_preview_render(renderer_ptr->normals_preview,
-                                                                  item_ptr->mesh_id);
-                    }
+                    ogl_scene_renderer_normals_preview_render(renderer_ptr->normals_preview,
+                                                              item_ptr->mesh_id);
                 }
-                ogl_scene_renderer_normals_preview_stop(renderer_ptr->normals_preview);
-            } /* if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0) */
-
-            /* Clean up */
-            _ogl_scene_renderer_mesh* mesh_ptr = NULL;
-
-            while (system_resizable_vector_pop(uber_details_ptr->meshes,
-                                              &mesh_ptr) )
-            {
-                if (mesh_ptr->model_matrix != NULL)
-                {
-                    system_matrix4x4_release(mesh_ptr->model_matrix);
-                }
-
-                if (mesh_ptr->normal_matrix != NULL)
-                {
-                    system_matrix4x4_release(mesh_ptr->normal_matrix);
-                }
-
-                system_resource_pool_return_to_pool(renderer_ptr->scene_renderer_mesh_pool,
-                                                    (system_resource_pool_block) mesh_ptr);
             }
-        } /* for (all ubers) */
+            ogl_scene_renderer_normals_preview_stop(renderer_ptr->normals_preview);
+        } /* if (helper_visualization & HELPER_VISUALIZATION_NORMALS && n_iteration_items > 0) */
 
         if (helper_visualization & HELPER_VISUALIZATION_FRUSTUMS)
         {
@@ -2098,10 +2201,15 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
     }
 
     /* All done! Good to shut down the show */
-    if (render_mode == RENDER_MODE_FORWARD)
+    if (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS ||
+        render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS)
     {
         entry_points->pGLDisable(GL_FRAMEBUFFER_SRGB);
+        entry_points->pGLDisable  (GL_RASTERIZER_DISCARD);
         entry_points->pGLDisable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+        entry_points->pGLDepthFunc(GL_LEQUAL);
+        entry_points->pGLDepthMask(GL_TRUE);
     }
 
     if (vp != NULL)

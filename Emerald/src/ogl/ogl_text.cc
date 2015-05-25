@@ -102,7 +102,6 @@ typedef struct
     PFNGLENABLEPROC                       pGLEnable;
     PFNGLGENVERTEXARRAYSPROC              pGLGenVertexArrays;
     PFNGLGENERATEMIPMAPPROC               pGLGenerateMipmap;
-    PFNGLGETERRORPROC                     pGLGetError;
     PFNGLPROGRAMUNIFORM1IPROC             pGLProgramUniform1i;
     PFNGLSCISSORPROC                      pGLScissor;
     PFNGLTEXBUFFERRANGEPROC               pGLTexBufferRange;
@@ -1161,7 +1160,6 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLEnable              = entry_points->pGLEnable;
             result->pGLGenVertexArrays     = entry_points->pGLGenVertexArrays;
             result->pGLGenerateMipmap      = entry_points->pGLGenerateMipmap;
-            result->pGLGetError            = entry_points->pGLGetError;
             result->pGLProgramUniform1i    = entry_points->pGLProgramUniform1i;
             result->pGLScissor             = entry_points->pGLScissor;
             result->pGLTexBufferRange      = ts_entry_points->pGLTexBufferRangeEXT;
@@ -1206,7 +1204,6 @@ PUBLIC EMERALD_API ogl_text ogl_text_create(__in __notnull system_hashed_ansi_st
             result->pGLEnable                   = entry_points->pGLEnable;
             result->pGLGenVertexArrays          = entry_points->pGLGenVertexArrays;
             result->pGLGenerateMipmap           = entry_points->pGLGenerateMipmap;
-            result->pGLGetError                 = entry_points->pGLGetError;
             result->pGLProgramUniform1i         = entry_points->pGLProgramUniform1i;
             result->pGLScissor                  = entry_points->pGLScissor;
             result->pGLTexBufferRange           = entry_points->pGLTexBufferRange;

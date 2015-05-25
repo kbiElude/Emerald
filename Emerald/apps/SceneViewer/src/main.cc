@@ -237,7 +237,7 @@ PUBLIC void _render_scene(ogl_context          context,
                                           view,
                                           projection,
                                           camera,
-                                          RENDER_MODE_FORWARD,
+                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
 #ifdef ENABLE_SM
                                           true,  /* apply_shadow_mapping */
 #else

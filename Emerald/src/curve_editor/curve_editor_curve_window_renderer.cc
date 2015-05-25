@@ -381,9 +381,6 @@ PRIVATE void _curve_editor_curve_window_remove_segment_handler_renderer_callback
         entry_points->pGLDeleteBuffers(1,
                                       &tcb_segment_rendering->tcb_ubo_id);
 
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                          "Could not release TCB UBO");
-
         /* Free the instance */
         delete tcb_segment_rendering;
 
@@ -3486,8 +3483,6 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
     }
     entry_points->pGLBindVertexArray(0);
 
-    ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                      "");
 }
 
 /** TODO */
@@ -3586,9 +3581,6 @@ PRIVATE void _curve_editor_curve_window_renderer_update_tcb_ubo(      curve_segm
                                            8 * start_index * sizeof(float),
                                            8 * n * sizeof(float), storage);
         }
-
-        ASSERT_DEBUG_SYNC(entry_points->pGLGetError() == GL_NO_ERROR,
-                          "Error when updating TCB UBO");
 
         /* Free storage */
         delete [] storage;

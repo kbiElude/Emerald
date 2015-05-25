@@ -182,7 +182,7 @@ void _render_scene(ogl_context          context,
                                           view,
                                           _projection_matrix,
                                           camera,
-                                          RENDER_MODE_FORWARD,
+                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                           true, /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_NONE,
                                           system_time_now() % _animation_duration_time

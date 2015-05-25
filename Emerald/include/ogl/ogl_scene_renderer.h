@@ -49,7 +49,8 @@ typedef enum
 typedef enum
 {
     /* All meshes will be forward-rendered */
-    RENDER_MODE_FORWARD,
+    RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS,
+    RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
 
     /* TODO: RENDER_MODE_DEFERRED */
 

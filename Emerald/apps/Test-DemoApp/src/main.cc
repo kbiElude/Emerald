@@ -194,7 +194,7 @@ PUBLIC void _render_scene(ogl_context          context,
                                           view,
                                           projection,
                                           current_camera,
-                                          RENDER_MODE_FORWARD,
+                                          RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS,
                                           true,  /* apply_shadow_mapping */
                                           HELPER_VISUALIZATION_NONE,
                                           frame_time

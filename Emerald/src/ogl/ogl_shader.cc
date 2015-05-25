@@ -28,7 +28,6 @@ typedef struct
     PFNGLCOMPILESHADERPROC    pGLCompileShader;
     PFNGLCREATESHADERPROC     pGLCreateShader;
     PFNGLDELETESHADERPROC     pGLDeleteShader;
-    PFNGLGETERRORPROC         pGLGetError;
     PFNGLGETSHADERINFOLOGPROC pGLGetShaderInfoLog;
     PFNGLGETSHADERIVPROC      pGLGetShaderiv;
     PFNGLSHADERSOURCEPROC     pGLShaderSource;
@@ -107,9 +106,6 @@ PRIVATE void _ogl_shader_release_callback(__in __notnull ogl_context context, vo
     _ogl_shader* shader_ptr = (_ogl_shader*) in_arg;
 
     shader_ptr->pGLDeleteShader(shader_ptr->id);
-
-    ASSERT_DEBUG_SYNC(shader_ptr->pGLGetError() == GL_NO_ERROR,
-                      "Error occurred while deleting a shader.");
 }
 
 /** TODO */
@@ -124,9 +120,6 @@ PRIVATE void _ogl_shader_set_body_callback(__in __notnull ogl_context context, v
                                 (const GLchar**) &shader_source,
                                 (const GLint*)   &shader_source_length
                                );
-
-    ASSERT_DEBUG_SYNC(shader_ptr->pGLGetError() == GL_NO_ERROR,
-                      "Error occurred while setting shader source.");
 }
 
 /** TODO */
@@ -241,7 +234,6 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context      
             result->pGLCompileShader    = entry_points->pGLCompileShader;
             result->pGLCreateShader     = entry_points->pGLCreateShader;
             result->pGLDeleteShader     = entry_points->pGLDeleteShader;
-            result->pGLGetError         = entry_points->pGLGetError;
             result->pGLGetShaderInfoLog = entry_points->pGLGetShaderInfoLog;
             result->pGLGetShaderiv      = entry_points->pGLGetShaderiv;
             result->pGLShaderSource     = entry_points->pGLShaderSource;
@@ -260,7 +252,6 @@ PUBLIC EMERALD_API ogl_shader ogl_shader_create(__in __notnull ogl_context      
             result->pGLCompileShader    = entry_points->pGLCompileShader;
             result->pGLCreateShader     = entry_points->pGLCreateShader;
             result->pGLDeleteShader     = entry_points->pGLDeleteShader;
-            result->pGLGetError         = entry_points->pGLGetError;
             result->pGLGetShaderInfoLog = entry_points->pGLGetShaderInfoLog;
             result->pGLGetShaderiv      = entry_points->pGLGetShaderiv;
             result->pGLShaderSource     = entry_points->pGLShaderSource;
