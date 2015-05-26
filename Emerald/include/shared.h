@@ -1,32 +1,20 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SHARED_H
 #define SHARED_H
 
-#ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN 
-#endif
-
-/* Disable security warnings */
-#define _CRT_SECURE_NO_WARNINGS
-
-/* >= WinXP */
-#ifndef WINVER
-    #define WINVER 0x0501 
-#endif /* WINVER */
-
 /* A nifty macro that will allow us to enforce strong type checking for void* handle types */
 #ifndef _WIN32
     #ifdef DECLARE_HANDLE
         #undef DECLARE_HANDLE
-    #endif
+    #endif /* DECLARE_HANDLE */
 
     #define DECLARE_HANDLE(name) struct name##__ { int unused; }; \
                                  typedef struct name##__ *name;
-#endif
+#endif /* _WIN32 */
 
 /* CRT debugging */
 #ifdef _DEBUG
@@ -34,8 +22,35 @@
 
     #include <stdlib.h>
     #include <crtdbg.h>
+#endif /* _DEBUG */
 
+/* Platform-specific typedefs */
+#ifdef __linux__
+    #include <inttypes.h>
+
+    typedef int64_t  __int64;
+    typedef uint64_t __uint64;
+#else
+    /* __int64 is defined */
+    typedef unsigned __int64 __uint64;
 #endif
+
+/* Windows-specific bits */
+#ifdef _WIN32
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN 
+    #endif
+
+    /* Disable security warnings */
+    #define _CRT_SECURE_NO_WARNINGS
+
+    /* >= WinXP */
+    #ifndef WINVER
+        #define WINVER 0x0501
+    #endif /* WINVER */
+
+    #include <windows.h>
+#endif /* _WIN32 */
 
 /* CMake-driven config */
 #include "config.h"
@@ -44,14 +59,16 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <windows.h>
 #include <new>
 #include "ogl/gl3.h"
 #include "ogl/glext.h"
-#include "ogl/wglext.h"
 #include "system/system_types.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
+
+#ifdef _WIN32
+    #include "ogl/wglext.h"
+#endif /* _WIN32 */
 
 #ifdef INCLUDE_OBJECT_MANAGER
 
@@ -97,7 +114,7 @@
 /* This one is tricky and will only work with VS. If a resource has already been released and we're using a debug build,
  * the memory will be filled with 0xfeeefeee, so we can easily check whether we are not dealing with a double release problem.
  */
-#ifdef _DEBUG
+#if defined(_DEBUG) && defined(_WIN32)
     #define REFCOUNT_INSERT_IMPLEMENTATION_HELPER \
         ASSERT_DEBUG_SYNC(ptr->refcount_counter != 0xFEEEFEEE, "This object has already been released!");
 #else

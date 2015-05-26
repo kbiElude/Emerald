@@ -1,15 +1,42 @@
 /**
  *
- * Emerald (kbi/elude @2012)
+ * Emerald (kbi/elude @2012-2015)
  *
  */
 #ifndef SYSTEM_TYPES_H
 #define SYSTEM_TYPES_H
 
+#include "shared.h"
+
+
 /* Shared macros */
 #define PUBLIC
-#define PRIVATE static
+#define PRIVATE                static
 #define RENDERING_CONTEXT_CALL
+
+/* Emerald uses SAL annotations which are Windows-specific. Provide dummy wrappers
+ * for other platforms.
+ */
+#ifndef _WIN32
+    #define __analysis_assume(A) 1;
+    #define __deallocate(A)
+    #define __ecount(A)
+    #define __in
+    #define __in_ecount(A)
+    #define __in_opt
+    #define __inout
+    #define __notnull
+    #define __maybenull
+    #define __out
+    #define __out_ecount(A)
+    #define __out_ecount_opt(A)
+    #define __out_opt
+    #define __post_invalid
+#endif /* _WIN32 */
+
+/* TODO TODO TEMP TEMP TEMP */
+#define DWORD unsigned int
+#define LONG  unsigned int
 
 /*********************** ASSERTION CHECKS ********************************/
 typedef enum
@@ -126,6 +153,9 @@ DECLARE_HANDLE(system_window);
     typedef HWND system_window_handle;
     /** TODO */
     typedef HDC  system_window_dc;
+#elif __linux
+    typedef void* system_window_dc;
+    typedef void* system_window_handle;
 #else
     #error Platform unsupported
 #endif
@@ -134,7 +164,7 @@ DECLARE_HANDLE(system_window);
 typedef uint32_t system_timeline_time;
 
 /** TODO */
-typedef enum system_window_mouse_cursor
+typedef enum
 {
     SYSTEM_WINDOW_MOUSE_CURSOR_MOVE,
     SYSTEM_WINDOW_MOUSE_CURSOR_ARROW,
@@ -142,20 +172,26 @@ typedef enum system_window_mouse_cursor
     SYSTEM_WINDOW_MOUSE_CURSOR_VERTICAL_RESIZE,
     SYSTEM_WINDOW_MOUSE_CURSOR_CROSSHAIR,
     SYSTEM_WINDOW_MOUSE_CURSOR_ACTION_FORBIDDEN
-};
+} system_window_mouse_cursor;
 
 /** TODO */
-typedef enum system_window_vk_status
+#ifdef _WIN32
+    #define SYSTEM_WINDOW_VK_STATUS_ENTRY(entry_name, entry_value) entry_name = entry_value
+#else
+    #define SYSTEM_WINDOW_VK_STATUS_ENTRY(entry_name, entry_value) entry_name
+#endif
+
+typedef enum
 {
-    SYSTEM_WINDOW_VK_STATUS_CONTROL_PRESSED       = MK_CONTROL,
-    SYSTEM_WINDOW_VK_STATUS_LEFT_BUTTON_PRESSED   = MK_LBUTTON,
-    SYSTEM_WINDOW_VK_STATUS_MIDDLE_BUTTON_PRESSED = MK_MBUTTON,
-    SYSTEM_WINDOW_VK_STATUS_RIGHT_BUTTON_PRESSED  = MK_RBUTTON,
-    SYSTEM_WINDOW_VK_STATUS_SHIFT_PRESSED         = MK_SHIFT
-};
+    SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_CONTROL_PRESSED,       MK_CONTROL),
+    SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_LEFT_BUTTON_PRESSED,   MK_LBUTTON),
+    SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_MIDDLE_BUTTON_PRESSED, MK_MBUTTON),
+    SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_RIGHT_BUTTON_PRESSED,  MK_RBUTTON),
+    SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_SHIFT_PRESSED,         MK_SHIFT)
+} system_window_vk_status;
 
 /** TODO */
-typedef enum system_window_callback_func
+typedef enum
 {
     SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE,
     SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
@@ -182,7 +218,7 @@ typedef enum system_window_callback_func
      * are executed, the window message thread is locked up.
      */
     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-};
+} system_window_callback_func;
 
 /** TODO.
  *
@@ -450,7 +486,7 @@ DECLARE_HANDLE(system_variant);
 DECLARE_HANDLE(system_linear_alloc_pin);
 /********************** HASH64 MAP ***************************************/
 /** 64-bit hash type */
-typedef unsigned __int64 system_hash64;
+typedef __uint64 system_hash64;
 /** Hash64-based map type */
 DECLARE_HANDLE(system_hash64map);
 /** Type of an argument passed with on-removal call-back */

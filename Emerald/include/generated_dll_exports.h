@@ -9,10 +9,10 @@
 #  ifndef _EMERALD_API
 #    ifdef EMERALD_EXPORTS
         /* We are building this library */
-#      define _EMERALD_API __declspec(dllexport)
+#      define _EMERALD_API 
 #    else
         /* We are using this library */
-#      define _EMERALD_API __declspec(dllimport)
+#      define _EMERALD_API 
 #    endif
 #  endif
 
@@ -22,15 +22,9 @@
 #endif
 
 #ifndef EMERALD_DEPRECATED
-#  define EMERALD_DEPRECATED __declspec(deprecated)
-#endif
-
-#ifndef EMERALD_DEPRECATED_EXPORT
-#  define EMERALD_DEPRECATED_EXPORT _EMERALD_API EMERALD_DEPRECATED
-#endif
-
-#ifndef EMERALD_DEPRECATED_NO_EXPORT
-#  define EMERALD_DEPRECATED_NO_EXPORT EMERALD_NO_EXPORT EMERALD_DEPRECATED
+#  define EMERALD_DEPRECATED 
+#  define EMERALD_DEPRECATED_EXPORT _EMERALD_API 
+#  define EMERALD_DEPRECATED_NO_EXPORT EMERALD_NO_EXPORT 
 #endif
 
 #define DEFINE_NO_DEPRECATED 0

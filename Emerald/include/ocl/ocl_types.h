@@ -7,7 +7,7 @@
 #define OCL_TYPES_H
 
 #include "ocl/cl/cl.h"
-#include "ocl/CL/cl_gl.h"
+#include "ocl/cl/cl_gl.h"
 
 DECLARE_HANDLE(ocl_context);
 DECLARE_HANDLE(ocl_kdtree);
