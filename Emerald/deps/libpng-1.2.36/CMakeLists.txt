@@ -4,7 +4,9 @@
 cmake_minimum_required (VERSION 2.6) 
 project (lib_png)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+IF(MSVC)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+ENDIF(MSVC)
 
 FILE(GLOB Includes"${lib_png_SOURCE_DIR}/*.h")
 FILE(GLOB Sources "${lib_png_SOURCE_DIR}/*.c")

@@ -5,7 +5,12 @@ cmake_minimum_required (VERSION 2.6)
 
 ADD_SUBDIRECTORY(ColladaConverter)
 ADD_SUBDIRECTORY(ES31AppTemplate)
-ADD_SUBDIRECTORY(LW-AnimationDataExtractor)
+
+IF(MSVC)
+    # Lightwave scene extractor plug-in is Windows only.
+    ADD_SUBDIRECTORY(LW-AnimationDataExtractor)
+ENDIF(MSVC)
+
 ADD_SUBDIRECTORY(SceneViewer)
 ADD_SUBDIRECTORY(TextureCompressor)
 ADD_SUBDIRECTORY(Test-ComputeShaderSSBO)

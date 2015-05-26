@@ -4,7 +4,9 @@
 cmake_minimum_required (VERSION 2.6) 
 project (lib_jpeg)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+IF(MSVC)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+ENDIF(MSVC)
 
 FILE(GLOB Includes "${lib_jpeg_SOURCE_DIR}/jconfig.h")
 FILE(GLOB Sources  "${lib_jpeg_SOURCE_DIR}/jcomapi.c"
