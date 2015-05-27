@@ -35,7 +35,6 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_thread_pool.h"
 #include "system/system_variant.h"
-#include <sstream>
 
 /* Forward declarations */
 PRIVATE void             _collada_scene_generator_process_collada_data_node          (__in __notnull collada_data                  data,
@@ -88,8 +87,8 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
      *
      * TODO: Improve if necessary.
      */
-    static int        curve_counter = 0;
-    std::stringstream curve_name_sstream;
+    static int curve_counter = 0;
+    char       curve_name_buffer[64];
 
     if (value_type == COLLADA_VALUE_TYPE_COLLADA_DATA_ANIMATION)
     {
@@ -107,15 +106,21 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
                                             COLLADA_DATA_ANIMATION_PROPERTY_ID,
                                            &value_animation_id);
 
-        curve_name_sstream << system_hashed_ansi_string_get_buffer(value_animation_id);
+        snprintf(curve_name_buffer,
+                 sizeof(curve_name_buffer),
+                "%s",
+                system_hashed_ansi_string_get_buffer(value_animation_id) );
     }
     else
     {
         /* Fall-back path */
-        curve_name_sstream << "Curve " << (curve_counter++);
+        snprintf(curve_name_buffer,
+                 sizeof(curve_name_buffer),
+                 "Curve %d",
+                 curve_counter++);
     }
 
-    value_id = system_hashed_ansi_string_create(curve_name_sstream.str().c_str() );
+    value_id = system_hashed_ansi_string_create(curve_name_buffer);
 
     /* Spawn the new container */
     result = curve_container_create(system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(value_id),
@@ -414,7 +419,7 @@ volatile void _collada_scene_generator_process_workload(__in __notnull system_th
                                       &collada_file_name_with_path);
 
             collada_file_name_with_path_raw = system_hashed_ansi_string_get_buffer(collada_file_name_with_path);
-            path_terminator                 = strrchr(collada_file_name_with_path_raw, '//');
+            path_terminator                 = strrchr(collada_file_name_with_path_raw, '/');
 
             if (path_terminator != NULL)
             {

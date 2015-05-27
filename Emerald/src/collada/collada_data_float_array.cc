@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -56,12 +56,12 @@ PRIVATE system_hashed_ansi_string _collada_data_float_array_get_cached_blob_file
 {
     char temp_file_name[1024];
 
-    sprintf_s(temp_file_name,
-              sizeof(temp_file_name),
-              "collada_float_array_%s_%s_%d",
-              system_hashed_ansi_string_get_buffer(parent_source_name),
-              system_hashed_ansi_string_get_buffer(float_array_id),
-              count);
+    snprintf(temp_file_name,
+             sizeof(temp_file_name),
+             "collada_float_array_%s_%s_%d",
+             system_hashed_ansi_string_get_buffer(parent_source_name),
+             system_hashed_ansi_string_get_buffer(float_array_id),
+             count);
 
     return system_hashed_ansi_string_create(temp_file_name);
 }
@@ -75,7 +75,9 @@ PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull t
 {
     _collada_data_float_array* result_ptr = new (std::nothrow) _collada_data_float_array;
 
-    ASSERT_ALWAYS_SYNC(result_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(result_ptr != NULL,
+                       "Out of memory");
+
     if (result_ptr != NULL)
     {
         unsigned int count = float_array_element_ptr->UnsignedAttribute("count");
@@ -85,21 +87,24 @@ PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull t
         /* Sanity checks */
         if (name == NULL)
         {
-            ASSERT_ALWAYS_SYNC(false, "Float array ID is undefined - this is valid but unsupported ATM");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Float array ID is undefined - this is valid but unsupported ATM");
 
             goto end;
         }
 
         if (data == NULL)
         {
-            ASSERT_ALWAYS_SYNC(false, "Null value reported for float_array value");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Null value reported for float_array value");
 
             goto end;
         }
 
         if (count == 0)
         {
-            ASSERT_ALWAYS_SYNC(false, "Zero count encountered in a float_array - this is invalid");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Zero count encountered in a float_array - this is invalid");
 
             goto end;
         }
@@ -138,7 +143,8 @@ PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull t
              *       in multiple threads, and all available threads may be used at the same time,
              *       leading the async read to effectively lock up.
              **/
-            system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name, false);
+            system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name,
+                                                                                               false); /* async_read */
             const void*            blob_data       = NULL;
 
             system_file_serializer_get_property(blob_serializer,
@@ -147,7 +153,9 @@ PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull t
 
             if (blob_data != NULL)
             {
-                system_file_serializer_read(blob_serializer, sizeof(float) * count, result_ptr->data);
+                system_file_serializer_read(blob_serializer,
+                                            sizeof(float) * count,
+                                            result_ptr->data);
 
                 LOG_INFO("Loaded cached blob for [%s]",
                          system_hashed_ansi_string_get_buffer(blob_file_name) );
@@ -186,7 +194,9 @@ PUBLIC collada_data_float_array collada_data_float_array_create(__in __notnull t
                 /* If the blob mode is on but the file was not available, create one now */
                 system_file_serializer blob_serializer = system_file_serializer_create_for_writing(blob_file_name);
 
-                system_file_serializer_write  (blob_serializer, sizeof(float) * count, result_ptr->data);
+                system_file_serializer_write  (blob_serializer,
+                                               sizeof(float) * count,
+                                               result_ptr->data);
                 system_file_serializer_release(blob_serializer);
 
                 LOG_INFO("Stored a cached float array blob for [%s]",

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  * Private functions only.
  */
@@ -9,20 +9,20 @@
 
 #include "collada/collada_types.h"
 
-typedef enum collada_value_property
+typedef enum
 {
     COLLADA_VALUE_PROPERTY_COLLADA_DATA_ANIMATION,
     COLLADA_VALUE_PROPERTY_FLOAT_VALUE,
     COLLADA_VALUE_PROPERTY_TYPE,
-};
+} collada_value_property;
 
-typedef enum collada_value_type
+typedef enum
 {
     COLLADA_VALUE_TYPE_COLLADA_DATA_ANIMATION,
     COLLADA_VALUE_TYPE_FLOAT,
 
     COLLADA_VALUE_TYPE_UNKNOWN
-};
+} collada_value_type;
 
 /** TODO */
 PUBLIC collada_value collada_value_create(__in           collada_value_type type,

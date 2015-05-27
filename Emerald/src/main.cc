@@ -20,28 +20,39 @@
 #include "system/system_types.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
-#include <crtdbg.h>
 
+/* Windows-specific deps */
+#ifdef _WIN32
+    #include <crtdbg.h>
+
+    #include <CommCtrl.h>
+    #pragma comment(lib, "comctl32.lib")
+#endif /* _WIN32 */
+
+/* Optional features */
 #ifdef INCLUDE_WEBCAM_MANAGER
     #include "webcam/webcam_manager.h"
-#endif
+#endif /* INCLUDE_WEBCAM_MANAGER */
 
 #ifdef INCLUDE_OBJECT_MANAGER
     #include "object_manager/object_manager_general.h"
-#endif
+#endif /* INCLUDE_OBJECT_MANAGER */
 
 #ifdef INCLUDE_CURVE_EDITOR
     #include "curve_editor/curve_editor_general.h"
+#endif /* INCLUDE_CURVE_EDITOR */
+
+#ifdef INCLUDE_OPENCL
+    #include "ocl/ocl_general.h"
+#endif /* INCLUDE_OPENCL */
+
+
+bool _deinited = false;
+
+#ifdef _WIN32
+    HINSTANCE _global_instance = NULL;
 #endif
 
-#include "ocl/ocl_general.h"
-
-
-#include <CommCtrl.h>
-#pragma comment(lib, "comctl32.lib")
-
-bool      _deinited        = false;
-HINSTANCE _global_instance = NULL;
 
 /* Forward declarations */
 int main_deinit();
@@ -60,10 +71,12 @@ PUBLIC EMERALD_API void main_force_deinit()
  */
 void main_init()
 {
+#ifdef _WIN32
     ::InitCommonControls();
 
-#ifdef _DEBUG
-    _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
+    #ifdef _DEBUG
+        _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
+    #endif
 #endif
 
     _system_log_init();

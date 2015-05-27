@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -21,8 +21,7 @@
 /** Describes data stored in <animation>/<channel> **/
 typedef struct _collada_data_channel
 {
-    collada_data_sampler             sampler; /* Corresponds to <source> attribute */
-
+    collada_data_sampler                  sampler; /* Corresponds to <source> attribute */
     void*                                 target;
     collada_data_channel_target_component target_component;
     collada_data_channel_target_type      target_type;
@@ -34,7 +33,7 @@ typedef struct _collada_data_channel
 /** TODO */
 _collada_data_channel::_collada_data_channel()
 {
-    sampler      = NULL;
+    sampler     = NULL;
     target      = NULL;
     target_type = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 }
@@ -53,7 +52,8 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
     system_hashed_ansi_string object_name             = NULL;
     system_hashed_ansi_string property_name           = NULL;
     system_hashed_ansi_string property_component_name = NULL;
-    const char*               traveller_ptr           = strchr(path, '//');
+    const char*               traveller_ptr           = strchr(path,
+                                                               '/');
     const char*               traveller2_ptr          = NULL;
 
     if (traveller_ptr == NULL)
@@ -124,6 +124,7 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
 
     ASSERT_DEBUG_SYNC(root_node != NULL,
                       "Could not retrieve root node");
+
     if (root_node == NULL)
     {
         goto end;
@@ -139,9 +140,12 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
     void*                                 target_property_node   = NULL;
     collada_data_channel_target_type      target_property_type   = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 
-    system_resizable_vector_push(nodes, root_node);
+    system_resizable_vector_push(nodes,
+                                 root_node);
 
-    while (target_object_node == NULL && system_resizable_vector_pop(nodes, &current_node) )
+    while (target_object_node == NULL                &&
+           system_resizable_vector_pop(nodes,
+                                      &current_node) )
     {
         /* Iterate over all node items */
         collada_data_scene_graph_node_get_property(current_node,
@@ -213,9 +217,11 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
 
     /* Now look through node items and try to find the matching property item */
     system_resizable_vector_clear(nodes);
-    system_resizable_vector_push (nodes, target_object_node);
+    system_resizable_vector_push (nodes,
+                                  target_object_node);
 
-    while ((target_property_node == NULL) && system_resizable_vector_pop(nodes, &current_node) )
+    while ((target_property_node == NULL) && system_resizable_vector_pop(nodes,
+                                                                        &current_node) )
     {
         collada_data_scene_graph_node_get_property(current_node,
                                                    COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_N_NODE_ITEMS,
@@ -375,7 +381,9 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     /* Retrieve the source instance */
     const char* source_name = channel_element_ptr->Attribute("source");
 
-    ASSERT_DEBUG_SYNC(source_name != NULL, "Source attribute not defined for <channel> node");
+    ASSERT_DEBUG_SYNC(source_name != NULL,
+                      "Source attribute not defined for <channel> node");
+
     if (source_name == NULL)
     {
         goto end;
@@ -411,7 +419,9 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
 
     target_name = channel_element_ptr->Attribute("target");
 
-    ASSERT_DEBUG_SYNC(target_name != NULL, "Target attribute not defined for <channel> node");
+    ASSERT_DEBUG_SYNC(target_name != NULL,
+                      "Target attribute not defined for <channel> node");
+
     if (target_name == NULL)
     {
         goto end;
@@ -433,7 +443,9 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     /* Spawn the descriptor */
     channel_ptr = new (std::nothrow) _collada_data_channel;
 
-    ASSERT_ALWAYS_SYNC(channel_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(channel_ptr != NULL,
+                       "Out of memory");
+
     if (channel_ptr != NULL)
     {
         /* Fill it with pointers we earlier came up with */

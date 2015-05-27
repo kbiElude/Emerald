@@ -6,6 +6,9 @@
 #ifndef SHARED_H
 #define SHARED_H
 
+#include "system/system_atomics.h"
+
+
 /* A nifty macro that will allow us to enforce strong type checking for void* handle types */
 #ifndef _WIN32
     #ifdef DECLARE_HANDLE
@@ -124,13 +127,13 @@
 #define REFCOUNT_INSERT_IMPLEMENTATION(prefix, public_handle_type, private_handle_type)         \
     PUBLIC EMERALD_API void prefix##_retain(__in __notnull public_handle_type handle)           \
     {                                                                                           \
-        ::InterlockedIncrement( &((private_handle_type*)handle)->refcount_counter);             \
+        system_atomics_increment(&((private_handle_type*)handle)->refcount_counter);            \
     }                                                                                           \
     PUBLIC EMERALD_API void prefix##_release(public_handle_type& handle)                        \
     {                                                                                           \
         private_handle_type* ptr = (private_handle_type*)handle;                                \
         REFCOUNT_INSERT_IMPLEMENTATION_HELPER                                                   \
-        if (::InterlockedDecrement(&ptr->refcount_counter) == 0)                                \
+        if (system_atomics_decrement(&ptr->refcount_counter) == 0)                              \
         {                                                                                       \
             if (ptr->refcount_pfn_on_release != NULL)                                           \
             {                                                                                   \

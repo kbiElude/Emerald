@@ -28,12 +28,12 @@
         memset   (log_helper,                              \
                   0,                                       \
                   LOG_MAX_LENGTH);                         \
-        sprintf_s(log_helper,                              \
+        snprintf (log_helper,                              \
                   LOG_MAX_LENGTH,                          \
                   "[File %s // line %d]: " text,           \
                   file,                                    \
                   line,                                    \
-                  __VA_ARGS__);                            \
+                ##__VA_ARGS__);                            \
                                                            \
         system_log_write(level,                            \
                          log_helper);                      \
@@ -45,22 +45,22 @@
                                  __FILE__,             \
                                  __LINE__,             \
                                  text,                 \
-                                 __VA_ARGS__)
+                              ##__VA_ARGS__)
 #define LOG_INFO(text,...)  _LOG(LOGLEVEL_INFORMATION, \
                                  __FILE__,             \
                                  __LINE__,             \
                                  text,                 \
-                                 __VA_ARGS__)
+                               ##__VA_ARGS__)
 #define LOG_ERROR(text,...) _LOG(LOGLEVEL_ERROR,       \
                                  __FILE__,             \
                                  __LINE__,             \
                                  text,                 \
-                                 __VA_ARGS__)
+                               ##__VA_ARGS__)
 #define LOG_FATAL(text,...) _LOG(LOGLEVEL_FATAL,       \
                                  __FILE__,             \
                                  __LINE__,             \
                                  text,                 \
-                                 __VA_ARGS__)
+                               ##__VA_ARGS__)
 
 
 /** Creates a new log file, initalizes cache, starts logging thread.

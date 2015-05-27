@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -13,6 +13,7 @@
 #include "collada/collada_data_polylist.h"
 #include "collada/collada_data_scene_graph_node_material_instance.h"
 #include "mesh/mesh.h"
+#include "system/system_atomics.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hash64.h"
@@ -53,7 +54,7 @@ struct _collada_data_init_geometries_task_attachment
     tinyxml2::XMLElement*            mesh_element_ptr;
     volatile _collada_data_geometry* new_geometry_ptr;
 
-    collada_data collada_data;
+    collada_data data;
 };
 
 /** TODO */
@@ -70,7 +71,8 @@ _collada_data_geometry::~_collada_data_geometry()
     {
         collada_data_scene_graph_node_material_instance material_instance = NULL;
 
-        while (system_resizable_vector_pop(material_instances, &material_instance) )
+        while (system_resizable_vector_pop(material_instances,
+                                           (void*) &material_instance) )
         {
             collada_data_scene_graph_node_material_instance_release(material_instance);
 
@@ -99,7 +101,7 @@ _collada_data_geometry::_collada_data_geometry()
     emerald_mesh       = NULL;
     geometry_mesh      = NULL;
     id                 = system_hashed_ansi_string_get_default_empty_string();
-    material_instances = system_resizable_vector_create(4 /* capacity */);
+    material_instances = system_resizable_vector_create                    (4 /* capacity */);
     name               = system_hashed_ansi_string_get_default_empty_string();
 }
 
@@ -115,7 +117,7 @@ volatile void _collada_data_init_geometry_task(__in __notnull void* attachment)
     /* Process the geometry mesh */
     attachment_ptr->new_geometry_ptr->geometry_mesh = collada_data_geometry_mesh_create(attachment_ptr->mesh_element_ptr,
                                                                                         (collada_data_geometry) attachment_ptr->new_geometry_ptr,
-                                                                                        attachment_ptr->collada_data);
+                                                                                        attachment_ptr->data);
 
     /* Store the geometry */
     system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(attachment_ptr->new_geometry_ptr->id),
@@ -133,7 +135,7 @@ volatile void _collada_data_init_geometry_task(__in __notnull void* attachment)
                                  NULL); /* no remove call-back needed */
 
     /* Update the waiter thread counter */
-    if (::InterlockedIncrement(attachment_ptr->n_geometry_elements_processed_ptr) == (*attachment_ptr->n_geometry_elements_ptr))
+    if (system_atomics_increment(attachment_ptr->n_geometry_elements_processed_ptr) == (*attachment_ptr->n_geometry_elements_ptr))
     {
         /* Signal the wait event */
         system_event_set(attachment_ptr->geometry_processed_event);
@@ -153,7 +155,8 @@ PUBLIC void collada_data_geometry_add_material_instance(__in __notnull collada_d
 {
     _collada_data_geometry* geometry_ptr = (_collada_data_geometry*) geometry;
 
-    system_resizable_vector_push(geometry_ptr->material_instances, material_instance);
+    system_resizable_vector_push(geometry_ptr->material_instances,
+                                  material_instance);
 }
 
 /** TODO */
@@ -167,7 +170,9 @@ PUBLIC collada_data_geometry collada_data_geometry_create_async(__in __notnull t
 {
     _collada_data_geometry* new_geometry = new (std::nothrow) _collada_data_geometry;
 
-    ASSERT_DEBUG_ASYNC(new_geometry != NULL, "Out of memory");
+    ASSERT_DEBUG_ASYNC(new_geometry != NULL,
+                       "Out of memory");
+
     if (new_geometry != NULL)
     {
         new_geometry->id   = system_hashed_ansi_string_create(xml_element_ptr->Attribute("id") );
@@ -188,10 +193,12 @@ PUBLIC collada_data_geometry collada_data_geometry_create_async(__in __notnull t
              **/
             _collada_data_init_geometries_task_attachment* attachment_ptr = new _collada_data_init_geometries_task_attachment;
 
-            ASSERT_ALWAYS_SYNC(attachment_ptr != NULL, "Out of memory");
+            ASSERT_ALWAYS_SYNC(attachment_ptr != NULL,
+                               "Out of memory");
+
             if (attachment_ptr != NULL)
             {
-                attachment_ptr->collada_data                      = collada_data;
+                attachment_ptr->data                              = collada_data;
                 attachment_ptr->geometry_processed_event          = geometry_processed_event;
                 attachment_ptr->mesh_element_ptr                  = mesh_element_ptr;
                 attachment_ptr->new_geometry_ptr                  = new_geometry;
@@ -211,8 +218,10 @@ PUBLIC collada_data_geometry collada_data_geometry_create_async(__in __notnull t
         {
             /* Well, this geometry is not currently supported.. Try to retrieve the name of the geometry 
              * for logging purposes */
-            ASSERT_DEBUG_SYNC(false, "Whoops! Unsupported asset");
-            LOG_FATAL        ("Unsupported geometry type (name:[%s])", system_hashed_ansi_string_get_buffer(new_geometry->name) );
+            ASSERT_DEBUG_SYNC(false,
+                              "Whoops! Unsupported asset");
+            LOG_FATAL        ("Unsupported geometry type (name:[%s])",
+                              system_hashed_ansi_string_get_buffer(new_geometry->name) );
         }
     } /* if (new_geometry != NULL) */
 

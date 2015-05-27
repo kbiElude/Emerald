@@ -1,7 +1,7 @@
 
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -84,8 +84,10 @@ typedef struct _collada_data
         cameras_by_id_map              = system_hash64map_create       (sizeof(collada_data_camera) );
         effects                        = system_resizable_vector_create(4 /* capacity */);
         effects_by_id_map              = system_hash64map_create       (sizeof(collada_data_effect) );
-        geometries                     = system_resizable_vector_create(4 /* capacity */, true);
-        geometries_by_id_map           = system_hash64map_create       (sizeof(collada_data_geometry), true);
+        geometries                     = system_resizable_vector_create(4      /* capacity              */,
+                                                                        true); /* should_be_thread_safe */
+        geometries_by_id_map           = system_hash64map_create       (sizeof(collada_data_geometry),
+                                                                        true); /* should_be_thread_safe */
         images                         = system_resizable_vector_create(4 /* capacity */);
         images_by_id_map               = system_hash64map_create       (sizeof(collada_data_image) );
         is_lw10_collada_file           = false;
@@ -117,7 +119,8 @@ _collada_data::~_collada_data()
     {
         collada_data_animation animation = NULL;
 
-        while (system_resizable_vector_pop(animations, &animation) )
+        while (system_resizable_vector_pop(animations,
+                                          &animation) )
         {
             collada_data_animation_release(animation);
 
@@ -153,7 +156,8 @@ _collada_data::~_collada_data()
     {
         collada_data_camera camera = NULL;
 
-        while (system_resizable_vector_pop(cameras, &camera) )
+        while (system_resizable_vector_pop(cameras,
+                                          &camera) )
         {
             collada_data_camera_release(camera);
 
@@ -174,7 +178,8 @@ _collada_data::~_collada_data()
     {
         collada_data_effect effect = NULL;
 
-        while (system_resizable_vector_pop(effects, &effect) )
+        while (system_resizable_vector_pop(effects,
+                                          &effect) )
         {
             collada_data_effect_release(effect);
 
@@ -195,7 +200,8 @@ _collada_data::~_collada_data()
     {
         collada_data_geometry geometry = NULL;
 
-        while (system_resizable_vector_pop(geometries, &geometry) )
+        while (system_resizable_vector_pop(geometries,
+                                          &geometry) )
         {
             collada_data_geometry_release(geometry);
 
@@ -216,7 +222,8 @@ _collada_data::~_collada_data()
     {
         collada_data_image image = NULL;
 
-        while (system_resizable_vector_pop(images, &image) )
+        while (system_resizable_vector_pop(images,
+                                          &image) )
         {
             collada_data_image_release(image);
 
@@ -231,7 +238,8 @@ _collada_data::~_collada_data()
     {
         collada_data_light light = NULL;
 
-        while (system_resizable_vector_pop(lights, &light) )
+        while (system_resizable_vector_pop(lights,
+                                          &light) )
         {
             collada_data_light_release(light);
 
@@ -252,7 +260,8 @@ _collada_data::~_collada_data()
     {
         collada_data_material material = NULL;
 
-        while (system_resizable_vector_pop(materials, &material) )
+        while (system_resizable_vector_pop(materials,
+                                          &material) )
         {
             collada_data_material_release(material);
 
@@ -280,7 +289,8 @@ _collada_data::~_collada_data()
     {
         collada_data_scene scene = NULL;
 
-        while (system_resizable_vector_pop(scenes, &scene) )
+        while (system_resizable_vector_pop(scenes,
+                                          &scene) )
         {
             collada_data_scene_release(scene);
 
@@ -401,7 +411,8 @@ PRIVATE void _collada_data_apply_animation_data(__in __notnull _collada_data* da
                 case COLLADA_DATA_CHANNEL_TARGET_TYPE_LIGHT_INSTANCE:
                 {
                     /* TODO */
-                    ASSERT_DEBUG_SYNC(false, "TODO");
+                    ASSERT_DEBUG_SYNC(false,
+                                      "TODO");
 
                     break;
                 }
@@ -453,7 +464,8 @@ PRIVATE void _collada_data_apply_animation_data_to_transformation(__in __notnull
         case COLLADA_DATA_TRANSFORMATION_TYPE_SKEW:
         {
             /* TODO */
-            ASSERT_DEBUG_SYNC(false, "TODO");
+            ASSERT_DEBUG_SYNC(false,
+                              "TODO");
 
             break;
         }
@@ -625,7 +637,8 @@ PRIVATE system_hashed_ansi_string _collada_data_get_emerald_mesh_blob_file_name(
     };
     const unsigned int n_strings = sizeof(strings) / sizeof(strings[0]);
 
-    return system_hashed_ansi_string_create_by_merging_strings(n_strings, strings);
+    return system_hashed_ansi_string_create_by_merging_strings(n_strings,
+                                                               strings);
 }
 
 /** TODO */
@@ -726,14 +739,17 @@ PRIVATE void _collada_data_init_animations(__in __notnull tinyxml2::XMLDocument*
                                            __in __notnull system_hash64map        result_object_to_animation_vector_map,
                                            __in __notnull collada_data            data)
 {
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* collada_element_ptr            = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_animation_element_ptr  = NULL;
+    _collada_data*        data_ptr                       = (_collada_data*) data;
+    tinyxml2::XMLElement* library_animations_element_ptr = NULL;
 
     if (collada_element_ptr == NULL)
     {
         goto end;
     }
 
-    tinyxml2::XMLElement* library_animations_element_ptr = collada_element_ptr->FirstChildElement("library_animations");
+    library_animations_element_ptr = collada_element_ptr->FirstChildElement("library_animations");
 
     if (library_animations_element_ptr == NULL)
     {
@@ -752,15 +768,16 @@ PRIVATE void _collada_data_init_animations(__in __notnull tinyxml2::XMLDocument*
      *    is not stored in the COLLADA file, so we need to compute it by ourselves.
      *
      **/
-    tinyxml2::XMLElement* current_animation_element_ptr = library_animations_element_ptr->FirstChildElement("animation");
-    _collada_data*        data_ptr                      = (_collada_data*) data;
+    current_animation_element_ptr = library_animations_element_ptr->FirstChildElement("animation");
 
     while (current_animation_element_ptr != NULL)
     {
         collada_data_animation new_animation = collada_data_animation_create(current_animation_element_ptr,
                                                                              data);
 
-        ASSERT_ALWAYS_SYNC(new_animation != NULL, "Could not create COLLADA animation descriptor")
+        ASSERT_ALWAYS_SYNC(new_animation != NULL,
+                           "Could not create COLLADA animation descriptor")
+
         if (new_animation != NULL)
         {
             /* Store the new animation in a vector*/
@@ -851,14 +868,16 @@ PRIVATE void _collada_data_init_cameras(__in __notnull tinyxml2::XMLDocument*  x
                                         __in __notnull system_resizable_vector result_cameras,
                                         __in __notnull system_hash64map        result_cameras_by_id_map)
 {
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* collada_element_ptr         = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_camera_element_ptr  = NULL;
+    tinyxml2::XMLElement* library_cameras_element_ptr = NULL;
 
     if (collada_element_ptr == NULL)
     {
         goto end;
     }
 
-    tinyxml2::XMLElement* library_cameras_element_ptr = collada_element_ptr->FirstChildElement("library_cameras");
+    library_cameras_element_ptr = collada_element_ptr->FirstChildElement("library_cameras");
 
     if (library_cameras_element_ptr == NULL)
     {
@@ -866,13 +885,15 @@ PRIVATE void _collada_data_init_cameras(__in __notnull tinyxml2::XMLDocument*  x
     }
 
     /* Iterate through all defined cameras */
-    tinyxml2::XMLElement* current_camera_element_ptr = library_cameras_element_ptr->FirstChildElement("camera");
+    current_camera_element_ptr = library_cameras_element_ptr->FirstChildElement("camera");
 
     while (current_camera_element_ptr != NULL)
     {
         collada_data_camera new_camera = collada_data_camera_create(current_camera_element_ptr);
 
-        ASSERT_ALWAYS_SYNC(new_camera != NULL, "Could not create COLLADA camera descriptor")
+        ASSERT_ALWAYS_SYNC(new_camera != NULL,
+                           "Could not create COLLADA camera descriptor")
+
         if (new_camera != NULL)
         {
             /* Store the new camera */
@@ -885,7 +906,8 @@ PRIVATE void _collada_data_init_cameras(__in __notnull tinyxml2::XMLDocument*  x
             system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(camera_id),
                                                                system_hashed_ansi_string_get_length(camera_id) );
 
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_cameras_by_id_map, entry_hash), "Item already added to a hash-map");
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_cameras_by_id_map, entry_hash),
+                              "Item already added to a hash-map");
 
             system_resizable_vector_push(result_cameras, new_camera);
             system_hash64map_insert     (result_cameras_by_id_map,
@@ -908,14 +930,16 @@ PRIVATE void _collada_data_init_effects(__in __notnull tinyxml2::XMLDocument*  x
                                         __in __notnull system_hash64map        result_effects_by_id_map,
                                         __in __notnull system_hash64map        images_by_id_map)
 {
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* collada_element_ptr         = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_effect_element_ptr  = NULL;
+    tinyxml2::XMLElement* library_effects_element_ptr = NULL;
 
     if (collada_element_ptr == NULL)
     {
         goto end;
     }
 
-    tinyxml2::XMLElement* library_effects_element_ptr = collada_element_ptr->FirstChildElement("library_effects");
+    library_effects_element_ptr = collada_element_ptr->FirstChildElement("library_effects");
 
     if (library_effects_element_ptr == NULL)
     {
@@ -923,14 +947,16 @@ PRIVATE void _collada_data_init_effects(__in __notnull tinyxml2::XMLDocument*  x
     }
 
     /* Iterate through all defined effects */
-    tinyxml2::XMLElement* current_effect_element_ptr = library_effects_element_ptr->FirstChildElement("effect");
+    current_effect_element_ptr = library_effects_element_ptr->FirstChildElement("effect");
 
     while (current_effect_element_ptr != NULL)
     {
         collada_data_effect new_effect = collada_data_effect_create(current_effect_element_ptr,
                                                                     images_by_id_map);
 
-        ASSERT_DEBUG_SYNC(new_effect != NULL, "Could not create COLLADA effect descriptor")
+        ASSERT_DEBUG_SYNC(new_effect != NULL,
+                          "Could not create COLLADA effect descriptor")
+
         if (new_effect != NULL)
         {
             system_hashed_ansi_string effect_id = NULL;
@@ -943,7 +969,8 @@ PRIVATE void _collada_data_init_effects(__in __notnull tinyxml2::XMLDocument*  x
             system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(effect_id),
                                                                system_hashed_ansi_string_get_length(effect_id) );
 
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_effects_by_id_map, entry_hash), "Item already added to a hash-map");
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_effects_by_id_map, entry_hash),
+                              "Item already added to a hash-map");
 
             system_resizable_vector_push(result_effects, new_effect);
             system_hash64map_insert     (result_effects_by_id_map,
@@ -965,7 +992,11 @@ PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  x
                                         __in __notnull _collada_data*          collada_data_ptr)
 {
     /* Locate COLLADA node */
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* asset_element_ptr       = NULL;
+    tinyxml2::XMLElement* collada_element_ptr     = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* contributor_element_ptr = NULL;
+    tinyxml2::XMLElement* up_axis_element_ptr     = NULL;
+    system_hashed_ansi_string up_axis_has         = NULL;
 
     if (collada_element_ptr == NULL)
     {
@@ -975,18 +1006,20 @@ PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  x
     }
 
     /* Locate asset subnode */
-    tinyxml2::XMLElement* asset_element_ptr = collada_element_ptr->FirstChildElement("asset");
+    asset_element_ptr = collada_element_ptr->FirstChildElement("asset");
 
     if (asset_element_ptr == NULL)
     {
         LOG_ERROR("Could not find <asset> sub-node");
 
-        ASSERT_DEBUG_SYNC(false, "Could not find required <asset> sub-node");
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not find required <asset> sub-node");
+
         goto end;
     }
 
     /* Locate contributor/authoring_tool subnode. */
-    tinyxml2::XMLElement* contributor_element_ptr = asset_element_ptr->FirstChildElement("contributor");
+    contributor_element_ptr = asset_element_ptr->FirstChildElement("contributor");
 
     if (contributor_element_ptr != NULL)
     {
@@ -994,7 +1027,8 @@ PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  x
 
         if (authoring_tool_element_ptr != NULL)
         {
-            if (strcmp(authoring_tool_element_ptr->GetText(), "Newtek LightWave CORE v1.0") == 0)
+            if (strcmp(authoring_tool_element_ptr->GetText(),
+                       "Newtek LightWave CORE v1.0") == 0)
             {
                 collada_data_ptr->is_lw10_collada_file = true;
             }
@@ -1006,7 +1040,7 @@ PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  x
      */
     collada_data_ptr->up_axis = COLLADA_DATA_UP_AXIS_Y_UP;
 
-    tinyxml2::XMLElement* up_axis_element_ptr = asset_element_ptr->FirstChildElement("up_axis");
+    up_axis_element_ptr = asset_element_ptr->FirstChildElement("up_axis");
 
     if (up_axis_element_ptr == NULL)
     {
@@ -1015,35 +1049,43 @@ PRIVATE void _collada_data_init_general(__in __notnull tinyxml2::XMLDocument*  x
     }
 
     /* Parse the contents */
-    system_hashed_ansi_string up_axis_has = system_hashed_ansi_string_create(up_axis_element_ptr->GetText() );
+    up_axis_has = system_hashed_ansi_string_create(up_axis_element_ptr->GetText() );
 
-    if (system_hashed_ansi_string_is_equal_to_raw_string(up_axis_has, "X_UP") )
+    if (system_hashed_ansi_string_is_equal_to_raw_string(up_axis_has,
+                                                         "X_UP") )
     {
         collada_data_ptr->up_axis = COLLADA_DATA_UP_AXIS_X_UP;
 
-        ASSERT_ALWAYS_SYNC(false, "Up axis of 'X up' type is not supported");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Up axis of 'X up' type is not supported");
+
         goto end;
     }
     else
-    if (system_hashed_ansi_string_is_equal_to_raw_string(up_axis_has, "Y_UP") )
+    if (system_hashed_ansi_string_is_equal_to_raw_string(up_axis_has,
+                                                         "Y_UP") )
     {
         collada_data_ptr->up_axis = COLLADA_DATA_UP_AXIS_Y_UP;
 
         goto end;
     }
     else
-    if (system_hashed_ansi_string_is_equal_to_raw_string(up_axis_has, "Z_UP") )
+    if (system_hashed_ansi_string_is_equal_to_raw_string(up_axis_has,
+                                                         "Z_UP") )
     {
         collada_data_ptr->up_axis = COLLADA_DATA_UP_AXIS_Z_UP;
 
         LOG_ERROR("Current implementation of 'Z up' up axis support is likely not to work correctly with animations!");
+
         goto end;
     }
     else
     {
         LOG_FATAL("Unrecognized up_axis node contents. Transformations will be messed up!");
 
-        ASSERT_DEBUG_SYNC(false, "Unrecognized up_axis node contents");
+        ASSERT_DEBUG_SYNC(false,
+                          "Unrecognized up_axis node contents");
+
         goto end;
     }
 
@@ -1057,8 +1099,13 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
                                            __in __notnull system_hash64map        result_geometries_by_id_map,
                                            __in __notnull collada_data            collada_data)
 {
-        /* Locate COLLADA node */
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    /* Locate COLLADA node */
+    tinyxml2::XMLElement* collada_element_ptr           = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_geometry_element_ptr  = NULL;
+    tinyxml2::XMLElement* geometries_element_ptr        = NULL;
+    system_event          geometry_processed_event      = NULL;
+    unsigned int          n_geometry_elements           = 0;
+    volatile unsigned int n_geometry_elements_processed = 0; /* this counter will be accessed from multiple threads at the same time - only use interlocked accesses */
 
     if (collada_element_ptr == NULL)
     {
@@ -1068,7 +1115,7 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
     }
 
     /* Locate library_geometries node */
-    tinyxml2::XMLElement* geometries_element_ptr = collada_element_ptr->FirstChildElement("library_geometries");
+    geometries_element_ptr = collada_element_ptr->FirstChildElement("library_geometries");
 
     if (geometries_element_ptr == NULL)
     {
@@ -1080,12 +1127,13 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
     /* Large scenes contain lots of geometry that takes time to load. Distribute the load to separate threads
      * to speed the process up.
      */
-    tinyxml2::XMLElement* current_geometry_element_ptr  = geometries_element_ptr->FirstChildElement("geometry");
-    system_event          geometry_processed_event      = system_event_create(true /* manual_reset */, false /* start_state */);
-    unsigned int          n_geometry_elements           = 0;
-    volatile unsigned int n_geometry_elements_processed = 0; /* this counter will be accessed from multiple threads at the same time - only use interlocked accesses */
+    current_geometry_element_ptr = geometries_element_ptr->FirstChildElement("geometry");
+    geometry_processed_event     = system_event_create                      (true /* manual_reset */,
+                                                                             false /* start_state */);
 
-    ASSERT_ALWAYS_SYNC(geometry_processed_event != NULL, "Could not generate an event");
+    ASSERT_ALWAYS_SYNC(geometry_processed_event != NULL,
+                       "Could not generate an event");
+
     if (geometry_processed_event == NULL)
     {
         goto end;
@@ -1128,14 +1176,18 @@ PRIVATE void _collada_data_init_images(__in __notnull tinyxml2::XMLDocument*  xm
                                        __in __notnull system_resizable_vector result_images,
                                        __in __notnull system_hash64map        result_images_by_id_map)
 {
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement*     collada_element_ptr        = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement*     current_image_element_ptr  = NULL;
+    tinyxml2::XMLElement*     library_images_element_ptr = NULL;
+    collada_data_image        new_image                  = NULL;
+    system_hashed_ansi_string new_image_id               = NULL;
 
     if (collada_element_ptr == NULL)
     {
         goto end;
     }
 
-    tinyxml2::XMLElement* library_images_element_ptr = collada_element_ptr->FirstChildElement("library_images");
+    library_images_element_ptr = collada_element_ptr->FirstChildElement("library_images");
 
     if (library_images_element_ptr == NULL)
     {
@@ -1143,12 +1195,12 @@ PRIVATE void _collada_data_init_images(__in __notnull tinyxml2::XMLDocument*  xm
     }
 
     /* Iterate through all defined images */
-    tinyxml2::XMLElement* current_image_element_ptr = library_images_element_ptr->FirstChildElement("image");
+    current_image_element_ptr = library_images_element_ptr->FirstChildElement("image");
 
     while (current_image_element_ptr != NULL)
     {
-        collada_data_image        new_image    = collada_data_image_create(current_image_element_ptr);
-        system_hashed_ansi_string new_image_id = NULL;
+        new_image    = collada_data_image_create(current_image_element_ptr);
+        new_image_id = NULL;
 
         if (new_image != NULL)
         {
@@ -1160,9 +1212,11 @@ PRIVATE void _collada_data_init_images(__in __notnull tinyxml2::XMLDocument*  xm
             system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(new_image_id),
                                                                system_hashed_ansi_string_get_length(new_image_id) );
 
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_images_by_id_map, entry_hash), "Item already added to a hash-map");
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_images_by_id_map, entry_hash),
+                              "Item already added to a hash-map");
 
-            system_resizable_vector_push(result_images, new_image);
+            system_resizable_vector_push(result_images,
+                                         new_image);
             system_hash64map_insert     (result_images_by_id_map,
                                          entry_hash,
                                          new_image,
@@ -1183,7 +1237,9 @@ PRIVATE void _collada_data_init_lights(__in __notnull tinyxml2::XMLDocument*  xm
                                        __in __notnull system_hash64map        result_lights_by_id_map)
 {
     /* Locate COLLADA node */
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* collada_element_ptr       = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_light_element_ptr = NULL;
+    tinyxml2::XMLElement* lights_element_ptr        = NULL;
 
     if (collada_element_ptr == NULL)
     {
@@ -1193,7 +1249,7 @@ PRIVATE void _collada_data_init_lights(__in __notnull tinyxml2::XMLDocument*  xm
     }
 
     /* Locate library_lights node */
-    tinyxml2::XMLElement* lights_element_ptr = collada_element_ptr->FirstChildElement("library_lights");
+    lights_element_ptr = collada_element_ptr->FirstChildElement("library_lights");
 
     if (lights_element_ptr == NULL)
     {
@@ -1203,13 +1259,15 @@ PRIVATE void _collada_data_init_lights(__in __notnull tinyxml2::XMLDocument*  xm
     }
 
     /* Iterate through all lights */
-    tinyxml2::XMLElement* current_light_element_ptr = lights_element_ptr->FirstChildElement("light");
+    current_light_element_ptr = lights_element_ptr->FirstChildElement("light");
 
     while (current_light_element_ptr != NULL)
     {
         collada_data_light new_light = collada_data_light_create(current_light_element_ptr);
 
-        ASSERT_DEBUG_SYNC(new_light != NULL, "Out of memory");
+        ASSERT_DEBUG_SYNC(new_light != NULL,
+                          "Out of memory");
+
         if (new_light == NULL)
         {
             goto end;
@@ -1225,9 +1283,11 @@ PRIVATE void _collada_data_init_lights(__in __notnull tinyxml2::XMLDocument*  xm
         system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(light_id),
                                                            system_hashed_ansi_string_get_length(light_id) );
 
-        ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_lights_by_id_map, entry_hash), "Item already added to a hash-map");
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(result_lights_by_id_map, entry_hash),
+                          "Item already added to a hash-map");
 
-        system_resizable_vector_push(result_lights, new_light);
+        system_resizable_vector_push(result_lights,
+                                     new_light);
         system_hash64map_insert     (result_lights_by_id_map,
                                      entry_hash,
                                      new_light,
@@ -1247,14 +1307,16 @@ PRIVATE void _collada_data_init_materials(__in __notnull tinyxml2::XMLDocument* 
                                           __in __notnull system_hash64map        materials_by_id_map,
                                           __in __notnull system_hash64map        effects_by_id_map)
 {
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* collada_element_ptr           = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_material_element_ptr  = NULL;
+    tinyxml2::XMLElement* library_materials_element_ptr = NULL;
 
     if (collada_element_ptr == NULL)
     {
         goto end;
     }
 
-    tinyxml2::XMLElement* library_materials_element_ptr = collada_element_ptr->FirstChildElement("library_materials");
+    library_materials_element_ptr = collada_element_ptr->FirstChildElement("library_materials");
 
     if (library_materials_element_ptr == NULL)
     {
@@ -1262,7 +1324,7 @@ PRIVATE void _collada_data_init_materials(__in __notnull tinyxml2::XMLDocument* 
     }
 
     /* Iterate through all defined images */
-    tinyxml2::XMLElement* current_material_element_ptr = library_materials_element_ptr->FirstChildElement("material");
+    current_material_element_ptr = library_materials_element_ptr->FirstChildElement("material");
 
     while (current_material_element_ptr != NULL)
     {
@@ -1271,7 +1333,9 @@ PRIVATE void _collada_data_init_materials(__in __notnull tinyxml2::XMLDocument* 
                                                                                  effects_by_id_map,
                                                                                  materials_by_id_map);
 
-        ASSERT_ALWAYS_SYNC(new_material != NULL, "Could not create COLLADA material descriptor")
+        ASSERT_ALWAYS_SYNC(new_material != NULL,
+                           "Could not create COLLADA material descriptor")
+
         if (new_material != NULL)
         {
             collada_data_material_get_property(new_material,
@@ -1282,9 +1346,12 @@ PRIVATE void _collada_data_init_materials(__in __notnull tinyxml2::XMLDocument* 
             system_hash64 entry_hash = system_hash64_calculate(system_hashed_ansi_string_get_buffer(new_material_id),
                                                                system_hashed_ansi_string_get_length(new_material_id) );
 
-            ASSERT_DEBUG_SYNC(!system_hash64map_contains(materials_by_id_map, entry_hash), "Item already added to a hash-map");
+            ASSERT_DEBUG_SYNC(!system_hash64map_contains(materials_by_id_map,
+                                                         entry_hash),
+                              "Item already added to a hash-map");
 
-            system_resizable_vector_push(materials, new_material);
+            system_resizable_vector_push(materials,
+                                         new_material);
             system_hash64map_insert     (materials_by_id_map,
                                          entry_hash,
                                          new_material,
@@ -1307,7 +1374,9 @@ PRIVATE void _collada_data_init_scenes(__in __notnull tinyxml2::XMLDocument*  xm
                                        __in __notnull _collada_data*          collada_data_ptr)
 {
     /* Locate COLLADA node */
-    tinyxml2::XMLElement* collada_element_ptr = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* collada_element_ptr       = xml_document_ptr->FirstChildElement("COLLADA");
+    tinyxml2::XMLElement* current_scene_element_ptr = NULL;
+    tinyxml2::XMLElement* visual_scenes_element_ptr = NULL;
 
     if (collada_element_ptr == NULL)
     {
@@ -1317,7 +1386,7 @@ PRIVATE void _collada_data_init_scenes(__in __notnull tinyxml2::XMLDocument*  xm
     }
 
     /* Locate library_visual_scenes node */
-    tinyxml2::XMLElement* visual_scenes_element_ptr = collada_element_ptr->FirstChildElement("library_visual_scenes");
+    visual_scenes_element_ptr = collada_element_ptr->FirstChildElement("library_visual_scenes");
 
     if (visual_scenes_element_ptr == NULL)
     {
@@ -1327,7 +1396,7 @@ PRIVATE void _collada_data_init_scenes(__in __notnull tinyxml2::XMLDocument*  xm
     }
 
     /* Iterate through all defined scenes */
-    tinyxml2::XMLElement* current_scene_element_ptr = visual_scenes_element_ptr->FirstChildElement("visual_scene");
+    current_scene_element_ptr = visual_scenes_element_ptr->FirstChildElement("visual_scene");
 
     while (current_scene_element_ptr != NULL)
     {
@@ -1336,7 +1405,9 @@ PRIVATE void _collada_data_init_scenes(__in __notnull tinyxml2::XMLDocument*  xm
                                                                  (collada_data) collada_data_ptr);
 
         /* Store new scene */
-        system_resizable_vector_push(result_scenes, new_scene);
+        system_resizable_vector_push(result_scenes,
+                                     new_scene);
+
         /* Move on */
         current_scene_element_ptr = current_scene_element_ptr->NextSiblingElement("visual_scene");
     } /* while (current_scene_element_ptr != NULL) */
@@ -1492,13 +1563,16 @@ PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(__in __no
         collada_data_camera       camera    = NULL;
         system_hashed_ansi_string camera_id = NULL;
 
-        if (system_resizable_vector_get_element_at(data_ptr->cameras, n_camera, &camera) )
+        if (system_resizable_vector_get_element_at(data_ptr->cameras,
+                                                   n_camera,
+                                                  &camera) )
         {
             collada_data_camera_get_property(camera,
                                              COLLADA_DATA_CAMERA_PROPERTY_ID,
                                             &camera_id);
 
-            if (system_hashed_ansi_string_is_equal_to_hash_string(camera_id, name) )
+            if (system_hashed_ansi_string_is_equal_to_hash_string(camera_id,
+                                                                  name) )
             {
                 result = camera;
 
@@ -1507,7 +1581,9 @@ PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(__in __no
         }
         else
         {
-            ASSERT_DEBUG_SYNC(false, "Could not retrieve camera at index [%d]", n_camera);
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve camera at index [%d]",
+                              n_camera);
         }
     }
 
@@ -1521,7 +1597,9 @@ PUBLIC EMERALD_API void collada_data_get_effect(__in __notnull  collada_data    
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
-    system_resizable_vector_get_element_at(data_ptr->effects, n_effect, out_effect);
+    system_resizable_vector_get_element_at(data_ptr->effects,
+                                           n_effect,
+                                           out_effect);
 }
 
 /* Please see header for specification */
@@ -1529,10 +1607,10 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                                                       ogl_context  context,
                                                       unsigned int n_mesh)
 {
-    _collada_data*            collada_data_ptr            = (_collada_data*) data;
-    bool                      has_loaded_blob             = false;
-    system_hashed_ansi_string running_in_cache_blobs_mode = false;
-    mesh                      result                      = NULL;
+    _collada_data*  collada_data_ptr            = (_collada_data*) data;
+    bool            has_loaded_blob             = false;
+    bool            running_in_cache_blobs_mode = NULL;
+    mesh            result                      = NULL;
 
     collada_data_get_property(data,
                               COLLADA_DATA_PROPERTY_CACHE_BINARY_BLOBS_MODE,
@@ -1542,7 +1620,9 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
     {
         collada_data_geometry geometry = NULL;
 
-        system_resizable_vector_get_element_at(collada_data_ptr->geometries, n_mesh, &geometry);
+        system_resizable_vector_get_element_at(collada_data_ptr->geometries,
+                                               n_mesh,
+                                              &geometry);
 
         if (geometry != NULL)
         {
@@ -1566,7 +1646,9 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                                   "Geometry name is NULL");
 
                 blob_file_name = _collada_data_get_emerald_mesh_blob_file_name(geometry_id);
-                result         = collada_mesh_generator_create                (context, data, n_mesh);
+                result         = collada_mesh_generator_create                (context,
+                                                                               data,
+                                                                               n_mesh);
 
                 collada_data_geometry_set_property(geometry,
                                                    COLLADA_DATA_GEOMETRY_PROPERTY_EMERALD_MESH,
@@ -1579,7 +1661,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                 if (running_in_cache_blobs_mode)
                 {
                     /* Is the blob available already? */
-                    system_file_serializer serializer      = system_file_serializer_create_for_reading(blob_file_name, false);
+                    system_file_serializer serializer      = system_file_serializer_create_for_reading(blob_file_name,
+                                                                                                       false); /* async_read */
                     const void*            serializer_data = NULL;
 
                     system_file_serializer_get_property(serializer,
@@ -1594,8 +1677,12 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                         uint32_t         serializer_current_offset = 0;
                         const char*      serializer_raw_storage    = NULL;
 
-                        system_file_serializer_read(serializer, sizeof(index_type),        &index_type);
-                        system_file_serializer_read(serializer, sizeof(n_blob_data_bytes), &n_blob_data_bytes);
+                        system_file_serializer_read(serializer,
+                                                    sizeof(index_type),
+                                                    &index_type);
+                        system_file_serializer_read(serializer,
+                                                    sizeof(n_blob_data_bytes),
+                                                   &n_blob_data_bytes);
 
                         system_file_serializer_get_property(serializer,
                                                             SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
@@ -1681,7 +1768,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                             float aabb_max_data[3] = {0};
                             float aabb_min_data[3] = {0};
 
-                            n_result_layer_passes = mesh_get_amount_of_layer_passes(result, n_layer);
+                            n_result_layer_passes = mesh_get_amount_of_layer_passes(result,
+                                                                                    n_layer);
 
                             system_file_serializer_read(serializer,
                                                          sizeof(n_read_layer_passes),
@@ -1775,20 +1863,33 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                     _mesh_index_type       gl_index_type          = MESH_INDEX_TYPE_UNKNOWN;
                     system_file_serializer serializer             = system_file_serializer_create_for_writing(blob_file_name);
 
-                    mesh_get_property(result, MESH_PROPERTY_GL_INDEX_TYPE,          &gl_index_type);
-                    mesh_get_property(result, MESH_PROPERTY_GL_PROCESSED_DATA,      &gl_data);
-                    mesh_get_property(result, MESH_PROPERTY_GL_PROCESSED_DATA_SIZE, &gl_data_size);
-                    mesh_get_property(result, MESH_PROPERTY_GL_STRIDE,              &gl_data_stride);
-                    mesh_get_property(result, MESH_PROPERTY_GL_TOTAL_ELEMENTS,      &gl_data_total_elements);
+                    mesh_get_property(result, MESH_PROPERTY_GL_INDEX_TYPE,
+                                     &gl_index_type);
+                    mesh_get_property(result, MESH_PROPERTY_GL_PROCESSED_DATA,
+                                     &gl_data);
+                    mesh_get_property(result, MESH_PROPERTY_GL_PROCESSED_DATA_SIZE,
+                                     &gl_data_size);
+                    mesh_get_property(result, MESH_PROPERTY_GL_STRIDE,
+                                     &gl_data_stride);
+                    mesh_get_property(result, MESH_PROPERTY_GL_TOTAL_ELEMENTS,
+                                     &gl_data_total_elements);
 
-                    system_file_serializer_write(serializer, sizeof(gl_index_type), &gl_index_type);
-                    system_file_serializer_write(serializer, sizeof(gl_data_size),  &gl_data_size);
-                    system_file_serializer_write(serializer, gl_data_size,           gl_data);
+                    system_file_serializer_write(serializer,
+                                                 sizeof(gl_index_type),
+                                                &gl_index_type);
+                    system_file_serializer_write(serializer,
+                                                 sizeof(gl_data_size),
+                                                &gl_data_size);
+                    system_file_serializer_write(serializer,
+                                                 gl_data_size,
+                                                 gl_data);
 
                     /* Also store unique stream offsets */
                     const unsigned int n_max_stream_types = MESH_LAYER_DATA_STREAM_TYPE_COUNT;
 
-                    system_file_serializer_write(serializer, sizeof(n_max_stream_types), &n_max_stream_types);
+                    system_file_serializer_write(serializer,
+                                                 sizeof(n_max_stream_types),
+                                                &n_max_stream_types);
 
                     for (mesh_layer_data_stream_type stream_type = MESH_LAYER_DATA_STREAM_TYPE_FIRST;
                                                      stream_type < MESH_LAYER_DATA_STREAM_TYPE_COUNT;
@@ -1801,7 +1902,9 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                                                             MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
                                                            &stream_offset);
 
-                        system_file_serializer_write(serializer, sizeof(stream_offset), &stream_offset);
+                        system_file_serializer_write(serializer,
+                                                     sizeof(stream_offset),
+                                                    &stream_offset);
                     }
 
                     /* and stride + total number of elements */
@@ -1831,7 +1934,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                         const float* aabb_max_data = NULL;
                         const float* aabb_min_data = NULL;
 
-                        n_layer_passes = mesh_get_amount_of_layer_passes(result, n_layer);
+                        n_layer_passes = mesh_get_amount_of_layer_passes(result,
+                                                                         n_layer);
 
                         mesh_get_layer_pass_property(result,
                                                      n_layer,
@@ -1895,7 +1999,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
                 }
 
                 /* Fill mesh's GL buffer with data */
-                mesh_fill_gl_buffers(result, context);
+                mesh_fill_gl_buffers(result,
+                                     context);
             }
         }
         else
@@ -1919,11 +2024,15 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull col
     const unsigned int n_meshes         = system_resizable_vector_get_amount_of_elements(collada_data_ptr->geometries);
     mesh               result           = NULL;
 
-    for (unsigned int n_mesh = 0; n_mesh < n_meshes; ++n_mesh)
+    for (unsigned int n_mesh = 0;
+                      n_mesh < n_meshes;
+                    ++n_mesh)
     {
         collada_data_geometry geometry = NULL;
 
-        system_resizable_vector_get_element_at(collada_data_ptr->geometries, n_mesh, &geometry);
+        system_resizable_vector_get_element_at(collada_data_ptr->geometries,
+                                               n_mesh,
+                                              &geometry);
 
         if (geometry != NULL)
         {
@@ -1933,7 +2042,8 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull col
                                                COLLADA_DATA_GEOMETRY_PROPERTY_ID,
                                                &geometry_id);
 
-            if (system_hashed_ansi_string_is_equal_to_hash_string(geometry_id, name) )
+            if (system_hashed_ansi_string_is_equal_to_hash_string(geometry_id,
+                name) )
             {
                 n_found_mesh = n_mesh;
 
@@ -1942,17 +2052,21 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull col
         }
         else
         {
-            LOG_ERROR("Could not retrieve geometry descriptor at index [%d]", n_mesh);
+            LOG_ERROR("Could not retrieve geometry descriptor at index [%d]",
+                      n_mesh);
         }
     }
 
     if (n_found_mesh != -1)
     {
-        result = collada_data_get_emerald_mesh(data, context, n_found_mesh);
+        result = collada_data_get_emerald_mesh(data,
+                                               context,
+                                               n_found_mesh);
     }
     else
     {
-        LOG_ERROR("Requested mesh [%s] was not found", system_hashed_ansi_string_get_buffer(name) );
+        LOG_ERROR("Requested mesh [%s] was not found",
+                  system_hashed_ansi_string_get_buffer(name) );
     }
 
     return result;
@@ -1970,7 +2084,9 @@ PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_d
     {
         collada_data_scene scene = NULL;
 
-        system_resizable_vector_get_element_at(collada_data_ptr->scenes, n_scene, &scene);
+        system_resizable_vector_get_element_at(collada_data_ptr->scenes,
+                                               n_scene,
+                                              &scene);
 
         if (scene != NULL)
         {
@@ -1992,7 +2108,10 @@ PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_d
                                   scene_name != system_hashed_ansi_string_get_default_empty_string(),
                                   "Scene name is NULL");
 
-                result = collada_scene_generator_create(data, context, n_scene);
+                result = collada_scene_generator_create(data,
+                                                        context,
+                                                        n_scene);
+
                 ASSERT_ALWAYS_SYNC(result != NULL,
                                    "Could not convert COLLADA scene data to Emerald scene");
 
@@ -2003,7 +2122,8 @@ PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_d
         }
         else
         {
-            LOG_ERROR("Could not retrieve scene descriptor at index [%d]", n_scene);
+            LOG_ERROR("Could not retrieve scene descriptor at index [%d]",
+                      n_scene);
         }
     }
 
@@ -2017,7 +2137,9 @@ PUBLIC EMERALD_API void collada_data_get_geometry(__in __notnull  collada_data  
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
-    system_resizable_vector_get_element_at(data_ptr->geometries, n_geometry, out_geometry);
+    system_resizable_vector_get_element_at(data_ptr->geometries,
+                                           n_geometry,
+                                           out_geometry);
 }
 
 /* Please see header for specification */
@@ -2027,7 +2149,9 @@ PUBLIC EMERALD_API void collada_data_get_image(__in __notnull  collada_data     
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
-    system_resizable_vector_get_element_at(data_ptr->images, n_image, out_image);
+    system_resizable_vector_get_element_at(data_ptr->images,
+                                           n_image,
+                                           out_image);
 }
 
 /* Please see header for properties */
@@ -2037,7 +2161,9 @@ PUBLIC EMERALD_API void collada_data_get_material(__in __notnull  collada_data  
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
-    system_resizable_vector_get_element_at(data_ptr->materials, n_material, out_material);
+    system_resizable_vector_get_element_at(data_ptr->materials,
+                                           n_material,
+                                           out_material);
 }
 
 /* Please see header for specification */
@@ -2047,9 +2173,12 @@ PUBLIC EMERALD_API void collada_data_get_scene(__in  __notnull collada_data     
 {
     _collada_data* data_ptr = (_collada_data*) data;
 
-    if (!system_resizable_vector_get_element_at(data_ptr->scenes, n_scene, out_scene) )
+    if (!system_resizable_vector_get_element_at(data_ptr->scenes,
+                                                n_scene,
+                                                out_scene) )
     {
-        LOG_FATAL("Could not retrieve COLLADA scene at index [%d]", n_scene);
+        LOG_FATAL("Could not retrieve COLLADA scene at index [%d]",
+                  n_scene);
     }
 }
 
@@ -2060,15 +2189,20 @@ PUBLIC EMERALD_API collada_data collada_data_load(__in __notnull system_hashed_a
 {
     _collada_data* new_collada_data = new (std::nothrow) _collada_data;
 
-    ASSERT_DEBUG_SYNC(new_collada_data != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_collada_data != NULL,
+                      "Out of memory");
+
     if (new_collada_data != NULL)
     {
-        _collada_data_init(new_collada_data, filename, should_generate_cache_blobs);
+        _collada_data_init(new_collada_data,
+                           filename,
+                           should_generate_cache_blobs);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_collada_data,
                                                        _collada_data_release,
                                                        OBJECT_TYPE_COLLADA_DATA,
-                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\COLLADA Data\\", system_hashed_ansi_string_get_buffer(name)) );
+                                                       system_hashed_ansi_string_create_by_merging_two_strings("\\COLLADA Data\\",
+                                                                                                               system_hashed_ansi_string_get_buffer(name)) );
     }
 
     return (collada_data) new_collada_data;
@@ -2092,7 +2226,8 @@ PUBLIC EMERALD_API void collada_data_set_property(__in __notnull collada_data   
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecognized COLLADA data property requested");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized COLLADA data property requested");
         }
     } /* switch (property) */
 }

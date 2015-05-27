@@ -20,8 +20,10 @@
 #ifndef _WIN32
     #define __analysis_assume(A) 1;
     #define __deallocate(A)
+    #define __deref_out_bcount_full_opt(A)
     #define __ecount(A)
     #define __in
+    #define __in_bcount(A)
     #define __in_ecount(A)
     #define __in_opt
     #define __inout
