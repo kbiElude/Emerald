@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -52,9 +52,13 @@ _collada_data_scene::~_collada_data_scene()
 PUBLIC collada_data_scene collada_data_scene_create(__in __notnull tinyxml2::XMLElement* scene_element_ptr,
                                                     __in __notnull collada_data          collada_data)
 {
-    _collada_data_scene* new_scene_ptr = new (std::nothrow) _collada_data_scene;
+    tinyxml2::XMLElement* current_node_element_ptr = scene_element_ptr->FirstChildElement("node");
+    _collada_data_scene*  new_scene_ptr            = new (std::nothrow) _collada_data_scene;
+    system_hash64map      nodes_by_id_map          = NULL;
 
-    ASSERT_DEBUG_SYNC(new_scene_ptr != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_scene_ptr != NULL,
+                      "Out of memory");
+
     if (new_scene_ptr == NULL)
     {
         goto end;
@@ -68,8 +72,7 @@ PUBLIC collada_data_scene collada_data_scene_create(__in __notnull tinyxml2::XML
     new_scene_ptr->fake_root_node = collada_data_scene_graph_node_create(new_scene_ptr);
 
     /* Iterate through all nodes making up the scene */
-    tinyxml2::XMLElement* current_node_element_ptr = scene_element_ptr->FirstChildElement("node");
-    system_hash64map      nodes_by_id_map          = NULL;
+    current_node_element_ptr = scene_element_ptr->FirstChildElement("node");
 
     collada_data_get_property(collada_data,
                               COLLADA_DATA_PROPERTY_NODES_BY_ID_MAP,

@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -90,23 +90,29 @@ _collada_data_sampler::~_collada_data_sampler()
 PRIVATE _collada_data_sampler_input* _collada_data_sampler_create_sampler_input(__in __notnull tinyxml2::XMLElement* input_element_ptr,
                                                                                 __in __notnull system_hash64map      source_by_name_map)
 {
-    _collada_data_sampler_input* result = NULL;
+    _collada_data_sampler_input*        result                    = NULL;
+    system_hashed_ansi_string           semantic_has              = NULL;
+    collada_data_sampler_input_semantic semantic                  = COLLADA_DATA_SAMPLER_INPUT_SEMANTIC_UNKNOWN;
+    collada_data_source                 source                    = NULL;
+    system_resizable_vector             source_interpolation_data = NULL;
 
     /* Retrieve input node attributes */
     const char* semantic_name = input_element_ptr->Attribute("semantic");
     const char* source_name   = input_element_ptr->Attribute("source");
 
-    ASSERT_DEBUG_SYNC(semantic_name != NULL, "No semantic attribute defined for an <input> node");
-    ASSERT_DEBUG_SYNC(source_name   != NULL, "No source attribute defined for an <input> node");
+    ASSERT_DEBUG_SYNC(semantic_name != NULL,
+                      "No semantic attribute defined for an <input> node");
+    ASSERT_DEBUG_SYNC(source_name   != NULL,
+                      "No source attribute defined for an <input> node");
 
-    if (semantic_name == NULL || source_name == NULL)
+    if (semantic_name == NULL ||
+        source_name   == NULL)
     {
         goto end;
     }
 
     /* Convert semantic to one of internal enums */
-    system_hashed_ansi_string           semantic_has = system_hashed_ansi_string_create(semantic_name);
-    collada_data_sampler_input_semantic semantic     = COLLADA_DATA_SAMPLER_INPUT_SEMANTIC_UNKNOWN;
+    semantic_has = system_hashed_ansi_string_create(semantic_name);
 
     if (system_hashed_ansi_string_is_equal_to_raw_string(semantic_has, "IN_TANGENT") )    semantic = COLLADA_DATA_SAMPLER_INPUT_SEMANTIC_IN_TANGENT;   else
     if (system_hashed_ansi_string_is_equal_to_raw_string(semantic_has, "INPUT") )         semantic = COLLADA_DATA_SAMPLER_INPUT_SEMANTIC_INPUT;        else
@@ -122,15 +128,14 @@ PRIVATE _collada_data_sampler_input* _collada_data_sampler_create_sampler_input(
     }
 
     /* Find a source instance we need to refer to */
-    collada_data_source source = NULL;
-
     if (source_name[0] == '#')
     {
         source_name++;
     }
 
     if (!system_hash64map_get(source_by_name_map,
-                              system_hash64_calculate(source_name, strlen(source_name) ),
+                              system_hash64_calculate(source_name,
+                                                      strlen(source_name) ),
                              &source))
     {
         ASSERT_DEBUG_SYNC(false,
@@ -141,8 +146,6 @@ PRIVATE _collada_data_sampler_input* _collada_data_sampler_create_sampler_input(
     }
 
     /* Is this INTERPOLATION input? If so, we need to convert all the strings to enum representation */
-    system_resizable_vector source_interpolation_data = NULL;
-
     if (semantic == COLLADA_DATA_SAMPLER_INPUT_SEMANTIC_INTERPOLATION)
     {
         collada_data_name_array name_array = NULL;
@@ -156,6 +159,7 @@ PRIVATE _collada_data_sampler_input* _collada_data_sampler_create_sampler_input(
 
         ASSERT_DEBUG_SYNC(n_values != 0,
                           "0 values stored in a name array");
+
         if (n_values != 0)
         {
             source_interpolation_data = system_resizable_vector_create(n_values);
@@ -187,7 +191,9 @@ PRIVATE _collada_data_sampler_input* _collada_data_sampler_create_sampler_input(
     /* Cool, we can form the result descriptor */
     result = new (std::nothrow) _collada_data_sampler_input;
 
-    ASSERT_DEBUG_SYNC(result != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(result != NULL,
+                      "Out of memory");
+
     if (result == NULL)
     {
         goto end;
@@ -206,19 +212,26 @@ end:
 PUBLIC collada_data_sampler collada_data_sampler_create(__in __notnull tinyxml2::XMLElement* element_ptr,
                                                         __in __notnull system_hash64map      source_by_name_map)
 {
+    tinyxml2::XMLElement*  input_element_ptr        = NULL;
+    _collada_data_sampler* new_sampler_instance_ptr = NULL;
+
     /* Retrieve sampler ID */
     const char* sampler_id = element_ptr->Attribute("id");
 
-    ASSERT_DEBUG_SYNC(sampler_id != NULL, "url attribute missing");
+    ASSERT_DEBUG_SYNC(sampler_id != NULL,
+                      "url attribute missing");
+
     if (sampler_id == NULL)
     {
         goto end;
     }
 
     /* Allocate space for the descriptor */
-    _collada_data_sampler* new_sampler_instance_ptr = new (std::nothrow) _collada_data_sampler;
+    new_sampler_instance_ptr = new (std::nothrow) _collada_data_sampler;
 
-    ASSERT_DEBUG_SYNC(new_sampler_instance_ptr != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_sampler_instance_ptr != NULL,
+                      "Out of memory");
+
     if (new_sampler_instance_ptr == NULL)
     {
         goto end;
@@ -230,6 +243,7 @@ PUBLIC collada_data_sampler collada_data_sampler_create(__in __notnull tinyxml2:
 
     ASSERT_DEBUG_SYNC(new_sampler_instance_ptr->inputs != NULL,
                       "Could not spawn inputs hash map");
+
     if (new_sampler_instance_ptr->inputs == NULL)
     {
         delete new_sampler_instance_ptr;
@@ -239,7 +253,7 @@ PUBLIC collada_data_sampler collada_data_sampler_create(__in __notnull tinyxml2:
     }
 
     /* Iterate over all inputs and fill the inputs vector */
-    tinyxml2::XMLElement* input_element_ptr = element_ptr->FirstChildElement("input");
+    input_element_ptr = element_ptr->FirstChildElement("input");
 
     while (input_element_ptr != NULL)
     {
@@ -248,6 +262,7 @@ PUBLIC collada_data_sampler collada_data_sampler_create(__in __notnull tinyxml2:
 
         ASSERT_DEBUG_SYNC(new_input_ptr != NULL,
                           "Could not spawn a sampler input descriptor");
+
         if (new_input_ptr == NULL)
         {
             goto end;

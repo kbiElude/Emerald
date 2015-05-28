@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -26,7 +26,7 @@ typedef struct _collada_data_geometry_material_binding
 _collada_data_geometry_material_binding::_collada_data_geometry_material_binding()
 {
     input_semantic_name = NULL;
-    input_set           = NULL;
+    input_set           = 0;
     semantic_name       = NULL;
 }
 
@@ -37,7 +37,9 @@ PUBLIC collada_data_geometry_material_binding collada_data_geometry_material_bin
 {
     _collada_data_geometry_material_binding* binding_ptr = new (std::nothrow) _collada_data_geometry_material_binding;
 
-    ASSERT_ALWAYS_SYNC(binding_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(binding_ptr != NULL,
+                       "Out of memory");
+
     if (binding_ptr != NULL)
     {
         binding_ptr->input_semantic_name = input_semantic_name;

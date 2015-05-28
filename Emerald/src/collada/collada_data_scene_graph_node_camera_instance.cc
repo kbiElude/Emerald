@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -34,35 +34,51 @@ PUBLIC collada_data_scene_graph_node_camera_instance collada_data_scene_graph_no
                                                                                                           __in __notnull system_hash64map              cameras_by_id_map,
                                                                                                           __in __notnull system_hashed_ansi_string name)
 {
-    /* Allocate space for the descriptor */
-    _collada_data_scene_graph_node_camera_instance* new_camera_instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_camera_instance;
+    const char*                                     camera_name             = NULL;
+    system_hash64                                   camera_name_hash        = 0;
+    collada_data_camera                             camera                  = NULL;
+    _collada_data_scene_graph_node_camera_instance* new_camera_instance_ptr = NULL;
 
-    ASSERT_DEBUG_SYNC(new_camera_instance_ptr != NULL, "Out of memory");
+    /* Allocate space for the descriptor */
+    new_camera_instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_camera_instance;
+
+    ASSERT_DEBUG_SYNC(new_camera_instance_ptr != NULL,
+                      "Out of memory");
+
     if (new_camera_instance_ptr == NULL)
     {
         goto end;
     }
 
     /* Locate the geometry the instance is referring to */
-    const char*         camera_name      = element_ptr->Attribute("url");
-    system_hash64       camera_name_hash;
-    collada_data_camera camera           = NULL;
+    camera_name = element_ptr->Attribute("url");
 
-    ASSERT_DEBUG_SYNC(camera_name != NULL, "url attribute missing");
+    ASSERT_DEBUG_SYNC(camera_name != NULL,
+                      "url attribute missing");
+
     if (camera_name == NULL)
     {
         goto end;
     }
 
-    ASSERT_DEBUG_SYNC(camera_name[0] == '#', "Invalid url attribute");
+    ASSERT_DEBUG_SYNC(camera_name[0] == '#',
+                      "Invalid url attribute");
+
     camera_name++;
 
-    camera_name_hash = system_hash64_calculate(camera_name, strlen(camera_name) );
-    ASSERT_DEBUG_SYNC(system_hash64map_contains(cameras_by_id_map, camera_name_hash),
+    camera_name_hash = system_hash64_calculate(camera_name,
+                                               strlen(camera_name) );
+
+    ASSERT_DEBUG_SYNC(system_hash64map_contains(cameras_by_id_map,
+                                                camera_name_hash),
                       "Camera that is being referred to was not found");
 
-    system_hash64map_get(cameras_by_id_map, camera_name_hash, &camera);
-    ASSERT_DEBUG_SYNC(camera != NULL, "NULL pointer returned for a camera URL");
+    system_hash64map_get(cameras_by_id_map,
+                         camera_name_hash,
+                        &camera);
+
+    ASSERT_DEBUG_SYNC(camera != NULL,
+                      "NULL pointer returned for a camera URL");
 
     /* Init the descriptor */
     new_camera_instance_ptr->camera = camera;

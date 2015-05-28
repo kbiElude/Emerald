@@ -48,14 +48,28 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
 {
     bool result = false;
 
-    /* Break down the path into actual entities */
-    system_hashed_ansi_string object_name             = NULL;
-    system_hashed_ansi_string property_name           = NULL;
-    system_hashed_ansi_string property_component_name = NULL;
-    const char*               traveller_ptr           = strchr(path,
-                                                               '/');
-    const char*               traveller2_ptr          = NULL;
+    collada_data_scene_graph_node         current_node            = NULL;
+    collada_data_scene_graph_node_item    current_node_item       = NULL;
+    void*                                 current_node_item_data  = NULL;
+    _collada_data_node_item_type          current_node_item_type  = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
+    bool                                  has_found               = false;
+    system_resizable_vector               nodes                   = system_resizable_vector_create(4 /* capacity */);
+    uint32_t                              n_current_node_items    = 0;
+    uint32_t                              n_scenes                = 0;
+    system_hashed_ansi_string             object_name             = NULL;
+    system_hashed_ansi_string             property_name           = NULL;
+    system_hashed_ansi_string             property_component_name = NULL;
+    collada_data_scene_graph_node         root_node               = NULL;
+    collada_data_scene                    scene                   = NULL;
+    collada_data_scene_graph_node         target_object_node      = NULL;
+    collada_data_channel_target_component target_component        = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
+    void*                                 target_property_node    = NULL;
+    collada_data_channel_target_type      target_property_type    = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
+    const char*                           traveller_ptr           = strchr(path,
+                                                                           '/');
+    const char*                           traveller2_ptr          = NULL;
 
+    /* Break down the path into actual entities */
     if (traveller_ptr == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
@@ -92,12 +106,7 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
     /* Identify the transformation: traverse the scene graph and find the transformation
      * the <channel> node is referring to.
      */
-    collada_data_scene_graph_node current_node = NULL;
-    bool                          has_found    = false;
-    uint32_t                      n_scenes     = 0;
-    system_resizable_vector       nodes        = system_resizable_vector_create(4 /* capacity */);
-    collada_data_scene_graph_node root_node    = NULL;
-    collada_data_scene            scene        = NULL;
+    nodes = system_resizable_vector_create(4 /* capacity */);
 
     collada_data_get_property(data,
                               COLLADA_DATA_PROPERTY_N_SCENES,
@@ -131,15 +140,6 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
     }
 
     /* Good to start traversing */
-    collada_data_scene_graph_node_item    current_node_item      = NULL;
-    void*                                 current_node_item_data = NULL;
-    _collada_data_node_item_type          current_node_item_type = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
-    uint32_t                              n_current_node_items   = 0;
-    collada_data_scene_graph_node         target_object_node     = NULL;
-    collada_data_channel_target_component target_component       = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
-    void*                                 target_property_node   = NULL;
-    collada_data_channel_target_type      target_property_type   = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
-
     system_resizable_vector_push(nodes,
                                  root_node);
 
@@ -376,7 +376,12 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
                                                         __in __notnull collada_data_sampler  sampler,
                                                         __in __notnull collada_data          data)
 {
-    _collada_data_channel* channel_ptr = NULL;
+    _collada_data_channel*                channel_ptr      = NULL;
+    system_hashed_ansi_string             sampler_id       = NULL;
+    const char*                           target_name      = NULL;
+    void*                                 target           = NULL;
+    collada_data_channel_target_component target_component = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
+    collada_data_channel_target_type      target_type      = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 
     /* Retrieve the source instance */
     const char* source_name = channel_element_ptr->Attribute("source");
@@ -395,8 +400,6 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     }
 
     /* Is this the right sampler? */
-    system_hashed_ansi_string sampler_id = NULL;
-
     collada_data_sampler_get_property(sampler,
                                       COLLADA_DATA_SAMPLER_PROPERTY_ID,
                                      &sampler_id);
@@ -412,11 +415,6 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     }
 
     /* Identify the target instance */
-    const char*                           target_name      = NULL;
-    void*                                 target           = NULL;
-    collada_data_channel_target_component target_component = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
-    collada_data_channel_target_type      target_type      = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
-
     target_name = channel_element_ptr->Attribute("target");
 
     ASSERT_DEBUG_SYNC(target_name != NULL,

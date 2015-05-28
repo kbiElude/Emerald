@@ -38,10 +38,10 @@
     typedef unsigned __int64 __uint64;
 #endif
 
-/* Windows-specific bits */
+/* Windows-specific dependencies */
 #ifdef _WIN32
     #ifndef WIN32_LEAN_AND_MEAN
-        #define WIN32_LEAN_AND_MEAN 
+        #define WIN32_LEAN_AND_MEAN
     #endif
 
     /* Disable security warnings */
@@ -54,6 +54,10 @@
 
     #include <windows.h>
 #endif /* _WIN32 */
+
+#ifdef __linux__
+    #include <semaphore.h>
+#endif /* __linux__ */
 
 /* CMake-driven config */
 #include "config.h"

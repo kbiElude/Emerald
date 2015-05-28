@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -14,13 +14,13 @@
 #include "system/system_resizable_vector.h"
 
 /** TODO */
-enum _xml_tree_traversal_node_type
+typedef enum
 {
     /* uses node_name */
     XML_TREE_TRAVERSAL_NODE_TYPE_NODE,
     /* uses attribute_name, attribute_value, node_name */
     XML_TREE_TRAVERSAL_NODE_TYPE_NODE_WITH_TEXT_ATTRIBUTE_AND_VALUE
-};
+} _xml_tree_traversal_node_type;
 
 /** TODO */
 typedef struct
@@ -203,7 +203,9 @@ PRIVATE _collada_data_shading_factor_item* _collada_data_get_effect_shading_fact
 
         default:
         {
-            ASSERT_DEBUG_SYNC(false, "Unrecopgnized shading factor item [%d]", item);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized shading factor item [%d]",
+                              item);
         }
     }
 
@@ -283,7 +285,8 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
     ASSERT_DEBUG_SYNC(child_element_name != NULL,
                       "Child node name is NULL");
 
-    if (strcmp(child_element_name, "color") == 0)
+    if (strcmp(child_element_name,
+               "color") == 0)
     {
         result_ptr->data = new (std::nothrow) float[4];
         result_ptr->type = COLLADA_DATA_SHADING_FACTOR_VEC4;
@@ -291,19 +294,21 @@ PRIVATE void _collada_data_effect_init_shading_item(__in __notnull tinyxml2::XML
         ASSERT_ALWAYS_SYNC(result_ptr->data != NULL,
                            "Out of memory");
 
-        sscanf_s(child_element_ptr->GetText(),
-                 "%f %f %f %f",
-                 ((float*) result_ptr->data) + 0,
-                 ((float*) result_ptr->data) + 1,
-                 ((float*) result_ptr->data) + 2,
-                 ((float*) result_ptr->data) + 3);
+        sscanf(child_element_ptr->GetText(),
+               "%f %f %f %f",
+               ((float*) result_ptr->data) + 0,
+               ((float*) result_ptr->data) + 1,
+               ((float*) result_ptr->data) + 2,
+               ((float*) result_ptr->data) + 3);
     }
     else
-    if (strcmp(child_element_name, "texture") == 0)
+    if (strcmp(child_element_name,
+               "texture") == 0)
     {
         _collada_data_shading_factor_item_texture* new_data = new (std::nothrow) _collada_data_shading_factor_item_texture;
 
-        ASSERT_ALWAYS_SYNC(new_data != NULL, "Out of memory");
+        ASSERT_ALWAYS_SYNC(new_data != NULL,
+                           "Out of memory");
 
         /* Identify the sampler we will be sampling from */
         const char*               sampler_name     = child_element_ptr->Attribute("texture");
@@ -453,6 +458,7 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
 
     ASSERT_ALWAYS_SYNC(new_effect_ptr != NULL,
                        "Out of memory");
+
     if (new_effect_ptr != NULL)
     {
         new_effect_ptr->id = system_hashed_ansi_string_create(current_effect_element_ptr->Attribute("id") );
@@ -485,7 +491,8 @@ PUBLIC collada_data_effect collada_data_effect_create(__in __notnull tinyxml2::X
                 /* Which element is this? */
                 const char* child_element_type = child_element_ptr->Name();
 
-                if (strcmp(child_element_type, "technique") == 0)
+                if (strcmp(child_element_type,
+                           "technique") == 0)
                 {
                     /* NOTE: This is a grossly simplified reader of <technique> node. We assume only one
                      *       shading item can be requested for a single technique.
