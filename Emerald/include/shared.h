@@ -56,6 +56,7 @@
 #endif /* _WIN32 */
 
 #ifdef __linux__
+    #include <pthread.h>
     #include <semaphore.h>
 #endif /* __linux__ */
 

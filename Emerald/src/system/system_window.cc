@@ -28,6 +28,7 @@
     DEFINE_GUID( GUID_KSCATEGORY_CAPTURE, 0x65E8773D, 0x8F56, 0x11D0, 0xA3, 0xB9, 0x00, 0xA0, 0xC9, 0x22, 0x31, 0x96);
 #endif /* INCLUDE_WEBCAM_MANAGER */
 
+#ifdef _WIN32
 /** Internal type definitions  */
 typedef struct
 {
@@ -1704,7 +1705,7 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
             if (!system_resizable_vector_delete_element_at(spawned_windows,
                                                            entry_index) )
             {
-                LOG_ERROR("Could not remove %dth element from 'spawned windows' vector",
+                LOG_ERROR("Could not remove %uth element from 'spawned windows' vector",
                           entry_index);
             }
         }
@@ -2459,3 +2460,6 @@ PUBLIC void _system_window_deinit()
     system_critical_section_release(spawned_windows_cs);
     system_critical_section_release(n_windows_spawned_cs);
 }
+#else
+    /* TODO TODO TODO */
+#endif

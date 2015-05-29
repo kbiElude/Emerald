@@ -47,8 +47,8 @@ PRIVATE void _system_linear_free_blobs(_system_linear_alloc_pin_descriptor* desc
                 n_blob < descriptor->n_blobs;
               ++n_blob)
     {
-        delete descriptor->blobs[n_blob]->blob;
-        delete descriptor->blobs[n_blob];
+        delete (char*) descriptor->blobs[n_blob]->blob;
+        delete         descriptor->blobs[n_blob];
     }
     delete [] descriptor->blobs;
 }

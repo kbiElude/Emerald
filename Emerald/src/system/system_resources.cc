@@ -11,6 +11,8 @@
 #include "system/system_resources.h"
 
 
+#ifdef _WIN32
+
 /* Forward declarations */
 PRIVATE void  _system_resources_get_embedded_meiryo_font_binaries(__out __notnull   void**  out_bmp_blob,
                                                                   __out __notnull   void**  out_dat_blob);
@@ -147,3 +149,7 @@ gfx_bfg_font_table system_resources_get_meiryo_font_table()
 
     return meiryo_font_table;
 }
+
+#else
+    /* TODO */
+#endif

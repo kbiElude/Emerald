@@ -11,6 +11,7 @@
 /* Start-up amount of items allocated for a context menu */
 #define N_BASE_ITEMS (4)
 
+#ifdef _WIN32
 
 /* Type definitions */
 typedef enum
@@ -437,3 +438,4 @@ PUBLIC void system_context_menu_show(__in __notnull system_context_menu  menu,
         LOG_ERROR("Cannot show context menu - a context menu can only be shown once per instance.");
     }
 }
+#endif /* _WIN32 */

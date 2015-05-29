@@ -34,10 +34,10 @@ PRIVATE void _init_resizable_vector_descriptor(_resizable_vector_descriptor* des
                                                bool                          should_be_thread_safe)
 {
     descriptor->capacity     = capacity;
-    descriptor->elements     = new (std::nothrow) unsigned char[capacity * element_size];
+    descriptor->elements     = new (std::nothrow) char[capacity * element_size];
     descriptor->element_size = element_size;
     descriptor->n_elements   = 0;
-    descriptor->swap_helper  = new (std::nothrow) unsigned char[element_size];
+    descriptor->swap_helper  = new (std::nothrow) char[element_size];
 
     if (should_be_thread_safe)
     {
@@ -64,14 +64,14 @@ PRIVATE void _deinit_resizable_vector_descriptor(_resizable_vector_descriptor* d
 
     if (descriptor->elements != NULL)
     {
-        delete [] descriptor->elements;
+        delete [] (char*) descriptor->elements;
 
         descriptor->elements = NULL;
     }
 
     if (descriptor->swap_helper != NULL)
     {
-        delete [] descriptor->swap_helper;
+        delete [] (char*) descriptor->swap_helper;
 
         descriptor->swap_helper = NULL;
     }
@@ -92,7 +92,7 @@ PRIVATE void _system_resizable_vector_resize(system_resizable_vector resizable_v
                                              size_t                  new_capacity)
 {
     _resizable_vector_descriptor* descriptor   = (_resizable_vector_descriptor*) resizable_vector;
-    unsigned char*                new_elements = new unsigned char[new_capacity * descriptor->element_size];
+    char*                         new_elements = new char[new_capacity * descriptor->element_size];
 
     if (descriptor->access_mutex != NULL)
     {
@@ -105,11 +105,11 @@ PRIVATE void _system_resizable_vector_resize(system_resizable_vector resizable_v
 
     if (new_capacity > descriptor->capacity)
     {
-        CopyMemory(new_elements,
-                   descriptor->elements,
-                   descriptor->element_size * descriptor->capacity);
+        memcpy(new_elements,
+               descriptor->elements,
+               descriptor->element_size * descriptor->capacity);
 
-        delete [] descriptor->elements;
+        delete [] (char*) descriptor->elements;
 
         descriptor->capacity = new_capacity;
         descriptor->elements = new_elements;
@@ -150,7 +150,8 @@ PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(_
         system_read_write_mutex_lock(existing_vector_ptr->access_mutex, ACCESS_READ);
     }
 
-    result->access_mutex = (existing_vector_ptr->access_mutex != NULL) ? system_read_write_mutex_create() : NULL;
+    result->access_mutex = (existing_vector_ptr->access_mutex != NULL) ? system_read_write_mutex_create()
+                                                                       : NULL;
     result->capacity     = existing_vector_ptr->capacity;
     result->elements     = new (std::nothrow) char[existing_vector_ptr->n_elements * existing_vector_ptr->element_size];
     result->element_size = existing_vector_ptr->element_size;
@@ -173,7 +174,8 @@ PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(_
 end:
     if (existing_vector_ptr->access_mutex != NULL)
     {
-        system_read_write_mutex_unlock(existing_vector_ptr->access_mutex, ACCESS_READ);
+        system_read_write_mutex_unlock(existing_vector_ptr->access_mutex,
+                                       ACCESS_READ);
     }
 
     return (system_resizable_vector) result;
@@ -224,9 +226,9 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_re
             char* start_element_ptr   = (char*) removed_element_ptr  + descriptor->element_size;
             char* end_element_ptr     = (char*) descriptor->elements + descriptor->n_elements * descriptor->element_size;
 
-            MoveMemory(removed_element_ptr,
-                       start_element_ptr,
-                       end_element_ptr - start_element_ptr);
+            memmove(removed_element_ptr,
+                    start_element_ptr,
+                    end_element_ptr - start_element_ptr);
         }
 
         descriptor->n_elements--;
@@ -534,9 +536,9 @@ PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_v
 
     if (descriptor->n_elements < descriptor->capacity)
     {
-        CopyMemory( (char*) descriptor->elements + descriptor->n_elements * descriptor->element_size,
-                  &element,
-                   descriptor->element_size);
+        memcpy( (char*) descriptor->elements + descriptor->n_elements * descriptor->element_size,
+                &element,
+                 descriptor->element_size);
 
         ++descriptor->n_elements;
     }
@@ -546,9 +548,9 @@ PUBLIC EMERALD_API void system_resizable_vector_push(__in     system_resizable_v
                                         (descriptor->capacity << 1));
 
         // Store new element
-        CopyMemory( (char*) descriptor->elements + (descriptor->n_elements) * descriptor->element_size,
-                   &element,
-                   descriptor->element_size);
+        memcpy( (char*) descriptor->elements + (descriptor->n_elements) * descriptor->element_size,
+                &element,
+                 descriptor->element_size);
 
         descriptor->n_elements++;
     }
@@ -584,9 +586,9 @@ PUBLIC EMERALD_API void system_resizable_vector_set_element_at(__in             
 
     if (descriptor->n_elements > index)
     {
-        CopyMemory( (char*) descriptor->elements + descriptor->element_size * index,
-                   &element,
-                   descriptor->element_size);
+        memcpy( (char*) descriptor->elements + descriptor->element_size * index,
+               &element,
+                descriptor->element_size);
     }
 
     if (descriptor->access_mutex != NULL)

@@ -10,7 +10,7 @@
 #include "system/system_matrix4x4.h"
 #include "system/system_resource_pool.h"
 #include <math.h>
-
+#include <string.h>
 
 #define WORD_INDEX(col, row)        ((row<<2)+col)
 #define WORD_INDEX_FROM_1(col, row) WORD_INDEX(col-1, row-1)

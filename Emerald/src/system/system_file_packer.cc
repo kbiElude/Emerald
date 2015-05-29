@@ -7,6 +7,8 @@
 #include "system/system_file_packer.h"
 #include "system/system_file_serializer.h"
 #include "system/system_resizable_vector.h"
+#include <stdio.h>
+#include <string.h>
 #include <zlib.h>
 
 

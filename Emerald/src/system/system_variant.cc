@@ -111,10 +111,10 @@ PUBLIC EMERALD_API void system_variant_get_ansi_string(__in  __notnull system_va
             {
                 char buffer[32];
 
-                sprintf_s(buffer,
-                          32,
-                          "%d",
-                          variant_descriptor->integer_value);
+                snprintf(buffer,
+                         sizeof(buffer),
+                         "%d",
+                         variant_descriptor->integer_value);
 
                 *result = system_hashed_ansi_string_create(buffer);
 
@@ -125,10 +125,10 @@ PUBLIC EMERALD_API void system_variant_get_ansi_string(__in  __notnull system_va
             {
                 char buffer[64];
 
-                sprintf_s(buffer,
-                          64,
-                          "%.4f",
-                          variant_descriptor->float_value);
+                snprintf(buffer,
+                         sizeof(buffer),
+                         "%.4f",
+                         variant_descriptor->float_value);
 
                 *result = system_hashed_ansi_string_create(buffer);
 
@@ -289,7 +289,7 @@ PUBLIC EMERALD_API bool system_variant_is_equal(__in __notnull system_variant va
     _system_variant_descriptor_ptr variant_1_descriptor = (_system_variant_descriptor_ptr) variant_1;
     _system_variant_descriptor_ptr variant_2_descriptor = (_system_variant_descriptor_ptr) variant_2;
     bool                           result               = false;
-    
+
     if (variant_1                  == variant_2 ||
         variant_1_descriptor->type == variant_2_descriptor->type)
     {
@@ -406,9 +406,9 @@ PUBLIC EMERALD_API void system_variant_set(__in __notnull system_variant dst,
             {
                 case SYSTEM_VARIANT_ANSI_STRING:
                 {
-                    sscanf_s(system_hashed_ansi_string_get_buffer(src_variant_descriptor->ansi_string_value),
-                             "%d",
-                             &dst_variant_descriptor->integer_value);
+                    sscanf(system_hashed_ansi_string_get_buffer(src_variant_descriptor->ansi_string_value),
+                           "%d",
+                           &dst_variant_descriptor->integer_value);
 
                     break;
                 }
@@ -441,9 +441,9 @@ PUBLIC EMERALD_API void system_variant_set(__in __notnull system_variant dst,
             {
                 case SYSTEM_VARIANT_ANSI_STRING:
                 {
-                    sscanf_s(system_hashed_ansi_string_get_buffer(src_variant_descriptor->ansi_string_value),
-                             "%f",
-                             &dst_variant_descriptor->float_value);
+                    sscanf(system_hashed_ansi_string_get_buffer(src_variant_descriptor->ansi_string_value),
+                           "%f",
+                           &dst_variant_descriptor->float_value);
 
                     break;
                 }
@@ -492,10 +492,10 @@ PUBLIC EMERALD_API void system_variant_set(__in __notnull system_variant dst,
                 {
                     char buffer[32];
 
-                    sprintf_s(buffer,
-                              32,
-                              "%d",
-                              src_variant_descriptor->integer_value);
+                    snprintf(buffer,
+                             sizeof(buffer),
+                             "%d",
+                             src_variant_descriptor->integer_value);
 
                     dst_variant_descriptor->ansi_string_value = system_hashed_ansi_string_create(buffer);
                     break;
@@ -505,10 +505,10 @@ PUBLIC EMERALD_API void system_variant_set(__in __notnull system_variant dst,
                 {
                     char buffer[32];
 
-                    sprintf_s(buffer,
-                              32,
-                              "%8.4f",
-                              src_variant_descriptor->float_value);
+                    snprintf(buffer,
+                             sizeof(buffer),
+                             "%8.4f",
+                             src_variant_descriptor->float_value);
 
                     dst_variant_descriptor->ansi_string_value = system_hashed_ansi_string_create(buffer);
                     break;
@@ -552,9 +552,9 @@ PUBLIC EMERALD_API void system_variant_set_ansi_string(__in __notnull system_var
             {
                 int tmp_value = 0;
 
-                sscanf_s(system_hashed_ansi_string_get_buffer(input),
-                         "%d",
-                        &tmp_value);
+                sscanf(system_hashed_ansi_string_get_buffer(input),
+                       "%d",
+                      &tmp_value);
 
                 variant_descriptor->boolean_value = (tmp_value == 1);
                 break;
@@ -562,18 +562,18 @@ PUBLIC EMERALD_API void system_variant_set_ansi_string(__in __notnull system_var
 
             case SYSTEM_VARIANT_FLOAT:
             {
-                sscanf_s(system_hashed_ansi_string_get_buffer(input),
-                         "%f",
-                        &variant_descriptor->float_value);
+                sscanf(system_hashed_ansi_string_get_buffer(input),
+                       "%f",
+                      &variant_descriptor->float_value);
 
                 break;
             }
 
             case SYSTEM_VARIANT_INTEGER:
             {
-                sscanf_s(system_hashed_ansi_string_get_buffer(input),
-                         "%d",
-                        &variant_descriptor->integer_value);
+                sscanf(system_hashed_ansi_string_get_buffer(input),
+                       "%d",
+                      &variant_descriptor->integer_value);
 
                 break;
             }
@@ -596,7 +596,7 @@ PUBLIC EMERALD_API void system_variant_set_boolean(__in __notnull system_variant
 
     ASSERT_DEBUG_SYNC(variant_descriptor->type == SYSTEM_VARIANT_BOOL,
                       "Invalid variant type");
-    
+
     variant_descriptor->boolean_value = value;
 }
 
@@ -608,7 +608,7 @@ PUBLIC EMERALD_API void system_variant_set_float(__in __notnull system_variant v
 
     ASSERT_DEBUG_SYNC(variant_descriptor->type == SYSTEM_VARIANT_FLOAT,
                       "Invalid variant type");
-    
+
     variant_descriptor->float_value = value;
 }
 
@@ -625,10 +625,10 @@ PUBLIC EMERALD_API void system_variant_set_float_forced(__in __notnull system_va
             system_read_write_mutex_lock(conversion_buffer_read_write_mutex,
                                          ACCESS_WRITE);
             {
-                sprintf_s(conversion_buffer,
-                          CONVERSION_BUFFER_LENGTH,
-                          "%.4f",
-                          value);
+                snprintf(conversion_buffer,
+                         CONVERSION_BUFFER_LENGTH,
+                         "%.4f",
+                         value);
 
                 variant_descriptor->ansi_string_value = system_hashed_ansi_string_create(conversion_buffer);
             }
@@ -680,7 +680,7 @@ PUBLIC EMERALD_API void system_variant_set_integer(__in __notnull system_variant
     {
         ASSERT_DEBUG_SYNC(variant_descriptor->type == SYSTEM_VARIANT_INTEGER,
                           "Invalid variant type");
-    
+
         variant_descriptor->integer_value = value;
     }
     else
@@ -692,10 +692,10 @@ PUBLIC EMERALD_API void system_variant_set_integer(__in __notnull system_variant
                 system_read_write_mutex_lock(conversion_buffer_read_write_mutex,
                                              ACCESS_WRITE);
                 {
-                    sprintf_s(conversion_buffer,
-                              CONVERSION_BUFFER_LENGTH,
-                              "%d",
-                              value);
+                    snprintf(conversion_buffer,
+                             CONVERSION_BUFFER_LENGTH,
+                             "%d",
+                             value);
 
                     variant_descriptor->ansi_string_value = system_hashed_ansi_string_create(conversion_buffer);
                 }

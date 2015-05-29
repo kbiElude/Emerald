@@ -509,7 +509,12 @@ typedef enum
 } system_log_priority;
 /*************************** THREADS *************************************/
 /** Thread id */
-typedef DWORD system_thread_id;
+#ifdef _WIN32
+    typedef DWORD system_thread_id;
+#else
+    typedef pthread_t system_thread_id;
+#endif
+
 /** Thread entry point fucntion argument */
 typedef void* system_threads_entry_point_argument;
 /** Thread entry point function pointer */

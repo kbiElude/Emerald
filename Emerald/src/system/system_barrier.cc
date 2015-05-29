@@ -4,6 +4,7 @@
  *
  */
 #include "shared.h"
+#include "system/system_atomics.h"
 #include "system/system_barrier.h"
 #include "system/system_event.h"
 
@@ -63,7 +64,7 @@ PUBLIC EMERALD_API void system_barrier_signal(__in __notnull system_barrier     
 {
     _system_barrier* barrier_ptr = (_system_barrier*) barrier;
 
-    if (::InterlockedIncrement(&barrier_ptr->n_threads_signalled) >= barrier_ptr->n_signals_before_release)
+    if (system_atomics_increment(&barrier_ptr->n_threads_signalled) >= barrier_ptr->n_signals_before_release)
     {
         if (about_to_signal_callback_proc != NULL)
         {
