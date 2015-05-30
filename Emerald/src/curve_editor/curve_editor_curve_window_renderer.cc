@@ -2249,8 +2249,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_up(system_window
         system_context_menu_release(context_menu);
     }
     else
-    if ( !renderer_ptr->nodemove_mode_active                                                                                                              &&
-        (!renderer_ptr->segmentmove_mode_active || renderer_ptr->segmentmove_mode_active && abs(renderer_ptr->segmentmove_click_x - x) < CLICK_THRESHOLD) &&
+    if ( !renderer_ptr->nodemove_mode_active                                                                                                                        &&
+        (!renderer_ptr->segmentmove_mode_active || renderer_ptr->segmentmove_mode_active && abs((int)renderer_ptr->segmentmove_click_x -(int) x) < CLICK_THRESHOLD) &&
          !renderer_ptr->segmentresize_mode_active)
     {
         /* If user has clicked within a TCB segment, we need to add a new node */

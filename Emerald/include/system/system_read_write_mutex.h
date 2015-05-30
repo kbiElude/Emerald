@@ -6,7 +6,6 @@
 #ifndef SYSTEM_READ_WRITE_MUTEX
 #define SYSTEM_READ_WRITE_MUTEX
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 /** Creates a read/write mutex object

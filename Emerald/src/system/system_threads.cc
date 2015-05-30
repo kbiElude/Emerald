@@ -35,7 +35,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
  *  @param argument _system_threads_thread_descriptor*
  */
 #ifdef _WIN32
-    PRIVATE DWORD __stdcall _system_threads_entry_point_wrapper(void* argument)
+    DWORD WINAPI _system_threads_entry_point_wrapper(LPVOID argument)
 #else
     void* _system_threads_entry_point_wrapper(void* argument)
 #endif

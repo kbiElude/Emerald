@@ -6,9 +6,6 @@
 #ifndef SYSTEM_ATOMICS_H
 #define SYSTEM_ATOMICS_H
 
-#include "dll_exports.h"
-
-
 /* TODO */
 inline unsigned int system_atomics_decrement(volatile unsigned int* value_ptr)
 {

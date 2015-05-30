@@ -6,7 +6,6 @@
 #ifndef SYSTEM_MATH_SRGB
 #define SYSTEM_MATH_SRGB
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 PRIVATE inline float convert_sRGB_to_linear(const float& input)

@@ -6,7 +6,6 @@
 #ifndef SYSTEM_SEMAPHORE_H
 #define SYSTEM_SEMAPHORE_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 /** Creates a semaphore object, allowing up to @param semaphore_capacity

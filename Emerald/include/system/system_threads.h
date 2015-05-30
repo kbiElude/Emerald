@@ -6,7 +6,6 @@
 #ifndef SYSTEM_THREADS_H
 #define SYSTEM_THREADS_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 /** Retrieves current thread id

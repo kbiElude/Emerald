@@ -131,6 +131,10 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                                   NULL);                           /* overlapped access not needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
+                           "Could not read %d bytes for file [%s]",
+                           serializer_descriptor->file_size,
+                           system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
+                          );
 #else
         ASSERT_DEBUG_SYNC(serializer_descriptor->file_size < SSIZE_MAX,
                           "File too large to read.");
@@ -140,11 +144,11 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                             serializer_descriptor->file_size);
 
         ASSERT_ALWAYS_SYNC(n_bytes_read != serializer_descriptor->file_size,
-#endif
                            "Could not read %d bytes for file [%s]",
                            serializer_descriptor->file_size,
                            system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
                           );
+#endif
 
         /* Clsoe the file, won't need it anymore. */
 #ifdef _WIN32
@@ -252,6 +256,8 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
                              NULL);              /* no overlapped behavior needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
+                          "Could not write file [%s]",
+                          system_hashed_ansi_string_get_buffer(descriptor->file_name) );
 #else
         result = write(descriptor->file_handle,
                        descriptor->contents,
@@ -260,9 +266,9 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
         n_bytes_written = (result >= 0) ? result : 0;
 
         ASSERT_ALWAYS_SYNC(result != -1,
-#endif
                           "Could not write file [%s]",
                           system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+#endif
 
         ASSERT_ALWAYS_SYNC(n_bytes_written == descriptor->file_size,
                            "Could not fully write file [%s] (%d bytes written out of %db)",
@@ -1204,11 +1210,11 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     {
         _system_file_serializer_write_down_data_to_file(descriptor);
 
-        if (descriptor->file_handle != file_handle_invalid &&
 #ifdef _WIN32
+        if (descriptor->file_handle != file_handle_invalid &&
             descriptor->file_handle != NULL)
 #else
-            true)
+        if (descriptor->file_handle != file_handle_invalid)
 #endif
         {
             /* Cool to close the file now. */

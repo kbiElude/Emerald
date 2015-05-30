@@ -12,7 +12,6 @@
 #ifndef SYSTEM_BARRIER_H
 #define SYSTEM_BARRIER_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 typedef void (*PFNSYSTEMBARRIERABOUTTOSIGNALCALLBACKPROC)(void* user_arg);

@@ -37,8 +37,10 @@
 #endif /* _WIN32 */
 
 /* TODO TODO TEMP TEMP TEMP */
-#define DWORD unsigned int
-#define LONG  unsigned int
+#ifdef __linux
+    #define DWORD unsigned int
+    #define LONG  unsigned int
+#endif
 
 /*********************** ASSERTION CHECKS ********************************/
 typedef enum
@@ -51,8 +53,6 @@ typedef enum
 #include <stdint.h>
 
 /* General includes */
-#include "dll_exports.h"
-
 #define REFCOUNT_INSERT_DECLARATIONS(prefix, public_handle_type)                                \
     PUBLIC EMERALD_API void prefix##_retain(__in __notnull public_handle_type);                 \
     PUBLIC EMERALD_API void prefix##_release(__inout __notnull public_handle_type&);

@@ -7,7 +7,6 @@
 #define SYSTEM_CRITICAL_LOG_H
 
 #include <string.h>
-#include "dll_exports.h"
 #include "system_constants.h"
 #include "system_critical_section.h"
 #include "system_types.h"

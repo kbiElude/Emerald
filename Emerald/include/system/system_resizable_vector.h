@@ -7,7 +7,6 @@
 #ifndef SYSTEM_RESIZABLE_VECTOR_H
 #define SYSTEM_RESIZABLE_VECTOR_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 #define ITEM_NOT_FOUND (0xFFFFFFFF)

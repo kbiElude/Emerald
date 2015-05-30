@@ -6,7 +6,6 @@
 #ifndef SYSTEM_CALLBACK_MANAGER_H
 #define SYSTEM_CALLBACK_MANAGER_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 /** Defines global call-back manager's call-back ID.
