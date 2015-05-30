@@ -465,8 +465,7 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
     volatile unsigned int n_workloads_processed     = 0;
     system_hash64map      workloads_map             = system_hash64map_create(sizeof(_texture_loader_workload*),
                                                                               false); /* should_be_thread_safe */
-    system_event          workloads_processed_event = system_event_create    (true /* manual_reset */,
-                                                                              false /* start_state */);
+    system_event          workloads_processed_event = system_event_create    (true); /* manual_reset */
 
     for (unsigned int n_image = 0;
                       n_image < n_images;

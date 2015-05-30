@@ -407,41 +407,30 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Rendering Handlers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
 
-        new_handler->bind_context_request_event       = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
-        new_handler->bind_context_request_ack_event   = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
-        new_handler->callback_request_ack_event       = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
-        new_handler->callback_request_event           = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
+        new_handler->bind_context_request_event       = system_event_create(false); /* manual_reset */
+        new_handler->bind_context_request_ack_event   = system_event_create(false); /* manual_reset */
+        new_handler->callback_request_ack_event       = system_event_create(false); /* manual_reset */
+        new_handler->callback_request_event           = system_event_create(false); /* manual_reset */
         new_handler->callback_request_cs              = system_critical_section_create();
         new_handler->callback_request_user_arg        = NULL;
         new_handler->context                          = NULL;
-        new_handler->context_set_event                = system_event_create(true,   /* manual_reset */
-                                                                            false); /* start_state  */
+        new_handler->context_set_event                = system_event_create(true); /* manual_reset */
         new_handler->fps                              = desired_fps;
         new_handler->fps_counter_status               = false;
         new_handler->n_frames_rendered                = 0;
-        new_handler->playback_in_progress_event       = system_event_create(true,   /* manual_reset */
-                                                                            false); /* start_state  */
+        new_handler->playback_in_progress_event       = system_event_create(true); /* manual_reset */
         new_handler->playback_start_time              = 0;
         new_handler->playback_status                  = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-        new_handler->playback_waiting_event           = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
+        new_handler->playback_waiting_event           = system_event_create(false); /* manual_reset */
         new_handler->pfn_callback_proc                = NULL;
         new_handler->pfn_rendering_callback           = pfn_rendering_callback;
         new_handler->policy                           = policy;
         new_handler->rendering_callback_user_arg      = user_arg;
         new_handler->rendering_cs                     = system_critical_section_create();
-        new_handler->shutdown_request_event           = system_event_create(true,   /* manual_reset */
-                                                                            false); /* start_state  */
-        new_handler->shutdown_request_ack_event       = system_event_create(true,   /* manual_reset */
-                                                                            false); /* start_state  */
-        new_handler->unbind_context_request_event     = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
-        new_handler->unbind_context_request_ack_event = system_event_create(false,  /* manual_reset */
-                                                                            false); /* start_state  */
+        new_handler->shutdown_request_event           = system_event_create(true);  /* manual_reset */
+        new_handler->shutdown_request_ack_event       = system_event_create(true);  /* manual_reset */
+        new_handler->unbind_context_request_event     = system_event_create(false); /* manual_reset */
+        new_handler->unbind_context_request_ack_event = system_event_create(false); /* manual_reset */
 
         ASSERT_ALWAYS_SYNC(new_handler->bind_context_request_event != NULL,
                            "Could not create 'bind context request' event");

@@ -23,8 +23,7 @@ ogl_context   _context             = NULL;
 ogl_pipeline  _pipeline            = NULL;
 uint32_t      _pipeline_stage_id   = -1;
 system_window _window              = NULL;
-system_event  _window_closed_event = system_event_create(true,   /* manual_reset */
-                                                         false); /* start_state */
+system_event  _window_closed_event = system_event_create(true); /* manual_reset */
 int           _window_size[2]      = {0};
 
 GLuint         _fbo_id                           = -1;

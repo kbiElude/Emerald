@@ -294,9 +294,10 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
     new_descriptor->file_name              = NULL;
     new_descriptor->file_size              = data_size;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true,  /* manual_reset */
-                                                                 true); /* start_state  */
+    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
     new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION;
+
+    system_event_set(new_descriptor->reading_finished_event);
 
     return (system_file_serializer) new_descriptor;
 }
@@ -313,8 +314,7 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
     new_descriptor->file_name              = file_name;
     new_descriptor->file_size              = 0;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true,
-                                                                 false);
+    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
     new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
 
     if (async_read)

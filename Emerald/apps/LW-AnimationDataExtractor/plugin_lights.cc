@@ -577,8 +577,7 @@ PUBLIC void InitLightData()
 /** Please see header for spec */
 PUBLIC system_event StartLightDataExtraction(__in __notnull scene in_scene)
 {
-    job_done_event = system_event_create(false,  /* manual_reset */
-                                         false); /* start_state */
+    job_done_event = system_event_create(false); /* manual_reset */
 
     /* Spawn a worker thread so that we can report the progress. */
     system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,

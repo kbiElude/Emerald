@@ -111,8 +111,7 @@ ogl_shader                      _whiteline_fs                          = NULL;
 ogl_program                     _whiteline_po                          = NULL;
 ogl_shader                      _whiteline_vs                          = NULL;
 system_window                   _window                                = NULL;
-system_event                    _window_closed_event                   = system_event_create(true,  /* manual_reset */
-                                                                                             false);/* start_state */
+system_event                    _window_closed_event                   = system_event_create(true); /* manual_reset */
 const int                       _window_size[2]                        = {1280, 720};
 float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 

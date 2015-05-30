@@ -69,8 +69,7 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
                       n < 4;
                       n++)
     {
-        wait_events[n] = system_event_create(true,   /* manual_reset */
-                                             false); /* start_state */
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
@@ -125,8 +124,7 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
                       n < 16;
                       n++)
     {
-        wait_events[n] = system_event_create(true,   /* manual_reset */
-                                             false); /* start_state */
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
@@ -182,7 +180,7 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
 
     for (unsigned int n = 0; n < 4; n++)
     {
-        wait_events[n] = system_event_create(true, false);
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
@@ -232,7 +230,7 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
     /* set up */
     for (unsigned int n = 0; n < 16; n++)
     {
-        wait_events[n] = system_event_create(true, false);
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */

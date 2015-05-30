@@ -801,8 +801,7 @@ PRIVATE void _curve_editor_curve_window_init_curve_editor_curve_window(_curve_ed
 {
     descriptor->context                          = context;
     descriptor->curve                            = curve;
-    descriptor->dialog_created_event             = system_event_create(true,        /* manual_reset */
-                                                                       false);      /* start_state */
+    descriptor->dialog_created_event             = system_event_create(true); /* manual_reset */
     descriptor->dialog_thread_event              = NULL;
     descriptor->name                             = name;
     descriptor->ref_client_height                = 0;

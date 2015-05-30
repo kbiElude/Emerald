@@ -853,8 +853,7 @@ PRIVATE void _curve_editor_init_descriptor(_curve_editor_main_window*           
     descriptor->context                                                = context;
     descriptor->curve_node_handle_to_curve_window_map_array_descriptor = system_hash64map_create(sizeof(_window_map_array_descriptor*) );
     descriptor->curves_tree_window_handle                              = NULL;
-    descriptor->dialog_created_event                                   = system_event_create(true,   /* manual_reset */
-                                                                                             false); /* start_state  */
+    descriptor->dialog_created_event                                   = system_event_create(true); /* manual_reset */
     descriptor->edit_curve_button_window_handle                        = NULL;
     descriptor->format_static_window_handle                            = NULL;
     descriptor->name_static_window_handle                              = NULL;

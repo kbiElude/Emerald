@@ -9,12 +9,11 @@
 #include "system/system_time.h"
 
 /** Please see header for specification */
-PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset,
-                                                                bool start_state)
+PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset)
 {
     HANDLE result = ::CreateEventA(NULL,         /* no special security attributes */
-                                   manual_reset, 
-                                   start_state, 
+                                   manual_reset,
+                                   false,        /* bInitialState */
                                    0);           /* no name */
 
     ASSERT_ALWAYS_SYNC(result != NULL,

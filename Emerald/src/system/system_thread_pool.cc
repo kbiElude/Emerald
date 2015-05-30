@@ -574,12 +574,9 @@ PUBLIC void _system_thread_pool_init()
                                                                  THREAD_POOL_PREALLOCATED_TASK_GROUP_DESCRIPTORS,
                                                                  _init_system_thread_pool_task_group_descriptor,
                                                                  _deinit_system_thread_pool_task_group_descriptor);
-        kill_pool_event            = system_event_create        (true,   /* manual_reset */
-                                                                 false); /* start_state  */
-        threads_spawned_event      = system_event_create        (true,   /* manual_reset */
-                                                                 false); /* start_state  */
-        task_available_event       = system_event_create        (false,  /* manual_reset */
-                                                                 false); /* start_state  */
+        kill_pool_event            = system_event_create        (true); /* manual_reset */
+        threads_spawned_event      = system_event_create        (true); /* manual_reset */
+        task_available_event       = system_event_create        (true); /* manual_reset */
 
         for (size_t n_priority = THREAD_POOL_TASK_PRIORITY_FIRST;
                     n_priority < THREAD_POOL_TASK_PRIORITY_COUNT;

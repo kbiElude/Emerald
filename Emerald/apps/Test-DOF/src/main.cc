@@ -50,8 +50,7 @@ float            _reflectivity              = 0.2f;
 bool             _shadows                   = true;
 float            _specularity               = 4.4f;
 system_window    _window                    = NULL;
-system_event     _window_closed_event       = system_event_create(true,   /* manual_reset */
-                                                                  false); /* start_state */
+system_event     _window_closed_event       = system_event_create(true); /* manual_reset */
 int              _window_resolution[2]      = {1280, 720};
 
 PRIVATE void _get_blur_radius(void*          user_arg,

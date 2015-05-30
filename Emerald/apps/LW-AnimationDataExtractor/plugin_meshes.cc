@@ -1110,8 +1110,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                   n_object < n_unique_objects;
                 ++n_object)
     {
-        system_event job_done_event = system_event_create(true,   /* manual_reset */
-                                                          false); /* start_state */
+        system_event job_done_event = system_event_create(true); /* manual_reset */
 
         /* Spawn a worker thread so that we can report the progress. */
         system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_NORMAL,
@@ -1236,8 +1235,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
 
             if (n_iteration == 0)
             {
-                system_event job_done_event = system_event_create(true,   /* manual_reset */
-                                                                  false); /* start_state */
+                system_event job_done_event = system_event_create(true); /* manual_reset */
 
                 /* Spawn task argument descriptor */
                 _bake_mesh_gl_blob_worker_arg* job_arg_ptr = new (std::nothrow) _bake_mesh_gl_blob_worker_arg(instance_ptr,

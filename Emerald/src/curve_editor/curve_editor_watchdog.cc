@@ -24,10 +24,8 @@ typedef struct _curve_editor_watchdog
 
     _curve_editor_watchdog()
     {
-        wakeup_event             = system_event_create(false,  /* manual_reset */
-                                                       false); /* start_state */
-        wakeup_thread_kill_event = system_event_create(true,   /* manual_reset */
-                                                       false); /* start_state */
+        wakeup_event             = system_event_create(false); /* manual_reset */
+        wakeup_thread_kill_event = system_event_create(true);  /* manual_reset */
     }
 
     ~_curve_editor_watchdog()

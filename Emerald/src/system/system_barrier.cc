@@ -18,8 +18,7 @@ typedef struct _system_barrier
     {
         n_signals_before_release = in_n_signals_before_release;
         n_threads_signalled      = 0;
-        sync                     = system_event_create(true,   /* manual_reset */
-                                                       false); /* start_state  */
+        sync                     = system_event_create(true); /* manual_reset */
     }
 } _system_barrier;
 

@@ -1128,8 +1128,7 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
      * to speed the process up.
      */
     current_geometry_element_ptr = geometries_element_ptr->FirstChildElement("geometry");
-    geometry_processed_event     = system_event_create                      (true /* manual_reset */,
-                                                                             false /* start_state */);
+    geometry_processed_event     = system_event_create                      (true); /* manual_reset */
 
     ASSERT_ALWAYS_SYNC(geometry_processed_event != NULL,
                        "Could not generate an event");

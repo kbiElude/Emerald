@@ -11,14 +11,15 @@
 
 /** Creates an event synchronisation object.
  *
+ *  All threads waiting on the event will block, until the event is "set"
+ *  by another thread.
+ *
  *  @param bool True to reset the object with each finished wait() request, false to make it resettable only
  *              by means of calling system_event_reset() func.
- *  @param bool True to make the event waitable from start, false to require a wait in order to unblock any awaiting wait requests.
  *
  *  @return Event handle object.
  */
-PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset,
-                                                                bool start_state);
+PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset);
 
 /** Releases an event synchronisation object.
  *

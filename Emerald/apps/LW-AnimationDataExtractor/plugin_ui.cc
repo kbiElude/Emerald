@@ -115,8 +115,7 @@ PUBLIC void DeinitUI()
 PUBLIC void InitUI()
 {
     /* Set up events used for inter-thread comms */
-    ui_initialized_event = system_event_create(true,   /* manual_reset */
-                                               false); /* start_state  */
+    ui_initialized_event = system_event_create(true); /* manual_reset */
 
     /* Spawn a new UI controller thread. */
     system_threads_spawn(UIThreadEntryPoint,

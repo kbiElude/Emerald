@@ -21,8 +21,7 @@ GLuint       _read_fbo_id          = 0;
 int          _local_workgroup_size = 0;
 ogl_program  _program              = NULL;
 ogl_texture  _texture              = NULL;
-system_event _window_closed_event  = system_event_create(true,  /* manual_reset */
-                                                         false);/* start_state */
+system_event _window_closed_event  = system_event_create(true); /* manual_reset */
 const int    _window_size[2]       = {1280, 720};
 
 const char* _cs_body_preamble = "#version 430 core\n"

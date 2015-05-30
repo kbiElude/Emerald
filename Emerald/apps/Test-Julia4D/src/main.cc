@@ -39,8 +39,7 @@ float            _raycast_radius_multiplier = 2.65f;
 bool             _shadows                   = true;
 float            _specularity               = 4.4f;
 system_window    _window                    = NULL;
-system_event     _window_closed_event       = system_event_create(true,   /* manual_reset */
-                                                                  false); /* start_state */
+system_event     _window_closed_event       = system_event_create(true); /* manual_reset */
 
 
 /* Forward declarations */

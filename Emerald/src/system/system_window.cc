@@ -258,15 +258,11 @@ PRIVATE void _init_system_window(_system_window* descriptor)
     descriptor->system_dc                           = NULL;
     descriptor->system_handle                       = NULL;
     descriptor->system_ogl_context                  = NULL;
-    descriptor->message_pump_lock_event             = system_event_create(true,   /* manual_reset */
-                                                                          false); /* start_state */
+    descriptor->message_pump_lock_event             = system_event_create(true); /* manual_reset */
     descriptor->message_pump_thread_id              = 0;
-    descriptor->message_pump_unlock_event           = system_event_create(true,   /* manual_reset */
-                                                                          false); /* start_state */
-    descriptor->window_safe_to_release_event        = system_event_create(true,   /* manual_reset */
-                                                                          false); /* start_state */
-    descriptor->window_initialized_event            = system_event_create(true,   /* manual_reset */
-                                                                          false); /* start_state */
+    descriptor->message_pump_unlock_event           = system_event_create(true); /* manual_reset */
+    descriptor->window_safe_to_release_event        = system_event_create(true); /* manual_reset */
+    descriptor->window_initialized_event            = system_event_create(true); /* manual_reset */
 
     descriptor->char_callbacks                       = system_resizable_vector_create(1);
     descriptor->exit_size_move_callbacks             = system_resizable_vector_create(1);

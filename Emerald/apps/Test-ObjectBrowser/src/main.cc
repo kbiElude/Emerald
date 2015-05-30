@@ -16,7 +16,7 @@
 #include "system/system_window.h"
 
 ogl_context  _context             = NULL;
-system_event _window_closed_event = system_event_create(true, false);
+system_event _window_closed_event = system_event_create(true); /* manual_reset */
 
 /** Rendering handler */
 void _rendering_handler(ogl_context          context,

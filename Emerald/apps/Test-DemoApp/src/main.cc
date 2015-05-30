@@ -30,7 +30,7 @@
 ogl_context           _context             = NULL;
 ogl_rendering_handler _rendering_handler   = NULL;
 system_window         _window              = NULL;
-system_event          _window_closed_event = system_event_create(true, false);
+system_event          _window_closed_event = system_event_create(true); /* manual_reset */
 GLuint                _vao_id              = 0;
 
 
