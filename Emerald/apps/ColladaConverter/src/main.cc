@@ -396,7 +396,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(_window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(_window_rendering_handler);

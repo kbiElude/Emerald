@@ -334,7 +334,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up - DO NOT release any GL objects here, no rendering context is bound
      * to the main thread!

@@ -312,7 +312,7 @@ PRIVATE VOID _lock_system_window_message_pump(_system_window* descriptor)
                            0,
                            0);
 
-            system_event_wait_single_infinite(descriptor->message_pump_lock_event);
+            system_event_wait_single(descriptor->message_pump_lock_event);
         }
     }
 }
@@ -342,7 +342,7 @@ PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnul
     _system_window* window_ptr = (_system_window*) arg;
 
     /* Wait for the window thread to die */
-    system_event_wait_single_infinite(window_ptr->window_safe_to_release_event);
+    system_event_wait_single(window_ptr->window_safe_to_release_event);
 
     /* Call back the subscribers, if any */
     uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window_ptr->window_closed_callbacks);
@@ -385,8 +385,8 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
         {
             window->is_message_pump_locked = true;
 
-            system_event_set                 (window->message_pump_lock_event);
-            system_event_wait_single_infinite(window->message_pump_unlock_event);
+            system_event_set        (window->message_pump_lock_event);
+            system_event_wait_single(window->message_pump_unlock_event);
 
             window->is_message_pump_locked = false;
 
@@ -987,11 +987,6 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                 ogl_context_request_callback_from_context_thread(window->system_ogl_context,
                                                                  _system_window_window_closing_rendering_thread_entrypoint,
                                                                  window);
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Cannot fire the \"window closing\" call-back - no rendering handler available");
             }
 
             /* OK, safe to destroy the system window at this point */
@@ -1684,8 +1679,8 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
                        0); /* lParam */
     }
 
-    system_event_wait_single_infinite(window_ptr->window_safe_to_release_event);
-    system_event_wait_single_infinite(window_ptr->window_thread_event);
+    system_event_wait_single(window_ptr->window_safe_to_release_event);
+    system_event_wait_single(window_ptr->window_thread_event);
 
     /* Remove the window handle from the 'spawned windows' vector */
     system_critical_section_enter(spawned_windows_cs);
@@ -1875,7 +1870,7 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
                                 &new_window->window_thread_event);
 
             /* Wait until window finishes initialization */
-            system_event_wait_single_infinite(new_window->window_initialized_event);
+            system_event_wait_single(new_window->window_initialized_event);
 
             /* Insert the window handle into the 'spawned windows' vector */
             system_critical_section_enter(spawned_windows_cs);

@@ -510,7 +510,8 @@ typedef enum
 /*************************** THREADS *************************************/
 /** Thread id */
 #ifdef _WIN32
-    typedef DWORD system_thread_id;
+    typedef HANDLE system_thread;
+    typedef DWORD  system_thread_id;
 #else
     typedef pthread_t system_thread_id;
 #endif

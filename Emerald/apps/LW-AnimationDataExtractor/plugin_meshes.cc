@@ -1119,7 +1119,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                                                                                                                       job_done_event);
 
         system_thread_pool_submit_single_task(task);
-        system_event_wait_single_infinite    (job_done_event);
+        system_event_wait_single             (job_done_event);
 
         system_event_release(job_done_event);
     }
@@ -1176,9 +1176,11 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         if (n_iteration == 1)
         {
             /* Wait for zeroth iteration's tasks to finish before continuing */
-            system_event_wait_multiple_infinite((const system_event*) system_resizable_vector_get_array(job_done_events),
-                                                system_resizable_vector_get_amount_of_elements         (job_done_events),
-                                                true); /* wait_for_all */
+            system_event_wait_multiple((const system_event*) system_resizable_vector_get_array(job_done_events),
+                                       system_resizable_vector_get_amount_of_elements         (job_done_events),
+                                       true, /* wait_for_all */
+                                       SYSTEM_TIME_INFINITE,
+                                       NULL); /* out_result_ptr */
 
             /* Clean up before continuing */
             system_event event_to_release = NULL;

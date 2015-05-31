@@ -839,7 +839,7 @@ PRIVATE void _curve_editor_curve_window_release(_curve_editor_curve_window* desc
                   0,
                   0);
 
-    system_event_wait_single_infinite(descriptor->dialog_thread_event);
+    system_event_wait_single(descriptor->dialog_thread_event);
 
     /* Proceed with releasing */
     if (descriptor->dialog_created_event != NULL)

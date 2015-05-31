@@ -1164,8 +1164,8 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
     }
 
     /* Wait for the processing to finish */
-    system_event_wait_single_infinite(geometry_processed_event);
-    system_event_release             (geometry_processed_event);
+    system_event_wait_single(geometry_processed_event);
+    system_event_release    (geometry_processed_event);
 
 end: ;
 }

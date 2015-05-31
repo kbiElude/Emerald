@@ -935,7 +935,7 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
                             &result->dialog_thread_event);
 
         /* Block till everything is ready */
-        system_event_wait_single_infinite(result->dialog_created_event);
+        system_event_wait_single(result->dialog_created_event);
 
         /* Sign for the call-backs */
         system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
@@ -1020,7 +1020,7 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
                        0,
                        0);
 
-        system_event_wait_single_infinite(main_window_ptr->dialog_thread_event);
+        system_event_wait_single(main_window_ptr->dialog_thread_event);
     }
 
     /* Release all objects allocated for the window */

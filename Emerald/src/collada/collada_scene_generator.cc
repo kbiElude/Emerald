@@ -550,7 +550,7 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
         } /* for (all workloads) */
 
         /* Wait for the processing to finish */
-        system_event_wait_single_infinite(workloads_processed_event);
+        system_event_wait_single(workloads_processed_event);
     } /* if (n_workloads > 0) */
 
     /* Release stuff before we continue */

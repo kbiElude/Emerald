@@ -75,7 +75,7 @@ PUBLIC EMERALD_API void system_barrier_signal(__in __notnull system_barrier     
 
     if (wait_until_signalled)
     {
-        system_event_wait_single_infinite(barrier_ptr->sync);
+        system_event_wait_single(barrier_ptr->sync);
     }
 }
 
@@ -84,5 +84,5 @@ PUBLIC EMERALD_API void system_barrier_wait_until_signalled(__in __notnull syste
 {
     _system_barrier* barrier_ptr = (_system_barrier*) barrier;
 
-    system_event_wait_single_infinite(barrier_ptr->sync);
+    system_event_wait_single(barrier_ptr->sync);
 }

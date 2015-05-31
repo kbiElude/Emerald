@@ -611,7 +611,7 @@ PUBLIC void InitCurveData()
     system_thread_pool_submit_single_task(task);
 
     /* Wait for the job to finish */
-    system_event_wait_single_infinite(job_done_event);
+    system_event_wait_single(job_done_event);
 
     /* Clean up */
     system_event_release(job_done_event);

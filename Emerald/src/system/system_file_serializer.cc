@@ -403,7 +403,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             {
                 LOG_ERROR("Performance hit: waiting for the read op to finish.");
 
-                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+                system_event_wait_single(serializer_ptr->reading_finished_event);
             }
 
             *(system_hashed_ansi_string*) out_data = serializer_ptr->file_path;
@@ -437,7 +437,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             {
                 LOG_ERROR("Performance hit: waiting for the read op to finish.");
 
-                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+                system_event_wait_single(serializer_ptr->reading_finished_event);
             }
             else
             {
@@ -474,7 +474,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
 
     if (descriptor->for_reading)
     {
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
+        system_event_wait_single(descriptor->reading_finished_event);
 
         if (descriptor->current_index + n_bytes <= descriptor->file_size)
         {
@@ -1194,7 +1194,7 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     if (descriptor->for_reading)
     {
         /* Wait till reading finishes */
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
+        system_event_wait_single(descriptor->reading_finished_event);
 
         /* Release reading-specific fields */
         system_event_release(descriptor->reading_finished_event);

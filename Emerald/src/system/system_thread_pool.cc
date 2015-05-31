@@ -356,7 +356,7 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
              current_thread_id);
     {
         /* Wait till all thread events become available */
-        system_event_wait_single_infinite(threads_spawned_event);
+        system_event_wait_single(threads_spawned_event);
 
         while (should_live)
         {
@@ -375,9 +375,11 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
             else
             {
                 /* Most likely no tasks around - wait for an event */
-                event_index = system_event_wait_multiple_infinite(wait_table,
-                                                                  WAIT_TABLE_SIZE,
-                                                                  false);
+                event_index = system_event_wait_multiple(wait_table,
+                                                         WAIT_TABLE_SIZE,
+                                                         false,
+                                                         SYSTEM_TIME_INFINITE,
+                                                         NULL); /* out_result_ptr */
             }
 
             switch (event_index)
@@ -644,12 +646,12 @@ PUBLIC void _system_thread_pool_deinit()
     bool                       wait_result  = false;
 
     /* Set the kill event and wait till all worker threads die out */
-    system_event_set                  (kill_pool_event);
-    system_event_wait_multiple_timeout(kill_wait_table,
-                                       THREAD_POOL_AMOUNT_OF_THREADS,
-                                       true,
-                                       timeout_time,
-                                      &wait_result);
+    system_event_set          (kill_pool_event);
+    system_event_wait_multiple(kill_wait_table,
+                               THREAD_POOL_AMOUNT_OF_THREADS,
+                               true,
+                               timeout_time,
+                              &wait_result);
 
     /* All threads should have died by now. Deinit all remaining objects */
     system_resource_pool_release(order_pool);

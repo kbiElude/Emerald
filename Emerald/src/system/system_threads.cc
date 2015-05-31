@@ -117,7 +117,7 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             if (thread_wait_event != NULL)
             {
-                *thread_wait_event            = (system_event) new_thread_handle;
+                *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
                 thread_descriptor->kill_event = *thread_wait_event;
             }
             else

@@ -8,6 +8,9 @@
 
 #include "system/system_types.h"
 
+#define SYSTEM_TIME_INFINITE (0xFFFFFFFF)
+
+
 /** Returns hz per sec used by the engine build.
  *
  *  @return Hz per sec.
