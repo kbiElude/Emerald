@@ -89,8 +89,11 @@
     #define GET_OBJECT_PATH(object_name, object_type, scene_name) \
         object_manager_get_object_path(object_name, object_type, scene_name)
 
-    #define REGISTER_REFCOUNTED_OBJECT(object_type, ptr, path) \
-        _object_manager_register_refcounted_object(ptr, path, __FILE__, __LINE__, object_type);
+    #define REGISTER_REFCOUNTED_OBJECT(object_type, ptr, path)                                      \
+        if (path != NULL)                                                                           \
+        {                                                                                           \
+            _object_manager_register_refcounted_object(ptr, path, __FILE__, __LINE__, object_type); \
+        }
 
     #define UNREGISTER_REFCOUNTED_OBJECT(path) \
         _object_manager_unregister_refcounted_object(path);
@@ -150,7 +153,11 @@
             }                                                                                   \
             LOG_INFO("Releasing %p (type:%s)", handle, STRINGIZE(prefix) );                     \
                                                                                                 \
-            UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                            \
+            if (ptr->path != NULL)                                                              \
+            {                                                                                   \
+                UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                        \
+            }                                                                                   \
+                                                                                                \
             delete (private_handle_type*) handle;                                               \
             handle = NULL;                                                                      \
         }                                                                                       \

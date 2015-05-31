@@ -123,6 +123,8 @@ PRIVATE void _system_hash64map_deinit_descriptor(_system_hash64map_descriptor* d
     if (descriptor->bin_entry_pool)
     {
         system_resource_pool_release(descriptor->bin_entry_pool);
+
+        descriptor->bin_entry_pool = NULL;
     }
 
     delete descriptor;

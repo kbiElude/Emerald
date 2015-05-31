@@ -8,6 +8,11 @@
 
 #include "system_types.h"
 
+
+REFCOUNT_INSERT_DECLARATIONS(system_critical_section,
+                             system_critical_section)
+
+
 /** Initializes a single critical section object.
  *
  *  @return New critical section object.
@@ -20,6 +25,12 @@ PUBLIC EMERALD_API system_critical_section system_critical_section_create();
  */
 PUBLIC EMERALD_API void system_critical_section_enter(__in system_critical_section critical_section);
 
+/** TODO
+ *
+ *  Internal usage only.
+ */
+PUBLIC EMERALD_API CRITICAL_SECTION* system_critical_section_get_handle(__in __notnull system_critical_section cs);
+
 /** TODO */
 PUBLIC EMERALD_API system_thread_id system_critical_section_get_owner(__in system_critical_section critical_section);
 
@@ -28,13 +39,6 @@ PUBLIC EMERALD_API system_thread_id system_critical_section_get_owner(__in syste
  *  @param system_critical_section Critical section to leave.
  */
 PUBLIC EMERALD_API void system_critical_section_leave(__in system_critical_section critical_section);
-
-/** Deinitializes a single critical section object. After this function
- *  is called, the object can be no longer used.
- *
- *  @param system_critical_section Critical section to free.
- */
-PUBLIC EMERALD_API void system_critical_section_release(__in __deallocate(mem) system_critical_section critical_section);
 
 /** TODO */
 PUBLIC EMERALD_API bool system_critical_section_try_enter(__in system_critical_section critical_section);

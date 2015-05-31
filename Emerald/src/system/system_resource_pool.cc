@@ -175,8 +175,13 @@ PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate
 
         /* Okay, carry on. */
         system_linear_alloc_pin_release(descriptor->allocator);
+        descriptor->allocator = NULL;
+
         system_critical_section_release(descriptor->cs);
+        descriptor->cs = NULL;
+
         system_resizable_vector_release(descriptor->released_blocks);
+        descriptor->released_blocks = NULL;
 
         delete descriptor;
     }
