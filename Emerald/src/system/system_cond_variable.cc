@@ -122,8 +122,14 @@ PUBLIC EMERALD_API void system_cond_variable_wait_begin(__in __notnull system_co
         while (!cond_variable_ptr->pTestPredicate(cond_variable_ptr->test_predicate_user_arg) &&
                !has_timed_out)
         {
+            PCRITICAL_SECTION cs_ptr = NULL;
+
+            system_critical_section_get_property(cond_variable_ptr->cs,
+                                                 SYSTEM_CRITICAL_SECTION_PROPERTY_HANDLE,
+                                                 &cs_ptr);
+
             if (::SleepConditionVariableCS(&cond_variable_ptr->condition_variable,
-                                           system_critical_section_get_handle(cond_variable_ptr->cs),
+                                           cs_ptr,
                                            timeout_msec) == 0)
             {
                 /* Failure */

@@ -2096,7 +2096,13 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
     /* Sanity check */
-    ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
+    system_thread_id cs_owner_thread_id = 0;
+
+    system_critical_section_get_property(graph_ptr->compute_lock_cs,
+                                         SYSTEM_CRITICAL_SECTION_PROPERTY_OWNER_THREAD_ID,
+                                        &cs_owner_thread_id);
+
+    ASSERT_DEBUG_SYNC(cs_owner_thread_id == system_threads_get_thread_id(),
                       "Graph not locked");
 
     /* Reset tagged nodes */
@@ -2199,7 +2205,13 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
     /* Sanity check */
-    ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
+    system_thread_id cs_owner_thread_id = 0;
+
+    system_critical_section_get_property(graph_ptr->compute_lock_cs,
+                                         SYSTEM_CRITICAL_SECTION_PROPERTY_OWNER_THREAD_ID,
+                                        &cs_owner_thread_id);
+
+    ASSERT_DEBUG_SYNC(cs_owner_thread_id == system_threads_get_thread_id(),
                       "Graph not locked");
 
     /* We take a different approach in this function. We use an internally stored cache of

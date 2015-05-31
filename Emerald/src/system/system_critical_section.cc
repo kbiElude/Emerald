@@ -62,29 +62,37 @@ EMERALD_API system_critical_section system_critical_section_create()
 }
 
 /** TODO */
-PUBLIC EMERALD_API CRITICAL_SECTION* system_critical_section_get_handle(__in __notnull system_critical_section cs)
-{
-    ASSERT_DEBUG_SYNC(cs != NULL,
-                      "Input argument is NULL");
-
-    return &( (_system_critical_section*) cs)->cs;
-}
-
-/** TODO */
-PUBLIC EMERALD_API system_thread_id system_critical_section_get_owner(__in system_critical_section critical_section)
+PUBLIC EMERALD_API void system_critical_section_get_property(__in  system_critical_section          critical_section,
+                                                             __in  system_critical_section_property property,
+                                                             __out void*                            out_result_ptr)
 {
     _system_critical_section* cs_ptr = (_system_critical_section*) critical_section;
-    system_thread_id          result = 0;
 
-    ASSERT_DEBUG_SYNC(cs_ptr != NULL,
-                      "CS to release is null");
+    ASSERT_DEBUG_SYNC(critical_section != NULL,
+                      "Input argument is NULL");
 
-    if (cs_ptr != NULL)
+    switch (property)
     {
-        result = cs_ptr->thread_id;
-    }
+        case SYSTEM_CRITICAL_SECTION_PROPERTY_HANDLE:
+        {
+            *(CRITICAL_SECTION**) out_result_ptr = &((_system_critical_section*) critical_section)->cs;
 
-    return result;
+            break;
+        }
+
+        case SYSTEM_CRITICAL_SECTION_PROPERTY_OWNER_THREAD_ID:
+        {
+            *(DWORD*) out_result_ptr = cs_ptr->thread_id;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized system_critical_section_property value");
+        }
+    } /* switch (property) */
 }
 
 /** Please see header for specification */
