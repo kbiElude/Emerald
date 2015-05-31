@@ -292,7 +292,9 @@ PUBLIC EMERALD_API void collada_data_geometry_get_properties(__in      __notnull
 
     if (out_n_material_instances != NULL)
     {
-        *out_n_material_instances = system_resizable_vector_get_amount_of_elements(geometry_ptr->material_instances);
+        system_resizable_vector_get_property(geometry_ptr->material_instances,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             out_n_material_instances);
     }
 }
 
@@ -356,8 +358,12 @@ PUBLIC EMERALD_API collada_data_scene_graph_node_material_instance collada_data_
                                                                                                                               __in __notnull system_hashed_ansi_string symbol_name)
 {
     _collada_data_geometry*                         geometry_ptr         = (_collada_data_geometry*) geometry;
-    const unsigned int                              n_material_instances = system_resizable_vector_get_amount_of_elements(geometry_ptr->material_instances);
+    unsigned int                                    n_material_instances = 0;
     collada_data_scene_graph_node_material_instance result               = NULL;
+
+    system_resizable_vector_get_property(geometry_ptr->material_instances,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_material_instances);
 
     for (unsigned int n_material_instance = 0; n_material_instance < n_material_instances; ++n_material_instance)
     {

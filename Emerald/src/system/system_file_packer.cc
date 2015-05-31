@@ -97,8 +97,12 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
                                                       __in                           __notnull uint32_t                result_data_bytes,
                                                       __in_bcount(result_data_bytes) __notnull char*                   out_result_data)
 {
-    const uint32_t n_files_to_use = system_resizable_vector_get_amount_of_elements(files);
-    char*          traveller_ptr  = out_result_data;
+    uint32_t n_files_to_use = 0;
+    char*    traveller_ptr  = out_result_data;
+
+    system_resizable_vector_get_property(files,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_files_to_use);
 
     /* Store the number of files we are describing */
     *(uint32_t*) traveller_ptr  = n_files_to_use;

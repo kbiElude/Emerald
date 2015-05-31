@@ -1176,8 +1176,14 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         if (n_iteration == 1)
         {
             /* Wait for zeroth iteration's tasks to finish before continuing */
-            system_event_wait_multiple((const system_event*) system_resizable_vector_get_array(job_done_events),
-                                       system_resizable_vector_get_amount_of_elements         (job_done_events),
+            const system_event* events_array_ptr = NULL;
+
+            system_resizable_vector_get_property(job_done_events,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                                 &events_array_ptr);
+
+            system_event_wait_multiple(events_array_ptr,
+                                       system_resizable_vector_get_amount_of_elements(job_done_events),
                                        true, /* wait_for_all */
                                        SYSTEM_TIME_INFINITE,
                                        NULL); /* out_result_ptr */

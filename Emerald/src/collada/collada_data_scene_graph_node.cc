@@ -440,7 +440,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(__in  __notnu
 
         case COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_N_NODE_ITEMS:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(node_ptr->node_items);
+            system_resizable_vector_get_property(node_ptr->node_items,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

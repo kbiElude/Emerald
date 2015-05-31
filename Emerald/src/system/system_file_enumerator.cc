@@ -327,7 +327,9 @@ PUBLIC EMERALD_API void system_file_enumerator_get_property(__in  __notnull syst
     {
         case SYSTEM_FILE_ENUMERATOR_PROPERTY_N_FILES:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(enumerator_ptr->entries);
+            system_resizable_vector_get_property(enumerator_ptr->entries,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

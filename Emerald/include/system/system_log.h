@@ -30,7 +30,7 @@
                   LOG_MAX_LENGTH);                            \
         snprintf (log_helper,                                 \
                   LOG_MAX_LENGTH,                             \
-                  "[File %s // line %u]: " text,              \
+                  "[File %s // line %d]: " text,              \
                   file,                                       \
                   line,                                       \
                 ##__VA_ARGS__);                               \

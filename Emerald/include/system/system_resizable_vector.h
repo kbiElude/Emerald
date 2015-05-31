@@ -12,6 +12,20 @@
 #define ITEM_NOT_FOUND (0xFFFFFFFF)
 
 
+typedef enum
+{
+    /* Result pointer may become invalid after any call that modifies the resizable vector
+     * so use with caution.
+     *
+     * Ownership is not transferred to caller.
+     *
+     */
+    SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+
+    /* unsigned int */
+    SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS
+} system_resizable_vector_property;
+
 /** TODO */
 PUBLIC EMERALD_API void system_resizable_vector_clear(__in __notnull system_resizable_vector vector);
 
@@ -30,12 +44,6 @@ PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create(__in s
 /** TODO */
 PUBLIC EMERALD_API system_resizable_vector system_resizable_vector_create_copy(__in __notnull system_resizable_vector vector);
 
-/** Empties a given resizable vector object.
- *
- *  @param system_resizable_vector Resizable vector to empty. CANNOT be NULL.
- */
-PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vector vector);
-
 /** Removes n-th element from the resizable vector object.
  *
  *  @param system_resizable_vector Resizable vector to perform the operation on.
@@ -46,6 +54,12 @@ PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vect
 PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_resizable_vector resizable_vector,
                                                                   __in size_t                  index);
 
+/** Empties a given resizable vector object.
+ *
+ *  @param system_resizable_vector Resizable vector to empty. CANNOT be NULL.
+ */
+PUBLIC EMERALD_API void system_resizable_vector_empty(__in system_resizable_vector vector);
+
 /** Finds a given element in the resizable vector object.
  *
  *  @param system_resizable_vector Object to operate on.
@@ -55,30 +69,6 @@ PUBLIC EMERALD_API bool system_resizable_vector_delete_element_at(__in system_re
  */
 PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vector resizable_vector,
                                                        __in void*                   item);
-
-/** Returns amount of elements stored in the vector.
- *
- *  @param system_resizable_vector Object to operate on.
- *
- *  @return Result.
- */
-PUBLIC EMERALD_API unsigned int system_resizable_vector_get_amount_of_elements(__in system_resizable_vector vector);
-
-/** TODO. Result pointer may become invalid after any call that modifies the resizable vector
- *  so use with caution.
- *
- *  Ownership is not transferred to caller.
- *
- */
-PUBLIC EMERALD_API const void* system_resizable_vector_get_array(__in __notnull system_resizable_vector vector);
-
-/** Returns capacity of a resizable vector object.
- *
- *  @param system_resizable_vector Object to operate on.
- *
- *  @return Result.
- */
-PUBLIC EMERALD_API unsigned int system_resizable_vector_get_capacity(__in system_resizable_vector  vector);
 
 /** Returns element stored at given index.
  *
@@ -91,6 +81,11 @@ PUBLIC EMERALD_API unsigned int system_resizable_vector_get_capacity(__in system
 PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(__in            system_resizable_vector resizable_vector,
                                                                                size_t                  index,
                                                                __out __notnull void*                   result);
+
+/** TODO */
+PUBLIC EMERALD_API void system_resizable_vector_get_property(__in  system_resizable_vector          resizable_vector,
+                                                                   system_resizable_vector_property property,
+                                                             __out void*                            out_result_ptr);
 
 /** Inserts new element at given index of the resizable vector instance. This operation does not support cases where
  *  object is to be inserted at index that exceeds vector's capacity. Such an attempt will result in an assertion 

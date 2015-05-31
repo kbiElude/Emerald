@@ -113,7 +113,13 @@ PUBLIC void collada_data_name_array_get_property(__in  __notnull collada_data_na
     {
         case COLLADA_DATA_NAME_ARRAY_PROPERTY_N_VALUES:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(array_ptr->strings);
+            unsigned int n_strings = 0;
+
+            system_resizable_vector_get_property(array_ptr->strings,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_strings);
+
+            *(uint32_t*) out_result = n_strings;
 
             break;
         }

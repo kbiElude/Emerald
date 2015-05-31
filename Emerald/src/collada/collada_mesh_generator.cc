@@ -1086,8 +1086,12 @@ PUBLIC mesh collada_mesh_generator_create(__in __notnull ogl_context  context,
             if (input_data[n_input_type] != NULL)
             {
                 const _collada_data_input_type input_type  = input_types[n_input_type];
-                const unsigned int             n_streams   = system_resizable_vector_get_amount_of_elements                                     (input_data[n_input_type]->streams);
+                unsigned int                   n_streams   = 0;
                 mesh_layer_data_stream_type    stream_type = _collada_mesh_generator_get_mesh_layer_data_stream_type_for_collada_data_input_type(input_type);
+
+                system_resizable_vector_get_property(input_data[n_input_type]->streams,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_streams);
 
                 for (unsigned int n_set = 0;
                                   n_set < n_streams;

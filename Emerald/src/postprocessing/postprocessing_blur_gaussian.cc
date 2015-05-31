@@ -495,10 +495,14 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
      * In the second run, we allocate an actual buffer and copy the memory blocks
      * from the coeff data buffer we've created earlier.
      */
-    const char*  coeff_vector_data_raw_ptr       = (const char*) system_resizable_vector_get_array(coeff_vector);
+    const char*  coeff_vector_data_raw_ptr       = NULL;
     char*        final_data_bo_raw_ptr           = NULL;
     char*        final_data_bo_raw_traveller_ptr = NULL;
     unsigned int final_data_bo_size              = 0;
+
+    system_resizable_vector_get_property(coeff_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                         &coeff_vector_data_raw_ptr);
 
     instance_ptr->coeff_buffer_offsets = new (std::nothrow) unsigned int [n_tap_datasets];
 

@@ -217,7 +217,9 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
                                           COLLADA_DATA_FLOAT_ARRAY_PROPERTY_N_VALUES,
                                          &output_float_array_n_values);
 
-    interpolation_vector_n_values = system_resizable_vector_get_amount_of_elements(interpolation_vector);
+    system_resizable_vector_get_property(interpolation_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &interpolation_vector_n_values);
 
     ASSERT_DEBUG_SYNC(input_float_array_n_values == output_float_array_n_values,
                       "Input float array defines [%d] values, whereas output float array defines [%d] values",

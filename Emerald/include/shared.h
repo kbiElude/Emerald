@@ -141,7 +141,7 @@
     {                                                                                           \
         system_atomics_increment(&((private_handle_type*)handle)->refcount_counter);            \
     }                                                                                           \
-    PUBLIC EMERALD_API void prefix##_release(public_handle_type& handle)                        \
+    PUBLIC EMERALD_API void prefix##_release(__in public_handle_type& handle)                   \
     {                                                                                           \
         private_handle_type* ptr = (private_handle_type*)handle;                                \
         REFCOUNT_INSERT_IMPLEMENTATION_HELPER                                                   \
