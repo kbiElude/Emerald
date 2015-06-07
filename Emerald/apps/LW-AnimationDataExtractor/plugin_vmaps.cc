@@ -111,7 +111,9 @@ PUBLIC void GetGlobalVMapProperty(__in            _vmap_property property,
     {
         case VMAP_PROPERTY_N_UV_VMAPS:
         {
-            *(unsigned int*) out_result = system_resizable_vector_get_amount_of_elements(uv_maps_vector);
+            system_resizable_vector_get_property(uv_maps_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

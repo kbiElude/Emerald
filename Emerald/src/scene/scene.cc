@@ -271,7 +271,11 @@ PUBLIC EMERALD_API bool scene_add_light(__in __notnull scene       scene_instanc
         if (added_light_type == SCENE_LIGHT_TYPE_AMBIENT)
         {
             scene_light_type current_light_type = SCENE_LIGHT_TYPE_UNKNOWN;
-            const uint32_t   n_lights           = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
+            uint32_t         n_lights           = 0;
+
+            system_resizable_vector_get_property(scene_ptr->lights,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_lights);
 
             for (uint32_t n_light = 0;
                           n_light < n_lights;
@@ -394,7 +398,11 @@ PUBLIC EMERALD_API bool scene_add_mesh_instance(__in __notnull scene            
     bool                      result           = true;
     system_hashed_ansi_string scene_name       = NULL;
     _scene*                   scene_ptr        = (_scene*) scene;
-    const uint32_t            n_mesh_instances = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
+    uint32_t                  n_mesh_instances = 0;
+
+    system_resizable_vector_get_property(scene_ptr->mesh_instances,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mesh_instances);
 
     scene_get_property(scene,
                        SCENE_PROPERTY_NAME,
@@ -542,9 +550,13 @@ PUBLIC EMERALD_API scene_camera scene_get_camera_by_index(__in __notnull scene  
 PUBLIC EMERALD_API scene_camera scene_get_camera_by_name(__in __notnull scene                     scene,
                                                          __in __notnull system_hashed_ansi_string name)
 {
-    _scene*            scene_ptr = (_scene*) scene;
-    const unsigned int n_cameras = system_resizable_vector_get_amount_of_elements(scene_ptr->cameras);
-    scene_camera       result    = NULL;
+    _scene*      scene_ptr = (_scene*) scene;
+    unsigned int n_cameras = 0;
+    scene_camera  result   = NULL;
+
+    system_resizable_vector_get_property(scene_ptr->cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cameras);
 
     LOG_INFO("scene_get_camera_by_name(): slow code-path call");
 
@@ -660,9 +672,13 @@ PUBLIC EMERALD_API scene_light scene_get_light_by_index(__in __notnull scene    
 PUBLIC EMERALD_API scene_light scene_get_light_by_name(__in __notnull scene                     scene,
                                                        __in __notnull system_hashed_ansi_string name)
 {
-    _scene*            scene_ptr = (_scene*) scene;
-    const unsigned int n_lights  = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
-    scene_light        result    = NULL;
+    _scene*      scene_ptr = (_scene*) scene;
+    unsigned int n_lights  = 0;
+    scene_light  result    = NULL;
+
+    system_resizable_vector_get_property(scene_ptr->lights,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_lights);
 
     LOG_INFO("scene_get_light_by_name(): slow code-path call");
 
@@ -732,9 +748,13 @@ PUBLIC EMERALD_API scene_material scene_get_material_by_index(__in __notnull sce
 PUBLIC EMERALD_API scene_material scene_get_material_by_name(__in __notnull scene                     scene,
                                                              __in __notnull system_hashed_ansi_string name)
 {
-    _scene*            scene_ptr   = (_scene*) scene;
-    const unsigned int n_materials = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
-    scene_material     result      = NULL;
+    _scene*        scene_ptr   = (_scene*) scene;
+    unsigned int   n_materials = 0;
+    scene_material result      = NULL;
+
+    system_resizable_vector_get_property(scene_ptr->materials,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_materials);
 
     LOG_INFO("scene_get_material_by_name(): slow code-path call");
 
@@ -776,9 +796,13 @@ PUBLIC EMERALD_API scene_material scene_get_material_by_name(__in __notnull scen
 PUBLIC EMERALD_API scene_mesh scene_get_mesh_instance_by_name(__in __notnull scene                     scene,
                                                               __in __notnull system_hashed_ansi_string name)
 {
-    _scene*            scene_ptr        = (_scene*) scene;
-    const unsigned int n_mesh_instances = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
-    scene_mesh         result           = NULL;
+    _scene*      scene_ptr        = (_scene*) scene;
+    unsigned int n_mesh_instances = 0;
+    scene_mesh   result           = NULL;
+
+    system_resizable_vector_get_property(scene_ptr->mesh_instances,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mesh_instances);
 
     LOG_INFO("scene_get_mesh_instance_by_name(): slow code-path call");
 
@@ -853,35 +877,45 @@ PUBLIC EMERALD_API void scene_get_property(__in  __notnull scene          scene,
 
         case SCENE_PROPERTY_N_CAMERAS:
         {
-            *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->cameras);
+            system_resizable_vector_get_property(scene_ptr->cameras,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
 
         case SCENE_PROPERTY_N_LIGHTS:
         {
-            *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
+            system_resizable_vector_get_property(scene_ptr->lights,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
 
         case SCENE_PROPERTY_N_MATERIALS:
         {
-            *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
+            system_resizable_vector_get_property(scene_ptr->materials,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
 
         case SCENE_PROPERTY_N_MESH_INSTANCES:
         {
-            *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
+            system_resizable_vector_get_property(scene_ptr->mesh_instances,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
 
         case SCENE_PROPERTY_N_UNIQUE_MESHES:
         {
-            *((uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(scene_ptr->unique_meshes);
+            system_resizable_vector_get_property(scene_ptr->unique_meshes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
@@ -929,7 +963,12 @@ PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene 
     /* Todo: OPTIMISE THIS! Use hashed strings! */
     scene_texture result     = NULL;
     _scene*       scene_ptr  = (_scene*) instance;
-    size_t        n_textures = (size_t)  system_resizable_vector_get_amount_of_elements(scene_ptr->textures);
+    size_t        n_textures = 0;
+
+    system_resizable_vector_get_property(scene_ptr->textures,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_textures);
+
 
     for (size_t n_texture = 0;
                  n_texture < n_textures;
@@ -977,9 +1016,13 @@ PUBLIC EMERALD_API scene_texture scene_get_texture_by_name(__in __notnull scene 
 PUBLIC EMERALD_API mesh scene_get_unique_mesh_by_index(__in __notnull scene        scene,
                                                        __in           unsigned int index)
 {
-    _scene*            scene_ptr       = (_scene*) scene;
-    const unsigned int n_unique_meshes = system_resizable_vector_get_amount_of_elements(scene_ptr->unique_meshes);
-    mesh               result          = NULL;
+    _scene*      scene_ptr       = (_scene*) scene;
+    unsigned int n_unique_meshes = 0;
+    mesh         result          = NULL;
+
+    system_resizable_vector_get_property(scene_ptr->unique_meshes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_unique_meshes);
 
     if (n_unique_meshes > index)
     {
@@ -1092,7 +1135,11 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
     system_hash64map unique_meshes_to_id_map      = system_hash64map_create(sizeof(void*) );
 
     /* Retrieve unique meshes that we will need to serialize */
-    const uint32_t n_mesh_instances = system_resizable_vector_get_amount_of_elements(scene_ptr->mesh_instances);
+    uint32_t n_mesh_instances = 0;
+
+    system_resizable_vector_get_property(scene_ptr->mesh_instances,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mesh_instances);
 
     for (unsigned int n_mesh_instance = 0;
                       n_mesh_instance < n_mesh_instances;
@@ -1166,7 +1213,11 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
         /* Iterate through assigned materials and store the ones that we
          * have been unaware of.
          */
-        const unsigned int n_mesh_materials = system_resizable_vector_get_amount_of_elements(mesh_materials);
+        unsigned int n_mesh_materials = 0;
+
+        system_resizable_vector_get_property(mesh_materials,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_mesh_materials);
 
         for (uint32_t n_mesh_material = 0;
                       n_mesh_material < n_mesh_materials;
@@ -1234,11 +1285,24 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
                                                    &scene_ptr->max_animation_duration);
 
     /* Store the number of owned objects */
-    const uint32_t n_cameras   = system_resizable_vector_get_amount_of_elements(scene_ptr->cameras);
-    const uint32_t n_curves    = system_hash64map_get_amount_of_elements       (scene_ptr->curves_map);
-    const uint32_t n_lights    = system_resizable_vector_get_amount_of_elements(scene_ptr->lights);
-    const uint32_t n_materials = system_resizable_vector_get_amount_of_elements(scene_ptr->materials);
-    const uint32_t n_textures  = system_resizable_vector_get_amount_of_elements(scene_ptr->textures);
+    uint32_t n_cameras   = 0;
+    uint32_t n_curves    = system_hash64map_get_amount_of_elements(scene_ptr->curves_map);
+    uint32_t n_lights    = 0;
+    uint32_t n_materials = 0;
+    uint32_t n_textures  = 0;
+
+    system_resizable_vector_get_property(scene_ptr->cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cameras);
+    system_resizable_vector_get_property(scene_ptr->lights,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_lights);
+    system_resizable_vector_get_property(scene_ptr->materials,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_materials);
+    system_resizable_vector_get_property(scene_ptr->textures,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_textures);
 
     system_file_serializer_write(serializer,
                                  sizeof(n_cameras),

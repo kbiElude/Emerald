@@ -203,7 +203,13 @@ PRIVATE void _deinit_system_window(_system_window* descriptor)
                   n < sizeof(callback_vectors) / sizeof(callback_vectors[0]);
                 ++n)
     {
-        while (system_resizable_vector_get_amount_of_elements(callback_vectors[n]) > 0)
+        unsigned int n_callbacks = 0;
+
+        system_resizable_vector_get_property(callback_vectors[n],
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_callbacks);
+
+        while (n_callbacks > 0)
         {
             _callback_descriptor* descriptor_ptr = NULL;
 
@@ -216,6 +222,10 @@ PRIVATE void _deinit_system_window(_system_window* descriptor)
                 system_resizable_vector_delete_element_at(callback_vectors[n],
                                                           0);
             }
+
+            system_resizable_vector_get_property(callback_vectors[n],
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
         }
 
         system_resizable_vector_release(callback_vectors[n]);
@@ -345,7 +355,11 @@ PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnul
     system_event_wait_single(window_ptr->window_safe_to_release_event);
 
     /* Call back the subscribers, if any */
-    uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window_ptr->window_closed_callbacks);
+    uint32_t n_callbacks = 0;
+
+    system_resizable_vector_get_property(window_ptr->window_closed_callbacks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_callbacks);
 
     if (n_callbacks != 0)
     {
@@ -396,7 +410,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_MOUSEMOVE:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->mouse_move_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->mouse_move_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -438,7 +456,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_EXITSIZEMOVE:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->exit_size_move_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->exit_size_move_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -467,7 +489,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_LBUTTONDOWN:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->left_button_down_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->left_button_down_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -504,7 +530,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_LBUTTONUP:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->left_button_up_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->left_button_up_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -541,7 +571,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_LBUTTONDBLCLK:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->left_button_double_click_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->left_button_double_click_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -574,7 +608,9 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
             }
 
             /* WinAPI sucks and is far from reasonable. Most of our apps will expect click notifications and won't watch for double clicks. */
-            n_callbacks = system_resizable_vector_get_amount_of_elements(window->left_button_down_callbacks);
+            system_resizable_vector_get_property(window->left_button_down_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -611,7 +647,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_MBUTTONDOWN:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->middle_button_down_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->middle_button_down_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -648,7 +688,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_MBUTTONUP:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->middle_button_up_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->middle_button_up_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -685,7 +729,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_MBUTTONDBLCLK:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->middle_button_double_click_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->middle_button_double_click_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -722,7 +770,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_RBUTTONDOWN:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->right_button_down_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->right_button_down_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -759,7 +811,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_RBUTTONUP:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->right_button_up_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->right_button_up_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -796,7 +852,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_RBUTTONDBLCLK:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->right_button_double_click_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->right_button_double_click_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -833,7 +893,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_MOUSEWHEEL:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->mouse_wheel_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->mouse_wheel_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -871,7 +935,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_CHAR:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->char_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->char_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -902,7 +970,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_KEYDOWN:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->key_down_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->key_down_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -933,7 +1005,11 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
         case WM_KEYUP:
         {
-            uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(window->key_up_callbacks);
+            uint32_t n_callbacks = 0;
+
+            system_resizable_vector_get_property(window->key_up_callbacks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callbacks);
 
             if (n_callbacks != 0)
             {
@@ -1061,7 +1137,11 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
                                                                        void*       user_arg)
 {
     _system_window* window_ptr  = (_system_window*) user_arg;
-    const uint32_t  n_callbacks = system_resizable_vector_get_amount_of_elements(window_ptr->window_closing_callbacks);
+    uint32_t        n_callbacks = 0;
+
+    system_resizable_vector_get_property(window_ptr->window_closing_callbacks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_callbacks);
 
     ASSERT_DEBUG_SYNC(!window_ptr->is_closing,
                       "Sanity check failed");
@@ -1597,7 +1677,11 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
             {
                 /* Find a fitting place to insert the callback */
                 size_t   insertion_index = -1;
-                uint32_t n_elements      = system_resizable_vector_get_amount_of_elements(callback_container);
+                uint32_t n_elements      = 0;
+
+                system_resizable_vector_get_property(callback_container,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_elements);
 
                 for (uint32_t n_element = 0;
                               n_element < n_elements;
@@ -2130,7 +2214,11 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
 
             if (callbacks_container != NULL)
             {
-                size_t n_callbacks = system_resizable_vector_get_amount_of_elements(callbacks_container);
+                size_t n_callbacks = 0;
+
+                system_resizable_vector_get_property(callbacks_container,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_callbacks);
 
                 for (size_t n_callback = 0;
                             n_callback < n_callbacks;

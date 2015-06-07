@@ -261,9 +261,13 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
     bool                       is_zlib_inited      = false;
     system_file_serializer     out_file_serializer = NULL;
     const _system_file_packer* packer_ptr          = (const _system_file_packer*) packer;
-    uint32_t                   n_files_to_pack     = system_resizable_vector_get_amount_of_elements(packer_ptr->files);
+    uint32_t                   n_files_to_pack     = 0;
     bool                       result              = true;
     z_stream                   zlib_stream;
+
+    system_resizable_vector_get_property(packer_ptr->files,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_files_to_pack);
 
     /* Set up output file serializer */
     out_file_serializer = system_file_serializer_create_for_writing(target_packed_filename);

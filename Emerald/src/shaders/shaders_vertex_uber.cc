@@ -301,8 +301,12 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
                                                                              __in           bool                             is_shadow_caster)
 {
     _shaders_vertex_uber*       uber_ptr = (_shaders_vertex_uber*) uber;
-    const unsigned int          n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    unsigned int                n_items  = 0;
     shaders_vertex_uber_item_id result   = -1;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     switch (light)
     {
@@ -631,7 +635,13 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shaders_vertex_uber shader)
 {
-    return system_resizable_vector_get_amount_of_elements(((_shaders_vertex_uber*)shader)->added_items);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(((_shaders_vertex_uber*)shader)->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
+
+    return result;
 }
 
 /** Please see header for specification */

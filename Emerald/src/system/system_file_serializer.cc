@@ -896,17 +896,14 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                 /* All right - we're safe to release the resizable vector now */
                 if (nodes != NULL)
                 {
-                    while (system_resizable_vector_get_amount_of_elements(nodes) > 0)
+                    while (true)
                     {
                         _node_descriptor* node = NULL;
 
                         if (!system_resizable_vector_pop(nodes,
                                                         &node) )
                         {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Could not pop node descriptor off nodes vector.");
-
-                            goto end;
+                            break;
                         }
 
                         delete node;

@@ -386,7 +386,9 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     }
 
     /* Store it */
-    item_id = system_resizable_vector_get_amount_of_elements(renderer_ptr->items);
+    system_resizable_vector_get_property(renderer_ptr->items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &item_id);
 
     system_resizable_vector_push(renderer_ptr->items,
                                  item_ptr);

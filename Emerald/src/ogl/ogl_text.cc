@@ -322,8 +322,12 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
                             &context_type);
 
     /* Prepare UV data to be uploaded to VRAM */
-    uint32_t n_text_strings     = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
+    uint32_t n_text_strings     = 0;
     uint32_t summed_text_length = 0;
+
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_text_strings);
 
     for (size_t n_text_string = 0;
                 n_text_string < n_text_strings;
@@ -843,7 +847,11 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
     ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
     GLuint           program_id   = ogl_program_get_id(_global.draw_text_program);
     _ogl_text*       text_ptr     = (_ogl_text*) text;
-    uint32_t         n_strings    = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
+    uint32_t         n_strings    = 0;
+
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_strings);
 
     system_critical_section_enter(text_ptr->draw_cs);
     {
@@ -1046,7 +1054,9 @@ PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(__in __notnull ogl_tex
         text_string_ptr->visible              = true;
         text_ptr->dirty                       = true;
 
-        result = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
+        system_resizable_vector_get_property(text_ptr->strings,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result);
 
         system_critical_section_enter(text_ptr->draw_cs);
         {
@@ -1281,7 +1291,13 @@ PUBLIC EMERALD_API const unsigned char* ogl_text_get(__in __notnull ogl_text    
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(__in __notnull ogl_text instance)
 {
-    return system_resizable_vector_get_amount_of_elements(((_ogl_text*) instance)->strings);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(((_ogl_text*) instance)->strings,
+                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                         &result);
+
+    return result;
 }
 
 /** Please see header for specification */

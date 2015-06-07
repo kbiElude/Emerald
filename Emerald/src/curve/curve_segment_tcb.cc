@@ -670,6 +670,10 @@ PUBLIC bool curve_segment_tcb_deinit(__in __notnull __post_invalid curve_segment
             system_resizable_vector_delete_element_at(segment_data_ptr->nodes,
                                                       0);
         }
+        else
+        {
+            break;
+        }
     }
 
     system_resizable_vector_release(segment_data_ptr->nodes);

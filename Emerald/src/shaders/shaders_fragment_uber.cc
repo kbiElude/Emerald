@@ -657,7 +657,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_input
                                                                                                        __in_opt           void*                                      user_arg)
 {
     _shaders_fragment_uber* uber_ptr = (_shaders_fragment_uber*) uber;
-    const unsigned int      n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    unsigned int            n_items  = 0;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     /* Spawn an attribute item descriptor */
     _shaders_fragment_uber_item* new_item_ptr = new (std::nothrow) _shaders_fragment_uber_item;
@@ -783,7 +787,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
                                                                                  __in_opt                              void*                                    user_arg)
 {
     _shaders_fragment_uber* uber_ptr = (_shaders_fragment_uber*) uber;
-    const unsigned int      n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    unsigned int            n_items  = 0;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     /* Spawn a light item descriptor */
     _shaders_fragment_uber_item*       new_item_ptr            = new (std::nothrow) _shaders_fragment_uber_item;
@@ -1489,7 +1497,13 @@ PUBLIC EMERALD_API bool shaders_fragment_uber_get_light_item_properties(__in __n
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t shaders_fragment_uber_get_n_items(__in __notnull shaders_fragment_uber shader)
 {
-    return system_resizable_vector_get_amount_of_elements(((_shaders_fragment_uber*)shader)->added_items);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(((_shaders_fragment_uber*)shader)->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
+
+    return result;
 }
 
 /** Please see header for specification */

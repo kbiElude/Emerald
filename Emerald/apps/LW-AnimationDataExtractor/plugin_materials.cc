@@ -321,7 +321,11 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
      * To leverage the architecture, we also create a scene texture for each file name we came up
      * with while preparing materials for the scene.
      */
-    const uint32_t n_texture_filenames = system_resizable_vector_get_amount_of_elements(texture_filenames_vector);
+    uint32_t n_texture_filenames = 0;
+
+    system_resizable_vector_get_property(texture_filenames_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_texture_filenames);
 
     for (uint32_t n_texture_filename = 0;
                   n_texture_filename < n_texture_filenames;

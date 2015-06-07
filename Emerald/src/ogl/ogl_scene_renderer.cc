@@ -472,7 +472,9 @@ PRIVATE void _ogl_scene_renderer_process_mesh_for_forward_rendering(__notnull sc
                             SCENE_MESH_PROPERTY_ID,
                             &mesh_id);
 
-    n_mesh_materials = system_resizable_vector_get_amount_of_elements(mesh_materials);
+    system_resizable_vector_get_property(mesh_materials,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mesh_materials);
 
     /* Perform frustum culling to make sure it actually makes sense to render
      * this mesh.
@@ -1086,7 +1088,11 @@ PUBLIC EMERALD_API void ogl_scene_renderer_bake_gpu_assets(__in __notnull ogl_sc
                           "Could not retrieve material vector for current mesh instance");
 
         /* Iterate over all materials defined for the current mesh */
-        unsigned int n_mesh_materials = system_resizable_vector_get_amount_of_elements(current_mesh_materials);
+        unsigned int n_mesh_materials = 0;
+
+        system_resizable_vector_get_property(current_mesh_materials,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_mesh_materials);
 
         ASSERT_DEBUG_SYNC(n_mesh_materials > 0,
                           "No mesh_material instances assigned ot a mesh!");
@@ -1213,7 +1219,9 @@ PUBLIC EMERALD_API ogl_scene_renderer ogl_scene_renderer_create(__in __notnull o
             ASSERT_DEBUG_SYNC(current_mesh_materials != NULL,
                               "Could not retrieve unique mesh materials.");
 
-            n_current_mesh_materials = system_resizable_vector_get_amount_of_elements(current_mesh_materials);
+            system_resizable_vector_get_property(current_mesh_materials,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_current_mesh_materials);
 
             for (uint32_t n_current_mesh_material = 0;
                           n_current_mesh_material < n_current_mesh_materials;
@@ -1876,7 +1884,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                       "No ogl_uber instance available!");
 
                     material_uber     = (ogl_uber) material_hash;
-                    n_iteration_items = system_resizable_vector_get_amount_of_elements(uber_details_ptr->meshes);
+                    n_iteration_items = 0;
+
+                    system_resizable_vector_get_property(uber_details_ptr->meshes,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_iteration_items);
 
                     _ogl_scene_renderer_update_ogl_uber_light_properties(material_uber,
                                                                          renderer_ptr->scene,
@@ -1937,7 +1949,9 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                 continue;
                             }
 
-                            n_meshes = system_resizable_vector_get_amount_of_elements(uber_item_ptr->meshes);
+                            system_resizable_vector_get_property(uber_item_ptr->meshes,
+                                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                                &n_meshes);
 
                             for (uint32_t n_mesh = 0;
                                           n_mesh < n_meshes;

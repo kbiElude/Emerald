@@ -178,7 +178,11 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
     } /* while (currentKey != NULL) */
 
     /* Now that we know all the keys, we can proceed with curve_container instantiation */
-    const uint32_t n_keys = system_resizable_vector_get_amount_of_elements(keys);
+    uint32_t n_keys = 0;
+
+    system_resizable_vector_get_property(keys,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_keys);
 
     if (n_keys == 1)
     {

@@ -289,17 +289,6 @@ PUBLIC EMERALD_API size_t system_resizable_vector_find(__in system_resizable_vec
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API unsigned int system_resizable_vector_get_amount_of_elements(__in system_resizable_vector resizable_vector)
-{
-    unsigned int              result     = 0;
-    _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
-
-    
-
-    return result;
-}
-
-/** Please see header for specification */
 PUBLIC EMERALD_API void system_resizable_vector_get_property(__in  system_resizable_vector          resizable_vector,
                                                                    system_resizable_vector_property property,
                                                              __out void*                            out_result_ptr)
@@ -370,9 +359,6 @@ PUBLIC EMERALD_API bool system_resizable_vector_get_element_at(__in            s
         system_read_write_mutex_unlock(vector_ptr->access_mutex,
                                        ACCESS_READ);
     }
-
-    ASSERT_DEBUG_SYNC(bool_result,
-                      "Could not retrieve requested vector element");
 
     return bool_result;
 }
@@ -740,7 +726,8 @@ PRIVATE void _system_resizable_vector_sort_recursive(__in __notnull system_resiz
 PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resizable_vector resizable_vector,
                                                                     int                   (*comparator_func_ptr)(void*, void*) )
 {
-    _system_resizable_vector* vector_ptr = (_system_resizable_vector*) resizable_vector;
+    uint32_t                  n_vector_items = 0;
+    _system_resizable_vector* vector_ptr     = (_system_resizable_vector*) resizable_vector;
 
     if (vector_ptr->access_mutex != NULL)
     {
@@ -748,10 +735,14 @@ PUBLIC EMERALD_API void system_resizable_vector_sort(__in __notnull system_resiz
                                      ACCESS_WRITE);
     }
 
+    system_resizable_vector_get_property(resizable_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_vector_items);
+
     _system_resizable_vector_sort_recursive(resizable_vector,
                                             comparator_func_ptr,
                                             0,
-                                            system_resizable_vector_get_amount_of_elements(resizable_vector) - 1);
+                                            n_vector_items - 1);
 
     if (vector_ptr->access_mutex != NULL)
     {

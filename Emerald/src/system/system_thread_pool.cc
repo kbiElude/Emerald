@@ -191,7 +191,11 @@ inline void _system_thread_pool_worker_execute_task(__notnull _system_thread_poo
 inline void _system_thread_pool_worker_execute_task_group(__notnull _system_thread_pool_task_group_descriptor* task_group_descriptor)
 {
     system_resizable_vector& tasks_vector = task_group_descriptor->tasks;
-    unsigned int             n_tasks      = system_resizable_vector_get_amount_of_elements(tasks_vector);
+    unsigned int             n_tasks      = 0;
+
+    system_resizable_vector_get_property(tasks_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_tasks);
 
     if (task_group_descriptor->is_distributable)
     {
@@ -214,7 +218,13 @@ inline void _system_thread_pool_worker_execute_task_group(__notnull _system_thre
             {
                 if (result_get)
                 {
-                    ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(task_group_descriptor->tasks) == 0,
+                    unsigned int n_tasks = 0;
+
+                    system_resizable_vector_get_property(task_group_descriptor->tasks,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_tasks);
+
+                    ASSERT_DEBUG_SYNC(n_tasks == 0,
                                       "Null task descriptor reported even though there are more tasks available!");
                 }
 
@@ -478,7 +488,13 @@ PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_c
 
         if (result->tasks != NULL)
         {
-            ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(result->tasks) == 0,
+            unsigned int n_tasks = 0;
+
+            system_resizable_vector_get_property(result->tasks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_tasks);
+
+            ASSERT_DEBUG_SYNC(n_tasks == 0,
                               "Task group descriptor already cotnains task(s)!");
         }
 

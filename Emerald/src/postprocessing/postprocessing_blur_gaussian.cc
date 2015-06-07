@@ -371,7 +371,13 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         const float padding = 0.0f;
 
         /* Store the offset for this dataset */
-        misaligned_coeff_buffer_offsets[n_taps - instance_ptr->n_min_taps] = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float);
+        uint32_t n_coeff_vector_items = 0;
+
+        system_resizable_vector_get_property(coeff_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_coeff_vector_items);
+
+        misaligned_coeff_buffer_offsets[n_taps - instance_ptr->n_min_taps] = n_coeff_vector_items * sizeof(float);
 
         /* Precalc the binomial values */
         const unsigned int binomial_n        = n_taps + 3;
@@ -551,7 +557,13 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
             } /* if (n_tap_dataset == (n_tap_datasets - 1)) */
             else
             {
-                misaligned_dataset_size = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float) -
+                uint32_t n_coeff_vector_items = 0;
+
+                system_resizable_vector_get_property(coeff_vector,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_coeff_vector_items);
+
+                misaligned_dataset_size = n_coeff_vector_items                           * sizeof(float) -
                                           misaligned_coeff_buffer_offsets[n_tap_dataset];
             }
 

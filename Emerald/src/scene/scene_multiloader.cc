@@ -269,7 +269,13 @@ _scene_multiloader::~_scene_multiloader()
 
     if (enqueued_gfx_image_load_ops != NULL)
     {
-        ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(enqueued_gfx_image_load_ops) == 0,
+        unsigned int n_ops = 0;
+
+        system_resizable_vector_get_property(enqueued_gfx_image_load_ops,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_ops);
+
+        ASSERT_DEBUG_SYNC(n_ops == 0,
                           "Multiloader being released while there are still gfx image load ops enqueued.");
 
         system_resizable_vector_release(enqueued_gfx_image_load_ops);
@@ -353,12 +359,17 @@ PRIVATE  void _scene_multiloader_load_scene_thread_entrypoint                   
 /** TODO */
 PRIVATE void _scene_multiloader_load_scene_internal_create_gfx_images_loaded_barrier(__in __notnull void* arg)
 {
-    _scene_multiloader* loader_ptr = (_scene_multiloader*) arg;
+    _scene_multiloader* loader_ptr           = (_scene_multiloader*) arg;
+    unsigned int        n_enqueued_filenames = 0;
 
     ASSERT_DEBUG_SYNC(loader_ptr->barrier_all_scene_gfx_images_loaded == NULL,
                       "'gfx images' barrier already created!");
 
-    loader_ptr->barrier_all_scene_gfx_images_loaded = system_barrier_create(system_resizable_vector_get_amount_of_elements(loader_ptr->enqueued_image_file_names_vector) );
+    system_resizable_vector_get_property(loader_ptr->enqueued_image_file_names_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_enqueued_filenames);
+
+    loader_ptr->barrier_all_scene_gfx_images_loaded = system_barrier_create(n_enqueued_filenames);
 }
 
 /** TODO */
@@ -1451,7 +1462,11 @@ PRIVATE void _scene_multiloader_load_scene_thread_entrypoint(system_threads_entr
      *       loaded at once, than there were threads hosted by the thread pool.
      */
     _scene_multiloader_scene* scene_ptr = (_scene_multiloader_scene*) arg;
-    const unsigned int        n_scenes  = system_resizable_vector_get_amount_of_elements(scene_ptr->loader_ptr->scenes);
+    unsigned int              n_scenes  = 0;
+
+    system_resizable_vector_get_property(scene_ptr->loader_ptr->scenes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_scenes);
 
     /* Load the scene */
     scene_ptr->loader_ptr->state = SCENE_MULTILOADER_STATE_LOADING_IN_PROGRESS;
@@ -1566,7 +1581,11 @@ PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(__in  __notnull scene
                       "Out argument is NULL");
 
     /* Retrieve the requested scene */
-    const unsigned int n_scenes  = system_resizable_vector_get_amount_of_elements(loader_ptr->scenes);
+    unsigned int n_scenes = 0;
+
+    system_resizable_vector_get_property(loader_ptr->scenes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_scenes);
 
     ASSERT_DEBUG_SYNC(n_scene < n_scenes,
                       "Invalid scene index requested");
@@ -1605,7 +1624,11 @@ PUBLIC EMERALD_API void scene_multiloader_load_async(__in __notnull scene_multil
      * NOTE: This will break in non-deterministic way if any of the scene assets are shared between scenes!
      *       The implementation will shortly be changed to make the multiloader work for such cases as well.
      */
-    const unsigned int n_scenes = system_resizable_vector_get_amount_of_elements(instance_ptr->scenes);
+    unsigned int n_scenes = 0;
+
+    system_resizable_vector_get_property(instance_ptr->scenes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_scenes);
 
     for (unsigned int n_scene = 0;
                       n_scene < n_scenes;

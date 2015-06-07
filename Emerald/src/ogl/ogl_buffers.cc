@@ -541,7 +541,11 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
         mappability                        == OGL_BUFFERS_MAPPABILITY_NONE)
     {
         /* Try to find a suitable sparse buffer */
-        const unsigned int n_sparse_buffers = system_resizable_vector_get_amount_of_elements(buffers_ptr->sparse_buffers);
+        unsigned int n_sparse_buffers = 0;
+
+        system_resizable_vector_get_property(buffers_ptr->sparse_buffers,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_sparse_buffers);
 
         for (unsigned int n_sparse_buffer = 0;
                           n_sparse_buffer < n_sparse_buffers && !result;
@@ -617,7 +621,11 @@ PUBLIC EMERALD_API bool ogl_buffers_allocate_buffer_memory(__in  __notnull ogl_b
         ASSERT_DEBUG_SYNC(usage < OGL_BUFFERS_USAGE_COUNT,
                           "Invalid usage enum supplied.");
 
-        const unsigned int n_nonsparse_buffers = system_resizable_vector_get_amount_of_elements(buffers_ptr->nonsparse_buffers[usage]);
+        unsigned int n_nonsparse_buffers = 0;
+
+        system_resizable_vector_get_property(buffers_ptr->nonsparse_buffers[usage],
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_nonsparse_buffers);
 
         for (unsigned int n_nonsparse_buffer = 0;
                           n_nonsparse_buffer < n_nonsparse_buffers && !result;

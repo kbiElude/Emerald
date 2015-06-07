@@ -179,7 +179,11 @@ PUBLIC void _system_threads_deinit()
         {
             LOG_INFO("Waiting for all threads to quit..");
 
-            unsigned int n_threads = system_resizable_vector_get_amount_of_elements(active_threads_vector);
+            unsigned int n_threads = 0;
+
+            system_resizable_vector_get_property(active_threads_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_threads);
 
             if (n_threads > 0)
             {

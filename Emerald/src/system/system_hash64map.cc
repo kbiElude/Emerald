@@ -198,7 +198,11 @@ PUBLIC EMERALD_API bool system_hash64map_contains(__in system_hash64map hash_map
     bool                    result            = false;
     uint32_t                hash_index        = hash % descriptor->n_bins;
     system_resizable_vector bin               = descriptor->bins[hash_index];
-    uint32_t                n_vector_elements = system_resizable_vector_get_amount_of_elements(bin);
+    uint32_t                n_vector_elements = 0;
+
+    system_resizable_vector_get_property(bin,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_vector_elements);
 
     for (uint32_t n_element = 0;
                   n_element < n_vector_elements;
@@ -247,7 +251,11 @@ PUBLIC EMERALD_API bool system_hash64map_get(__in      system_hash64map map,
     bool                    result            = false;
     uint32_t                hash_index        = hash % descriptor->n_bins;
     system_resizable_vector bin               = descriptor->bins[hash_index];
-    uint32_t                n_vector_elements = system_resizable_vector_get_amount_of_elements(bin);
+    uint32_t                n_vector_elements = 0;
+
+    system_resizable_vector_get_property(bin,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_vector_elements);
 
     for (uint32_t n_element = 0;
                   n_element < n_vector_elements;
@@ -300,7 +308,12 @@ PUBLIC EMERALD_API size_t system_hash64map_get_amount_of_elements(__in system_ha
                   n_bin < descriptor->n_bins;
                 ++n_bin)
     {
-        result += system_resizable_vector_get_amount_of_elements(descriptor->bins[n_bin]);
+        unsigned int temp = 0;
+
+        system_resizable_vector_get_property(descriptor->bins[n_bin],
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &temp);
+        result += temp;
     }
 
     if (descriptor->access_mutex != NULL)
@@ -333,7 +346,11 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in      system_hash64m
                   n_bin < descriptor->n_bins;
                 ++n_bin)
     {
-        uint32_t n_elements_in_bin = system_resizable_vector_get_amount_of_elements(descriptor->bins[n_bin]);
+        uint32_t n_elements_in_bin = 0;
+
+        system_resizable_vector_get_property(descriptor->bins[n_bin],
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_elements_in_bin);
 
         if (n_elements_counted + n_elements_in_bin > n_element)
         {
@@ -529,7 +546,11 @@ PUBLIC EMERALD_API bool system_hash64map_remove(__in system_hash64map map,
     bool                    result            = false;
     uint32_t                hash_index        = hash % descriptor->n_bins;
     system_resizable_vector bin               = descriptor->bins[hash_index];
-    uint32_t                n_vector_elements = system_resizable_vector_get_amount_of_elements(bin);
+    uint32_t                n_vector_elements = 0;
+
+    system_resizable_vector_get_property(bin,
+                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                         &n_vector_elements);
 
     for (uint32_t n_element = 0;
                   n_element < n_vector_elements;

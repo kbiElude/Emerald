@@ -857,7 +857,10 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
     }
 
     new_item_ptr->type = OGL_UBER_ITEM_INPUT_FRAGMENT_ATTRIBUTE;
-    result             = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     /* Add the descriptor to the added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -979,7 +982,10 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
     new_item_ptr->is_shadow_caster = is_shadow_caster;
     new_item_ptr->type             = OGL_UBER_ITEM_LIGHT;
     new_item_ptr->vs_item_id       = vs_item_id;
-    result                         = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     /* Add the descriptor to the added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -1100,7 +1106,9 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull con
             ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
                               "OGL_UBER_GENERAL_PROPERTY_N_ITEMS query is only supported for regular ogl_uber instances.");
 
-            *( (uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+            system_resizable_vector_get_property(uber_ptr->added_items,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
@@ -1564,7 +1572,11 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Create internal representation of uber shader items */
-    const unsigned int n_items = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    unsigned int n_items = 0;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     for (unsigned int n_item = 0;
                       n_item < n_items;
@@ -2350,7 +2362,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     }
 
     /* Set up UB contents & texture samplers */
-    const unsigned int n_items = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    unsigned int n_items = 0;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     for (unsigned int n_item = 0;
                       n_item < n_items;

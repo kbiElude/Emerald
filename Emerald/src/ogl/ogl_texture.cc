@@ -798,8 +798,12 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_text
                                                         __out __notnull void*                       out_result)
 {
     _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
-    unsigned int  n_mipmaps_allocated = system_resizable_vector_get_amount_of_elements(texture_ptr->mipmaps);
+    unsigned int  n_mipmaps_allocated = 0;
     bool          result              = false;
+
+    system_resizable_vector_get_property(texture_ptr->mipmaps,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mipmaps_allocated);
 
     /* Retrieve mipmap container for requested index */
     _ogl_texture_mipmap* mipmap_ptr = NULL;
@@ -933,8 +937,12 @@ PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_textu
 
         case OGL_TEXTURE_PROPERTY_N_MIPMAPS:
         {
-            unsigned int       n_defined_mipmaps = 0;
-            const unsigned int n_mipmaps         = system_resizable_vector_get_amount_of_elements(texture_ptr->mipmaps);
+            unsigned int n_defined_mipmaps = 0;
+            unsigned int n_mipmaps         = 0;
+
+            system_resizable_vector_get_property(texture_ptr->mipmaps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_mipmaps);
 
             for (unsigned int n_mipmap = 0;
                               n_mipmap < n_mipmaps;
@@ -997,7 +1005,11 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_textu
                                                         __in           void*                       value_ptr)
 {
     _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
-    unsigned int  n_mipmaps_allocated = system_resizable_vector_get_amount_of_elements(texture_ptr->mipmaps);
+    unsigned int  n_mipmaps_allocated = 0;
+
+    system_resizable_vector_get_property(texture_ptr->mipmaps,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mipmaps_allocated);
 
     if (n_mipmaps_allocated <= n_mipmap)
     {

@@ -349,8 +349,12 @@ PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(__in  __notnull _ogl_ui_dropd
                                                    __in            bool              offset_by_slider_dy,
                                                    __out __notnull float*            out_highlighted_v1v2)
 {
-    const unsigned int n_entries = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
-          float        slider_height_ss;
+    unsigned int n_entries = 0;
+    float        slider_height_ss;
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
 
     if (dropdown_ptr->slider_height < 1.0f)
     {
@@ -383,7 +387,12 @@ PRIVATE void _ogl_ui_dropdown_get_highlighted_v1v2(__in  __notnull _ogl_ui_dropd
 PRIVATE void _ogl_ui_dropdown_get_selected_v1v2(__in  __notnull _ogl_ui_dropdown* dropdown_ptr,
                                                 __out __notnull float*            out_selected_v1v2)
 {
-    const unsigned int n_entries          = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
+    unsigned int n_entries = 0;
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
+
     const float        slider_height_ss   =  (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
     const float        slider_dy          = -(dropdown_ptr->slider_delta_y + dropdown_ptr->slider_delta_y_base) / slider_height_ss;
     float              entries_skipped_ss = slider_dy * float(n_entries - MAX_N_ENTRIES_VISIBLE - 1);
@@ -874,9 +883,13 @@ PRIVATE void _ogl_ui_dropdown_init_renderer_callback(ogl_context context, void* 
 /* TODO */
 PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_dropdown* dropdown_ptr)
 {
-    system_window  context_window = NULL;
-    const uint32_t n_entries      = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
-    int            window_size[2] = {0};
+    system_window context_window = NULL;
+    uint32_t      n_entries      = 0;
+    int           window_size[2] = {0};
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
 
     ogl_context_get_property  (dropdown_ptr->context,
                                OGL_CONTEXT_PROPERTY_WINDOW,
@@ -917,7 +930,12 @@ PRIVATE void _ogl_ui_dropdown_update_entry_positions(__in __notnull _ogl_ui_drop
 PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdown* dropdown_ptr,
                                                    __in           bool              only_update_selected_entry)
 {
-    const unsigned int n_strings      = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
+    unsigned int n_strings = 0;
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_strings);
+
     system_window      window         = NULL;
     int                window_size[2] = {0};
     const float        x1y1[2]        =
@@ -1028,7 +1046,11 @@ PRIVATE void _ogl_ui_dropdown_update_entry_strings(__in __notnull _ogl_ui_dropdo
 /** TODO */
 PRIVATE void _ogl_ui_dropdown_update_entry_visibility(__in __notnull _ogl_ui_dropdown* dropdown_ptr)
 {
-    const unsigned int n_entries  = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
+    unsigned int n_entries = 0;
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
 
     ogl_text_set_text_string_property(dropdown_ptr->text_renderer,
                                       dropdown_ptr->current_entry_string_id,
@@ -1096,9 +1118,14 @@ PRIVATE void _ogl_ui_dropdown_update_position(__in           __notnull _ogl_ui_d
 
     /* Retrieve maximum width & height needed to render the text strings.
      * We will use this data to compute x2y2 */
-    const unsigned int n_strings       = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries) - 1;
-    unsigned int       text_max_height = 0;
-    unsigned int       text_max_width  = 0;
+    unsigned int n_strings       = 0;
+    unsigned int text_max_height = 0;
+    unsigned int text_max_width  = 0;
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_strings);
+    n_strings--;
 
     for (unsigned int n_entry = 0;
                       n_entry < n_strings;
@@ -1354,7 +1381,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
     GLuint   program_label_bg_id  = ogl_program_get_id(dropdown_ptr->program_label_bg);
     GLuint   program_separator_id = ogl_program_get_id(dropdown_ptr->program_separator);
     GLuint   program_slider_id    = ogl_program_get_id(dropdown_ptr->program_slider);
-    uint32_t n_entries            = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
+    uint32_t n_entries            = 0;
+
+    system_resizable_vector_get_property(dropdown_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
 
     _ogl_ui_dropdown_get_highlighted_v1v2(dropdown_ptr, false, highlighted_v1v2);
     _ogl_ui_dropdown_get_selected_v1v2   (dropdown_ptr,        selected_v1v2);
@@ -1443,8 +1474,12 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_dropdown_draw(void* internal_instance)
                                          dropdown_ptr->program_separator_ub_vs_bo_start_offset,
                                          dropdown_ptr->program_separator_ub_vs_bo_size);
 
-        const unsigned int n_separators     = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
-        const float        slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
+        unsigned int n_separators     = 0;
+        const float  slider_height_ss = (dropdown_ptr->drop_x1y2x2y1[1] - dropdown_ptr->drop_x1y2x2y1[3]) * (1.0f - dropdown_ptr->slider_height);
+
+        system_resizable_vector_get_property(dropdown_ptr->entries,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_separators);
 
         for (unsigned int n_entry = 0;
                           n_entry < n_entries;
@@ -2016,9 +2051,13 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
             inversed_y >= dropdown_ptr->drop_x1y2x2y1[3] && inversed_y <= dropdown_ptr->drop_x1y2x2y1[1] &&
             dropdown_ptr->is_droparea_lbm)
         {
-            unsigned int n_entries        = system_resizable_vector_get_amount_of_elements(dropdown_ptr->entries);
+            unsigned int n_entries        = 0;
             unsigned int n_selected_entry = 0;
             float        highlighted_v1v2[2];
+
+            system_resizable_vector_get_property(dropdown_ptr->entries,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_entries);
 
             _ogl_ui_dropdown_get_highlighted_v1v2(dropdown_ptr,
                                                   true,

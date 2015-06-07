@@ -72,11 +72,16 @@ typedef struct _ogl_context_samplers_create_renderer_callback_user_arg
 PRIVATE system_hashed_ansi_string _ogl_sampler_get_new_sampler_name(__in __notnull ogl_context_samplers samplers)
 {
     std::stringstream         name_sstream;
+    unsigned int              n_samplers  = 0;
     system_hashed_ansi_string result       = NULL;
     _ogl_context_samplers*    samplers_ptr = (_ogl_context_samplers*) samplers;
 
+    system_resizable_vector_get_property(samplers_ptr->samplers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_samplers);
+
     name_sstream << "Sampler "
-                 << system_resizable_vector_get_amount_of_elements(samplers_ptr->samplers);
+                 << n_samplers;
 
     result = system_hashed_ansi_string_create(name_sstream.str().c_str() );
 
@@ -206,10 +211,14 @@ PUBLIC EMERALD_API ogl_sampler ogl_context_samplers_get_sampler(__in            
                                                                 __in_opt                     const GLenum*        wrap_t_ptr)
 {
     const _ogl_context_samplers* samplers_ptr = (const _ogl_context_samplers*) samplers;
-    const uint32_t               n_samplers   = system_resizable_vector_get_amount_of_elements(samplers_ptr->samplers);
+    uint32_t                     n_samplers   = 0;
     ogl_sampler                  result       = NULL;
 
     LOG_INFO("Performance warning: slow code-path call: ogl_samplers_get_sampler()");
+
+    system_resizable_vector_get_property(samplers_ptr->samplers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_samplers);
 
     for (uint32_t n_sampler = 0;
                   n_sampler < n_samplers;

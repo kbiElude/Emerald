@@ -2859,7 +2859,11 @@ PUBLIC void ogl_shadow_mapping_render_shadow_map_meshes(__in __notnull ogl_shado
                                          vp);
 
     /* Kick off the rendering */
-    const uint32_t n_meshes = system_resizable_vector_get_amount_of_elements(shadow_mapping_ptr->meshes_to_render);
+    uint32_t n_meshes = 0;
+
+    system_resizable_vector_get_property(shadow_mapping_ptr->meshes_to_render,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_meshes);
 
     ogl_uber_rendering_start(sm_material_uber);
     {

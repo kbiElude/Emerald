@@ -119,7 +119,7 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(__in __notnull _ogl_pipeline* pipelin
         ogl_context_release(pipeline_ptr->context);
     } /* if (pipeline_ptr->context != NULL) */
 
-    while (system_resizable_vector_get_amount_of_elements(pipeline_ptr->stages) )
+    while (true)
     {
         _ogl_pipeline_stage* stage_ptr = NULL;
 
@@ -131,7 +131,11 @@ PRIVATE void _ogl_pipeline_deinit_pipeline(__in __notnull _ogl_pipeline* pipelin
             delete stage_ptr;
             stage_ptr = NULL;
         } /* if (system_resizable_vector_pop(pipeline_ptr->stages, &stage_ptr) ) */
-    } /* while (system_resizable_vector_get_amount_of_elements(pipeline_ptr->stages) ) */
+        else
+        {
+            break;
+        }
+    } /* while (true) */
 
     if (pipeline_ptr->ui != NULL)
     {
@@ -357,7 +361,11 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(__in __notnull ogl_pipel
                                                    pipeline_ptr->context);
 
             /* Assign text string ID we will use to print the execution time */
-            uint32_t n_pipeline_stages = system_resizable_vector_get_amount_of_elements(pipeline_stage_ptr->steps);
+            uint32_t n_pipeline_stages = 0;
+
+            system_resizable_vector_get_property(pipeline_stage_ptr->steps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_pipeline_stages);
 
             ogl_text_string_id new_text_string_id  = ogl_text_add_string(pipeline_ptr->text_renderer);
             ogl_text_string_id new_time_string_id  = ogl_text_add_string(pipeline_ptr->text_renderer);
@@ -485,7 +493,9 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage(__in __notnull ogl_pipeline i
         }
 
         /* Retrieve new stage id */
-        result_stage_id = system_resizable_vector_get_amount_of_elements(pipeline_ptr->stages);
+        system_resizable_vector_get_property(pipeline_ptr->stages,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result_stage_id);
 
         /* Insert new descriptor */
         system_resizable_vector_insert_element_at(pipeline_ptr->stages,
@@ -553,7 +563,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
                                                n_stage,
                                               &pipeline_stage_ptr))
     {
-        uint32_t n_steps = system_resizable_vector_get_amount_of_elements(pipeline_stage_ptr->steps);
+        uint32_t n_steps = 0;
+
+        system_resizable_vector_get_property(pipeline_stage_ptr->steps,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_steps);
 
         /* If the flyby is activated for the context the pipeline owns, update it now */
         bool is_flyby_active = false;

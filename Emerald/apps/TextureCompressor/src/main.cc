@@ -1299,8 +1299,14 @@ void _setup_ui(ogl_context context)
     _setup_compression_algorithms(context);
 
     /* Convert the vector data to C arrays needed for ogl_ui_add_dropdown() call */
-    unsigned int               n_compressed_internalformats = system_resizable_vector_get_amount_of_elements(_compression_algorithms);
-    system_hashed_ansi_string* compressed_internalformats   = new system_hashed_ansi_string[n_compressed_internalformats];
+    system_hashed_ansi_string* compressed_internalformats   = NULL;
+    unsigned int               n_compressed_internalformats = 0;
+
+    system_resizable_vector_get_property(_compression_algorithms,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_compressed_internalformats);
+
+    compressed_internalformats = new system_hashed_ansi_string[n_compressed_internalformats];
 
     for (unsigned int n_algorithm = 0;
                       n_algorithm < n_compressed_internalformats;
