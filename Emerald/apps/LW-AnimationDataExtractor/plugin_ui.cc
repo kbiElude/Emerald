@@ -139,7 +139,9 @@ PUBLIC void SetActivityDescription(__in __notnull char* text)
                                   (system_hash64) caller_thread_id,
                                  &core_index) )
         {
-            core_index = system_hash64map_get_amount_of_elements(thread_id_to_cpu_core_index_map);
+            system_hash64map_get_property(thread_id_to_cpu_core_index_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &core_index);
 
             ASSERT_DEBUG_SYNC(core_index < n_cpu_cores,
                               "Invalid CPU core index about to be used");

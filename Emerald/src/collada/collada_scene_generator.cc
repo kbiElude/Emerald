@@ -519,7 +519,11 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
     } /* for (all COLLADA images) */
 
     /* Process all workloads */
-    const unsigned int n_workloads = system_hash64map_get_amount_of_elements(workloads_map);
+    unsigned int n_workloads = 0;
+    
+    system_hash64map_get_property(workloads_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_workloads);
 
     if (n_workloads > 0)
     {

@@ -446,7 +446,11 @@ PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene)
                       "Envelope ID->curve container map is NULL");
 
     /* Iterate over all hash-map items */
-    const uint32_t n_entries = system_hash64map_get_amount_of_elements(envelope_id_to_curve_container_map);
+    uint32_t n_entries = 0;
+
+    system_hash64map_get_property(envelope_id_to_curve_container_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_entries);
 
     for (uint32_t n_entry = 0;
                   n_entry < n_entries;

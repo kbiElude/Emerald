@@ -1023,7 +1023,11 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 {
     if (program_ptr->context_to_active_ubs_map != NULL)
     {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_active_ubs_map);
+        uint32_t n_contexts = 0;
+
+        system_hash64map_get_property(program_ptr->context_to_active_ubs_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_contexts);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -1073,7 +1077,11 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 
     if (program_ptr->context_to_ub_index_to_ub_map != NULL)
     {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_index_to_ub_map);
+        unsigned int n_contexts = 0;
+
+        system_hash64map_get_property(program_ptr->context_to_ub_index_to_ub_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_contexts);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -1114,9 +1122,13 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 
     if (program_ptr->context_to_ub_name_to_ub_map != NULL)
     {
-        system_hash64      current_owner_context_hash = 0;
-        ogl_context        current_owner_context      = NULL;
-        const unsigned int n_contexts                 = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
+        system_hash64 current_owner_context_hash = 0;
+        ogl_context   current_owner_context      = NULL;
+        unsigned int  n_contexts                 = 0;
+
+        system_hash64map_get_property(program_ptr->context_to_ub_name_to_ub_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_contexts);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;

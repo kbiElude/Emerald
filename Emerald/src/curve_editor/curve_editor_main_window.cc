@@ -279,7 +279,11 @@ PRIVATE void _curve_editor_dialog_on_curve_window_release(void*           owner,
 
     /* Try to find the descriptor corresponding to the curve */
     bool     has_found = false;
-    uint32_t n_windows = system_hash64map_get_amount_of_elements(owner_ptr->curve_node_handle_to_curve_window_map_array_descriptor);
+    uint32_t n_windows = 0;
+
+    system_hash64map_get_property(owner_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_windows);
 
     for (uint32_t n_window = 0;
                   n_window < n_windows;
@@ -980,8 +984,19 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
     /* Release sub-windows */
     if (main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor != NULL)
     {
-        while (system_hash64map_get_amount_of_elements(main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor) != 0)
+        while (true)
         {
+            uint32_t n_items = 0;
+
+            system_hash64map_get_property(main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_items);
+
+            if (n_items == 0)
+            {
+                break;
+            }
+
             _window_map_array_descriptor* descriptor      = NULL;
             system_hash64                 descriptor_hash = 0;
 
@@ -1076,7 +1091,11 @@ PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_ma
         {
             case CURVE_EDITOR_MAIN_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
             {
-                uint32_t n_windows = system_hash64map_get_amount_of_elements(window_ptr->curve_node_handle_to_curve_window_map_array_descriptor);
+                uint32_t n_windows = 0;
+
+                system_hash64map_get_property(window_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_windows);
 
                 for (uint32_t n_window = 0;
                               n_window < n_windows;

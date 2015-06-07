@@ -304,8 +304,19 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
 
     if (ui_ptr->registered_ui_control_callbacks != NULL)
     {
-        while (system_hash64map_get_amount_of_elements(ui_ptr->registered_ui_control_callbacks) > 0)
+        while (true)
         {
+            unsigned int n_callbacks = 0;
+
+            system_hash64map_get_property(ui_ptr->registered_ui_control_callbacks,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_callbacks);
+
+            if (n_callbacks == 0)
+            {
+                break;
+            }
+
             bool              result           = false;
             system_hash64     ui_callback_hash = 0;
             _ogl_ui_callback* ui_callback_ptr  = NULL;
@@ -333,11 +344,21 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
 
     if (ui_ptr->registered_ui_control_programs != NULL)
     {
-        while (system_hash64map_get_amount_of_elements(ui_ptr->registered_ui_control_programs) > 0)
+        while (true)
         {
+            uint32_t      n_programs                   = 0;
             bool          result                       = false;
             ogl_program   ui_control_program           = NULL;
             system_hash64 ui_control_program_name_hash = 0;
+
+            system_hash64map_get_property(ui_ptr->registered_ui_control_programs,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_programs);
+
+            if (n_programs == 0)
+            {
+                break;
+            }
 
             if (system_hash64map_get_element_at(ui_ptr->registered_ui_control_programs,
                                                 0,

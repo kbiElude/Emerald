@@ -297,7 +297,11 @@ PUBLIC void DeinitCameraData()
     if (scene_camera_to_camera_internal_map != NULL)
     {
         _camera_internal* camera_internal_ptr = NULL;
-        const uint32_t    n_camera_internals  = system_hash64map_get_amount_of_elements(scene_camera_to_camera_internal_map);
+        uint32_t          n_camera_internals  = 0;
+
+        system_hash64map_get_property(scene_camera_to_camera_internal_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_camera_internals);
 
         for (uint32_t n_camera_internal = 0;
                       n_camera_internal < n_camera_internals;

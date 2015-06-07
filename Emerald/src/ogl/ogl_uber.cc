@@ -726,7 +726,11 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     _ogl_uber*                        uber_ptr    = (_ogl_uber*) arg;
-    const unsigned int                n_vaos      = system_hash64map_get_amount_of_elements(uber_ptr->mesh_to_vao_descriptor_map);
+    unsigned int                      n_vaos      = 0;
+
+    system_hash64map_get_property(uber_ptr->mesh_to_vao_descriptor_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_vaos);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,

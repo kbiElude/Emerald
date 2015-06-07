@@ -42,7 +42,11 @@ typedef struct _ogl_context_textures
 
         if (reusable_texture_key_to_ogl_texture_vector_map != NULL)
         {
-            const uint32_t n_map_vectors = system_hash64map_get_amount_of_elements(reusable_texture_key_to_ogl_texture_vector_map);
+            uint32_t n_map_vectors = 0;
+
+            system_hash64map_get_property(reusable_texture_key_to_ogl_texture_vector_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_map_vectors);
 
             for (uint32_t n_map_vector = 0;
                           n_map_vector < n_map_vectors;

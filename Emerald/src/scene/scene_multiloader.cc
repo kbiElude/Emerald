@@ -238,7 +238,11 @@ _scene_multiloader::~_scene_multiloader()
 
     if (image_filename_to_gfx_image_map != NULL)
     {
-        const uint32_t n_map_entries = system_hash64map_get_amount_of_elements(image_filename_to_gfx_image_map);
+        uint32_t n_map_entries = 0;
+
+        system_hash64map_get_property(image_filename_to_gfx_image_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_map_entries);
 
         for (uint32_t n_map_entry = 0;
                       n_map_entry < n_map_entries;
@@ -925,7 +929,11 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_texture_data(__in __notn
     system_critical_section_enter(scene_ptr->loader_ptr->cs);
     {
         /* Note: a single thread handles all loaded gfx_images at the moment. */
-        const uint32_t n_entries = system_hash64map_get_amount_of_elements(scene_ptr->loader_ptr->image_filename_to_gfx_image_map);
+        uint32_t n_entries = 0;
+
+        system_hash64map_get_property(scene_ptr->loader_ptr->image_filename_to_gfx_image_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_entries);
 
         for (uint32_t n_entry = 0;
                       n_entry < n_entries;
@@ -1340,7 +1348,11 @@ end_error:
 end:
     if (material_id_to_mesh_material_map != NULL)
     {
-        const uint32_t n_mesh_materials = system_hash64map_get_amount_of_elements(material_id_to_mesh_material_map);
+        uint32_t n_mesh_materials = 0;
+
+        system_hash64map_get_property(material_id_to_mesh_material_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_mesh_materials);
 
         for (uint32_t n_mesh_material = 0;
                       n_mesh_material < n_mesh_materials;
@@ -1375,7 +1387,11 @@ end:
         /* All mesh instances can be released, since they should've been
          * retained by scene_mesh_load().
          */
-        uint32_t n_meshes = system_hash64map_get_amount_of_elements(mesh_id_to_mesh_map);
+        uint32_t n_meshes = 0;
+
+        system_hash64map_get_property(mesh_id_to_mesh_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_meshes);
 
         for (uint32_t n_mesh = 0;
                       n_mesh < n_meshes;

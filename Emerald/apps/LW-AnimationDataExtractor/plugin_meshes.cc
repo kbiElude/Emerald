@@ -198,8 +198,12 @@ PRIVATE void AddMeshToScene(__in __notnull scene           in_scene,
 volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
 {
     _bake_mesh_gl_blob_worker_arg* arg_ptr     = (_bake_mesh_gl_blob_worker_arg*) arg;
-    const uint32_t                 n_materials = system_hash64map_get_amount_of_elements(arg_ptr->instance_ptr->material_to_polygon_instance_vector_map);
+    uint32_t                       n_materials = 0;
     char                           text_buffer[1024];
+
+    system_hash64map_get_property(arg_ptr->instance_ptr->material_to_polygon_instance_vector_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_materials);
 
     ASSERT_DEBUG_SYNC(n_materials != 0,
                       "No materials defined for a mesh instance");
@@ -867,7 +871,11 @@ end:
 /** TODO */
 PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_hash64map material_to_polygon_instance_vector_map)
 {
-    const uint32_t n_keys = system_hash64map_get_amount_of_elements(material_to_polygon_instance_vector_map);
+    uint32_t n_keys = 0;
+
+    system_hash64map_get_property(material_to_polygon_instance_vector_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_keys);
 
     for (uint32_t n_key = 0;
                   n_key < n_keys;

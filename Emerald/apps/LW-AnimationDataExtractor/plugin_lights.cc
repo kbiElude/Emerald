@@ -474,7 +474,11 @@ PUBLIC void DeinitLightData()
 {
     if (scene_light_to_light_data_map != NULL)
     {
-        const uint32_t n_map_entries = system_hash64map_get_amount_of_elements(scene_light_to_light_data_map);
+        uint32_t n_map_entries = 0;
+
+        system_hash64map_get_property(scene_light_to_light_data_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_map_entries);
 
         for (uint32_t n_entry = 0;
                       n_entry < n_map_entries;

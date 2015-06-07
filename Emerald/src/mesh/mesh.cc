@@ -211,7 +211,11 @@ PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_resu
         if (layer_pass_ptr->index_data_maps[n_data_stream_type] != NULL)
         {
             _mesh_layer_pass_index_data* index_data_ptr = NULL;
-            const uint32_t               n_sets         = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[n_data_stream_type]);
+            uint32_t                     n_sets         = 0;
+
+            system_hash64map_get_property(layer_pass_ptr->index_data_maps[n_data_stream_type],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_sets);
 
             for (uint32_t n_set = 0;
                           n_set < n_sets;
@@ -276,7 +280,11 @@ PRIVATE uint32_t _mesh_get_source_index_from_index_key(__in __notnull const uint
     {
         if (layer_pass_ptr->index_data_maps[n_data_stream_type] != NULL)
         {
-            const uint32_t n_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[n_data_stream_type]);
+            uint32_t n_sets = 0;
+
+            system_hash64map_get_property(layer_pass_ptr->index_data_maps[n_data_stream_type],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_sets);
 
             for (uint32_t n_set = 0;
                           n_set < n_sets;
@@ -332,7 +340,11 @@ PRIVATE uint32_t _mesh_get_total_number_of_sets(_mesh_layer* layer_ptr)
             {
                 if (pass_ptr->index_data_maps[n_data_stream_type] != NULL)
                 {
-                    const uint32_t n_sets = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[n_data_stream_type]);
+                    uint32_t n_sets = 0;
+
+                    system_hash64map_get_property(pass_ptr->index_data_maps[n_data_stream_type],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_sets);
 
                     result += n_sets;
                 }
@@ -544,7 +556,11 @@ PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh*           
             if (pass_ptr->index_data_maps[n_stream_type] != NULL)
             {
                 _mesh_layer_pass_index_data* index_data = NULL;
-                uint32_t                     n_sets     = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[n_stream_type]);
+                uint32_t                     n_sets     = 0;
+
+                system_hash64map_get_property(pass_ptr->index_data_maps[n_stream_type],
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_sets);
 
                 for (uint32_t n_set = 0;
                               n_set < n_sets;
@@ -714,7 +730,11 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(__in      __notnull _mesh*    
             {
                 if (pass_ptr->index_data_maps[stream_type] != NULL)
                 {
-                    const uint32_t n_sets = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+                    uint32_t n_sets = 0;
+
+                    system_hash64map_get_property(pass_ptr->index_data_maps[stream_type],
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_sets);
 
                     if (n_sets > 0)
                     {
@@ -844,7 +864,11 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(__in      __notnull 
                     {
                         if (pass_ptr->index_data_maps[stream_type] != NULL)
                         {
-                            const uint32_t n_sets = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+                            uint32_t n_sets = 0;
+
+                            system_hash64map_get_property(pass_ptr->index_data_maps[stream_type],
+                                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                         &n_sets);
 
                             if (n_sets > 0)
                             {
@@ -1125,7 +1149,11 @@ PRIVATE void _mesh_release_normals_data(__in __notnull _mesh* mesh_ptr)
             /* Any index data streams defined for normals data? */
             if (pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS] != NULL)
             {
-                const uint32_t n_index_data_entries = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS]);
+                uint32_t n_index_data_entries = 0;
+
+                system_hash64map_get_property(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS],
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_index_data_entries);
 
                 for (uint32_t n_index_data_entry = 0;
                               n_index_data_entry < n_index_data_entries;
@@ -2663,7 +2691,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                             /* n_vertex_data_sets == 0: no index data available.
                              *                    == 1:    index data available.
                              */
-                            const uint32_t n_vertex_data_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]);
+                            uint32_t n_vertex_data_sets = 0;
+
+                            system_hash64map_get_property(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                         &n_vertex_data_sets);
 
                             if (n_vertex_data_sets > 1)
                             {
@@ -2920,6 +2952,8 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
              *       This may appear to be space-ineffective, but bear in mind that all the
              *       layer data will eventually be combined when forming the GL blob.
              */
+            uint32_t n_vertex_items = 0;
+
             layer_pass_index_data  = new (std::nothrow) unsigned int[layer_pass_ptr->n_elements];
             layer_pass_normal_data = new (std::nothrow) float       [layer_pass_ptr->n_elements * 3 /* components */];
 
@@ -2930,7 +2964,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                    0,
                    sizeof(float) * layer_pass_ptr->n_elements * 3 /* components */);
 
-            if (system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) > 0)
+            system_hash64map_get_property(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_vertex_items);
+
+            if (n_vertex_items > 0)
             {
                 system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
                                                 0,     /* set id */
@@ -3098,7 +3136,13 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
              * TODO: The mesh_add_layer_pass_index_data() call assumes only one set is ever defined.
              *       FIX IF NEEDED.
              */
-            ASSERT_DEBUG_SYNC(system_hash64map_get_amount_of_elements(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) <= 1,
+            uint32_t n_vertex_sets = 0;
+
+            system_hash64map_get_property(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_vertex_sets);
+
+            ASSERT_DEBUG_SYNC(n_vertex_sets <= 1,
                               "Layer pass uses >= 1 sets which is not supported.");
 
             mesh_add_layer_data_stream(mesh,
@@ -3994,7 +4038,11 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
         }
 
         /* Release data of all defined data streams */
-        const uint32_t n_data_streams = system_hash64map_get_amount_of_elements(layer_ptr->data_streams);
+        uint32_t n_data_streams = 0;
+
+        system_hash64map_get_property(layer_ptr->data_streams,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_data_streams);
 
         for (uint32_t n_data_stream = 0;
                       n_data_stream < n_data_streams;
@@ -4060,7 +4108,11 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
             {
                 if (pass_ptr->index_data_maps[stream_type] != NULL)
                 {
-                    const uint32_t n_index_data_maps = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+                    uint32_t n_index_data_maps = 0;
+
+                    system_hash64map_get_property(pass_ptr->index_data_maps[stream_type],
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_index_data_maps);
 
                     for (uint32_t n_index_data_map = 0;
                                   n_index_data_map < n_index_data_maps;

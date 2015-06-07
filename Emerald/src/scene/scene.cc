@@ -84,8 +84,12 @@ PRIVATE void _scene_release(__in __notnull __post_invalid void* arg)
 
     if (scene_ptr->curves_map != NULL)
     {
-        scene_curve    curve_ptr = NULL;
-        const uint32_t n_curves  = system_hash64map_get_amount_of_elements(scene_ptr->curves_map);
+        scene_curve curve_ptr = NULL;
+        uint32_t    n_curves  = 0;
+
+        system_hash64map_get_property(scene_ptr->curves_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_curves);
 
         for (uint32_t n_curve = 0;
                       n_curve < n_curves;
@@ -600,9 +604,13 @@ PUBLIC EMERALD_API scene_curve scene_get_curve_by_container(__in __notnull scene
                                                             __in           curve_container curve)
 {
     /* TODO: A curve_container->scene_curve map would fit in here just perfectly. */
-    _scene*        scene_ptr = (_scene*) instance;
-    const uint32_t n_curves  = system_hash64map_get_amount_of_elements(scene_ptr->curves_map);
-    scene_curve    result    = NULL;
+    _scene*     scene_ptr = (_scene*) instance;
+    uint32_t    n_curves  = 0;
+    scene_curve result    = NULL;
+
+    system_hash64map_get_property(scene_ptr->curves_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_curves);
 
     for (uint32_t n_curve = 0;
                   n_curve < n_curves;
@@ -1180,7 +1188,11 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
 
     /* Retrieve unique mesh material instances */
     uint32_t n_unique_materials = 0;
-    uint32_t n_unique_meshes    = system_hash64map_get_amount_of_elements(unique_meshes_to_id_map);
+    uint32_t n_unique_meshes    = 0;
+
+    system_hash64map_get_property(unique_meshes_to_id_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_unique_meshes);
 
     for (uint32_t n_unique_mesh = 0;
                   n_unique_mesh < n_unique_meshes;
@@ -1286,11 +1298,14 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
 
     /* Store the number of owned objects */
     uint32_t n_cameras   = 0;
-    uint32_t n_curves    = system_hash64map_get_amount_of_elements(scene_ptr->curves_map);
+    uint32_t n_curves    = 0;
     uint32_t n_lights    = 0;
     uint32_t n_materials = 0;
     uint32_t n_textures  = 0;
 
+    system_hash64map_get_property       (scene_ptr->curves_map,
+                                         SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                        &n_curves);
     system_resizable_vector_get_property(scene_ptr->cameras,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_cameras);
@@ -1516,7 +1531,11 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
     /* Serialize meshes: first store the instantiation parent meshes,
      *                   the follow with instanced meshes.
      */
-    const unsigned int n_meshes = system_hash64map_get_amount_of_elements(unique_meshes_to_id_map);
+    unsigned int n_meshes = 0;
+
+    system_hash64map_get_property(unique_meshes_to_id_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_meshes);
 
     system_file_serializer_write(serializer,
                                  sizeof(n_meshes),

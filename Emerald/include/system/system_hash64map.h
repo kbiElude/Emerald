@@ -8,6 +8,12 @@
 
 #include "system_types.h"
 
+typedef enum
+{
+    /* uint32_t */
+    SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS
+} system_hash64map_property;
+
 /** TODO */
 PUBLIC EMERALD_API void system_hash64map_clear(__in __notnull system_hash64map);
 
@@ -43,14 +49,6 @@ PUBLIC EMERALD_API bool	system_hash64map_get(__in      system_hash64map map,
                                              __in      system_hash64    hash,
                                              __out_opt void*            result_element);
 
-/** Retrieves amount of elements in the 64-bit hash-map.
- *
- *  @param system_hash64map 64-bit hash-map to retrieve the result for.
- *
- *  @return Amount of elements in the hash-map.
- */
-PUBLIC EMERALD_API size_t system_hash64map_get_amount_of_elements(__in system_hash64map map);
-
 /** Retrieves element at a given index of the 64-bit hash-map.
  *
  *  @param system_hash64map 64-bit hash map to use.
@@ -64,6 +62,11 @@ PUBLIC EMERALD_API bool system_hash64map_get_element_at(__in      system_hash64m
                                                                   size_t           n_element,
                                                         __out_opt void*            result_element,
                                                         __out_opt system_hash64*   result_hash);
+
+/** TODO */
+PUBLIC EMERALD_API void system_hash64map_get_property(__in            system_hash64map          map,
+                                                      __in            system_hash64map_property property,
+                                                      __out __notnull void*                     out_result);
 
 /** Compares two 64-bit hash-maps.
  *

@@ -1839,8 +1839,18 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
             const bool use_material_uber = (render_mode == RENDER_MODE_FORWARD_WITHOUT_DEPTH_PREPASS                ||
                                             render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS    && n_pass == 1);
 
-            const uint32_t n_iterations  = (is_depth_prepass) ? 1
-                                                              : system_hash64map_get_amount_of_elements(renderer_ptr->ubers_map);
+            uint32_t n_iterations = 0;
+            
+            if (is_depth_prepass)
+            {
+                n_iterations = 1;
+            }
+            else
+            {
+                system_hash64map_get_property(renderer_ptr->ubers_map,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_iterations);
+            }
 
             /* Set up the "depth pre-pass" rendering state */
             if (render_mode == RENDER_MODE_FORWARD_WITH_DEPTH_PREPASS)
@@ -1932,7 +1942,11 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                 {
                     if (is_depth_prepass)
                     {
-                        const uint32_t n_uber_map_items = system_hash64map_get_amount_of_elements(renderer_ptr->ubers_map);
+                        uint32_t n_uber_map_items = 0;
+
+                        system_hash64map_get_property(renderer_ptr->ubers_map,
+                                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                     &n_uber_map_items);
 
                         for (uint32_t n_uber_map_item = 0;
                                       n_uber_map_item < n_uber_map_items;
