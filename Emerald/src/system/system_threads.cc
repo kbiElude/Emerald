@@ -14,6 +14,9 @@
 #include "system/system_resource_pool.h"
 #include "system/system_threads.h"
 
+#ifdef USE_EMULATED_EVENTS
+    #include "system/system_event_monitor.h"
+#endif
 
 /** Internal type definitions */
 typedef struct
@@ -52,6 +55,12 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     callback_func(callback_func_arg);
 
     /* We're done */
+    #ifdef USE_EMULATED_EVENTS
+    {
+        system_event_monitor_set_event(exit_event);
+    }
+    #endif
+
     return NULL;
 }
 
@@ -115,16 +124,29 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             result = thread_descriptor->thread_id;
 
-            if (thread_wait_event != NULL)
+            #ifndef USE_EMULATED_EVENTS
             {
-                *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
-                thread_descriptor->kill_event = *thread_wait_event;
+                if (thread_wait_event != NULL)
+                {
+                    *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
+                    thread_descriptor->kill_event = *thread_wait_event;
+                }
+                else
+                {
+                    thread_descriptor->kill_event = NULL;
+                }
             }
-            else
+            #else
             {
-                thread_descriptor->kill_event = NULL;
+                thread_descriptor->kill_event = system_event_create_from_thread(new_thread_handle);
+
+                if (thread_wait_event != NULL)
+                {
+                    *thread_wait_event = thread_descriptor->kill_event;
+                }
             }
-        }
+            #endif
+        } /* if (thread_descriptor != NULL) */
     }
 
     return result;

@@ -9,6 +9,7 @@
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
+#include "system/system_event_monitor.h"
 #include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -94,6 +95,12 @@ void main_init()
     _system_window_init();
     _system_variants_init();
 
+    #ifdef USE_EMULATED_EVENTS
+    {
+        system_event_monitor_init();
+    }
+    #endif
+
     #ifdef INCLUDE_WEBCAM_MANAGER
         _webcam_manager_init();
     #endif
@@ -142,6 +149,12 @@ int main_deinit()
 
         #ifdef INCLUDE_OPENCL
             _ocl_deinit();
+        #endif
+
+        #ifdef USE_EMULATED_EVENTS
+        {
+            system_event_monitor_deinit();
+        }
         #endif
 
         system_hashed_ansi_string_deinit();

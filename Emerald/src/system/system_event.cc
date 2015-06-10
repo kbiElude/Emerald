@@ -7,27 +7,32 @@
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 
-typedef enum
-{
-    /* Created by system_event_create() */
-    SYSTEM_EVENT_TYPE_REGULAR,
-    /* Created by system_event_create_from_thread() */
-    SYSTEM_EVENT_TYPE_THREAD,
-} _system_event_type;
+#if !defined(USE_EMULATED_EVENTS) && defined(_WIN32)
+    #define USE_RAW_HANDLES
+#endif
+
+#ifndef USE_RAW_HANDLES
+    #include "system/system_event_monitor.h"
+#endif
+
 
 typedef struct _system_event
 {
-#ifdef _WIN32
-    HANDLE event;
-#else
-    /* TODO */
-#endif
-    _system_event_type type;
+    #if defined(USE_RAW_HANDLES)
+        HANDLE event;
+    #endif
 
-    explicit _system_event(__in _system_event_type in_type)
+    bool              manual_reset;
+    system_event_type type;
+
+    explicit _system_event(__in system_event_type in_type)
     {
-        event = NULL;
-        type  = in_type;
+        #if defined(USE_RAW_HANDLES)
+            event = NULL;
+        #endif
+
+        manual_reset = false;
+        type         = in_type;
     }
 } _system_event;
 
@@ -40,13 +45,23 @@ PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_rese
     ASSERT_ALWAYS_SYNC(event_ptr != NULL,
                        "Out of memory");
 
-    event_ptr->event = ::CreateEventA(NULL,         /* no special security attributes */
-                                      manual_reset,
-                                      false,        /* bInitialState */
-                                      0);           /* no name */
+    event_ptr->manual_reset = manual_reset;
 
-    ASSERT_ALWAYS_SYNC(event_ptr->event != NULL,
-                       "Could not create an event object.");
+#if defined(USE_RAW_HANDLES)
+    {
+        event_ptr->event = ::CreateEventA(NULL,         /* no special security attributes */
+            manual_reset,
+            false,        /* bInitialState - if this value is ever changed, update system_event_monitor! */
+            0);           /* no name */
+
+        ASSERT_ALWAYS_SYNC(event_ptr->event != NULL,
+            "Could not create an event object.");
+    }
+    #else
+    {
+        system_event_monitor_add_event( (system_event) event_ptr);
+    }
+    #endif
 
     return (system_event) event_ptr;
 }
@@ -59,20 +74,69 @@ PUBLIC EMERALD_API __maybenull system_event system_event_create_from_thread(__in
     ASSERT_ALWAYS_SYNC(event_ptr != NULL,
                        "Out of memory");
 
-    event_ptr->event = thread;
+    event_ptr->manual_reset = true;
+
+    #if defined(USE_RAW_HANDLES)
+    {
+        event_ptr->event = thread;
+    }
+    #else
+    {
+        /* With event monitor, we don't even need to hold the thread handle.
+         * If USE_EMULATED_EVENTS is defined, system_threads will inject
+         * an event setter call right before the thread leaves its entry-point.
+         */
+        system_event_monitor_add_event( (system_event) event_ptr);
+    }
+    #endif
 
     return (system_event) event_ptr;
 }
 
 /** Please see header for specification */
+PUBLIC void system_event_get_property(__in  system_event          event,
+                                      __in  system_event_property property,
+                                      __out void*                 out_result)
+{
+    _system_event* event_ptr = (_system_event*) event;
+
+    switch (property)
+    {
+        case SYSTEM_EVENT_PROPERTY_MANUAL_RESET:
+        {
+            *(bool*) out_result = event_ptr->manual_reset;
+
+            break;
+        }
+
+        case SYSTEM_EVENT_PROPERTY_TYPE:
+        {
+            *(system_event_type*) out_result = event_ptr->type;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized system_event_property value");
+        }
+    } /* switch (property) */
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API void system_event_release(__in __notnull __deallocate(mem) system_event event)
 {
-    if (event != NULL)
+    #if defined(USE_RAW_HANDLES)
     {
-        HANDLE descriptor = ((_system_event*) event)->event;
+        if (event != NULL)
+        {
+            HANDLE descriptor = ((_system_event*) event)->event;
 
-        ::CloseHandle(descriptor);
+            ::CloseHandle(descriptor);
+        }
     }
+    #endif
 }
 
 /** Please see header for specification */
@@ -82,7 +146,15 @@ PUBLIC EMERALD_API void system_event_reset(__in __notnull system_event event)
 
     if (event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR)
     {
-        ::ResetEvent( ((_system_event*) event)->event);
+        #if !defined(USE_RAW_HANDLES)
+        {
+            system_event_monitor_reset_event(event);
+        }
+        #else
+        {
+            ::ResetEvent( ((_system_event*) event)->event);
+        }
+        #endif
     }
     else
     {
@@ -98,7 +170,15 @@ PUBLIC EMERALD_API void system_event_set(__in __notnull system_event event)
 
     if (event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR)
     {
-        ::SetEvent( ((_system_event*) event)->event);
+        #if defined(USE_RAW_HANDLES)
+        {
+            ::SetEvent( ((_system_event*) event)->event);
+        }
+        #else
+        {
+            system_event_monitor_set_event(event);
+        }
+        #endif
     }
     else
     {
@@ -110,33 +190,61 @@ PUBLIC EMERALD_API void system_event_set(__in __notnull system_event event)
 /** Please see header for specification */
 PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_event event)
 {
-    return (::WaitForSingleObject( ((_system_event*) event)->event,
-                                  0) == WAIT_OBJECT_0);
+    #if !defined(USE_RAW_HANDLES)
+    {
+        bool has_timed_out = false;
+
+        system_event_monitor_wait(&event,
+                                  1,     /* n_events */
+                                  false, /* wait_for_all_events */
+                                  0,     /* timeout */
+                                 &has_timed_out);
+
+        return !has_timed_out;
+    }
+    #else
+    {
+        return (::WaitForSingleObject( ((_system_event*) event)->event,
+                                      0) == WAIT_OBJECT_0);
+    }
+    #endif
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event         event,
                                                  __in           system_timeline_time timeout)
 {
-    DWORD    result         = 0;
-    uint32_t timeout_winapi = 0;
-
-    if (timeout != SYSTEM_TIME_INFINITE)
+    #if defined(USE_RAW_HANDLES)
     {
-        system_time_get_msec_for_timeline_time(timeout,
-                                              &timeout_winapi);
+        DWORD    result         = 0;
+        uint32_t timeout_winapi = 0;
+
+        if (timeout != SYSTEM_TIME_INFINITE)
+        {
+            system_time_get_msec_for_timeline_time(timeout,
+                                                  &timeout_winapi);
+        }
+        else
+        {
+            timeout_winapi = INFINITE;
+        }
+
+        ::WaitForSingleObject( ((_system_event*) event)->event,
+                               timeout_winapi);
+
+        ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
+                          "WaitForSingleObject() failed.");
     }
-    else
+    #else
     {
-        timeout_winapi = INFINITE;
+        system_event_monitor_wait(&event,
+                                  1,       /* n_events */
+                                  false,   /* wait_for_all_events */
+                                  timeout,
+                                  NULL);   /* has_timed_out_ptr */
+
     }
-
-    ::WaitForSingleObject( ((_system_event*) event)->event,
-                           timeout_winapi);
-
-    ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
-                      "WaitForSingleObject() failed.");
-
+    #endif
 }
 
 /** Please see header for specification */
@@ -146,33 +254,89 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                                                                          system_timeline_time timeout,
                                                      __out __notnull                     bool*                out_result_ptr)
 {
-    DWORD    result         = WAIT_FAILED;
-    uint32_t timeout_winapi = 0;
+    size_t result;
 
-    if (timeout != SYSTEM_TIME_INFINITE)
+    #if defined(USE_RAW_HANDLES)
     {
-        system_time_get_msec_for_timeline_time(timeout,
-                                              &timeout_winapi);
-    }
-    else
-    {
-        timeout_winapi = INFINITE;
-    }
+        uint32_t timeout_winapi = 0;
 
-    if (n_elements == 0)
-    {
-        result = WAIT_OBJECT_0;
+        result = WAIT_FAILED;
 
-        goto end;
-    }
-
-    if (wait_on_all_objects)
-    {
-        ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
-                          "Sanity check failed");
-
-        if (n_elements < MAXIMUM_WAIT_OBJECTS)
+        if (timeout != SYSTEM_TIME_INFINITE)
         {
+            system_time_get_msec_for_timeline_time(timeout,
+                                                  &timeout_winapi);
+        }
+        else
+        {
+            timeout_winapi = INFINITE;
+        }
+
+        if (n_elements == 0)
+        {
+            result = WAIT_OBJECT_0;
+
+            goto end;
+        }
+
+        if (wait_on_all_objects)
+        {
+            ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
+                              "Sanity check failed");
+
+            if (n_elements < MAXIMUM_WAIT_OBJECTS)
+            {
+                HANDLE internal_events[MAXIMUM_WAIT_OBJECTS];
+
+                for (unsigned int n_event = 0;
+                                  n_event < n_elements;
+                                ++n_event)
+                {
+                    internal_events[n_event] = ((_system_event*) events[n_event])->event;
+                }
+
+                result = ::WaitForMultipleObjects( (DWORD) n_elements,
+                                                   internal_events,
+                                                   wait_on_all_objects ? TRUE : FALSE,
+                                                   timeout_winapi);
+            } /* if (n_elements < MAXIMUM_WAIT_OBJECTS) */
+            else
+            {
+                const system_event* current_events = events;
+                HANDLE              internal_events[MAXIMUM_WAIT_OBJECTS];
+
+                while (n_elements > 0)
+                {
+                    uint32_t n_objects_to_wait_on = (n_elements < MAXIMUM_WAIT_OBJECTS) ? n_elements
+                                                                                        : MAXIMUM_WAIT_OBJECTS;
+
+                    for (unsigned int n_event = 0;
+                                      n_event < n_objects_to_wait_on;
+                                    ++n_event)
+                    {
+                        internal_events[n_event] = ((_system_event*) events[n_event])->event;
+                    }
+
+                    result = ::WaitForMultipleObjects( (DWORD) n_objects_to_wait_on,
+                                                       internal_events,
+                                                       TRUE,
+                                                       timeout_winapi);
+
+                    if (result == WAIT_FAILED)
+                    {
+                        goto end;
+                    }
+
+                    n_elements -= MAXIMUM_WAIT_OBJECTS;
+                    events     += MAXIMUM_WAIT_OBJECTS;
+                } /* while (n_elements > 0) */
+            }
+        }
+        else
+        {
+            ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
+                              "Too many events to wait on at once.");
+
             HANDLE internal_events[MAXIMUM_WAIT_OBJECTS];
 
             for (unsigned int n_event = 0;
@@ -182,67 +346,108 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                 internal_events[n_event] = ((_system_event*) events[n_event])->event;
             }
 
-            result = ::WaitForMultipleObjects( (DWORD) n_elements,
-                                               internal_events,
-                                               wait_on_all_objects ? TRUE : FALSE,
-                                               timeout_winapi);
-        } /* if (n_elements < MAXIMUM_WAIT_OBJECTS) */
+            result = ::WaitForMultipleObjects((DWORD) n_elements,
+                                              internal_events,
+                                              wait_on_all_objects ? TRUE : FALSE,
+                                              timeout_winapi);
+        }
+
+    end:
+        ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
+                          "WaitForMultipleObjects() failed (%u).",
+                          ::GetLastError() );
+
+        return result - WAIT_OBJECT_0;
+    }
+    #else
+    {
+        result = -1;
+
+        if (n_elements == 0)
+        {
+            result = 0;
+
+            goto end;
+        }
+
+        if (wait_on_all_objects)
+        {
+            ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
+                              "Sanity check failed");
+
+            bool has_timed_out = false;
+
+            if (n_elements < MAXIMUM_WAIT_OBJECTS)
+            {
+                system_event internal_events[MAXIMUM_WAIT_OBJECTS];
+
+                memcpy(internal_events,
+                       events,
+                       sizeof(system_event) * n_elements);
+
+                system_event_monitor_wait(internal_events,
+                                          n_elements,
+                                          wait_on_all_objects,
+                                          timeout,
+                                         &has_timed_out);
+
+                result = (has_timed_out) ? -1 : 0;
+            } /* if (n_elements < MAXIMUM_WAIT_OBJECTS) */
+            else
+            {
+                const system_event* current_events = events;
+                system_event        internal_events[MAXIMUM_WAIT_OBJECTS];
+
+                while (n_elements > 0)
+                {
+                    uint32_t n_objects_to_wait_on = (n_elements < MAXIMUM_WAIT_OBJECTS) ? n_elements
+                                                                                        : MAXIMUM_WAIT_OBJECTS;
+
+                    memcpy(internal_events,
+                           events,
+                           sizeof(system_event) * n_elements);
+
+                    system_event_monitor_wait(internal_events,
+                                              n_elements,
+                                              wait_on_all_objects,
+                                              timeout,
+                                             &has_timed_out);
+
+                    result = (has_timed_out) ? -1 : 0;
+
+                    if (has_timed_out)
+                    {
+                        break;
+                    }
+
+                    n_elements -= MAXIMUM_WAIT_OBJECTS;
+                    events     += MAXIMUM_WAIT_OBJECTS;
+                } /* while (n_elements > 0) */
+            }
+        } /* if (wait_on_all_objects) */
         else
         {
-            const system_event* current_events = events;
-            HANDLE              internal_events[MAXIMUM_WAIT_OBJECTS];
+            ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
+                              "Too many events to wait on at once.");
 
-            while (n_elements > 0)
-            {
-                uint32_t n_objects_to_wait_on = (n_elements < MAXIMUM_WAIT_OBJECTS) ? n_elements
-                                                                                    : MAXIMUM_WAIT_OBJECTS;
+            bool         has_timed_out;
+            system_event internal_events[MAXIMUM_WAIT_OBJECTS];
 
-                for (unsigned int n_event = 0;
-                                  n_event < n_objects_to_wait_on;
-                                ++n_event)
-                {
-                    internal_events[n_event] = ((_system_event*) events[n_event])->event;
-                }
+            memcpy(internal_events,
+                   events,
+                   sizeof(system_event) * n_elements);
 
-                result = ::WaitForMultipleObjects( (DWORD) n_objects_to_wait_on,
-                                                   internal_events,
-                                                   TRUE,
-                                                   timeout_winapi);
+            system_event_monitor_wait(internal_events,
+                                      n_elements,
+                                      wait_on_all_objects,
+                                      timeout,
+                                     &has_timed_out);
 
-                if (result == WAIT_FAILED)
-                {
-                    goto end;
-                }
-
-                n_elements -= MAXIMUM_WAIT_OBJECTS;
-                events     += MAXIMUM_WAIT_OBJECTS;
-            } /* while (n_elements > 0) */
+            result = (has_timed_out) ? -1 : 0;
         }
-    }
-    else
-    {
-        ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
-                          "Too many events to wait on at once.");
-
-        HANDLE internal_events[MAXIMUM_WAIT_OBJECTS];
-
-        for (unsigned int n_event = 0;
-                          n_event < n_elements;
-                        ++n_event)
-        {
-            internal_events[n_event] = ((_system_event*) events[n_event])->event;
-        }
-
-        result = ::WaitForMultipleObjects((DWORD) n_elements,
-                                          internal_events,
-                                          wait_on_all_objects ? TRUE : FALSE,
-                                          timeout_winapi);
-    }
 
 end:
-    ASSERT_DEBUG_SYNC(result != WAIT_FAILED,
-                      "WaitForMultipleObjects() failed (%u).",
-                      ::GetLastError() );
-
-    return result - WAIT_OBJECT_0;
+        return result;
+    }
+    #endif
 }

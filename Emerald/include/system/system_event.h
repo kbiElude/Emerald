@@ -9,6 +9,22 @@
 #include "system/system_types.h"
 #include "system/system_time.h"
 
+typedef enum
+{
+    /* bool */
+    SYSTEM_EVENT_PROPERTY_MANUAL_RESET,
+
+    /* system_event_type */
+    SYSTEM_EVENT_PROPERTY_TYPE
+} system_event_property;
+
+typedef enum
+{
+    /* Created by system_event_create() */
+    SYSTEM_EVENT_TYPE_REGULAR,
+    /* Created by system_event_create_from_thread() */
+    SYSTEM_EVENT_TYPE_THREAD,
+} system_event_type;
 
 /** Creates an event synchronisation object.
  *
@@ -31,6 +47,14 @@ PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_rese
  *  @return Event handle object.
  */
 PUBLIC EMERALD_API __maybenull system_event system_event_create_from_thread(__in system_thread thread);
+
+/** TODO
+ *
+ *  Internal use only.
+ */
+PUBLIC void system_event_get_property(__in  system_event          event,
+                                      __in  system_event_property property,
+                                      __out void*                 out_result);
 
 /** Releases an event synchronisation object.
  *

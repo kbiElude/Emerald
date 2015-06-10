@@ -173,6 +173,8 @@ PUBLIC EMERALD_API void system_cond_variable_wait_end(__in __notnull system_cond
     if (current_thread_id == cond_variable_ptr->owning_thread)
     {
         system_critical_section_leave(cond_variable_ptr->cs);
+
+        cond_variable_ptr->owning_thread  = 0;
     }
 }
 
