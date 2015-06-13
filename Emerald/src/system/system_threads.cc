@@ -55,12 +55,6 @@ system_resource_pool    thread_descriptor_pool   = NULL;
     callback_func(callback_func_arg);
 
     /* We're done */
-    #ifdef USE_EMULATED_EVENTS
-    {
-        system_event_monitor_set_event(exit_event);
-    }
-    #endif
-
     return NULL;
 }
 
@@ -76,9 +70,37 @@ PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id()
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread        thread,
+                                                   __in      system_timeline_time timeout,
+                                                   __out_opt bool*                out_has_timed_out_ptr)
+{
+    bool     has_timed_out = false;
+    uint32_t timeout_msec  = 0;
+
+    if (timeout == SYSTEM_TIME_INFINITE)
+    {
+        timeout_msec = INFINITE;
+    }
+    else
+    {
+        system_time_get_msec_for_timeline_time(timeout,
+                                              &timeout_msec);
+    }
+
+    has_timed_out = (::WaitForSingleObject( thread,
+                                            timeout_msec) ) == WAIT_TIMEOUT;
+
+    if (out_has_timed_out_ptr != NULL)
+    {
+        *out_has_timed_out_ptr = has_timed_out;
+    }
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
                                                          __in  __maybenull system_threads_entry_point_argument callback_func_argument,
-                                                         __out __maybenull system_event*                       thread_wait_event)
+                                                         __out __maybenull system_event*                       thread_wait_event,
+                                                         __out __maybenull system_thread*                      out_thread_ptr)
 {
     /* Create a new descriptor */
     system_thread_id result = 0;
@@ -124,28 +146,20 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             result = thread_descriptor->thread_id;
 
-            #ifndef USE_EMULATED_EVENTS
+            if (out_thread_ptr != NULL)
             {
-                if (thread_wait_event != NULL)
-                {
-                    *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
-                    thread_descriptor->kill_event = *thread_wait_event;
-                }
-                else
-                {
-                    thread_descriptor->kill_event = NULL;
-                }
+                *out_thread_ptr = new_thread_handle;
             }
-            #else
-            {
-                thread_descriptor->kill_event = system_event_create_from_thread(new_thread_handle);
 
-                if (thread_wait_event != NULL)
-                {
-                    *thread_wait_event = thread_descriptor->kill_event;
-                }
+            if (thread_wait_event != NULL)
+            {
+                *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
+                thread_descriptor->kill_event = *thread_wait_event;
             }
-            #endif
+            else
+            {
+                thread_descriptor->kill_event = NULL;
+            }
         } /* if (thread_descriptor != NULL) */
     }
 

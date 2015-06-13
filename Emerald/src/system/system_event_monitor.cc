@@ -36,8 +36,10 @@ typedef struct
 
 typedef struct
 {
-    bool manual_reset;
-    bool status;
+    bool              manual_reset;
+    bool              regular_event_status;
+    system_thread     thread_event_thread;
+    system_event_type type;
 } _system_event_monitor_event;
 
 typedef struct
@@ -45,6 +47,8 @@ typedef struct
     _system_event_monitor_event* events[MAXIMUM_WAIT_OBJECTS];
     unsigned int                 n_events;
     bool                         wait_on_all_events;
+
+    unsigned int                 n_signalled_event;
 
     /* Used by the wait() handler; signalled by the global thread */
     _system_event_monitor_cond_variable* wakeup_cvar_ptr;
@@ -62,9 +66,9 @@ typedef struct _system_event_monitor
      */
     system_resizable_vector blocked_wait_ops;
     system_hash64map        event_to_internal_event_map;
-    system_event            thread_event;
+    unsigned int            n_wakeups_needed;
+    system_thread           thread;
     bool                    thread_should_die;
-    bool                    wakeup_needed;
     system_cond_variable    wakeup_cvar;
 
     system_resource_pool    internal_cvar_pool;    /* holds _system_event_monitor_cond_variable* instances */
@@ -88,13 +92,13 @@ typedef struct _system_event_monitor
                                                                      16, /* n_elements_to_preallocate */
                                                                      _system_event_monitor_wait_op_init,
                                                                      _system_event_monitor_wait_op_deinit);
-        thread_event                = NULL;
+        n_wakeups_needed            = 0;
+        thread                      = NULL;
         thread_should_die           = false;
         wakeup_cs                   = system_critical_section_create();
         wakeup_cvar                 = system_cond_variable_create   (_system_event_monitor_is_update_needed,
                                                                      NULL, /* test_predicate_user_arg */
                                                                      wakeup_cs);
-        wakeup_needed               = false;
     }
 
     ~_system_event_monitor()
@@ -134,13 +138,6 @@ typedef struct _system_event_monitor
             internal_wait_op_pool = NULL;
         }
 
-        if (thread_event != NULL)
-        {
-            system_event_release(thread_event);
-
-            thread_event = NULL;
-        }
-
         if (wakeup_cs != NULL)
         {
             system_critical_section_release(wakeup_cs);
@@ -176,8 +173,7 @@ PRIVATE void _system_event_monitor_cond_variable_init(system_resource_pool_block
     _system_event_monitor_cond_variable* cvar_ptr = (_system_event_monitor_cond_variable*) block;
 
     cvar_ptr->cvar           = system_cond_variable_create(_system_event_monitor_cond_variable_test_predicate,
-                                                           cvar_ptr,
-                                                           monitor_ptr->wakeup_cs);
+                                                           cvar_ptr);
     cvar_ptr->cvar_predicate = false;
 }
 
@@ -194,8 +190,36 @@ PRIVATE void _system_event_monitor_event_init(system_resource_pool_block block)
 {
     _system_event_monitor_event* event_ptr = (_system_event_monitor_event*) block;
 
-    event_ptr->manual_reset = false;
-    event_ptr->status       = false;
+    event_ptr->manual_reset         = false;
+    event_ptr->regular_event_status = false;
+    event_ptr->thread_event_thread  = 0;
+    event_ptr->type                 = SYSTEM_EVENT_TYPE_UNDEFINED;
+}
+
+/** TODO */
+__forceinline bool _system_event_monitor_is_event_signalled(__in _system_event_monitor_event* event_ptr)
+{
+    bool result = false;
+
+    if (event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR)
+    {
+        result = event_ptr->regular_event_status;
+    }
+    else
+    {
+        bool has_timed_out = false;
+
+        ASSERT_DEBUG_SYNC(event_ptr->type == SYSTEM_EVENT_TYPE_THREAD,
+                          "Unrecognized event type");
+
+        system_threads_join_thread(event_ptr->thread_event_thread,
+                                   0, /* timeout */
+                                  &has_timed_out);
+
+        result = !has_timed_out;
+    }
+
+    return result;
 }
 
 /** TODO */
@@ -210,7 +234,8 @@ PRIVATE bool _system_event_monitor_is_update_needed(void* user_arg)
     {
         system_critical_section_enter(monitor_ptr->wakeup_cs);
         {
-            result = monitor_ptr->wakeup_needed;
+            result = (monitor_ptr->n_wakeups_needed > 0) ||
+                      monitor_ptr->thread_should_die;
         }
         system_critical_section_leave(monitor_ptr->wakeup_cs);
     }
@@ -232,6 +257,18 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
                                         SYSTEM_TIME_INFINITE,
                                         NULL); /* out_has_timed_out_ptr */
         {
+            if (monitor_ptr->thread_should_die)
+            {
+                system_critical_section_leave(monitor_ptr->wakeup_cs);
+
+                break;
+            }
+
+            ASSERT_DEBUG_SYNC(monitor_ptr->n_wakeups_needed != 0,
+                              "Wait op traversal imminent, even though no wake-up was needed");
+
+            system_atomics_decrement(&monitor_ptr->n_wakeups_needed);
+
             /* NOTE: The worker thread has been awakened owing to at least one event having
              *       been set.
              *       While in this block, the wakeup_cs CS is locked.
@@ -247,6 +284,7 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
             {
                 _system_event_monitor_wait_op* current_wait_op_ptr  = NULL;
                 bool                           has_awakened_wait_op = false;
+                unsigned int                   n_signalled_event    = -1;
 
                 if (!system_resizable_vector_get_element_at(monitor_ptr->blocked_wait_ops,
                                                             n_blocked_wait_op,
@@ -271,24 +309,29 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
                  *    events are marked as signalled.
                  */
                 has_awakened_wait_op = (current_wait_op_ptr->wait_on_all_events) ? true : false;
+                n_signalled_event    = -1;
 
                 for (unsigned int n_event = 0;
                                   n_event < current_wait_op_ptr->n_events;
                                 ++n_event)
                 {
-                    _system_event_monitor_event* current_event_ptr = current_wait_op_ptr->events[n_event];
+                    _system_event_monitor_event* current_event_ptr  = current_wait_op_ptr->events[n_event];
+                    bool                         is_event_signalled = false;
 
                     ASSERT_DEBUG_SYNC(current_event_ptr != NULL,
                                       "Currently processed event is NULL");
 
-                    if (!current_wait_op_ptr->wait_on_all_events && current_event_ptr->status)
+                    is_event_signalled = _system_event_monitor_is_event_signalled(current_event_ptr);
+
+                    if (!current_wait_op_ptr->wait_on_all_events && is_event_signalled)
                     {
                         has_awakened_wait_op = true;
+                        n_signalled_event    = n_event;
 
                         break;
                     }
                     else
-                    if (current_wait_op_ptr->wait_on_all_events && !current_event_ptr->status)
+                    if (current_wait_op_ptr->wait_on_all_events && !is_event_signalled)
                     {
                         has_awakened_wait_op = false;
 
@@ -306,61 +349,58 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
                                           n_event < current_wait_op_ptr->n_events;
                                         ++n_event)
                         {
-                            _system_event_monitor_event* current_event_ptr = current_wait_op_ptr->events[n_event];
+                            _system_event_monitor_event* current_event_ptr  = current_wait_op_ptr->events[n_event];
+                            bool                         is_event_signalled = _system_event_monitor_is_event_signalled(current_event_ptr);
 
                             /* If event should be automatically unsignalled, unsignal it now (since we're using it
                              * for the current wait op) */
-                            if (!current_event_ptr->manual_reset)
+                            ASSERT_DEBUG_SYNC(is_event_signalled,
+                                              "Event is not signalled");
+
+                            if ( current_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR &&
+                                !current_event_ptr->manual_reset)
                             {
-                                ASSERT_DEBUG_SYNC(current_event_ptr->status,
+                                ASSERT_DEBUG_SYNC(current_event_ptr->regular_event_status,
                                                   "About to wake up a wait op but one of the required events is unsignalled.");
 
-                                current_event_ptr->status = false;
+                                current_event_ptr->regular_event_status = false;
                             }
                         } /* for (all events) */
                     } /* if (current_wait_op_ptr->wait_on_all_events) */
                     else
                     {
                         /* Only one the required events is in a signalled state. Unsignal the first one we find, if necessary */
-                        bool has_found_signalled_event = false;
+                        _system_event_monitor_event* current_event_ptr         = current_wait_op_ptr->events[n_signalled_event];
+                        bool                         has_found_signalled_event = false;
 
-                        for (unsigned int n_event = 0;
-                                          n_event < current_wait_op_ptr->n_events;
-                                        ++n_event)
+                        if (current_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR &&
+                            current_event_ptr->regular_event_status)
                         {
-                            _system_event_monitor_event* current_event_ptr = current_wait_op_ptr->events[n_event];
-
-                            if (current_event_ptr->status)
+                            if (!current_event_ptr->manual_reset)
                             {
-                                if (!current_event_ptr->manual_reset)
-                                {
-                                    current_event_ptr->status = false;
-                                }
-
-                                has_found_signalled_event = true;
-                                break;
+                                current_event_ptr->regular_event_status = false;
                             }
-                        } /* for (all events making up the wait op) */
+
+                            has_found_signalled_event = true;
+                        }
 
                         ASSERT_DEBUG_SYNC(has_found_signalled_event,
                                           "About to wake up a wait op but none of the events are signalled.");
                     }
 
                     /* Signal the wait op's cond var to awaken the waiting thread */
+                    current_wait_op_ptr->n_signalled_event               = n_signalled_event;
                     current_wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = true;
 
                     system_cond_variable_signal(current_wait_op_ptr->wakeup_cvar_ptr->cvar,
                                                 false); /* should_broadcast */
 
-                    /* Return the wait op to the pool */
-                    system_resource_pool_return_to_pool(monitor_ptr->internal_wait_op_pool,
-                                                        (system_resource_pool_block) current_wait_op_ptr);
-
+                    /* Remove the op from the blocked wait ops vector */
                     system_resizable_vector_delete_element_at(monitor_ptr->blocked_wait_ops,
                                                               n_blocked_wait_op);
 
                     --n_blocked_wait_ops;
-                }
+                } /* if (has_awakened_wait_op) */
                 else
                 {
                     ++n_blocked_wait_op;
@@ -376,29 +416,8 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
 /** TODO */
 PRIVATE void _system_event_monitor_wait_op_deinit(system_resource_pool_block block)
 {
-    _system_event_monitor_wait_op* wait_op_ptr = (_system_event_monitor_wait_op*) block;
-
-    for (unsigned int n_event = 0;
-                      n_event < wait_op_ptr->n_events;
-                    ++n_event)
-    {
-        ASSERT_DEBUG_SYNC(wait_op_ptr->events[n_event] != NULL,
-                          "Wait op's event is NULL");
-
-        system_resource_pool_return_to_pool(monitor_ptr->internal_events_pool,
-                                            (system_resource_pool_block) wait_op_ptr->events[n_event]);
-    }
-
-    memset(wait_op_ptr->events,
-           0,
-           wait_op_ptr->n_events * sizeof(_system_event_monitor_event*) );
-
-
-    ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr != NULL,
-                      "Wait op's wakeup CVar is NULL");
-
-    system_resource_pool_return_to_pool(monitor_ptr->internal_cvar_pool,
-                                        (system_resource_pool_block) wait_op_ptr->wakeup_cvar_ptr);
+    /* Nothing to do - all resource pools will clean-up automagically at
+     * destruction time */
 }
 
 /** TODO */
@@ -426,8 +445,20 @@ PUBLIC void system_event_monitor_add_event(__in system_event event)
         system_event_get_property(event,
                                   SYSTEM_EVENT_PROPERTY_MANUAL_RESET,
                                  &internal_event_ptr->manual_reset);
+        system_event_get_property(event,
+                                  SYSTEM_EVENT_PROPERTY_TYPE,
+                                 &internal_event_ptr->type);
 
-        internal_event_ptr->status = false; /* NOT signalled by default, as per system_event impl */
+        if (internal_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR)
+        {
+            internal_event_ptr->regular_event_status = false; /* NOT signalled by default, as per system_event impl */
+        }
+        else
+        {
+            system_event_get_property(event,
+                                      SYSTEM_EVENT_PROPERTY_OWNED_THREAD,
+                                     &internal_event_ptr->thread_event_thread);
+        }
 
         /* Store it */
         ASSERT_DEBUG_SYNC(!system_hash64map_contains(monitor_ptr->event_to_internal_event_map,
@@ -450,8 +481,10 @@ PUBLIC void system_event_monitor_deinit()
     monitor_ptr->thread_should_die = true;
 
     system_cond_variable_signal(monitor_ptr->wakeup_cvar,
-                                false); /* should_broadcast */
-    system_event_wait_single   (monitor_ptr->thread_event);
+                                false);              /* should_broadcast */
+    system_threads_join_thread (monitor_ptr->thread,
+                                INFINITE,            /* timeout */
+                                NULL);               /* out_has_timed_out_ptr */
 
     /* Release the monitor instance */
     if (monitor_ptr != NULL)
@@ -500,10 +533,19 @@ PUBLIC void system_event_monitor_init()
 
     if (monitor_ptr != NULL)
     {
-        /* Launch the monitor thread */
+        /* Launch the monitor thread.
+         *
+         * NOTE: We must NOT wait on the thread_wait_event. Since system_event_monitor is solely
+         *       responsible for signalling condition variables, both for regular and thread events,
+         *       we would have locked up, had we waited for the thread_wait_event to be signalled
+         *       at system_event_monitor_deinit() time.
+         *       However, since we use POSIX or Windows API to wait on threads, we can use the thread
+         *       handle instead.
+         */
         system_threads_spawn(_system_event_monitor_thread_entrypoint,
                              NULL, /* callback_func_argument */
-                            &monitor_ptr->thread_event);
+                             NULL, /* thread_wait_event */
+                            &monitor_ptr->thread);
     }
 }
 
@@ -525,7 +567,10 @@ PUBLIC void system_event_monitor_reset_event(__in system_event event)
                                 (system_hash64) event,
                                 &internal_event_ptr))
         {
-            internal_event_ptr->status = false;
+            ASSERT_DEBUG_SYNC(internal_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR,
+                              "Cannot reset a non-regular event");
+
+            internal_event_ptr->regular_event_status = false;
         }
     }
     system_critical_section_leave(monitor_ptr->wakeup_cs);
@@ -549,12 +594,18 @@ PUBLIC void system_event_monitor_set_event(__in system_event event)
                                 (system_hash64) event,
                                 &internal_event_ptr))
         {
-            if (!internal_event_ptr->status)
+            ASSERT_DEBUG_SYNC(internal_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR,
+                              "Cannot set a non-regular event");
+
+            if ( internal_event_ptr->type == SYSTEM_EVENT_TYPE_REGULAR &&
+                !internal_event_ptr->regular_event_status)
             {
-                internal_event_ptr->status = true;
+                internal_event_ptr->regular_event_status = true;
 
                 /* Wake up the global monitor thread, so that the blocking wait ops
                  * can be traversed and awakened as necessary */
+                system_atomics_increment(&monitor_ptr->n_wakeups_needed);
+
                 system_cond_variable_signal(monitor_ptr->wakeup_cvar,
                                             false); /* should_broadcast */
             }
@@ -568,113 +619,130 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
                                       __in      unsigned int         n_events,
                                       __in      bool                 wait_for_all_events,
                                       __in      system_timeline_time timeout,
-                                      __out_opt bool*                out_has_timed_out_ptr)
+                                      __out_opt bool*                out_has_timed_out_ptr,
+                                      __out_opt unsigned int*        out_signalled_event_index_ptr)
 {
     /* Sanity checks */
+    bool needs_to_leave_monitor_wakeup_cs;
+
     ASSERT_DEBUG_SYNC(monitor_ptr != NULL,
                       "Event monitor global instance is NULL");
     ASSERT_DEBUG_SYNC(n_events < MAXIMUM_WAIT_OBJECTS,
                       "Too many events to wait on");
 
     system_critical_section_enter(monitor_ptr->wakeup_cs);
+    needs_to_leave_monitor_wakeup_cs = true;
+
+    /* Retrieve a "wait op" descriptor instance */
+    unsigned int                   n_events_found = 0;
+    _system_event_monitor_wait_op* wait_op_ptr    = (_system_event_monitor_wait_op*) system_resource_pool_get_from_pool(monitor_ptr->internal_wait_op_pool);
+
+    for (unsigned int n_event = 0;
+                      n_event < n_events;
+                    ++n_event)
     {
-        /* Retrieve a "wait op" descriptor instance */
-        unsigned int                   n_events_found = 0;
-        _system_event_monitor_wait_op* wait_op_ptr    = (_system_event_monitor_wait_op*) system_resource_pool_get_from_pool(monitor_ptr->internal_wait_op_pool);
+        _system_event_monitor_event* internal_event_ptr = NULL;
 
-        for (unsigned int n_event = 0;
-                          n_event < n_events;
-                        ++n_event)
+        if (!system_hash64map_get(monitor_ptr->event_to_internal_event_map,
+                                  (system_hash64) events[n_event],
+                                 &internal_event_ptr) )
         {
-            _system_event_monitor_event* internal_event_ptr = NULL;
+            ASSERT_DEBUG_SYNC(false,
+                              "Cannot wait on event at index [%d]: event not recognized",
+                              n_event);
 
-            if (!system_hash64map_get(monitor_ptr->event_to_internal_event_map,
-                                      (system_hash64) events[n_event],
-                                     &internal_event_ptr) )
-            {
-                ASSERT_DEBUG_SYNC(false,
-                                  "Cannot wait on event at index [%d]: event not recognized",
-                                  n_event);
+            continue;
+        }
 
-                continue;
-            }
+        wait_op_ptr->events[n_events_found++] = internal_event_ptr;
+    } /* for (all requested events) */
 
-            wait_op_ptr->events[n_events_found++] = internal_event_ptr;
-        } /* for (all requested events) */
+    if (n_events_found != 0)
+    {
+        wait_op_ptr->n_events           = n_events_found;
+        wait_op_ptr->wait_on_all_events = wait_for_all_events;
 
-        if (n_events_found != 0)
+        ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr != NULL,
+                          "Wake-up CV ptr in a wait op instance is NULL");
+
+        /* Throw this wait op into the bag and block on it, until the global monitor thread
+         * wakes it up, or we time out.
+         */
+        bool         has_timed_out         = false;
+        unsigned int signalled_event_index = -1;
+
+        system_resizable_vector_push(monitor_ptr->blocked_wait_ops,
+                                     wait_op_ptr);
+
+        system_cond_variable_signal(monitor_ptr->wakeup_cvar,
+                                    false); /* should_broadcast */
+
+        system_critical_section_leave(monitor_ptr->wakeup_cs);
+        needs_to_leave_monitor_wakeup_cs = false;
+
+        system_cond_variable_wait_begin(wait_op_ptr->wakeup_cvar_ptr->cvar,
+                                        timeout,
+                                       &has_timed_out);
+
+        signalled_event_index = wait_op_ptr->n_signalled_event;
+
+        /* Time-out? Lock the wakeup_cs before we start fiddling with the monitor's stuff! */
+        system_critical_section_enter(monitor_ptr->wakeup_cs);
+        needs_to_leave_monitor_wakeup_cs = true;
+
+        if (has_timed_out)
         {
-            wait_op_ptr->n_events           = n_events_found;
-            wait_op_ptr->wait_on_all_events = wait_for_all_events;
-
-            ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr != NULL,
-                              "Wake-up CV ptr in a wait op instance is NULL");
-
-            /* Throw this wait op into the bag and block on it, until the global monitor thread
-             * wakes it up, or we time out.
-             */
-            bool has_timed_out = false;
-
-            system_resizable_vector_push(monitor_ptr->blocked_wait_ops,
-                                         wait_op_ptr);
-
-            system_cond_variable_signal(monitor_ptr->wakeup_cvar,
-                                        false); /* should_broadcast */
-
-            system_cond_variable_wait_begin(wait_op_ptr->wakeup_cvar_ptr->cvar,
-                                            timeout,
-                                           &has_timed_out);
-
-            /* Time-out? Lock the wakeup_cs before we start fiddling with the monitor's stuff! */
-            if (has_timed_out)
-            {
-                system_critical_section_enter(monitor_ptr->wakeup_cs);
-
-                ASSERT_DEBUG_SYNC(!wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
-                                  "Wait op thread has been awakened & timed out, but its cvar predicate is true!");
-            }
-            else
-            {
-                ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
-                                  "Wait op thread has been awakened & not timed out, but its cvar predicate is false!");
-            }
-
-            wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = false;
-
-            /* Remove the wait op from the blocked wait ops vector, if the op is still there */
-            size_t item_index = system_resizable_vector_find(monitor_ptr->blocked_wait_ops,
-                                                             (void*) wait_op_ptr);
-
-            if (item_index != ITEM_NOT_FOUND)
-            {
-                system_resizable_vector_delete_element_at(monitor_ptr->blocked_wait_ops,
-                                                          item_index);
-            } /* if (item_index != ITEM_NOT_FOUND) */
-
-            system_resource_pool_return_to_pool(monitor_ptr->internal_wait_op_pool,
-                                                (system_resource_pool_block) wait_op_ptr);
-
-            if (!has_timed_out)
-            {
-                system_cond_variable_wait_end(wait_op_ptr->wakeup_cvar_ptr->cvar);
-            }
-            else
-            {
-                system_critical_section_leave(monitor_ptr->wakeup_cs);
-            }
-
-            /* Report to the caller. */
-            if (out_has_timed_out_ptr != NULL)
-            {
-                *out_has_timed_out_ptr = has_timed_out;
-            }
+            ASSERT_DEBUG_SYNC(!wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
+                              "Wait op thread has been awakened & timed out, but its cvar predicate is true!");
         }
         else
         {
-            /* Cannot wait - none of the specified events was recognized. */
-            system_resource_pool_return_to_pool(monitor_ptr->internal_wait_op_pool,
-                                                (system_resource_pool_block) wait_op_ptr);
+            ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
+                              "Wait op thread has been awakened & not timed out, but its cvar predicate is false!");
+        }
+
+        wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = false;
+
+        /* Remove the wait op from the blocked wait ops vector, if the op is still there */
+        size_t item_index = system_resizable_vector_find(monitor_ptr->blocked_wait_ops,
+                                                         (void*) wait_op_ptr);
+
+        if (item_index != ITEM_NOT_FOUND)
+        {
+            system_resizable_vector_delete_element_at(monitor_ptr->blocked_wait_ops,
+                                                      item_index);
+        } /* if (item_index != ITEM_NOT_FOUND) */
+
+        if (!has_timed_out)
+        {
+            system_cond_variable_wait_end(wait_op_ptr->wakeup_cvar_ptr->cvar);
+        }
+
+        system_resource_pool_return_to_pool(monitor_ptr->internal_wait_op_pool,
+                                            (system_resource_pool_block) wait_op_ptr);
+
+        /* Report to the caller. */
+        if (out_has_timed_out_ptr != NULL)
+        {
+            *out_has_timed_out_ptr = has_timed_out;
+        }
+
+        if (out_signalled_event_index_ptr != NULL)
+        {
+            *out_signalled_event_index_ptr = signalled_event_index;
         }
     }
-    system_critical_section_leave(monitor_ptr->wakeup_cs);
+    else
+    {
+        /* Cannot wait - none of the specified events was recognized. */
+        system_resource_pool_return_to_pool(monitor_ptr->internal_wait_op_pool,
+                                            (system_resource_pool_block) wait_op_ptr);
+    }
+
+    if (needs_to_leave_monitor_wakeup_cs)
+    {
+        system_critical_section_leave(monitor_ptr->wakeup_cs);
+
+        needs_to_leave_monitor_wakeup_cs = false;
+    }
 }

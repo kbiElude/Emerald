@@ -90,16 +90,17 @@ void main_init()
     _system_time_init();
     _system_assertions_init();
     _system_threads_init();
-    _system_thread_pool_init();
-    _system_matrix4x4_init();
-    _system_window_init();
-    _system_variants_init();
 
     #ifdef USE_EMULATED_EVENTS
     {
         system_event_monitor_init();
     }
     #endif
+
+    _system_thread_pool_init();
+    _system_matrix4x4_init();
+    _system_window_init();
+    _system_variants_init();
 
     #ifdef INCLUDE_WEBCAM_MANAGER
         _webcam_manager_init();
@@ -187,7 +188,11 @@ int main_deinit()
             case DLL_PROCESS_DETACH:
             {
                 /* DLL unloaded from the virtual address space of the calling process */
-                main_deinit();
+
+                /* This call must not be made from within DllMain(). On Windows 8.1, all other
+                 * threads but the current one have been killed by the time this entry-point
+                 * is reached! */
+                // main_deinit();
 
                 break;
             }

@@ -665,7 +665,7 @@ PUBLIC void _system_thread_pool_deinit()
     system_event_set          (kill_pool_event);
     system_event_wait_multiple(kill_wait_table,
                                THREAD_POOL_AMOUNT_OF_THREADS,
-                               true,
+                               true, /* wait_on_all_objects */
                                timeout_time,
                               &wait_result);
 

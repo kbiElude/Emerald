@@ -14,6 +14,12 @@ typedef enum
     /* bool */
     SYSTEM_EVENT_PROPERTY_MANUAL_RESET,
 
+    /* system_thread.
+     *
+     * Only valid if event type == SYSTEM_EVENT_TYPE_THREAD
+     */
+    SYSTEM_EVENT_PROPERTY_OWNED_THREAD,
+
     /* system_event_type */
     SYSTEM_EVENT_PROPERTY_TYPE
 } system_event_property;
@@ -24,6 +30,8 @@ typedef enum
     SYSTEM_EVENT_TYPE_REGULAR,
     /* Created by system_event_create_from_thread() */
     SYSTEM_EVENT_TYPE_THREAD,
+
+    SYSTEM_EVENT_TYPE_UNDEFINED
 } system_event_type;
 
 /** Creates an event synchronisation object.
@@ -108,6 +116,6 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in  __notnull __ecount(n_
                                                      __in                                 int                  n_elements,
                                                                                           bool                 wait_on_all_objects,
                                                                                           system_timeline_time timeout,
-                                                     __out_opt                            bool*                out_result_ptr);
+                                                     __out_opt                            bool*                out_has_timed_out_ptr);
 
 #endif /* SYSTEM_EVENT_H */

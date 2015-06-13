@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "system/system_assertions.h"
 #include "system/system_event.h"
+#include "system/system_threads.h"
 
 #if !defined(USE_EMULATED_EVENTS) && defined(_WIN32)
     #define USE_RAW_HANDLES
@@ -23,6 +24,7 @@ typedef struct _system_event
     #endif
 
     bool              manual_reset;
+    system_thread     owned_thread; /* only relevant for thread events */
     system_event_type type;
 
     explicit _system_event(__in system_event_type in_type)
@@ -32,6 +34,7 @@ typedef struct _system_event
         #endif
 
         manual_reset = false;
+        owned_thread = NULL;
         type         = in_type;
     }
 } _system_event;
@@ -82,10 +85,8 @@ PUBLIC EMERALD_API __maybenull system_event system_event_create_from_thread(__in
     }
     #else
     {
-        /* With event monitor, we don't even need to hold the thread handle.
-         * If USE_EMULATED_EVENTS is defined, system_threads will inject
-         * an event setter call right before the thread leaves its entry-point.
-         */
+        event_ptr->owned_thread = thread;
+
         system_event_monitor_add_event( (system_event) event_ptr);
     }
     #endif
@@ -105,6 +106,16 @@ PUBLIC void system_event_get_property(__in  system_event          event,
         case SYSTEM_EVENT_PROPERTY_MANUAL_RESET:
         {
             *(bool*) out_result = event_ptr->manual_reset;
+
+            break;
+        }
+
+        case SYSTEM_EVENT_PROPERTY_OWNED_THREAD:
+        {
+            ASSERT_DEBUG_SYNC(event_ptr->type == SYSTEM_EVENT_TYPE_THREAD,
+                              "SYSTEM_EVENT_PROPERTY_OWNED_THREAD property queried for a non-thread event.");
+
+            *(system_thread*) out_result = event_ptr->owned_thread;
 
             break;
         }
@@ -136,7 +147,13 @@ PUBLIC EMERALD_API void system_event_release(__in __notnull __deallocate(mem) sy
             ::CloseHandle(descriptor);
         }
     }
+    #else
+    {
+        system_event_monitor_delete_event(event);
+    }
     #endif
+
+    delete (_system_event*) event;
 }
 
 /** Please see header for specification */
@@ -195,10 +212,11 @@ PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_even
         bool has_timed_out = false;
 
         system_event_monitor_wait(&event,
-                                  1,     /* n_events */
-                                  false, /* wait_for_all_events */
-                                  0,     /* timeout */
-                                 &has_timed_out);
+                                  1,             /* n_events */
+                                  false,         /* wait_for_all_events */
+                                  0,             /* timeout */
+                                 &has_timed_out,
+                                  NULL);         /* out_signalled_event_index_ptr */
 
         return !has_timed_out;
     }
@@ -241,8 +259,8 @@ PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event    
                                   1,       /* n_events */
                                   false,   /* wait_for_all_events */
                                   timeout,
-                                  NULL);   /* has_timed_out_ptr */
-
+                                  NULL,    /* has_timed_out_ptr */
+                                  NULL);   /* out_signalled_event_index_ptr */
     }
     #endif
 }
@@ -252,7 +270,7 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                                      __in                                int                  n_elements,
                                                                                          bool                 wait_on_all_objects,
                                                                                          system_timeline_time timeout,
-                                                     __out __notnull                     bool*                out_result_ptr)
+                                                     __out __notnull                     bool*                out_has_timed_out_ptr)
 {
     size_t result;
 
@@ -361,6 +379,8 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
     }
     #else
     {
+        bool has_timed_out = false;
+
         result = -1;
 
         if (n_elements == 0)
@@ -375,8 +395,6 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
             ASSERT_DEBUG_SYNC(n_elements < MAXIMUM_WAIT_OBJECTS,
                               "Sanity check failed");
 
-            bool has_timed_out = false;
-
             if (n_elements < MAXIMUM_WAIT_OBJECTS)
             {
                 system_event internal_events[MAXIMUM_WAIT_OBJECTS];
@@ -389,9 +407,8 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                           n_elements,
                                           wait_on_all_objects,
                                           timeout,
-                                         &has_timed_out);
-
-                result = (has_timed_out) ? -1 : 0;
+                                         &has_timed_out,
+                                         &result);
             } /* if (n_elements < MAXIMUM_WAIT_OBJECTS) */
             else
             {
@@ -411,9 +428,8 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                               n_elements,
                                               wait_on_all_objects,
                                               timeout,
-                                             &has_timed_out);
-
-                    result = (has_timed_out) ? -1 : 0;
+                                             &has_timed_out,
+                                             &result);
 
                     if (has_timed_out)
                     {
@@ -441,12 +457,16 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                       n_elements,
                                       wait_on_all_objects,
                                       timeout,
-                                     &has_timed_out);
-
-            result = (has_timed_out) ? -1 : 0;
+                                     &has_timed_out,
+                                     &result);
         }
 
-end:
+    end:
+        if (out_has_timed_out_ptr != NULL)
+        {
+            *out_has_timed_out_ptr = has_timed_out;
+        }
+
         return result;
     }
     #endif

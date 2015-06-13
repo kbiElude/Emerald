@@ -131,8 +131,11 @@ EMERALD_API void system_critical_section_leave(__in system_critical_section crit
                           "Cannot leave - not entered.");
         ASSERT_DEBUG_SYNC(cs_ptr->thread_id != 0,
                           "CS not taken but about to be left.");
+#if 0
+        /* This does not work correctly if the CS is used with condition variables */
         ASSERT_DEBUG_SYNC(cs_ptr->thread_id == curr_thread_id,
                           "Leave() request from a non-owner!");
+#endif
 
         if (cs_ptr->n_enters  >  0               &&
             cs_ptr->thread_id == curr_thread_id)
