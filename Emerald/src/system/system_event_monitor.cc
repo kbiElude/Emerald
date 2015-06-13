@@ -49,11 +49,13 @@ typedef struct
     unsigned int                 n_events;
     bool                         wait_on_all_events;
 
+    /* Only access after entering wait_semaphore */
     unsigned int                 n_signalled_event;
 
-    /* Used by the wait() handler; signalled by the global thread */
-    _system_event_monitor_cond_variable* wakeup_cvar_ptr;
-
+    /* Raised by the global monitor thread when all required waiting conditions
+     * are met.
+     */
+    system_semaphore             wait_semaphore;
 } _system_event_monitor_wait_op;
 
 typedef struct _system_event_monitor
@@ -396,12 +398,10 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
                                           "About to wake up a wait op but none of the events are signalled.");
                     }
 
-                    /* Signal the wait op's cond var to awaken the waiting thread */
-                    current_wait_op_ptr->n_signalled_event               = n_signalled_event;
-                    current_wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = true;
+                    /* Signal the wait op's semaphore to awaken the waiting thread */
+                    current_wait_op_ptr->n_signalled_event = n_signalled_event;
 
-                    system_cond_variable_signal(current_wait_op_ptr->wakeup_cvar_ptr->cvar,
-                                                false); /* should_broadcast */
+                    system_semaphore_leave(current_wait_op_ptr->wait_semaphore);
 
                     /* Remove the op from the blocked wait ops vector */
                     system_resizable_vector_delete_element_at(monitor_ptr->blocked_wait_ops,
@@ -424,8 +424,10 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
 /** TODO */
 PRIVATE void _system_event_monitor_wait_op_deinit(system_resource_pool_block block)
 {
-    /* Nothing to do - all resource pools will clean-up automagically at
-     * destruction time */
+    _system_event_monitor_wait_op* wait_op_ptr = (_system_event_monitor_wait_op*) block;
+
+    system_semaphore_release(wait_op_ptr->wait_semaphore);
+    wait_op_ptr->wait_semaphore = NULL;
 }
 
 /** TODO */
@@ -435,7 +437,8 @@ PRIVATE void _system_event_monitor_wait_op_init(system_resource_pool_block block
 
     wait_op_ptr->n_events           = 0;
     wait_op_ptr->wait_on_all_events = false;
-    wait_op_ptr->wakeup_cvar_ptr    = (_system_event_monitor_cond_variable*) system_resource_pool_get_from_pool(monitor_ptr->internal_cvar_pool);
+    wait_op_ptr->wait_semaphore     = system_semaphore_create(1,  /* semaphore_capacity      */
+                                                              0); /* semaphore_default_value */
 }
 
 
@@ -671,10 +674,8 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
         wait_op_ptr->n_events           = n_events_found;
         wait_op_ptr->wait_on_all_events = wait_for_all_events;
 
-        ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr != NULL,
-                          "Wake-up CV ptr in a wait op instance is NULL");
-
-        wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = false;
+        ASSERT_DEBUG_SYNC(wait_op_ptr->wait_semaphore != NULL,
+                          "Wait op instance's semaphore is NULL");
 
         /* Throw this wait op into the bag and block on it, until the global monitor thread
          * wakes it up, or we time out.
@@ -691,26 +692,15 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
         system_critical_section_leave(monitor_ptr->wakeup_cs);
         needs_to_leave_monitor_wakeup_cs = false;
 
-        system_cond_variable_wait_begin(wait_op_ptr->wakeup_cvar_ptr->cvar,
-                                        timeout,
-                                       &has_timed_out);
-
-        signalled_event_index = wait_op_ptr->n_signalled_event;
+        system_semaphore_enter(wait_op_ptr->wait_semaphore,
+                               timeout,
+                              &has_timed_out);
 
         /* Time-out? Lock the wakeup_cs before we start fiddling with the monitor's stuff! */
         system_critical_section_enter(monitor_ptr->wakeup_cs);
         needs_to_leave_monitor_wakeup_cs = true;
 
-        if (has_timed_out)
-        {
-            ASSERT_DEBUG_SYNC(!wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
-                              "Wait op thread has been awakened & timed out, but its cvar predicate is true!");
-        }
-        else
-        {
-            ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
-                              "Wait op thread has been awakened & not timed out, but its cvar predicate is false!");
-        }
+        signalled_event_index = wait_op_ptr->n_signalled_event;
 
         /* Remove the wait op from the blocked wait ops vector, if the op is still there */
         size_t item_index = system_resizable_vector_find(monitor_ptr->blocked_wait_ops,
@@ -722,9 +712,16 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
                                                       item_index);
         } /* if (item_index != ITEM_NOT_FOUND) */
 
-        if (!has_timed_out)
+        /* If the event timed out, the semaphore might not have been raised at the previous
+         * system_semaphore_enter() call. Before we entered the wakeup_cs, however, the monitor
+         * might have raised it.
+         *
+         * Ensure the semaphore is really down before we continue
+         */
+        if (has_timed_out)
         {
-            system_cond_variable_wait_end(wait_op_ptr->wakeup_cvar_ptr->cvar);
+            system_semaphore_enter(wait_op_ptr->wait_semaphore,
+                                   0); /* timeout */
         }
 
         system_resource_pool_return_to_pool(monitor_ptr->internal_wait_op_pool,

@@ -38,7 +38,8 @@ PRIVATE void _init_read_write_mutex(_read_write_mutex_descriptor* descriptor)
         descriptor->cs_write              = system_critical_section_create();
         descriptor->n_read_locks          = 0;
         descriptor->n_write_locks         = 0;
-        descriptor->semaphore             = system_semaphore_create(MAX_SEMAPHORE_COUNT);
+        descriptor->semaphore             = system_semaphore_create(MAX_SEMAPHORE_COUNT,  /* semaphore_capacity */
+                                                                    MAX_SEMAPHORE_COUNT); /* semaphore_default_value */
         descriptor->write_owner_thread_id = 0;
     }
 }
