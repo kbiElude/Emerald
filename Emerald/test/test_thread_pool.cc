@@ -174,6 +174,7 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
     }
 }
 
+#if 0
 TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
 {
     unsigned char test_buffer[256] = {0};
@@ -182,7 +183,9 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
     /* set up */
     ZeroMemory(test_buffer, 256);
 
-    for (unsigned int n = 0; n < 4; n++)
+    for (unsigned int n = 0;
+                      n < 4;
+                      n++)
     {
         wait_events[n] = system_event_create(true); /* manual_reset */
     }
@@ -191,7 +194,9 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
     system_thread_pool_task_group_descriptor       task_group_descriptor = system_thread_pool_create_task_group_descriptor(false);
     few_simple_tasks_submitted_separately_argument inputs[4];
 
-    for (unsigned int n = 0; n < 4; n++)
+    for (unsigned int n = 0;
+                      n < 4;
+                      n++)
     {
         /* Alloc input */
         inputs[n].n           = n;
@@ -307,3 +312,4 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
         system_event_release(wait_events[n]);
     }
 }
+#endif

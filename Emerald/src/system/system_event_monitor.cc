@@ -13,6 +13,7 @@
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
+#include "system/system_semaphore.h"
 #include "system/system_threads.h"
 #include "system/system_time.h"
 
@@ -66,7 +67,6 @@ typedef struct _system_event_monitor
      */
     system_resizable_vector blocked_wait_ops;
     system_hash64map        event_to_internal_event_map;
-    unsigned int            n_wakeups_needed;
     system_thread           thread;
     bool                    thread_should_die;
     system_cond_variable    wakeup_cvar;
@@ -92,7 +92,6 @@ typedef struct _system_event_monitor
                                                                      16, /* n_elements_to_preallocate */
                                                                      _system_event_monitor_wait_op_init,
                                                                      _system_event_monitor_wait_op_deinit);
-        n_wakeups_needed            = 0;
         thread                      = NULL;
         thread_should_die           = false;
         wakeup_cs                   = system_critical_section_create();
@@ -234,8 +233,20 @@ PRIVATE bool _system_event_monitor_is_update_needed(void* user_arg)
     {
         system_critical_section_enter(monitor_ptr->wakeup_cs);
         {
-            result = (monitor_ptr->n_wakeups_needed > 0) ||
-                      monitor_ptr->thread_should_die;
+            uint32_t n_blocked_wait_ops = 0;
+
+            system_resizable_vector_get_property(monitor_ptr->blocked_wait_ops,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_blocked_wait_ops);
+
+            /* NOTE: This effectively causes the event monitor to work as a spin-lock whenever
+             *       at least one wait op is in progress, but I (kbi) wasn't able to figure out
+             *       a better way to work around thread races.
+             *
+             *       Feel free to improve.
+             */
+            result = n_blocked_wait_ops > 0         ||
+                     monitor_ptr->thread_should_die;
         }
         system_critical_section_leave(monitor_ptr->wakeup_cs);
     }
@@ -263,11 +274,6 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
 
                 break;
             }
-
-            ASSERT_DEBUG_SYNC(monitor_ptr->n_wakeups_needed != 0,
-                              "Wait op traversal imminent, even though no wake-up was needed");
-
-            system_atomics_decrement(&monitor_ptr->n_wakeups_needed);
 
             /* NOTE: The worker thread has been awakened owing to at least one event having
              *       been set.
@@ -366,6 +372,8 @@ PRIVATE void _system_event_monitor_thread_entrypoint(system_threads_entry_point_
                                 current_event_ptr->regular_event_status = false;
                             }
                         } /* for (all events) */
+
+                        n_signalled_event = 0;
                     } /* if (current_wait_op_ptr->wait_on_all_events) */
                     else
                     {
@@ -601,14 +609,12 @@ PUBLIC void system_event_monitor_set_event(__in system_event event)
                 !internal_event_ptr->regular_event_status)
             {
                 internal_event_ptr->regular_event_status = true;
-
-                /* Wake up the global monitor thread, so that the blocking wait ops
-                 * can be traversed and awakened as necessary */
-                system_atomics_increment(&monitor_ptr->n_wakeups_needed);
-
-                system_cond_variable_signal(monitor_ptr->wakeup_cvar,
-                                            false); /* should_broadcast */
             }
+
+            /* Wake up the global monitor thread, so that the blocking wait ops
+             * can be traversed and awakened as necessary */
+            system_cond_variable_signal(monitor_ptr->wakeup_cvar,
+                                        false); /* should_broadcast */
         }
     }
     system_critical_section_leave(monitor_ptr->wakeup_cs);
@@ -657,6 +663,9 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
         wait_op_ptr->events[n_events_found++] = internal_event_ptr;
     } /* for (all requested events) */
 
+    ASSERT_DEBUG_SYNC(n_events == n_events_found,
+                      "Sanity check failed");
+
     if (n_events_found != 0)
     {
         wait_op_ptr->n_events           = n_events_found;
@@ -664,6 +673,8 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
 
         ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr != NULL,
                           "Wake-up CV ptr in a wait op instance is NULL");
+
+        wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = false;
 
         /* Throw this wait op into the bag and block on it, until the global monitor thread
          * wakes it up, or we time out.
@@ -700,8 +711,6 @@ PUBLIC void system_event_monitor_wait(__in      system_event*        events,
             ASSERT_DEBUG_SYNC(wait_op_ptr->wakeup_cvar_ptr->cvar_predicate,
                               "Wait op thread has been awakened & not timed out, but its cvar predicate is false!");
         }
-
-        wait_op_ptr->wakeup_cvar_ptr->cvar_predicate = false;
 
         /* Remove the wait op from the blocked wait ops vector, if the op is still there */
         size_t item_index = system_resizable_vector_find(monitor_ptr->blocked_wait_ops,

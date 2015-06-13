@@ -409,6 +409,11 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                           timeout,
                                          &has_timed_out,
                                          &result);
+
+                if (!has_timed_out)
+                {
+                    result = 0;
+                }
             } /* if (n_elements < MAXIMUM_WAIT_OBJECTS) */
             else
             {
