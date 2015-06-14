@@ -8,6 +8,11 @@
 #include "system/system_semaphore.h"
 #include "system/system_time.h"
 
+#ifdef __linux__
+    #include <semaphore.h>
+#endif
+
+
 /** Internal structure describing a single semaphore object */
 struct _system_semaphore
 {
@@ -43,7 +48,18 @@ EMERALD_API system_semaphore system_semaphore_create(__in uint32_t semaphore_cap
     ASSERT_DEBUG_SYNC(result == 0,
                       "Could not create a semaphore");
 
-    TODO;
+    /* Configure the semaphore to the user-specified value */
+    uint32_t diff = semaphore_capacity - semaphore_default_value;
+
+    for (uint32_t n = 0;
+                  n < diff;
+                ++n)
+    {
+        int result = sem_wait(&semaphore_ptr->semaphore);
+
+        ASSERT_DEBUG_SYNC(result == 0,
+                          "sem_wait() failed");
+    }
 #endif
 
 
@@ -76,6 +92,8 @@ EMERALD_API void system_semaphore_enter(__in      system_semaphore     semaphore
 
     if (semaphore_ptr != NULL)
     {
+#ifdef _WIN32
+        DWORD        result;
         unsigned int timeout_msec = 0;
 
         if (timeout == SYSTEM_TIME_INFINITE)
@@ -88,18 +106,29 @@ EMERALD_API void system_semaphore_enter(__in      system_semaphore     semaphore
                                                   &timeout_msec);
         }
 
-#ifdef _WIN32
-        DWORD result = ::WaitForSingleObject(semaphore_ptr->semaphore,
-                                             timeout_msec);
+        result = ::WaitForSingleObject(semaphore_ptr->semaphore,
+                                       timeout_msec);
 
         if (out_has_timed_out_ptr != NULL)
         {
             *out_has_timed_out_ptr = (result == WAIT_TIMEOUT);
         }
 #else
-        sem_wait(&semaphore_ptr->semaphore);
+        if (timeout == SYSTEM_TIME_INFINITE)
+        {
+            sem_wait(&semaphore_ptr->semaphore);
+        }
+        else
+        {
+            struct timespec timeout_api;
+            unsigned int    timeout_msec = 0;
 
-        TODO;
+            system_time_get_msec_for_timeline_time(timeout,
+                                                  &timeout_msec);
+
+            timeout_api.tv_sec  = timeout_msec / 1000;
+            timeout_api.tv_nsec = long(timeout_msec % 1000) * NSEC_PER_SEC;
+        }
 #endif
     }
 }

@@ -49,11 +49,13 @@ EMERALD_API void system_log_write(system_log_priority,
         snprintf(temp,
                  sizeof(temp),
                  "[tid:%08x] ",
-                 ::GetCurrentThreadId() );
+                 system_threads_get_thread_id() );
 
+#ifdef _WIN32
         ::OutputDebugStringA(temp);
         ::OutputDebugStringA(text);
         ::OutputDebugStringA("\n");
+#endif
 
         if (log_file_handle != NULL)
         {

@@ -15,7 +15,8 @@ REFCOUNT_INSERT_DECLARATIONS(system_critical_section,
 
 typedef enum
 {
-    /* CRITICAL_SECTION*.
+    /* Linux:   pthread_mutex_t*.
+     * Windows: CRITICAL_SECTION*.
      *
      * Only for internal usage!
      */

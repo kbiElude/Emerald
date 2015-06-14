@@ -14,6 +14,13 @@
 #include "system/system_resource_pool.h"
 #include "system/system_threads.h"
 
+#ifdef __linux__
+    #include <pthread.h>
+    #include <unistd.h>
+    #include <sys/syscall.h>
+    #include <sys/types.h>
+#endif
+
 #ifdef USE_EMULATED_EVENTS
     #include "system/system_event_monitor.h"
 #endif
@@ -65,7 +72,7 @@ PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id()
 #ifdef _WIN32
     return ::GetCurrentThreadId();
 #else
-    return pthread_self();
+    return syscall(SYS_gettid);
 #endif
 }
 
@@ -77,6 +84,7 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread      
     bool     has_timed_out = false;
     uint32_t timeout_msec  = 0;
 
+#ifdef _WIN32
     if (timeout == SYSTEM_TIME_INFINITE)
     {
         timeout_msec = INFINITE;
@@ -89,6 +97,28 @@ PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread      
 
     has_timed_out = (::WaitForSingleObject( thread,
                                             timeout_msec) ) == WAIT_TIMEOUT;
+#else
+    if (timeout == SYSTEM_TIME_INFINITE)
+    {
+        pthread_join(thread,
+                     NULL); /* __thread_return */
+    }
+    else
+    {
+        struct timespec timeout_api;
+        unsigned int    timeout_msec;
+
+        system_time_get_msec_for_timeline_time(timeout,
+                                              &timeout_msec);
+
+        timeout_api.tv_sec  =  timeout_msec / 1000;
+        timeout_api.tv_nsec = (timeout_msec % 1000) * NSEC_PER_SEC;
+
+        has_timed_out = (pthread_timedjoin_np(thread,
+                                              NULL, /* __thread_return */
+                                             &timeout_api) != 0);
+    }
+#endif
 
     if (out_has_timed_out_ptr != NULL)
     {

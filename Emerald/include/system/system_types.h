@@ -514,7 +514,8 @@ typedef enum
     typedef HANDLE system_thread;
     typedef DWORD  system_thread_id;
 #else
-    typedef pthread_t system_thread_id;
+    typedef pthread_t system_thread;
+    typedef pid_t     system_thread_id;
 #endif
 
 /** Thread entry point fucntion argument */

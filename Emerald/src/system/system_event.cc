@@ -16,6 +16,10 @@
     #include "system/system_event_monitor.h"
 #endif
 
+#ifdef __linux__
+    #include <string.h>
+#endif
+
 
 typedef struct _system_event
 {
@@ -34,8 +38,13 @@ typedef struct _system_event
         #endif
 
         manual_reset = false;
-        owned_thread = NULL;
         type         = in_type;
+
+#ifdef _WIN32
+        owned_thread = NULL;
+#else
+        owned_thread = 0;
+#endif
     }
 } _system_event;
 

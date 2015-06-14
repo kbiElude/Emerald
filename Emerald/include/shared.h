@@ -167,4 +167,11 @@
 #define DEG_TO_RAD(x) (x / 360.0f * 2 * 3.14152965f)
 #define RAD_TO_DEG(x) (x * 360.0f / 2 / 3.14152965f)
 
+/* Other helpful definitions */
+#define NSEC_PER_SEC (1000000000L)
+
+#ifndef MAXIMUM_WAIT_OBJECTS
+    #define MAXIMUM_WAIT_OBJECTS (64)
+#endif
+
 #endif /* SHARED_H */
