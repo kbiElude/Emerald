@@ -51,7 +51,11 @@ PUBLIC void InitPackData()
 /* Please see header for spec */
 PUBLIC void SaveFinalBlob(__in __notnull system_hashed_ansi_string packed_scene_filename)
 {
-    const uint32_t n_enqueued_files = system_resizable_vector_get_amount_of_elements(enqueued_files_vector);
+    uint32_t n_enqueued_files = 0;
+
+    system_resizable_vector_get_property(enqueued_files_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_enqueued_files);
 
     ASSERT_DEBUG_SYNC(enqueued_files_vector != NULL,
                       "Enqueued files vector is NULL");

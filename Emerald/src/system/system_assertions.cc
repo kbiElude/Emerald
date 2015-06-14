@@ -118,9 +118,6 @@ PUBLIC EMERALD_API void system_assertions_assert(bool                  is_blocki
                     /* Push the message onto our internal messages queue */
                     system_resizable_vector_push(internals->messages,
                                                 &message_container);
-
-                    /* Obtain the message's index */
-                    unsigned int message_index = system_resizable_vector_get_amount_of_elements(internals->messages);
                 }
                 system_critical_section_leave(internals->cs);
 

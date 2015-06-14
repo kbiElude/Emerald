@@ -413,8 +413,15 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_
 
     system_critical_section_enter(directory_ptr->cs);
     {
-        size_t n_directories = system_hash64map_get_amount_of_elements(directory_ptr->directories);
-        size_t n_items       = system_hash64map_get_amount_of_elements(directory_ptr->items);
+        size_t n_directories = 0;
+        size_t n_items       = 0;
+
+        system_hash64map_get_property(directory_ptr->directories,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_directories);
+        system_hash64map_get_property(directory_ptr->items,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_items);
 
         if (n_directories != 0 ||
             n_items       != 0)
@@ -487,7 +494,9 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_subdirectorie
 
     system_critical_section_enter(directory_ptr->cs);
     {
-        result = system_hash64map_get_amount_of_elements(directory_ptr->directories);
+        system_hash64map_get_property(directory_ptr->directories,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &result);
     }
     system_critical_section_leave(directory_ptr->cs);
 
@@ -636,7 +645,11 @@ PUBLIC void object_manager_directory_release(__in __notnull __post_invalid objec
     system_critical_section_enter(directory_ptr->cs);
     {
         /* Release all subdirectory objects */
-        size_t n_directories = system_hash64map_get_amount_of_elements(directory_ptr->directories);
+        size_t n_directories = 0;
+
+        system_hash64map_get_property(directory_ptr->directories,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_directories);
 
         for (size_t n_directory = 0;
                     n_directory < n_directories;

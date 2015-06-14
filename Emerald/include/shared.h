@@ -6,7 +6,9 @@
 #ifndef SHARED_H
 #define SHARED_H
 
-#include "system/system_atomics.h"
+#include "generated_dll_exports.h"
+
+#define EMERALD_API _EMERALD_API
 
 
 /* A nifty macro that will allow us to enforce strong type checking for void* handle types */
@@ -18,14 +20,6 @@
     #define DECLARE_HANDLE(name) struct name##__ { int unused; }; \
                                  typedef struct name##__ *name;
 #endif /* _WIN32 */
-
-/* CRT debugging */
-#ifdef _DEBUG
-    #define _CRTDBG_MAP_ALLOC
-
-    #include <stdlib.h>
-    #include <crtdbg.h>
-#endif /* _DEBUG */
 
 /* Platform-specific typedefs */
 #ifdef __linux__
@@ -40,12 +34,18 @@
 
 /* Windows-specific dependencies */
 #ifdef _WIN32
+    /* CRT debugging */
+    #ifdef _DEBUG
+        #define _CRTDBG_MAP_ALLOC
+
+        #include <stdlib.h>
+        #include <crtdbg.h>
+
+    #endif /* _DEBUG */
+
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
-
-    /* Disable security warnings */
-    #define _CRT_SECURE_NO_WARNINGS
 
     /* >= WinXP */
     #ifndef WINVER
@@ -66,6 +66,7 @@
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <new>
 #include "ogl/gl3.h"
@@ -73,9 +74,12 @@
 #include "system/system_types.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_atomics.h"
 
 #ifdef _WIN32
     #include "ogl/wglext.h"
+
+    #define snprintf _snprintf
 #endif /* _WIN32 */
 
 #ifdef INCLUDE_OBJECT_MANAGER
@@ -85,8 +89,11 @@
     #define GET_OBJECT_PATH(object_name, object_type, scene_name) \
         object_manager_get_object_path(object_name, object_type, scene_name)
 
-    #define REGISTER_REFCOUNTED_OBJECT(object_type, ptr, path) \
-        _object_manager_register_refcounted_object(ptr, path, __FILE__, __LINE__, object_type);
+    #define REGISTER_REFCOUNTED_OBJECT(object_type, ptr, path)                                      \
+        if (path != NULL)                                                                           \
+        {                                                                                           \
+            _object_manager_register_refcounted_object(ptr, path, __FILE__, __LINE__, object_type); \
+        }
 
     #define UNREGISTER_REFCOUNTED_OBJECT(path) \
         _object_manager_unregister_refcounted_object(path);
@@ -134,7 +141,7 @@
     {                                                                                           \
         system_atomics_increment(&((private_handle_type*)handle)->refcount_counter);            \
     }                                                                                           \
-    PUBLIC EMERALD_API void prefix##_release(public_handle_type& handle)                        \
+    PUBLIC EMERALD_API void prefix##_release(__in public_handle_type& handle)                   \
     {                                                                                           \
         private_handle_type* ptr = (private_handle_type*)handle;                                \
         REFCOUNT_INSERT_IMPLEMENTATION_HELPER                                                   \
@@ -146,7 +153,11 @@
             }                                                                                   \
             LOG_INFO("Releasing %p (type:%s)", handle, STRINGIZE(prefix) );                     \
                                                                                                 \
-            UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                            \
+            if (ptr->path != NULL)                                                              \
+            {                                                                                   \
+                UNREGISTER_REFCOUNTED_OBJECT(ptr->path);                                        \
+            }                                                                                   \
+                                                                                                \
             delete (private_handle_type*) handle;                                               \
             handle = NULL;                                                                      \
         }                                                                                       \

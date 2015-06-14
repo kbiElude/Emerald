@@ -6,7 +6,6 @@
 #ifndef SYSTEM_DAG_H
 #define SYSTEM_DAG_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 

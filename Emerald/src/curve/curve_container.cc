@@ -188,8 +188,11 @@ PRIVATE void _curve_container_release(__inout __notnull __deallocate(mem) void* 
 /* TODO */
 PRIVATE void _deinit_curve_container_data(__in __notnull _curve_container_data* data)
 {
-    size_t n_segments = system_hash64map_get_amount_of_elements(data->segments);
+    size_t n_segments = 0;
 
+    system_hash64map_get_property(data->segments,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_segments);
     if (n_segments != 0)
     {
         for (size_t n_segment = 0;
@@ -871,7 +874,9 @@ PUBLIC EMERALD_API void curve_container_get_property(__in  __notnull curve_conta
             system_read_write_mutex_lock(curve_ptr->data.segments_read_write_mutex,
                                          ACCESS_READ);
             {
-                *(uint32_t*) out_result = (uint32_t) system_hash64map_get_amount_of_elements(curve_ptr->data.segments);
+                system_hash64map_get_property(curve_ptr->data.segments,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                              out_result);
             }
             system_read_write_mutex_unlock(curve_ptr->data.segments_read_write_mutex,
                                            ACCESS_READ);
@@ -909,7 +914,11 @@ PUBLIC EMERALD_API void curve_container_get_property(__in  __notnull curve_conta
 
         case CURVE_CONTAINER_PROPERTY_START_TIME:
         {
-            size_t n_segments = system_hash64map_get_amount_of_elements(curve_ptr->data.segments);
+            size_t n_segments = 0;
+
+            system_hash64map_get_property(curve_ptr->data.segments,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_segments);
 
             ASSERT_DEBUG_SYNC(n_segments > 0,
                               "Start time was requested for a curve without any segments.");
@@ -960,8 +969,12 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_for_nth_segment(__in __no
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        size_t           n_segments = system_resizable_vector_get_amount_of_elements(curve_data_ptr->segments_order);
+        size_t           n_segments = 0;
         curve_segment_id segment_id = 0;
+
+        system_resizable_vector_get_property(curve_data_ptr->segments_order,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_segments);
 
         if (n_segment < n_segments)
         {
@@ -992,11 +1005,19 @@ PUBLIC EMERALD_API bool curve_container_get_segment_id_relative_to_time(        
     {
         _curve_container_ptr   curve_container     = (_curve_container_ptr) curve;
         _curve_container_data* curve_data_ptr      = &curve_container->data;
-        size_t                 n_segments          = system_hash64map_get_amount_of_elements(curve_data_ptr->segments);
+        size_t                 n_segments          = 0;
         bool                   has_found_segment   = false;
         uint32_t               segment_id_iterator = 0;
-        uint32_t               n_segment_ids       = system_resizable_vector_get_amount_of_elements(curve_data_ptr->segments_order);
+        uint32_t               n_segment_ids       = 0;
         curve_segment_id       segment_id          = (curve_segment_id) -1;
+
+        system_hash64map_get_property(curve_data_ptr->segments,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_segments);
+
+        system_resizable_vector_get_property(curve_data_ptr->segments_order,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_segment_ids);
 
         for (;
              segment_id_iterator < n_segment_ids;
@@ -1216,7 +1237,11 @@ PUBLIC EMERALD_API bool curve_container_get_value(__in __notnull curve_container
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        uint32_t n_segments_order = system_resizable_vector_get_amount_of_elements(curve_data_ptr->segments_order);
+        uint32_t n_segments_order = 0;
+
+        system_resizable_vector_get_property(curve_data_ptr->segments_order,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_segments_order);
 
         for (uint32_t segments_order_iterator = 0;
                       segments_order_iterator < n_segments_order;
@@ -1256,8 +1281,13 @@ PUBLIC EMERALD_API bool curve_container_get_value(__in __notnull curve_container
     if (should_get_default_value)
     {
         _curve_container_segment_ptr start_curve_segment = NULL;
+        unsigned int                 n_segments_order    = 0;
 
-        if (system_resizable_vector_get_amount_of_elements(curve_data_ptr->segments_order) > 0)
+        system_resizable_vector_get_property(curve_data_ptr->segments_order,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_segments_order);
+
+        if (n_segments_order > 0)
         {
             curve_segment_id start_segment_id = 0;
             bool             result_get       = false;
@@ -1470,16 +1500,22 @@ PUBLIC EMERALD_API void curve_container_set_property(__in __notnull curve_contai
         {
             if (*(bool*) data)
             {
+                uint32_t n_segments = 0;
+
+                system_hash64map_get_property(container_ptr->data.segments,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_segments);
+
                 ASSERT_DEBUG_SYNC(container_ptr->data.pre_behavior != CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED,
                                   "");
                 ASSERT_DEBUG_SYNC(container_ptr->data.post_behavior != CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED,
                                   "");
-                ASSERT_DEBUG_SYNC(system_hash64map_get_amount_of_elements(container_ptr->data.segments) == 1,
+                ASSERT_DEBUG_SYNC(n_segments == 1,
                                   "");
 
-                if (container_ptr->data.pre_behavior                                      != CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED &&
-                    container_ptr->data.post_behavior                                     != CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED &&
-                    system_hash64map_get_amount_of_elements(container_ptr->data.segments) == 1)
+                if (container_ptr->data.pre_behavior  != CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED &&
+                    container_ptr->data.post_behavior != CURVE_CONTAINER_BOUNDARY_BEHAVIOR_UNDEFINED &&
+                    n_segments                        == 1)
                 {
                     container_ptr->data.pre_post_behavior_status = true;
                 }
@@ -1589,9 +1625,13 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
     system_read_write_mutex_lock(curve_container_data->segments_read_write_mutex,
                                  ACCESS_WRITE);
 
-    size_t curr_segments_order_iterator = system_resizable_vector_find                  (curve_container_data->segments_order,
-                                                                                         (void*) segment_id);
-    size_t n_segment_orders             = system_resizable_vector_get_amount_of_elements(curve_container_data->segments_order);
+    size_t curr_segments_order_iterator = system_resizable_vector_find(curve_container_data->segments_order,
+                                                                       (void*) segment_id);
+    size_t n_segment_orders             = 0;
+
+    system_resizable_vector_get_property(curve_container_data->segments_order,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_segment_orders);
 
     ASSERT_DEBUG_SYNC(curr_segments_order_iterator != ITEM_NOT_FOUND, "Could not find requested segment [%d]",
                       segment_id);
@@ -1796,9 +1836,13 @@ PUBLIC EMERALD_API bool curve_container_set_segment_times(__in __notnull curve_c
     if (needs_update)
     {
         // Segment order needs refreshing. Do a resort.
+        size_t n_segments = 0;
+
         system_resizable_vector_empty(curve_container_data->segments_order);
 
-        size_t n_segments = system_hash64map_get_amount_of_elements(curve_container_data->segments);
+        system_hash64map_get_property(curve_container_data->segments,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_segments);
 
         for (size_t n_segment = 0;
                     n_segment < n_segments;
@@ -1846,7 +1890,11 @@ PRIVATE void _curve_container_recalculate_curve_length(__in __notnull curve_cont
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_WRITE);
     {
-        size_t n_segments = system_hash64map_get_amount_of_elements(curve_data_ptr->segments);
+        size_t n_segments = 0;
+
+        system_hash64map_get_property(curve_data_ptr->segments,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_segments);
 
         if (n_segments > 0)
         {
@@ -1968,8 +2016,12 @@ PRIVATE void _curve_container_on_new_segment_end_time(__in __notnull curve_conta
 PRIVATE uint32_t _curve_container_find_appropriate_place_for_segment_at_time(__in __notnull _curve_container_data* curve_data_ptr,
                                                                              __in           system_timeline_time   start_time)
 {
-    uint32_t n_segment_orders = system_resizable_vector_get_amount_of_elements(curve_data_ptr->segments_order);
+    uint32_t n_segment_orders = 0;
     uint32_t place_iterator   = n_segment_orders;
+
+    system_resizable_vector_get_property(curve_data_ptr->segments_order,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_segment_orders);
 
     for (uint32_t place_it  = 0;
                   place_it != n_segment_orders;
@@ -2151,7 +2203,11 @@ PUBLIC bool curve_container_is_range_defined(__in __notnull curve_container     
     system_read_write_mutex_lock(curve_data_ptr->segments_read_write_mutex,
                                  ACCESS_READ);
     {
-        size_t n_segments = system_hash64map_get_amount_of_elements(curve_data_ptr->segments);
+        size_t n_segments = 0;
+
+        system_hash64map_get_property(curve_data_ptr->segments,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_segments);
 
         for (size_t n_segment = 0;
                     n_segment < n_segments;

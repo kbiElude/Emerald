@@ -42,7 +42,11 @@ typedef struct _ogl_context_textures
 
         if (reusable_texture_key_to_ogl_texture_vector_map != NULL)
         {
-            const uint32_t n_map_vectors = system_hash64map_get_amount_of_elements(reusable_texture_key_to_ogl_texture_vector_map);
+            uint32_t n_map_vectors = 0;
+
+            system_hash64map_get_property(reusable_texture_key_to_ogl_texture_vector_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_map_vectors);
 
             for (uint32_t n_map_vector = 0;
                           n_map_vector < n_map_vectors;
@@ -63,7 +67,11 @@ typedef struct _ogl_context_textures
                     continue;
                 }
 
-                n_reusable_textures_released += system_resizable_vector_get_amount_of_elements(map_vector);
+                system_resizable_vector_get_property(map_vector,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_map_vector_entries);
+
+                n_reusable_textures_released += n_map_vector_entries;
 
                 system_resizable_vector_release(map_vector);
                 map_vector = NULL;
@@ -76,7 +84,11 @@ typedef struct _ogl_context_textures
 
         if (reusable_textures != NULL)
         {
-            const uint32_t n_textures = system_resizable_vector_get_amount_of_elements(reusable_textures);
+            uint32_t n_textures = 0;
+
+            system_resizable_vector_get_property(reusable_textures,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_textures);
 
             ASSERT_DEBUG_SYNC(n_textures == n_reusable_textures_released,
                               "Reusable texture memory leak detected");

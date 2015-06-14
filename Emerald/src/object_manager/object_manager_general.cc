@@ -185,14 +185,11 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
         }
 
         /* Iterate through cached subdirectory names and recursively call the function */
-        while (system_resizable_vector_get_amount_of_elements(subdirectories) != 0)
+        while (true)
         {
             object_manager_directory subdirectory = NULL;
             bool                     result       = system_resizable_vector_pop(subdirectories,
                                                                                &subdirectory);
-
-            ASSERT_DEBUG_SYNC(result,
-                              "Could not pop subdirectory from internal cache.");
 
             if (result)
             {
@@ -203,6 +200,10 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
                     object_manager_directory_delete_directory(directory,
                                                               object_manager_directory_get_name(subdirectory) );
                 }
+            }
+            else
+            {
+                break;
             }
         }
 

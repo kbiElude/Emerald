@@ -111,8 +111,7 @@ ogl_shader                      _whiteline_fs                          = NULL;
 ogl_program                     _whiteline_po                          = NULL;
 ogl_shader                      _whiteline_vs                          = NULL;
 system_window                   _window                                = NULL;
-system_event                    _window_closed_event                   = system_event_create(true,  /* manual_reset */
-                                                                                             false);/* start_state */
+system_event                    _window_closed_event                   = system_event_create(true); /* manual_reset */
 const int                       _window_size[2]                        = {1280, 720};
 float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -1300,8 +1299,14 @@ void _setup_ui(ogl_context context)
     _setup_compression_algorithms(context);
 
     /* Convert the vector data to C arrays needed for ogl_ui_add_dropdown() call */
-    unsigned int               n_compressed_internalformats = system_resizable_vector_get_amount_of_elements(_compression_algorithms);
-    system_hashed_ansi_string* compressed_internalformats   = new system_hashed_ansi_string[n_compressed_internalformats];
+    system_hashed_ansi_string* compressed_internalformats   = NULL;
+    unsigned int               n_compressed_internalformats = 0;
+
+    system_resizable_vector_get_property(_compression_algorithms,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_compressed_internalformats);
+
+    compressed_internalformats = new system_hashed_ansi_string[n_compressed_internalformats];
 
     for (unsigned int n_algorithm = 0;
                       n_algorithm < n_compressed_internalformats;
@@ -1772,7 +1777,7 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);

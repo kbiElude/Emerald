@@ -136,7 +136,13 @@ TEST(ResizableVectorTest, RandomOperations)
         }
 
         /* Make sure reference vector's contents matches resizable vector's */
-        ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(vec) == ref.size() );
+        uint32_t n_vec_items = 0;
+
+        system_resizable_vector_get_property(vec,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_vec_items);
+
+        ASSERT_TRUE(n_vec_items == ref.size() );
 
         LOG_INFO("Contents at iteration [%d]:",
                  n_operation);

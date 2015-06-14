@@ -364,7 +364,11 @@ PRIVATE void                                 _collada_data_release              
 /** TODO */
 PRIVATE void _collada_data_apply_animation_data(__in __notnull _collada_data* data_ptr)
 {
-    const uint32_t n_animations = system_resizable_vector_get_amount_of_elements(data_ptr->animations);
+    uint32_t n_animations = 0;
+    
+    system_resizable_vector_get_property(data_ptr->animations,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_animations);
 
     /* Iterate over all collada_data_animation instances */
     for (uint32_t n_animation = 0;
@@ -1128,8 +1132,7 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
      * to speed the process up.
      */
     current_geometry_element_ptr = geometries_element_ptr->FirstChildElement("geometry");
-    geometry_processed_event     = system_event_create                      (true /* manual_reset */,
-                                                                             false /* start_state */);
+    geometry_processed_event     = system_event_create                      (true); /* manual_reset */
 
     ASSERT_ALWAYS_SYNC(geometry_processed_event != NULL,
                        "Could not generate an event");
@@ -1165,8 +1168,8 @@ PRIVATE void _collada_data_init_geometries(__in __notnull tinyxml2::XMLDocument*
     }
 
     /* Wait for the processing to finish */
-    system_event_wait_single_infinite(geometry_processed_event);
-    system_event_release             (geometry_processed_event);
+    system_event_wait_single(geometry_processed_event);
+    system_event_release    (geometry_processed_event);
 
 end: ;
 }
@@ -1494,42 +1497,54 @@ PUBLIC EMERALD_API void collada_data_get_property(__in  __notnull collada_data  
 
         case COLLADA_DATA_PROPERTY_N_CAMERAS:
         {
-            *( (unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(collada_data_ptr->cameras);
+            system_resizable_vector_get_property(collada_data_ptr->cameras,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }
 
         case COLLADA_DATA_PROPERTY_N_EFFECTS:
         {
-            *( (unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(collada_data_ptr->effects);
+            system_resizable_vector_get_property(collada_data_ptr->effects,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }
 
         case COLLADA_DATA_PROPERTY_N_IMAGES:
         {
-            *( (unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(collada_data_ptr->images);
+            system_resizable_vector_get_property(collada_data_ptr->images,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }
 
         case COLLADA_DATA_PROPERTY_N_MATERIALS:
         {
-            *( (unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(collada_data_ptr->materials);
+            system_resizable_vector_get_property(collada_data_ptr->materials,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }
 
         case COLLADA_DATA_PROPERTY_N_MESHES:
         {
-            *( (unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(collada_data_ptr->geometries);
+            system_resizable_vector_get_property(collada_data_ptr->geometries,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }
 
         case COLLADA_DATA_PROPERTY_N_SCENES:
         {
-            *( (unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(collada_data_ptr->scenes);
+            system_resizable_vector_get_property(collada_data_ptr->scenes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }
@@ -1553,12 +1568,18 @@ PUBLIC EMERALD_API collada_data_camera collada_data_get_camera_by_name(__in __no
                                                                        __in           system_hashed_ansi_string name)
 {
     _collada_data*      data_ptr  = (_collada_data*) data;
-    const unsigned int  n_cameras = system_resizable_vector_get_amount_of_elements(data_ptr->cameras);
+    unsigned int        n_cameras = 0;
     collada_data_camera result    = NULL;
 
     LOG_INFO("collada_data_get_camera_by_name(): Slow code-path called");
 
-    for (unsigned int n_camera = 0; n_camera < n_cameras; ++n_camera)
+    system_resizable_vector_get_property(data_ptr->cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cameras);
+
+    for (unsigned int n_camera = 0;
+                      n_camera < n_cameras;
+                    ++n_camera)
     {
         collada_data_camera       camera    = NULL;
         system_hashed_ansi_string camera_id = NULL;
@@ -1609,14 +1630,18 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh(collada_data data,
 {
     _collada_data*  collada_data_ptr            = (_collada_data*) data;
     bool            has_loaded_blob             = false;
+    unsigned int    n_geometries                = 0;
     bool            running_in_cache_blobs_mode = NULL;
     mesh            result                      = NULL;
 
-    collada_data_get_property(data,
-                              COLLADA_DATA_PROPERTY_CACHE_BINARY_BLOBS_MODE,
-                              &running_in_cache_blobs_mode);
+    collada_data_get_property           (data,
+                                         COLLADA_DATA_PROPERTY_CACHE_BINARY_BLOBS_MODE,
+                                         &running_in_cache_blobs_mode);
+    system_resizable_vector_get_property(collada_data_ptr->geometries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_geometries);
 
-    if (system_resizable_vector_get_amount_of_elements(collada_data_ptr->geometries) > n_mesh)
+    if (n_geometries > n_mesh)
     {
         collada_data_geometry geometry = NULL;
 
@@ -2019,10 +2044,14 @@ PUBLIC EMERALD_API mesh collada_data_get_emerald_mesh_by_name(__in __notnull col
 {
     LOG_INFO("Invoked collada_data_get_emerald_mesh_by_name() is a slow code path!");
 
-    _collada_data*     collada_data_ptr = (_collada_data*) data;
-    unsigned int       n_found_mesh     = -1;
-    const unsigned int n_meshes         = system_resizable_vector_get_amount_of_elements(collada_data_ptr->geometries);
-    mesh               result           = NULL;
+    _collada_data* collada_data_ptr = (_collada_data*) data;
+    unsigned int   n_found_mesh     = -1;
+    unsigned int   n_meshes         = 0;
+    mesh           result           = NULL;
+
+    system_resizable_vector_get_property(collada_data_ptr->geometries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_meshes);
 
     for (unsigned int n_mesh = 0;
                       n_mesh < n_meshes;
@@ -2078,9 +2107,14 @@ PUBLIC EMERALD_API scene collada_data_get_emerald_scene(__in __notnull collada_d
                                                                        unsigned int n_scene)
 {
     _collada_data* collada_data_ptr = (_collada_data*) data;
+    unsigned int   n_scenes         = 0;
     scene          result           = NULL;
 
-    if (system_resizable_vector_get_amount_of_elements(collada_data_ptr->scenes) > n_scene)
+    system_resizable_vector_get_property(collada_data_ptr->scenes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_scenes);
+
+    if (n_scenes > n_scene)
     {
         collada_data_scene scene = NULL;
 

@@ -131,6 +131,10 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                                   NULL);                           /* overlapped access not needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
+                           "Could not read %d bytes for file [%s]",
+                           serializer_descriptor->file_size,
+                           system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
+                          );
 #else
         ASSERT_DEBUG_SYNC(serializer_descriptor->file_size < SSIZE_MAX,
                           "File too large to read.");
@@ -140,11 +144,11 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                             serializer_descriptor->file_size);
 
         ASSERT_ALWAYS_SYNC(n_bytes_read != serializer_descriptor->file_size,
-#endif
                            "Could not read %d bytes for file [%s]",
                            serializer_descriptor->file_size,
                            system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
                           );
+#endif
 
         /* Clsoe the file, won't need it anymore. */
 #ifdef _WIN32
@@ -252,6 +256,8 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
                              NULL);              /* no overlapped behavior needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
+                          "Could not write file [%s]",
+                          system_hashed_ansi_string_get_buffer(descriptor->file_name) );
 #else
         result = write(descriptor->file_handle,
                        descriptor->contents,
@@ -260,9 +266,9 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
         n_bytes_written = (result >= 0) ? result : 0;
 
         ASSERT_ALWAYS_SYNC(result != -1,
-#endif
                           "Could not write file [%s]",
                           system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+#endif
 
         ASSERT_ALWAYS_SYNC(n_bytes_written == descriptor->file_size,
                            "Could not fully write file [%s] (%d bytes written out of %db)",
@@ -288,9 +294,10 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
     new_descriptor->file_name              = NULL;
     new_descriptor->file_size              = data_size;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true,  /* manual_reset */
-                                                                 true); /* start_state  */
+    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
     new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION;
+
+    system_event_set(new_descriptor->reading_finished_event);
 
     return (system_file_serializer) new_descriptor;
 }
@@ -307,8 +314,7 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
     new_descriptor->file_name              = file_name;
     new_descriptor->file_size              = 0;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true,
-                                                                 false);
+    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
     new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
 
     if (async_read)
@@ -397,7 +403,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             {
                 LOG_ERROR("Performance hit: waiting for the read op to finish.");
 
-                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+                system_event_wait_single(serializer_ptr->reading_finished_event);
             }
 
             *(system_hashed_ansi_string*) out_data = serializer_ptr->file_path;
@@ -431,7 +437,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             {
                 LOG_ERROR("Performance hit: waiting for the read op to finish.");
 
-                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+                system_event_wait_single(serializer_ptr->reading_finished_event);
             }
             else
             {
@@ -468,7 +474,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
 
     if (descriptor->for_reading)
     {
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
+        system_event_wait_single(descriptor->reading_finished_event);
 
         if (descriptor->current_index + n_bytes <= descriptor->file_size)
         {
@@ -890,17 +896,14 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                 /* All right - we're safe to release the resizable vector now */
                 if (nodes != NULL)
                 {
-                    while (system_resizable_vector_get_amount_of_elements(nodes) > 0)
+                    while (true)
                     {
                         _node_descriptor* node = NULL;
 
                         if (!system_resizable_vector_pop(nodes,
                                                         &node) )
                         {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Could not pop node descriptor off nodes vector.");
-
-                            goto end;
+                            break;
                         }
 
                         delete node;
@@ -1188,7 +1191,7 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     if (descriptor->for_reading)
     {
         /* Wait till reading finishes */
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
+        system_event_wait_single(descriptor->reading_finished_event);
 
         /* Release reading-specific fields */
         system_event_release(descriptor->reading_finished_event);
@@ -1204,11 +1207,11 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     {
         _system_file_serializer_write_down_data_to_file(descriptor);
 
-        if (descriptor->file_handle != file_handle_invalid &&
 #ifdef _WIN32
+        if (descriptor->file_handle != file_handle_invalid &&
             descriptor->file_handle != NULL)
 #else
-            true)
+        if (descriptor->file_handle != file_handle_invalid)
 #endif
         {
             /* Cool to close the file now. */

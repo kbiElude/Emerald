@@ -830,7 +830,11 @@ PRIVATE system_hash64map _scene_graph_get_node_hashmap(__in __notnull _scene_gra
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
     {
-        const unsigned int n_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->sorted_nodes);
+        unsigned int n_nodes = 0;
+
+        system_resizable_vector_get_property(graph_ptr->sorted_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_nodes);
 
         result = system_hash64map_create(sizeof(unsigned int) );
 
@@ -924,8 +928,12 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
                                     __in __notnull system_resizable_vector scene_mesh_instances_vector,
                                     __in __notnull scene                   owner_scene)
 {
-    const unsigned int n_serialized_nodes = system_resizable_vector_get_amount_of_elements(serialized_nodes);
-    bool               result             = true;
+    unsigned int n_serialized_nodes = 0;
+    bool         result             = true;
+
+    system_resizable_vector_get_property(serialized_nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_serialized_nodes);
 
     /* Retrieve node type */
     scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
@@ -1824,7 +1832,11 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     } /* switch (node_ptr->type) */
 
     /* Store IDs of attached cameras */
-    const uint32_t n_cameras = system_resizable_vector_get_amount_of_elements(node_ptr->attached_cameras);
+    uint32_t n_cameras = 0;
+
+    system_resizable_vector_get_property(node_ptr->attached_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cameras);
 
     result &= system_file_serializer_write(serializer,
                                            sizeof(n_cameras),
@@ -1868,7 +1880,11 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     } /* for (all attached cameras) */
 
     /* Store IDs of attached lights */
-    const uint32_t n_lights = system_resizable_vector_get_amount_of_elements(node_ptr->attached_lights);
+    uint32_t n_lights = 0;
+
+    system_resizable_vector_get_property(node_ptr->attached_lights,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_lights);
 
     result &= system_file_serializer_write(serializer,
                                            sizeof(n_lights),
@@ -1912,7 +1928,11 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     } /* for (all attached lights) */
 
     /* Store IDs of attached mesh instances */
-    const uint32_t n_mesh_instances = system_resizable_vector_get_amount_of_elements(node_ptr->attached_meshes);
+    uint32_t n_mesh_instances = 0;
+
+    system_resizable_vector_get_property(node_ptr->attached_meshes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mesh_instances);
 
     result &= system_file_serializer_write(serializer,
                                            sizeof(n_mesh_instances),
@@ -2096,7 +2116,13 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
     /* Sanity check */
-    ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
+    system_thread_id cs_owner_thread_id = 0;
+
+    system_critical_section_get_property(graph_ptr->compute_lock_cs,
+                                         SYSTEM_CRITICAL_SECTION_PROPERTY_OWNER_THREAD_ID,
+                                        &cs_owner_thread_id);
+
+    ASSERT_DEBUG_SYNC(cs_owner_thread_id == system_threads_get_thread_id(),
                       "Graph not locked");
 
     /* Reset tagged nodes */
@@ -2125,7 +2151,11 @@ PUBLIC EMERALD_API void scene_graph_compute(__in __notnull scene_graph          
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
     {
-        const unsigned int n_sorted_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->sorted_nodes);
+        unsigned int n_sorted_nodes = 0;
+
+        system_resizable_vector_get_property(graph_ptr->sorted_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_sorted_nodes);
 
         for (unsigned int n_sorted_node = 0;
                           n_sorted_node < n_sorted_nodes;
@@ -2199,7 +2229,13 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
     _scene_graph* graph_ptr = (_scene_graph*) graph;
 
     /* Sanity check */
-    ASSERT_DEBUG_SYNC(system_critical_section_get_owner(graph_ptr->compute_lock_cs) == system_threads_get_thread_id(),
+    system_thread_id cs_owner_thread_id = 0;
+
+    system_critical_section_get_property(graph_ptr->compute_lock_cs,
+                                         SYSTEM_CRITICAL_SECTION_PROPERTY_OWNER_THREAD_ID,
+                                        &cs_owner_thread_id);
+
+    ASSERT_DEBUG_SYNC(cs_owner_thread_id == system_threads_get_thread_id(),
                       "Graph not locked");
 
     /* We take a different approach in this function. We use an internally stored cache of
@@ -2242,7 +2278,11 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
     } /* while (current_node_ptr != NULL) */
 
     /* Compute the transformation matrices for cached nodes */
-    const int n_cached_nodes = (int) system_resizable_vector_get_amount_of_elements(graph_ptr->node_compute_vector);
+    int n_cached_nodes = 0;
+
+    system_resizable_vector_get_property(graph_ptr->node_compute_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cached_nodes);
 
     for (int n_cached_node  = n_cached_nodes - 1;
              n_cached_node >= 0;
@@ -2516,9 +2556,14 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnu
                                                                     __in           _scene_object_type object_type,
                                                                     __in __notnull void*              object)
 {
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
+    _scene_graph* graph_ptr      = (_scene_graph*) graph;
+    unsigned int  n_sorted_nodes = 0;
 
-    if (system_resizable_vector_get_amount_of_elements(graph_ptr->sorted_nodes) == 0)
+    system_resizable_vector_get_property(graph_ptr->sorted_nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_sorted_nodes);
+
+    if (n_sorted_nodes == 0)
     {
         if (!_scene_graph_update_sorted_nodes(graph_ptr))
         {
@@ -2532,8 +2577,12 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnu
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
 
-    const unsigned int n_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->sorted_nodes);
-    scene_graph_node   result  = NULL;
+    unsigned int     n_nodes = 0;
+    scene_graph_node result  = NULL;
+
+    system_resizable_vector_get_property(graph_ptr->sorted_nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_nodes);
 
     ASSERT_DEBUG_SYNC(n_nodes != 0,
                       "Sorted nodes vector stores 0 items.");
@@ -2573,7 +2622,9 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnu
             }
         } /* switch (object_type) */
 
-        n_objects = system_resizable_vector_get_amount_of_elements(object_vector);
+        system_resizable_vector_get_property(object_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_objects);
 
         for (unsigned int n_object = 0;
                           n_object < n_objects;
@@ -2692,8 +2743,12 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
     PRIVATE system_resizable_vector _scene_graph_get_children(__in __notnull _scene_graph*    graph_ptr,
                                                               __in __notnull scene_graph_node node)
     {
-        const uint32_t          n_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->nodes);
-        system_resizable_vector result  = system_resizable_vector_create                (4 /* capacity */);
+        uint32_t                n_nodes = 0;
+        system_resizable_vector result  = system_resizable_vector_create(4 /* capacity */);
+
+        system_resizable_vector_get_property(graph_ptr->nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_nodes);
 
         for (uint32_t n_node = 0;
                       n_node < n_nodes;
@@ -2777,10 +2832,14 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
         _scene_graph*           graph_ptr   = (_scene_graph*) graph;
         _scene_graph_node*      node_ptr    = (_scene_graph_node*) node;
 
-        system_resizable_vector child_nodes   = _scene_graph_get_children                     (graph_ptr,
-                                                                                               node);
-        const uint32_t          n_child_nodes = system_resizable_vector_get_amount_of_elements(child_nodes);
+        system_resizable_vector child_nodes   = _scene_graph_get_children(graph_ptr,
+                                                                          node);
+        uint32_t                n_child_nodes = 0;
         char                    tmp[1024];
+
+        system_resizable_vector_get_property(child_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_child_nodes);
 
         memset(tmp,
                ' ',
@@ -2795,9 +2854,19 @@ PUBLIC EMERALD_API void scene_graph_lock(__in __notnull scene_graph graph)
         LOG_INFO("%s", tmp);
 
         /* Any attached objects ? */
-        const uint32_t n_attached_cameras = system_resizable_vector_get_amount_of_elements(node_ptr->attached_cameras);
-        const uint32_t n_attached_lights  = system_resizable_vector_get_amount_of_elements(node_ptr->attached_lights);
-        const uint32_t n_attached_meshes  = system_resizable_vector_get_amount_of_elements(node_ptr->attached_meshes);
+        uint32_t n_attached_cameras = 0;
+        uint32_t n_attached_lights  = 0;
+        uint32_t n_attached_meshes  = 0;
+
+        system_resizable_vector_get_property(node_ptr->attached_cameras,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_attached_cameras);
+        system_resizable_vector_get_property(node_ptr->attached_lights,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_attached_lights);
+        system_resizable_vector_get_property(node_ptr->attached_meshes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_attached_meshes);
 
         for (uint32_t n_attached_camera = 0;
                       n_attached_camera < n_attached_cameras;
@@ -3004,13 +3073,41 @@ PUBLIC EMERALD_API void scene_graph_node_replace(__in __notnull scene_graph     
     /* This function makes several assumptions in order to avoid a deep destruction of the
      * node.
      */
-    ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(dst_node_ptr->attached_cameras) == 0 &&
-                      system_resizable_vector_get_amount_of_elements(dst_node_ptr->attached_lights)  == 0 &&
-                      system_resizable_vector_get_amount_of_elements(dst_node_ptr->attached_meshes)  == 0 &&
-                      system_resizable_vector_get_amount_of_elements(src_node_ptr->attached_cameras) == 0 &&
-                      system_resizable_vector_get_amount_of_elements(src_node_ptr->attached_lights)  == 0 &&
-                      system_resizable_vector_get_amount_of_elements(src_node_ptr->attached_meshes)  == 0,
+#ifdef _DEBUG
+    unsigned int n_dst_cameras = 0;
+    unsigned int n_dst_lights  = 0;
+    unsigned int n_dst_meshes  = 0;
+    unsigned int n_src_cameras = 0;
+    unsigned int n_src_lights  = 0;
+    unsigned int n_src_meshes  = 0;
+
+    system_resizable_vector_get_property(dst_node_ptr->attached_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_dst_cameras);
+    system_resizable_vector_get_property(dst_node_ptr->attached_lights,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_dst_lights);
+    system_resizable_vector_get_property(dst_node_ptr->attached_meshes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_dst_meshes);
+    system_resizable_vector_get_property(src_node_ptr->attached_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_src_cameras);
+    system_resizable_vector_get_property(src_node_ptr->attached_lights,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_src_lights);
+    system_resizable_vector_get_property(src_node_ptr->attached_meshes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_src_meshes);
+
+    ASSERT_DEBUG_SYNC(n_dst_cameras == 0 &&
+                      n_dst_lights  == 0 &&
+                      n_dst_meshes  == 0 &&
+                      n_src_cameras == 0 &&
+                      n_src_lights  == 0 &&
+                      n_src_meshes  == 0,
                       "scene_graph_replace_node() does not support replacement for nodes with attach objects.");
+#endif
 
     if (dst_node_ptr->data != NULL)
     {
@@ -3119,7 +3216,11 @@ PUBLIC bool scene_graph_save(__in __notnull system_file_serializer serializer,
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
     {
-        const unsigned int n_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->sorted_nodes);
+        unsigned int n_nodes = 0;
+
+        system_resizable_vector_get_property(graph_ptr->sorted_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_nodes);
 
         ASSERT_DEBUG_SYNC(n_nodes != 0,
                           "No nodes defined for a graph to be serialized.");
@@ -3209,7 +3310,11 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
     {
-        const unsigned int n_sorted_nodes = system_resizable_vector_get_amount_of_elements(graph_ptr->sorted_nodes);
+        unsigned int n_sorted_nodes = 0;
+
+        system_resizable_vector_get_property(graph_ptr->sorted_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_sorted_nodes);
 
         for (unsigned int n_sorted_node = 0;
                           n_sorted_node < n_sorted_nodes;
@@ -3263,9 +3368,19 @@ PUBLIC EMERALD_API void scene_graph_traverse(__in __notnull scene_graph         
             }
 
             /* Any cameras / meshes attached? */
-            n_attached_cameras = system_resizable_vector_get_amount_of_elements(node_ptr->attached_cameras);
-            n_attached_lights  = system_resizable_vector_get_amount_of_elements(node_ptr->attached_lights);
-            n_attached_meshes  = system_resizable_vector_get_amount_of_elements(node_ptr->attached_meshes);
+            n_attached_cameras = 0;
+            n_attached_lights  = 0;
+            n_attached_meshes  = 0;
+
+            system_resizable_vector_get_property(node_ptr->attached_cameras,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_attached_cameras);
+            system_resizable_vector_get_property(node_ptr->attached_lights,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_attached_lights);
+            system_resizable_vector_get_property(node_ptr->attached_meshes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_attached_meshes);
 
             if (n_attached_cameras != 0 ||
                 n_attached_lights  != 0 ||

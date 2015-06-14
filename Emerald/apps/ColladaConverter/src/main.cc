@@ -53,8 +53,7 @@ ogl_text                  _text_renderer              = NULL;
 ogl_ui                    _ui                         = NULL;
 ogl_ui_control            _ui_convert_button          = NULL;
 system_window             _window                     = NULL;
-system_event              _window_closed_event        = system_event_create(true,   /* manual_reset */
-                                                                            false); /* start_state */
+system_event              _window_closed_event        = system_event_create(true); /* manual_reset */
 ogl_rendering_handler     _window_rendering_handler   = NULL;
 
 system_matrix4x4 _projection_matrix = NULL;
@@ -397,7 +396,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(_window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(_window_rendering_handler);

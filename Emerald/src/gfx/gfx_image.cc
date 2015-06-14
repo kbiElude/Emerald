@@ -235,7 +235,11 @@ PUBLIC void _gfx_image_release(void* image)
 
     if (image_ptr->mipmaps != NULL)
     {
-        const unsigned int n_mipmaps = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
+        unsigned int n_mipmaps = 0;
+
+        system_resizable_vector_get_property(image_ptr->mipmaps,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_mipmaps);
 
         for (unsigned int n_mipmap = 0;
                           n_mipmap < n_mipmaps;
@@ -325,7 +329,9 @@ PUBLIC unsigned int gfx_image_add_mipmap(__in __notnull                   gfx_im
         }
     }
 
-    result = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
+    system_resizable_vector_get_property(image_ptr->mipmaps,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     system_resizable_vector_push(image_ptr->mipmaps,
                                  mipmap_ptr);
@@ -624,7 +630,9 @@ PUBLIC EMERALD_API void gfx_image_get_property(__in __notnull const gfx_image   
 
         case GFX_IMAGE_PROPERTY_N_MIPMAPS:
         {
-            *(unsigned int*) out_result_ptr = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
+            system_resizable_vector_get_property(image_ptr->mipmaps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }

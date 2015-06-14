@@ -217,7 +217,9 @@ PRIVATE curve_container _collada_scene_generator_create_curve_container_from_col
                                           COLLADA_DATA_FLOAT_ARRAY_PROPERTY_N_VALUES,
                                          &output_float_array_n_values);
 
-    interpolation_vector_n_values = system_resizable_vector_get_amount_of_elements(interpolation_vector);
+    system_resizable_vector_get_property(interpolation_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &interpolation_vector_n_values);
 
     ASSERT_DEBUG_SYNC(input_float_array_n_values == output_float_array_n_values,
                       "Input float array defines [%d] values, whereas output float array defines [%d] values",
@@ -465,8 +467,7 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
     volatile unsigned int n_workloads_processed     = 0;
     system_hash64map      workloads_map             = system_hash64map_create(sizeof(_texture_loader_workload*),
                                                                               false); /* should_be_thread_safe */
-    system_event          workloads_processed_event = system_event_create    (true /* manual_reset */,
-                                                                              false /* start_state */);
+    system_event          workloads_processed_event = system_event_create    (true); /* manual_reset */
 
     for (unsigned int n_image = 0;
                       n_image < n_images;
@@ -518,7 +519,11 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
     } /* for (all COLLADA images) */
 
     /* Process all workloads */
-    const unsigned int n_workloads = system_hash64map_get_amount_of_elements(workloads_map);
+    unsigned int n_workloads = 0;
+    
+    system_hash64map_get_property(workloads_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_workloads);
 
     if (n_workloads > 0)
     {
@@ -551,7 +556,7 @@ PRIVATE void _collada_scene_generator_create_textures(__in __notnull collada_dat
         } /* for (all workloads) */
 
         /* Wait for the processing to finish */
-        system_event_wait_single_infinite(workloads_processed_event);
+        system_event_wait_single(workloads_processed_event);
     } /* if (n_workloads > 0) */
 
     /* Release stuff before we continue */

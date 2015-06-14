@@ -55,12 +55,16 @@ PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr);
 /** TODO */
 PRIVATE void _ogl_ui_bag_position_controls(__in __notnull _ogl_ui_bag* bag_ptr)
 {
-    const unsigned int n_controls      = system_resizable_vector_get_amount_of_elements(bag_ptr->controls);
-    float              current_x1y1[2] =
+    unsigned int n_controls      = 0;
+    float        current_x1y1[2] =
     {
         bag_ptr->x1y1[0],
         bag_ptr->x1y1[1]
     };
+
+    system_resizable_vector_get_property(bag_ptr->controls,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_controls);
 
     /* Determine deltas */
     ogl_context   context              = ogl_ui_get_context(bag_ptr->ui);

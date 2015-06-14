@@ -719,7 +719,11 @@ PRIVATE bool _ogl_program_load_binary_blob(__in __notnull  ogl_context  context,
         {
             /* Read how many shaders are attached to the program */
             uint32_t n_shaders_attached_read = 0;
-            uint32_t n_shaders_attached      = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
+            uint32_t n_shaders_attached      = 0;
+
+            system_resizable_vector_get_property(program_ptr->attached_shaders,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_shaders_attached);
 
             ASSERT_ALWAYS_SYNC(::fread(&n_shaders_attached_read,
                                        sizeof(n_shaders_attached),
@@ -884,14 +888,16 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
     /* Release all attached shaders */
     if (program_ptr->attached_shaders != NULL)
     {
-        while (system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders) > 0)
+        while (true)
         {
             ogl_shader shader     = NULL;
             bool       result_get = system_resizable_vector_pop(program_ptr->attached_shaders,
                                                                &shader);
 
-            ASSERT_DEBUG_SYNC(result_get,
-                              "Could not retrieve shader instance.");
+            if (!result_get)
+            {
+                break;
+            }
 
             ogl_shader_release(shader);
         }
@@ -962,14 +968,16 @@ PRIVATE void _ogl_program_release(__in __notnull void* program)
 /** TODO */
 PRIVATE void _ogl_program_release_active_attributes(system_resizable_vector active_attributes)
 {
-    while (system_resizable_vector_get_amount_of_elements(active_attributes) > 0)
+    while (true)
     {
         ogl_program_attribute_descriptor* program_attribute_ptr = NULL;
         bool                              result_get            = system_resizable_vector_pop(active_attributes,
                                                                                              &program_attribute_ptr);
 
-        ASSERT_DEBUG_SYNC(result_get,
-                          "Could not retrieve program attribute pointer.");
+        if (!result_get)
+        {
+            break;
+        }
 
         delete program_attribute_ptr;
     }
@@ -1015,7 +1023,11 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 {
     if (program_ptr->context_to_active_ubs_map != NULL)
     {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_active_ubs_map);
+        uint32_t n_contexts = 0;
+
+        system_hash64map_get_property(program_ptr->context_to_active_ubs_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_contexts);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -1065,7 +1077,11 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 
     if (program_ptr->context_to_ub_index_to_ub_map != NULL)
     {
-        const unsigned int n_contexts = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_index_to_ub_map);
+        unsigned int n_contexts = 0;
+
+        system_hash64map_get_property(program_ptr->context_to_ub_index_to_ub_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_contexts);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -1106,9 +1122,13 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 
     if (program_ptr->context_to_ub_name_to_ub_map != NULL)
     {
-        system_hash64      current_owner_context_hash = 0;
-        ogl_context        current_owner_context      = NULL;
-        const unsigned int n_contexts                 = system_hash64map_get_amount_of_elements(program_ptr->context_to_ub_name_to_ub_map);
+        system_hash64 current_owner_context_hash = 0;
+        ogl_context   current_owner_context      = NULL;
+        unsigned int  n_contexts                 = 0;
+
+        system_hash64map_get_property(program_ptr->context_to_ub_name_to_ub_map,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_contexts);
 
         for (unsigned int n_context = 0;
                           n_context < n_contexts;
@@ -1153,14 +1173,16 @@ PRIVATE void _ogl_program_release_active_uniform_blocks(__in     __notnull _ogl_
 /** TODO */
 PRIVATE void _ogl_program_release_active_uniforms(system_resizable_vector active_uniforms)
 {
-    while (system_resizable_vector_get_amount_of_elements(active_uniforms) > 0)
+    while (true)
     {
         ogl_program_variable* program_uniform_ptr = NULL;
         bool                  result_get          = system_resizable_vector_pop(active_uniforms,
                                                                                &program_uniform_ptr);
 
-        ASSERT_DEBUG_SYNC(result_get,
-                          "Could not retrieve program uniform descriptor.");
+        if (!result_get)
+        {
+            break;
+        }
 
         delete program_uniform_ptr;
         program_uniform_ptr = NULL;
@@ -1227,7 +1249,11 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
                                                     blob);
 
                     /* We have the blob now. Proceed and write to the file */
-                    unsigned int n_attached_shaders = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
+                    unsigned int n_attached_shaders = 0;
+
+                    system_resizable_vector_get_property(program_ptr->attached_shaders,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_attached_shaders);
 
                     system_file_serializer_write(blob_file_serializer,
                                                  sizeof(n_attached_shaders),
@@ -1282,9 +1308,13 @@ PRIVATE void _ogl_program_save_binary_blob(__in __notnull ogl_context   context_
 /** TODO */
 PRIVATE void _ogl_program_save_shader_sources(__in __notnull _ogl_program* program_ptr)
 {
-    char*                  file_name  = _ogl_program_get_source_code_file_name        (program_ptr);
-    const uint32_t         n_shaders  = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
-    system_file_serializer serializer = system_file_serializer_create_for_writing     (system_hashed_ansi_string_create(file_name) );
+    char*                  file_name  = _ogl_program_get_source_code_file_name   (program_ptr);
+    uint32_t               n_shaders  = 0;
+    system_file_serializer serializer = system_file_serializer_create_for_writing(system_hashed_ansi_string_create(file_name) );
+
+    system_resizable_vector_get_property(program_ptr->attached_shaders,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_shaders);
 
     /* Store full program name */
     static const char* full_program_name = "Full program name: ";
@@ -1812,7 +1842,11 @@ PUBLIC EMERALD_API bool ogl_program_get_attribute_by_name(__in  __notnull ogl_pr
 
     if (program_ptr->link_status)
     {
-        unsigned int n_attributes = system_resizable_vector_get_amount_of_elements(program_ptr->active_attributes);
+        unsigned int n_attributes = 0;
+
+        system_resizable_vector_get_property(program_ptr->active_attributes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_attributes);
 
         for (unsigned int n_attribute = 0;
                           n_attribute < n_attributes;
@@ -1951,7 +1985,11 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_by_name(__in  __notnull ogl_prog
 
     if (program_ptr->link_status)
     {
-        unsigned int n_uniforms = system_resizable_vector_get_amount_of_elements(program_ptr->active_uniforms);
+        unsigned int n_uniforms = 0;
+
+        system_resizable_vector_get_property(program_ptr->active_uniforms,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_uniforms);
 
         for (unsigned int n_uniform = 0;
                           n_uniform < n_uniforms;
@@ -2063,9 +2101,13 @@ PUBLIC EMERALD_API bool ogl_program_get_uniform_block_by_name(__in  __notnull og
 /** Please see header for specification */
 PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program program)
 {
-    _ogl_program*      program_ptr        = (_ogl_program*) program;
-    const unsigned int n_attached_shaders = system_resizable_vector_get_amount_of_elements(program_ptr->attached_shaders);
-    bool               result             = false;
+    _ogl_program* program_ptr        = (_ogl_program*) program;
+    unsigned int  n_attached_shaders = 0;
+    bool          result             = false;
+
+    system_resizable_vector_get_property(program_ptr->attached_shaders,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_attached_shaders);
 
     ASSERT_DEBUG_SYNC(n_attached_shaders > 0,
                       "Linking will fail - no shaders attached.");

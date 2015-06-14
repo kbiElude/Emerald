@@ -67,7 +67,13 @@ _collada_data_geometry_mesh::~_collada_data_geometry_mesh()
 
     if (sources != NULL)
     {
-        while (system_resizable_vector_get_amount_of_elements(sources) > 0)
+        unsigned int n_sources = 0;
+
+        system_resizable_vector_get_property(sources,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_sources);
+
+        while (n_sources > 0)
         {
             collada_data_source source = NULL;
 
@@ -329,7 +335,9 @@ PUBLIC void collada_data_geometry_mesh_get_property(__in  __notnull collada_data
     {
         case COLLADA_DATA_GEOMETRY_MESH_PROPERTY_N_POLYLISTS:
         {
-            *((unsigned int*) out_result_ptr) = system_resizable_vector_get_amount_of_elements(mesh_ptr->polylists);
+            system_resizable_vector_get_property(mesh_ptr->polylists,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }

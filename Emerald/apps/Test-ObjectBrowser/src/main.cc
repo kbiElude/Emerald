@@ -16,7 +16,7 @@
 #include "system/system_window.h"
 
 ogl_context  _context             = NULL;
-system_event _window_closed_event = system_event_create(true, false);
+system_event _window_closed_event = system_event_create(true); /* manual_reset */
 
 /** Rendering handler */
 void _rendering_handler(ogl_context          context,
@@ -157,7 +157,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     curve_editor_hide();

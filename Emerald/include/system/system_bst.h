@@ -6,7 +6,6 @@
 #ifndef SYSTEM_BST_H
 #define SYSTEM_BST_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 

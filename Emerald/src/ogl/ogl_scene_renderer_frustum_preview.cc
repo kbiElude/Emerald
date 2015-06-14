@@ -485,8 +485,12 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
            sizeof(index_data_array) );
 
     /* Reallocate MDEBV argument space if necessary */
-    const uint32_t n_cameras      = system_resizable_vector_get_amount_of_elements(preview_ptr->assigned_cameras);
-    bool           realloc_needed = false;
+    uint32_t n_cameras      = 0;
+    bool     realloc_needed = false;
+
+    system_resizable_vector_get_property(preview_ptr->assigned_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cameras);
 
     if (preview_ptr->mdebv_array_size < n_cameras)
     {

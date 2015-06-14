@@ -37,8 +37,10 @@
 #endif /* _WIN32 */
 
 /* TODO TODO TEMP TEMP TEMP */
-#define DWORD unsigned int
-#define LONG  unsigned int
+#ifdef __linux
+    #define DWORD unsigned int
+    #define LONG  unsigned int
+#endif
 
 /*********************** ASSERTION CHECKS ********************************/
 typedef enum
@@ -51,8 +53,6 @@ typedef enum
 #include <stdint.h>
 
 /* General includes */
-#include "dll_exports.h"
-
 #define REFCOUNT_INSERT_DECLARATIONS(prefix, public_handle_type)                                \
     PUBLIC EMERALD_API void prefix##_retain(__in __notnull public_handle_type);                 \
     PUBLIC EMERALD_API void prefix##_release(__inout __notnull public_handle_type&);
@@ -75,6 +75,7 @@ typedef enum
 
         OBJECT_TYPE_COLLADA_DATA = OBJECT_TYPE_FIRST,
         OBJECT_TYPE_CONTEXT_MENU,
+        OBJECT_TYPE_SYSTEM_CRITICAL_SECTION,
         OBJECT_TYPE_CURVE_CONTAINER,
         OBJECT_TYPE_GFX_BFG_FONT_TABLE,
         OBJECT_TYPE_GFX_IMAGE,
@@ -510,7 +511,8 @@ typedef enum
 /*************************** THREADS *************************************/
 /** Thread id */
 #ifdef _WIN32
-    typedef DWORD system_thread_id;
+    typedef HANDLE system_thread;
+    typedef DWORD  system_thread_id;
 #else
     typedef pthread_t system_thread_id;
 #endif
@@ -533,9 +535,6 @@ typedef enum
 } system_read_write_mutex_access_type;
 /**************************** BARRIERS ***********************************/
 DECLARE_HANDLE(system_barrier);
-/************************ CRITICAL SECTION *******************************/
-/** Represents a single critical section object */
-DECLARE_HANDLE(system_critical_section);
 /******************************* BST *************************************/
 /** TODO . true if <, false otherwise.*/
 typedef bool (*system_bst_value_lower_func)(size_t key_size, void*, void*);
@@ -548,6 +547,12 @@ DECLARE_HANDLE(system_bst);
 DECLARE_HANDLE(system_bst_value);
 /** TODO */
 DECLARE_HANDLE(system_bst_key);
+/********************** CONDITION VARIABLE *******************************/
+/** Represents a single condition variable */
+DECLARE_HANDLE(system_cond_variable);
+/************************ CRITICAL SECTION *******************************/
+/** Represents a single critical section object */
+DECLARE_HANDLE(system_critical_section);
 /************************** RANDOMIZER ***********************************/
 /** TODO */
 DECLARE_HANDLE(system_randomizer);

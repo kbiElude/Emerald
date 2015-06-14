@@ -35,9 +35,19 @@ typedef struct _ogl_context_vaos
              * via a call-back coming from the released ogl_vao instance, so just keep deleting items until
              * the map clears out.
              */
-            while (system_hash64map_get_amount_of_elements(vaos) > 0)
+            while (true)
             {
-                ogl_vao vao_instance = NULL;
+                uint32_t n_vaos       = 0;
+                ogl_vao  vao_instance = NULL;
+
+                system_hash64map_get_property(vaos,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_vaos);
+
+                if (n_vaos == 0)
+                {
+                    break;
+                }
 
                 if (!system_hash64map_get_element_at(vaos,
                                                      0,            /* n */

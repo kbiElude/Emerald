@@ -109,8 +109,7 @@ ogl_texture                           _texture                                  
 gfx_image                             _texture_image                            = NULL;
 GLuint                                _texture_width                            = -1;
 system_window                         _window                                   = NULL;
-system_event                          _window_closed_event                      = system_event_create(true,  /* manual_reset */
-                                                                                                      false);/* start_state */
+system_event                          _window_closed_event                      = system_event_create(true); /* manual_reset */
 shaders_vertex_fullscreen             _vp                                       = NULL;
 GLuint                                _vaa_id                                   = 0;
 
@@ -921,7 +920,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);

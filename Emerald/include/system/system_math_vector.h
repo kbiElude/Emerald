@@ -6,7 +6,6 @@
 #ifndef SYSTEM_MATH_VECTOR
 #define SYSTEM_MATH_VECTOR
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 /** TODO */

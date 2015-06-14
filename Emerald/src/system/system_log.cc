@@ -15,16 +15,28 @@ FILE*                   log_file_handle    = NULL;
 /** Please see header for specification */
 PUBLIC void _system_log_init()
 {
-    log_file_handle    = fopen                         ("log.txt", "w");
+    log_file_handle    = fopen                         ("log.txt",
+                                                        "w");
     log_file_handle_cs = system_critical_section_create();
 }
 
 /** Please see header for spefification */
 PUBLIC void _system_log_deinit()
 {
-    fclose(log_file_handle);
+    if (log_file_handle != NULL)
+    {
+        fclose(log_file_handle);
 
-    system_critical_section_release(log_file_handle_cs);
+        log_file_handle = NULL;
+    }
+
+    if (log_file_handle_cs != NULL)
+    {
+        system_critical_section cs_cached = log_file_handle_cs;
+        log_file_handle_cs = NULL;
+
+        system_critical_section_release(cs_cached);
+    }
 }
 
 /** Please see header for specification */

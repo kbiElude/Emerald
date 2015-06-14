@@ -271,14 +271,13 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
         ui_ptr->controls_rw_mutex = NULL;
     }
 
-    while (system_resizable_vector_get_amount_of_elements(ui_ptr->controls) > 0)
+    while (true)
     {
         if (!system_resizable_vector_get_element_at(ui_ptr->controls,
                                                     0,
                                                    &ui_control_ptr) )
         {
-            ASSERT_DEBUG_SYNC(false,
-                              "Could not retrieve UI control descriptor");
+            break;
         }
         else
         {
@@ -305,8 +304,19 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
 
     if (ui_ptr->registered_ui_control_callbacks != NULL)
     {
-        while (system_hash64map_get_amount_of_elements(ui_ptr->registered_ui_control_callbacks) > 0)
+        while (true)
         {
+            unsigned int n_callbacks = 0;
+
+            system_hash64map_get_property(ui_ptr->registered_ui_control_callbacks,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_callbacks);
+
+            if (n_callbacks == 0)
+            {
+                break;
+            }
+
             bool              result           = false;
             system_hash64     ui_callback_hash = 0;
             _ogl_ui_callback* ui_callback_ptr  = NULL;
@@ -334,11 +344,21 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
 
     if (ui_ptr->registered_ui_control_programs != NULL)
     {
-        while (system_hash64map_get_amount_of_elements(ui_ptr->registered_ui_control_programs) > 0)
+        while (true)
         {
+            uint32_t      n_programs                   = 0;
             bool          result                       = false;
             ogl_program   ui_control_program           = NULL;
             system_hash64 ui_control_program_name_hash = 0;
+
+            system_hash64map_get_property(ui_ptr->registered_ui_control_programs,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_programs);
+
+            if (n_programs == 0)
+            {
+                break;
+            }
 
             if (system_hash64map_get_element_at(ui_ptr->registered_ui_control_programs,
                                                 0,
@@ -516,7 +536,11 @@ PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
                                      ACCESS_READ);
         {
-            size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+            uint32_t n_controls = 0;
+
+            system_resizable_vector_get_property(ui_ptr->controls,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_controls);
 
             for (size_t n_control = 0;
                         n_control < n_controls;
@@ -595,7 +619,11 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
         system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
                                      ACCESS_READ);
         {
-            size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+            uint32_t n_controls = 0;
+
+            system_resizable_vector_get_property(ui_ptr->controls,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_controls);
 
             for (size_t n_control = 0;
                         n_control < n_controls;
@@ -663,7 +691,11 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
     system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
                                  ACCESS_READ);
     {
-        size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+        uint32_t n_controls = 0;
+
+        system_resizable_vector_get_property(ui_ptr->controls,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_controls);
 
         for (size_t n_control = 0;
                     n_control < n_controls;
@@ -741,7 +773,11 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
     system_read_write_mutex_lock(ui_ptr->controls_rw_mutex,
                                  ACCESS_READ);
     {
-        size_t n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+        uint32_t n_controls = 0;
+
+        system_resizable_vector_get_property(ui_ptr->controls,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_controls);
 
         for (size_t n_control = 0;
                     n_control < n_controls;
@@ -1232,8 +1268,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_ui_draw(__in __notnull ogl_ui
     _ogl_ui*                          ui_ptr      = (_ogl_ui*) ui;
     ogl_context                       context     = ogl_context_get_current_context();
     const ogl_context_gl_entrypoints* entrypoints = NULL;
-    size_t                            n_controls  = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+    uint32_t                          n_controls  = 0;
     GLuint                            vao_id      = 0;
+
+    system_resizable_vector_get_property(ui_ptr->controls,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_controls);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_VAO_NO_VAAS,
@@ -1357,7 +1397,11 @@ PUBLIC void ogl_ui_receive_control_callback(__in     __notnull ogl_ui         ui
                              (system_hash64) control,
                             &callback_vector))
     {
-        const unsigned int n_callbacks = system_resizable_vector_get_amount_of_elements(callback_vector);
+        unsigned int n_callbacks = 0;
+
+        system_resizable_vector_get_property(callback_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_callbacks);
 
         for (unsigned int n_callback = 0;
                           n_callback < n_callbacks;
@@ -1464,7 +1508,9 @@ PUBLIC EMERALD_API void ogl_ui_reposition_control(__in __notnull ogl_ui_control 
     unsigned int     n_controls  = 0;
     _ogl_ui*         ui_ptr      = control_ptr->owner_ptr;
 
-    n_controls = system_resizable_vector_get_amount_of_elements(ui_ptr->controls);
+    system_resizable_vector_get_property(ui_ptr->controls,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_controls);
 
     if (n_controls > new_control_index)
     {

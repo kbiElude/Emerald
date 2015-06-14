@@ -73,7 +73,11 @@ PUBLIC EMERALD_API system_resource_pool_block system_resource_pool_get_from_pool
 
     system_critical_section_enter(descriptor->cs);
     {
-        unsigned int n_cached_released_blocks = system_resizable_vector_get_amount_of_elements(descriptor->released_blocks);
+        unsigned int n_cached_released_blocks = 0;
+
+        system_resizable_vector_get_property(descriptor->released_blocks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             &n_cached_released_blocks);
 
         if (n_cached_released_blocks > 0)
         {
@@ -153,7 +157,11 @@ PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate
         /* Deinit all returned blocks before we continue */
         if (descriptor->deinit_block_fn != NULL)
         {
-            unsigned int n_elements = system_resizable_vector_get_amount_of_elements(descriptor->released_blocks);
+            unsigned int n_elements = 0;
+
+            system_resizable_vector_get_property(descriptor->released_blocks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_elements);
 
             for (unsigned int n_element = 0;
                               n_element < n_elements;
@@ -175,8 +183,13 @@ PUBLIC EMERALD_API void system_resource_pool_release(__in __notnull __deallocate
 
         /* Okay, carry on. */
         system_linear_alloc_pin_release(descriptor->allocator);
+        descriptor->allocator = NULL;
+
         system_critical_section_release(descriptor->cs);
+        descriptor->cs = NULL;
+
         system_resizable_vector_release(descriptor->released_blocks);
+        descriptor->released_blocks = NULL;
 
         delete descriptor;
     }

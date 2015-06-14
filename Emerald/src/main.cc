@@ -9,6 +9,7 @@
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
+#include "system/system_event_monitor.h"
 #include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -89,6 +90,13 @@ void main_init()
     _system_time_init();
     _system_assertions_init();
     _system_threads_init();
+
+    #ifdef USE_EMULATED_EVENTS
+    {
+        system_event_monitor_init();
+    }
+    #endif
+
     _system_thread_pool_init();
     _system_matrix4x4_init();
     _system_window_init();
@@ -144,6 +152,12 @@ int main_deinit()
             _ocl_deinit();
         #endif
 
+        #ifdef USE_EMULATED_EVENTS
+        {
+            system_event_monitor_deinit();
+        }
+        #endif
+
         system_hashed_ansi_string_deinit();
 
         _system_log_deinit();
@@ -174,7 +188,11 @@ int main_deinit()
             case DLL_PROCESS_DETACH:
             {
                 /* DLL unloaded from the virtual address space of the calling process */
-                main_deinit();
+
+                /* This call must not be made from within DllMain(). On Windows 8.1, all other
+                 * threads but the current one have been killed by the time this entry-point
+                 * is reached! */
+                // main_deinit();
 
                 break;
             }

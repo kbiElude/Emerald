@@ -24,8 +24,7 @@ INCLUDE_OPTIMUS_SUPPORT;
 ogl_context   _context             = NULL;
 ogl_pipeline  _pipeline            = NULL;
 system_window _window              = NULL;
-system_event  _window_closed_event = system_event_create(true,   /* manual_reset */
-                                                         false); /* start_state */
+system_event  _window_closed_event = system_event_create(true); /* manual_reset */
 int           _window_size[2]      = {0};
 
 /* Forward declarations */
@@ -366,7 +365,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(window_rendering_handler,
                                0); /* time */
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);

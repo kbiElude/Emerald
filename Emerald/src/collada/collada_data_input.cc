@@ -144,7 +144,9 @@ PUBLIC void collada_data_input_get_properties(__in      __notnull collada_data_i
 
     if (out_n_sets != NULL)
     {
-        *out_n_sets = system_hash64map_get_amount_of_elements(input_ptr->sets);
+        system_hash64map_get_property(input_ptr->sets,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                      out_n_sets);
     }
 
     if (out_type != NULL)
@@ -152,7 +154,9 @@ PUBLIC void collada_data_input_get_properties(__in      __notnull collada_data_i
         *out_type = input_ptr->type;
     }
 
-    if (system_hash64map_get(input_ptr->sets, n_set, &set_ptr) )
+    if (system_hash64map_get(input_ptr->sets,
+                             n_set,
+                            &set_ptr) )
     {
         if (out_offset != NULL)
         {

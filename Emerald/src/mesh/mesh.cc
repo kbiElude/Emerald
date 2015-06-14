@@ -211,7 +211,11 @@ PRIVATE void _mesh_get_index_key(__out          uint32_t*               out_resu
         if (layer_pass_ptr->index_data_maps[n_data_stream_type] != NULL)
         {
             _mesh_layer_pass_index_data* index_data_ptr = NULL;
-            const uint32_t               n_sets         = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[n_data_stream_type]);
+            uint32_t                     n_sets         = 0;
+
+            system_hash64map_get_property(layer_pass_ptr->index_data_maps[n_data_stream_type],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_sets);
 
             for (uint32_t n_set = 0;
                           n_set < n_sets;
@@ -276,7 +280,11 @@ PRIVATE uint32_t _mesh_get_source_index_from_index_key(__in __notnull const uint
     {
         if (layer_pass_ptr->index_data_maps[n_data_stream_type] != NULL)
         {
-            const uint32_t n_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[n_data_stream_type]);
+            uint32_t n_sets = 0;
+
+            system_hash64map_get_property(layer_pass_ptr->index_data_maps[n_data_stream_type],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_sets);
 
             for (uint32_t n_set = 0;
                           n_set < n_sets;
@@ -308,8 +316,12 @@ end:
 /** TODO */
 PRIVATE uint32_t _mesh_get_total_number_of_sets(_mesh_layer* layer_ptr)
 {
-    const uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
-          uint32_t result   = 0;
+    uint32_t n_passes = 0;
+    uint32_t result   = 0;
+
+    system_resizable_vector_get_property(layer_ptr->passes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_passes);
 
     for (uint32_t n_pass = 0;
                   n_pass < n_passes;
@@ -328,7 +340,11 @@ PRIVATE uint32_t _mesh_get_total_number_of_sets(_mesh_layer* layer_ptr)
             {
                 if (pass_ptr->index_data_maps[n_data_stream_type] != NULL)
                 {
-                    const uint32_t n_sets = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[n_data_stream_type]);
+                    uint32_t n_sets = 0;
+
+                    system_hash64map_get_property(pass_ptr->index_data_maps[n_data_stream_type],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_sets);
 
                     result += n_sets;
                 }
@@ -501,7 +517,7 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
     {
         if (layer_ptr->passes != NULL)
         {
-            while (system_resizable_vector_get_amount_of_elements(layer_ptr->passes) > 0)
+            while (true)
             {
                 _mesh_layer_pass* pass_ptr = NULL;
 
@@ -516,8 +532,7 @@ PRIVATE void _mesh_deinit_mesh_layer(const _mesh* mesh_ptr,
                 }
                 else
                 {
-                    ASSERT_DEBUG_SYNC(false,
-                                      "Could not pop mesh layer pass");
+                    break;
                 }
             }
         }
@@ -541,7 +556,11 @@ PRIVATE void _mesh_deinit_mesh_layer_pass(__in __notnull const _mesh*           
             if (pass_ptr->index_data_maps[n_stream_type] != NULL)
             {
                 _mesh_layer_pass_index_data* index_data = NULL;
-                uint32_t                     n_sets     = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[n_stream_type]);
+                uint32_t                     n_sets     = 0;
+
+                system_hash64map_get_property(pass_ptr->index_data_maps[n_stream_type],
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_sets);
 
                 for (uint32_t n_set = 0;
                               n_set < n_sets;
@@ -711,7 +730,11 @@ PRIVATE void _mesh_get_amount_of_stream_data_sets(__in      __notnull _mesh*    
             {
                 if (pass_ptr->index_data_maps[stream_type] != NULL)
                 {
-                    const uint32_t n_sets = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+                    uint32_t n_sets = 0;
+
+                    system_hash64map_get_property(pass_ptr->index_data_maps[stream_type],
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_sets);
 
                     if (n_sets > 0)
                     {
@@ -807,8 +830,12 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(__in      __notnull 
 {
     if (out_n_stream_sets != NULL)
     {
-        _mesh_layer*       layer_ptr = NULL;
-        const unsigned int n_layers  = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+        _mesh_layer* layer_ptr = NULL;
+        unsigned int n_layers  = 0;
+
+        system_resizable_vector_get_property(mesh_ptr->layers,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_layers);
 
         *out_n_stream_sets = 0;
 
@@ -820,8 +847,12 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(__in      __notnull 
                                                        n_layer,
                                                       &layer_ptr) )
             {
-                const unsigned int n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
-                _mesh_layer_pass*  pass_ptr       = NULL;
+                unsigned int      n_layer_passes = 0;
+                _mesh_layer_pass* pass_ptr       = NULL;
+
+                system_resizable_vector_get_property(layer_ptr->passes,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_layer_passes);
 
                 for (unsigned int n_layer_pass = 0;
                                   n_layer_pass < n_layer_passes;
@@ -833,7 +864,11 @@ PRIVATE void _mesh_get_total_number_of_stream_sets_for_mesh(__in      __notnull 
                     {
                         if (pass_ptr->index_data_maps[stream_type] != NULL)
                         {
-                            const uint32_t n_sets = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+                            uint32_t n_sets = 0;
+
+                            system_hash64map_get_property(pass_ptr->index_data_maps[stream_type],
+                                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                         &n_sets);
 
                             if (n_sets > 0)
                             {
@@ -962,9 +997,13 @@ PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_
 
     /* Is the Vertex Smoothing Angle setting different we used to generate normals data
      * different from the new value? */
-    bool           found_dependant_layers   = false;
-    const uint32_t n_layers                 = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
-    bool           needs_normals_data_regen = false;
+    bool     found_dependant_layers   = false;
+    uint32_t n_layers                 = 0;
+    bool     needs_normals_data_regen = false;
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     for (uint32_t n_layer = 0;
                   n_layer < n_layers && !needs_normals_data_regen;
@@ -983,7 +1022,9 @@ PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_
             continue;
         }
 
-        n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+        system_resizable_vector_get_property(layer_ptr->passes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_layer_passes);
 
         for (uint32_t n_layer_pass = 0;
                       n_layer_pass < n_layer_passes && !needs_normals_data_regen;
@@ -1037,7 +1078,11 @@ PRIVATE void _mesh_material_setting_changed(__in __notnull const void* callback_
 /** TODO */
 PRIVATE void _mesh_release_normals_data(__in __notnull _mesh* mesh_ptr)
 {
-    const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    uint32_t n_layers = 0;
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     for (uint32_t n_layer = 0;
                   n_layer < n_layers;
@@ -1081,7 +1126,9 @@ PRIVATE void _mesh_release_normals_data(__in __notnull _mesh* mesh_ptr)
         } /* if (system_hash64map_contains(layer_ptr->data_streams, (system_hash64) MESH_LAYER_DATA_STREAM_TYPE_NORMALS) */
 
         /* Release layer pass data */
-        n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+        system_resizable_vector_get_property(layer_ptr->passes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_layer_passes);
 
         for (uint32_t n_layer_pass = 0;
                       n_layer_pass < n_layer_passes;
@@ -1102,7 +1149,11 @@ PRIVATE void _mesh_release_normals_data(__in __notnull _mesh* mesh_ptr)
             /* Any index data streams defined for normals data? */
             if (pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS] != NULL)
             {
-                const uint32_t n_index_data_entries = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS]);
+                uint32_t n_index_data_entries = 0;
+
+                system_hash64map_get_property(pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_NORMALS],
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_index_data_entries);
 
                 for (uint32_t n_index_data_entry = 0;
                               n_index_data_entry < n_index_data_entries;
@@ -1172,7 +1223,11 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
     _mesh* mesh = (_mesh*) arg;
 
     /* Sign out of material call-backs */
-    const uint32_t n_materials = system_resizable_vector_get_amount_of_elements(mesh->materials);
+    uint32_t n_materials = 0;
+
+    system_resizable_vector_get_property(mesh->materials,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_materials);
 
     for (uint32_t n_material = 0;
                   n_material < n_materials;
@@ -1206,12 +1261,15 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
     if (mesh->layers != NULL)
     {
         /* Release layers */
-        while (system_resizable_vector_get_amount_of_elements(mesh->layers) > 0)
+        while (true)
         {
             _mesh_layer* layer = NULL;
 
-            system_resizable_vector_pop(mesh->layers,
-                                        &layer);
+            if (!system_resizable_vector_pop(mesh->layers,
+                                            &layer) )
+            {
+                break;
+            }
 
             ASSERT_DEBUG_SYNC(layer != NULL,
                               "Cannot release layer info - layer is NULL");
@@ -1268,7 +1326,11 @@ PRIVATE void _mesh_release(__in __notnull __post_invalid void* arg)
 /** TODO */
 PRIVATE void _mesh_update_aabb(__in __notnull _mesh* mesh_ptr)
 {
-    const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    uint32_t n_layers = 0;
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     for (int n_dimension = 0;
              n_dimension < 3; /* x, y, z */
@@ -1358,7 +1420,10 @@ PUBLIC EMERALD_API mesh_layer_id mesh_add_layer(__in __notnull mesh instance)
         system_resizable_vector_push(mesh_instance->layers,
                                      new_layer);
 
-        result = system_resizable_vector_get_amount_of_elements(mesh_instance->layers)-1;
+        system_resizable_vector_get_property(mesh_instance->layers,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result);
+        result--;
 
         /* Update modification timestamp */
         mesh_instance->timestamp_last_modified = system_time_now();
@@ -1521,15 +1586,23 @@ PUBLIC EMERALD_API mesh_layer_pass_id mesh_add_layer_pass(__in __notnull mesh   
 
             new_layer_pass_ptr->material   = material;
             new_layer_pass_ptr->n_elements = n_elements;
-            result_id                      = system_resizable_vector_get_amount_of_elements(mesh_layer_ptr->passes);
+            result_id                      = 0;
+
+            system_resizable_vector_get_property(mesh_layer_ptr->passes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &result_id);
 
             mesh_material_retain(material);
 
             if (material != NULL)
             {
                 /* Cache the material in a helper structure */
-                bool               is_material_cached = false;
-                const unsigned int n_materials_cached = system_resizable_vector_get_amount_of_elements(mesh_ptr->materials);
+                bool         is_material_cached = false;
+                unsigned int n_materials_cached = 0;
+
+                system_resizable_vector_get_property(mesh_ptr->materials,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_materials_cached);
 
                 for (unsigned int n_material = 0;
                                   n_material < n_materials_cached;
@@ -1735,9 +1808,13 @@ PUBLIC EMERALD_API mesh mesh_create(__in           mesh_creation_flags       fla
 PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 {
           _mesh*   mesh_ptr              = (_mesh*) instance;
-          uint32_t n_layers              = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+          uint32_t n_layers              = 0;
           uint32_t n_indices_used_so_far = 0;
     const uint32_t sh_alignment          = mesh_ptr->n_sh_bands * 4;
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     ASSERT_DEBUG_SYNC(mesh_ptr->n_gl_unique_vertices == 0,
                       "Number of unique vertices must be 0");
@@ -1867,7 +1944,11 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
         if (layer_ptr != NULL)
         {
-            const uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+            uint32_t n_passes = 0;
+
+            system_resizable_vector_get_property(layer_ptr->passes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_passes);
 
             for (uint32_t n_pass = 0;
                           n_pass < n_passes;
@@ -2104,7 +2185,11 @@ PUBLIC EMERALD_API void mesh_create_single_indexed_representation(mesh instance)
 
                 if (layer_ptr != NULL)
                 {
-                    uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+                    uint32_t n_passes = 0;
+
+                    system_resizable_vector_get_property(layer_ptr->passes,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_passes);
 
                     for (uint32_t n_pass = 0;
                                   n_pass < n_passes;
@@ -2415,7 +2500,11 @@ PUBLIC EMERALD_API bool mesh_fill_gl_buffers(__in __notnull mesh        instance
 PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 {
     _mesh*   mesh_ptr = (_mesh*) instance;
-    uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    uint32_t n_layers = 0;
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     if (mesh_ptr->gl_processed_data != NULL)
     {
@@ -2439,7 +2528,11 @@ PUBLIC EMERALD_API void mesh_free_single_indexed_representation(mesh instance)
 
         if (layer_ptr != NULL)
         {
-            uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+            uint32_t n_passes = 0;
+
+            system_resizable_vector_get_property(layer_ptr->passes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_passes);
 
             for (uint32_t n_pass = 0;
                           n_pass < n_passes;
@@ -2487,11 +2580,15 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                                                                                         NULL,  /* init_fn */
                                                                                                         NULL); /* deinit_fn */
     _mesh*                  mesh_ptr                   = (_mesh*) mesh;
-    const unsigned int      n_layers                   = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    unsigned int            n_layers                   = 0;
     system_resource_pool    vec3_resource_pool         = system_resource_pool_create                   (sizeof(float) * 3,
                                                                                                         4,     /* n_elements_to_preallocate */
                                                                                                         NULL,  /* init_fn */
                                                                                                         NULL); /* deinit_fn */
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     /* Determine which vertices are used by which polygons and store that
      * information in a BST,
@@ -2532,7 +2629,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                 continue;
             }
 
-            n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+            system_resizable_vector_get_property(layer_ptr->passes,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_layer_passes);
 
             if (system_hash64map_contains(layer_ptr->data_streams,
                                           MESH_LAYER_DATA_STREAM_TYPE_NORMALS) )
@@ -2592,7 +2691,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                             /* n_vertex_data_sets == 0: no index data available.
                              *                    == 1:    index data available.
                              */
-                            const uint32_t n_vertex_data_sets = system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]);
+                            uint32_t n_vertex_data_sets = 0;
+
+                            system_hash64map_get_property(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                         &n_vertex_data_sets);
 
                             if (n_vertex_data_sets > 1)
                             {
@@ -2698,7 +2801,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                     case 1:
                     {
                         /* Per-polygon normal calculation */
-                        const uint32_t n_polygon_vectors = system_resizable_vector_get_amount_of_elements(allocated_polygon_vectors);
+                        uint32_t n_polygon_vectors = 0;
+
+                        system_resizable_vector_get_property(allocated_polygon_vectors,
+                                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                            &n_polygon_vectors);
 
                         ASSERT_DEBUG_SYNC(n_polygon_vectors != 0,
                                           "No polygon vectors found for mesh");
@@ -2720,7 +2827,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                                 continue;
                             }
 
-                            n_polygon_vector_items = system_resizable_vector_get_amount_of_elements(polygon_vector);
+                            system_resizable_vector_get_property(polygon_vector,
+                                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                                &n_polygon_vector_items);
 
                             for (uint32_t n_polygon_vector_item = 0;
                                           n_polygon_vector_item < n_polygon_vector_items;
@@ -2803,7 +2912,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
         }
 
         /* We will need to iterate over all polygons. */
-        const uint32_t n_layer_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+        uint32_t n_layer_passes = 0;
+
+        system_resizable_vector_get_property(layer_ptr->passes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_layer_passes);
 
         for (uint32_t n_layer_pass = 0;
                       n_layer_pass < n_layer_passes;
@@ -2839,6 +2952,8 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
              *       This may appear to be space-ineffective, but bear in mind that all the
              *       layer data will eventually be combined when forming the GL blob.
              */
+            uint32_t n_vertex_items = 0;
+
             layer_pass_index_data  = new (std::nothrow) unsigned int[layer_pass_ptr->n_elements];
             layer_pass_normal_data = new (std::nothrow) float       [layer_pass_ptr->n_elements * 3 /* components */];
 
@@ -2849,7 +2964,11 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                    0,
                    sizeof(float) * layer_pass_ptr->n_elements * 3 /* components */);
 
-            if (system_hash64map_get_amount_of_elements(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) > 0)
+            system_hash64map_get_property(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_vertex_items);
+
+            if (n_vertex_items > 0)
             {
                 system_hash64map_get_element_at(layer_pass_ptr->index_data_maps[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
                                                 0,     /* set id */
@@ -2896,7 +3015,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                     continue;
                 }
 
-                current_triangle_polygon_vector_size = system_resizable_vector_get_amount_of_elements(current_triangle_polygon_vector);
+                system_resizable_vector_get_property(current_triangle_polygon_vector,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &current_triangle_polygon_vector_size);
 
                 for (unsigned int n_triangle_polygon_vector_item = 0;
                                   n_triangle_polygon_vector_item < current_triangle_polygon_vector_size;
@@ -2957,7 +3078,9 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
                             continue;
                         }
 
-                        n_triangle_vertex_polygon_vector_items = system_resizable_vector_get_amount_of_elements(triangle_vertex_polygon_vector);
+                        system_resizable_vector_get_property(triangle_vertex_polygon_vector,
+                                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                            &n_triangle_vertex_polygon_vector_items);
 
                         for (unsigned int n_triangle_vertex_polygon_vector_item = 0;
                                           n_triangle_vertex_polygon_vector_item < n_triangle_vertex_polygon_vector_items;
@@ -3013,7 +3136,13 @@ PUBLIC EMERALD_API void mesh_generate_normal_data(__in __notnull mesh mesh)
              * TODO: The mesh_add_layer_pass_index_data() call assumes only one set is ever defined.
              *       FIX IF NEEDED.
              */
-            ASSERT_DEBUG_SYNC(system_hash64map_get_amount_of_elements(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES]) <= 1,
+            uint32_t n_vertex_sets = 0;
+
+            system_hash64map_get_property(layer_pass_ptr->set_id_to_unique_set_id[MESH_LAYER_DATA_STREAM_TYPE_VERTICES],
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_vertex_sets);
+
+            ASSERT_DEBUG_SYNC(n_vertex_sets <= 1,
                               "Layer pass uses >= 1 sets which is not supported.");
 
             mesh_add_layer_data_stream(mesh,
@@ -3090,7 +3219,9 @@ PUBLIC EMERALD_API uint32_t mesh_get_amount_of_layer_passes(__in __notnull mesh 
                                                layer_id,
                                               &mesh_layer_ptr) )
     {
-        result = system_resizable_vector_get_amount_of_elements(mesh_layer_ptr->passes);
+        system_resizable_vector_get_property(mesh_layer_ptr->passes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result);
     }
     else
     {
@@ -3398,7 +3529,9 @@ PUBLIC EMERALD_API bool mesh_get_property(__in  __notnull mesh          instance
 
         case MESH_PROPERTY_N_LAYERS:
         {
-            *((uint32_t*) result) = system_resizable_vector_get_amount_of_elements(((_mesh*)instance)->layers);
+            system_resizable_vector_get_property(((_mesh*)instance)->layers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 result);
 
             break;
         }
@@ -3881,8 +4014,12 @@ end:
 /* Please see header for specification */
 PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
 {
-    _mesh*         mesh_ptr = (_mesh*) in_mesh;
-    const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+    _mesh*   mesh_ptr = (_mesh*) in_mesh;
+    uint32_t n_layers = 0;
+
+    system_resizable_vector_get_property(mesh_ptr->layers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_layers);
 
     for (uint32_t n_layer = 0;
                   n_layer < n_layers;
@@ -3901,7 +4038,11 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
         }
 
         /* Release data of all defined data streams */
-        const uint32_t n_data_streams = system_hash64map_get_amount_of_elements(layer_ptr->data_streams);
+        uint32_t n_data_streams = 0;
+
+        system_hash64map_get_property(layer_ptr->data_streams,
+                                      SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                     &n_data_streams);
 
         for (uint32_t n_data_stream = 0;
                       n_data_stream < n_data_streams;
@@ -3930,7 +4071,11 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
         } /* for (all data streams) */
 
         /* Release index data defined for all passes */
-        const uint32_t n_passes = system_resizable_vector_get_amount_of_elements(layer_ptr->passes);
+        uint32_t n_passes = 0;
+
+        system_resizable_vector_get_property(layer_ptr->passes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_passes);
 
         for (uint32_t n_pass = 0;
                       n_pass < n_passes;
@@ -3963,7 +4108,11 @@ PUBLIC EMERALD_API void mesh_release_layer_datum(__in __notnull mesh in_mesh)
             {
                 if (pass_ptr->index_data_maps[stream_type] != NULL)
                 {
-                    const uint32_t n_index_data_maps = system_hash64map_get_amount_of_elements(pass_ptr->index_data_maps[stream_type]);
+                    uint32_t n_index_data_maps = 0;
+
+                    system_hash64map_get_property(pass_ptr->index_data_maps[stream_type],
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_index_data_maps);
 
                     for (uint32_t n_index_data_map = 0;
                                   n_index_data_map < n_index_data_maps;
@@ -4106,7 +4255,11 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
                                     &mesh_ptr->n_sh_components);
 
         /* Store layers */
-        const uint32_t n_layers = system_resizable_vector_get_amount_of_elements(mesh_ptr->layers);
+        uint32_t n_layers = 0;
+
+        system_resizable_vector_get_property(mesh_ptr->layers,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_layers);
 
         system_file_serializer_write(serializer,
                                      sizeof(n_layers),
@@ -4127,7 +4280,11 @@ PUBLIC EMERALD_API bool mesh_save_with_serializer(__in __notnull mesh           
 
             if (layer != NULL)
             {
-                const uint32_t n_layer_passes = system_resizable_vector_get_amount_of_elements(layer->passes);
+                uint32_t n_layer_passes = 0;
+
+                system_resizable_vector_get_property(layer->passes,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_layer_passes);
 
                 /* Store all details of the layer. Skip any data that's needed to generate the final
                  * GL blob - we already have it!

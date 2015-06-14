@@ -24,10 +24,8 @@ typedef struct _curve_editor_watchdog
 
     _curve_editor_watchdog()
     {
-        wakeup_event             = system_event_create(false,  /* manual_reset */
-                                                       false); /* start_state */
-        wakeup_thread_kill_event = system_event_create(true,   /* manual_reset */
-                                                       false); /* start_state */
+        wakeup_event             = system_event_create(false); /* manual_reset */
+        wakeup_thread_kill_event = system_event_create(true);  /* manual_reset */
     }
 
     ~_curve_editor_watchdog()
@@ -72,9 +70,11 @@ PRIVATE void _curve_editor_watchdog_monitor_thread_entrypoint(__in __notnull sys
 
     while (true)
     {
-        size_t n_event = system_event_wait_multiple_infinite(events,
-                                                             sizeof(events) / sizeof(events[0]),
-                                                             false); /* wait_on_all_objects */
+        size_t n_event = system_event_wait_multiple(events,
+                                                    sizeof(events) / sizeof(events[0]),
+                                                    false, /* wait_on_all_objects */
+                                                    SYSTEM_TIME_INFINITE,
+                                                    NULL); /* out_result_ptr */
 
         if (n_event == 1)
         {
@@ -88,11 +88,11 @@ PRIVATE void _curve_editor_watchdog_monitor_thread_entrypoint(__in __notnull sys
 
         while (!has_timeout_occurred)
         {
-            n_event = system_event_wait_multiple_timeout(events,
-                                                         sizeof(events) / sizeof(events[0]),
-                                                         false, /* wait_on_all_objects */
-                                                         timeout,
-                                                        &has_timeout_occurred);
+            n_event = system_event_wait_multiple(events,
+                                                 sizeof(events) / sizeof(events[0]),
+                                                 false, /* wait_on_all_objects */
+                                                 timeout,
+                                                &has_timeout_occurred);
 
             if (!has_timeout_occurred)
             {
@@ -142,8 +142,8 @@ PUBLIC void curve_editor_watchdog_release(__in __notnull curve_editor_watchdog w
         _curve_editor_watchdog* watchdog_ptr = (_curve_editor_watchdog*) watchdog;
 
         /* Kill the watchdog thread */
-        system_event_set                 (watchdog_ptr->wakeup_thread_kill_event);
-        system_event_wait_single_infinite(watchdog_ptr->wakeup_thread_killed_event);
+        system_event_set        (watchdog_ptr->wakeup_thread_kill_event);
+        system_event_wait_single(watchdog_ptr->wakeup_thread_killed_event);
 
         /* Safe to release the descriptor */
         delete watchdog_ptr;

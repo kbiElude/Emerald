@@ -71,7 +71,11 @@ PRIVATE bool _system_context_menu_call_back_owner(__in __notnull _system_context
                                                   __in           int                   id)
 {
     bool         result    = false;
-    unsigned int n_entries = system_resizable_vector_get_amount_of_elements(menu_ptr->entries);
+    unsigned int n_entries = 0;
+
+    system_resizable_vector_get_property(menu_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
 
     for (unsigned int n = 0;
                       n < n_entries;
@@ -152,7 +156,11 @@ PRIVATE MENUITEMINFO _system_context_menu_create_item_system_representation(__in
 PRIVATE void _system_context_menu_create_menu_system_representation(__in __notnull _system_context_menu* menu_ptr)
 {
     int          counter   = 1;
-    unsigned int n_entries = system_resizable_vector_get_amount_of_elements(menu_ptr->entries);
+    unsigned int n_entries = 0;
+
+    system_resizable_vector_get_property(menu_ptr->entries,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_entries);
 
     menu_ptr->system_handle = ::CreatePopupMenu();
 
@@ -281,7 +289,11 @@ PRIVATE MENUITEMINFO _system_context_menu_create_submenu_system_representation(_
 PUBLIC void _system_context_menu_release(__in __notnull __post_invalid void* menu)
 {
     _system_context_menu* menu_ptr  = (_system_context_menu*) menu;
-    unsigned int          n_entries = system_resizable_vector_get_amount_of_elements(menu_ptr->entries);
+    unsigned int          n_entries = 0;
+
+    system_resizable_vector_get_property(menu_ptr->entries,
+                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                         &n_entries);
 
     for (unsigned int n = 0;
                       n < n_entries;

@@ -120,7 +120,11 @@ PRIVATE void _init_cameras()
     }
 
     /* Create the list of camera names that will be shown under "active camera" dropdown */
-    const uint32_t n_total_cameras = system_resizable_vector_get_amount_of_elements(_cameras);
+    uint32_t n_total_cameras = 0;
+
+    system_resizable_vector_get_property(_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_total_cameras);
 
     _camera_indices = new void*                    [n_total_cameras];
     _camera_names   = new system_hashed_ansi_string[n_total_cameras];
@@ -200,11 +204,15 @@ PUBLIC void state_deinit()
 
     if (_cameras != NULL)
     {
-        while (system_resizable_vector_get_amount_of_elements(_cameras) > 0)
+        while (true)
         {
             _camera* current_camera = NULL;
 
-            system_resizable_vector_pop(_cameras, &current_camera);
+            if (!system_resizable_vector_pop(_cameras, &current_camera) )
+            {
+                break;
+            }
+
             delete current_camera;
         }
         system_resizable_vector_release(_cameras);
@@ -315,7 +323,13 @@ PUBLIC system_timeline_time state_get_last_frame_time()
 /** Please see header for spec */
 PUBLIC uint32_t state_get_number_of_cameras()
 {
-    return system_resizable_vector_get_amount_of_elements(_cameras);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
+
+    return result;
 }
 
 /** Please see header for spec */

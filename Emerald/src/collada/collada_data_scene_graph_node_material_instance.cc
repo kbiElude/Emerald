@@ -163,7 +163,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_material_instance_get_prop
 
     if (out_n_bindings != NULL)
     {
-        *out_n_bindings = system_resizable_vector_get_amount_of_elements(instance_ptr->bindings);
+        system_resizable_vector_get_property(instance_ptr->bindings,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             out_n_bindings);
     }
 }
 

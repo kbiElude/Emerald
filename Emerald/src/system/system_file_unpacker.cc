@@ -294,11 +294,17 @@ PUBLIC EMERALD_API void system_file_unpacker_get_file_property(__in  __notnull s
     _system_file_unpacker*      unpacker_ptr = (_system_file_unpacker*) unpacker;
 
     /* Sanity checks */
+    unsigned int n_files = 0;
+
+    system_resizable_vector_get_property(unpacker_ptr->files,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_files);
+
     ASSERT_DEBUG_SYNC(unpacker != NULL,
                       "Input unpacker argument is NULL");
     ASSERT_DEBUG_SYNC(out_result != NULL,
                       "Output result value ptr is NULL");
-    ASSERT_DEBUG_SYNC(file_index < system_resizable_vector_get_amount_of_elements(unpacker_ptr->files),
+    ASSERT_DEBUG_SYNC(file_index < n_files,
                       "Invalid file index requested");
 
     /* Retrieve the requested file descriptor */
@@ -366,7 +372,9 @@ PUBLIC EMERALD_API void system_file_unpacker_get_property(__in  __notnull system
 
         case SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(unpacker_ptr->files);
+            system_resizable_vector_get_property(unpacker_ptr->files,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

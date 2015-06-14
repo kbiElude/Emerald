@@ -63,9 +63,13 @@ PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       
                                       __inout __notnull unsigned int*           time_ptr,
                                       __in    __notnull system_resizable_vector processed_nodes_vector)
     {
-        _system_dag_node*  adjacent_node_ptr = NULL;
-        const unsigned int n_adjacent_nodes  = system_resizable_vector_get_amount_of_elements(node_ptr->adjacent_nodes);
-        bool               result            = true;
+        _system_dag_node* adjacent_node_ptr = NULL;
+        unsigned int      n_adjacent_nodes  = 0;
+        bool              result            = true;
+
+        system_resizable_vector_get_property(node_ptr->adjacent_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_adjacent_nodes);
 
         node_ptr->status = STATUS_VISITED;
         (*time_ptr)      ++;
@@ -213,9 +217,13 @@ end:
 PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(__in    __notnull system_dag              dag,
                                                                         __inout __notnull system_resizable_vector result)
 {
-    _system_dag*       dag_ptr        = (_system_dag*) dag;
-    const unsigned int n_result_nodes = system_resizable_vector_get_amount_of_elements(dag_ptr->sorted_nodes);
-    bool               result_bool    = false;
+    _system_dag* dag_ptr        = (_system_dag*) dag;
+    unsigned int n_result_nodes = 0;
+    bool         result_bool    = false;
+
+    system_resizable_vector_get_property(dag_ptr->sorted_nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_result_nodes);
 
     if (dag_ptr->dirty)
     {
@@ -332,12 +340,19 @@ PUBLIC EMERALD_API void system_dag_reset_connections(__in __notnull system_dag d
 /** TODO */
 PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
 {
-    _system_dag_node*  current_node_ptr = NULL;
-    _system_dag*       dag_ptr          = (_system_dag*) dag;
-    const unsigned int n_connections    = system_resizable_vector_get_amount_of_elements(dag_ptr->connections);
-    const unsigned int n_nodes          = system_resizable_vector_get_amount_of_elements(dag_ptr->nodes);
-    bool               result           = false;
-    unsigned int       time             = 0;
+    _system_dag_node* current_node_ptr = NULL;
+    _system_dag*      dag_ptr          = (_system_dag*) dag;
+    unsigned int      n_connections    = 0;
+    unsigned int      n_nodes          = 0;
+    bool              result           = false;
+    unsigned int      time             = 0;
+
+    system_resizable_vector_get_property(dag_ptr->connections,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_connections);
+    system_resizable_vector_get_property(dag_ptr->nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_nodes);
 
     /* This is the man-on-the-street implementation of topological sorting of DAG nodes.
      *

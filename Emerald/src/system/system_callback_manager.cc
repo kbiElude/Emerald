@@ -213,7 +213,11 @@ PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_man
         if (callback_descriptor.subscriptions != NULL)
         {
             _system_callback_manager_callback_subscription* subscription_ptr = NULL;
-            const unsigned int                              n_subscriptions  = system_resizable_vector_get_amount_of_elements(callback_descriptor.subscriptions);
+            unsigned int                                    n_subscriptions  = 0;
+
+            system_resizable_vector_get_property(callback_descriptor.subscriptions,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_subscriptions);
 
             for (unsigned int n_subscription = 0;
                               n_subscription < n_subscriptions;
@@ -409,7 +413,11 @@ PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(__in 
     system_critical_section_enter(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
     {
         /* Find the callback descriptor */
-        const uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(callback_manager_ptr->callbacks[callback_id].subscriptions);
+        uint32_t n_callbacks = 0;
+
+        system_resizable_vector_get_property(callback_manager_ptr->callbacks[callback_id].subscriptions,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_callbacks);
 
         for (uint32_t n_callback = 0;
                       n_callback < n_callbacks;

@@ -6,7 +6,6 @@
 #ifndef SYSTEM_CONTEXT_MENU_H
 #define SYSTEM_CONTEXT_MENU_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 #ifdef _WIN32

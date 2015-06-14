@@ -18,8 +18,7 @@ typedef struct _system_barrier
     {
         n_signals_before_release = in_n_signals_before_release;
         n_threads_signalled      = 0;
-        sync                     = system_event_create(true,   /* manual_reset */
-                                                       false); /* start_state  */
+        sync                     = system_event_create(true); /* manual_reset */
     }
 } _system_barrier;
 
@@ -76,7 +75,7 @@ PUBLIC EMERALD_API void system_barrier_signal(__in __notnull system_barrier     
 
     if (wait_until_signalled)
     {
-        system_event_wait_single_infinite(barrier_ptr->sync);
+        system_event_wait_single(barrier_ptr->sync);
     }
 }
 
@@ -85,5 +84,5 @@ PUBLIC EMERALD_API void system_barrier_wait_until_signalled(__in __notnull syste
 {
     _system_barrier* barrier_ptr = (_system_barrier*) barrier;
 
-    system_event_wait_single_infinite(barrier_ptr->sync);
+    system_event_wait_single(barrier_ptr->sync);
 }

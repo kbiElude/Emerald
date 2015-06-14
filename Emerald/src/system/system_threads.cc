@@ -14,6 +14,9 @@
 #include "system/system_resource_pool.h"
 #include "system/system_threads.h"
 
+#ifdef USE_EMULATED_EVENTS
+    #include "system/system_event_monitor.h"
+#endif
 
 /** Internal type definitions */
 typedef struct
@@ -35,7 +38,7 @@ system_resource_pool    thread_descriptor_pool   = NULL;
  *  @param argument _system_threads_thread_descriptor*
  */
 #ifdef _WIN32
-    PRIVATE DWORD __stdcall _system_threads_entry_point_wrapper(void* argument)
+    DWORD WINAPI _system_threads_entry_point_wrapper(LPVOID argument)
 #else
     void* _system_threads_entry_point_wrapper(void* argument)
 #endif
@@ -67,9 +70,37 @@ PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id()
 }
 
 /** Please see header for specification */
+PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread        thread,
+                                                   __in      system_timeline_time timeout,
+                                                   __out_opt bool*                out_has_timed_out_ptr)
+{
+    bool     has_timed_out = false;
+    uint32_t timeout_msec  = 0;
+
+    if (timeout == SYSTEM_TIME_INFINITE)
+    {
+        timeout_msec = INFINITE;
+    }
+    else
+    {
+        system_time_get_msec_for_timeline_time(timeout,
+                                              &timeout_msec);
+    }
+
+    has_timed_out = (::WaitForSingleObject( thread,
+                                            timeout_msec) ) == WAIT_TIMEOUT;
+
+    if (out_has_timed_out_ptr != NULL)
+    {
+        *out_has_timed_out_ptr = has_timed_out;
+    }
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
                                                          __in  __maybenull system_threads_entry_point_argument callback_func_argument,
-                                                         __out __maybenull system_event*                       thread_wait_event)
+                                                         __out __maybenull system_event*                       thread_wait_event,
+                                                         __out __maybenull system_thread*                      out_thread_ptr)
 {
     /* Create a new descriptor */
     system_thread_id result = 0;
@@ -115,16 +146,21 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             result = thread_descriptor->thread_id;
 
+            if (out_thread_ptr != NULL)
+            {
+                *out_thread_ptr = new_thread_handle;
+            }
+
             if (thread_wait_event != NULL)
             {
-                *thread_wait_event            = (system_event) new_thread_handle;
+                *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
                 thread_descriptor->kill_event = *thread_wait_event;
             }
             else
             {
                 thread_descriptor->kill_event = NULL;
             }
-        }
+        } /* if (thread_descriptor != NULL) */
     }
 
     return result;
@@ -179,7 +215,11 @@ PUBLIC void _system_threads_deinit()
         {
             LOG_INFO("Waiting for all threads to quit..");
 
-            unsigned int n_threads = system_resizable_vector_get_amount_of_elements(active_threads_vector);
+            unsigned int n_threads = 0;
+
+            system_resizable_vector_get_property(active_threads_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_threads);
 
             if (n_threads > 0)
             {

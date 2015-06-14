@@ -191,7 +191,11 @@ inline void _system_thread_pool_worker_execute_task(__notnull _system_thread_poo
 inline void _system_thread_pool_worker_execute_task_group(__notnull _system_thread_pool_task_group_descriptor* task_group_descriptor)
 {
     system_resizable_vector& tasks_vector = task_group_descriptor->tasks;
-    unsigned int             n_tasks      = system_resizable_vector_get_amount_of_elements(tasks_vector);
+    unsigned int             n_tasks      = 0;
+
+    system_resizable_vector_get_property(tasks_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_tasks);
 
     if (task_group_descriptor->is_distributable)
     {
@@ -214,7 +218,13 @@ inline void _system_thread_pool_worker_execute_task_group(__notnull _system_thre
             {
                 if (result_get)
                 {
-                    ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(task_group_descriptor->tasks) == 0,
+                    unsigned int n_tasks = 0;
+
+                    system_resizable_vector_get_property(task_group_descriptor->tasks,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_tasks);
+
+                    ASSERT_DEBUG_SYNC(n_tasks == 0,
                                       "Null task descriptor reported even though there are more tasks available!");
                 }
 
@@ -356,7 +366,7 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
              current_thread_id);
     {
         /* Wait till all thread events become available */
-        system_event_wait_single_infinite(threads_spawned_event);
+        system_event_wait_single(threads_spawned_event);
 
         while (should_live)
         {
@@ -375,9 +385,11 @@ PRIVATE void _system_thread_pool_worker_entrypoint(system_threads_entry_point_ar
             else
             {
                 /* Most likely no tasks around - wait for an event */
-                event_index = system_event_wait_multiple_infinite(wait_table,
-                                                                  WAIT_TABLE_SIZE,
-                                                                  false);
+                event_index = system_event_wait_multiple(wait_table,
+                                                         WAIT_TABLE_SIZE,
+                                                         false,
+                                                         SYSTEM_TIME_INFINITE,
+                                                         NULL); /* out_result_ptr */
             }
 
             switch (event_index)
@@ -476,7 +488,13 @@ PUBLIC EMERALD_API system_thread_pool_task_group_descriptor system_thread_pool_c
 
         if (result->tasks != NULL)
         {
-            ASSERT_DEBUG_SYNC(system_resizable_vector_get_amount_of_elements(result->tasks) == 0,
+            unsigned int n_tasks = 0;
+
+            system_resizable_vector_get_property(result->tasks,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_tasks);
+
+            ASSERT_DEBUG_SYNC(n_tasks == 0,
                               "Task group descriptor already cotnains task(s)!");
         }
 
@@ -574,12 +592,9 @@ PUBLIC void _system_thread_pool_init()
                                                                  THREAD_POOL_PREALLOCATED_TASK_GROUP_DESCRIPTORS,
                                                                  _init_system_thread_pool_task_group_descriptor,
                                                                  _deinit_system_thread_pool_task_group_descriptor);
-        kill_pool_event            = system_event_create        (true,   /* manual_reset */
-                                                                 false); /* start_state  */
-        threads_spawned_event      = system_event_create        (true,   /* manual_reset */
-                                                                 false); /* start_state  */
-        task_available_event       = system_event_create        (false,  /* manual_reset */
-                                                                 false); /* start_state  */
+        kill_pool_event            = system_event_create        (true); /* manual_reset */
+        threads_spawned_event      = system_event_create        (true); /* manual_reset */
+        task_available_event       = system_event_create        (true); /* manual_reset */
 
         for (size_t n_priority = THREAD_POOL_TASK_PRIORITY_FIRST;
                     n_priority < THREAD_POOL_TASK_PRIORITY_COUNT;
@@ -647,12 +662,12 @@ PUBLIC void _system_thread_pool_deinit()
     bool                       wait_result  = false;
 
     /* Set the kill event and wait till all worker threads die out */
-    system_event_set                  (kill_pool_event);
-    system_event_wait_multiple_timeout(kill_wait_table,
-                                       THREAD_POOL_AMOUNT_OF_THREADS,
-                                       true,
-                                       timeout_time,
-                                      &wait_result);
+    system_event_set          (kill_pool_event);
+    system_event_wait_multiple(kill_wait_table,
+                               THREAD_POOL_AMOUNT_OF_THREADS,
+                               true, /* wait_on_all_objects */
+                               timeout_time,
+                              &wait_result);
 
     /* All threads should have died by now. Deinit all remaining objects */
     system_resource_pool_release(order_pool);

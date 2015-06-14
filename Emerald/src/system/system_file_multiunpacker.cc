@@ -61,7 +61,11 @@ typedef struct _system_file_multiunpacker
 
         if (unpackers != NULL)
         {
-            const unsigned int n_unpackers = system_resizable_vector_get_amount_of_elements(unpackers);
+            unsigned int n_unpackers = 0;
+
+            system_resizable_vector_get_property(unpackers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_unpackers);
 
             for (unsigned int n_unpacker = 0;
                               n_unpacker < n_unpackers;

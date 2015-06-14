@@ -11,9 +11,19 @@ OPTION(INCLUDE_OPENCL          "Should include OpenCL code" OFF)
 OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
 OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code" OFF)
 
+#IF (!MSVC)
+    # Posix does not support events, as found in Windows. Emerald provides an emulation layer
+	# for the functionality, based on conditional variables.
+	ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
+#ENDIF(!MSVC)
 
 # DO NOT MODIFY BELOW THIS LINE
 include (GenerateExportHeader)
+
+IF(MSVC)
+    ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
+ENDIF(MSVC)
+
 
 CONFIGURE_FILE ("${EMERALD_SOURCE_DIR}/include/config.h.in" "${EMERALD_SOURCE_DIR}/include/config.h")
 
@@ -149,7 +159,7 @@ ADD_LIBRARY(EMERALD SHARED ${AllSources}
 GENERATE_EXPORT_HEADER( EMERALD
 	BASE_NAME EMERALD
 	EXPORT_MACRO_NAME _EMERALD_API
-	EXPORT_FILE_NAME ./include/generated_dll_exports.h
+	EXPORT_FILE_NAME ${EMERALD_SOURCE_DIR}/include/generated_dll_exports.h
 )
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

@@ -6,7 +6,6 @@
 #ifndef SYSTEM_FILE_ENUMERATOR_H
 #define SYSTEM_FILE_ENUMERATOR_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 typedef enum

@@ -557,7 +557,9 @@ PUBLIC EMERALD_API void ogl_context_texture_compression_get_property(__in  __not
     {
         case OGL_CONTEXT_TEXTURE_COMPRESSION_PROPERTY_N_COMPRESSED_INTERNALFORMAT:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(texture_compression_ptr->algorithms);
+            system_resizable_vector_get_property(texture_compression_ptr->algorithms,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

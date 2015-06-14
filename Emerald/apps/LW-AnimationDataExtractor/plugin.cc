@@ -57,7 +57,7 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used);
 PRIVATE void WorkerThreadEntryPoint(void* not_used)
 {
     /* Wait for the UI to nestle */
-    system_event_wait_single_infinite(ui_initialized_event);
+    system_event_wait_single(ui_initialized_event);
 
     /* Spawn a new scene */
     scene new_scene = scene_create(NULL, /* ogl_context */
@@ -89,9 +89,11 @@ PRIVATE void WorkerThreadEntryPoint(void* not_used)
     job_done_events[3] = StartVMapDataExtraction();
 
     /* Wait for the jobs to finish */
-    system_event_wait_multiple_infinite(job_done_events,
-                                        sizeof(job_done_events) / sizeof(job_done_events[0]),
-                                        true); /* wait_on_all_objects */
+    system_event_wait_multiple(job_done_events,
+                               sizeof(job_done_events) / sizeof(job_done_events[0]),
+                               true, /* wait_on_all_objects */
+                               SYSTEM_TIME_INFINITE,
+                               NULL); /* out_result_ptr */
 
     for (unsigned int n_job_event = 0;
                       n_job_event < sizeof(job_done_events) / sizeof(job_done_events[0]);

@@ -6,7 +6,6 @@
 #ifndef SYSTEM_ASSERTIONS_H
 #define SYSTEM_ASSERTIONS_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 
@@ -50,7 +49,7 @@
 #endif
 
 /** Macro to always do an assertion check */
-#ifdef __WIN32
+#ifdef _WIN32
     #define ASSERT_ALWAYS_ASYNC(condition, message, ...) system_assertions_assert(false,          \
                                                                                 ALWAYS_ASSERTION, \
                                                                                 condition,        \

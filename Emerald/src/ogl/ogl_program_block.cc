@@ -956,7 +956,9 @@ PUBLIC void ogl_program_block_get_property(__in  __notnull const ogl_program_blo
 
         case OGL_PROGRAM_BLOCK_PROPERTY_N_MEMBERS:
         {
-            *(unsigned int*) out_result = system_resizable_vector_get_amount_of_elements(block_ptr->members);
+            system_resizable_vector_get_property(block_ptr->members,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

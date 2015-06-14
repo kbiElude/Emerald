@@ -69,8 +69,7 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
                       n < 4;
                       n++)
     {
-        wait_events[n] = system_event_create(true,   /* manual_reset */
-                                             false); /* start_state */
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
@@ -96,9 +95,11 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
     }
 
     /* wait till all tasks finish */
-    system_event_wait_multiple_infinite(wait_events,
-                                        4,     /* n_elements */
-                                        true); /* wait_on_all_objects */
+    system_event_wait_multiple(wait_events,
+                               4,    /* n_elements */
+                               true, /* wait_on_all_objects */
+                               SYSTEM_TIME_INFINITE,
+                               NULL); /* out_result_ptr */
 
     for (unsigned int n = 0;
                       n < 256;
@@ -125,8 +126,7 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
                       n < 16;
                       n++)
     {
-        wait_events[n] = system_event_create(true,   /* manual_reset */
-                                             false); /* start_state */
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
@@ -151,9 +151,11 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
     }
 
     /* wait till all tasks finish */
-    system_event_wait_multiple_infinite(wait_events,
-                                        16,          /* n_elements */
-                                        true);       /* wait_on_all_objects */
+    system_event_wait_multiple(wait_events,
+                               16,   /* n_elements */
+                               true, /* wait_on_all_objects */
+                               SYSTEM_TIME_INFINITE,
+                               NULL); /* out_result_ptr */
 
     for (unsigned int n = 0;
                       n < 16;
@@ -172,6 +174,7 @@ TEST(ThreadPoolTest, FewComplexTasksSubmittedSeparately)
     }
 }
 
+#if 0
 TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
 {
     unsigned char test_buffer[256] = {0};
@@ -180,16 +183,20 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
     /* set up */
     ZeroMemory(test_buffer, 256);
 
-    for (unsigned int n = 0; n < 4; n++)
+    for (unsigned int n = 0;
+                      n < 4;
+                      n++)
     {
-        wait_events[n] = system_event_create(true, false);
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
     system_thread_pool_task_group_descriptor       task_group_descriptor = system_thread_pool_create_task_group_descriptor(false);
     few_simple_tasks_submitted_separately_argument inputs[4];
 
-    for (unsigned int n = 0; n < 4; n++)
+    for (unsigned int n = 0;
+                      n < 4;
+                      n++)
     {
         /* Alloc input */
         inputs[n].n           = n;
@@ -197,29 +204,43 @@ TEST(ThreadPoolTest, FewSimpleNonDistributableTasksInGroupTest)
         inputs[n].wait_event  = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL, _few_simple_tasks_submitted_separately_worker, inputs + n);
+        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                                    _few_simple_tasks_submitted_separately_worker,
+                                                                                                                    inputs + n);
         ASSERT_TRUE(task_descriptor != NULL);
 
-        system_thread_pool_insert_task_to_task_group(task_group_descriptor, task_descriptor);
+        system_thread_pool_insert_task_to_task_group(task_group_descriptor,
+                                                     task_descriptor);
     }
 
     system_thread_pool_submit_single_task_group(task_group_descriptor);
 
     /* wait till all tasks finish */
-    system_event_wait_multiple_infinite(wait_events, 4, true);
+    system_event_wait_multiple(wait_events,
+                               4,    /* n_elements */
+                               true, /* wait_on_all_objects */
+                               SYSTEM_TIME_INFINITE,
+                               NULL); /* out_result_ptr */
 
-    for (unsigned int n = 0; n < 256; n++)
+    for (unsigned int n = 0;
+                      n < 256;
+                      n++)
     {
         ASSERT_TRUE(test_buffer[n] == n);
     }
 
-    for (unsigned int n = 1; n < 4; ++n)
+    for (unsigned int n = 1;
+                      n < 4;
+                    ++n)
     {
-        ASSERT_EQ(inputs[0].worker_thread_id, inputs[n].worker_thread_id);
+        ASSERT_EQ(inputs[0].worker_thread_id,
+                  inputs[n].worker_thread_id);
     }
 
     /* clean up */
-    for (unsigned int n = 0; n < 4; ++n)
+    for (unsigned int n = 0;
+                      n < 4;
+                    ++n)
     {
         system_event_release(wait_events[n]);
     }
@@ -230,37 +251,50 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
     system_event wait_events[16] = {0};
 
     /* set up */
-    for (unsigned int n = 0; n < 16; n++)
+    for (unsigned int n = 0;
+                      n < 16;
+                      n++)
     {
-        wait_events[n] = system_event_create(true, false);
+        wait_events[n] = system_event_create(true); /* manual_reset */
     }
 
     /* go */
     system_thread_pool_task_group_descriptor        task_group_descriptor = system_thread_pool_create_task_group_descriptor(true);
     few_complex_tasks_submitted_separately_argument inputs[16];
 
-    for (unsigned int n = 0; n < 16; n++)
+    for (unsigned int n = 0;
+                      n < 16;
+                      n++)
     {
         /* Alloc input */
         inputs[n].cnt_executions = 0;
         inputs[n].wait_event     = wait_events[n];
 
         /* Create task descriptor */
-        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL, _few_complex_tasks_submitted_separately_worker, inputs + n);
+        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
+                                                                                                                    _few_complex_tasks_submitted_separately_worker,
+                                                                                                                    inputs + n);
         ASSERT_TRUE(task_descriptor != NULL);
 
-        system_thread_pool_insert_task_to_task_group(task_group_descriptor, task_descriptor);
+        system_thread_pool_insert_task_to_task_group(task_group_descriptor,
+                                                     task_descriptor);
     }
 
     system_thread_pool_submit_single_task_group(task_group_descriptor);
 
     /* wait till all tasks finish */
-    system_event_wait_multiple_infinite(wait_events, 16, true);
+    system_event_wait_multiple(wait_events,
+                               16,   /* n_elements */
+                               true, /* wait_on_all_objects */
+                               SYSTEM_TIME_INFINITE,
+                               NULL); /* out_result_ptr */
 
     /* check if there was at least one work package that was handled by a different thread */
     bool all_packets_handled_by_the_same_thread = true;
 
-    for (unsigned int n = 1; n < 16; ++n)
+    for (unsigned int n = 1;
+                      n < 16;
+                    ++n)
     {
         if (inputs[0].worker_thread_id != inputs[n].worker_thread_id)
         {
@@ -278,3 +312,4 @@ TEST(ThreadPoolTest, FewComplexDistributableTasksInGroupTest)
         system_event_release(wait_events[n]);
     }
 }
+#endif
