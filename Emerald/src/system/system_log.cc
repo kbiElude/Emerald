@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
+#include "system/system_threads.h"
 
 system_critical_section log_file_handle_cs = NULL;
 FILE*                   log_file_handle    = NULL;
@@ -14,7 +15,7 @@ FILE*                   log_file_handle    = NULL;
 /** Please see header for specification */
 PUBLIC void _system_log_init()
 {
-    log_file_handle    = fopen                         ("log.txt", "w");    
+    log_file_handle    = fopen                         ("log.txt", "w");
     log_file_handle_cs = system_critical_section_create();
 }
 
@@ -33,10 +34,10 @@ EMERALD_API void system_log_write(system_log_priority,
     {
         static char temp[16];
 
-        sprintf_s(temp,
-                  sizeof(temp),
-                  "[tid:%08x] ",
-                ::GetCurrentThreadId() );
+        snprintf(temp,
+                 sizeof(temp),
+                 "[tid:%08x] ",
+                 ::GetCurrentThreadId() );
 
         ::OutputDebugStringA(temp);
         ::OutputDebugStringA(text);

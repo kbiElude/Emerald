@@ -9,6 +9,8 @@
 #include "system/system_list_bidirectional.h"
 #include "system/system_memory_manager.h"
 #include "system/system_resource_pool.h"
+#include <string.h>
+
 
 /* If this is defined, alloc and free operations will be logged to a text file.
  * This is useful for hunting down bugs in the memory manager layer */

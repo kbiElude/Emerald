@@ -6,6 +6,7 @@
 #include "shared.h"
 #include "system/system_bst.h"
 #include "system/system_linear_alloc_pin.h"
+#include <string.h>
 
 /** Internal type definitions */
 /** TODO */
