@@ -111,8 +111,14 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
                                                           __in           GLenum                    alternative_filename_glenum,
                                                           __in_opt       system_file_unpacker      file_unpacker)
 {
-    gfx_image result                    = NULL;
-    bool      should_release_serializer = false;
+
+    const unsigned char*                                   data                   = NULL;
+    unsigned int                                           data_total_n_bytes     = 0;
+    size_t                                                 file_size              = 0;
+    ogl_context_texture_compression_compressed_blob_header header;
+    gfx_image                                              result                    = NULL;
+    const unsigned char*                                   serializer_raw_storage    = NULL;
+    bool                                                   should_release_serializer = false;
 
     /* Load the file contents.
      *
@@ -149,8 +155,6 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
     }
 
     /* Load in the header */
-    ogl_context_texture_compression_compressed_blob_header header;
-
     if (!system_file_serializer_read(serializer,
                                      sizeof(header),
                                     &header))
@@ -174,11 +178,6 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
     }
 
     /* Load in the contents */
-    size_t               file_size              = 0;
-    const unsigned char* data                   = NULL;
-    unsigned int         data_total_n_bytes     = 0;
-    const unsigned char* serializer_raw_storage = NULL;
-
     system_file_serializer_get_property(serializer,
                                         SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
                                        &serializer_raw_storage);

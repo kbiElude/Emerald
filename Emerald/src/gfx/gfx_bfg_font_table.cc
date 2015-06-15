@@ -209,11 +209,15 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create(system_hashed_an
     gfx_bfg_font_table result = NULL;
 
     /* Form file paths */
-    uint32_t    font_table_file_name_length = system_hashed_ansi_string_get_length(font_table_file_name_hashed_ansi_string);
-    const char* font_table_file_name        = system_hashed_ansi_string_get_buffer(font_table_file_name_hashed_ansi_string);
-    uint32_t    bmp_dat_file_name_length    = font_table_file_name_length + 4 + 1;
-    char*       bmp_file_name               = new (std::nothrow) char[bmp_dat_file_name_length];
-    char*       dat_file_name               = new (std::nothrow) char[bmp_dat_file_name_length];
+    gfx_image                 bmp_file_data;
+    system_hashed_ansi_string bmp_file_name_hashed_ansi_string = NULL;
+    _gfx_bfg_font_table_dat   dat_file_data;
+    system_hashed_ansi_string dat_file_name_hashed_ansi_string = NULL;
+    uint32_t                  font_table_file_name_length      = system_hashed_ansi_string_get_length(font_table_file_name_hashed_ansi_string);
+    const char*               font_table_file_name             = system_hashed_ansi_string_get_buffer(font_table_file_name_hashed_ansi_string);
+    uint32_t                  bmp_dat_file_name_length         = font_table_file_name_length + 4 + 1;
+    char*                     bmp_file_name                    = new (std::nothrow) char[bmp_dat_file_name_length];
+    char*                     dat_file_name                    = new (std::nothrow) char[bmp_dat_file_name_length];
 
     ASSERT_DEBUG_SYNC(bmp_file_name != NULL,
                       "Could not allocate memory for .bmp file name.");
@@ -245,12 +249,10 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create(system_hashed_an
     dat_file_name[bmp_dat_file_name_length - 1] = 0;
 
     /* Create hashed ansi strings for new file names */
-    system_hashed_ansi_string bmp_file_name_hashed_ansi_string = system_hashed_ansi_string_create(bmp_file_name);
-    system_hashed_ansi_string dat_file_name_hashed_ansi_string = system_hashed_ansi_string_create(dat_file_name);
+    bmp_file_name_hashed_ansi_string = system_hashed_ansi_string_create(bmp_file_name);
+    dat_file_name_hashed_ansi_string = system_hashed_ansi_string_create(dat_file_name);
 
     /* Load .dat file */
-    _gfx_bfg_font_table_dat dat_file_data;
-
     if (!_gfx_bfg_font_table_load_dat_file(dat_file_name_hashed_ansi_string,
                                           &dat_file_data) )
     {
@@ -260,8 +262,8 @@ PUBLIC EMERALD_API gfx_bfg_font_table gfx_bfg_font_table_create(system_hashed_an
     }
 
     /* If we're fine, carry on with .bmp file */
-    gfx_image bmp_file_data = gfx_bmp_load_from_file(bmp_file_name_hashed_ansi_string,
-                                                     NULL); /* file_unpacker */
+    bmp_file_data = gfx_bmp_load_from_file(bmp_file_name_hashed_ansi_string,
+                                           NULL); /* file_unpacker */
 
     ASSERT_DEBUG_SYNC(bmp_file_data != NULL,
                       "Could not load .bmp file [%s]",
@@ -364,8 +366,15 @@ PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_properties(__in __notnu
                                                                     __out __notnull float*             out_u2,
                                                                     __out __notnull float*             out_v2)
 {
-    _gfx_bfg_font_table* font_table_ptr = (_gfx_bfg_font_table*) font_table;
-    bool                 result         = false;
+    _gfx_bfg_font_table*    font_table_ptr        = (_gfx_bfg_font_table*) font_table;
+    _gfx_bfg_font_table_dat& map_properties       = font_table_ptr->dat_data;
+    uint8_t                  n_character          = 0;
+    uint32_t                 n_characters_per_row = 0;
+    bool                     result               = false;
+    uint32_t                 x1                   = UINT_MAX;
+    uint32_t                 x2                   = UINT_MAX;
+    uint32_t                 y1                   = UINT_MAX;
+    uint32_t                 y2                   = UINT_MAX;
 
     /* Make sure the character is stored in the map */
     if (font_table_ptr->dat_data.start_character_index > ascii_index)
@@ -374,13 +383,8 @@ PUBLIC EMERALD_API bool gfx_bfg_font_table_get_character_properties(__in __notnu
     }
 
     /* Calculate (x,y) pair for top-left part of the character representation in the map */
-    _gfx_bfg_font_table_dat& map_properties       = font_table_ptr->dat_data;
-    uint32_t                 x1                   = UINT_MAX;
-    uint32_t                 y1                   = UINT_MAX;
-    uint32_t                 x2                   = UINT_MAX;
-    uint32_t                 y2                   = UINT_MAX;
-    uint32_t                 n_characters_per_row = map_properties.map_width / map_properties.cell_width;
-    uint8_t                  n_character          = ascii_index - map_properties.start_character_index;
+    n_characters_per_row = map_properties.map_width / map_properties.cell_width;
+    n_character          = ascii_index - map_properties.start_character_index;
 
     x1 = (n_character % n_characters_per_row) * map_properties.cell_width;
     y1 = (n_character / n_characters_per_row) * map_properties.cell_height;

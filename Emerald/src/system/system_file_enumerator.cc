@@ -2,11 +2,15 @@
  *
  * Emerald (kbi/elude @2014-2015)
  *
+ * Linux version: TODO
  */
 #include "shared.h"
 #include "system/system_file_enumerator.h"
 #include "system/system_file_unpacker.h"
 #include "system/system_resizable_vector.h"
+
+#ifdef _WIN32
+
 #include "commdlg.h"
 
 typedef struct
@@ -418,3 +422,5 @@ PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_fil
         enumerator_ptr = NULL;
     }
 }
+
+#endif

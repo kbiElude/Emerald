@@ -9,8 +9,13 @@
 #include "system/system_time.h"
 
 /** Private variables */
-LARGE_INTEGER start_time     = {0, 0};
-LARGE_INTEGER time_frequency = {0, 0};
+#ifdef _WIN32
+    LARGE_INTEGER start_time     = {0, 0};
+    LARGE_INTEGER time_frequency = {0, 0};
+#else
+    __uint64 start_time;
+    __uint64 time_frequency;
+#endif
 
 
 /** Please see header for specification */
@@ -94,8 +99,10 @@ PUBLIC EMERALD_API void system_time_get_hms_for_timeline_time(__in            sy
 /** Please see header for specification */
 PUBLIC EMERALD_API system_timeline_time system_time_now()
 {
-    LARGE_INTEGER        current_time = {0, 0};
-    system_timeline_time result       = 0;
+    system_timeline_time result = 0;
+
+#ifdef _WIN32
+    LARGE_INTEGER current_time = {0, 0};
 
     if (::QueryPerformanceCounter(&current_time) == FALSE)
     {
@@ -105,6 +112,14 @@ PUBLIC EMERALD_API system_timeline_time system_time_now()
     {
         result = (system_timeline_time) ((current_time.QuadPart - start_time.QuadPart) * HZ_PER_SEC / time_frequency.QuadPart);
     }
+#else
+    struct timespec current_timespec;
+
+    clock_gettime(CLOCK_MONOTONIC,
+                 &current_timespec);
+
+    result = (system_timeline_time) (((NSEC_PER_SEC * current_timespec.tv_sec + current_timespec.tv_nsec) - start_time) * HZ_PER_SEC / time_frequency);
+#endif
 
     return result;
 }
@@ -112,15 +127,37 @@ PUBLIC EMERALD_API system_timeline_time system_time_now()
 /** Please see header for specificaton */
 PUBLIC void _system_time_init()
 {
+    /* Retrieve the counter frequency */
+#ifdef _WIN32
     if (::QueryPerformanceFrequency(&time_frequency) == FALSE)
     {
         LOG_FATAL("Could not obtain performance frequency information.");
     }
+#else
+    struct timespec frequency_timespec;
 
+    clock_getres(CLOCK_MONOTONIC,
+                &frequency_timespec);
+
+    time_frequency = NSEC_PER_SEC * frequency_timespec.tv_sec +
+                                    frequency_timespec.tv_nsec;
+#endif
+
+    /* Retrieve the start time, relative to which all the timestamps are going to be calculated */
+#ifdef _WIN32
     if (::QueryPerformanceCounter(&start_time) == FALSE)
     {
         LOG_FATAL("Could not obtain start time information.");
     }
+#else
+    struct timespec start_timespec;
+
+    clock_gettime(CLOCK_MONOTONIC,
+                 &start_timespec);
+
+    start_time = NSEC_PER_SEC * start_timespec.tv_sec +
+                                start_timespec.tv_nsec;
+#endif
 }
 
 PUBLIC void _system_time_deinit()

@@ -373,6 +373,7 @@ PUBLIC void ogl_ui_scrollbar_deinit(void* internal_instance)
 /** TODO */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance)
 {
+    float                brightness;
     _ogl_ui_scrollbar*   scrollbar_ptr   = (_ogl_ui_scrollbar*) internal_instance;
     GLuint               program_id      = ogl_program_get_id(scrollbar_ptr->program_slider);
     system_timeline_time time_now        = system_time_now();
@@ -384,7 +385,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_scrollbar_draw(void* internal_instance
     }
 
     /* Update brightness if necessary */
-    float brightness = scrollbar_ptr->current_gpu_brightness_level;
+    brightness = scrollbar_ptr->current_gpu_brightness_level;
 
     if (scrollbar_ptr->is_hovering)
     {

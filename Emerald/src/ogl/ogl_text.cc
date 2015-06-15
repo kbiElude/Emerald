@@ -57,7 +57,7 @@ typedef FontTable::const_iterator                            FontTableConstItera
 
 typedef struct
 {
-    void*        data_buffer_contents;
+    char*        data_buffer_contents;
     uint32_t     data_buffer_contents_length;
     uint32_t     data_buffer_contents_size;
     bool         dirty;
@@ -355,7 +355,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
 
         text_ptr->data_buffer_contents_length = summed_text_length;
         text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
-        text_ptr->data_buffer_contents        = (void*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
+        text_ptr->data_buffer_contents        = (char*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
 
         ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != NULL,
                            "Out of memory");
@@ -1449,6 +1449,7 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
                                      __in           ogl_text_string_id text_string_id,
                                      __in __notnull const char*        raw_text_ptr)
 {
+    size_t            raw_text_length = 0;
     _ogl_text*        text_ptr        = (_ogl_text*) text;
     _ogl_text_string* text_string_ptr = NULL;
 
@@ -1477,8 +1478,8 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
     }
 
     /* Update text width and height properties */
-    size_t raw_text_length = strlen((const char*) raw_text_ptr);
-    
+    raw_text_length = strlen((const char*) raw_text_ptr);
+
     text_string_ptr->height_px = 0;
     text_string_ptr->width_px  = 0;
 

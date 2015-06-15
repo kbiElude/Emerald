@@ -10,6 +10,8 @@
 #include "system/system_read_write_mutex.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
+#include <string.h>
+
 
 /* Internal 64-bit hash-map bin entry descriptor */
 struct _system_hash64map_bin_entry

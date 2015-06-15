@@ -23,7 +23,7 @@
 #define DEFAULT_STAGES_CAPACITY      (4)
 #define DEFAULT_STAGE_STEPS_CAPACITY (4)
 #define MAX_STAGE_STEP_NAME_LENGTH   (32)
-#define ONE_SECOND_IN_NANOSECONDS    (1000000000i64)
+#define ONE_SECOND_IN_NANOSECONDS    (NSEC_PER_SEC)
 #define N_SAMPLES_PER_UPDATE         (30)
 #define QO_RING_BUFFER_SIZE          (5)
 #define START_Y                      (50)
@@ -410,10 +410,10 @@ PUBLIC EMERALD_API uint32_t ogl_pipeline_add_stage_step(__in __notnull ogl_pipel
             const uint32_t buffer_length         = MAX_STAGE_STEP_NAME_LENGTH + 1 /* : */ + 1 /* null terminator */;
             char           buffer[buffer_length] = {0};
 
-            sprintf_s(buffer,
-                      buffer_length,
-                      "%s:",
-                      system_hashed_ansi_string_get_buffer(step_name) );
+            snprintf(buffer,
+                     buffer_length,
+                     "%s:",
+                     system_hashed_ansi_string_get_buffer(step_name) );
 
             /* Update the text string */
             ogl_text_set(pipeline_ptr->text_renderer,
@@ -700,12 +700,12 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API bool ogl_pipeline_draw_stage(__in __no
                     /* Form the string */
                     char buffer[128] = {0};
 
-                    sprintf_s(buffer,
-                              sizeof(buffer),
-                              "%d.%03d ms [%lld primitives generated]",
-                              (unsigned int) step_ms / 1000,
-                              (unsigned int) step_ms % 1000,
-                              step_ptr->n_primitives_generated);
+                    snprintf(buffer,
+                             sizeof(buffer),
+                             "%d.%03d ms [%llu primitives generated]",
+                             (unsigned int) step_ms / 1000,
+                             (unsigned int) step_ms % 1000,
+                             (long long unsigned int) step_ptr->n_primitives_generated);
 
                     ogl_text_set(pipeline_ptr->text_renderer,
                                  step_ptr->text_time_index,

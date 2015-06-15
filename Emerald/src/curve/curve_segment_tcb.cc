@@ -453,7 +453,7 @@ PUBLIC bool curve_segment_tcb_add_node(__in  __notnull curve_segment_data     se
         /* Insert nodes order entry */
         system_resizable_vector_insert_element_at(segment_data_ptr->nodes_order,
                                                   n_node_order_to_place_at,
-                                                  (void*) node_id);
+                                                  (void*) (intptr_t) node_id);
 
         #ifdef _DEBUG
         {
@@ -546,8 +546,8 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
 
     if (node_ptr != NULL)
     {
-        curve_segment_node_id node_id_at_nodes_order_0    = NULL;
-        curve_segment_node_id node_id_at_last_nodes_order = NULL;
+        curve_segment_node_id node_id_at_nodes_order_0    = 0;
+        curve_segment_node_id node_id_at_last_nodes_order = 0;
 
         system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                0,
@@ -558,8 +558,8 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
 
         if (node_id_at_nodes_order_0 == node_id)
         {
-            curve_segment_node_id         node_id_at_nodes_order_1  = NULL;
-            _curve_segment_data_tcb_node* node_at_nodes_order_1_ptr = NULL;
+            curve_segment_node_id         node_id_at_nodes_order_1  = 0;
+            _curve_segment_data_tcb_node* node_at_nodes_order_1_ptr = 0;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    1,
@@ -576,7 +576,7 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
         else
         if (node_id_at_last_nodes_order == node_id)
         {
-            curve_segment_node_id         node_id_at_last_before_last_nodes_order  = NULL;
+            curve_segment_node_id         node_id_at_last_before_last_nodes_order  = 0;
             _curve_segment_data_tcb_node* node_at_last_before_last_nodes_order_ptr = NULL;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
@@ -603,7 +603,7 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
                       n_order_node < n_node_order_elements;
                     ++n_order_node)
         {
-            curve_segment_node_id node_id_at_order_node = NULL;
+            curve_segment_node_id node_id_at_order_node = 0;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_order_node,
@@ -623,7 +623,7 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
                       n_order_node < n_node_order_elements - 1;
                     ++n_order_node)
         {
-            curve_segment_node_id iterated_node_id = NULL;
+            curve_segment_node_id iterated_node_id = 0;
 
             system_resizable_vector_get_element_at(segment_data_ptr->nodes_order,
                                                    n_order_node,
@@ -635,7 +635,7 @@ PUBLIC bool curve_segment_tcb_delete_node(__in __notnull curve_segment_data    s
 
                 system_resizable_vector_set_element_at(segment_data_ptr->nodes_order,
                                                        n_order_node,
-                                                       (void*)iterated_node_id);
+                                                       (void*) (intptr_t) iterated_node_id);
             }
         }
 
@@ -1238,8 +1238,8 @@ PUBLIC bool curve_segment_tcb_modify_node_time(__in __notnull curve_segment_data
 
         /* See if we're dealing with a start/end node */
         uint32_t              n_nodes_order_elements = 0;
-        curve_segment_node_id last_node_id           = NULL;
-        curve_segment_node_id nodes_order_at_0       = NULL;
+        curve_segment_node_id last_node_id           = 0;
+        curve_segment_node_id nodes_order_at_0       = 0;
 
         system_resizable_vector_get_property(segment_data_ptr->nodes_order,
                                              SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -1304,8 +1304,8 @@ PUBLIC bool curve_segment_tcb_modify_node_time(__in __notnull curve_segment_data
                       n_order_next_node != n_nodes_order_elements;
                     ++n_order_next_node, n_order_node++)
         {
-            curve_segment_node_id         order_node_id       = NULL;
-            curve_segment_node_id         order_next_node_id  = NULL;
+            curve_segment_node_id         order_node_id       = 0;
+            curve_segment_node_id         order_next_node_id  = 0;
             _curve_segment_data_tcb_node* order_node_ptr      = NULL;
             _curve_segment_data_tcb_node* order_next_node_ptr = NULL;
 
@@ -1343,10 +1343,10 @@ PUBLIC bool curve_segment_tcb_modify_node_time(__in __notnull curve_segment_data
 
                 system_resizable_vector_set_element_at(segment_data_ptr->nodes_order,
                                                        n_order_node,
-                                                       (void*) order_next_node_id);
+                                                       (void*) (intptr_t) order_next_node_id);
                 system_resizable_vector_set_element_at(segment_data_ptr->nodes_order,
                                                        n_order_next_node,
-                                                       (void*) order_node_id);
+                                                       (void*) (intptr_t) order_node_id);
 
                 break;
             }

@@ -94,7 +94,7 @@ typedef struct _system_event_monitor
                                                                      16, /* n_elements_to_preallocate */
                                                                      _system_event_monitor_wait_op_init,
                                                                      _system_event_monitor_wait_op_deinit);
-        thread                      = NULL;
+        thread                      = 0;
         thread_should_die           = false;
         wakeup_cs                   = system_critical_section_create();
         wakeup_cvar                 = system_cond_variable_create   (_system_event_monitor_is_update_needed,
@@ -494,8 +494,8 @@ PUBLIC void system_event_monitor_deinit()
     system_cond_variable_signal(monitor_ptr->wakeup_cvar,
                                 false);              /* should_broadcast */
     system_threads_join_thread (monitor_ptr->thread,
-                                INFINITE,            /* timeout */
-                                NULL);               /* out_has_timed_out_ptr */
+                                SYSTEM_TIME_INFINITE, /* timeout */
+                                NULL);                /* out_has_timed_out_ptr */
 
     /* Release the monitor instance */
     if (monitor_ptr != NULL)

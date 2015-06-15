@@ -281,7 +281,7 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple(__in __notnull __ecount(n_e
                                                                                          system_timeline_time timeout,
                                                      __out __notnull                     bool*                out_has_timed_out_ptr)
 {
-    size_t result;
+    unsigned int result;
 
     #if defined(USE_RAW_HANDLES)
     {
