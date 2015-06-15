@@ -102,10 +102,10 @@ PRIVATE volatile void _curve_editor_curve_window_dialog_close_button_handler(voi
 }
 
 /** TODO */
-PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND   dialog_handle,
-                                                                        UINT   message_id,
-                                                                        WPARAM wparam,
-                                                                        LPARAM lparam)
+PRIVATE INT_PTR CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND   dialog_handle,
+                                                                           UINT   message_id,
+                                                                           WPARAM wparam,
+                                                                           LPARAM lparam)
 {
     switch (message_id)
     {

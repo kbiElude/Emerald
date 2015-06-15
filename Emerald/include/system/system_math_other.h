@@ -10,7 +10,7 @@
 
 PRIVATE inline uint32_t log2_uint32(const uint32_t x)
 {
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(_WIN64)
     uint32_t result;
 
     __asm

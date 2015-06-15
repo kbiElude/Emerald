@@ -70,25 +70,25 @@ typedef struct
 
 /* Private functions */
 /* Forward declarations */
-PRIVATE curve_container _curve_editor_dialog_get_selected_curve          (_curve_editor_main_window* descriptor_ptr);
-PRIVATE void            _curve_editor_dialog_handle_edit_request         (_curve_editor_main_window* descriptor_ptr);
-PRIVATE int             _curve_editor_dialog_item_name_comparator        (void*                      has_1,
-                                                                          void*                      has_2);
-PRIVATE void            _curve_editor_dialog_on_curve_window_release     (void*,
-                                                                          curve_container);
-PRIVATE void            _curve_editor_dialog_update_curve_tree           (_curve_editor_main_window* descriptor_ptr,
-                                                                          HTREEITEM                  parent_node_handle,
-                                                                          object_manager_directory   parent_directory,
-                                                                          system_hashed_ansi_string  directory_registry_path);
-PRIVATE void            _curve_editor_dialog_update_ui                   (_curve_editor_main_window* descriptor_ptr);
-PRIVATE void            _curve_editor_dialog_update_ui_curve_edit_buttons(_curve_editor_main_window* descriptor_ptr,
-                                                                          HTREEITEM                  curve_node_handle);
-PRIVATE BOOL CALLBACK   _curve_editor_dialog_window_message_handler      (HWND                       dialog_handle,
-                                                                          UINT                       message_id,
-                                                                          WPARAM                     wparam,
-                                                                          LPARAM                     lparam);
-PRIVATE void            _curve_editor_main_window_initialize_dialog      (_curve_editor_main_window* descriptor,
-                                                                          HWND                       dialog_handle);
+PRIVATE curve_container  _curve_editor_dialog_get_selected_curve          (_curve_editor_main_window* descriptor_ptr);
+PRIVATE void             _curve_editor_dialog_handle_edit_request         (_curve_editor_main_window* descriptor_ptr);
+PRIVATE int              _curve_editor_dialog_item_name_comparator        (void*                      has_1,
+                                                                           void*                      has_2);
+PRIVATE void             _curve_editor_dialog_on_curve_window_release     (void*,
+                                                                           curve_container);
+PRIVATE void             _curve_editor_dialog_update_curve_tree           (_curve_editor_main_window* descriptor_ptr,
+                                                                           HTREEITEM                  parent_node_handle,
+                                                                           object_manager_directory   parent_directory,
+                                                                           system_hashed_ansi_string  directory_registry_path);
+PRIVATE void             _curve_editor_dialog_update_ui                   (_curve_editor_main_window* descriptor_ptr);
+PRIVATE void             _curve_editor_dialog_update_ui_curve_edit_buttons(_curve_editor_main_window* descriptor_ptr,
+                                                                           HTREEITEM                  curve_node_handle);
+PRIVATE INT_PTR CALLBACK _curve_editor_dialog_window_message_handler      (HWND                       dialog_handle,
+                                                                           UINT                       message_id,
+                                                                           WPARAM                     wparam,
+                                                                           LPARAM                     lparam);
+PRIVATE void             _curve_editor_main_window_initialize_dialog      (_curve_editor_main_window* descriptor,
+                                                                           HWND                       dialog_handle);
 
 
 /** TODO */
@@ -707,10 +707,10 @@ PRIVATE volatile void _curve_editor_dialog_close_button_handler(void* descriptor
 }
 
 /** TODO */
-PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_handle,
-                                                                  UINT   message_id,
-                                                                  WPARAM wparam,
-                                                                  LPARAM lparam)
+PRIVATE INT_PTR CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_handle,
+                                                                     UINT   message_id,
+                                                                     WPARAM wparam,
+                                                                     LPARAM lparam)
 {
     switch (message_id)
     {

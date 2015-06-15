@@ -92,7 +92,8 @@ bool pop_item(std::vector<int>&       ref,
 
         if (ref_value != vec_value)
         {
-            __asm int 3;
+            ASSERT_ALWAYS_SYNC(false,
+                               "Sanity check failed!");
         }
 
         return true;
