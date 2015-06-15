@@ -10,6 +10,11 @@
 #include "ogl/ogl_types.h"
 #include "scene/scene_types.h"
 
+#ifdef __linux__
+    #include <cfloat>
+#endif
+
+
 #define DEFAULT_AABB_MAX_VALUE (FLT_MIN)
 #define DEFAULT_AABB_MIN_VALUE (FLT_MAX)
 

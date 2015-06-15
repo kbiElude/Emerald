@@ -16,6 +16,10 @@
 #include "system/system_time.h"
 #include "system/system_window.h"
 
+/** TODO: Linux support */
+#ifdef _WIN32
+
+
 /** Internal type definitions */
 typedef struct
 {
@@ -285,11 +289,11 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             system_time_get_msec_for_timeline_time(rendering_time_delta,
                                                                   &rendering_time_msec);
 
-                            sprintf_s(rendering_time_buffer,
-                                      sizeof(rendering_time_buffer),
-                                      "Rendering time: %.4fs (%d FPS)",
-                                      float(rendering_time_msec) / 1000.0f,
-                                      int(1000.0f / (rendering_time_msec != 0 ? rendering_time_msec : 1) ) );
+                            snprintf(rendering_time_buffer,
+                                     sizeof(rendering_time_buffer),
+                                     "Rendering time: %.4fs (%d FPS)",
+                                     float(rendering_time_msec) / 1000.0f,
+                                     int(1000.0f / (rendering_time_msec != 0 ? rendering_time_msec : 1) ) );
 
                             ogl_text_set(text_renderer,
                                          rendering_handler->text_string_id,
@@ -690,3 +694,5 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(__in __notnull ogl_render
 
     return result;
 }
+
+#endif

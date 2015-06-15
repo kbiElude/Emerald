@@ -37,7 +37,6 @@
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
 #include <map>
-#include <sstream>
 
 #define DEFAULT_COLOR_R (1)
 #define DEFAULT_COLOR_G (0)

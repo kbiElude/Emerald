@@ -122,7 +122,7 @@ typedef struct _ogl_program_block
 
     ~_ogl_program_block()
     {
-        if (block_bo_id != NULL)
+        if (block_bo_id != 0)
         {
             ogl_buffers_free_buffer_memory(buffers,
                                            block_bo_id,
@@ -337,7 +337,9 @@ PRIVATE unsigned int _ogl_program_block_get_n_matrix_rows(__in __notnull const o
 /** TODO */
 PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_ptr)
 {
-    bool result = true;
+    GLint* active_variable_indices = NULL;
+    GLint  n_active_variables      = 0;
+    bool   result                  = true;
 
     ASSERT_DEBUG_SYNC(block_ptr != NULL,
                       "Input argument is NULL");
@@ -467,9 +469,6 @@ PRIVATE bool _ogl_program_block_init(__in __notnull _ogl_program_block* block_pt
     } /* if (ub_ptr->block_data_size > 0 && ub_ptr->syncable) */
 
     /* Determine all variables for the block */
-    GLint* active_variable_indices = NULL;
-    GLint  n_active_variables      = 0;
-
     block_ptr->pGLGetProgramResourceiv(po_id,
                                        block_type_gl,
                                        block_ptr->index,
@@ -605,7 +604,13 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
                                                   __in                                 unsigned int      dst_array_start_index,
                                                   __in                                 unsigned int      dst_array_item_count)
 {
-    _ogl_program_block* block_ptr = (_ogl_program_block*) block;
+    _ogl_program_block*   block_ptr             = (_ogl_program_block*) block;
+    unsigned char*        dst_traveller_ptr     = NULL;
+    bool                  is_uniform_matrix     = false;
+    unsigned int          modified_region_end   = DIRTY_OFFSET_UNUSED;
+    unsigned int          modified_region_start = DIRTY_OFFSET_UNUSED;
+    const unsigned char*  src_traveller_ptr     = NULL;
+    ogl_program_variable* uniform_ptr           = NULL;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(block_ptr != NULL,
@@ -626,8 +631,6 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     }
 
     /* Retrieve uniform descriptor */
-    const ogl_program_variable* uniform_ptr = NULL;
-
     if (!system_hash64map_get(block_ptr->offset_to_uniform_descriptor_map,
                               (system_hash64) block_variable_offset,
                              &uniform_ptr) )
@@ -671,13 +674,11 @@ PRIVATE void _ogl_program_block_set_uniform_value(__in                       __n
     #endif
 
     /* Proceed with updating the internal cache */
-    const bool   is_uniform_matrix     = _ogl_program_block_is_matrix_uniform(uniform_ptr);
-    unsigned int modified_region_end   = DIRTY_OFFSET_UNUSED;
-    unsigned int modified_region_start = DIRTY_OFFSET_UNUSED;
+    is_uniform_matrix = _ogl_program_block_is_matrix_uniform(uniform_ptr);
 
-          unsigned char* dst_traveller_ptr = block_ptr->block_data + uniform_ptr->block_offset                                           +
-                                             ((uniform_ptr->array_stride != -1) ? uniform_ptr->array_stride : 0) * dst_array_start_index;
-    const unsigned char* src_traveller_ptr = (const unsigned char*) src_data;
+    dst_traveller_ptr = block_ptr->block_data + uniform_ptr->block_offset                                           +
+                        ((uniform_ptr->array_stride != -1) ? uniform_ptr->array_stride : 0) * dst_array_start_index;
+    src_traveller_ptr = (const unsigned char*) src_data;
 
     if (is_uniform_matrix)
     {

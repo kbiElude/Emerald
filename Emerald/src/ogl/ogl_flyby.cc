@@ -329,14 +329,14 @@ PUBLIC ogl_flyby ogl_flyby_create(__in __notnull ogl_context context)
         char       temp_flyby_camera_name[128];
         char       temp_flyby_name       [128];
 
-        sprintf_s(temp_flyby_camera_name,
-                  sizeof(temp_flyby_camera_name),
-                  "Flyby [%d] fake scene camera",
-                  n_flyby++);
-        sprintf_s(temp_flyby_name,
-                  sizeof(temp_flyby_name),
-                  "Flyby instance [%d]",
-                  n_flyby++);
+        snprintf(temp_flyby_camera_name,
+                 sizeof(temp_flyby_camera_name),
+                 "Flyby [%d] fake scene camera",
+                 n_flyby++);
+        snprintf(temp_flyby_name,
+                 sizeof(temp_flyby_name),
+                 "Flyby instance [%d]",
+                 n_flyby++);
 
         /* Set up fields */
         new_flyby_ptr->context           = context;
@@ -410,27 +410,27 @@ PUBLIC ogl_flyby ogl_flyby_create(__in __notnull ogl_context context)
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                        _ogl_flyby_key_down_callback,
+                                        (void*) _ogl_flyby_key_down_callback,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                        _ogl_flyby_key_up_callback,
+                                        (void*) _ogl_flyby_key_up_callback,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        _ogl_flyby_lbd,
+                                        (void*) _ogl_flyby_lbd,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                        _ogl_flyby_lbu,
+                                        (void*) _ogl_flyby_lbu,
                                         new_flyby_ptr);
         system_window_add_callback_func(context_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                        _ogl_flyby_mouse_move,
+                                        (void*) _ogl_flyby_mouse_move,
                                         new_flyby_ptr);
 
         /* Issue a manual update - useful for pipeline object */

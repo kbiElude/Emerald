@@ -2150,7 +2150,9 @@ PUBLIC EMERALD_API bool ogl_program_link(__in __notnull ogl_program program)
 
             if (!is_compiled_successfully)
             {
-                LOG_ERROR("Shader object [%d] has not been compiled successfully prior to linking. Attempting to compile.");
+                LOG_ERROR("Shader object [%d] has not been compiled successfully prior to linking. Attempting to compile.",
+                          current_shader_gl_id
+                );
 
                 ogl_shader_compile(current_shader);
 

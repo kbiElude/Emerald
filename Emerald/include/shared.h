@@ -69,6 +69,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <new>
+#include <sstream>
+#include <string>
+
 #include "ogl/gl3.h"
 #include "ogl/glext.h"
 #include "system/system_types.h"

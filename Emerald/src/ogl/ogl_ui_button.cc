@@ -299,7 +299,7 @@ PUBLIC void ogl_ui_button_deinit(void* internal_instance)
                         ui_button_ptr->text_index,
                         "");
 
-    delete internal_instance;
+    delete ui_button_ptr;
 }
 
 /** Please see header for specification */

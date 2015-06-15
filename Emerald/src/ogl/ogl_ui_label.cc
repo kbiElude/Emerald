@@ -41,7 +41,7 @@ PUBLIC void ogl_ui_label_deinit(void* internal_instance)
                                       OGL_TEXT_STRING_PROPERTY_VISIBILITY,
                                       &new_visibility);
 
-    delete internal_instance;
+    delete ui_label_ptr;
 }
 
 /** Please see header for specification */

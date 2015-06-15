@@ -1293,7 +1293,7 @@ PUBLIC void ogl_ui_dropdown_deinit(void* internal_instance)
     system_resizable_vector_release(ui_dropdown_ptr->entries);
     ui_dropdown_ptr->entries = NULL;
 
-    delete internal_instance;
+    delete ui_dropdown_ptr;
 }
 
 /** Please see header for specification */
@@ -2064,7 +2064,7 @@ PUBLIC void ogl_ui_dropdown_on_lbm_up(void*        internal_instance,
                                                   highlighted_v1v2);
 
             /* NOTE: This value starts from 1, as 0 corresponds to the header bar string */
-            n_selected_entry = unsigned int((1.0f - highlighted_v1v2[0]) * MAX_N_ENTRIES_VISIBLE + 0.5f);
+            n_selected_entry = (unsigned int)((1.0f - highlighted_v1v2[0]) * MAX_N_ENTRIES_VISIBLE + 0.5f);
 
             if (n_selected_entry <= n_entries)
             {

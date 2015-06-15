@@ -351,7 +351,7 @@ PRIVATE void _ogl_ui_checkbox_update_x1y1x2y2(__in __notnull _ogl_ui_checkbox* c
     checkbox_ptr->x1y1x2y2[0] = checkbox_ptr->base_x1y1[0];
     checkbox_ptr->x1y1x2y2[1] = checkbox_ptr->base_x1y1[1];
     checkbox_ptr->x1y1x2y2[2] = checkbox_ptr->base_x1y1[0] + float(text_width  + 2 * BORDER_WIDTH_PX + CHECKBOX_WIDTH_PX + TEXT_DELTA_PX) / float(window_size[0]);
-    checkbox_ptr->x1y1x2y2[3] = checkbox_ptr->base_x1y1[1] + float(max(text_height, CHECKBOX_WIDTH_PX)                                    / float(window_size[1]) );
+    checkbox_ptr->x1y1x2y2[3] = checkbox_ptr->base_x1y1[1] + float(std::max(text_height, CHECKBOX_WIDTH_PX)                               / float(window_size[1]) );
 }
 
 /** Please see header for specification */
@@ -365,7 +365,7 @@ PUBLIC void ogl_ui_checkbox_deinit(void* internal_instance)
                         ui_checkbox_ptr->text_index,
                         "");
 
-    delete internal_instance;
+    delete ui_checkbox_ptr;
 }
 
 /** Please see header for specification */

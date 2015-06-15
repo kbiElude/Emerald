@@ -80,10 +80,16 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
                                                                   __out __notnull float**              out_vertex_line_strip_data,
                                                                   __out_opt       float**              out_view_vector_lines_data)
 {
+
+    uint32_t     duration_ms             = 0;
+    uint32_t     n_samples               = 0;
+    float*       ref_traveller_ptr       = NULL;
     bool         result                  = true;
     unsigned int result_n_vertices       = 0;
     float*       result_vertex_data      = NULL;
     float*       result_view_vector_data = NULL;
+    uint32_t     sample_delta_time       = 0;
+    float*       vertex_traveller_ptr    = NULL;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(graph != NULL,
@@ -100,9 +106,6 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
                       "out_vertex_data is NULL");
 
     /* How many samples will we need to take? */
-    uint32_t duration_ms = 0;
-    uint32_t n_samples   = 0;
-
     system_time_get_msec_for_timeline_time(duration,
                                           &duration_ms);
 
@@ -143,9 +146,9 @@ PRIVATE bool _ogl_curve_renderer_get_scene_graph_node_vertex_data(__in  __notnul
     } /* if (out_view_vector_lines_data != NULL) */
 
     /* Iterate over all samples and generate vertex data */
-    float*   ref_traveller_ptr    = result_view_vector_data;
-    uint32_t sample_delta_time    = 1000 / n_samples_per_second;
-    float*   vertex_traveller_ptr = result_vertex_data;
+    ref_traveller_ptr    = result_view_vector_data;
+    sample_delta_time    = 1000 / n_samples_per_second;
+    vertex_traveller_ptr = result_vertex_data;
 
     scene_graph_lock(graph);
 
@@ -332,10 +335,11 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     bool                 should_include_view_vectors = (view_vector_length > 1e-5f);
 
     /* Prepare vertex data */
-    unsigned int n_vertices             = 0;
-    bool         result                 = false;
-    float*       vertex_data            = NULL;
-    float*       view_vector_lines_data = NULL;
+    _ogl_curve_renderer_item* item_ptr               = NULL;
+    unsigned int              n_vertices             = 0;
+    bool                      result                 = false;
+    float*                    vertex_data            = NULL;
+    float*                    view_vector_lines_data = NULL;
 
     result = _ogl_curve_renderer_get_scene_graph_node_vertex_data(graph,
                                                                   node,
@@ -357,7 +361,7 @@ PUBLIC EMERALD_API ogl_curve_item_id ogl_curve_renderer_add_scene_graph_node_cur
     }
 
     /* Spawn new item descriptor */
-    _ogl_curve_renderer_item* item_ptr = new (std::nothrow) _ogl_curve_renderer_item;
+    item_ptr = new (std::nothrow) _ogl_curve_renderer_item;
 
     ASSERT_ALWAYS_SYNC(item_ptr != NULL,
                        "Out of memory");
@@ -473,6 +477,7 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
                                                 __in_ecount(n_item_ids) __notnull const ogl_curve_item_id*   item_ids,
                                                 __in                                    system_matrix4x4     mvp)
 {
+    unsigned int         n_items_used = 0;
     _ogl_curve_renderer* renderer_ptr = (_ogl_curve_renderer*) renderer;
 
     /* Convert curve item IDs to line strip item IDs. Use a preallocated array.
@@ -506,8 +511,6 @@ PUBLIC EMERALD_API void ogl_curve_renderer_draw(__in __notnull                  
     }
 
     /* Fill the array with line strip IDs */
-    unsigned int n_items_used = 0;
-
     for (unsigned int n_item_id = 0;
                       n_item_id < n_item_ids;
                     ++n_item_id)

@@ -488,13 +488,15 @@ PUBLIC void ogl_ui_texture_preview_deinit(void* internal_instance)
                         ui_texture_preview_ptr->text_index,
                         "");
 
-    delete internal_instance;
+    delete ui_texture_preview_ptr;
 }
 
 /** Please see header for specification */
 PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_instance)
 {
+    float                    layer_index         = 0.0f;
     _ogl_ui_texture_preview* texture_preview_ptr = (_ogl_ui_texture_preview*) internal_instance;
+    GLenum                   texture_target      = GL_ZERO;
 
     /* Nothing to render if no TO is hooked up.. */
     if (texture_preview_ptr->texture == NULL)
@@ -534,8 +536,6 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
 
     /* For depth textures, make sure the "depth texture comparison mode" is toggled off before
      * we proceed with sampling the mip-map */
-    GLenum texture_target = GL_ZERO;
-
     ogl_texture_get_property(texture_preview_ptr->texture,
                              OGL_TEXTURE_PROPERTY_TARGET,
                             &texture_target);
@@ -555,7 +555,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_ui_texture_preview_draw(void* internal_in
     }
 
     /* Set up uniforms */
-    float layer_index = (float) texture_preview_ptr->layer_shown;
+    layer_index = (float) texture_preview_ptr->layer_shown;
 
     ogl_program_ub_set_nonarrayed_uniform_value(texture_preview_ptr->program_ub_fs,
                                                 texture_preview_ptr->program_border_width_ub_offset,

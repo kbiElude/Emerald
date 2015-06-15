@@ -2596,12 +2596,14 @@ PUBLIC system_hashed_ansi_string ogl_shadow_mapping_get_special_material_shader_
 PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notnull scene_mesh scene_mesh_instance,
                                                                      __in __notnull void*      renderer_raw)
 {
-    ogl_context          context                       = NULL;
-    mesh                 mesh_gpu                      = NULL;
-    mesh                 mesh_instantiation_parent_gpu = NULL;
-    bool                 mesh_is_shadow_caster         = false;
-    ogl_scene_renderer   renderer                      = (ogl_scene_renderer) renderer_raw;
-    _ogl_shadow_mapping* shadow_mapping_ptr            = NULL;
+    ogl_context                    context                       = NULL;
+    mesh                           mesh_gpu                      = NULL;
+    mesh                           mesh_instantiation_parent_gpu = NULL;
+    bool                           mesh_is_shadow_caster         = false;
+    _ogl_shadow_mapping_mesh_item* new_mesh_item                 = NULL;
+    ogl_scene_renderer             renderer                      = (ogl_scene_renderer) renderer_raw;
+    system_matrix4x4               renderer_current_model_matrix = NULL;
+    _ogl_shadow_mapping*           shadow_mapping_ptr            = NULL;
 
     ogl_scene_renderer_get_property(renderer,
                                     OGL_SCENE_RENDERER_PROPERTY_CONTEXT,
@@ -2682,8 +2684,7 @@ PUBLIC void ogl_shadow_mapping_process_mesh_for_shadow_map_rendering(     __notn
      * visible meshes. This will work, as long the "no rasterization mode" does not
      * call graph rendeirng entry point from itself, which should never be the case.
      */
-    _ogl_shadow_mapping_mesh_item* new_mesh_item                 = (_ogl_shadow_mapping_mesh_item*) system_resource_pool_get_from_pool(shadow_mapping_ptr->mesh_item_pool);
-    system_matrix4x4               renderer_current_model_matrix = NULL;
+    new_mesh_item = (_ogl_shadow_mapping_mesh_item*) system_resource_pool_get_from_pool(shadow_mapping_ptr->mesh_item_pool);
 
     ASSERT_ALWAYS_SYNC(new_mesh_item != NULL,
                        "Out of memory");

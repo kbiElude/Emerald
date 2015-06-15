@@ -8,6 +8,7 @@
 #include "ogl/ogl_context_to_bindings.h"
 #include "ogl/ogl_texture.h"
 #include "system/system_hash64map.h"
+#include <string.h>
 
 typedef enum
 {

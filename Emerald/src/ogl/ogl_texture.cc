@@ -369,8 +369,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
             }
         }
 
-        expected_mipmap_width  = max(1, expected_mipmap_width  / 2);
-        expected_mipmap_height = max(1, expected_mipmap_height / 2);
+        expected_mipmap_width  = std::max(1u, expected_mipmap_width  / 2);
+        expected_mipmap_height = std::max(1u, expected_mipmap_height / 2);
     } /* for (all mipmaps) */
 
     /* OK, we no longer need the gfx_image instance at this point */
@@ -576,6 +576,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_texture                                               result           = NULL;
+    _ogl_texture*                                             result_ptr       = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -683,7 +684,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
     } /* switch (dimensionality) */
 
     /* Store the properties */
-    _ogl_texture* result_ptr = (_ogl_texture*) result;
+    result_ptr = (_ogl_texture*) result;
 
     result_ptr->dimensionality         = dimensionality;
     result_ptr->fixed_sample_locations = fixed_sample_locations;
@@ -734,7 +735,8 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull 
                                                                  __in __notnull gfx_image                 image,
                                                                  __in __notnull system_hashed_ansi_string name)
 {
-    ogl_texture result = NULL;
+    system_hashed_ansi_string image_filename = NULL;
+    ogl_texture               result         = NULL;
 
     if (image == NULL)
     {
@@ -747,8 +749,6 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull 
     /* Retrieve image file name - we'll store it in ogl_texture instance
      * in order to make sure we do not load the same image more than once.
      */
-    system_hashed_ansi_string image_filename = NULL;
-
     gfx_image_get_property(image,
                            GFX_IMAGE_PROPERTY_FILENAME,
                           &image_filename);

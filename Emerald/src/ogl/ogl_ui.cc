@@ -247,15 +247,15 @@ PRIVATE void _ogl_ui_deinit(__in __notnull _ogl_ui* ui_ptr)
     /* Release call-backs */
     system_window_delete_callback_func(ui_ptr->window,
                                        SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                       _ogl_ui_callback_on_lbm_down,
+                                       (void*) _ogl_ui_callback_on_lbm_down,
                                        ui_ptr);
     system_window_delete_callback_func(ui_ptr->window,
                                        SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                       _ogl_ui_callback_on_lbm_up,
+                                       (void*) _ogl_ui_callback_on_lbm_up,
                                        ui_ptr);
     system_window_delete_callback_func(ui_ptr->window,
                                        SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                       _ogl_ui_callback_on_mouse_move,
+                                       (void*) _ogl_ui_callback_on_mouse_move,
                                        ui_ptr);
 
     /* Release GL stuff. */
@@ -479,22 +479,22 @@ PRIVATE void _ogl_ui_init(__in __notnull _ogl_ui*                  ui_ptr,
     system_window_add_callback_func(ui_ptr->window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                    _ogl_ui_callback_on_lbm_down,
+                                    (void*) _ogl_ui_callback_on_lbm_down,
                                     ui_ptr);
     system_window_add_callback_func(ui_ptr->window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                    _ogl_ui_callback_on_lbm_up,
+                                    (void*) _ogl_ui_callback_on_lbm_up,
                                     ui_ptr);
     system_window_add_callback_func(ui_ptr->window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                    _ogl_ui_callback_on_mouse_move,
+                                    (void*) _ogl_ui_callback_on_mouse_move,
                                     ui_ptr);
     system_window_add_callback_func(ui_ptr->window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-                                    _ogl_ui_callback_on_mouse_wheel,
+                                    (void*) _ogl_ui_callback_on_mouse_wheel,
                                     ui_ptr);
 
     /* Create GL-specific objects */
@@ -805,9 +805,13 @@ PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
                     control_ptr->pfn_is_over_func_ptr(control_ptr->internal,
                                                       ui_ptr->current_mouse_xy) )
                 {
+#ifdef _WIN32
                     control_ptr->pfn_on_mouse_wheel_func_ptr(control_ptr->internal,
                                                              float(wheel_delta) / float(WHEEL_DELTA) );
-
+#else
+                    ASSERT_DEBUG_SYNC(false,
+                                      "TODO");
+#endif
                     handled = true;
                     break;
                 }
