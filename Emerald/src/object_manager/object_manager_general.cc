@@ -417,8 +417,6 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
     }
 }
 
-#include <crtdbg.h>
-
 /** Please see header for specification */
 PUBLIC void _object_manager_unregister_refcounted_object(system_hashed_ansi_string item_registration_path)
 {

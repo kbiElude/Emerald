@@ -702,7 +702,7 @@ PRIVATE bool _scene_multiloader_load_scene_internal_get_material_data(__in __not
                                 NULL); /* on_remove_callback_user_arg */
         system_hash64map_insert(scene_material_to_material_id_map,
                                 (system_hash64) new_material,
-                                (void*)         new_material_id,
+                                (void*)         (intptr_t) new_material_id,
                                 NULL,  /* on_remove_callback */
                                 NULL); /* on_remove_callback_user_arg */
 
@@ -1095,21 +1095,21 @@ volatile void _scene_multiloader_load_scene_internal_load_gfx_image_entrypoint(s
 /** TODO */
 PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multiloader_scene* scene_ptr)
 {
-    ogl_context_textures    context_textures                  = NULL;
-    system_hash64map        material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material));
-    system_hash64map        material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*)         );
-    system_hash64map        mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*)         );
-    system_hash64map        mesh_name_to_mesh_map             = system_hash64map_create(sizeof(mesh)          );
-    bool                    result                            = true;
-    system_resizable_vector serialized_scene_cameras          = system_resizable_vector_create(4 /* capacity */);
-    system_resizable_vector serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */);
-    system_resizable_vector serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */);
-    system_hash64map        scene_material_to_material_id_map = system_hash64map_create       (sizeof(unsigned int) );
-    system_hash64map        texture_id_to_ogl_texture_map     = system_hash64map_create       (sizeof(void*) );
-
-    ogl_context_get_property(scene_ptr->loader_ptr->context,
-                             OGL_CONTEXT_PROPERTY_TEXTURES,
-                            &context_textures);
+    ogl_context_textures      context_textures                  = NULL;
+    system_hash64map          material_id_to_scene_material_map = system_hash64map_create(sizeof(scene_material));
+    system_hash64map          material_id_to_mesh_material_map  = system_hash64map_create(sizeof(void*)         );
+    system_hash64map          mesh_id_to_mesh_map               = system_hash64map_create(sizeof(void*)         );
+    system_hash64map          mesh_name_to_mesh_map             = system_hash64map_create(sizeof(mesh)          );
+    scene_graph               new_graph                         = NULL;
+    bool                      result                            = true;
+    system_hashed_ansi_string scene_file_name                   = NULL;
+    const char*               scene_file_name_raw               = NULL;
+    const char*               scene_file_name_last_slash_ptr    = NULL;
+    system_resizable_vector   serialized_scene_cameras          = system_resizable_vector_create(4 /* capacity */);
+    system_resizable_vector   serialized_scene_lights           = system_resizable_vector_create(4 /* capacity */);
+    system_resizable_vector   serialized_scene_mesh_instances   = system_resizable_vector_create(4 /* capacity */);
+    system_hash64map          scene_material_to_material_id_map = system_hash64map_create       (sizeof(unsigned int) );
+    system_hash64map          texture_id_to_ogl_texture_map     = system_hash64map_create       (sizeof(void*) );
 
     /* Read basic stuff */
     float                     scene_animation_duration = 0.0f;
@@ -1121,6 +1121,10 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
     uint32_t                  n_scene_materials        = 0;
     uint32_t                  n_scene_mesh_instances   = 0;
     uint32_t                  n_scene_textures         = 0;
+
+    ogl_context_get_property(scene_ptr->loader_ptr->context,
+                             OGL_CONTEXT_PROPERTY_TEXTURES,
+                            &context_textures);
 
     result &= _scene_multiloader_load_scene_internal_get_basic_data(scene_ptr,
                                                                    &scene_name,
@@ -1143,8 +1147,6 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
      * NOTE: Scene name is in majority of the cases useless, so switch to
      *       the file name.
      */
-    system_hashed_ansi_string scene_file_name = NULL;
-
     system_file_serializer_get_property(scene_ptr->serializer,
                                         SYSTEM_FILE_SERIALIZER_PROPERTY_FILE_NAME,
                                        &scene_file_name);
@@ -1168,8 +1170,8 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
      * loading blobs on a different computer, than the one that was used to export the
      * scene).
      */
-    const char* scene_file_name_raw            = system_hashed_ansi_string_get_buffer(scene_file_name);
-    const char* scene_file_name_last_slash_ptr = strrchr(scene_file_name_raw, '/');
+    scene_file_name_raw            = system_hashed_ansi_string_get_buffer(scene_file_name);
+    scene_file_name_last_slash_ptr = strrchr(scene_file_name_raw, '/');
 
     if (scene_file_name_last_slash_ptr != NULL)
     {
@@ -1312,12 +1314,12 @@ PRIVATE void _scene_multiloader_load_scene_internal(__in __notnull _scene_multil
     }
 
     /* Load the scene graph */
-    scene_graph new_graph = scene_graph_load(scene_ptr->result_scene,
-                                             scene_ptr->serializer,
-                                             serialized_scene_cameras,
-                                             serialized_scene_lights,
-                                             serialized_scene_mesh_instances,
-                                             scene_file_name);
+    new_graph = scene_graph_load(scene_ptr->result_scene,
+                                 scene_ptr->serializer,
+                                 serialized_scene_cameras,
+                                 serialized_scene_lights,
+                                 serialized_scene_mesh_instances,
+                                 scene_file_name);
 
     ASSERT_DEBUG_SYNC(new_graph != NULL,
                       "Could not load scene graph");
@@ -1622,6 +1624,7 @@ PUBLIC EMERALD_API void scene_multiloader_get_loaded_scene(__in  __notnull scene
 PUBLIC EMERALD_API void scene_multiloader_load_async(__in __notnull scene_multiloader loader)
 {
     _scene_multiloader* instance_ptr = (_scene_multiloader*) loader;
+    unsigned int        n_scenes     = 0;
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(instance_ptr != NULL,
@@ -1640,8 +1643,6 @@ PUBLIC EMERALD_API void scene_multiloader_load_async(__in __notnull scene_multil
      * NOTE: This will break in non-deterministic way if any of the scene assets are shared between scenes!
      *       The implementation will shortly be changed to make the multiloader work for such cases as well.
      */
-    unsigned int n_scenes = 0;
-
     system_resizable_vector_get_property(instance_ptr->scenes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_scenes);

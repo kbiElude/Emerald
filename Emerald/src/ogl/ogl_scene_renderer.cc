@@ -2153,7 +2153,7 @@ PUBLIC RENDERING_CONTEXT_CALL void ogl_scene_renderer_render_scene_graph(__in   
                                                  current_light_direction);
 
 #endif
-                        float current_light_position[3] = {NULL};
+                        float current_light_position[3];
                         float current_light_color   [4] =
                         {
                             0.0f,

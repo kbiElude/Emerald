@@ -688,7 +688,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
         /* Update MDEBV draw call arguments */
         preview_ptr->mdebv_basevertex_array[n_camera] = (BO_DATA_INDEX_MAX + 1) * n_camera;
         preview_ptr->mdebv_count_array     [n_camera] = sizeof(index_data_array) / sizeof(index_data_array[0]);
-        preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) preview_ptr->data_bo_start_offset;
+        preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) (intptr_t) preview_ptr->data_bo_start_offset;
     } /* for (all assigned cameras) */
 
     /* Set up the data BO */
@@ -712,7 +712,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
         {
             ogl_buffers_free_buffer_memory(preview_ptr->buffers,
                                            preview_ptr->data_bo_id,
-                                           preview_ptr->data_bo_start_offset);
+                                           (intptr_t) preview_ptr->data_bo_start_offset);
 
             preview_ptr->data_bo_id           = 0;
             preview_ptr->data_bo_start_offset = -1;

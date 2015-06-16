@@ -386,8 +386,8 @@ PUBLIC EMERALD_API object_manager_directory object_manager_directory_find_subdir
             }
             else
             {
-                LOG_ERROR        ("Could not allocate %d bytes while traversing directory path.",
-                                  directory_name_length + 1);
+                LOG_ERROR        ("Could not allocate %u bytes while traversing directory path.",
+                                  (unsigned int) (directory_name_length + 1) );
                 ASSERT_DEBUG_SYNC(false,
                                   "");
 
@@ -426,10 +426,10 @@ PUBLIC EMERALD_API uint32_t object_manager_directory_get_amount_of_children_for_
         if (n_directories != 0 ||
             n_items       != 0)
         {
-            LOG_INFO("Directory [%s] has %d directories and %d items:",
+            LOG_INFO("Directory [%s] has %u directories and %u items:",
                      system_hashed_ansi_string_get_buffer(directory_ptr->name),
-                     n_directories,
-                     n_items);
+                     (unsigned int) n_directories,
+                     (unsigned int) n_items);
 
             for (unsigned int n_item = 0;
                               n_item < n_items;
@@ -667,8 +667,8 @@ PUBLIC void object_manager_directory_release(__in __notnull __post_invalid objec
             }
             else
             {
-                LOG_ERROR("Could not retrieve %dth sub-directory",
-                          n_directory);
+                LOG_ERROR("Could not retrieve %uth sub-directory",
+                          (unsigned int) n_directory);
             }
         }
     }

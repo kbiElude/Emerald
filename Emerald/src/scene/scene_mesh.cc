@@ -138,6 +138,7 @@ PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    seria
                                   __in __notnull system_hash64map          id_to_gpu_mesh_map)
 {
     system_hashed_ansi_string name                           = NULL;
+    mesh                      mesh_gpu                       = NULL;
     uint32_t                  mesh_map_id                    = -1;
     bool                      result                         = true;
     scene_mesh                result_mesh                    = NULL;
@@ -167,8 +168,6 @@ PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    seria
     }
 
     /* Retrieve GPU mesh instance */
-    mesh mesh_gpu = NULL;
-
     if (!system_hash64map_get(id_to_gpu_mesh_map,
                               mesh_map_id,
                              &mesh_gpu) )
@@ -181,7 +180,9 @@ PUBLIC scene_mesh scene_mesh_load(__in __notnull system_file_serializer    seria
                                     object_manager_path,
                                     mesh_gpu);
 
-    ASSERT_DEBUG_SYNC(result_mesh != NULL, "Could not spawn GPU mesh instance");
+    ASSERT_DEBUG_SYNC(result_mesh != NULL,
+                      "Could not spawn GPU mesh instance");
+
     if (result_mesh == NULL)
     {
         goto end_error;
@@ -239,7 +240,7 @@ PUBLIC bool scene_mesh_save(__in __notnull system_file_serializer serializer,
     void*    mesh_id_ptr = NULL;
 
     if (!system_hash64map_get(gpu_mesh_to_id_map,
-                              (system_hash64) mesh_ptr->geometry,
+                              (system_hash64) (intptr_t) mesh_ptr->geometry,
                              &mesh_id_ptr) )
     {
         ASSERT_ALWAYS_SYNC(false,
@@ -249,7 +250,7 @@ PUBLIC bool scene_mesh_save(__in __notnull system_file_serializer serializer,
         goto end;
     }
 
-    mesh_id = (uint32_t) mesh_id_ptr;
+    mesh_id = (uint32_t) (intptr_t) mesh_id_ptr;
 
     result &= system_file_serializer_write(serializer,
                                            sizeof(mesh_id),

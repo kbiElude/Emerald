@@ -20,6 +20,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_types.h"
 #include <sstream>
 
 
@@ -322,8 +323,8 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
      */
     const unsigned int max_binomial_n        = instance_ptr->n_max_taps + 3;
     const unsigned int max_n_binomial_values = max_binomial_n + 1;
-    unsigned __int64*  binomial_values       = new (std::nothrow) unsigned __int64[max_n_binomial_values];
-    unsigned __int64*  factorial_values      = new (std::nothrow) unsigned __int64[max_n_binomial_values];
+    __uint64*          binomial_values       = new (std::nothrow) __uint64[max_n_binomial_values];
+    __uint64*          factorial_values      = new (std::nothrow) __uint64[max_n_binomial_values];
 
     ASSERT_DEBUG_SYNC(max_binomial_n < 20,
                       "Insufficient precision for requested number of factorial values");
@@ -381,7 +382,7 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
 
         /* Precalc the binomial values */
         const unsigned int binomial_n        = n_taps + 3;
-        unsigned __int64   binomial_sum      = 0;
+        __uint64           binomial_sum      = 0;
         const unsigned int n_binomial_values = binomial_n + 1;
         const unsigned int n_tap_weights     = (n_taps + 1) / 2;
 

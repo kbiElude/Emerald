@@ -30,8 +30,9 @@ endif(MSVC)
 # Add targets
 set(BUILD_STATIC_LIBS ON CACHE BOOL "Set to ON to build static libraries")
 if(BUILD_STATIC_LIBS)
-	add_library(tinyxml2static STATIC tinyxml2.cpp tinyxml2.h)
-	set_target_properties(tinyxml2static PROPERTIES OUTPUT_NAME tinyxml2)
+        add_library(tinyxml2static STATIC tinyxml2.cpp tinyxml2.h)
+        set_target_properties(tinyxml2static PROPERTIES OUTPUT_NAME               tinyxml2
+                                                        POSITION_INDEPENDENT_CODE ON)
 endif(BUILD_STATIC_LIBS)
 
 

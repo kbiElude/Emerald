@@ -6,7 +6,7 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_shader.h"
-#include "shaders/shaders_fragment_rgb_to_yxy.h"
+#include "shaders/shaders_fragment_rgb_to_Yxy.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"

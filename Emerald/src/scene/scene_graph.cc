@@ -867,7 +867,7 @@ PRIVATE system_hash64map _scene_graph_get_node_hashmap(__in __notnull _scene_gra
 
             system_hash64map_insert(result,
                                     (system_hash64) node_ptr,
-                                    (void*) n_node,
+                                    (void*)         (intptr_t) n_node,
                                     NULL,  /* on_remove_callback */
                                     NULL); /* on_remove_callback_user_arg */
         } /* for (all graph nodes) */
@@ -928,16 +928,23 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
                                     __in __notnull system_resizable_vector scene_mesh_instances_vector,
                                     __in __notnull scene                   owner_scene)
 {
-    unsigned int n_serialized_nodes = 0;
-    bool         result             = true;
+    _scene_graph*         graph_ptr                 = NULL;
+    uint32_t              n_attached_cameras        = 0;
+    uint32_t              n_attached_lights         = 0;
+    uint32_t              n_attached_mesh_instances = 0;
+    unsigned int          n_serialized_nodes        = 0;
+    scene_graph_node      new_node                  = NULL;
+    _scene_graph_node*    new_node_ptr              = NULL;
+    scene_graph_node_type node_type                 = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
+    scene_graph_node      parent_node               = NULL;
+    unsigned int          parent_node_id            = 0;
+    bool                  result                    = true;
 
     system_resizable_vector_get_property(serialized_nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_serialized_nodes);
 
     /* Retrieve node type */
-    scene_graph_node_type node_type = SCENE_GRAPH_NODE_TYPE_UNKNOWN;
-
     result &= system_file_serializer_read(serializer,
                                           sizeof(node_type),
                                          &node_type);
@@ -948,9 +955,6 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     }
 
     /* If this is not a root node, retrieve parent node ID */
-    scene_graph_node parent_node    = NULL;
-    unsigned int     parent_node_id = 0;
-
     if (node_type != SCENE_GRAPH_NODE_TYPE_ROOT)
     {
         result &= system_file_serializer_read(serializer,
@@ -971,8 +975,6 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     }
 
     /* Serialize the new node */
-    scene_graph_node new_node = NULL;
-
     switch (node_type)
     {
         case SCENE_GRAPH_NODE_TYPE_ROOT:
@@ -1062,8 +1064,6 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     }
 
     /* Attach cameras to the node */
-    uint32_t n_attached_cameras = 0;
-
     result &= system_file_serializer_read(serializer,
                                           sizeof(n_attached_cameras),
                                           &n_attached_cameras);
@@ -1105,8 +1105,6 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     } /* for (all attached cameras) */
 
     /* Attach lights to the node */
-    uint32_t n_attached_lights = 0;
-
     result &= system_file_serializer_read(serializer,
                                           sizeof(n_attached_lights),
                                           &n_attached_lights);
@@ -1148,8 +1146,6 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     } /* for (all attached lights) */
 
     /* Attach mesh instances to the node */
-    uint32_t n_attached_mesh_instances = 0;
-
     result &= system_file_serializer_read(serializer,
                                           sizeof(n_attached_mesh_instances),
                                           &n_attached_mesh_instances);
@@ -1191,8 +1187,8 @@ PRIVATE bool _scene_graph_load_node(__in __notnull system_file_serializer  seria
     } /* for (all attached lights) */
 
     /* If there are any objects attached to this node, cache the transformation nodes. */
-    _scene_graph*      graph_ptr    = (_scene_graph*)      result_graph;
-    _scene_graph_node* new_node_ptr = (_scene_graph_node*) new_node;
+    graph_ptr    = (_scene_graph*)      result_graph;
+    new_node_ptr = (_scene_graph_node*) new_node;
 
     if (n_attached_cameras        > 0 ||
         n_attached_lights         > 0 ||
@@ -1731,7 +1727,11 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
                                     __in __notnull system_hash64map         mesh_instance_ptr_to_id_map,
                                     __in __notnull scene                    owner_scene)
 {
-    bool result = true;
+    uint32_t     n_cameras        = 0;
+    uint32_t     n_lights         = 0;
+    uint32_t     n_mesh_instances = 0;
+    unsigned int parent_node_id   = 0;
+    bool         result           = true;
 
     /* Store node type */
     result &= system_file_serializer_write(serializer,
@@ -1739,8 +1739,6 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
                                           &node_ptr->type);
 
     /* Store parent node ID */
-    unsigned int parent_node_id = 0;
-
     if (node_ptr->type != SCENE_GRAPH_NODE_TYPE_ROOT)
     {
         if (!system_hash64map_get(node_ptr_to_id_map,
@@ -1832,8 +1830,6 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     } /* switch (node_ptr->type) */
 
     /* Store IDs of attached cameras */
-    uint32_t n_cameras = 0;
-
     system_resizable_vector_get_property(node_ptr->attached_cameras,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_cameras);
@@ -1859,7 +1855,7 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
                                      (system_hash64) current_camera,
                                     &camera_id_ptr) )
             {
-                unsigned int camera_id = (unsigned int) camera_id_ptr;
+                unsigned int camera_id = (unsigned int) (intptr_t) camera_id_ptr;
 
                 result &= system_file_serializer_write(serializer,
                                                        sizeof(camera_id),
@@ -1880,8 +1876,6 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     } /* for (all attached cameras) */
 
     /* Store IDs of attached lights */
-    uint32_t n_lights = 0;
-
     system_resizable_vector_get_property(node_ptr->attached_lights,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_lights);
@@ -1907,7 +1901,7 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
                                      (system_hash64) current_light,
                                     &light_id_ptr) )
             {
-                unsigned int light_id = (unsigned int) light_id_ptr;
+                unsigned int light_id = (unsigned int) (intptr_t) light_id_ptr;
 
                 result &= system_file_serializer_write(serializer,
                                                        sizeof(light_id),
@@ -1928,8 +1922,6 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
     } /* for (all attached lights) */
 
     /* Store IDs of attached mesh instances */
-    uint32_t n_mesh_instances = 0;
-
     system_resizable_vector_get_property(node_ptr->attached_meshes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_mesh_instances);
@@ -1955,7 +1947,7 @@ PRIVATE bool _scene_graph_save_node(__in __notnull system_file_serializer   seri
                                      (system_hash64) current_mesh,
                                     &mesh_id_ptr) )
             {
-                unsigned int mesh_id = (unsigned int) mesh_id_ptr;
+                unsigned int mesh_id = (unsigned int) (intptr_t) mesh_id_ptr;
 
                 result &= system_file_serializer_write(serializer,
                                                        sizeof(mesh_id),
@@ -2226,7 +2218,10 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
                                                  __in __notnull scene_graph_node     node,
                                                  __in           system_timeline_time time)
 {
-    _scene_graph* graph_ptr = (_scene_graph*) graph;
+    _scene_graph_node* current_node_ptr = (_scene_graph_node*) node;
+    _scene_graph*      graph_ptr        = (_scene_graph*)      graph;
+    int                n_cached_nodes   = 0;
+    _scene_graph_node* node_ptr         = (_scene_graph_node*) node;
 
     /* Sanity check */
     system_thread_id cs_owner_thread_id = 0;
@@ -2251,9 +2246,6 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
      */
 
     /* Cache the node chain */
-    _scene_graph_node* current_node_ptr = (_scene_graph_node*) node;
-    _scene_graph_node* node_ptr         = (_scene_graph_node*) node;
-
     system_critical_section_enter(graph_ptr->node_compute_cs);
 
     if (graph_ptr->node_compute_vector == NULL)
@@ -2278,8 +2270,6 @@ PUBLIC EMERALD_API void scene_graph_compute_node(__in __notnull scene_graph     
     } /* while (current_node_ptr != NULL) */
 
     /* Compute the transformation matrices for cached nodes */
-    int n_cached_nodes = 0;
-
     system_resizable_vector_get_property(graph_ptr->node_compute_vector,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                         &n_cached_nodes);
@@ -2556,8 +2546,10 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnu
                                                                     __in           _scene_object_type object_type,
                                                                     __in __notnull void*              object)
 {
-    _scene_graph* graph_ptr      = (_scene_graph*) graph;
-    unsigned int  n_sorted_nodes = 0;
+    _scene_graph*    graph_ptr      = (_scene_graph*) graph;
+    unsigned int     n_nodes        = 0;
+    unsigned int     n_sorted_nodes = 0;
+    scene_graph_node result         = NULL;
 
     system_resizable_vector_get_property(graph_ptr->sorted_nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
@@ -2576,9 +2568,6 @@ PUBLIC EMERALD_API scene_graph_node scene_graph_get_node_for_object(__in __notnu
 
     system_read_write_mutex_lock(graph_ptr->sorted_nodes_rw_mutex,
                                  ACCESS_READ);
-
-    unsigned int     n_nodes = 0;
-    scene_graph_node result  = NULL;
 
     system_resizable_vector_get_property(graph_ptr->sorted_nodes,
                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,

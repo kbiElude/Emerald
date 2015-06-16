@@ -1173,7 +1173,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
             {
                 system_hash64map_insert(unique_meshes_to_id_map,
                                         (system_hash64) mesh_gpu,
-                                        (void*) n_mesh_instance,
+                                        (void*)         (intptr_t) n_mesh_instance,
                                         NULL,  /* on_remove_callback */
                                         NULL); /* on_remove_callback_user_arg */
             }
@@ -1267,7 +1267,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
 
                     system_hash64map_insert(scene_material_ptr_to_id_map,
                                             (system_hash64) current_scene_material,
-                                            (void*)         current_mesh_material_id,
+                                            (void*)         (intptr_t) current_mesh_material_id,
                                             NULL,  /* on_remove_callback          */
                                             NULL); /* on_remove_callback_user_arg */
                 }
@@ -1279,7 +1279,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
 
                 system_hash64map_insert(mesh_material_ptr_to_id_map,
                                         (system_hash64) current_mesh_material,
-                                        (void*)         current_mesh_material_id,
+                                        (void*)         (intptr_t) current_mesh_material_id,
                                         NULL,  /* on_remove_callback */
                                         NULL); /* on_remove_callback_user_arg */
             } /* if (we have not already processed current mesh_material instance) */
@@ -1405,7 +1405,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
         /* Store the ID */
         if (!system_hash64map_insert(camera_ptr_to_id_map,
                                      (system_hash64) current_camera,
-                                     (void*) n_camera,
+                                     (void*)         (intptr_t) n_camera,
                                      NULL,  /* on_remove_callback_proc */
                                      NULL) ) /* on_remove_callback_proc_user_arg */
         {
@@ -1442,7 +1442,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
         /* Store the ID */
         if (!system_hash64map_insert(light_ptr_to_id_map,
                                      (system_hash64) current_light,
-                                     (void*) n_light,
+                                     (void*)         (intptr_t) n_light,
                                      NULL,  /* on_remove_callback_proc */
                                      NULL) ) /* on_remove_callback_proc_user_arg */
         {
@@ -1557,8 +1557,8 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
                                                 &mesh_gpu_id_ptr,
                                                 &mesh_gpu_hash) )
             {
-                mesh         mesh_gpu    = (mesh) mesh_gpu_hash;
-                unsigned int mesh_gpu_id = (unsigned int) mesh_gpu_id_ptr;
+                mesh         mesh_gpu    = (mesh)         mesh_gpu_hash;
+                unsigned int mesh_gpu_id = (unsigned int) (intptr_t) mesh_gpu_id_ptr;
 
                 /* Is this an instanced mesh? */
                 mesh mesh_instantiation_parent_gpu = NULL;
@@ -1580,7 +1580,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
 
                     system_hash64map_insert(gpu_mesh_to_id_map,
                                             (system_hash64) mesh_gpu,
-                                            (void*) mesh_gpu_id,
+                                            (void*)         (intptr_t) mesh_gpu_id,
                                             NULL,  /* on_remove_callback */
                                             NULL); /* on_remove_callback_user_arg */
                 }
@@ -1637,7 +1637,7 @@ PUBLIC EMERALD_API bool scene_save_with_serializer(__in     __notnull scene     
         /* Store the ID */
         if (!system_hash64map_insert(mesh_instance_ptr_to_id_map,
                                      (system_hash64) current_mesh_instance,
-                                     (void*) n_mesh_instance,
+                                     (void*)         (intptr_t) n_mesh_instance,
                                      NULL,  /* on_remove_callback_proc */
                                      NULL) ) /* on_remove_callback_proc_user_arg */
         {

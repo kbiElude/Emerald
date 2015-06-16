@@ -5,7 +5,10 @@
  */
 #include "shared.h"
 #include "main.h"
-#include <CommCtrl.h>
+
+#ifdef _WIN32
+    #include <CommCtrl.h>
+#endif
 
 #include "../resource.h"
 #include "curve/curve_container.h"

@@ -1270,9 +1270,11 @@ PUBLIC EMERALD_API shaders_fragment_uber_item_id shaders_fragment_uber_add_light
 PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __notnull ogl_context                context,
                                                                       __in __notnull system_hashed_ansi_string  name)
 {
-    ogl_shader              embedded_shader = NULL;
-    _shaders_fragment_uber* result_object   = NULL;
-    shaders_fragment_uber   result_shader   = NULL;
+    ogl_shader              embedded_shader               = NULL;
+    _uniform_block_id       fragment_shader_properties_ub = 0;
+    _shaders_fragment_uber* result_object                 = NULL;
+    shaders_fragment_uber   result_shader                 = NULL;
+    ogl_shader_constructor  shader_constructor            = NULL;
 
     /* Create a new ogl_shader instance only if one is not already registered
      * in context-wide shaders manager.
@@ -1309,8 +1311,6 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
     }
 
     /* Initialize the shader constructor */
-    ogl_shader_constructor shader_constructor = NULL;
-
     shader_constructor = ogl_shader_constructor_create(SHADER_TYPE_FRAGMENT,
                                                        system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
                                                                                                                " fragment uber"));
@@ -1324,9 +1324,6 @@ PUBLIC EMERALD_API shaders_fragment_uber shaders_fragment_uber_create(__in __not
 
         goto end;
     }
-
-    /* Initialize shader contents */
-    _uniform_block_id fragment_shader_properties_ub = 0;
 
     /* Add FragmentShaderProperties uniform block */
     fragment_shader_properties_ub = ogl_shader_constructor_add_uniform_block(shader_constructor,

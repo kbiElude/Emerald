@@ -11,6 +11,10 @@ OPTION(INCLUDE_OPENCL          "Should include OpenCL code" OFF)
 OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
 OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code" OFF)
 
+IF (!MSVC)
+ SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+ENDIF (!MSVC)
+
 #IF (!MSVC)
     # Posix does not support events, as found in Windows. Emerald provides an emulation layer
 	# for the functionality, based on conditional variables.
@@ -77,8 +81,6 @@ FILE(GLOB ProceduralIncludes "${EMERALD_SOURCE_DIR}/include/procedural/*.h")
 FILE(GLOB ProceduralSources "${EMERALD_SOURCE_DIR}/src/procedural/*.cc")
 FILE(GLOB SceneIncludes "${EMERALD_SOURCE_DIR}/include/scene/*.h")
 FILE(GLOB SceneSources "${EMERALD_SOURCE_DIR}/src/scene/*.cc")
-FILE(GLOB ShIncludes "${EMERALD_SOURCE_DIR}/include/sh/*.h")
-FILE(GLOB ShSources "${EMERALD_SOURCE_DIR}/src/sh/*.cc")
 FILE(GLOB ShadersIncludes "${EMERALD_SOURCE_DIR}/include/shaders/*.h")
 FILE(GLOB ShadersSources "${EMERALD_SOURCE_DIR}/src/shaders/*.cc")
 FILE(GLOB SystemIncludes "${EMERALD_SOURCE_DIR}/include/system/*.h")
@@ -99,36 +101,43 @@ IF (INCLUDE_OBJECT_MANAGER)
 ENDIF (INCLUDE_OBJECT_MANAGER)
 
 IF (INCLUDE_CURVE_EDITOR)
+ IF (MSVC)
     FILE(GLOB CurveEditorIncludes "${EMERALD_SOURCE_DIR}/include/curve_editor/*.h")
     FILE(GLOB CurveEditorSources  "${EMERALD_SOURCE_DIR}/src/curve_editor/*.cc")
+ ENDIF(MSVC)
 ENDIF (INCLUDE_CURVE_EDITOR)
 
 IF (INCLUDE_OPENCL)
+ IF (MSVC)
     FILE(GLOB OpenCLIncludes "${EMERALD_SOURCE_DIR}/include/ocl/*.h")
     FILE(GLOB OpenCLSources "${EMERALD_SOURCE_DIR}/src/ocl/*.cc")
-ENDIF (INCLUDE_OPENCL)
+    FILE(GLOB ShIncludes "${EMERALD_SOURCE_DIR}/include/sh/*.h")
+    FILE(GLOB ShSources "${EMERALD_SOURCE_DIR}/src/sh/*.cc")
 
-IF (INCLUDE_SH_LIGHT_EDITOR)
-    FILE(GLOB ShLightEditorIncludes "${EMERALD_SOURCE_DIR}/include/sh_light_editor/*.h")
-    FILE(GLOB ShLightEditorSources "${EMERALD_SOURCE_DIR}/src/sh_light_editor/*.cc")
-ENDIF (INCLUDE_SH_LIGHT_EDITOR)
+    IF (INCLUDE_SH_LIGHT_EDITOR)
+       FILE(GLOB ShLightEditorIncludes "${EMERALD_SOURCE_DIR}/include/sh_light_editor/*.h")
+       FILE(GLOB ShLightEditorSources  "${EMERALD_SOURCE_DIR}/src/sh_light_editor/*.cc")
+    ENDIF (INCLUDE_SH_LIGHT_EDITOR)
+
+ ENDIF(MSVC)
+ENDIF (INCLUDE_OPENCL)
 
 SET(AllSources ${GeneralSources}
                ${ColladaSources}
-               ${SystemSources} 
-               ${CurveSources} 
+               ${SystemSources}
+               ${CurveSources}
                ${LWSources}
                ${GFXSources}
-               ${OpenGLSources} 
-               ${WebcamSources} 
-               ${ShadersSources} 
-               ${ObjectManagerSources} 
-               ${CurveEditorSources} 
-               ${PostProcessingSources} 
-               ${ShSources} 
+               ${OpenGLSources}
+               ${WebcamSources}
+               ${ShadersSources}
+               ${ObjectManagerSources}
+               ${CurveEditorSources}
+               ${PostProcessingSources}
+               ${ShSources}
                ${ShLightEditorSources}
                ${ProceduralSources}
-               ${SceneSources} 
+               ${SceneSources}
                ${MeshSources}
                ${OpenCLSources}
                ${TextureSources})
@@ -136,23 +145,23 @@ ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
 ADD_LIBRARY(EMERALD SHARED ${AllSources}
     ${ColladaIncludes}
-    ${CurveIncludes} 
+    ${CurveIncludes}
     ${GeneralIncludes}
     ${LWIncludes}
-    ${GFXIncludes} 
-    ${SystemIncludes} 
-    ${OpenGLIncludes} 
-    ${WebcamIncludes} 
-    ${ShadersIncludes} 
-    ${ObjectManagerIncludes} 
-    ${CurveEditorIncludes} 
-    ${PostProcessingIncludes} 
+    ${GFXIncludes}
+    ${SystemIncludes}
+    ${OpenGLIncludes}
+    ${WebcamIncludes}
+    ${ShadersIncludes}
+    ${ObjectManagerIncludes}
+    ${CurveEditorIncludes}
+    ${PostProcessingIncludes}
     ${ShIncludes}
     ${ShLightEditorIncludes}
-    ${ProceduralIncludes} 
-    ${SceneIncludes} 
-    ${MeshIncludes} 
-    ${OpenCLIncludes} 
+    ${ProceduralIncludes}
+    ${SceneIncludes}
+    ${MeshIncludes}
+    ${OpenCLIncludes}
     ${TextureIncludes}
      Emerald.rc)
 

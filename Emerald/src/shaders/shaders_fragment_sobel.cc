@@ -67,8 +67,9 @@ PRIVATE void _shaders_fragment_sobel_release(__in __notnull __deallocate(mem) vo
 PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __notnull ogl_context               context,
                                                                         __in __notnull system_hashed_ansi_string name)
 {
-    _shaders_fragment_sobel* result_object = NULL;
-    shaders_fragment_sobel   result_shader = NULL;
+    shaders_fragment_convolution3x3 dy_shader     = NULL;
+    _shaders_fragment_sobel*        result_object = NULL;
+    shaders_fragment_sobel          result_shader = NULL;
 
     /* Create the shaders */
     shaders_fragment_convolution3x3 dx_shader = shaders_fragment_convolution3x3_create(context,
@@ -87,11 +88,11 @@ PUBLIC EMERALD_API shaders_fragment_sobel shaders_fragment_sobel_create(__in __n
         goto end;
     }
 
-    shaders_fragment_convolution3x3 dy_shader = shaders_fragment_convolution3x3_create(context, 
-                                                                                       sobel_dy,
-                                                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                                                               " DY")
-                                                                                      );
+    dy_shader = shaders_fragment_convolution3x3_create(context,
+                                                       sobel_dy,
+                                                       system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                                               " DY")
+                                                      );
 
     ASSERT_DEBUG_SYNC(dy_shader != NULL,
                       "shaders_fragment_convolution3x3_create() failed");

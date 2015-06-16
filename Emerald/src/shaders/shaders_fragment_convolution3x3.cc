@@ -67,8 +67,11 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
                                                                                           __in __notnull __ecount(9) const float*              input_mask,
                                                                                           __in __notnull             system_hashed_ansi_string name)
 {
-    _shaders_fragment_convolution3x3* result_object = NULL;
-    shaders_fragment_convolution3x3   result_shader = NULL;
+    ogl_shader                        convolution_shader = NULL;
+    bool                              result             = false;
+    _shaders_fragment_convolution3x3* result_object      = NULL;
+    shaders_fragment_convolution3x3   result_shader      = NULL;
+    system_hashed_ansi_string         shader_body        = NULL;
 
     /* Create the body */
     std::stringstream body_stream;
@@ -93,9 +96,9 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
     body_stream << convolution3x3_fragment_shader_body_suffix;
 
     /* Create the shader */
-    ogl_shader convolution_shader = ogl_shader_create(context,
-                                                      SHADER_TYPE_FRAGMENT,
-                                                      name);
+    convolution_shader = ogl_shader_create(context,
+                                           SHADER_TYPE_FRAGMENT,
+                                           name);
 
     ASSERT_DEBUG_SYNC(convolution_shader != NULL,
                       "ogl_shader_create() failed");
@@ -108,9 +111,9 @@ PUBLIC EMERALD_API shaders_fragment_convolution3x3 shaders_fragment_convolution3
     }
 
     /* Set the shader's body */
-    system_hashed_ansi_string shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
-    bool                      result      = ogl_shader_set_body             (convolution_shader,
-                                                                             shader_body);
+    shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
+    result      = ogl_shader_set_body             (convolution_shader,
+                                                   shader_body);
 
     ASSERT_DEBUG_SYNC(result,
                       "ogl_shader_set_body() failed");

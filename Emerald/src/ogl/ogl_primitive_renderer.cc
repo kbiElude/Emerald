@@ -95,7 +95,7 @@ typedef struct
      * [n_datasets] * [vertex data] - vertex data for subsequent datasets.
      **/
     GLuint           bo_color_offset;
-    void*            bo_data;
+    unsigned char*   bo_data;
     unsigned int     bo_data_size;
     GLuint           bo_id;             /* owned by ogl_buffers */
     system_matrix4x4 bo_mvp;
@@ -578,13 +578,13 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) (renderer_ptr->bo_start_offset + renderer_ptr->bo_color_offset) );
+                                         (const GLvoid*) (intptr_t) (renderer_ptr->bo_start_offset + renderer_ptr->bo_color_offset) );
     entry_points->pGLVertexAttribPointer(VS_VERTEX_DATA_VAA_ID,
                                          3, /* size */
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) (renderer_ptr->bo_start_offset + renderer_ptr->bo_vertex_offset) );
+                                         (const GLvoid*) (intptr_t) (renderer_ptr->bo_start_offset + renderer_ptr->bo_vertex_offset) );
 
     entry_points->pGLVertexAttribDivisor(VS_COLOR_DATA_VAA_ID,
                                          1);

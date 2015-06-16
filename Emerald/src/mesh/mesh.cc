@@ -91,7 +91,7 @@ typedef struct
 
 typedef struct _mesh_layer_data_stream
 {
-    void*                            data;
+    unsigned char*                   data;
     mesh_layer_data_stream_data_type data_type;
     unsigned int                     n_components;          /* number of components stored in data per each entry */
     unsigned int                     n_items;               /* number of (potentially multi-component!) entries in data */
@@ -1741,7 +1741,7 @@ PUBLIC EMERALD_API bool mesh_add_layer_pass_index_data(__in __notnull mesh      
 
                         system_hash64map_insert(pass_ptr->set_id_to_unique_set_id[stream_type],
                                                 set_id,
-                                                (void*) mesh_ptr->set_id_counter,
+                                                (void*) (intptr_t) mesh_ptr->set_id_counter,
                                                 NULL,  /* on_remove_callback */
                                                 NULL); /* on_remove_callback_user_arg */
 
@@ -3731,6 +3731,9 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
 {
     /* Read header */
     char                      header[16]           = {0};
+    bool                      is_instantiated      = false;
+    system_hashed_ansi_string mesh_name            = NULL;
+    _mesh*                    mesh_ptr             = NULL;
     mesh                      result               = NULL;
     system_hashed_ansi_string serializer_file_name = NULL;
 
@@ -3752,9 +3755,6 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
     }
 
     /* Is this an instantiated mesh? */
-    bool                      is_instantiated = false;
-    system_hashed_ansi_string mesh_name       = NULL;
-
     system_file_serializer_read_hashed_ansi_string(serializer,
                                                   &mesh_name);
     system_file_serializer_read                   (serializer,
@@ -3773,7 +3773,7 @@ PUBLIC EMERALD_API mesh mesh_load_with_serializer(__in __notnull ogl_context    
     }
 
     /* Set GL context */
-    _mesh* mesh_ptr = (_mesh*) result;
+    mesh_ptr = (_mesh*) result;
 
     mesh_ptr->gl_context = context;
     ogl_context_retain(context);
@@ -4149,8 +4149,9 @@ PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh                      insta
                                   __in __notnull system_hashed_ansi_string full_file_path,
                                   __in __notnull system_hash64map          material_name_to_id_map)
 {
-    _mesh* mesh_ptr = (_mesh*) instance;
-    bool   result   = false;
+    _mesh*                 mesh_ptr   = (_mesh*) instance;
+    bool                   result     = false;
+    system_file_serializer serializer = NULL;
 
     /* Make sure the mesh implementation has been asked to maintain the data buffers! */
     ASSERT_ALWAYS_SYNC(mesh_ptr->creation_flags & MESH_SAVE_SUPPORT,
@@ -4162,7 +4163,7 @@ PUBLIC EMERALD_API bool mesh_save(__in __notnull mesh                      insta
     }
 
     /* Create file serializer instance */
-    system_file_serializer serializer = system_file_serializer_create_for_writing(full_file_path);
+    serializer = system_file_serializer_create_for_writing(full_file_path);
 
     ASSERT_DEBUG_SYNC(serializer != NULL,
                       "Out of memory");
