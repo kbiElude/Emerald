@@ -1,7 +1,8 @@
 /**
  *
- * Object browser test app (kbi/elude @2012)
+ * 4D Julia test app (kbi/elude @2012)
  *
  */
-
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif

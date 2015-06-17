@@ -41,7 +41,10 @@ SET(AllTestParticlesAgainstKdTreeSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTestParticlesAgainstKdTreeSources)
 
 ADD_EXECUTABLE(TestParticlesAgainstKdTree WIN32 ${AllTestParticlesAgainstKdTreeSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(TestParticlesAgainstKdTree PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(TestParticlesAgainstKdTree PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

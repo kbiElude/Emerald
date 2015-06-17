@@ -688,10 +688,14 @@ float main_get_specularity()
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle,
-                   HINSTANCE,
-                   LPTSTR,
-                   int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle,
+                       HINSTANCE,
+                       LPTSTR,
+                       int)
+#else
+    int main()
+#endif
 {
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_size    [2]       = {640, 480};
@@ -734,17 +738,17 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                    _rendering_lbm_callback_handler,
+                                    (void*) _rendering_lbm_callback_handler,
                                     NULL); /* callback_func_user_arg */
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                    _window_closed_callback_handler,
+                                    (void*) _window_closed_callback_handler,
                                     NULL);
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                    _window_closing_callback_handler,
+                                    (void*) _window_closing_callback_handler,
                                     NULL);
 
     /* Initialize flyby */

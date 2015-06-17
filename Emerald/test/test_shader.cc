@@ -4,6 +4,7 @@
  *
  */
 #include "test_shader.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_hashed_ansi_string.h"
 #include "ogl/ogl_context.h"
@@ -12,7 +13,6 @@
 #include "ogl/ogl_shader.h"
 #include "system/system_matrix4x4.h"
 #include "system/system_window.h"
-#include "gtest/gtest.h"
 
 bool             triangle_test_is_first_frame             = true;
 GLuint           triangle_test_position_bo_id             = -1;
@@ -139,15 +139,20 @@ TEST(ShaderTest, CreationTest)
                                                                           true,  /* vsync_enabled */
                                                                           false, /* multisampling_supported */
                                                                           false);/* visible */
+
+#ifdef _WIN32
     HWND          window_sys_handle = 0;
+#endif
 
     ASSERT_TRUE(window_handle != NULL);
 
+#ifdef _WIN32
     system_window_get_property(window_handle,
                                SYSTEM_WINDOW_PROPERTY_HANDLE,
                               &window_sys_handle);
     ASSERT_EQ                (::IsWindow(window_sys_handle),
                               TRUE);
+#endif
 
     /* Create a rendering handler */
     ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
@@ -185,8 +190,11 @@ TEST(ShaderTest, CreationTest)
 
     /* Destroy the window in a blunt way */
     ASSERT_TRUE(system_window_close(window_handle) );
+
+#ifdef _WIN32
     ASSERT_EQ  (::IsWindow         (window_sys_handle),
                 FALSE);
+#endif
 }
 
 TEST(ShaderTest, FullViewportTriangleTest)
@@ -201,6 +209,8 @@ TEST(ShaderTest, FullViewportTriangleTest)
                                                                           true,   /* vsync_enabled */
                                                                           true,   /* multisampling_supported */
                                                                           false); /* visible */
+
+#ifdef _WIN32
     HWND          window_sys_handle = 0;
 
     ASSERT_TRUE(window_handle != NULL);
@@ -210,6 +220,7 @@ TEST(ShaderTest, FullViewportTriangleTest)
                               &window_sys_handle);
     ASSERT_EQ                (::IsWindow(window_sys_handle),
                               TRUE);
+#endif
 
     /* Create a rendering handler */
     ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
@@ -333,7 +344,11 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,
                                            0) );
 
+#ifdef _WIN32
     ::Sleep(1000);
+#else
+    sleep(1);
+#endif
 
     /* Stop playing so that we can release */
     ASSERT_TRUE(ogl_rendering_handler_stop(rendering_handler) );
@@ -347,6 +362,9 @@ TEST(ShaderTest, FullViewportTriangleTest)
 
     /* Destroy the window in a blunt way */
     ASSERT_TRUE(system_window_close(window_handle) );
+
+#ifdef _WIN32
     ASSERT_EQ  (::IsWindow(window_sys_handle),
                 FALSE);
+#endif
 }

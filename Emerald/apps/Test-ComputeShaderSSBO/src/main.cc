@@ -67,8 +67,8 @@ system_hashed_ansi_string _get_cs_body()
     max_local_work_group_dimensions  = limits_ptr->max_compute_work_group_size;
 
     /* Form the body */
-    const unsigned int max_dimension_size    = min(max_local_work_group_dimensions[0],
-                                                   max_local_work_group_dimensions[1]);
+    const unsigned int max_dimension_size    = std::min(max_local_work_group_dimensions[0],
+                                                        max_local_work_group_dimensions[1]);
           char         definitions_part[1024];
 
     _local_workgroup_size = (int) sqrt( (float) max_local_work_group_invocations);
@@ -78,10 +78,10 @@ system_hashed_ansi_string _get_cs_body()
         _local_workgroup_size = max_dimension_size;
     }
 
-    sprintf_s(definitions_part,
-              sizeof(definitions_part),
-              "#define LOCAL_SIZE %d\n",
-              _local_workgroup_size);
+    snprintf(definitions_part,
+             sizeof(definitions_part),
+             "#define LOCAL_SIZE %d\n",
+             _local_workgroup_size);
 
     /* Form the body */
     const char* body_strings[] =
@@ -286,10 +286,14 @@ PRIVATE void _window_closing_callback_handler(system_window window)
 
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle,
-                   HINSTANCE,
-                   LPTSTR,
-                   int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle,
+                    HINSTANCE,
+                    LPTSTR,
+                    int)
+#else
+    int main()
+#endif
 {
     int window_x1y1x2y2[4] = {0};
 
@@ -318,17 +322,17 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        _rendering_lbm_callback_handler,
+                                        (void*) _rendering_lbm_callback_handler,
                                         NULL);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        _window_closed_callback_handler,
+                                        (void*) _window_closed_callback_handler,
                                         NULL);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closing_callback_handler,
+                                        (void*) _window_closing_callback_handler,
                                         NULL);
 
     ogl_rendering_handler_play(window_rendering_handler,

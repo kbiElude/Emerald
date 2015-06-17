@@ -41,7 +41,10 @@ SET(AllTestParticlesSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTestParticlesSources)
 
 ADD_EXECUTABLE(TestParticles WIN32 ${AllTestParticlesSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(TestParticles PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(TestParticles PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

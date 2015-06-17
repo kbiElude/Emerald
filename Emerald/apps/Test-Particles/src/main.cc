@@ -305,10 +305,14 @@ PRIVATE void _window_closing_callback_handler(system_window window)
 
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle,
-                   HINSTANCE,
-                   LPTSTR,
-                   int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle,
+                       HINSTANCE,
+                       LPTSTR,
+                       int)
+#else
+    int main()
+#endif
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
@@ -343,17 +347,17 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        _rendering_rbm_callback_handler,
+                                        (void*) _rendering_rbm_callback_handler,
                                         NULL); /* callback_func_user_arg */
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        _window_closed_callback_handler,
+                                        (void*) _window_closed_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closing_callback_handler,
+                                        (void*) _window_closing_callback_handler,
                                         NULL);
 
     /* Initialize GL objects */

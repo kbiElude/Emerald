@@ -4,11 +4,11 @@
  *
  */
 #include "test_thread_pool.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_event.h"
 #include "system/system_threads.h"
 #include "system/system_thread_pool.h"
-#include "gtest/gtest.h"
 
 struct few_simple_tasks_submitted_separately_argument
 {
@@ -46,7 +46,11 @@ THREAD_POOL_TASK_HANDLER void _few_complex_tasks_submitted_separately_worker(voi
 {
     few_complex_tasks_submitted_separately_argument* input = (few_complex_tasks_submitted_separately_argument*) arg;
 
+#ifdef _WIN32
     ::Sleep(250);
+#else
+    usleep(250 * 1000);
+#endif
 
     input->cnt_executions++;
     input->worker_thread_id = system_threads_get_thread_id();
@@ -62,8 +66,9 @@ TEST(ThreadPoolTest, FewSimpleTasksSubmittedSeparately)
     system_event  wait_events[4]   = {0};
 
     /* set up */
-    ZeroMemory(test_buffer,
-               256);
+    memset(test_buffer,
+           0,
+           256);
 
     for (unsigned int n = 0;
                       n < 4;

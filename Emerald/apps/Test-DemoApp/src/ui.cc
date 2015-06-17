@@ -336,7 +336,7 @@ PRIVATE void _ui_get_current_vsm_min_variance_value(void*          unused,
 PRIVATE void _ui_on_color_shadow_map_blur_resolution_changed(void* unused,
                                                              void* event_user_arg)
 {
-    postprocessing_blur_gaussian_resolution new_color_sm_blur_resolution = (postprocessing_blur_gaussian_resolution) (unsigned int) event_user_arg;
+    postprocessing_blur_gaussian_resolution new_color_sm_blur_resolution = (postprocessing_blur_gaussian_resolution) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_color_shadow_map_blur_resolution(new_color_sm_blur_resolution);
@@ -346,7 +346,7 @@ PRIVATE void _ui_on_color_shadow_map_blur_resolution_changed(void* unused,
 PRIVATE void _ui_on_color_shadow_map_internalformat_changed(void* unused,
                                                             void* event_user_arg)
 {
-    ogl_texture_internalformat new_color_sm_internalformat = (ogl_texture_internalformat) (unsigned int) event_user_arg;
+    ogl_texture_internalformat new_color_sm_internalformat = (ogl_texture_internalformat) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_color_shadow_map_internalformat(new_color_sm_internalformat);
@@ -356,7 +356,7 @@ PRIVATE void _ui_on_color_shadow_map_internalformat_changed(void* unused,
 PRIVATE void _ui_on_depth_shadow_map_internalformat_changed(void* unused,
                                                             void* event_user_arg)
 {
-    ogl_texture_internalformat new_depth_sm_internalformat = (ogl_texture_internalformat) (unsigned int) event_user_arg;
+    ogl_texture_internalformat new_depth_sm_internalformat = (ogl_texture_internalformat) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_depth_shadow_map_internalformat(new_depth_sm_internalformat);
@@ -366,7 +366,7 @@ PRIVATE void _ui_on_depth_shadow_map_internalformat_changed(void* unused,
 PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
                                                  void* event_user_arg)
 {
-    scene_light_shadow_map_algorithm new_sm_algo = (scene_light_shadow_map_algorithm) (unsigned int) event_user_arg;
+    scene_light_shadow_map_algorithm new_sm_algo = (scene_light_shadow_map_algorithm) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_shadow_map_algorithm(new_sm_algo);
@@ -436,7 +436,7 @@ PRIVATE void _ui_on_shadow_map_algorithm_changed(void* unused,
 PRIVATE void _ui_on_shadow_map_pointlight_algorithm_changed(void* unused,
                                                             void* event_user_arg)
 {
-    scene_light_shadow_map_pointlight_algorithm new_pl_algo = (scene_light_shadow_map_pointlight_algorithm) (unsigned int) event_user_arg;
+    scene_light_shadow_map_pointlight_algorithm new_pl_algo = (scene_light_shadow_map_pointlight_algorithm) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_shadow_map_pointlight_algorithm(new_pl_algo);
@@ -446,7 +446,7 @@ PRIVATE void _ui_on_shadow_map_pointlight_algorithm_changed(void* unused,
 PRIVATE void _ui_on_shadow_map_size_changed(void* unused,
                                             void* event_user_arg)
 {
-    unsigned int new_shadow_map_size = (unsigned int) event_user_arg;
+    unsigned int new_shadow_map_size = (unsigned int) (intptr_t) event_user_arg;
 
     /* Update Emerald state */
     state_set_shadow_map_size(new_shadow_map_size);

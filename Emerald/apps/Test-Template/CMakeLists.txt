@@ -41,7 +41,10 @@ SET(AllTestPipelineSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTestPipelineSources)
 
 ADD_EXECUTABLE(TestPipeline WIN32 ${AllTestPipelineSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(TestPipeline PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(TestPipeline PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

@@ -5,18 +5,18 @@
  */
 
 #include "shared.h"
-#include "include\main.h"
+#include "include/main.h"
 #include "stage_step_background.h"
 #include "stage_step_julia.h"
-#include "ogl\ogl_context.h"
-#include "ogl\ogl_flyby.h"
-#include "ogl\ogl_pipeline.h"
-#include "ogl\ogl_program.h"
-#include "ogl\ogl_program_ub.h"
-#include "ogl\ogl_shader.h"
-#include "ogl\ogl_texture.h"
-#include "procedural\procedural_mesh_sphere.h"
-#include "system\system_matrix4x4.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_flyby.h"
+#include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_shader.h"
+#include "ogl/ogl_texture.h"
+#include "procedural/procedural_mesh_sphere.h"
+#include "system/system_matrix4x4.h"
 
 GLuint                 _julia_data_ub_offset                      = -1;
 GLuint                 _julia_dof_cutoff_ub_offset                = -1;
@@ -39,7 +39,7 @@ ogl_program            _julia_program                             = NULL;
 ogl_program_ub         _julia_program_ub                          = NULL;
 GLuint                 _julia_program_ub_bo_id                    = 0;
 GLuint                 _julia_program_ub_bo_size                  = 0;
-GLuint                 _julia_program_ub_bo_start_offset          = NULL;
+GLuint                 _julia_program_ub_bo_start_offset          = 0;
 GLuint                 _julia_raycast_radius_multiplier_ub_offset = -1;
 GLuint                 _julia_reflectivity_ub_offset              = -1;
 GLuint                 _julia_sph_texture_uniform_location        = -1;
@@ -731,7 +731,7 @@ PUBLIC void stage_step_julia_init(ogl_context  context,
                                             GL_FLOAT,
                                             GL_FALSE,
                                             0, /* stride */
-                                            (void*) vertex_data_offset);
+                                            (void*) (intptr_t) vertex_data_offset);
     entrypoints->pGLEnableVertexAttribArray(_julia_vertex_attribute_location);
 
     entrypoints->pGLProgramUniform1i(ogl_program_get_id(_julia_program),

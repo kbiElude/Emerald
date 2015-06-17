@@ -5,16 +5,16 @@
  */
 
 #include "shared.h"
-#include "include\main.h"
+#include "include/main.h"
 #include "stage_step_julia.h"
-#include "ogl\ogl_context.h"
-#include "ogl\ogl_flyby.h"
-#include "ogl\ogl_pipeline.h"
-#include "ogl\ogl_program.h"
-#include "ogl\ogl_program_ub.h"
-#include "ogl\ogl_shader.h"
-#include "procedural\procedural_mesh_sphere.h"
-#include "system\system_matrix4x4.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_flyby.h"
+#include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_shader.h"
+#include "procedural/procedural_mesh_sphere.h"
+#include "system/system_matrix4x4.h"
 
 GLuint                 _julia_data_ub_offset                      = -1;
 GLuint                 _julia_epsilon_ub_offset                   = -1;

@@ -256,15 +256,30 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     }
 }
 
+#ifdef _WIN32
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle,
                    HINSTANCE,
                    LPTSTR,
                    int)
+#else
+int main()
+#endif
 {
-    float camera_position[3] = {0, 0, 0};
-    int   window_size    [2] = {1280, 720};
-    int   window_x1y1x2y2[4] = {0};
+    float       camera_position[3]   = {0, 0, 0};
+    const bool  flyby_active         = true;
+    const float flyby_movement_delta = 10.25f;
+    int         window_size    [2]   = {1280, 720};
+    int         window_x1y1x2y2[4]   = {0};
+
+    const system_hashed_ansi_string filter_descriptions[] =
+    {
+        system_hashed_ansi_string_create("COLLADA files")
+    };
+    const system_hashed_ansi_string filter_extensions[] =
+    {
+        system_hashed_ansi_string_create("*.dae")
+    };
 
     /* Carry on */
     system_window_get_centered_window_position_for_primary_monitor(window_size,
@@ -295,29 +310,20 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        _rendering_rbm_callback_handler,
+                                        (void*) _rendering_rbm_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        _window_closed_callback_handler,
+                                        (void*) _window_closed_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closing_callback_handler,
+                                        (void*) _window_closing_callback_handler,
                                         NULL);
 
     /* Let the user select the DAE file */
-    const system_hashed_ansi_string filter_descriptions[] =
-    {
-        system_hashed_ansi_string_create("COLLADA files")
-    };
-    const system_hashed_ansi_string filter_extensions[] =
-    {
-        system_hashed_ansi_string_create("*.dae")
-    };
-
     _selected_collada_data_file = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
                                                                             1, /* n_filters */
                                                                             filter_descriptions,
@@ -341,9 +347,6 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
-    const bool  flyby_active         = true;
-    const float flyby_movement_delta = 10.25f;
-
     _test_scene = collada_data_get_emerald_scene(_test_collada_data,
                                                  _context,
                                                  0); /* n_scene */

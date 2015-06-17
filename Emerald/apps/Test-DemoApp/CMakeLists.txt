@@ -41,7 +41,10 @@ SET(AllTest-DemoAppSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTest-DemoAppSources)
 
 ADD_EXECUTABLE(Test-DemoApp WIN32 ${AllTest-DemoAppSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(Test-DemoApp PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(Test-DemoApp PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ENDIF (MSVC)
 
 FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${Test-DemoApp_BINARY_DIR}/blob/")
 

@@ -4,9 +4,9 @@
  *
  */
 #include "test_time.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_time.h"
-#include "gtest/gtest.h"
 
 
 TEST(TimeTest, Conversions)

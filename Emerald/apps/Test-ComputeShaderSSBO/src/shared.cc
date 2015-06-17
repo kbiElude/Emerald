@@ -1,7 +1,8 @@
 /**
  *
- * Object browser test app (kbi/elude @2012)
+ * Compute shader + SSBO test app (kbi/elude @2015)
  *
  */
-
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif

@@ -342,7 +342,11 @@ void _rendering_window_closing_callback_handler(system_window window)
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+#else
+    int main()
+#endif
 {
     int window_size    [2] = {WINDOW_WIDTH, WINDOW_HEIGHT};
     int window_x1y1x2y2[4] = {0};
@@ -376,22 +380,22 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        _rendering_rbm_callback_handler,
+                                        (void*) _rendering_rbm_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                        _rendering_key_down_callback_handler,
+                                        (void*) _rendering_key_down_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        _rendering_window_closed_callback_handler,
+                                        (void*) _rendering_window_closed_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _rendering_window_closing_callback_handler,
+                                        (void*) _rendering_window_closing_callback_handler,
                                         NULL);
 
     /* Let the user select the scene file */

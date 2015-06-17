@@ -1,7 +1,8 @@
 /**
  *
- * Object browser test app (kbi/elude @2012)
+ * ES 3.1 application template
  *
  */
-
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif

@@ -4,12 +4,12 @@
  *
  */
 #include "test_window.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_window.h"
-#include "gtest/gtest.h"
 
 static void _mouse_move_entrypoint(system_window           window,
                                    unsigned short          x,
@@ -31,6 +31,8 @@ TEST(WindowTest, CreationTest)
                                                                           true,
                                                                           false, /* multisampling_supported */
                                                                           true); /* visible */
+
+#ifdef _WIN32
     HWND          window_sys_handle = 0;
 
     ASSERT_TRUE(window_handle != NULL);
@@ -41,18 +43,22 @@ TEST(WindowTest, CreationTest)
 
     ASSERT_EQ(::IsWindow(window_sys_handle),
                          TRUE);
+#endif
 
     /* Set a callback func */
     system_window_add_callback_func(window_handle,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                    _mouse_move_entrypoint,
+                                    (void*) _mouse_move_entrypoint,
                                     NULL); /* callback_func_user_arg */
 
     /* Destroy the window */
     ASSERT_TRUE(system_window_close(window_handle) );
+
+#ifdef _WIN32
     ASSERT_EQ  (::IsWindow          (window_sys_handle),
                 FALSE);
+#endif
 }
 
 /* rendering handler tests */
@@ -90,6 +96,7 @@ TEST(WindowTest, RenderingHandlerTest)
                                                                           true,  /* vsync_enabled */
                                                                           false, /* multisampling_supported */
                                                                           true); /* visible */
+#ifdef _WIN32
     HWND          window_sys_handle = 0;
 
     ASSERT_TRUE(window_handle != NULL);
@@ -100,6 +107,7 @@ TEST(WindowTest, RenderingHandlerTest)
 
     ASSERT_EQ(::IsWindow(window_sys_handle),
               TRUE);
+#endif
 
     /* Create a rendering handler */
     ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
@@ -115,7 +123,12 @@ TEST(WindowTest, RenderingHandlerTest)
     ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,
                                            0) );
 
-    ::Sleep  (1000);
+#ifdef _WIN32
+    ::Sleep(1000);
+#else
+    sleep(1);
+#endif
+
     ASSERT_NE(global_n_frames_rendered,
               0);
 
@@ -124,7 +137,11 @@ TEST(WindowTest, RenderingHandlerTest)
 
     global_n_frames_rendered = 0;
 
+#ifdef _WIN32
     ::Sleep(1000);
+#else
+    sleep(1);
+#endif
 
     ASSERT_EQ(global_n_frames_rendered,
               0);
@@ -135,6 +152,9 @@ TEST(WindowTest, RenderingHandlerTest)
 
     /* Destroy the window in a blunt way */
     ASSERT_TRUE(system_window_close(window_handle) );
+
+#ifdef _WIN32
     ASSERT_EQ  (::IsWindow         (window_sys_handle),
                 FALSE);
+#endif
 }

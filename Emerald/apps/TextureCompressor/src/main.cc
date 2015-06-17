@@ -406,7 +406,7 @@ void _change_algorithm_renderer_callback(ogl_context context,
                                          void*       user_arg)
 {
     _compress_texture(context,
-                      (uint32_t) user_arg);
+                      (uint32_t) (intptr_t) user_arg);
 
     _update_ui_controls_strings();
 }
@@ -562,8 +562,11 @@ system_hashed_ansi_string _get_compressed_filename()
 bool _load_texture(ogl_context               context,
                    system_hashed_ansi_string file_name)
 {
-    gfx_image image_nc = NULL;
-    bool      result   = true;
+    uint32_t  image_height  = 0;
+    gfx_image image_nc      = NULL;
+    uint32_t  image_width   = 0;
+    bool      result        = true;
+    float     scaled_y_span = 0.0f;
 
     /* Try to load the file */
     image_nc = gfx_image_create_from_file(file_name,
@@ -598,10 +601,6 @@ bool _load_texture(ogl_context               context,
 
     /* Center the image on the screen. We assume the image needs to completely fit
      * horizontally within the viewport. */
-    uint32_t image_height      = 0;
-    uint32_t image_width       = 0;
-    float    scaled_y_span     = 0.0f;
-
     gfx_image_get_mipmap_property(image_nc,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
@@ -1326,7 +1325,7 @@ void _setup_ui(ogl_context context)
                       n_algorithm < n_compressed_internalformats;
                     ++n_algorithm)
     {
-        user_args[n_algorithm] = (void*) n_algorithm;
+        user_args[n_algorithm] = (void*) (intptr_t) n_algorithm;
     }
 
     /* Set up the UI */
@@ -1686,13 +1685,15 @@ void _update_ui_controls_strings()
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+#else
+    int main()
+#endif
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_x1y1x2y2[4]       = {0};
-
-    _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
 
     /* Carry on */
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
@@ -1720,22 +1721,22 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        _rendering_lbm_down_callback_handler,
+                                        (void*) _rendering_lbm_down_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                        _rendering_lbm_up_callback_handler,
+                                        (void*) _rendering_lbm_up_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                        _rendering_move_callback_handler,
+                                        (void*) _rendering_move_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-                                        _rendering_mouse_wheel_callback_handler,
+                                        (void*) _rendering_mouse_wheel_callback_handler,
                                         NULL);
 
     /* Locate all jpg files */
@@ -1761,17 +1762,17 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
-                                    _callback_on_rbm_up,
+                                    (void*) _callback_on_rbm_up,
                                     NULL);
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                    _callback_window_closed,
+                                    (void*) _callback_window_closed,
                                     NULL);
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                    _callback_window_closing,
+                                    (void*) _callback_window_closing,
                                     NULL);
     /* Carry on */
     ogl_rendering_handler_play(window_rendering_handler,

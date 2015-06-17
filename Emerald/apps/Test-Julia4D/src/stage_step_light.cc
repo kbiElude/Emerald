@@ -5,17 +5,18 @@
  */
 
 #include "shared.h"
-#include "include\main.h"
+#include "include/main.h"
 #include "stage_step_light.h"
-#include "ogl\ogl_context.h"
-#include "ogl\ogl_flyby.h"
-#include "ogl\ogl_pipeline.h"
-#include "ogl\ogl_program.h"
-#include "ogl\ogl_program_ub.h"
-#include "ogl\ogl_shader.h"
-#include "shaders\shaders_fragment_static.h"
-#include "shaders\shaders_vertex_combinedmvp_generic.h"
-#include "system\system_matrix4x4.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_flyby.h"
+#include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_shader.h"
+#include "shaders/shaders_fragment_static.h"
+#include "shaders/shaders_vertex_combinedmvp_generic.h"
+#include "system/system_matrix4x4.h"
+#include <string.h>
 
 ogl_program      _light_program                           =  0;
 ogl_program_ub   _light_program_datafs_ub                 = NULL;

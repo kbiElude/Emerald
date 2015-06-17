@@ -4,10 +4,10 @@
  *
  */
 #include "test_events.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_event.h"
 #include "system/system_threads.h"
-#include "gtest/gtest.h"
 
 /* ------ "Wait, then set" functional test ------ */
 typedef struct _wait_then_set_test_data
@@ -25,7 +25,11 @@ PRIVATE void _wait_then_set_test_setter_thread(void* user_arg)
     _wait_then_set_test_data* data_ptr = (_wait_then_set_test_data*) user_arg;
 
     /* Wait for 2s */
+#ifdef _WIN32
     ::Sleep(2000);
+#else
+    sleep(2);
+#endif
 
     /* Set the event */
     system_event_set(data_ptr->wakeup_event);

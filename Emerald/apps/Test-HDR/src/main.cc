@@ -4,7 +4,6 @@
  *
  */
 #include "shared.h"
-#include <crtdbg.h>
 #include <stdlib.h>
 #include "main.h"
 #include "curve/curve_container.h"
@@ -567,10 +566,14 @@ void _window_closing_callback_handler(system_window window)
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle,
-                   HINSTANCE,
-                   LPTSTR,
-                   int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle,
+                       HINSTANCE,
+                       LPTSTR,
+                       int)
+#else
+    int main()
+#endif
 {
     _float_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
@@ -712,22 +715,22 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                         _rendering_lbm_callback_handler,
+                                         (void*) _rendering_lbm_callback_handler,
                                          NULL);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                         _rendering_rbm_callback_handler,
+                                         (void*) _rendering_rbm_callback_handler,
                                          NULL);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                         _window_closed_callback_handler,
+                                         (void*) _window_closed_callback_handler,
                                          NULL);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                         _window_closing_callback_handler,
+                                         (void*) _window_closing_callback_handler,
                                          NULL);
 
     ogl_rendering_handler_set_fps_counter_visibility(window_rendering_handler,

@@ -28,8 +28,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
-#include "shared.h"
 #include "gtest/gtest.h"
+#include "shared.h"
 #include "main.h"
 
 GTEST_API_ int main(int argc, char **argv) {

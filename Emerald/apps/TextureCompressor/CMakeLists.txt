@@ -41,7 +41,10 @@ SET(AllTextureCompressorSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTextureCompressorSources)
 
 ADD_EXECUTABLE(TextureCompressor WIN32 ${AllTextureCompressorSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(TextureCompressor PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(TextureCompressor PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

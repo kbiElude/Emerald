@@ -3,11 +3,11 @@
  * Emerald (kbi/elude @2012-2015)
  *
  */
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_log.h"
 #include "system/system_memory_manager.h"
 #include "system/system_resizable_vector.h"
-#include "gtest/gtest.h"
 
 
 struct _memory_block
@@ -373,10 +373,10 @@ TEST(MemoryManagerTest, AllocReleaseAlloc)
 
         ASSERT_TRUE(result);
         ASSERT_TRUE(system_resizable_vector_find(alloc_offsets,
-                                                 (void*) alloc_offset) == ITEM_NOT_FOUND);
+                                                 (void*) (intptr_t) alloc_offset) == ITEM_NOT_FOUND);
 
         system_resizable_vector_push(alloc_offsets,
-                                     (void*) alloc_offset);
+                                     (void*) (intptr_t) alloc_offset);
     } /* for (all allocable blocks) */
 
     /* 2. Free all those blocks */
@@ -472,7 +472,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
         ASSERT_TRUE(result);
 
         system_resizable_vector_push(alloc_offsets,
-                                     (void*) alloc_offset);
+                                     (void*) (intptr_t) alloc_offset);
     } /* for (all allocable blocks) */
 
     /* 2. Free all those blocks */
