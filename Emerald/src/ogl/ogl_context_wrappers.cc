@@ -19,7 +19,7 @@
 #include "system/system_log.h"
 #include <math.h>
 
-#ifdef __WIN32
+#ifdef _WIN32
     __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
 #else
     __thread ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;

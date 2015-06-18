@@ -14,6 +14,11 @@
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_window.h"
+#include <algorithm>
+
+#ifdef _WIN32
+    #undef min
+#endif
 
 GLuint       _bo_id                = 0;
 ogl_context  _context              = NULL;

@@ -12,9 +12,13 @@
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
+#include <algorithm>
 
 #define DEFAULT_MIPMAPS_AMOUNT (4)
 
+#ifdef _WIN32
+    #undef max
+#endif
 
 /* Private declarations */
 typedef struct

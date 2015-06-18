@@ -16,7 +16,11 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
+#include <algorithm>
 
+#ifdef _WIN32
+    #undef max
+#endif
 
 /** Internal type definition */
 typedef struct
