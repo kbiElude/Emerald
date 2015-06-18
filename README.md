@@ -2,8 +2,15 @@ Emerald
 =======
 
 OpenGL 4.3-based rendering engine written by kbi/Elude.
-It is Windows-only for the time being. A Linux port is
-in the workings.
+It is Windows-only for the time being.
+
+A Linux port is in the workings at the moment. It is a lot
+of work, so it will take a little while before the port sees
+the light of dat. You can see the latest progress by having
+a look at the branch issue55.
+
+Emerald is 32-bit-only at the moment. 64-bit compatibility
+is considered to be of low priority at the moment.
 
 This hobbistic project is in incessant, over-night
 development, hence may not necessarily compile or build
