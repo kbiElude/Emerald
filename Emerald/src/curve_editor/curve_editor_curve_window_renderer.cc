@@ -466,6 +466,8 @@ PRIVATE void _curve_editor_curve_window_renderer_deinit_globals()
 {
     if (::InterlockedDecrement(&_globals->ref_counter) == 0)
     {
+        _is_globals_initialized = false;
+
         if (_globals->bg_program != NULL)
         {
             ogl_program_release(_globals->bg_program);
@@ -2889,6 +2891,12 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    /* If globals are not initialized DO NOT continue */
+    if (!_is_globals_initialized)
+    {
+        return;
+    }
+
     /* If this is the first draw call ever, initialize uniform & uniform block data */
     if (descriptor_ptr->static_color_program_ub_fs == NULL)
     {
@@ -2953,12 +2961,6 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         descriptor_ptr->static_color_program_a_ub_offset     = a_uniform_descriptor->block_offset;
         descriptor_ptr->static_color_program_b_ub_offset     = b_uniform_descriptor->block_offset;
         descriptor_ptr->static_color_program_mvp_ub_offset   = mvp_uniform_descriptor->block_offset;
-    }
-
-    /* If globals are not initialized DO NOT continue */
-    if (!_is_globals_initialized)
-    {
-        return;
     }
 
     /* Enable line smoothing */
@@ -3647,13 +3649,18 @@ PUBLIC void curve_editor_curve_window_renderer_redraw(__in __notnull curve_edito
 /* Please see header for specification */
 PUBLIC void curve_editor_curve_window_renderer_release(__in __post_invalid curve_editor_curve_window_renderer descriptor)
 {
+    _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
+
+    if (descriptor_ptr->rendering_handler != NULL)
+    {
+        ogl_rendering_handler_stop(descriptor_ptr->rendering_handler);
+    }
+
     /* Deinitialize globals if necessary. */
     if (_globals != NULL)
     {
         _curve_editor_curve_window_renderer_deinit_globals();
     }
-
-    _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
 
     _curve_editor_curve_window_renderer_deinit(descriptor_ptr);
     delete descriptor_ptr;
