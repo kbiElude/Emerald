@@ -1228,8 +1228,8 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
 /** Please see header for specification */
 PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window               window,
                                                  __in           system_window_callback_func func,
-                                                 __in_opt       void*                       arg_wparam,  /* TODO: remove in next commit! */
-                                                 __in_opt       void*                       arg_lparam)
+                                                 __in_opt       void*                       arg1,
+                                                 __in_opt       void*                       arg2)
 {
     system_resizable_vector callback_vector  = NULL;
     unsigned int            n_callback_funcs = 0;
@@ -1385,7 +1385,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                                                  SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
                                                 &n_callback_funcs);
 
-            /* We need to know cursor position for a handful of call-back types */\
+            /* We need to know cursor position for a handful of call-back types */
             if (needs_cursor_pos)
             {
                 window_ptr->pfn_window_get_property(window_ptr->window_platform,
@@ -1411,7 +1411,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                         case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
                         {
                             result = ((PFNWINDOWCHARCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                              (unsigned short) arg_wparam,
+                                                                                              (unsigned char) arg1,
                                                                                               callback_ptr->user_arg);
 
                             break;
@@ -1427,7 +1427,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
                         {
                             result = ((PFNWINDOWKEYDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                                 (unsigned short) arg_wparam,
+                                                                                                 (unsigned char) arg1,
                                                                                                  callback_ptr->user_arg);
 
                             break;
@@ -1436,7 +1436,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
                         {
                             result = ((PFNWINDOWKEYUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                               (unsigned short) arg_wparam,
+                                                                                               (unsigned char) arg1,
                                                                                                callback_ptr->user_arg);
 
                             break;
@@ -1447,7 +1447,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                           cursor_position[0],
                                                                                                           cursor_position[1],
-                                                                                                          (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                          (system_window_vk_status) (intptr_t) arg1,
                                                                                                           callback_ptr->user_arg);
 
                             break;
@@ -1458,7 +1458,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                         cursor_position[0],
                                                                                                         cursor_position[1],
-                                                                                                        (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                        (system_window_vk_status) (intptr_t) arg1,
                                                                                                         callback_ptr->user_arg);
 
                             break;
@@ -1469,7 +1469,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWLEFTBUTTONUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                       cursor_position[0],
                                                                                                       cursor_position[1],
-                                                                                                      (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                      (system_window_vk_status) (intptr_t) arg1,
                                                                                                       callback_ptr->user_arg);
 
                             break;
@@ -1480,7 +1480,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                             cursor_position[0],
                                                                                                             cursor_position[1],
-                                                                                                            (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                            (system_window_vk_status) (intptr_t) arg1,
                                                                                                             callback_ptr->user_arg);
 
                             break;
@@ -1491,7 +1491,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                           cursor_position[0],
                                                                                                           cursor_position[1],
-                                                                                                          (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                          (system_window_vk_status) (intptr_t) arg1,
                                                                                                           callback_ptr->user_arg);
 
                             break;
@@ -1502,7 +1502,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                         cursor_position[0],
                                                                                                         cursor_position[1],
-                                                                                                        (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                        (system_window_vk_status) (intptr_t) arg1,
                                                                                                         callback_ptr->user_arg);
 
                             break;
@@ -1513,7 +1513,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWMOUSEMOVECALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                    cursor_position[0],
                                                                                                    cursor_position[1],
-                                                                                                   (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                   (system_window_vk_status) (intptr_t) arg1,
                                                                                                    callback_ptr->user_arg);
 
                             break;
@@ -1524,8 +1524,8 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWMOUSEWHEELCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                     cursor_position[0],
                                                                                                     cursor_position[1],
-                                                                                                    (short)                   (intptr_t) arg_wparam,
-                                                                                                    (system_window_vk_status) (intptr_t) arg_lparam,
+                                                                                                    (short)                   (intptr_t) arg1,
+                                                                                                    (system_window_vk_status) (intptr_t) arg2,
                                                                                                     callback_ptr->user_arg);
 
                             break;
@@ -1536,7 +1536,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                            cursor_position[0],
                                                                                                            cursor_position[1],
-                                                                                                           (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                           (system_window_vk_status) (intptr_t) arg1,
                                                                                                            callback_ptr->user_arg);
 
                             break;
@@ -1547,7 +1547,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                          cursor_position[0],
                                                                                                          cursor_position[1],
-                                                                                                         (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                         (system_window_vk_status) (intptr_t) arg1,
                                                                                                          callback_ptr->user_arg);
 
                             break;
@@ -1558,7 +1558,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                             result = ((PFNWINDOWRIGHTBUTTONUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
                                                                                                        cursor_position[0],
                                                                                                        cursor_position[1],
-                                                                                                       (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                       (system_window_vk_status) (intptr_t) arg1,
                                                                                                        callback_ptr->user_arg);
 
                             break;

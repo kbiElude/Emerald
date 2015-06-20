@@ -191,159 +191,10 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
 
     switch (message_id)
     {
-        case WM_EMERALD_LOCK_MESSAGE_PUMP:
-        {
-            win32_ptr->is_message_pump_locked = true;
-
-            system_event_set        (win32_ptr->message_pump_lock_event);
-            system_event_wait_single(win32_ptr->message_pump_unlock_event);
-
-            win32_ptr->is_message_pump_locked = false;
-
-            system_event_reset(win32_ptr->message_pump_unlock_event);
-            return 0;
-        }
-
-        case WM_MOUSEMOVE:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                                 (void*) wparam);
-
-            if (win32_ptr->current_mouse_cursor_system_resource != NULL)
-            {
-                ::SetCursor(win32_ptr->current_mouse_cursor_system_resource);
-            }
-
-            break;
-        }
-
-        case WM_EXITSIZEMOVE:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE);
-
-            break;
-        }
-
-        case WM_LBUTTONDOWN:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_LBUTTONUP:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_LBUTTONDBLCLK:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOUBLE_CLICK,
-                                                 (void*) wparam);
-
-            /* WinAPI sucks and is far from reasonable. Most of our apps will expect click notifications and won't watch for double clicks. */
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_MBUTTONDOWN:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOWN,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_MBUTTONUP:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_UP,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_MBUTTONDBLCLK:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOUBLE_CLICK,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_RBUTTONDOWN:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_RBUTTONUP:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_RBUTTONDBLCLK:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK,
-                                                 (void*) wparam);
-
-            break;
-        }
-
-        case WM_MOUSEWHEEL:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-                                                 (void*) GET_WHEEL_DELTA_WPARAM(wparam),
-                                                 (void*) LOWORD(wparam) );
-
-            return 0;
-        }
-
         case WM_CHAR:
         {
             system_window_execute_callback_funcs(win32_ptr->window,
                                                  SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,
-                                                 (void*) wparam);
-
-            return 0;
-        }
-
-        case WM_KEYDOWN:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                                 (void*) wparam);
-
-            return 0;
-        }
-
-        case WM_KEYUP:
-        {
-            system_window_execute_callback_funcs(win32_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
                                                  (void*) wparam);
 
             return 0;
@@ -410,6 +261,155 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
             ::PostQuitMessage(0);
 
             return 0;
+        }
+
+        case WM_EMERALD_LOCK_MESSAGE_PUMP:
+        {
+            win32_ptr->is_message_pump_locked = true;
+
+            system_event_set        (win32_ptr->message_pump_lock_event);
+            system_event_wait_single(win32_ptr->message_pump_unlock_event);
+
+            win32_ptr->is_message_pump_locked = false;
+
+            system_event_reset(win32_ptr->message_pump_unlock_event);
+            return 0;
+        }
+
+        case WM_EXITSIZEMOVE:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE);
+
+            break;
+        }
+
+        case WM_KEYDOWN:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
+                                                 (void*) (LOWORD(wparam) & 0xFF) );
+
+            return 0;
+        }
+
+        case WM_KEYUP:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
+                                                 (void*) (LOWORD(wparam) & 0xFF) );
+
+            return 0;
+        }
+
+        case WM_LBUTTONDBLCLK:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOUBLE_CLICK,
+                                                 (void*) wparam);
+
+            /* WinAPI sucks and is far from reasonable. Most of our apps will expect click notifications and won't watch for double clicks. */
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_LBUTTONDOWN:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_LBUTTONUP:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_MBUTTONDBLCLK:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOUBLE_CLICK,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_MBUTTONDOWN:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOWN,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_MBUTTONUP:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_UP,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_MOUSEMOVE:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
+                                                 (void*) wparam);
+
+            if (win32_ptr->current_mouse_cursor_system_resource != NULL)
+            {
+                ::SetCursor(win32_ptr->current_mouse_cursor_system_resource);
+            }
+
+            break;
+        }
+
+        case WM_MOUSEWHEEL:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
+                                                 (void*) GET_WHEEL_DELTA_WPARAM(wparam),
+                                                 (void*) LOWORD(wparam) );
+
+            return 0;
+        }
+
+        case WM_RBUTTONDBLCLK:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_RBUTTONDOWN:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
+                                                 (void*) wparam);
+
+            break;
+        }
+
+        case WM_RBUTTONUP:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
+                                                 (void*) wparam);
+
+            break;
         }
 
         #ifdef INCLUDE_WEBCAM_MANAGER

@@ -141,12 +141,14 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
 
 /** TODO
  *
+ *  Note: Meaning of @param arg1 and @param arg2 is callback-specific. See
+ *        call-back enum documentation for more details.
  *  Note: Internal use only.
  */
 PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window               window,
                                                  __in           system_window_callback_func func,
-                                                 __in_opt       void*                       arg_wparam = NULL,  /* TODO: remove in next commit! */
-                                                 __in_opt       void*                       arg_lparam = NULL); /* TODO: remove in next commit! */
+                                                 __in_opt       void*                       arg1 = NULL,
+                                                 __in_opt       void*                       arg2 = NULL);
 
 /** Retrieves coordinates that can be passed to system_window_create_not_fullscreen() in order
  *  to position the window in the center of primary monitor.
