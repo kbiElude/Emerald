@@ -827,8 +827,9 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
     ASSERT_DEBUG_SYNC(root_window_rendering_handler != NULL,
                       "Root window rendering handler creation failed");
 
-    system_window_set_rendering_handler(root_window,
-                                        root_window_rendering_handler);
+    system_window_set_property(root_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &root_window_rendering_handler);
 
     /* The setter takes ownership of root_window, but for the sake of code maintainability,
      * retain the RH so that we can release it at the moment root_window is also released. */
@@ -945,42 +946,52 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in s
                                                                           __in system_window_handle      parent_window_handle,
                                                                           __in bool                      multisampling_supported)
 {
-    BOOL          boolean_result     = FALSE;
-    RECT          parent_window_rect;
-    RECT          grandparent_window_rect;
-    system_window result             = NULL;
-    int           x1y1x2y2[4]        = {0};
+    system_window result = NULL;
 
-    boolean_result  = ::GetWindowRect(parent_window_handle,
-                                     &parent_window_rect);
-    boolean_result &= ::GetWindowRect(::GetParent(parent_window_handle),
-                                     &grandparent_window_rect);
-
-    ASSERT_ALWAYS_SYNC(boolean_result == TRUE,
-                       "Could not retrieve window rectangle for parent window handle [%x]",
-                       parent_window_handle);
-
-    if (boolean_result)
+    #ifdef _WIN32
     {
-        x1y1x2y2[0] = parent_window_rect.left   - grandparent_window_rect.left;
-        x1y1x2y2[1] = parent_window_rect.top    - grandparent_window_rect.top;
-        x1y1x2y2[2] = parent_window_rect.right  - grandparent_window_rect.left;
-        x1y1x2y2[3] = parent_window_rect.bottom - grandparent_window_rect.top;
+        BOOL boolean_result     = FALSE;
+        RECT parent_window_rect;
+        RECT grandparent_window_rect;
+        int  x1y1x2y2[4]        = {0};
 
-        result = _system_window_create_shared(context_type,
-                                              false,  /* not fullscreen */
-                                              x1y1x2y2, 
-                                              name,
-                                              false, /* not scalable */
-                                              n_multisampling_samples,
-                                              0,
-                                              0,
-                                              vsync_enabled,
-                                              ::GetParent(parent_window_handle),
-                                              multisampling_supported,
-                                              true  /* visible */,
-                                              false /* is_root_window */);
+        boolean_result  = ::GetWindowRect(parent_window_handle,
+                                         &parent_window_rect);
+        boolean_result &= ::GetWindowRect(::GetParent(parent_window_handle),
+                                         &grandparent_window_rect);
+
+        ASSERT_ALWAYS_SYNC(boolean_result == TRUE,
+                           "Could not retrieve window rectangle for parent window handle [%x]",
+                           parent_window_handle);
+
+        if (boolean_result)
+        {
+            x1y1x2y2[0] = parent_window_rect.left   - grandparent_window_rect.left;
+            x1y1x2y2[1] = parent_window_rect.top    - grandparent_window_rect.top;
+            x1y1x2y2[2] = parent_window_rect.right  - grandparent_window_rect.left;
+            x1y1x2y2[3] = parent_window_rect.bottom - grandparent_window_rect.top;
+
+            result = _system_window_create_shared(context_type,
+                                                  false,  /* not fullscreen */
+                                                  x1y1x2y2, 
+                                                  name,
+                                                  false, /* not scalable */
+                                                  n_multisampling_samples,
+                                                  0,
+                                                  0,
+                                                  vsync_enabled,
+                                                  ::GetParent(parent_window_handle),
+                                                  multisampling_supported,
+                                                  true  /* visible */,
+                                                  false /* is_root_window */);
+        }
     }
+    #else
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "system_window_create_by_replacing_window() is only supported under Windows");
+    }
+    #endif
 
     return result;
 }
@@ -1004,7 +1015,7 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in       
                                         0,
                                         0,
                                         vsync_enabled,
-                                        HWND_DESKTOP,
+                                        NULL, /* parent_window_handle */
                                         multisampling_supported,
                                         visible,
                                         false /* is_root_window */);
@@ -1031,7 +1042,7 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
                                         bpp,
                                         freq,
                                         vsync_enabled,
-                                        HWND_DESKTOP,
+                                        NULL, /* parent_window_handle */
                                         multisampling_supported,
                                         true, /* visible */
                                         false /* is_root_window */);
@@ -1589,8 +1600,12 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_monitor(__in_ecount(2)  __notnull const int* dimensions,
                                                                                        __out_ecount(4) __notnull int*       result_dimensions)
 {
-    int fullscreen_x = ::GetSystemMetrics(SM_CXFULLSCREEN);
-    int fullscreen_y = ::GetSystemMetrics(SM_CYFULLSCREEN);
+    #ifdef _WIN32
+        int fullscreen_x = ::GetSystemMetrics(SM_CXFULLSCREEN);
+        int fullscreen_y = ::GetSystemMetrics(SM_CYFULLSCREEN);
+    #else
+        TODO;
+    #endif
 
     if (fullscreen_x >= dimensions[0] &&
         fullscreen_y >= dimensions[1])
@@ -1763,9 +1778,9 @@ PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window   
 }
 
 /** Please see header for specification */
-PUBLIC bool system_window_set_property(__in system_window          window,
-                                       __in system_window_property property,
-                                       __in const void*            data)
+PUBLIC EMERALD_API bool system_window_set_property(__in system_window          window,
+                                                   __in system_window_property property,
+                                                   __in const void*            data)
 {
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window;
@@ -1786,6 +1801,63 @@ PUBLIC bool system_window_set_property(__in system_window          window,
                 break;
             }
 
+            case SYSTEM_WINDOW_PROPERTY_POSITION:
+            {
+                const int* xy = (const int*) data;
+
+                result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
+                                                             SYSTEM_WINDOW_PROPERTY_POSITION,
+                                                             xy);
+
+                /* Update internal representation */
+                int width  = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
+                int height = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
+
+                window_ptr->x1y1x2y2[0] = xy[0];
+                window_ptr->x1y1x2y2[1] = xy[1];
+                window_ptr->x1y1x2y2[2] = xy[0] + width;
+                window_ptr->x1y1x2y2[3] = xy[1] + height;
+
+                break;
+            }
+
+            case SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER:
+            {
+                ogl_rendering_handler new_rendering_handler = *(ogl_rendering_handler*) data;
+
+                ASSERT_DEBUG_SYNC(new_rendering_handler != NULL,
+                                  "Cannot set a null rendering buffer!");
+
+                if (window_ptr->rendering_handler == NULL &&
+                    new_rendering_handler         != NULL)
+                {
+                    window_ptr->rendering_handler = new_rendering_handler;
+                    result                        = true;
+
+                    ogl_rendering_handler_retain              (window_ptr->rendering_handler);
+                    _ogl_rendering_handler_on_bound_to_context(window_ptr->rendering_handler,
+                                                               ((_system_window*)window)->system_ogl_context);
+                }
+
+                break;
+            }
+
+            case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
+            {
+                const int* width_height = (const int*) data;
+
+                /* Update internal representation */
+                window_ptr->x1y1x2y2[2] = window_ptr->x1y1x2y2[0] + width_height[0];
+                window_ptr->x1y1x2y2[3] = window_ptr->x1y1x2y2[1] + width_height[1];
+
+                /* Update platform-specific window instance */
+                result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
+                                                             SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                                             width_height);
+
+                break;
+            }
+
             default:
             {
                 ASSERT_DEBUG_SYNC(false,
@@ -1793,80 +1865,6 @@ PUBLIC bool system_window_set_property(__in system_window          window,
             }
         } /* switch (property) */
     }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_position(__in __notnull system_window window,
-                                                   __in __notnull int           x,
-                                                   __in __notnull int           y)
-{
-    bool            result     = false;
-    _system_window* window_ptr = (_system_window*) window;
-    const int       xy[2]      = {x, y};
-
-    result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
-                                                 SYSTEM_WINDOW_PROPERTY_POSITION,
-                                                 xy);
-
-    /* Update internal representation */
-    int width  = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
-    int height = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
-
-    window_ptr->x1y1x2y2[0] = x;
-    window_ptr->x1y1x2y2[1] = y;
-    window_ptr->x1y1x2y2[2] = x + width;
-    window_ptr->x1y1x2y2[3] = y + height;
-
-    /* Done */
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_rendering_handler(__in __notnull system_window         window,
-                                                            __in __notnull ogl_rendering_handler rendering_handler)
-{
-    bool            result     = false;
-    _system_window* window_ptr = (_system_window*) window;
-
-    ASSERT_DEBUG_SYNC(window_ptr->rendering_handler == NULL,
-                      "Cannot set a new rendering handler to the window - already set!");
-    ASSERT_DEBUG_SYNC(rendering_handler != NULL,
-                      "Cannot set a null rendering buffer!");
-
-    if (window_ptr->rendering_handler == NULL &&
-        rendering_handler             != NULL)
-    {
-        window_ptr->rendering_handler = rendering_handler;
-        result                        = true;
-
-        ogl_rendering_handler_retain              (window_ptr->rendering_handler);
-        _ogl_rendering_handler_on_bound_to_context(window_ptr->rendering_handler,
-                                                   ((_system_window*)window)->system_ogl_context);
-    }
-
-    return result;
-}
-
-/** Please see header for specification */
-PUBLIC EMERALD_API bool system_window_set_size(__in __notnull system_window window,
-                                               __in           int           width,
-                                               __in           int           height)
-{
-    bool            result     = false;
-    _system_window* window_ptr = (_system_window*) window;
-
-    /* Update internal representation */
-    window_ptr->x1y1x2y2[2] = window_ptr->x1y1x2y2[0] + width;
-    window_ptr->x1y1x2y2[3] = window_ptr->x1y1x2y2[1] + height;
-
-    /* Update platform-specific window instance */
-    const int width_height[] = {width, height};
-
-    result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
-                                                 SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
-                                                 width_height);
 
     return result;
 }

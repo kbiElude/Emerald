@@ -133,9 +133,10 @@ PRIVATE void _window_closed_callback_handler(system_window window)
     system_window_get_property(window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
+    system_window_set_property(window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &window_rendering_handler);
 
-    system_window_set_rendering_handler(window,
-                                        window_rendering_handler);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,

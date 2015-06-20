@@ -305,8 +305,10 @@ int main()
                                OGL_CONTEXT_PROPERTY_FLYBY,
                               &_flyby);
 
-    system_window_set_rendering_handler(_window,
-                                        _window_rendering_handler);
+    system_window_set_property         (_window,
+                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                       &_window_rendering_handler);
+
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,

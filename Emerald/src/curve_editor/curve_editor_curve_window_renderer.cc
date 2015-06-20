@@ -1720,11 +1720,11 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
                                                                                                 descriptor);
 
     /* Bind the rendering handler to our window */
-    result = system_window_set_rendering_handler(descriptor->window,
-                                                 descriptor->rendering_handler);
+    system_window_set_property(descriptor->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &descriptor->rendering_handler);
 
-    ASSERT_DEBUG_SYNC(result,
-                      "Could not bind rendering handler to curve window renderer window.");
+    result = true;
 
     /* Hide the window we use for retrieving dimensions */
     RECT window_rect = {0};
@@ -3679,13 +3679,14 @@ void _curve_editor_curve_window_renderer_on_resize(ogl_context context,
 PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_editor_curve_window_renderer renderer,
                                                       __in __ecount(4) int*                               x1y1x2y2)
 {
-    _curve_editor_curve_window_renderer* renderer_ptr = (_curve_editor_curve_window_renderer*) renderer;
-    uint32_t                             new_height   = x1y1x2y2[3] - x1y1x2y2[1];
-    uint32_t                             new_width    = x1y1x2y2[2] - x1y1x2y2[0];
+    _curve_editor_curve_window_renderer* renderer_ptr       = (_curve_editor_curve_window_renderer*) renderer;
+    uint32_t                             new_height         = x1y1x2y2[3] - x1y1x2y2[1];
+    uint32_t                             new_width          = x1y1x2y2[2] - x1y1x2y2[0];
+    uint32_t                             new_width_height[] = {new_width, new_height};
 
-    system_window_set_size        (renderer_ptr->window,
-                                   new_width,
-                                   new_height);
+    system_window_set_property    (renderer_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   new_width_height);
     ogl_text_set_screen_properties(renderer_ptr->text_renderer,
                                    new_width,
                                    new_height);

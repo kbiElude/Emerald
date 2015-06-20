@@ -341,9 +341,10 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     system_window_get_property(_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
+    system_window_set_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &window_rendering_handler);
 
-    system_window_set_rendering_handler(_window,
-                                        window_rendering_handler);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,

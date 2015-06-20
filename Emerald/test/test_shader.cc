@@ -162,7 +162,9 @@ TEST(ShaderTest, CreationTest)
     ASSERT_TRUE(rendering_handler != NULL);
 
     /* Bind the handler to the window */
-    ASSERT_TRUE(system_window_set_rendering_handler(window_handle, rendering_handler) );
+    system_window_set_property(window_handle,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
     /* Create the test shader */
     ogl_context gl_context  = NULL;
@@ -230,8 +232,9 @@ TEST(ShaderTest, FullViewportTriangleTest)
     ASSERT_TRUE(rendering_handler != NULL);
 
     /* Bind the handler to the window */
-    ASSERT_TRUE(system_window_set_rendering_handler(window_handle,
-                                                    rendering_handler) );
+    system_window_set_property(window_handle,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
     /* Create the test vertex shader */
     ogl_context gl_context         = NULL;

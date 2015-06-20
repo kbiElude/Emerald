@@ -116,8 +116,9 @@ TEST(WindowTest, RenderingHandlerTest)
     ASSERT_TRUE(rendering_handler != NULL);
 
     /* Bind the handler to the window */
-    ASSERT_TRUE(system_window_set_rendering_handler(window_handle,
-                                                    rendering_handler) );
+    system_window_set_property(window_handle,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
     /* Let's render a couple of frames. */
     ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,

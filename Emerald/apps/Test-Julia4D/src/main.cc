@@ -724,9 +724,9 @@ float main_get_specularity()
     ogl_context_get_property  (_context,
                                OGL_CONTEXT_PROPERTY_FLYBY,
                               &_flyby);
-
-    system_window_set_rendering_handler(_window,
-                                        window_rendering_handler);
+    system_window_set_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &window_rendering_handler);
 
     /* Set up matrices */
     _projection_matrix = system_matrix4x4_create_perspective_projection_matrix(45.0f,           /* fov_y */

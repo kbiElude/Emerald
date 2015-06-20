@@ -34,7 +34,7 @@ typedef enum
     /* settable, system_window_mouse_cursor */
     SYSTEM_WINDOW_PROPERTY_CURSOR,
 
-    /* not settable, int[2] */
+    /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
 
     /* not settable, system_window_handle */
@@ -72,13 +72,19 @@ typedef enum
     /* not settable, system_window_handle */
     SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
 
-    /* not settable, int[2] */
+    /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_POSITION,
 
     /* not settable, ogl_context */
     SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
 
-    /* not settable, ogl_rendering_handler */
+    /* settable, ogl_rendering_handler
+     *
+     * You can only bind one rendering handler to a window. Once you do so, it is (currently)
+     * impossible to unbind it, so please use the function with proper care.
+     *
+     * The specified rendering handler instance is retained.
+     */
     SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
 
     /* not settable, system_hashed ansi string */
@@ -168,36 +174,11 @@ PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window   
 
 /** TODO.
  *
- *  Internal use only
+ *  NOTE: Some property setters are for internal use only
  */
-PUBLIC bool system_window_set_property(__in system_window          window,
-                                       __in system_window_property property,
-                                       __in const void*            data);
-
-/** Binds a rendering handler to the window.
- *
- *  You can only bind one rendering handler to a window. Once you do so, it is (currently)
- *  impossible to unbind it, so please use the function with proper care.
- *
- *  The function retains the rendering handler instance.
- *
- *  @param system_window         Window to bind the rendering handler to.
- *  @param ogl_rendering_handler Rendering handler to bind to the window.
- *
- *  @return true if successful, false otherwise.
- */
-PUBLIC EMERALD_API bool system_window_set_rendering_handler(__in __notnull system_window         window,
-                                                            __in __notnull ogl_rendering_handler rendering_handler);
-
-/** TODO */
-PUBLIC EMERALD_API bool system_window_set_position(__in __notnull system_window window,
-                                                   __in __notnull int           x,
-                                                   __in __notnull int           y);
-
-/** TODO */
-PUBLIC EMERALD_API bool system_window_set_size(__in __notnull system_window window,
-                                               __in           int           width,
-                                               __in           int           height);
+PUBLIC EMERALD_API bool system_window_set_property(__in system_window          window,
+                                                   __in system_window_property property,
+                                                   __in const void*            data);
 
 /** Blocks the caller until the specified window becomes closed.
  *
