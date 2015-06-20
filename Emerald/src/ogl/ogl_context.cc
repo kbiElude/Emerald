@@ -17,7 +17,7 @@
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_pixel_format_descriptor.h"
+#include "ogl/ogl_pixel_format_descriptor.h" /* TODO: This is Windows-specific! */
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -348,9 +348,7 @@ PRIVATE void _ogl_context_release(__in __notnull __deallocate(mem) void* ptr)
     }
 
     ogl_context_release_managers( (ogl_context) ptr);
-
-    _ogl_context_gl_info_deinit        (&context_ptr->info);
-    ogl_pixel_format_descriptor_release(context_ptr->pfd);
+    _ogl_context_gl_info_deinit (&context_ptr->info);
 
     if (::wglDeleteContext(context_ptr->wgl_rendering_context) == FALSE)
     {
@@ -380,21 +378,21 @@ PRIVATE bool _ogl_set_pixel_format_multisampling(_ogl_context* context_ptr,
         int  depth_bits  = 0;
         int  rgb_bits[3] = {0, 0, 0};
 
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS,
-                                        context_ptr->pfd,
-                                        rgb_bits);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS,
-                                        context_ptr->pfd,
-                                        rgb_bits + 1);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS,
-                                        context_ptr->pfd,
-                                        rgb_bits + 2);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS,
-                                        context_ptr->pfd,
-                                       &alpha_bits);
-        ogl_pixel_format_descriptor_get(OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS,
-                                        context_ptr->pfd,
-                                       &depth_bits);
+        ogl_pixel_format_descriptor_get_property(context_ptr->pfd,
+                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_RED_BITS,
+                                                 rgb_bits + 0);
+        ogl_pixel_format_descriptor_get_property(context_ptr->pfd,
+                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_GREEN_BITS,
+                                                 rgb_bits + 1);
+        ogl_pixel_format_descriptor_get_property(context_ptr->pfd,
+                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_BLUE_BITS,
+                                                 rgb_bits + 2);
+        ogl_pixel_format_descriptor_get_property(context_ptr->pfd,
+                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
+                                                &alpha_bits);
+        ogl_pixel_format_descriptor_get_property(context_ptr->pfd,
+                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_DEPTH_BITS,
+                                                &depth_bits);
 
         int   attributes[]       = {WGL_DRAW_TO_WINDOW_ARB,           GL_TRUE,
                                     WGL_SUPPORT_OPENGL_ARB,           GL_TRUE,
@@ -2216,7 +2214,11 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                               &window_dc);
 
 
-    const PIXELFORMATDESCRIPTOR* system_pfd = _ogl_pixel_format_descriptor_get_descriptor(in_pfd);
+    const PIXELFORMATDESCRIPTOR* system_pfd = NULL;
+
+    ogl_pixel_format_descriptor_get_property(in_pfd,
+                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_DESCRIPTOR_PTR,
+                                            &system_pfd);
 
     if (system_pfd != NULL)
     {
@@ -2381,8 +2383,6 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                             _result->wgl_rendering_context                      = wgl_rendering_context;
                             _result->window                                     = window;
                             _result->window_handle                              = window_handle;
-
-                            ogl_pixel_format_descriptor_retain(in_pfd);
 
                             if (share_context != NULL)
                             {

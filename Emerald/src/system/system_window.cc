@@ -19,6 +19,10 @@
 #include "system/system_thread_pool.h"
 #include "system/system_window.h"
 
+#ifdef _WIN32
+    #include "system/system_window_win32.h"
+#endif
+
 #ifdef INCLUDE_WEBCAM_MANAGER
     #include <Dbt.h>
     #include "webcam/webcam_manager.h"
@@ -28,8 +32,17 @@
     DEFINE_GUID( GUID_KSCATEGORY_CAPTURE, 0x65E8773D, 0x8F56, 0x11D0, 0xA3, 0xB9, 0x00, 0xA0, 0xC9, 0x22, 0x31, 0x96);
 #endif /* INCLUDE_WEBCAM_MANAGER */
 
-#ifdef _WIN32
 /** Internal type definitions  */
+typedef void (*PFNWINDOWCLOSEWINDOWPROC) (__in  system_window_win32    window);
+typedef bool (*PFNWINDOWGETPROPERTYPROC) (__in  system_window_win32    window,
+                                          __in  system_window_property property,
+                                          __out void*                  out_result);
+typedef void (*PFNWINDOWHANDLEWINDOWPROC)(__in  system_window_win32    window);
+typedef bool (*PFNWINDOWOPENWINDOWPROC)  (__in  system_window_win32    window,
+                                          __in  bool                   is_first_window);
+typedef bool (*PFNWINDOWSETPROPERTYPROC) (__in system_window_win32     window,
+                                          __in system_window_property  property,
+                                          __in const void*             data);
 typedef struct
 {
     void*                                pfn_callback;
@@ -56,7 +69,6 @@ typedef struct
     bool                       visible;
     bool                       vsync_enabled;
     system_window_mouse_cursor window_mouse_cursor;
-    HCURSOR                    window_mouse_cursor_system_resource;
     int                        x1y1x2y2[4];
 
     ogl_rendering_handler rendering_handler;
@@ -65,19 +77,14 @@ typedef struct
         HDEVNOTIFY webcam_device_notification_handle;
     #endif
 
-    system_window_dc      system_dc;
-    system_window_handle  system_handle;
-    ogl_context           system_ogl_context;
-
-    bool                 is_message_pump_locked;
-    system_event         message_pump_lock_event;
-    system_thread_id     message_pump_thread_id;
-    system_event         message_pump_unlock_event;
+    ogl_pixel_format_descriptor pfd;
+    ogl_context                 system_ogl_context;
 
     system_event         window_initialized_event;
     system_event         window_safe_to_release_event;
     system_event         window_thread_event;
 
+    system_critical_section callbacks_cs;
     system_resizable_vector char_callbacks;                      /* PFNWINDOWCHARCALLBACKPROC               */
     system_resizable_vector exit_size_move_callbacks;            /* PFNWINDOWEXITSIZEMOVECALLBACKPROC       */
     system_resizable_vector key_down_callbacks;                  /* PFNWINDOWKEYDOWNCALLBACKPROC            */
@@ -95,26 +102,20 @@ typedef struct
     system_resizable_vector right_button_double_click_callbacks; /* PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC  */
     system_resizable_vector window_closed_callbacks;             /* PFNWINDOWINDOWCLOSEDCALLBACKPROC        */
     system_resizable_vector window_closing_callbacks;            /* PFNWINDOWWINDOWCLOSINGCALLBACKPROC      */
+
+    #ifdef _WIN32
+        system_window_win32 window_platform;
+    #endif
+
+    /* Platform-specific entry-points */
+    PFNWINDOWCLOSEWINDOWPROC  pfn_window_close_window;
+    PFNWINDOWGETPROPERTYPROC  pfn_window_get_property;
+    PFNWINDOWHANDLEWINDOWPROC pfn_window_handle_window;
+    PFNWINDOWOPENWINDOWPROC   pfn_window_open_window;
+    PFNWINDOWSETPROPERTYPROC  pfn_window_set_property;
 } _system_window;
 
 /** Internal variables */
-/** TODO */
-#define WM_EMERALD_LOCK_MESSAGE_PUMP (WM_USER + 1)
-
-/* Cached move cursor resource - loaded on first window spawned. */
-HCURSOR cached_move_cursor_resource = 0;
-/* Cached arrow cursor resource - loaded on first window spawned. */
-HCURSOR cached_arrow_cursor_resource = 0;
-/* Cached "horizontal resize" cursor resource - loaded on first window spawned. */
-HCURSOR cached_horizontal_resize_cursor_resource = 0;
-/* Cached "vertical resize" cursor resource - loaded on first window spawned. */
-HCURSOR cached_vertical_resize_cursor_resource = 0;
-/* Cached cross-hair cursor resource - loaded on first window spawned. */
-HCURSOR cached_crosshair_cursor_resource = 0;
-/* Cached hand cursor resource - loaded on first window spawned. */
-HCURSOR cached_hand_cursor_resource = 0;
-/* Cached "action forbidden" cursor resource - loaded on first window spawned. */
-HCURSOR cached_action_forbidden_cursor_resource = 0;
 
 /* Storage of spawned window handles (contains system_window items). This is used for automatic
  * context sharing upon window creation.
@@ -144,7 +145,6 @@ system_window         root_window                   = NULL;
 /* Forward declarations */
 PRIVATE void          _deinit_system_window                                    (                           _system_window*                      descriptor);
 PRIVATE void          _init_system_window                                      (                           _system_window*                      descriptor);
-PRIVATE VOID          _lock_system_window_message_pump                         (                           _system_window*                      descriptor);
 PRIVATE volatile void _system_window_teardown_thread_pool_callback             (__in __notnull             system_thread_pool_callback_argument arg);
 PRIVATE void          _system_window_thread_entrypoint                         (     __notnull             void*                                in_arg);
 PRIVATE void          _system_window_create_root_window                        (__in                       ogl_context_type                     context_type);
@@ -163,40 +163,58 @@ PRIVATE system_window _system_window_create_shared                             (
                                                                                 __in                       bool                                 is_root_window);
 PRIVATE void          _system_window_window_closing_rendering_thread_entrypoint(                           ogl_context                          context,
                                                                                                            void*                                user_arg);
-PRIVATE VOID          _unlock_system_window_message_pump                       (                           _system_window*                      descriptor);
 
 /** TODO */
-PRIVATE void _deinit_system_window(_system_window* descriptor)
+PRIVATE void _deinit_system_window(_system_window* window_ptr)
 {
-    ASSERT_DEBUG_SYNC(!descriptor->is_message_pump_locked,
-                      "System window about to be deinited while message pump is locked!");
+    if (window_ptr->callbacks_cs != NULL)
+    {
+        system_critical_section_release(window_ptr->callbacks_cs);
 
-    system_event_release(descriptor->window_safe_to_release_event);
-    system_event_release(descriptor->window_initialized_event);
-    system_event_release(descriptor->message_pump_lock_event);
-    system_event_release(descriptor->message_pump_unlock_event);
-    system_event_release(descriptor->window_thread_event);
+        window_ptr->callbacks_cs = NULL;
+    }
+
+    if (window_ptr->window_safe_to_release_event != NULL)
+    {
+        system_event_release(window_ptr->window_safe_to_release_event);
+
+        window_ptr->window_safe_to_release_event = NULL;
+    }
+
+    if (window_ptr->window_initialized_event != NULL)
+    {
+        system_event_release(window_ptr->window_initialized_event);
+
+        window_ptr->window_initialized_event = NULL;
+    }
+
+    if (window_ptr->window_thread_event != NULL)
+    {
+        system_event_release(window_ptr->window_thread_event);
+
+        window_ptr->window_thread_event = NULL;
+    }
 
     /* Release callback descriptors */
     system_resizable_vector callback_vectors[] =
     {
-        descriptor->char_callbacks,
-        descriptor->exit_size_move_callbacks,
-        descriptor->key_down_callbacks,
-        descriptor->key_up_callbacks,
-        descriptor->left_button_double_click_callbacks,
-        descriptor->left_button_down_callbacks,
-        descriptor->left_button_up_callbacks,
-        descriptor->middle_button_double_click_callbacks,
-        descriptor->middle_button_down_callbacks,
-        descriptor->middle_button_up_callbacks,
-        descriptor->mouse_move_callbacks,
-        descriptor->mouse_wheel_callbacks,
-        descriptor->right_button_double_click_callbacks,
-        descriptor->right_button_down_callbacks,
-        descriptor->right_button_up_callbacks,
-        descriptor->window_closed_callbacks,
-        descriptor->window_closing_callbacks
+        window_ptr->char_callbacks,
+        window_ptr->exit_size_move_callbacks,
+        window_ptr->key_down_callbacks,
+        window_ptr->key_up_callbacks,
+        window_ptr->left_button_double_click_callbacks,
+        window_ptr->left_button_down_callbacks,
+        window_ptr->left_button_up_callbacks,
+        window_ptr->middle_button_double_click_callbacks,
+        window_ptr->middle_button_down_callbacks,
+        window_ptr->middle_button_up_callbacks,
+        window_ptr->mouse_move_callbacks,
+        window_ptr->mouse_wheel_callbacks,
+        window_ptr->right_button_double_click_callbacks,
+        window_ptr->right_button_down_callbacks,
+        window_ptr->right_button_up_callbacks,
+        window_ptr->window_closed_callbacks,
+        window_ptr->window_closing_callbacks
     };
 
     for (uint32_t n = 0;
@@ -231,1153 +249,130 @@ PRIVATE void _deinit_system_window(_system_window* descriptor)
         system_resizable_vector_release(callback_vectors[n]);
     }
 
-    if (descriptor->rendering_handler != NULL)
+    if (window_ptr->pfd != NULL)
     {
-        ogl_rendering_handler_release(descriptor->rendering_handler);
+        ogl_pixel_format_descriptor_release(window_ptr->pfd);
 
-        descriptor->rendering_handler = NULL;
+        window_ptr->pfd = NULL;
     }
 
-    descriptor->window_safe_to_release_event = NULL;
-    descriptor->window_initialized_event     = NULL;
-    descriptor->message_pump_lock_event      = NULL;
-    descriptor->message_pump_unlock_event    = NULL;
-    descriptor->window_thread_event          = NULL;
+    if (window_ptr->rendering_handler != NULL)
+    {
+        ogl_rendering_handler_release(window_ptr->rendering_handler);
+
+        window_ptr->rendering_handler = NULL;
+    }
 }
 
 /** TODO */
-PRIVATE void _init_system_window(_system_window* descriptor)
+PRIVATE void _init_system_window(_system_window* window_ptr)
 {
-    descriptor->fullscreen_bpp                      = 0;
-    descriptor->fullscreen_freq                     = 0;
-    descriptor->is_cursor_visible                   = false;
-    descriptor->is_fullscreen                       = false;
-    descriptor->is_scalable                         = false;
-    descriptor->is_message_pump_locked              = false;
-    descriptor->multisampling_supported             = false;
-    descriptor->n_multisampling_samples             = 0;
-    descriptor->title                               = system_hashed_ansi_string_get_default_empty_string();
-    descriptor->window_mouse_cursor                 = SYSTEM_WINDOW_MOUSE_CURSOR_ARROW;
-    descriptor->window_mouse_cursor_system_resource = 0;
-    descriptor->x1y1x2y2[0]                         = 0;
-    descriptor->x1y1x2y2[1]                         = 0;
-    descriptor->x1y1x2y2[2]                         = 0;
-    descriptor->x1y1x2y2[3]                         = 0;
-    descriptor->parent_window_handle                = NULL;
-    descriptor->rendering_handler                   = NULL;
-    descriptor->system_dc                           = NULL;
-    descriptor->system_handle                       = NULL;
-    descriptor->system_ogl_context                  = NULL;
-    descriptor->message_pump_lock_event             = system_event_create(true); /* manual_reset */
-    descriptor->message_pump_thread_id              = 0;
-    descriptor->message_pump_unlock_event           = system_event_create(true); /* manual_reset */
-    descriptor->window_safe_to_release_event        = system_event_create(true); /* manual_reset */
-    descriptor->window_initialized_event            = system_event_create(true); /* manual_reset */
+    window_ptr->fullscreen_bpp               = 0;
+    window_ptr->fullscreen_freq              = 0;
+    window_ptr->is_cursor_visible            = false;
+    window_ptr->is_fullscreen                = false;
+    window_ptr->is_scalable                  = false;
+    window_ptr->multisampling_supported      = false;
+    window_ptr->n_multisampling_samples      = 0;
+    window_ptr->pfd                          = NULL;
+    window_ptr->title                        = system_hashed_ansi_string_get_default_empty_string();
+    window_ptr->window_mouse_cursor          = SYSTEM_WINDOW_MOUSE_CURSOR_ARROW;
+    window_ptr->x1y1x2y2[0]                  = 0;
+    window_ptr->x1y1x2y2[1]                  = 0;
+    window_ptr->x1y1x2y2[2]                  = 0;
+    window_ptr->x1y1x2y2[3]                  = 0;
+    window_ptr->parent_window_handle         = NULL;
+    window_ptr->rendering_handler            = NULL;
+    window_ptr->system_ogl_context           = NULL;
+    window_ptr->window_safe_to_release_event = system_event_create(true); /* manual_reset */
+    window_ptr->window_initialized_event     = system_event_create(true); /* manual_reset */
 
-    descriptor->char_callbacks                       = system_resizable_vector_create(1);
-    descriptor->exit_size_move_callbacks             = system_resizable_vector_create(1);
-    descriptor->key_down_callbacks                   = system_resizable_vector_create(1);
-    descriptor->key_up_callbacks                     = system_resizable_vector_create(1);
-    descriptor->left_button_double_click_callbacks   = system_resizable_vector_create(1);
-    descriptor->left_button_down_callbacks           = system_resizable_vector_create(1);
-    descriptor->left_button_up_callbacks             = system_resizable_vector_create(1);
-    descriptor->middle_button_double_click_callbacks = system_resizable_vector_create(1);
-    descriptor->middle_button_down_callbacks         = system_resizable_vector_create(1);
-    descriptor->middle_button_up_callbacks           = system_resizable_vector_create(1);
-    descriptor->mouse_move_callbacks                 = system_resizable_vector_create(1);
-    descriptor->mouse_wheel_callbacks                = system_resizable_vector_create(1);
-    descriptor->right_button_double_click_callbacks  = system_resizable_vector_create(1);
-    descriptor->right_button_down_callbacks          = system_resizable_vector_create(1);
-    descriptor->right_button_up_callbacks            = system_resizable_vector_create(1);
-    descriptor->window_closed_callbacks              = system_resizable_vector_create(1);
-    descriptor->window_closing_callbacks             = system_resizable_vector_create(1);
+    window_ptr->callbacks_cs                         = system_critical_section_create();
+    window_ptr->char_callbacks                       = system_resizable_vector_create(1);
+    window_ptr->exit_size_move_callbacks             = system_resizable_vector_create(1);
+    window_ptr->key_down_callbacks                   = system_resizable_vector_create(1);
+    window_ptr->key_up_callbacks                     = system_resizable_vector_create(1);
+    window_ptr->left_button_double_click_callbacks   = system_resizable_vector_create(1);
+    window_ptr->left_button_down_callbacks           = system_resizable_vector_create(1);
+    window_ptr->left_button_up_callbacks             = system_resizable_vector_create(1);
+    window_ptr->middle_button_double_click_callbacks = system_resizable_vector_create(1);
+    window_ptr->middle_button_down_callbacks         = system_resizable_vector_create(1);
+    window_ptr->middle_button_up_callbacks           = system_resizable_vector_create(1);
+    window_ptr->mouse_move_callbacks                 = system_resizable_vector_create(1);
+    window_ptr->mouse_wheel_callbacks                = system_resizable_vector_create(1);
+    window_ptr->right_button_double_click_callbacks  = system_resizable_vector_create(1);
+    window_ptr->right_button_down_callbacks          = system_resizable_vector_create(1);
+    window_ptr->right_button_up_callbacks            = system_resizable_vector_create(1);
+    window_ptr->window_closed_callbacks              = system_resizable_vector_create(1);
+    window_ptr->window_closing_callbacks             = system_resizable_vector_create(1);
 
     #ifdef INCLUDE_WEBCAM_MANAGER
-        descriptor->webcam_device_notification_handle = NULL;
+        window_ptr->webcam_device_notification_handle = NULL;
     #endif
 
-    ASSERT_ALWAYS_SYNC(descriptor->window_safe_to_release_event != NULL,
+    #ifdef _WIN32
+        window_ptr->pfn_window_close_window  = system_window_win32_close_window;
+        window_ptr->pfn_window_get_property  = system_window_win32_get_property;
+        window_ptr->pfn_window_handle_window = system_window_win32_handle_window;
+        window_ptr->pfn_window_open_window   = system_window_win32_open_window;
+        window_ptr->pfn_window_set_property  = system_window_win32_set_property;
+        window_ptr->window_platform          = system_window_win32_init( (system_window) window_ptr);
+    #else
+        window_ptr->pfn_window_close_window  = system_window_linux_close_window;
+        window_ptr->pfn_window_get_property  = system_window_linux_get_property;
+        window_ptr->pfn_window_handle_window = system_window_linux_handle_window;
+        window_ptr->pfn_window_open_window   = system_window_linux_open_window;
+        window_ptr->pfn_window_set_property  = system_window_linux_set_property;
+        window_ptr->window_platform          = system_window_linux_init( (system_window) window_ptr);
+    #endif
+
+    ASSERT_ALWAYS_SYNC(window_ptr->window_safe_to_release_event != NULL,
                        "Could not create safe-to-release event.");
-    ASSERT_ALWAYS_SYNC(descriptor->window_initialized_event != NULL,
+    ASSERT_ALWAYS_SYNC(window_ptr->window_initialized_event != NULL,
                        "Could not create window initialized event.");
 }
 
-/** TODO */
-PRIVATE VOID _lock_system_window_message_pump(_system_window* descriptor)
-{
-    /* Only lock if not in message pump AND:
-     * 1. the window has not been marked for release, AND
-     * 2. the window is in the process of being closed (the window_closing call-back)
-     */
-    if ( system_threads_get_thread_id () != descriptor->message_pump_thread_id   &&
-        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) &&
-        !descriptor->is_closing)
-    {
-        /* Only lock if the window is still alive! */
-        system_event_reset(descriptor->message_pump_lock_event);
-        system_event_reset(descriptor->message_pump_unlock_event);
-        {
-            ::PostMessageA(descriptor->system_handle,
-                           WM_EMERALD_LOCK_MESSAGE_PUMP,
-                           0,
-                           0);
-
-            system_event_wait_single(descriptor->message_pump_lock_event);
-        }
-    }
-}
-
-/** TODO */
-PRIVATE VOID _unlock_system_window_message_pump(_system_window* descriptor)
-{
-    /* Only unlock if not in message pump */
-    if ( system_threads_get_thread_id() != descriptor->message_pump_thread_id    &&
-        !system_event_wait_single_peek(descriptor->window_safe_to_release_event) &&
-        !descriptor->is_closing)
-
-    {
-        ASSERT_DEBUG_SYNC(descriptor->is_message_pump_locked,
-                          "Cannot unlock system window message pump - not locked.");
-
-        system_event_set(descriptor->message_pump_unlock_event);
-
-        /* Wait until message pump confirms it has finished handling WM_EMERALD_LOCK_MESSAGE_PUMP msg */
-        while (system_event_wait_single_peek(descriptor->message_pump_unlock_event) ){}
-    }
-}
-
-/** TODO */
-PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
-{
-    _system_window* window_ptr = (_system_window*) arg;
-
-    /* Wait for the window thread to die */
-    system_event_wait_single(window_ptr->window_safe_to_release_event);
-
-    /* Call back the subscribers, if any */
-    uint32_t n_callbacks = 0;
-
-    system_resizable_vector_get_property(window_ptr->window_closed_callbacks,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_callbacks);
-
-    if (n_callbacks != 0)
-    {
-        for (uint32_t n_callback = 0;
-                      n_callback < n_callbacks;
-                    ++n_callback)
-        {
-            _callback_descriptor* descriptor_ptr = NULL;
-
-            if (system_resizable_vector_get_element_at(window_ptr->window_closed_callbacks,
-                                                       n_callback,
-                                                      &descriptor_ptr) )
-            {
-                bool result = ((PFNWINDOWWINDOWCLOSEDCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) arg);
-
-                if (!result)
-                {
-                    break;
-                }
-            }
-        }
-    }
-}
-
-/** TODO */
-LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_handle,
-                                                              UINT   message_id,
-                                                              WPARAM wparam,
-                                                              LPARAM lparam)
-{
-    _system_window* window = (_system_window*) ::GetWindowLongPtr(window_handle,
-                                                                  GWLP_USERDATA);
-
-    switch (message_id)
-    {
-        case WM_EMERALD_LOCK_MESSAGE_PUMP:
-        {
-            window->is_message_pump_locked = true;
-
-            system_event_set        (window->message_pump_lock_event);
-            system_event_wait_single(window->message_pump_unlock_event);
-
-            window->is_message_pump_locked = false;
-
-            system_event_reset(window->message_pump_unlock_event);
-            return 0;
-        }
-
-        case WM_MOUSEMOVE:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->mouse_move_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->mouse_move_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWMOUSEMOVECALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                       point.x,
-                                                                                                       point.y,
-                                                                                                       (system_window_vk_status) wparam,
-                                                                                                       descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (window->window_mouse_cursor_system_resource != NULL)
-            {
-                ::SetCursor(window->window_mouse_cursor_system_resource);
-            }
-
-            break;
-        }
-
-        case WM_EXITSIZEMOVE:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->exit_size_move_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->exit_size_move_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWEXITSIZEMOVECALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_LBUTTONDOWN:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->left_button_down_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->left_button_down_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                            point.x,
-                                                                                                            point.y,
-                                                                                                            (system_window_vk_status) wparam,
-                                                                                                            descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_LBUTTONUP:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->left_button_up_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->left_button_up_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWLEFTBUTTONUPCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                          point.x,
-                                                                                                          point.y,
-                                                                                                          (system_window_vk_status) wparam,
-                                                                                                          descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_LBUTTONDBLCLK:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->left_button_double_click_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->left_button_double_click_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                              point.x,
-                                                                                                              point.y,
-                                                                                                              (system_window_vk_status) wparam,
-                                                                                                              descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            /* WinAPI sucks and is far from reasonable. Most of our apps will expect click notifications and won't watch for double clicks. */
-            system_resizable_vector_get_property(window->left_button_down_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->left_button_down_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                            point.x,
-                                                                                                            point.y,
-                                                                                                            (system_window_vk_status) wparam,
-                                                                                                            descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_MBUTTONDOWN:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->middle_button_down_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->middle_button_down_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                              point.x,
-                                                                                                              point.y,
-                                                                                                              (system_window_vk_status) wparam,
-                                                                                                              descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_MBUTTONUP:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->middle_button_up_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos (&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->middle_button_up_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                            point.x,
-                                                                                                            point.y,
-                                                                                                            (system_window_vk_status) wparam,
-                                                                                                            descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_MBUTTONDBLCLK:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->middle_button_double_click_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->middle_button_double_click_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                                point.x,
-                                                                                                                point.y,
-                                                                                                                (system_window_vk_status) wparam,
-                                                                                                                descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_RBUTTONDOWN:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->right_button_down_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->right_button_down_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                             point.x,
-                                                                                                             point.y,
-                                                                                                             (system_window_vk_status) wparam,
-                                                                                                             descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_RBUTTONUP:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->right_button_up_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->right_button_up_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWRIGHTBUTTONUPCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                           point.x,
-                                                                                                           point.y,
-                                                                                                           (system_window_vk_status) wparam,
-                                                                                                           descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_RBUTTONDBLCLK:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->right_button_double_click_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->right_button_double_click_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                               point.x,
-                                                                                                               point.y,
-                                                                                                               (system_window_vk_status) wparam,
-                                                                                                               descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            break;
-        }
-
-        case WM_MOUSEWHEEL:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->mouse_wheel_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                POINT point;
-
-                ::GetCursorPos(&point);
-
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->mouse_wheel_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWMOUSEWHEELCALLBACKPROC) descriptor_ptr->pfn_callback) ( (system_window) window,
-                                                                                                         point.x,
-                                                                                                         point.y,
-                                                                                                         GET_WHEEL_DELTA_WPARAM(wparam),
-                                                                                                         (system_window_vk_status) LOWORD(wparam),
-                                                                                                         descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return 0;
-        }
-
-        case WM_CHAR:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->char_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->char_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWCHARCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                  (unsigned short) wparam,
-                                                                                                  descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return 0;
-        }
-
-        case WM_KEYDOWN:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->key_down_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->key_down_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWKEYDOWNCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                     (unsigned short) wparam,
-                                                                                                     descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return 0;
-        }
-
-        case WM_KEYUP:
-        {
-            uint32_t n_callbacks = 0;
-
-            system_resizable_vector_get_property(window->key_up_callbacks,
-                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                                &n_callbacks);
-
-            if (n_callbacks != 0)
-            {
-                for (uint32_t n_callback = 0;
-                              n_callback < n_callbacks;
-                            ++n_callback)
-                {
-                    _callback_descriptor* descriptor_ptr = NULL;
-
-                    if (system_resizable_vector_get_element_at(window->key_up_callbacks,
-                                                               n_callback,
-                                                              &descriptor_ptr) )
-                    {
-                        bool result = ((PFNWINDOWKEYUPCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window,
-                                                                                                   (unsigned short) wparam,
-                                                                                                   descriptor_ptr->user_arg);
-
-                        if (!result)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return 0;
-        }
-
-        case WM_CLOSE:
-        {
-            /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
-             * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
-            if (window->rendering_handler != NULL)
-            {
-                ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
-
-                ogl_rendering_handler_get_property(window->rendering_handler,
-                                                   OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
-                                                  &playback_status);
-
-                if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
-                {
-                    ogl_rendering_handler_stop(window->rendering_handler);
-                } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
-
-                /* For the "window closing" call-back, we need to work from the rendering thread, as the caller
-                 * may need to release GL stuff.
-                 *
-                 * This should work out of the box, since we've just stopped the play-back.
-                 */
-                ogl_context_request_callback_from_context_thread(window->system_ogl_context,
-                                                                 _system_window_window_closing_rendering_thread_entrypoint,
-                                                                 window);
-            }
-
-            /* OK, safe to destroy the system window at this point */
-            ::DestroyWindow(window_handle);
-
-            /* Now here's the trick: the call-backs can only be fired AFTER the window thread has shut down.
-             * This lets us avoid various thread racing conditions which used to break all hell loose at the
-             * tear-down time in the past, and which also let the window messages flow, which is necessary
-             * for the closure to finish correctly.
-             *
-             * The entry-point we're pointing the task at does exactly that.
-             */
-            system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_CRITICAL,
-                                                                                                             _system_window_teardown_thread_pool_callback,
-                                                                                                             (void*) window);
-
-            system_thread_pool_submit_single_task(task);
-
-            return 0;
-        }
-
-        case WM_DESTROY:
-        {
-            ::PostQuitMessage(0);
-
-            return 0;
-        }
-
-        #ifdef INCLUDE_WEBCAM_MANAGER
-            case WM_DEVICECHANGE:
-            {
-                switch(wparam)
-                {
-                    case DBT_DEVICEARRIVAL:
-                    {
-                        /* Call back the web-cam manager with notification on new device just been plugged in */
-                        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                                    _webcam_manager_on_device_arrival,
-                                                                                                                                    NULL);
-
-                        system_thread_pool_submit_single_task(task_descriptor);
-
-                        return TRUE;
-                    }
-
-                    case DBT_DEVICEREMOVECOMPLETE:
-                    {
-                        /* Call back the web-cam manager with notification on a device just been plugged out */
-                        system_thread_pool_task_descriptor task_descriptor = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
-                                                                                                                                    _webcam_manager_on_device_removal,
-                                                                                                                                    NULL);
-
-                        system_thread_pool_submit_single_task(task_descriptor);
-
-                        return TRUE;
-                    }
-                }
-
-                return TRUE;
-            }
-        #endif
-    }
-
-    return ::DefWindowProcA(window_handle,
-                            message_id,
-                            wparam,
-                            lparam);
-}
-
-/** TODO */
-PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
-                                                                       void*       user_arg)
-{
-    _system_window* window_ptr  = (_system_window*) user_arg;
-    uint32_t        n_callbacks = 0;
-
-    system_resizable_vector_get_property(window_ptr->window_closing_callbacks,
-                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
-                                        &n_callbacks);
-
-    ASSERT_DEBUG_SYNC(!window_ptr->is_closing,
-                      "Sanity check failed");
-
-    window_ptr->is_closing = true;
-
-    if (n_callbacks != 0)
-    {
-        for (uint32_t n_callback = 0;
-                      n_callback < n_callbacks;
-                    ++n_callback)
-        {
-            _callback_descriptor* descriptor_ptr = NULL;
-
-            if (system_resizable_vector_get_element_at(window_ptr->window_closing_callbacks,
-                                                       n_callback,
-                                                      &descriptor_ptr) )
-            {
-                ((PFNWINDOWWINDOWCLOSINGCALLBACKPROC) descriptor_ptr->pfn_callback)( (system_window) window_ptr);
-            }
-        } /* for (all registered call-backs) */
-    } /* if (n_callbacks != 0) */
-
-    window_ptr->is_closing = false;
-}
 
 /** TODO */
 PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
 {
-    DWORD                       ex_style = 0;
-    ogl_pixel_format_descriptor pfd      = NULL;
-    DWORD                       style    = 0;
-    _system_window*             window   = (_system_window*) in_arg;
+    _system_window* window_ptr = (_system_window*) in_arg;
 
-    window->message_pump_thread_id = system_threads_get_thread_id();
+    /* Open the window */
+    ASSERT_DEBUG_SYNC(window_ptr->window_platform != NULL,
+                      "Platform-specific window instance is NULL");
 
-    /* Create window class, if necessary, and cache mouse cursors */
+    if (!window_ptr->is_root_window)
     {
-        if (!window->is_root_window)
-        {
-            /* For root windows, the CS will have already been locked. This does not
-             * hold for any other window type.
-             */
-            system_critical_section_enter(n_windows_spawned_cs);
-        }
-        {
-            if (n_windows_spawned == 0)
-            {
-                /* Set up the window class. */
-                WNDCLASSA   window_class;
-                static bool window_class_registered = false;
-
-                if (!window_class_registered)
-                {
-                    window_class.cbClsExtra    = 0;
-                    window_class.cbWndExtra    = 0;
-                    window_class.hbrBackground = 0;
-                    window_class.hCursor       = ::LoadCursorA     (NULL,
-                                                                    IDC_ARROW);
-                    window_class.hIcon         = ::LoadIconA       (NULL,
-                                                                    IDI_WINLOGO);
-                    window_class.hInstance     = ::GetModuleHandleA(NULL);
-                    window_class.lpfnWndProc   = _system_window_class_message_loop_entrypoint;
-                    window_class.lpszClassName = EMERALD_WINDOW_CLASS_NAME;
-                    window_class.lpszMenuName  = NULL;
-                    window_class.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
-
-                    if (!::RegisterClassA(&window_class) )
-                    {
-                        LOG_FATAL("Could not register engine window class.");
-
-                        goto end;
-                    }
-
-                    window_class_registered = true;
-                } /* if (!window_class_registered) */
-            } /* if (n_windows_spawned == 0) */
-
-            ++n_windows_spawned;
-
-            /* Cache mouse cursor */
-            cached_move_cursor_resource              = ::LoadCursorA(0, IDC_SIZEALL);
-            cached_arrow_cursor_resource             = ::LoadCursorA(0, IDC_ARROW);
-            cached_horizontal_resize_cursor_resource = ::LoadCursorA(0, IDC_SIZEWE);
-            cached_vertical_resize_cursor_resource   = ::LoadCursorA(0, IDC_SIZENS);
-            cached_crosshair_cursor_resource         = ::LoadCursorA(0, IDC_CROSS);
-            cached_action_forbidden_cursor_resource  = ::LoadCursorA(0, IDC_NO);
-            cached_hand_cursor_resource              = ::LoadCursorA(0, IDC_HAND);
-
-            ASSERT_DEBUG_SYNC(cached_move_cursor_resource != NULL,
-                              "Failed to load move cursor resource.");
-            ASSERT_DEBUG_SYNC(cached_arrow_cursor_resource != NULL,
-                              "Failed to load arrow cursor resource.");
-            ASSERT_DEBUG_SYNC(cached_horizontal_resize_cursor_resource != NULL,
-                              "Failed to load horizontal resize cursor resource.");
-            ASSERT_DEBUG_SYNC(cached_vertical_resize_cursor_resource != NULL,
-                              "Failed to load vertical resize cursor resource.");
-            ASSERT_DEBUG_SYNC(cached_crosshair_cursor_resource != NULL,
-                              "Failed to load crosshair cursor resource.");
-            ASSERT_DEBUG_SYNC(cached_action_forbidden_cursor_resource != NULL,
-                              "Failed to load action forbidden cursor resource.");
-            ASSERT_DEBUG_SYNC(cached_hand_cursor_resource != NULL,
-                              "Failed to load hand cursor resource.");
-        }
-        if (!window->is_root_window)
-        {
-            system_critical_section_leave(n_windows_spawned_cs);
-        }
+        /* For root windows, the CS will have already been locked. This does not
+         * hold for any other window type.
+         */
+        system_critical_section_enter(n_windows_spawned_cs);
     }
 
-    /* If full-screen window was requested, change display mode. */
-    if (window->is_fullscreen)
-    {
-        DEVMODEA new_device_mode;
-
-        memset(&new_device_mode,
-               0,
-               sizeof(new_device_mode) );
-
-        new_device_mode.dmBitsPerPel       = window->fullscreen_bpp;
-        new_device_mode.dmDisplayFrequency = window->fullscreen_freq;
-        new_device_mode.dmFields           = DM_BITSPERPEL | DM_DISPLAYFREQUENCY | DM_PELSHEIGHT | DM_PELSWIDTH;
-        new_device_mode.dmPelsHeight       = window->x1y1x2y2[2] - window->x1y1x2y2[0];
-        new_device_mode.dmPelsWidth        = window->x1y1x2y2[3] - window->x1y1x2y2[1];
-
-        if (::ChangeDisplaySettingsA(&new_device_mode,
-                                     CDS_FULLSCREEN) )
-        {
-            LOG_FATAL("Could not switch to full-screen for: width=%d height=%d freq=%d bpp=%d", 
-                      window->x1y1x2y2[2] - window->x1y1x2y2[0],
-                      window->x1y1x2y2[3] - window->x1y1x2y2[1], 
-                      window->fullscreen_freq,
-                      window->fullscreen_bpp);
-
-            goto end;
-        }
-
-        /* Configure style bitfields accordingly. */
-        ex_style = WS_EX_APPWINDOW;
-        style    = WS_POPUP;
-    }
-    else
-    {
-        /* Non-full-screen window requested. Configure style bitfields accordingly. */
-        if (window->parent_window_handle == NULL)
-        {
-            style = WS_POPUP;
-        }
-        else
-        {
-            style = WS_OVERLAPPED | WS_CHILD;
-        }
-
-        if (window->is_scalable)
-        {
-            style |= WS_THICKFRAME;
-        }
-    }
-
-    /* Get system metrics we need to use for the window */
-    int x_border_width = ::GetSystemMetrics(SM_CXSIZEFRAME);
-    int y_border_width = ::GetSystemMetrics(SM_CYSIZEFRAME);
-    int x1_delta       = 0;
-    int y1_delta       = 0;
-
-    if (!window->is_scalable)
-    {
-        x_border_width = 0;
-        y_border_width = 0;
-    }
-
-    if (window->parent_window_handle != NULL)
-    {
-        x1_delta = -::GetSystemMetrics(SM_CXFRAME);
-        y1_delta = (window->is_scalable ? -::GetSystemMetrics(SM_CYSIZEFRAME) :
-                                          -::GetSystemMetrics(SM_CYFRAME) )     - ::GetSystemMetrics(SM_CYCAPTION);
-    }
-
-    window->system_handle = ::CreateWindowExA(ex_style,
-                                              EMERALD_WINDOW_CLASS_NAME,
-                                              system_hashed_ansi_string_get_buffer(window->title),
-                                              style,
-                                              window->x1y1x2y2[0] + x1_delta,
-                                              window->x1y1x2y2[1] + y1_delta,
-                                              window->x1y1x2y2[2] - window->x1y1x2y2[0] + x_border_width,
-                                              window->x1y1x2y2[3] - window->x1y1x2y2[1] + y_border_width,
-                                              window->parent_window_handle,
-                                              NULL,                                       /* no menu */
-                                              ::GetModuleHandleA(0),
-                                              window);
-
-    if (window->system_handle == NULL)
-    {
-        LOG_FATAL("Could not create window [%s]",
-                  system_hashed_ansi_string_get_buffer(window->title) );
-
-        goto end;
-    }
-    
-    #ifdef INCLUDE_WEBCAM_MANAGER
-    {
-        /* Register for system notifications on webcams */
-        DEV_BROADCAST_DEVICEINTERFACE notification_filter = {0};
-
-        notification_filter.dbcc_size       = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
-        notification_filter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
-        notification_filter.dbcc_classguid  = GUID_KSCATEGORY_CAPTURE;
-
-        window->webcam_device_notification_handle = ::RegisterDeviceNotificationA(window->system_handle,
-                                                                                 &notification_filter,
-                                                                                  DEVICE_NOTIFY_WINDOW_HANDLE);
-    }
-    #endif /* INCLUDE_WEBCAM_MANAGER */
-
-    window->system_dc = ::GetDC(window->system_handle);
-    if (window->system_dc == NULL)
-    {
-        LOG_FATAL("Could not obtain device context for window [%s]",
-                  system_hashed_ansi_string_get_buffer(window->title) );
-
-        goto end;
-    }
+    window_ptr->pfn_window_open_window(window_ptr->window_platform,
+                                       n_windows_spawned == 0); /* is_first_window */
 
     /* Create OGL context */
-    pfd = ogl_pixel_format_descriptor_create(window->title,
-                                             8,  /* color_buffer_red_bits   */
-                                             8,  /* color_buffer_green_bits */
-                                             8,  /* color_buffer_blue_bits  */
-                                             0,  /* color_buffer_alpha_bits */
-                                             8); /* color_buffer_depth_bits */
+    window_ptr->pfd = ogl_pixel_format_descriptor_create(8,  /* color_buffer_red_bits   */
+                                                         8,  /* color_buffer_green_bits */
+                                                         8,  /* color_buffer_blue_bits  */
+                                                         0,  /* color_buffer_alpha_bits */
+                                                         8); /* color_buffer_depth_bits */
 
-    if (pfd == NULL)
+    if (window_ptr->pfd == NULL)
     {
-        LOG_FATAL("Could not create pixel format descriptor for RGB8D8 format.");
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not create pixel format descriptor for RGB8D8 format.");
 
         goto end;
+    }
+
+    ++n_windows_spawned;
+
+    if (!window_ptr->is_root_window)
+    {
+        system_critical_section_leave(n_windows_spawned_cs);
     }
 
     /* Set up context sharing between all windows */
@@ -1393,113 +388,84 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
         }
         else
         {
-            ASSERT_DEBUG_SYNC(window->is_root_window,
+            ASSERT_DEBUG_SYNC(window_ptr->is_root_window,
                               "Sanity check failed")
         }
 
         /* Create the new context now */
-        window->system_ogl_context = ogl_context_create_from_system_window(window->title,
-                                                                           window->context_type,
-                                                                           (system_window) window,
-                                                                           pfd,
-                                                                           window->vsync_enabled,
-                                                                           root_context,
-                                                                           window->multisampling_supported);
+        window_ptr->system_ogl_context = ogl_context_create_from_system_window(window_ptr->title,
+                                                                               window_ptr->context_type,
+                                                                               (system_window) window_ptr,
+                                                                               window_ptr->pfd,
+                                                                               window_ptr->vsync_enabled,
+                                                                               root_context,
+                                                                               window_ptr->multisampling_supported);
 
-        if (window->system_ogl_context == NULL)
+        if (window_ptr->system_ogl_context == NULL)
         {
             LOG_FATAL("Could not create OGL context for window [%s]",
-                      system_hashed_ansi_string_get_buffer(window->title) );
+                      system_hashed_ansi_string_get_buffer(window_ptr->title) );
 
             goto end;
         }
 
         if (root_context != NULL)
         {
-            ogl_context_bind_to_current_thread(window->system_ogl_context);
+            ogl_context_bind_to_current_thread(window_ptr->system_ogl_context);
         }
     }
     system_critical_section_leave(spawned_windows_cs);
 
     /* Bind the context to current thread */
-    ogl_context_bind_to_current_thread(window->system_ogl_context);
+    ogl_context_bind_to_current_thread(window_ptr->system_ogl_context);
     {
-        /* Set up user data field for the window */
-        ::SetWindowLongPtr(window->system_handle,
-                           GWLP_USERDATA,
-                           (LONG) window);
-
         /* Set up multisampling for the window */
-        if (window->multisampling_supported)
+        if (window_ptr->multisampling_supported)
         {
-            ogl_context_set_multisampling(window->system_ogl_context,
-                                          window->n_multisampling_samples);
+            ogl_context_set_multisampling(window_ptr->system_ogl_context,
+                                          window_ptr->n_multisampling_samples);
         }
     }
     ogl_context_unbind_from_current_thread();
 
-    /* Show the window if asked */
-    if (window->visible)
-    {
-        ::ShowWindow(window->system_handle,
-                     SW_SHOW);
-    }
-
-    ::UpdateWindow(window->system_handle);
-
     /* All done, set the event so the creating thread can carry on */
-    system_event_set(window->window_initialized_event);
+    system_event_set(window_ptr->window_initialized_event);
 
-    /* Pump messages */
-    MSG  msg;
-    BOOL returned_value;
-
-    while( (returned_value = ::GetMessage(&msg,
-                                          0,         /* hWnd          */
-                                          0,         /* wMsgFilterMin */
-                                          0) != 0) ) /* wMsgFilterMax */
-    {
-        if (returned_value == -1)
-        {
-            /* Wat */
-            break;
-        }
-
-        ::TranslateMessage(&msg);
-        ::DispatchMessage (&msg);
-    }
+    /* Use this thread to handle the window until it is closed or closes
+     * by itself */
+    window_ptr->pfn_window_handle_window(window_ptr->window_platform);
 
 end:
-    if (pfd != NULL)
-    {
-        ogl_pixel_format_descriptor_release(pfd);
-
-        pfd = NULL;
-    }
-
-    ogl_context_release_managers(window->system_ogl_context);
+    ogl_context_release_managers(window_ptr->system_ogl_context);
 
     /* Release rendering handler. This may be odd, but rendering handler retains a context and the context retains the rendering handler
      * so window rendering thread closure looks like one of good spots to insert a release request.
      *
      **/
-    if (window->rendering_handler != NULL)
+    if (window_ptr->rendering_handler != NULL)
     {
-        ogl_rendering_handler_release(window->rendering_handler);
-        ogl_rendering_handler_release(window->rendering_handler);
+        ogl_rendering_handler_release(window_ptr->rendering_handler);
+        ogl_rendering_handler_release(window_ptr->rendering_handler);
 
-        window->rendering_handler = NULL;
+        window_ptr->rendering_handler = NULL;
     }
 
     /* Release OGL context */
-    if (window->system_ogl_context != NULL)
+    if (window_ptr->system_ogl_context != NULL)
     {
-        ogl_context_release(window->system_ogl_context);
+        ogl_context_release(window_ptr->system_ogl_context);
 
-        window->system_ogl_context = NULL;
+        window_ptr->system_ogl_context = NULL;
     }
 
-    system_event_set(window->window_safe_to_release_event);
+    if (window_ptr->window_platform != NULL)
+    {
+        system_window_win32_deinit(window_ptr->window_platform);
+
+        window_ptr->window_platform = NULL;
+    }
+
+    system_event_set(window_ptr->window_safe_to_release_event);
 }
 
 
@@ -1520,7 +486,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
         new_descriptor_ptr->priority     = priority;
         new_descriptor_ptr->user_arg     = user_arg;
 
-        _lock_system_window_message_pump(window_ptr);
+        system_critical_section_enter(window_ptr->callbacks_cs);
         {
             /* NOTE: Modifying this? Update system_window_delete_callback_func() as well */
             system_resizable_vector callback_container = NULL;
@@ -1716,7 +682,7 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
                 }
             } /* if (result) */
         }
-        _unlock_system_window_message_pump(window_ptr);
+        system_critical_section_leave(window_ptr->callbacks_cs);
     }
 
     return result;
@@ -1752,16 +718,7 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
         }
     #endif /* INCLUDE_WEBCAM_MANAGER */
 
-    ASSERT_DEBUG_SYNC(window_ptr->system_handle != NULL,
-                      "No window to close - system handle is NULL.");
-
-    if (window_ptr->system_handle != NULL)
-    {
-        ::SendMessageA(window_ptr->system_handle,
-                       WM_CLOSE,
-                       0,  /* wParam */
-                       0); /* lParam */
-    }
+    window_ptr->pfn_window_close_window(window_ptr->window_platform);
 
     system_event_wait_single(window_ptr->window_safe_to_release_event);
     system_event_wait_single(window_ptr->window_thread_event);
@@ -2093,7 +1050,7 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
     {
         system_resizable_vector callbacks_container = NULL;
 
-        _lock_system_window_message_pump(window_ptr);
+        system_critical_section_enter(window_ptr->callbacks_cs);
         {
             /* NOTE: Modifying this? Update system_window_add_callback_func() as well */
             switch (callback_func)
@@ -2251,10 +1208,381 @@ PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system
                 } /* if (!result) */
             } /* if (callbacks_container != NULL) */
         }
-        _unlock_system_window_message_pump(window_ptr);
+        system_critical_section_leave(window_ptr->callbacks_cs);
     }
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window               window,
+                                                 __in           system_window_callback_func func,
+                                                 __in_opt       void*                       arg_wparam,  /* TODO: remove in next commit! */
+                                                 __in_opt       void*                       arg_lparam)
+{
+    system_resizable_vector callback_vector  = NULL;
+    unsigned int            n_callback_funcs = 0;
+    bool                    needs_cursor_pos = false;
+    _system_window*         window_ptr       = (_system_window*) window;
+
+    switch (func)
+    {
+        case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
+        {
+            callback_vector = window_ptr->char_callbacks;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE:
+        {
+            callback_vector = window_ptr->exit_size_move_callbacks;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
+        {
+            callback_vector = window_ptr->key_down_callbacks;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
+        {
+            callback_vector = window_ptr->key_up_callbacks;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOUBLE_CLICK:
+        {
+            callback_vector  = window_ptr->left_button_double_click_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN:
+        {
+            callback_vector  = window_ptr->left_button_down_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP:
+        {
+            callback_vector  = window_ptr->left_button_up_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOUBLE_CLICK:
+        {
+            callback_vector  = window_ptr->middle_button_double_click_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOWN:
+        {
+            callback_vector  = window_ptr->middle_button_down_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_UP:
+        {
+            callback_vector  = window_ptr->middle_button_up_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE:
+        {
+            callback_vector  = window_ptr->mouse_move_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL:
+        {
+            callback_vector  = window_ptr->mouse_wheel_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK:
+        {
+            callback_vector  = window_ptr->right_button_double_click_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN:
+        {
+            callback_vector  = window_ptr->right_button_down_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP:
+        {
+            callback_vector  = window_ptr->right_button_up_callbacks;
+            needs_cursor_pos = true;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED:
+        {
+            callback_vector = window_ptr->window_closed_callbacks;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING:
+        {
+            callback_vector = window_ptr->window_closing_callbacks;
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized call-back function type");
+        }
+    } /* switch (func) */
+
+    if (callback_vector != NULL)
+    {
+        int cursor_position[2];
+
+        system_critical_section_enter(window_ptr->callbacks_cs);
+        {
+            system_resizable_vector_get_property(callback_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_callback_funcs);
+
+            /* We need to know cursor position for a handful of call-back types */\
+            if (needs_cursor_pos)
+            {
+                window_ptr->pfn_window_get_property(window_ptr->window_platform,
+                                                    SYSTEM_WINDOW_PROPERTY_CURSOR_POSITION,
+                                                    &cursor_position);
+            }
+
+            /* Iterate over all call-back funcs and fire the calls */
+            for (uint32_t n_callback_func = 0;
+                          n_callback_func < n_callback_funcs;
+                        ++n_callback_func)
+            {
+                _callback_descriptor* callback_ptr = NULL;
+
+                if (system_resizable_vector_get_element_at(callback_vector,
+                                                           n_callback_func,
+                                                          &callback_ptr) )
+                {
+                    bool result = false;
+
+                    switch (func)
+                    {
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
+                        {
+                            result = ((PFNWINDOWCHARCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                              (unsigned short) arg_wparam,
+                                                                                              callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE:
+                        {
+                            result = ((PFNWINDOWEXITSIZEMOVECALLBACKPROC) callback_ptr->pfn_callback)(window);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
+                        {
+                            result = ((PFNWINDOWKEYDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                 (unsigned short) arg_wparam,
+                                                                                                 callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
+                        {
+                            result = ((PFNWINDOWKEYUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                               (unsigned short) arg_wparam,
+                                                                                               callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOUBLE_CLICK:
+                        {
+                            result = ((PFNWINDOWLEFTBUTTONDBLCLKCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                          cursor_position[0],
+                                                                                                          cursor_position[1],
+                                                                                                          (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                          callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN:
+                        {
+                            result = ((PFNWINDOWLEFTBUTTONDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                        cursor_position[0],
+                                                                                                        cursor_position[1],
+                                                                                                        (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                        callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP:
+                        {
+                            result = ((PFNWINDOWLEFTBUTTONUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                      cursor_position[0],
+                                                                                                      cursor_position[1],
+                                                                                                      (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                      callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOUBLE_CLICK:
+                        {
+                            result = ((PFNWINDOWMIDDLEBUTTONDBLCLKCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                            cursor_position[0],
+                                                                                                            cursor_position[1],
+                                                                                                            (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                            callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOWN:
+                        {
+                            result = ((PFNWINDOWMIDDLEBUTTONDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                          cursor_position[0],
+                                                                                                          cursor_position[1],
+                                                                                                          (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                          callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_UP:
+                        {
+                            result = ((PFNWINDOWMIDDLEBUTTONUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                        cursor_position[0],
+                                                                                                        cursor_position[1],
+                                                                                                        (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                        callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE:
+                        {
+                            result = ((PFNWINDOWMOUSEMOVECALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                   cursor_position[0],
+                                                                                                   cursor_position[1],
+                                                                                                   (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                   callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL:
+                        {
+                            result = ((PFNWINDOWMOUSEWHEELCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                    cursor_position[0],
+                                                                                                    cursor_position[1],
+                                                                                                    (short)                   (intptr_t) arg_wparam,
+                                                                                                    (system_window_vk_status) (intptr_t) arg_lparam,
+                                                                                                    callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK:
+                        {
+                            result = ((PFNWINDOWRIGHTBUTTONDBLCLKCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                           cursor_position[0],
+                                                                                                           cursor_position[1],
+                                                                                                           (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                           callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN:
+                        {
+                            result = ((PFNWINDOWRIGHTBUTTONDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                         cursor_position[0],
+                                                                                                         cursor_position[1],
+                                                                                                         (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                         callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP:
+                        {
+                            result = ((PFNWINDOWRIGHTBUTTONUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
+                                                                                                       cursor_position[0],
+                                                                                                       cursor_position[1],
+                                                                                                       (system_window_vk_status) (WPARAM) arg_wparam,
+                                                                                                       callback_ptr->user_arg);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED:
+                        {
+                            result = ((PFNWINDOWWINDOWCLOSEDCALLBACKPROC) callback_ptr->pfn_callback)(window);
+
+                            break;
+                        }
+
+                        case SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING:
+                        {
+                            ((PFNWINDOWWINDOWCLOSINGCALLBACKPROC) callback_ptr->pfn_callback)(window);
+
+                            break;
+                        }
+
+                        default:
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Unrecognized call-back function type");
+                        }
+                    } /* switch (func) */
+
+                    if (!result)
+                    {
+                        break;
+                    }
+                } /* if (callback descriptor was retrieved) */
+            } /* for (all call-back functions) */
+        }
+        system_critical_section_leave(window_ptr->callbacks_cs);
+    } /* if (callback_vector != NULL) */
 }
 
 /** Please see header for specification */
@@ -2287,14 +1615,31 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
 {
     _system_window* window_ptr = (_system_window*) window;
 
+    if (window_ptr->window_platform != NULL)
+    {
+        bool result = window_ptr->pfn_window_get_property(window_ptr->window_platform,
+                                                          property,
+                                                          out_result);
+
+        if (result)
+        {
+            /* Result value returned. */
+            goto end;
+        }
+    } /* if (window_ptr->window_platform != NULL) */
+
     switch (property)
     {
-        case SYSTEM_WINDOW_PROPERTY_DC:
+        case SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP:
         {
-            ASSERT_DEBUG_SYNC(window_ptr->system_dc != 0,
-                              "System DC is NULL.");
+            *(uint16_t*) out_result = window_ptr->fullscreen_bpp;
 
-            *(system_window_dc*) out_result = window_ptr->system_dc;
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE:
+        {
+            *(uint16_t*) out_result = window_ptr->fullscreen_freq;
 
             break;
         }
@@ -2307,12 +1652,37 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
             break;
         }
 
-        case SYSTEM_WINDOW_PROPERTY_HANDLE:
+        case SYSTEM_WINDOW_PROPERTY_IS_CLOSED:
         {
-            ASSERT_DEBUG_SYNC(window_ptr->system_handle != 0,
-                              "System handle is NULL.");
+            *(bool*) out_result = system_event_wait_single_peek(window_ptr->window_safe_to_release_event);
 
-            *(system_window_handle*) out_result = window_ptr->system_handle;
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_IS_CLOSING:
+        {
+            *(bool*) out_result = window_ptr->is_closing;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN:
+        {
+            *(bool*) out_result = window_ptr->is_fullscreen;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_IS_SCALABLE:
+        {
+            *(bool*) out_result = window_ptr->is_scalable;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_IS_VISIBLE:
+        {
+            *(bool*) out_result = window_ptr->visible;
 
             break;
         }
@@ -2324,22 +1694,9 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
             break;
         }
 
-        case SYSTEM_WINDOW_PROPERTY_POSITION:
+        case SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE:
         {
-            ASSERT_DEBUG_SYNC(window_ptr->system_handle != 0,
-                              "System handle is NULL.");
-
-            if (window_ptr->system_handle != 0)
-            {
-                RECT window_rect;
-
-                if (::GetWindowRect(window_ptr->system_handle,
-                                   &window_rect) == TRUE)
-                {
-                    ((int*) out_result)[0] = window_rect.left;
-                    ((int*) out_result)[1] = window_rect.top;
-                }
-            }
+            *(system_window_handle*) out_result = window_ptr->parent_window_handle;
 
             break;
         }
@@ -2358,12 +1715,31 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
             break;
         }
 
+        case SYSTEM_WINDOW_PROPERTY_TITLE:
+        {
+            *(system_hashed_ansi_string*) out_result = window_ptr->title;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2:
+        {
+            memcpy(out_result,
+                   window_ptr->x1y1x2y2,
+                   sizeof(window_ptr->x1y1x2y2) );
+
+            break;
+        }
+
         default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized system_window_property value.");
         }
     } /* switch (property) */
+
+end:
+    ;
 }
 
 /** Please see header for specification */
@@ -2373,67 +1749,50 @@ PUBLIC EMERALD_API bool system_window_set_cursor(__in __notnull system_window   
     _system_window* window_ptr = (_system_window*) window;
     bool            result     = true;
 
-    _lock_system_window_message_pump(window_ptr);
+    /* Redirect to platform-specific handler */
+    result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
+                                                 SYSTEM_WINDOW_PROPERTY_CURSOR,
+                                                &cursor);
+
+    if (result)
     {
-        switch (cursor)
+        window_ptr->window_mouse_cursor = cursor;
+    }
+
+    return result;
+}
+
+/** Please see header for specification */
+PUBLIC bool system_window_set_property(__in system_window          window,
+                                       __in system_window_property property,
+                                       __in const void*            data)
+{
+    bool            result     = false;
+    _system_window* window_ptr = (_system_window*) window;
+
+    result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
+                                                 property,
+                                                 data);
+
+    if (!result)
+    {
+        switch (property)
         {
-            case SYSTEM_WINDOW_MOUSE_CURSOR_MOVE:
+            case SYSTEM_WINDOW_PROPERTY_IS_CLOSING:
             {
-                window_ptr->window_mouse_cursor                 = cursor;
-                window_ptr->window_mouse_cursor_system_resource = cached_move_cursor_resource;
-
-                break;
-            }
-
-            case SYSTEM_WINDOW_MOUSE_CURSOR_ARROW:
-            {
-                window_ptr->window_mouse_cursor                 = cursor;
-                window_ptr->window_mouse_cursor_system_resource = cached_arrow_cursor_resource;
-
-                break;
-            }
-
-            case SYSTEM_WINDOW_MOUSE_CURSOR_HORIZONTAL_RESIZE:
-            {
-                window_ptr->window_mouse_cursor                 = cursor;
-                window_ptr->window_mouse_cursor_system_resource = cached_horizontal_resize_cursor_resource;
-
-                break;
-            }
-
-            case SYSTEM_WINDOW_MOUSE_CURSOR_VERTICAL_RESIZE:
-            {
-                window_ptr->window_mouse_cursor                 = cursor;
-                window_ptr->window_mouse_cursor_system_resource = cached_vertical_resize_cursor_resource;
-
-                break;
-            }
-
-            case SYSTEM_WINDOW_MOUSE_CURSOR_CROSSHAIR:
-            {
-                window_ptr->window_mouse_cursor                 = cursor;
-                window_ptr->window_mouse_cursor_system_resource = cached_crosshair_cursor_resource;
-
-                break;
-            }
-
-            case SYSTEM_WINDOW_MOUSE_CURSOR_ACTION_FORBIDDEN:
-            {
-                window_ptr->window_mouse_cursor                 = cursor;
-                window_ptr->window_mouse_cursor_system_resource = cached_action_forbidden_cursor_resource;
+                result                 = true;
+                window_ptr->is_closing = *(bool*) data;
 
                 break;
             }
 
             default:
             {
-                LOG_ERROR("Unrecognized cursor type [%d] requested", cursor);
-
-                result = false;
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized system_window_property value");
             }
-        }
+        } /* switch (property) */
     }
-    _unlock_system_window_message_pump(window_ptr);
 
     return result;
 }
@@ -2445,30 +1804,22 @@ PUBLIC EMERALD_API bool system_window_set_position(__in __notnull system_window 
 {
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window;
+    const int       xy[2]      = {x, y};
 
-    if (window_ptr->system_handle != NULL)
-    {
-        ::SetWindowPos(window_ptr->system_handle,
-                       window_ptr->parent_window_handle,
-                       x,
-                       y,
-                       0,
-                       0,
-                       SWP_NOSIZE);
+    result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
+                                                 SYSTEM_WINDOW_PROPERTY_POSITION,
+                                                 xy);
 
-        /* Update internal representation */
-        int width  = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
-        int height = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
+    /* Update internal representation */
+    int width  = window_ptr->x1y1x2y2[2] - window_ptr->x1y1x2y2[0];
+    int height = window_ptr->x1y1x2y2[3] - window_ptr->x1y1x2y2[1];
 
-        window_ptr->x1y1x2y2[0] = x;
-        window_ptr->x1y1x2y2[1] = y;
-        window_ptr->x1y1x2y2[2] = x + width;
-        window_ptr->x1y1x2y2[3] = y + height;
-        
-        /* Done */
-        result = true;
-    }
+    window_ptr->x1y1x2y2[0] = x;
+    window_ptr->x1y1x2y2[1] = y;
+    window_ptr->x1y1x2y2[2] = x + width;
+    window_ptr->x1y1x2y2[3] = y + height;
 
+    /* Done */
     return result;
 }
 
@@ -2506,22 +1857,26 @@ PUBLIC EMERALD_API bool system_window_set_size(__in __notnull system_window wind
     bool            result     = false;
     _system_window* window_ptr = (_system_window*) window;
 
-    if (window_ptr->system_handle != NULL)
-    {
-        result = (::MoveWindow(window_ptr->system_handle,
-                               window_ptr->x1y1x2y2[0] - (window_ptr->is_scalable ? ::GetSystemMetrics(SM_CXSIZEFRAME) : ::GetSystemMetrics(SM_CXFRAME) ),
-                               window_ptr->x1y1x2y2[1] - (window_ptr->is_scalable ? ::GetSystemMetrics(SM_CYSIZEFRAME) : ::GetSystemMetrics(SM_CYFRAME) ) - ::GetSystemMetrics(SM_CYCAPTION),
-                               width,
-                               height,
-                               TRUE) == TRUE);
+    /* Update internal representation */
+    window_ptr->x1y1x2y2[2] = window_ptr->x1y1x2y2[0] + width;
+    window_ptr->x1y1x2y2[3] = window_ptr->x1y1x2y2[1] + height;
 
-        /* Update internal representation */
-        window_ptr->x1y1x2y2[2] = window_ptr->x1y1x2y2[0] + width;
-        window_ptr->x1y1x2y2[3] = window_ptr->x1y1x2y2[1] + height;
+    /* Update platform-specific window instance */
+    const int width_height[] = {width, height};
 
-    }
+    result = window_ptr->pfn_window_set_property(window_ptr->window_platform,
+                                                 SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                                 width_height);
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC void system_window_wait_until_closed(__in __notnull system_window window)
+{
+    _system_window* window_ptr = (_system_window*) window;
+
+    system_event_wait_single(window_ptr->window_safe_to_release_event);
 }
 
 /** Please see header for specification */
@@ -2539,6 +1894,3 @@ PUBLIC void _system_window_deinit()
     system_critical_section_release(spawned_windows_cs);
     system_critical_section_release(n_windows_spawned_cs);
 }
-#else
-    /* TODO TODO TODO */
-#endif

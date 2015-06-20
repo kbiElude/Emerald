@@ -1648,16 +1648,6 @@ typedef struct
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
 
-/** Enumerator that can be used to define property caller wants to find out more details on. */
-typedef enum
-{
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS
-} ogl_pixel_format_descriptor_field;
-
 /** Flyby support handle */
 DECLARE_HANDLE(ogl_flyby);
 

@@ -97,7 +97,6 @@ typedef enum
         OBJECT_TYPE_OGL_FLYBY,
         OBJECT_TYPE_OGL_PRIMITIVE_RENDERER,
         OBJECT_TYPE_OGL_PIPELINE,
-        OBJECT_TYPE_OGL_PIXEL_FORMAT_DESCRIPTOR,
         OBJECT_TYPE_OGL_PROGRAM,
         OBJECT_TYPE_OGL_PROGRAMS,
         OBJECT_TYPE_OGL_RENDERING_HANDLER,
@@ -159,12 +158,11 @@ typedef enum
 DECLARE_HANDLE(system_window);
 
 #ifdef _WIN32
-    /** TODO */
+    DECLARE_HANDLE(system_window_win32);
+
     typedef HWND system_window_handle;
-    /** TODO */
     typedef HDC  system_window_dc;
 #elif __linux
-    typedef void* system_window_dc;
     typedef void* system_window_handle;
 #else
     #error Platform unsupported

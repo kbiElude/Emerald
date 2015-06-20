@@ -1480,7 +1480,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                       "Nodes are not sorted in order!");
 
     curve_segment_get_node_value_variant_type(segment,
-                                             &segment_data_type);
+                                             &segment_data_type); 
 
     const bool new_should_round_data_value = segment_data_type == SYSTEM_VARIANT_INTEGER;
 
