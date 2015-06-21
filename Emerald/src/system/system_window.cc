@@ -433,11 +433,12 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
         /* Set up multisampling for the window */
         if (window_ptr->multisampling_supported)
         {
-            ogl_context_set_multisampling(window_ptr->system_ogl_context,
-                                          window_ptr->n_multisampling_samples);
+            ogl_context_set_property(window_ptr->system_ogl_context,
+                                     OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES,
+                                    &window_ptr->n_multisampling_samples);
         }
     }
-    ogl_context_unbind_from_current_thread();
+    ogl_context_unbind_from_current_thread(window_ptr->system_ogl_context);
 
     /* All done, set the event so the creating thread can carry on */
     system_event_set(window_ptr->window_initialized_event);

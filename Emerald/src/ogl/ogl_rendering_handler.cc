@@ -202,7 +202,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             {
                 /* This event is used for setting up context sharing. In order for it to succeed, we must unbind the context from
                  * current thread, then wait for a 'job done' signal, and bind the context back to this thread */
-                ogl_context_unbind_from_current_thread();
+                ogl_context_unbind_from_current_thread(rendering_handler->context);
 
                 system_event_set        (rendering_handler->unbind_context_request_ack_event);
                 system_event_wait_single(rendering_handler->bind_context_request_event);
@@ -336,7 +336,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         system_event_set(rendering_handler->playback_waiting_event);
 
         /* Unbind the thread from GL */
-        ogl_context_unbind_from_current_thread();
+        ogl_context_unbind_from_current_thread(rendering_handler->context);
 
         /* Let any waiters know that we're done */
         system_event_set(rendering_handler->shutdown_request_ack_event);

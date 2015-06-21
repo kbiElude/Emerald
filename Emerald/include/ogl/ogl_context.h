@@ -28,6 +28,9 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_context,
 
 typedef enum ogl_context_property
 {
+    /* not settable, bool */
+    OGL_CONTEXT_PROPERTY_ALLOW_MSAA,
+
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
 
@@ -90,14 +93,52 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_limits_arb_sparse_buffer* */
     OGL_CONTEXT_PROPERTY_LIMITS_ARB_SPARSE_BUFFER,
 
+    /* not settable, uint32_t */
+    OGL_CONTEXT_PROPERTY_MAJOR_VERSION,
+
+    /* not settable, uint32_t */
+    OGL_CONTEXT_PROPERTY_MINOR_VERSION,
+
+    /* not settable, ogl_materials */
+    OGL_CONTEXT_PROPERTY_MATERIALS,
+
+    /* settable, not queriable, uint32_t.
+     *
+     * Adjusts the rendering context's platform-specific MSAA setting.
+     */
+    OGL_CONTEXT_PROPERTY_MSAA_SAMPLES,
+
+    /* not settable, uint32_t.
+     *
+     * Tells how many entries can be accessed under OGL_CONTXT_PROPERTY_MSAA_SUPPORTED_SAMPLES.
+     */
+    OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES,
+
+    /* not settable, uint32_t*.
+     *
+     * An array of supported MSAA samples.
+     */
+    OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES,
+
+    /* not settable, ogl_context */
+    OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
+
+    /* not settable, ogl_pixel_format_descriptor */
+    OGL_CONTEXT_PROPERTY_PIXEL_FORMAT_DESCRIPTOR,
+
+    /* settable, not queriable, ogl_context_linux or ogl_context_win32 */
+    OGL_CONTEXT_PROPERTY_PLATFORM_CONTEXT,
+
     /* not settable, ogl_primitive_renderer */
     OGL_CONTEXT_PROPERTY_PRIMITIVE_RENDERER,
 
     /* not settable, ogl_programs */
     OGL_CONTEXT_PROPERTY_PROGRAMS,
 
-    /* not settable, ogl_materials */
-    OGL_CONTEXT_PROPERTY_MATERIALS,
+#ifdef _WIN32
+    /* not settable, HGLRC */
+    OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT,
+#endif
 
     /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -155,7 +196,7 @@ typedef enum ogl_context_property
     /* not settable, ogl_context_vaos */
     OGL_CONTEXT_PROPERTY_VAOS,
 
-    /* not settable, bool */
+    /* settable, bool */
     OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
 
 #ifdef _WIN32
@@ -168,8 +209,11 @@ typedef enum ogl_context_property
 
 } ogl_context_property;
 
+typedef void (*PFNINITCONTEXTAFTERCREATIONPROC)(__in ogl_context context);
+
+
 /** TODO */
-PUBLIC void ogl_context_bind_to_current_thread(__in __notnull ogl_context);
+PUBLIC void ogl_context_bind_to_current_thread(__in ogl_context);
 
 /** TODO */
 PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull   system_hashed_ansi_string   name,
@@ -177,9 +221,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                      __in __notnull   system_window               window,
                                                                      __in __notnull   ogl_pixel_format_descriptor in_pfd,
                                                                      __in             bool                        vsync_enabled,
-                                                                     __in __maybenull ogl_context                 share_context,
-                                                                     __in             bool                        allow_multisampling
-                                                                     );
+                                                                     __in __maybenull ogl_context                 parent_context,
+                                                                     __in             bool                        allow_msaa);
 
 /** TODO */
 PUBLIC ogl_context ogl_context_get_current_context();
@@ -209,20 +252,16 @@ PUBLIC EMERALD_API bool ogl_context_request_callback_from_context_thread(__in __
                                                                          __in __notnull PFNOGLCONTEXTCALLBACKFROMCONTEXTTHREADPROC,
                                                                          __in           void*,
                                                                          __in           bool block_until_available = true);
-/** TODO */
-PUBLIC EMERALD_API void ogl_context_retrieve_multisampling_info(__in  __notnull ogl_context,
-                                                                __out __notnull uint32_t*,
-                                                                __out __notnull const uint32_t**);
+
+/** TODO.
+ *
+ *  This setter will NOT throw an assertion failure if @param property is not recognized.
+ */
+PUBLIC bool ogl_context_set_property(__in ogl_context          context,
+                                     __in ogl_context_property property,
+                                     __in const void*          data);
 
 /** TODO */
-PUBLIC EMERALD_API bool ogl_context_set_multisampling(__in __notnull ogl_context, 
-                                                      __in           uint32_t);
-
-/** TODO. This function is not exported because it requires ogl_context to be active right before the call. */
-PUBLIC bool ogl_context_set_vsync(__in __notnull ogl_context,
-                                  __in           bool);
-
-/** TODO */
-PUBLIC void ogl_context_unbind_from_current_thread();
+PUBLIC void ogl_context_unbind_from_current_thread(__in __notnull ogl_context context);
 
 #endif /* OGL_CONTEXT_H */

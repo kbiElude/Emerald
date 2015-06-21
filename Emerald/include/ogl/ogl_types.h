@@ -1776,6 +1776,10 @@ DECLARE_HANDLE(ogl_pixel_format_descriptor);
 /** OpenGL context handle */
 DECLARE_HANDLE(ogl_context);
 
+#ifdef _WIN32
+    DECLARE_HANDLE(ogl_context_win32);
+#endif
+
 /* Materials library handle */
 DECLARE_HANDLE(ogl_materials);
 
