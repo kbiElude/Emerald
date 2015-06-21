@@ -37,9 +37,6 @@
 #include <string.h>
 
 
-/* TODO: TEMP TEMP */
-#ifdef _WIN32
-
 /** Internal variables */
 typedef struct
 {
@@ -3158,5 +3155,3 @@ PUBLIC bool ogl_context_set_vsync(__in __notnull ogl_context context,
 
     return result == TRUE ? true : false;
 }
-
-#endif

@@ -143,6 +143,15 @@ SET(AllSources ${GeneralSources}
                ${TextureSources})
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
+# Exclude platform-specific bits for other platforms
+IF (MSVC)
+    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.cc"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.h")
+ELSE (MSVC)
+    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.cc"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.h")
+ENDIF (MSVC)
+
 ADD_LIBRARY(EMERALD SHARED ${AllSources}
     ${ColladaIncludes}
     ${CurveIncludes}

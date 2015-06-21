@@ -33,14 +33,21 @@
 #endif /* INCLUDE_WEBCAM_MANAGER */
 
 /** Internal type definitions  */
-typedef void (*PFNWINDOWCLOSEWINDOWPROC) (__in  system_window_win32    window);
-typedef bool (*PFNWINDOWGETPROPERTYPROC) (__in  system_window_win32    window,
+#ifdef _WIN32
+    typedef system_window_win32 system_window_platform;
+#else
+    // TEMP TODO: typedef system_window_linux system_window_platform;
+    typedef void* system_window_platform;
+#endif
+
+typedef void (*PFNWINDOWCLOSEWINDOWPROC) (__in  system_window_platform window);
+typedef bool (*PFNWINDOWGETPROPERTYPROC) (__in  system_window_platform window,
                                           __in  system_window_property property,
                                           __out void*                  out_result);
-typedef void (*PFNWINDOWHANDLEWINDOWPROC)(__in  system_window_win32    window);
-typedef bool (*PFNWINDOWOPENWINDOWPROC)  (__in  system_window_win32    window,
+typedef void (*PFNWINDOWHANDLEWINDOWPROC)(__in  system_window_platform window);
+typedef bool (*PFNWINDOWOPENWINDOWPROC)  (__in  system_window_platform window,
                                           __in  bool                   is_first_window);
-typedef bool (*PFNWINDOWSETPROPERTYPROC) (__in system_window_win32     window,
+typedef bool (*PFNWINDOWSETPROPERTYPROC) (__in system_window_platform  window,
                                           __in system_window_property  property,
                                           __in const void*             data);
 typedef struct
@@ -64,7 +71,7 @@ typedef struct
     bool                       is_scalable;
     bool                       multisampling_supported;
     uint16_t                   n_multisampling_samples;
-    HWND                       parent_window_handle;
+    system_window_handle       parent_window_handle;
     system_hashed_ansi_string  title;
     bool                       visible;
     bool                       vsync_enabled;
@@ -105,6 +112,9 @@ typedef struct
 
     #ifdef _WIN32
         system_window_win32 window_platform;
+    #else
+        /* TODO TEMP TEMP */
+        void* window_platform;
     #endif
 
     /* Platform-specific entry-points */
@@ -157,7 +167,7 @@ PRIVATE system_window _system_window_create_shared                             (
                                                                                 __in                       uint16_t                             fullscreen_bpp,
                                                                                 __in                       uint16_t                             fullscreen_freq,
                                                                                 __in                       bool                                 vsync_enabled,
-                                                                                __in __maybenull           HWND                                 parent_window_handle,
+                                                                                __in __maybenull           system_window_handle                 parent_window_handle,
                                                                                 __in                       bool                                 multisampling_supported,
                                                                                 __in                       bool                                 visible,
                                                                                 __in                       bool                                 is_root_window);
@@ -318,12 +328,13 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
         window_ptr->pfn_window_set_property  = system_window_win32_set_property;
         window_ptr->window_platform          = system_window_win32_init( (system_window) window_ptr);
     #else
-        window_ptr->pfn_window_close_window  = system_window_linux_close_window;
-        window_ptr->pfn_window_get_property  = system_window_linux_get_property;
-        window_ptr->pfn_window_handle_window = system_window_linux_handle_window;
-        window_ptr->pfn_window_open_window   = system_window_linux_open_window;
-        window_ptr->pfn_window_set_property  = system_window_linux_set_property;
-        window_ptr->window_platform          = system_window_linux_init( (system_window) window_ptr);
+        /* TODO TEMP TEMP */
+        // window_ptr->pfn_window_close_window  = system_window_linux_close_window;
+        // window_ptr->pfn_window_get_property  = system_window_linux_get_property;
+        // window_ptr->pfn_window_handle_window = system_window_linux_handle_window;
+        // window_ptr->pfn_window_open_window   = system_window_linux_open_window;
+        // window_ptr->pfn_window_set_property  = system_window_linux_set_property;
+        // window_ptr->window_platform          = system_window_linux_init( (system_window) window_ptr);
     #endif
 
     ASSERT_ALWAYS_SYNC(window_ptr->window_safe_to_release_event != NULL,
@@ -460,7 +471,12 @@ end:
 
     if (window_ptr->window_platform != NULL)
     {
+#ifdef _WIN32
         system_window_win32_deinit(window_ptr->window_platform);
+#else
+        /* TODO TEMP TEMP */
+        //system_window_linux_deinit(window_ptr->window_platform);
+#endif
 
         window_ptr->window_platform = NULL;
     }
@@ -738,7 +754,7 @@ PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) sys
                                                            entry_index) )
             {
                 LOG_ERROR("Could not remove %uth element from 'spawned windows' vector",
-                          entry_index);
+                          (unsigned int) entry_index);
             }
         }
     }
@@ -811,7 +827,7 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
                                                 0,     /* fullscreen_bpp */
                                                 0,     /* fullscreen_freq */
                                                 false, /* vsync_enabled */
-                                                HWND_DESKTOP,
+                                                0,     /* parent_window_handle */
                                                 false, /* multisampling_supported */
                                                 false, /* visible */
                                                 true   /* is_root_window */);
@@ -846,7 +862,7 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
                                                    __in                       uint16_t                  fullscreen_bpp,
                                                    __in                       uint16_t                  fullscreen_freq,
                                                    __in                       bool                      vsync_enabled,
-                                                   __in __maybenull           HWND                      parent_window_handle,
+                                                   __in __maybenull           system_window_handle      parent_window_handle,
                                                    __in                       bool                      multisampling_supported,
                                                    __in                       bool                      visible,
                                                    __in                       bool                      is_root_window)
@@ -1411,7 +1427,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                         case SYSTEM_WINDOW_CALLBACK_FUNC_CHAR:
                         {
                             result = ((PFNWINDOWCHARCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                              (unsigned char) arg1,
+                                                                                              (( (intptr_t) arg1) & 0xFF),
                                                                                               callback_ptr->user_arg);
 
                             break;
@@ -1427,7 +1443,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN:
                         {
                             result = ((PFNWINDOWKEYDOWNCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                                 (unsigned char) arg1,
+                                                                                                 (( (intptr_t) arg1) & 0xFF),
                                                                                                  callback_ptr->user_arg);
 
                             break;
@@ -1436,7 +1452,7 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
                         case SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP:
                         {
                             result = ((PFNWINDOWKEYUPCALLBACKPROC) callback_ptr->pfn_callback)(window,
-                                                                                               (unsigned char) arg1,
+                                                                                               (( (intptr_t) arg1) & 0xFF),
                                                                                                callback_ptr->user_arg);
 
                             break;
@@ -1604,7 +1620,9 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
         int fullscreen_x = ::GetSystemMetrics(SM_CXFULLSCREEN);
         int fullscreen_y = ::GetSystemMetrics(SM_CYFULLSCREEN);
     #else
-        TODO;
+        /* TODO TEMP TEMP */
+        int fullscreen_x = 800;
+        int fullscreen_y = 600;
     #endif
 
     if (fullscreen_x >= dimensions[0] &&

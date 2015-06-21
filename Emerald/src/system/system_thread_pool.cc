@@ -77,7 +77,7 @@ system_event            kill_pool_event                                         
 system_event            kill_wait_table           [THREAD_POOL_AMOUNT_OF_THREADS]   = {NULL};
 system_resource_pool    order_pool                                                  =  NULL;
 system_resizable_vector queued_tasks              [THREAD_POOL_TASK_PRIORITY_COUNT] = {NULL}; /* Always lock queued_tasks_cs before accessing */
-LONG                    queued_tasks_counter                                        = 0;
+unsigned int            queued_tasks_counter                                        = 0;
 system_critical_section queued_tasks_cs                                             = {NULL};
 system_event            task_available_event                                        =  NULL;
 system_resource_pool    task_descriptor_pool                                        =  NULL;

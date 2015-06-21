@@ -146,27 +146,27 @@ PRIVATE void _ogl_ui_deinit                   (__in __notnull                   
 PRIVATE void _ogl_ui_init                     (__in __notnull                   _ogl_ui*,
                                                __in __notnull                   system_hashed_ansi_string,
                                                __in __notnull                   ogl_pipeline);
-PRIVATE bool _ogl_ui_callback_on_lbm_down     (                                 system_window,
-                                                                                LONG,
-                                                                                LONG,
-                                                                                system_window_vk_status,
-                                                                                void*);
-PRIVATE bool _ogl_ui_callback_on_lbm_up       (                                 system_window,
-                                                                                LONG,
-                                                                                LONG,
-                                                                                system_window_vk_status,
-                                                                                void*);
-PRIVATE bool _ogl_ui_callback_on_mouse_move   (                                 system_window,
-                                                                                LONG,
-                                                                                LONG,
-                                                                                system_window_vk_status,
-                                                                                void*);
-PRIVATE bool _ogl_ui_callback_on_mouse_wheel  (                                 system_window,
-                                                                                unsigned short,
-                                                                                unsigned short,
-                                                                                short,
-                                                                                system_window_vk_status,
-                                                                                void*);
+PRIVATE bool _ogl_ui_callback_on_lbm_down     (                                 system_window             window,
+                                                                                int                       x,
+                                                                                int                       y,
+                                                                                system_window_vk_status   key_status,
+                                                                                void*                     user_arg);
+PRIVATE bool _ogl_ui_callback_on_lbm_up       (                                 system_window             window,
+                                                                                int                       x,
+                                                                                int                       y,
+                                                                                system_window_vk_status   key_status,
+                                                                                void*                     user_arg);
+PRIVATE bool _ogl_ui_callback_on_mouse_move   (                                 system_window             window,
+                                                                                int                       x,
+                                                                                int                       y,
+                                                                                system_window_vk_status   key_status,
+                                                                                void*                     user_arg);
+PRIVATE bool _ogl_ui_callback_on_mouse_wheel  (                                 system_window             window,
+                                                                                int                       x,
+                                                                                int                       y,
+                                                                                short                     scroll_delta,
+                                                                                system_window_vk_status   key_status,
+                                                                                void*                     user_arg);
 PRIVATE void* _ogl_ui_get_internal_control_ptr(__in __notnull                   ogl_ui_control);
 PRIVATE void  _ogl_ui_release                 (__in __notnull __deallocate(mem) void*);
 
@@ -504,9 +504,9 @@ PRIVATE void _ogl_ui_init(__in __notnull _ogl_ui*                  ui_ptr,
 }
 
 /** TODO */
-PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
-                                          LONG                    x,
-                                          LONG                    y,
+PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window           window,
+                                          int                     x,
+                                          int                     y,
                                           system_window_vk_status vk_status,
                                           void*                   ui_instance)
 {
@@ -587,9 +587,9 @@ PRIVATE bool _ogl_ui_callback_on_lbm_down(system_window,
 
 /** TODO */
 PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
-                                        LONG                    x,
-                                        LONG                    y,
-                                        system_window_vk_status,
+                                        int                     x,
+                                        int                     y,
+                                        system_window_vk_status key_status,
                                         void*                   ui_instance)
 {
     _ogl_ui* ui_ptr = (_ogl_ui*) ui_instance;
@@ -665,8 +665,8 @@ PRIVATE bool _ogl_ui_callback_on_lbm_up(system_window,
 
 /** TODO */
 PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
-                                            LONG                    x,
-                                            LONG                    y,
+                                            int                     x,
+                                            int                     y,
                                             system_window_vk_status vk_status,
                                             void*                   ui_instance)
 {
@@ -745,8 +745,8 @@ PRIVATE bool _ogl_ui_callback_on_mouse_move(system_window           window,
 
 /** TODO */
 PRIVATE bool _ogl_ui_callback_on_mouse_wheel(system_window           window,
-                                             unsigned short          x,
-                                             unsigned short          y,
+                                             int                     x,
+                                             int                     y,
                                              short                   wheel_delta,
                                              system_window_vk_status vk_status,
                                              void*                   ui_instance)

@@ -23,8 +23,8 @@ struct _system_critical_section
     pthread_mutex_t cs;
 #endif
 
-    unsigned int n_enters;
-    DWORD        thread_id;
+    unsigned int     n_enters;
+    system_thread_id thread_id;
 
     REFCOUNT_INSERT_VARIABLES
 };
@@ -111,7 +111,7 @@ PUBLIC EMERALD_API void system_critical_section_get_property(__in  system_critic
 
         case SYSTEM_CRITICAL_SECTION_PROPERTY_OWNER_THREAD_ID:
         {
-            *(DWORD*) out_result_ptr = cs_ptr->thread_id;
+            *(system_thread_id*) out_result_ptr = cs_ptr->thread_id;
 
             break;
         }
