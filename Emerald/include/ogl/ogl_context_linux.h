@@ -18,6 +18,9 @@ PUBLIC void ogl_context_linux_bind_to_current_thread(__in ogl_context_linux cont
 PUBLIC void ogl_context_linux_deinit(__in __post_invalid ogl_context_linux context_linux);
 
 /** TODO */
+PUBLIC void ogl_context_linux_deinit_global();
+
+/** TODO */
 PUBLIC void* ogl_context_linux_get_func_ptr(__in ogl_context_linux context_linux,
                                             __in const char*       name);
 
@@ -34,6 +37,9 @@ PUBLIC bool ogl_context_linux_get_property(__in  ogl_context_linux    context_li
  */
 PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
                                    __in PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation);
+
+/** TODO */
+PUBLIC void ogl_context_linux_init_global();
 
 /** TODO */
 PUBLIC void ogl_context_linux_init_msaa(__in ogl_context_linux context_linux);

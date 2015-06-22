@@ -157,7 +157,7 @@ DECLARE_HANDLE(system_window);
     typedef HWND system_window_handle;
     typedef HDC  system_window_dc;
 #elif __linux
-    typedef void* system_window_handle;
+    typedef Window system_window_handle;
 #else
     #error Platform unsupported
 #endif

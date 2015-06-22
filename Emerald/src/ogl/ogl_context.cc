@@ -2392,6 +2392,20 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
 }
 
 /* Please see header for spec */
+PUBLIC void ogl_context_deinit_global()
+{
+    #ifdef _WIN32
+    {
+        /* Nothing to do */
+    }
+    #else
+    {
+        ogl_context_linux_deinit_global();
+    }
+    #endif
+}
+
+/* Please see header for spec */
 PUBLIC ogl_context ogl_context_get_current_context()
 {
     return  _current_context;
@@ -2771,6 +2785,20 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
 end:
     ;
+}
+
+/* Please see header for spec */
+PUBLIC void ogl_context_init_global()
+{
+    #ifdef _WIN32
+    {
+        /* Nothing to do */
+    }
+    #else
+    {
+        ogl_context_linux_init_global();
+    }
+    #endif
 }
 
 /** Please see header for specification */

@@ -21,6 +21,8 @@
 
 #ifdef _WIN32
     #include "system/system_window_win32.h"
+#else
+    #include "system/system_window_linux.h"
 #endif
 
 #ifdef INCLUDE_WEBCAM_MANAGER
@@ -113,12 +115,12 @@ typedef struct
     #ifdef _WIN32
         system_window_win32 window_platform;
     #else
-        /* TODO TEMP TEMP */
-        void* window_platform;
+        system_window_linux window_platform;
     #endif
 
     /* Platform-specific entry-points */
     PFNWINDOWCLOSEWINDOWPROC  pfn_window_close_window;
+    PFNWINDOWDEINITWINDOWPROC pfn_window_deinit_window;
     PFNWINDOWGETPROPERTYPROC  pfn_window_get_property;
     PFNWINDOWHANDLEWINDOWPROC pfn_window_handle_window;
     PFNWINDOWOPENWINDOWPROC   pfn_window_open_window;
@@ -322,19 +324,20 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
 
     #ifdef _WIN32
         window_ptr->pfn_window_close_window  = system_window_win32_close_window;
+        window_ptr->pfn_window_deinit_window = system_window_win32_deinit;
         window_ptr->pfn_window_get_property  = system_window_win32_get_property;
         window_ptr->pfn_window_handle_window = system_window_win32_handle_window;
         window_ptr->pfn_window_open_window   = system_window_win32_open_window;
         window_ptr->pfn_window_set_property  = system_window_win32_set_property;
         window_ptr->window_platform          = system_window_win32_init( (system_window) window_ptr);
     #else
-        /* TODO TEMP TEMP */
-        // window_ptr->pfn_window_close_window  = system_window_linux_close_window;
-        // window_ptr->pfn_window_get_property  = system_window_linux_get_property;
-        // window_ptr->pfn_window_handle_window = system_window_linux_handle_window;
-        // window_ptr->pfn_window_open_window   = system_window_linux_open_window;
-        // window_ptr->pfn_window_set_property  = system_window_linux_set_property;
-        // window_ptr->window_platform          = system_window_linux_init( (system_window) window_ptr);
+        window_ptr->pfn_window_close_window  = system_window_linux_close_window;
+        window_ptr->pfn_window_deinit_window = system_window_linux_deinit;
+        window_ptr->pfn_window_get_property  = system_window_linux_get_property;
+        window_ptr->pfn_window_handle_window = system_window_linux_handle_window;
+        window_ptr->pfn_window_open_window   = system_window_linux_open_window;
+        window_ptr->pfn_window_set_property  = system_window_linux_set_property;
+        window_ptr->window_platform          = system_window_linux_init( (system_window) window_ptr);
     #endif
 
     ASSERT_ALWAYS_SYNC(window_ptr->window_safe_to_release_event != NULL,
@@ -364,12 +367,14 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
     window_ptr->pfn_window_open_window(window_ptr->window_platform,
                                        n_windows_spawned == 0); /* is_first_window */
 
-    /* Create OGL context */
+    /* Cache the properties of the default framebuffer we will be using for the OpenGL
+     * context AND for the window visuals (under Linux).
+     */
     window_ptr->pfd = ogl_pixel_format_descriptor_create(8,  /* color_buffer_red_bits   */
                                                          8,  /* color_buffer_green_bits */
                                                          8,  /* color_buffer_blue_bits  */
                                                          0,  /* color_buffer_alpha_bits */
-                                                         8); /* color_buffer_depth_bits */
+                                                         8); /* depth_bits */
 
     if (window_ptr->pfd == NULL)
     {
@@ -472,12 +477,7 @@ end:
 
     if (window_ptr->window_platform != NULL)
     {
-#ifdef _WIN32
-        system_window_win32_deinit(window_ptr->window_platform);
-#else
-        /* TODO TEMP TEMP */
-        //system_window_linux_deinit(window_ptr->window_platform);
-#endif
+        window_ptr->pfn_window_deinit(window_ptr->window_platform);
 
         window_ptr->window_platform = NULL;
     }
@@ -1066,6 +1066,20 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
 }
 
 /** Please see header for specification */
+PUBLIC void system_window_deinit_global()
+{
+    #ifdef _WIN32
+    {
+        /* Nothing to do here */
+    }
+    #else
+    {
+        system_window_linux_deinit_global();
+    }
+    #endif
+}
+
+/** Please see header for specification */
 PUBLIC EMERALD_API bool system_window_delete_callback_func(__in __notnull system_window               window_instance,
                                                            __in           system_window_callback_func callback_func,
                                                            __in __notnull void*                       pfn_callback_func,
@@ -1622,8 +1636,8 @@ PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_m
         int fullscreen_y = ::GetSystemMetrics(SM_CYFULLSCREEN);
     #else
         /* TODO TEMP TEMP */
-        int fullscreen_x = 800;
-        int fullscreen_y = 600;
+        int fullscreen_x = sedes;
+        int fullscreen_y = sedes;
     #endif
 
     if (fullscreen_x >= dimensions[0] &&
@@ -1774,6 +1788,20 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
 
 end:
     ;
+}
+
+/** Please see header for specification */
+PUBLIC void system_window_init_global()
+{
+    #ifdef _WIN32
+    {
+        /* Nothing to do here */
+    }
+    #else
+    {
+        system_window_linux_init_global();
+    }
+    #endif
 }
 
 /** Please see header for specification */

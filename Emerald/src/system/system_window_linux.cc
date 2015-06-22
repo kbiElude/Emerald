@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2012-2015)
+ * Emerald (kbi/elude @2015)
  *
  */
 #include "shared.h"
@@ -13,33 +13,30 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_thread_pool.h"
 #include "system/system_threads.h"
-#include "system/system_window_win32.h"
+#include "system/system_window_linux.h"
+#include <X11/cursorfont.h>
+#include <X11/Xlib.h>
 
 
-/** TODO */
-#define WM_EMERALD_LOCK_MESSAGE_PUMP (WM_USER + 1)
-
-
-typedef struct _system_window_win32
+typedef struct _system_window_linux
 {
     /* "action forbidden" cursor resource */
-    HCURSOR action_forbidden_cursor_resource;
+    Cursor action_forbidden_cursor_resource;
     /* arrow cursor resource */
-    HCURSOR arrow_cursor_resource;
+    Cursor arrow_cursor_resource;
     /* cross-hair cursor resource */
-    HCURSOR crosshair_cursor_resource;
+    Cursor crosshair_cursor_resource;
     /* hand cursor resource */
-    HCURSOR hand_cursor_resource;
+    Cursor hand_cursor_resource;
     /* "horizontal resize" cursor resource */
-    HCURSOR horizontal_resize_cursor_resource;
+    Cursor horizontal_resize_cursor_resource;
     /* move cursor resource */
-    HCURSOR move_cursor_resource;
+    Cursor move_cursor_resource;
     /* "vertical resize" cursor resource */
-    HCURSOR vertical_resize_cursor_resource;
+    Cursor vertical_resize_cursor_resource;
 
-    HCURSOR current_mouse_cursor_system_resource;
+    Cursor current_mouse_cursor_system_resource;
 
-    system_window_dc            system_dc;
     system_window_handle        system_handle;
     system_window               window; /* DO NOT retain */
 
@@ -49,10 +46,10 @@ typedef struct _system_window_win32
     system_event         message_pump_unlock_event;
     system_event         teardown_completed_event;
 
-    POINT cursor_position; /* only updated prior to call-back execution! */
+    int cursor_position[2]; /* only updated prior to call-back execution! */
 
 
-    explicit _system_window_win32(__in system_window in_window)
+    explicit _system_window_linux(__in system_window in_window)
     {
         action_forbidden_cursor_resource     = 0;
         arrow_cursor_resource                = 0;
@@ -65,7 +62,6 @@ typedef struct _system_window_win32
         message_pump_thread_id               = 0;
         message_pump_unlock_event            = system_event_create(true); /* manual_reset */
         move_cursor_resource                 = 0;
-        system_dc                            = NULL;
         system_handle                        = NULL;
         teardown_completed_event             = system_event_create(true); /* manual_reset */
         window                               = in_window;
@@ -77,6 +73,57 @@ typedef struct _system_window_win32
         ASSERT_DEBUG_SYNC(!is_message_pump_locked,
                           "System window about to be deinited while message pump is locked!");
 
+        /* Release cursor */
+        if (action_forbidden_cursor_resource != NULL)
+        {
+            XFreeCursor(action_forbidden_cursor_resource);
+
+            action_forbidden_cursor_resource = NULL;
+        }
+
+        if (arrow_cursor_resource != NULL)
+        {
+            XFreeCursor(arrow_cursor_resource);
+
+            arrow_cursor_resource = NULL;
+        }
+
+        if (crosshair_cursor_resource != NULL)
+        {
+            XFreeCursor(crosshair_cursor_resource);
+
+            crosshair_cursor_resource = NULL;
+        }
+
+        if (hand_cursor_resource != NULL)
+        {
+            XFreeCursor(hand_cursor_resource);
+
+            hand_cursor_resource = NULL;
+        }
+
+        if (horizontal_resize_cursor_resource != NULL)
+        {
+            XFreeCursor(horizontal_resize_cursor_resource);
+
+            horizontal_resize_cursor_resource = NULL;
+        }
+
+        if (move_cursor_resource != NULL)
+        {
+            XFreeCursor(move_cursor_resource);
+
+            move_cursor_resource = NULL;
+        }
+
+        if (vertical_resize_cursor_resource != NULL)
+        {
+            XFreeCursor(vertical_resize_cursor_resource);
+
+            vertical_resize_cursor_resource = NULL;
+        }
+
+        /* Release other stuff */
         if (message_pump_lock_event != NULL)
         {
             system_event_release(message_pump_lock_event);
@@ -91,14 +138,11 @@ typedef struct _system_window_win32
             message_pump_unlock_event = NULL;
         }
 
-        if (system_dc != NULL)
-        {
-            /* TODO? */
-        }
-
         if (system_handle != NULL)
         {
-            /* TODO? */
+            XDestroyWindow(system_handle);
+
+            system_handle = NULL;
         }
 
         if (teardown_completed_event != NULL)
@@ -110,12 +154,21 @@ typedef struct _system_window_win32
     }
 } _system_window_win32;
 
+/* Global display handle. Configured at Emerald initialization time,
+ * released at Emerald de-initialization.
+ */
+PRIVATE int      _default_screen_index = -1;
+PRIVATE Window   _desktop_window       = NULL;
+PRIVATE Display* _display              = NULL;
+
+
 /* Forward declarations */
 PRIVATE          void _system_window_window_closing_rendering_thread_entrypoint(                ogl_context                          context,
                                                                                                 void*                                user_arg);
 PRIVATE volatile void _system_window_teardown_thread_pool_callback              (__in __notnull system_thread_pool_callback_argument arg);
 
 
+#if 0
 /** TODO */
 PRIVATE VOID _lock_system_window_message_pump(_system_window_win32* win32_ptr)
 {
@@ -179,7 +232,9 @@ PRIVATE VOID _unlock_system_window_message_pump(_system_window_win32* win32_ptr)
         while (system_event_wait_single_peek(win32_ptr->message_pump_unlock_event) ){}
     }
 }
+#endif
 
+#if 0
 /** TODO */
 LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_handle,
                                                               UINT   message_id,
@@ -452,7 +507,9 @@ LRESULT CALLBACK _system_window_class_message_loop_entrypoint(HWND   window_hand
                             wparam,
                             lparam);
 }
+#endif
 
+#if 0
 /** TODO */
 PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
                                                                        void*       user_arg)
@@ -480,7 +537,9 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
                                SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
                               &is_closing);
 }
+#endif
 
+#if 0
 /** TODO */
 PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
 {
@@ -492,18 +551,20 @@ PRIVATE volatile void _system_window_teardown_thread_pool_callback(__in __notnul
 
     system_event_set(window_ptr->teardown_completed_event);
 }
+#endif
 
 
 /** Please see header for spec */
-PUBLIC void system_window_win32_close_window(__in system_window_win32 window)
+PUBLIC void system_window_linux_close_window(__in system_window_linux window)
 {
-    _system_window_win32* win32_ptr = (_system_window_win32*) window;
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
                       "Input argument is NULL");
-    ASSERT_DEBUG_SYNC(win32_ptr->system_handle != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->system_handle != NULL,
                       "No window to close - system handle is NULL.");
 
+#if 0
     if (win32_ptr->system_handle != NULL)
     {
         ::SendMessageA(win32_ptr->system_handle,
@@ -511,71 +572,79 @@ PUBLIC void system_window_win32_close_window(__in system_window_win32 window)
                        0,  /* wParam */
                        0); /* lParam */
     }
+#endif
 }
 
 /** Please see header for spec */
-PUBLIC void system_window_win32_deinit(__in system_window_win32 window)
+PUBLIC void system_window_linux_deinit(__in system_window_linux window)
 {
-    _system_window_win32* win32_ptr = (_system_window_win32*) window;
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
 
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
                       "Input argument is NULL");
 
-    delete win32_ptr;
-    win32_ptr = NULL;
+    delete linux_ptr;
+    linux_ptr = NULL;
 }
 
 /** Please see header for spec */
-PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window,
+PUBLIC void system_window_linux_deinit_global()
+{
+    if (_display != NULL)
+    {
+        /* We don't really care whether this call fails or not */
+        XCloseDisplay(_display);
+
+        _display = NULL;
+    }
+
+    _desktop_window       = NULL;
+    _default_screen_index = -1;
+}
+
+/** Please see header for spec */
+PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window,
                                              __in  system_window_property property,
                                              __out void*                  out_result)
 {
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
     bool                  result    = true;
-    _system_window_win32* win32_ptr = (_system_window_win32*) window;
 
     /* Only handle platform-specific queries */
     switch (property)
     {
         case SYSTEM_WINDOW_PROPERTY_CURSOR_POSITION:
         {
-            POINT cursor_position;
             int*  result_ptr = (int*) out_result;
 
+#if 0
             ::GetCursorPos(&cursor_position);
 
             result_ptr[0] = cursor_position.x;
             result_ptr[1] = cursor_position.y;
-
-            break;
-        }
-
-        case SYSTEM_WINDOW_PROPERTY_DC:
-        {
-            ASSERT_DEBUG_SYNC(win32_ptr->system_dc != 0,
-                              "System DC is NULL.");
-
-            *(system_window_dc*) out_result = win32_ptr->system_dc;
+#endif
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_HANDLE:
         {
-            ASSERT_DEBUG_SYNC(win32_ptr->system_handle != 0,
+            ASSERT_DEBUG_SYNC(linux_ptr->system_handle != 0,
                               "System handle is NULL.");
 
-            *(system_window_handle*) out_result = win32_ptr->system_handle;
+            *(system_window_handle*) out_result = linux_ptr->system_handle;
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_POSITION:
         {
-            ASSERT_DEBUG_SYNC(win32_ptr->system_handle != 0,
+            ASSERT_DEBUG_SYNC(linux_ptr->system_handle != 0,
                               "System handle is NULL.");
 
-            if (win32_ptr->system_handle != 0)
+            if (linux_ptr->system_handle != 0)
             {
+#if 0
                 RECT window_rect;
 
                 if (::GetWindowRect(win32_ptr->system_handle,
@@ -584,6 +653,7 @@ PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window
                     ((int*) out_result)[0] = window_rect.left;
                     ((int*) out_result)[1] = window_rect.top;
                 }
+#endif
             }
 
             break;
@@ -600,28 +670,16 @@ PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window
 }
 
 /** Please see header for spec */
-PUBLIC system_window_win32 system_window_win32_init(__in __notnull system_window owner)
-{
-    _system_window_win32* win32_ptr = new (std::nothrow) _system_window_win32(owner);
-
-    ASSERT_DEBUG_SYNC(win32_ptr != NULL,
-                      "Out of memory");
-
-    /* The descriptor is fully initialized in the constructor. */
-
-    return (system_window_win32) win32_ptr;
-}
-
-/** Please see header for spec */
-PUBLIC void system_window_win32_handle_window(__in system_window_win32 window)
+PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
 {
     bool                  is_visible = false;
-    _system_window_win32* win32_ptr  = (_system_window_win32*) window;
+    _system_window_linux* linux_ptr  = (_system_window_linux*) window;
 
-    system_window_get_property(win32_ptr->window,
+    system_window_get_property(linux_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_IS_VISIBLE,
                               &is_visible);
 
+#if 0
     if (is_visible)
     {
         ::ShowWindow(win32_ptr->system_handle,
@@ -651,97 +709,107 @@ PUBLIC void system_window_win32_handle_window(__in system_window_win32 window)
         ::TranslateMessage(&msg);
         ::DispatchMessage (&msg);
     }
+#endif
 
     system_event_wait_single(win32_ptr->teardown_completed_event);
 }
 
 /** Please see header for spec */
-PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
+PUBLIC system_window_linux system_window_linux_init(__in __notnull system_window owner)
+{
+    _system_window_linux* linux_ptr = new (std::nothrow) _system_window_linux(owner);
+
+    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                      "Out of memory");
+
+    /* The descriptor is fully initialized in the constructor. */
+
+    return (system_window_linux) linux_ptr;
+}
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_init_global()
+{
+    _display = XOpenDisplay(":0");
+
+    if (_display == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not open display at :0");
+
+        goto end;
+    }
+
+    _default_screen_index = DefaultScreen(display);
+    _desktop_window       = RootWindow   (_display,
+                                          _default_screen_index);
+
+end:
+    ;
+}
+
+/** Please see header for spec */
+PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                                             __in bool                is_first_window)
 {
-    DWORD                 ex_style  = 0;
     bool                  result    = true;
-    DWORD                 style     = 0;
-    _system_window_win32* win32_ptr = (_system_window_win32*) window;
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
 
-    /* Create window class, if necessary, and cache mouse cursors */
-    if (is_first_window)
-    {
-        /* Set up the window class. */
-        WNDCLASSA   window_class;
-        static bool window_class_registered = false;
+    ASSERT_DEBUG_SYNC(_display != NULL,
+                      "Display is NULL");
 
-        if (!window_class_registered)
-        {
-            window_class.cbClsExtra    = 0;
-            window_class.cbWndExtra    = 0;
-            window_class.hbrBackground = 0;
-            window_class.hCursor       = ::LoadCursorA     (NULL,
-                                                            IDC_ARROW);
-            window_class.hIcon         = ::LoadIconA       (NULL,
-                                                            IDI_WINLOGO);
-            window_class.hInstance     = ::GetModuleHandleA(NULL);
-            window_class.lpfnWndProc   = _system_window_class_message_loop_entrypoint;
-            window_class.lpszClassName = EMERALD_WINDOW_CLASS_NAME;
-            window_class.lpszMenuName  = NULL;
-            window_class.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
+    /* Cache mouse cursors */
+    linux_ptr->action_forbidden_cursor_resource  = XCreateFontCursor(_display,
+                                                                     XC_X_cursor);
+    linux_ptr->arrow_cursor_resource             = XCreateFontCursor(_display,
+                                                                     XC_left_ptr);
+    linux_ptr->crosshair_cursor_resource         = XCreateFontCursor(_display,
+                                                                     XC_crosshair);
+    linux_ptr->hand_cursor_resource              = XCreateFontCursor(_display,
+                                                                     XC_hand1);
+    linux_ptr->horizontal_resize_cursor_resource = XCreateFontCursor(_display,
+                                                                     XC_sb_h_double_arrow);
+    linux_ptr->move_cursor_resource              = XCreateFontCursor(_display,
+                                                                     XC_right_ptr);
+    linux_ptr->vertical_resize_cursor_resource   = XCreateFontCursor(_display,
+                                                                     XC_sb_v_double_arrow);
 
-            if (!::RegisterClassA(&window_class) )
-            {
-                LOG_FATAL("Could not register engine window class.");
-
-                result = false;
-                goto end;
-            }
-
-            window_class_registered = true;
-        } /* if (!window_class_registered) */
-    } /* if (is_first_window) */
-
-    /* Cache mouse cursor */
-    win32_ptr->action_forbidden_cursor_resource  = ::LoadCursorA(0, IDC_NO);
-    win32_ptr->arrow_cursor_resource             = ::LoadCursorA(0, IDC_ARROW);
-    win32_ptr->crosshair_cursor_resource         = ::LoadCursorA(0, IDC_CROSS);
-    win32_ptr->hand_cursor_resource              = ::LoadCursorA(0, IDC_HAND);
-    win32_ptr->horizontal_resize_cursor_resource = ::LoadCursorA(0, IDC_SIZEWE);
-    win32_ptr->move_cursor_resource              = ::LoadCursorA(0, IDC_SIZEALL);
-    win32_ptr->vertical_resize_cursor_resource   = ::LoadCursorA(0, IDC_SIZENS);
-
-    ASSERT_DEBUG_SYNC(win32_ptr->action_forbidden_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->action_forbidden_cursor_resource != NULL,
                       "Failed to load action forbidden cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->arrow_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->arrow_cursor_resource != NULL,
                       "Failed to load arrow cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->crosshair_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->crosshair_cursor_resource != NULL,
                       "Failed to load crosshair cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->hand_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->hand_cursor_resource != NULL,
                       "Failed to load hand cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->horizontal_resize_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->horizontal_resize_cursor_resource != NULL,
                       "Failed to load horizontal resize cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->move_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->move_cursor_resource != NULL,
                       "Failed to load move cursor resource.");
-    ASSERT_DEBUG_SYNC(win32_ptr->vertical_resize_cursor_resource != NULL,
+    ASSERT_DEBUG_SYNC(linux_ptr->vertical_resize_cursor_resource != NULL,
                       "Failed to load vertical resize cursor resource.");
+
 
     /* If full-screen window was requested, change display mode. */
     bool                      is_window_fullscreen = false;
     bool                      is_window_scalable   = false;
     system_window_handle      parent_window_handle = NULL;
     system_hashed_ansi_string window_title         = NULL;
-    int      x1y1x2y2[4];
+    int                       x1y1x2y2[4];
 
-    system_window_get_property(win32_ptr->window,
+    system_window_get_property(linux_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN,
                               &is_window_fullscreen);
-    system_window_get_property(win32_ptr->window,
+    system_window_get_property(linux_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_IS_SCALABLE,
                               &is_window_scalable);
-    system_window_get_property(win32_ptr->window,
+    system_window_get_property(linux_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
                               &parent_window_handle);
-    system_window_get_property(win32_ptr->window,
+    system_window_get_property(linux_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_TITLE,
                               &window_title);
-    system_window_get_property(win32_ptr->window,
+    system_window_get_property(linux_ptr->window,
                                SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
                                x1y1x2y2);
 
@@ -749,7 +817,6 @@ PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
     {
         uint16_t fullscreen_bpp  = 0;
         uint16_t fullscreen_freq = 0;
-        DEVMODEA new_device_mode;
 
         system_window_get_property(win32_ptr->window,
                                    SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP,
@@ -758,6 +825,7 @@ PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
                                    SYSTEM_WINDOW_PROPERTY_FULLSCREEN_REFRESH_RATE,
                                   &fullscreen_freq);
 
+#if 0
         memset(&new_device_mode,
                0,
                sizeof(new_device_mode) );
@@ -783,9 +851,11 @@ PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
         /* Configure style bitfields accordingly. */
         ex_style = WS_EX_APPWINDOW;
         style    = WS_POPUP;
+#endif
     } /* if (is_window_fullscreen) */
     else
     {
+#if 0
         /* Non-full-screen window requested. Configure style bitfields accordingly. */
         if (parent_window_handle == NULL)
         {
@@ -800,8 +870,10 @@ PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
         {
             style |= WS_THICKFRAME;
         }
+#endif
     }
 
+#if 0
     /* Get system metrics we need to use for the window */
     int x_border_width = ::GetSystemMetrics(SM_CXSIZEFRAME);
     int y_border_width = ::GetSystemMetrics(SM_CYSIZEFRAME);
@@ -842,21 +914,6 @@ PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
         result = false;
         goto end;
     }
-    
-    #ifdef INCLUDE_WEBCAM_MANAGER
-    {
-        /* Register for system notifications on webcams */
-        DEV_BROADCAST_DEVICEINTERFACE notification_filter = {0};
-
-        notification_filter.dbcc_size       = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
-        notification_filter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
-        notification_filter.dbcc_classguid  = GUID_KSCATEGORY_CAPTURE;
-
-        window->webcam_device_notification_handle = ::RegisterDeviceNotificationA(win32_ptr->system_handle,
-                                                                                 &notification_filter,
-                                                                                  DEVICE_NOTIFY_WINDOW_HANDLE);
-    }
-    #endif /* INCLUDE_WEBCAM_MANAGER */
 
     win32_ptr->system_dc = ::GetDC(win32_ptr->system_handle);
 
@@ -873,23 +930,25 @@ PUBLIC bool system_window_win32_open_window(__in system_window_win32 window,
     ::SetWindowLongPtr(win32_ptr->system_handle,
                        GWLP_USERDATA,
                        (LONG) win32_ptr);
+#endif
 
 end:
     return result;
 }
 
 /** Please see header for property */
-PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
+PUBLIC bool system_window_linux_set_property(__in system_window_linux    window,
                                              __in system_window_property property,
                                              __in const void*            data)
 {
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
     bool                  result    = true;
-    _system_window_win32* win32_ptr = (_system_window_win32*) window;
 
     switch (property)
     {
         case SYSTEM_WINDOW_PROPERTY_CURSOR:
         {
+#if 0
             _lock_system_window_message_pump(win32_ptr);
             {
                 system_window_mouse_cursor cursor = *(system_window_mouse_cursor*) data;
@@ -947,6 +1006,7 @@ PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
                 }
             }
             _unlock_system_window_message_pump(win32_ptr);
+#endif
 
             break;
         }
@@ -964,12 +1024,14 @@ PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
                                        SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
                                        x1y1x2y2);
 
+#if 0
             result = (::MoveWindow(win32_ptr->system_handle,
                                    x1y1x2y2[0] - (is_scalable ? ::GetSystemMetrics(SM_CXSIZEFRAME) : ::GetSystemMetrics(SM_CXFRAME) ),
                                    x1y1x2y2[1] - (is_scalable ? ::GetSystemMetrics(SM_CYSIZEFRAME) : ::GetSystemMetrics(SM_CYFRAME) ) - ::GetSystemMetrics(SM_CYCAPTION),
                                    width_height_ptr[0],
                                    width_height_ptr[1],
                                    TRUE) == TRUE);
+#endif
 
             break;
         }
@@ -983,6 +1045,7 @@ PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
                                        SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
                                       &parent_window_handle);
 
+#if 0
             result = (::SetWindowPos(win32_ptr->system_handle,
                                      parent_window_handle,
                                      xy_ptr[0],
@@ -990,6 +1053,7 @@ PUBLIC bool system_window_win32_set_property(__in system_window_win32    window,
                                      0,
                                      0,
                                      SWP_NOSIZE) ) != 0;
+#endif
 
             break;
         }

@@ -224,6 +224,12 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
                                                                      __in __maybenull ogl_context                 parent_context,
                                                                      __in             bool                        allow_msaa);
 
+/** TODO
+ *
+ *  NOTE: Internal use only.
+ */
+PUBLIC void ogl_context_deinit_global();
+
 /** TODO */
 PUBLIC ogl_context ogl_context_get_current_context();
 
@@ -231,6 +237,12 @@ PUBLIC ogl_context ogl_context_get_current_context();
 PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context          context,
                                                  __in            ogl_context_property property,
                                                  __out __notnull void*                out_result);
+
+/** TODO
+ *
+ *  NOTE: Internal use only.
+ */
+PUBLIC void ogl_context_init_global();
 
 /** TODO */
 PUBLIC EMERALD_API bool ogl_context_is_extension_supported(__in __notnull ogl_context,
