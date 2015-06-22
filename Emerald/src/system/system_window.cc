@@ -5,7 +5,6 @@
  */
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "ogl/ogl_types.h"
 #include "system/system_assertions.h"
@@ -14,6 +13,7 @@
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_threads.h"
 #include "system/system_thread_pool.h"
@@ -87,8 +87,8 @@ typedef struct
         HDEVNOTIFY webcam_device_notification_handle;
     #endif
 
-    ogl_pixel_format_descriptor pfd;
-    ogl_context                 system_ogl_context;
+    system_pixel_format pf;
+    ogl_context         system_ogl_context;
 
     system_event         window_initialized_event;
     system_event         window_safe_to_release_event;
@@ -262,11 +262,11 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
         system_resizable_vector_release(callback_vectors[n]);
     }
 
-    if (window_ptr->pfd != NULL)
+    if (window_ptr->pf != NULL)
     {
-        ogl_pixel_format_descriptor_release(window_ptr->pfd);
+        system_pixel_format_release(window_ptr->pf);
 
-        window_ptr->pfd = NULL;
+        window_ptr->pf = NULL;
     }
 
     if (window_ptr->rendering_handler != NULL)
@@ -287,7 +287,7 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
     window_ptr->is_scalable                  = false;
     window_ptr->multisampling_supported      = false;
     window_ptr->n_multisampling_samples      = 0;
-    window_ptr->pfd                          = NULL;
+    window_ptr->pf                           = NULL;
     window_ptr->title                        = system_hashed_ansi_string_get_default_empty_string();
     window_ptr->window_mouse_cursor          = SYSTEM_WINDOW_MOUSE_CURSOR_ARROW;
     window_ptr->x1y1x2y2[0]                  = 0;
@@ -371,13 +371,13 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
     /* Cache the properties of the default framebuffer we will be using for the OpenGL
      * context AND for the window visuals (under Linux).
      */
-    window_ptr->pfd = ogl_pixel_format_descriptor_create(8,  /* color_buffer_red_bits   */
-                                                         8,  /* color_buffer_green_bits */
-                                                         8,  /* color_buffer_blue_bits  */
-                                                         0,  /* color_buffer_alpha_bits */
-                                                         8); /* depth_bits */
+    window_ptr->pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                                8,  /* color_buffer_green_bits */
+                                                8,  /* color_buffer_blue_bits  */
+                                                0,  /* color_buffer_alpha_bits */
+                                                8); /* depth_bits */
 
-    if (window_ptr->pfd == NULL)
+    if (window_ptr->pf == NULL)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not create pixel format descriptor for RGB8D8 format.");
@@ -413,7 +413,7 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
         window_ptr->system_ogl_context = ogl_context_create_from_system_window(window_ptr->title,
                                                                                window_ptr->context_type,
                                                                                (system_window) window_ptr,
-                                                                               window_ptr->pfd,
+                                                                               window_ptr->pf,
                                                                                window_ptr->vsync_enabled,
                                                                                root_context,
                                                                                window_ptr->multisampling_supported);

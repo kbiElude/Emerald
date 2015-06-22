@@ -123,8 +123,8 @@ typedef enum ogl_context_property
     /* not settable, ogl_context */
     OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
 
-    /* not settable, ogl_pixel_format_descriptor */
-    OGL_CONTEXT_PROPERTY_PIXEL_FORMAT_DESCRIPTOR,
+    /* not settable, system_pixel_format */
+    OGL_CONTEXT_PROPERTY_PIXEL_FORMAT,
 
     /* settable, not queriable, ogl_context_linux or ogl_context_win32 */
     OGL_CONTEXT_PROPERTY_PLATFORM_CONTEXT,
@@ -219,7 +219,7 @@ PUBLIC void ogl_context_bind_to_current_thread(__in ogl_context);
 PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull   system_hashed_ansi_string   name,
                                                                      __in __notnull   ogl_context_type            type,
                                                                      __in __notnull   system_window               window,
-                                                                     __in __notnull   ogl_pixel_format_descriptor in_pfd,
+                                                                     __in __notnull   system_pixel_format         in_pfd,
                                                                      __in             bool                        vsync_enabled,
                                                                      __in __maybenull ogl_context                 parent_context,
                                                                      __in             bool                        allow_msaa);

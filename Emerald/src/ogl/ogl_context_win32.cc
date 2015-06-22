@@ -6,10 +6,10 @@
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_win32.h"
-#include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_types.h"
 #include "system/system_window.h"
 
@@ -86,30 +86,30 @@ PRIVATE bool _ogl_context_win32_set_pixel_format_multisampling(_ogl_context_win3
 
     if (win32_ptr->pWGLChoosePixelFormatARB != NULL)
     {
-        int                         alpha_bits  = 0;
-        int                         depth_bits  = 0;
-        ogl_pixel_format_descriptor pfd         = NULL;
-        int                         rgb_bits[3] = {0, 0, 0};
+        int                 alpha_bits  = 0;
+        int                 depth_bits  = 0;
+        system_pixel_format pfd         = NULL;
+        int                 rgb_bits[3] = {0, 0, 0};
 
         ogl_context_get_property(win32_ptr->context,
-                                 OGL_CONTEXT_PROPERTY_PIXEL_FORMAT_DESCRIPTOR,
+                                 OGL_CONTEXT_PROPERTY_PIXEL_FORMAT,
                                 &pfd);
 
-        ogl_pixel_format_descriptor_get_property(pfd,
-                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_RED_BITS,
-                                                 rgb_bits + 0);
-        ogl_pixel_format_descriptor_get_property(pfd,
-                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_GREEN_BITS,
-                                                 rgb_bits + 1);
-        ogl_pixel_format_descriptor_get_property(pfd,
-                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_BLUE_BITS,
-                                                 rgb_bits + 2);
-        ogl_pixel_format_descriptor_get_property(pfd,
-                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
-                                                &alpha_bits);
-        ogl_pixel_format_descriptor_get_property(pfd,
-                                                 OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_DEPTH_BITS,
-                                                &depth_bits);
+        system_pixel_format_get_property(pfd,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
+                                         rgb_bits + 0);
+        system_pixel_format_get_property(pfd,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
+                                         rgb_bits + 1);
+        system_pixel_format_get_property(pfd,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
+                                         rgb_bits + 2);
+        system_pixel_format_get_property(pfd,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
+                                        &alpha_bits);
+        system_pixel_format_get_property(pfd,
+                                         SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
+                                        &depth_bits);
 
         int   attributes[]       = {WGL_DRAW_TO_WINDOW_ARB,           GL_TRUE,
                                     WGL_SUPPORT_OPENGL_ARB,           GL_TRUE,
@@ -290,18 +290,18 @@ PUBLIC void ogl_context_win32_init(__in ogl_context                     context,
                        "Could not load opengl32.dll");
 
     /* Create the context instance */
-    bool                         allow_msaa     = false;
-    ogl_pixel_format_descriptor  context_pfd    = NULL;
-    const PIXELFORMATDESCRIPTOR* system_pfd_ptr = NULL;
-    system_window                window         = NULL;
-    system_window_handle         window_handle  = NULL;
+    bool                         allow_msaa    = false;
+    system_pixel_format          context_pf    = NULL;
+    const PIXELFORMATDESCRIPTOR* system_pf_ptr = NULL;
+    system_window                window        = NULL;
+    system_window_handle         window_handle = NULL;
 
     ogl_context_get_property  (context,
                                OGL_CONTEXT_PROPERTY_ALLOW_MSAA,
                               &allow_msaa);
     ogl_context_get_property  (context,
-                               OGL_CONTEXT_PROPERTY_PIXEL_FORMAT_DESCRIPTOR,
-                              &context_pfd);
+                               OGL_CONTEXT_PROPERTY_PIXEL_FORMAT,
+                              &context_pf);
     ogl_context_get_property  (context,
                                OGL_CONTEXT_PROPERTY_WINDOW,
                               &window);
@@ -312,11 +312,11 @@ PUBLIC void ogl_context_win32_init(__in ogl_context                     context,
                                SYSTEM_WINDOW_PROPERTY_HANDLE,
                               &window_handle);
 
-    ogl_pixel_format_descriptor_get_property(context_pfd,
-                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_DESCRIPTOR_PTR,
-                                            &system_pfd_ptr);
+    system_pixel_format_get_property(context_pf,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_DESCRIPTOR_PTR,
+                                    &system_pf_ptr);
 
-    if (system_pfd_ptr == NULL)
+    if (system_pf_ptr == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
                           "Could not retrieve pixel format descriptor");
@@ -326,7 +326,7 @@ PUBLIC void ogl_context_win32_init(__in ogl_context                     context,
 
     /* Configure the device context handle to use the desired pixel format. */
     int pixel_format_index = ::ChoosePixelFormat(new_win32_ptr->device_context_handle,
-                                                 system_pfd_ptr);
+                                                 system_pf_ptr);
 
     if (pixel_format_index == 0)
     {
@@ -339,7 +339,7 @@ PUBLIC void ogl_context_win32_init(__in ogl_context                     context,
     /* Set the pixel format. */
     if (!::SetPixelFormat(new_win32_ptr->device_context_handle,
                           pixel_format_index,
-                          system_pfd_ptr) )
+                          system_pf_ptr) )
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not set pixel format.");

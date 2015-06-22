@@ -1770,9 +1770,6 @@ DECLARE_HANDLE(shaders_vertex_uber);
 /** Rendering handler handle */
 DECLARE_HANDLE(ogl_rendering_handler);
 
-/** Pixel format descriptor handle */
-DECLARE_HANDLE(ogl_pixel_format_descriptor);
-
 /** OpenGL context handle */
 DECLARE_HANDLE(ogl_context);
 

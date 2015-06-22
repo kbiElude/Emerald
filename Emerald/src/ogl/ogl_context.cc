@@ -17,7 +17,6 @@
 #include "ogl/ogl_context_wrappers.h"
 #include "ogl/ogl_flyby.h"
 #include "ogl/ogl_materials.h"
-#include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_primitive_renderer.h"
 #include "ogl/ogl_programs.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -32,6 +31,7 @@
 #include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
 #include <string.h>
@@ -72,18 +72,18 @@ typedef struct
     ogl_context_linux           context_platform;
 #endif
 
-    ogl_context_type            context_type;
-    bool                        is_intel_driver;
-    bool                        is_nv_driver;
-    uint32_t                    major_version;
-    uint32_t                    minor_version;
-    ogl_context                 parent_context;
-    ogl_pixel_format_descriptor pfd;
-    bool                        vsync_enabled;
-    system_window               window;
-    system_window_handle        window_handle;
+    ogl_context_type     context_type;
+    bool                 is_intel_driver;
+    bool                 is_nv_driver;
+    uint32_t             major_version;
+    uint32_t             minor_version;
+    ogl_context          parent_context;
+    system_pixel_format  pfd;
+    bool                 vsync_enabled;
+    system_window        window;
+    system_window_handle window_handle;
 
-    GLuint                      vao_no_vaas_id;
+    GLuint               vao_no_vaas_id;
 
     /* Current multisampling samples setting */
     bool     allow_msaa;
@@ -2313,26 +2313,26 @@ PUBLIC void ogl_context_unbind_from_current_thread(__in __notnull ogl_context co
  *
  *  @return A new ogl_context instance, if successful, or NULL otherwise.
 */
-PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull system_hashed_ansi_string   name,
-    __in __notnull ogl_context_type            type,
-    __in __notnull system_window               window,
-    __in __notnull ogl_pixel_format_descriptor in_pfd,
-    __in           bool                        vsync_enabled,
-    __in           ogl_context                 parent_context,
-    __in           bool                        allow_msaa)
+PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull system_hashed_ansi_string name,
+                                                                     __in __notnull ogl_context_type          type,
+                                                                     __in __notnull system_window             window,
+                                                                     __in __notnull system_pixel_format       in_pfd,
+                                                                     __in           bool                      vsync_enabled,
+                                                                     __in           ogl_context               parent_context,
+                                                                     __in           bool                      allow_msaa)
 {
     /* Create the ogl_context instance. */
     _ogl_context* new_context_ptr = new (std::nothrow) _ogl_context;
 
     ASSERT_ALWAYS_SYNC(new_context_ptr != NULL,
-        "Out of memory when creating ogl_context instance.");
+                       "Out of memory when creating ogl_context instance.");
 
     REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_context_ptr,
-        _ogl_context_release,
-        OBJECT_TYPE_OGL_CONTEXT,
-        system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
-        system_hashed_ansi_string_get_buffer(name))
-        );
+                                                   _ogl_context_release,
+                                                   OBJECT_TYPE_OGL_CONTEXT,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
+                                                   system_hashed_ansi_string_get_buffer(name))
+                                                   );
 
     new_context_ptr->allow_msaa       = allow_msaa;
     new_context_ptr->context_platform = NULL;
@@ -2582,9 +2582,9 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_PIXEL_FORMAT_DESCRIPTOR:
+        case OGL_CONTEXT_PROPERTY_PIXEL_FORMAT:
         {
-            *(ogl_pixel_format_descriptor*) out_result = context_ptr->pfd;
+            *(system_pixel_format*) out_result = context_ptr->pfd;
 
             break;
         }

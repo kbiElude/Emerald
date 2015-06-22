@@ -525,6 +525,8 @@ typedef void (*PFNSYSTEMRESOURCEPOOLDEINITBLOCK)(system_resource_pool_block);
 
 /******************** MEMORY MANAGER **********************************/
 DECLARE_HANDLE(system_memory_manager);
+/******************** PIXEL FORMAT ***************************************/
+DECLARE_HANDLE(system_pixel_format);
 /************************** DAG ******************************************/
 DECLARE_HANDLE(system_dag);
 
