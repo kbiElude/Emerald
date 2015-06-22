@@ -583,6 +583,14 @@ PUBLIC bool ogl_context_win32_set_property(__in ogl_context_win32    context_win
 }
 
 /** Please see header for spec */
+PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32)
+{
+    _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
+
+    ::SwapBuffers(win32_ptr->context_dc);
+}
+
+/** Please see header for spec */
 PUBLIC void ogl_context_win32_unbind_from_current_thread()
 {
     ::wglMakeCurrent(NULL,  /* HDC */

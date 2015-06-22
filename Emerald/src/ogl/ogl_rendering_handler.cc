@@ -16,9 +16,6 @@
 #include "system/system_time.h"
 #include "system/system_window.h"
 
-/** TODO: Linux support */
-#ifdef _WIN32
-
 
 /** Internal type definitions */
 typedef struct
@@ -137,13 +134,9 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         }
 
         /* Retrieve context's DC which we will need for buffer swaps */
-        HDC                       context_dc            = NULL;
         system_window             context_window        = NULL;
         system_hashed_ansi_string context_window_name   = NULL;
 
-        ogl_context_get_property  (rendering_handler->context,
-                                   OGL_CONTEXT_PROPERTY_DC,
-                                  &context_dc);
         ogl_context_get_property  (rendering_handler->context,
                                    OGL_CONTEXT_PROPERTY_WINDOW,
                                   &context_window);
@@ -318,7 +311,7 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                         /* Swap back buffer with the front buffer now */
                         rendering_handler->last_frame_index = frame_index;
 
-                        ::SwapBuffers(context_dc);
+                        ogl_context_swap_buffers(rendering_handler->context);
 
                         if (rendering_handler->policy == RENDERING_HANDLER_POLICY_RENDER_PER_REQUEST)
                         {
@@ -694,5 +687,3 @@ PUBLIC bool _ogl_rendering_handler_on_bound_to_context(__in __notnull ogl_render
 
     return result;
 }
-
-#endif

@@ -1778,6 +1778,8 @@ DECLARE_HANDLE(ogl_context);
 
 #ifdef _WIN32
     DECLARE_HANDLE(ogl_context_win32);
+#else
+    DECLARE_HANDLE(ogl_context_linux);
 #endif
 
 /* Materials library handle */

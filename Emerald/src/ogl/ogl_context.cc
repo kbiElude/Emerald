@@ -41,6 +41,9 @@
 
     #define ogl_context_platform ogl_context_win32
 #else
+    #include "ogl/ogl_context_linux.h"
+
+    #define ogl_context_platform ogl_context_linux
 #endif
 
 
@@ -57,6 +60,7 @@ typedef void  (*PFNCONTEXTINITMSAAPROC)           (__in  ogl_context_platform   
 typedef bool  (*PFNCONTEXTSETPROPERTYPROC)        (__in  ogl_context_platform            context_win32,
                                                    __in  ogl_context_property            property,
                                                    __in  const void*                     data);
+typedef void  (*PFNCONTEXTSWAPBUFFERSPROC)        (__in  ogl_context_platform            context_platform);
 typedef void  (*PFNUNBINDFROMCURRENTTHREADPROC)   ();
 
 /** Internal variables */
@@ -131,6 +135,7 @@ typedef struct
     PFNCONTEXTINITPROC                pfn_init;
     PFNCONTEXTINITMSAAPROC            pfn_init_msaa;
     PFNCONTEXTSETPROPERTYPROC         pfn_set_property;
+    PFNCONTEXTSWAPBUFFERSPROC         pfn_swap_buffers;
     PFNUNBINDFROMCURRENTTHREADPROC    pfn_unbind_from_current_thread;
 
     REFCOUNT_INSERT_VARIABLES
@@ -143,7 +148,11 @@ struct func_ptr_table_entry
 };
 
 
-__declspec(thread) ogl_context _current_context = NULL;
+#ifdef _WIN32
+    __declspec(thread) ogl_context _current_context = NULL;
+#else
+    __thread ogl_context _current_context = NULL;
+#endif
 
 
 /** Reference counter impl */
@@ -264,13 +273,13 @@ PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        sourc
             default:                           severity_name = "?!";  break;
         }
 
-        sprintf_s(local_message,
-                  "[Id:%d] [Source:%s] Type:[%s] Severity:[%s]: %s",
-                  id,
-                  source_name,
-                  type_name,
-                  severity_name,
-                  message);
+        sprintf(local_message,
+                "[Id:%d] [Source:%s] Type:[%s] Severity:[%s]: %s",
+                id,
+                source_name,
+                type_name,
+                severity_name,
+                message);
 
         LOG_INFO("%s",
                  local_message);
@@ -297,6 +306,8 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
                                                                                              '.');
     const char*  decompressed_filename_last_slash_ptr = strrchr                             (decompressed_filename_ptr,
                                                                                             '\\');
+    unsigned int n_asset_paths                        = 0;
+    unsigned int n_file_unpackers                     = 0;
 
     ASSERT_DEBUG_SYNC(decompressed_filename_last_dot_ptr != NULL,
                       "Input file name does not use any extension");
@@ -323,9 +334,6 @@ PRIVATE system_hashed_ansi_string _ogl_context_get_compressed_filename(__in  __n
      * If not, we iterate over all supported compressed internalformats* and check
      * if the same file BUT with a different extension is perhaps present.
      */
-    unsigned int n_asset_paths    = 0;
-    unsigned int n_file_unpackers = 0;
-
     ogl_context_texture_compression_get_property(context_ptr->texture_compression,
                                                  OGL_CONTEXT_TEXTURE_COMPRESSION_PROPERTY_N_COMPRESSED_INTERNALFORMAT,
                                                 &n_compressed_internalformats);
@@ -469,8 +477,8 @@ PRIVATE bool _ogl_context_get_function_pointers(__in                   __notnull
         GLvoid** ptr_to_update = (GLvoid**) entries[n_entry].func_ptr;
         GLchar*  func_name     = (GLchar*)  entries[n_entry].func_name;
 
-        *ptr_to_update = ogl_context_win32_get_func_ptr(context_ptr->context_platform,
-                                                        func_name);
+        *ptr_to_update = context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                       func_name);
 
         if (*ptr_to_update == NULL)
         {
@@ -708,7 +716,7 @@ PRIVATE void _ogl_context_init_context_after_creation(__in ogl_context context)
     /* Update gfx_image alternative file getter provider so that it can
      * search for compressed textures supported by this rendering context. */
     gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_FUNC_PTR,
-                                  _ogl_context_get_compressed_filename);
+                                  (void*) _ogl_context_get_compressed_filename);
     gfx_image_set_global_property(GFX_IMAGE_PROPERTY_ALTERNATIVE_FILENAME_PROVIDER_USER_ARG,
                                   context_ptr);
 
@@ -1318,7 +1326,8 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
     {
         if (context_ptr->gl_arb_buffer_storage_support)
         {
-            context_ptr->entry_points_private.pGLNamedBufferStorageEXT                    = (PFNGLNAMEDBUFFERSTORAGEEXTPROC) ::wglGetProcAddress("glNamedBufferStorageEXT");
+            context_ptr->entry_points_private.pGLNamedBufferStorageEXT                    = (PFNGLNAMEDBUFFERSTORAGEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                           "glNamedBufferStorageEXT");
             context_ptr->entry_points_gl_ext_direct_state_access.pGLNamedBufferStorageEXT = ogl_context_wrappers_glNamedBufferStorageEXT;
 
             if (context_ptr->entry_points_private.pGLNamedBufferStorageEXT == NULL)
@@ -1330,7 +1339,8 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
 
         if (context_ptr->gl_arb_sparse_buffer_support)
         {
-            context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT = (PFNGLNAMEDBUFFERPAGECOMMITMENTARBPROC) ::wglGetProcAddress("glNamedBufferPageCommitmentEXT");
+            context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT = (PFNGLNAMEDBUFFERPAGECOMMITMENTARBPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                                   "glNamedBufferPageCommitmentEXT");
 
             if (context_ptr->entry_points_gl_arb_sparse_buffer.pGLNamedBufferPageCommitmentEXT == NULL)
             {
@@ -1340,8 +1350,10 @@ PRIVATE void _ogl_context_retrieve_GL_EXT_direct_state_access_function_pointers(
         }
 
         /* ARB_texture_storage_multisample */
-        context_ptr->entry_points_private.pGLTextureStorage2DMultisampleEXT = (PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC) ::wglGetProcAddress("glTextureStorage2DMultisampleEXT");
-        context_ptr->entry_points_private.pGLTextureStorage3DMultisampleEXT = (PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC) ::wglGetProcAddress("glTextureStorage3DMultisampleEXT");
+        context_ptr->entry_points_private.pGLTextureStorage2DMultisampleEXT = (PFNGLTEXTURESTORAGE2DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                      "glTextureStorage2DMultisampleEXT");
+        context_ptr->entry_points_private.pGLTextureStorage3DMultisampleEXT = (PFNGLTEXTURESTORAGE3DMULTISAMPLEEXTPROC) context_ptr->pfn_get_func_ptr(context_ptr->context_platform,
+                                                                                                                                                      "glTextureStorage3DMultisampleEXT");
 
         if (context_ptr->entry_points_private.pGLTextureStorage2DMultisampleEXT == NULL ||
             context_ptr->entry_points_private.pGLTextureStorage3DMultisampleEXT == NULL)
@@ -2339,10 +2351,21 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
         new_context_ptr->pfn_init                       = ogl_context_win32_init;
         new_context_ptr->pfn_init_msaa                  = ogl_context_win32_init_msaa;
         new_context_ptr->pfn_set_property               = ogl_context_win32_set_property;
+        new_context_ptr->pfn_swap_buffers               = ogl_context_win32_swap_buffers;
         new_context_ptr->pfn_unbind_from_current_thread = ogl_context_win32_unbind_from_current_thread;
     }
     #else
-        TODO;
+    {
+        new_context_ptr->pfn_bind_to_current_thread     = ogl_context_linux_bind_to_current_thread;
+        new_context_ptr->pfn_deinit                     = ogl_context_linux_deinit;
+        new_context_ptr->pfn_get_func_ptr               = ogl_context_linux_get_func_ptr;
+        new_context_ptr->pfn_get_property               = ogl_context_linux_get_property;
+        new_context_ptr->pfn_init                       = ogl_context_linux_init;
+        new_context_ptr->pfn_init_msaa                  = ogl_context_linux_init_msaa;
+        new_context_ptr->pfn_set_property               = ogl_context_linux_set_property;
+        new_context_ptr->pfn_swap_buffers               = ogl_context_linux_swap_buffers;
+        new_context_ptr->pfn_unbind_from_current_thread = ogl_context_linux_unbind_from_current_thread;
+    }
     #endif
 
     if (new_context_ptr->parent_context != NULL)
@@ -2362,8 +2385,8 @@ PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notn
     }
 
     /* The first stage of context creation process is platform-specific. */
-    ogl_context_win32_init( (ogl_context) new_context_ptr,
-                            _ogl_context_init_context_after_creation);
+    new_context_ptr->pfn_init( (ogl_context) new_context_ptr,
+                               _ogl_context_init_context_after_creation);
 
     return (ogl_context) new_context_ptr;
 }
@@ -2934,7 +2957,18 @@ PUBLIC bool ogl_context_set_property(__in ogl_context          context,
     else
     {
         return context_ptr->pfn_set_property(context_ptr->context_platform,
-            property,
-            data);
+                                             property,
+                                             data);
     }
+}
+
+/** Please see header for specification */
+PUBLIC void ogl_context_swap_buffers(__in ogl_context context)
+{
+    _ogl_context* context_ptr = (_ogl_context*) context;
+
+    ASSERT_DEBUG_SYNC(context_ptr != NULL,
+                      "Input argument is NULL");
+
+    context_ptr->pfn_swap_buffers(context_ptr->context_platform);
 }

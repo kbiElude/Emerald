@@ -5,21 +5,24 @@ cmake_minimum_required (VERSION 2.8)
 project (EMERALD C CXX) 
 
 # Options
-OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code" ON)
+IF (MSVC)
+     OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code"    ON)
+     OPTION(INCLUDE_OPENCL          "Should include OpenCL code"          OFF)
+     OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
+     OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code"  OFF)
+ENDIF (MSVC)
+
 OPTION(INCLUDE_OBJECT_MANAGER  "Should include object manager code (incl. resource leaking detection)" ON)
-OPTION(INCLUDE_OPENCL          "Should include OpenCL code" OFF)
-OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
-OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code" OFF)
 
-IF (!MSVC)
+IF (NOT MSVC)
  SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-ENDIF (!MSVC)
+ENDIF (NOT MSVC)
 
-IF (!MSVC)
+IF (NOT MSVC)
     # Posix does not support events, as found in Windows. Emerald provides an emulation layer
     # for the functionality, based on conditional variables.
     ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
-ENDIF(!MSVC)
+ENDIF(NOT MSVC)
 
 # DO NOT MODIFY BELOW THIS LINE
 include (GenerateExportHeader)
@@ -145,10 +148,14 @@ ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
 # Exclude platform-specific bits for other platforms
 IF (MSVC)
-    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.cc"
+    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_linux.cc"
+                                "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_linux.h"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.cc"
                                 "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.h")
 ELSE (MSVC)
-    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.cc"
+    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_win32.cc"
+                                "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_wim32.h"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.cc"
                                 "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.h")
 ENDIF (MSVC)
 
@@ -227,11 +234,11 @@ FIND_PACKAGE(OpenGL)
 ADD_SUBDIRECTORY(apps)
 ADD_SUBDIRECTORY(deps)
 
-IF (!MSVC)
-    SET (ADDITIONAL_LIBS pthread)
-ENDIF (!MSVC)
+IF (NOT MSVC)
+    SET(THREADING_LIB pthread)
+ENDIF (NOT MSVC)
 
-TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${ADDITIONAL_LIBS} )
+TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${THREADING_LIB})
 TARGET_LINK_LIBRARIES(TEST EMERALD)
 
 ADD_DEPENDENCIES(EMERALD lib_jpeg)

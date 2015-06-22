@@ -262,6 +262,9 @@ PUBLIC bool ogl_context_set_property(__in ogl_context          context,
                                      __in const void*          data);
 
 /** TODO */
+PUBLIC void ogl_context_swap_buffers(__in ogl_context context);
+
+/** TODO */
 PUBLIC void ogl_context_unbind_from_current_thread(__in __notnull ogl_context context);
 
 #endif /* OGL_CONTEXT_H */

@@ -11,7 +11,6 @@
 #include "ogl/ogl_skybox.h"
 #include "ogl/ogl_texture.h"
 #include "object_manager/object_manager_general.h"
-#include "sh/sh_samples.h"
 #include "shaders/shaders_embeddable_sh.h"
 #include "system/system_assertions.h"
 #include "system/system_hashed_ansi_string.h"
@@ -19,6 +18,10 @@
 #include "system/system_matrix4x4.h"
 #include <string>
 #include <sstream>
+
+#ifdef INCLUDE_OPENCL
+    #include "sh/sh_samples.h"
+#endif
 
 /** TODO: SH skybox is crippled a bit - view vector is calculated correctly, however it looks like
  *        theta/phi calculations are a bit broken. Weird, it's just a typical rectangular->spherical
@@ -144,31 +147,31 @@ PRIVATE void        _ogl_skybox_init_ogl_skybox                  (__in __notnull
 PRIVATE void        _ogl_skybox_init_ogl_skybox_sh               (__in __notnull _ogl_skybox*              skybox_ptr);
 PRIVATE void        _ogl_skybox_init_ub                          (__in __notnull _ogl_skybox*              skybox_ptr);
 
-/** TODO */
-PRIVATE std::string _ogl_skybox_get_fragment_shader_body(__in __notnull sh_samples samples)
-{
-    std::string       body;
-    std::string       n_bands_value_string;
-    std::stringstream n_bands_value_stringstream;
-
-    n_bands_value_stringstream << sh_samples_get_amount_of_bands(samples);
-    n_bands_value_string = n_bands_value_stringstream.str();
-
-    /* Set the string stream */
-    body = fragment_shader_sh_preview;
-
-    body = body.replace(body.find("N_BANDS_VALUE"),
-                        strlen("N_BANDS_VALUE"),
-                        n_bands_value_string);
-    body = body.replace(body.find("SH_CODE_GOES_HERE"),
-                        strlen("SH_CODE_GOES_HERE"),
-                        glsl_embeddable_sh);
-
-    /* Good to go! */
-    return body;
-}
-
 #ifdef INCLUDE_OPENCL
+    /** TODO */
+    PRIVATE std::string _ogl_skybox_get_fragment_shader_body(__in __notnull sh_samples samples)
+    {
+        std::string       body;
+        std::string       n_bands_value_string;
+        std::stringstream n_bands_value_stringstream;
+
+        n_bands_value_stringstream << sh_samples_get_amount_of_bands(samples);
+        n_bands_value_string = n_bands_value_stringstream.str();
+
+        /* Set the string stream */
+        body = fragment_shader_sh_preview;
+
+        body = body.replace(body.find("N_BANDS_VALUE"),
+                            strlen("N_BANDS_VALUE"),
+                            n_bands_value_string);
+        body = body.replace(body.find("SH_CODE_GOES_HERE"),
+                            strlen("SH_CODE_GOES_HERE"),
+                            glsl_embeddable_sh);
+
+        /* Good to go! */
+        return body;
+    }
+
     /** TODO */
     PRIVATE void _ogl_skybox_init_ogl_skybox_sh(__in __notnull _ogl_skybox* skybox_ptr)
     {
