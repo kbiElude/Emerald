@@ -587,7 +587,7 @@ PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32)
 {
     _ogl_context_win32* win32_ptr = (_ogl_context_win32*) context_win32;
 
-    ::SwapBuffers(win32_ptr->context_dc);
+    ::SwapBuffers(win32_ptr->device_context_handle);
 }
 
 /** Please see header for spec */

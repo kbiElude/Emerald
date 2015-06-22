@@ -43,6 +43,7 @@
 #endif
 
 typedef void (*PFNWINDOWCLOSEWINDOWPROC) (__in  system_window_platform window);
+typedef void (*PFNWINDOWDEINITWINDOWPROC)(__in  system_window_platform window);
 typedef bool (*PFNWINDOWGETPROPERTYPROC) (__in  system_window_platform window,
                                           __in  system_window_property property,
                                           __out void*                  out_result);
@@ -477,7 +478,7 @@ end:
 
     if (window_ptr->window_platform != NULL)
     {
-        window_ptr->pfn_window_deinit(window_ptr->window_platform);
+        window_ptr->pfn_window_deinit_window(window_ptr->window_platform);
 
         window_ptr->window_platform = NULL;
     }
