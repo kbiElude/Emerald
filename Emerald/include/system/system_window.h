@@ -72,6 +72,9 @@ typedef enum
     /* not settable, system_window_handle */
     SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
 
+    /* not settable, system_pixel_format */
+    SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+
     /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_POSITION,
 
@@ -105,33 +108,62 @@ PUBLIC EMERALD_API bool system_window_add_callback_func(__in __notnull system_wi
 /** TODO. Releases rendering handler! */
 PUBLIC EMERALD_API bool system_window_close(__in __notnull __deallocate(mem) system_window window);
 
-/** TODO */
+/** TODO
+ *
+ *  @param name                 TODO.
+ *  @param contxt_type          TODO.
+ *  @param vsync_enabled        TODO.
+ *  @param parent_window_handle TODO.
+ *  @param pixel_format         TODO. system_window takes over the ownership of the object.
+ *
+ *  @return TODO
+ */
 PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in system_hashed_ansi_string name,
                                                                           __in ogl_context_type          context_type,
-                                                                          __in uint16_t                  n_multisampling_samples,
                                                                           __in bool                      vsync_enabled,
                                                                           __in system_window_handle      parent_window_handle,
-                                                                          __in bool                      multisampling_supported);
+                                                                          __in system_pixel_format       pixel_format);
 
-/** TODO */
+/** TODO
+ *
+ *  @param context_type  TODO
+ *  @param x1y1x2y2      TODO
+ *  @param title         TODO
+ *  @param scalable      TODO
+ *  @param vsync_enabled TODO
+ *  @param visible       TODO
+ *  @param pixel_format  TODO. system_window takes over the ownership of the object.
+ *
+ *  @return TODO
+ */
 PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in                       ogl_context_type          context_type,
                                                                      __in __notnull __ecount(4) const int*                x1y1x2y2,
                                                                      __in __notnull             system_hashed_ansi_string title,
                                                                      __in                       bool                      scalable,
-                                                                     __in                       uint16_t                  n_multisampling_samples,
                                                                      __in                       bool                      vsync_enabled,
-                                                                     __in                       bool                      multisampling_supported,
-                                                                     __in                       bool                      visible);
+                                                                     __in                       bool                      visible,
+                                                                     __in                       system_pixel_format       pixel_format);
 
-/** TODO */
-PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_context_type context_type,
-                                                                 __in uint16_t         width,
-                                                                 __in uint16_t         height,
-                                                                 __in uint16_t         bpp,
-                                                                 __in uint16_t         freq,
-                                                                 __in uint16_t         n_multisampling_samples,
-                                                                 __in bool             vsync_enabled,
-                                                                 __in bool             multisampling_supported);
+
+/** TODO
+ *
+ *  @param context_type  TODO
+ *  @param width         TODO
+ *  @param height        TODO
+ *  @param bpp           TODO
+ *  @param freq          TODO
+ *  @param vsync_enabled TODO
+ *  @param pixel_format  TODO. system_window takes over the ownership of the object.
+ *
+ *  @return TODO
+ */
+PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_context_type    context_type,
+                                                                 __in uint16_t            width,
+                                                                 __in uint16_t            height,
+                                                                 __in uint16_t            bpp,
+                                                                 __in uint16_t            freq,
+                                                                 __in bool                vsync_enabled,
+                                                                 __in system_pixel_format pixel_format);
 
 /** TODO
  * 

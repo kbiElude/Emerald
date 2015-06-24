@@ -49,6 +49,7 @@
 
 typedef void  (*PFNCONTEXTBINDTOCURRENTTHREADPROC)(__in  ogl_context_platform            context_platform);
 typedef void  (*PFNCONTEXTDEINITPROC)             (__in  ogl_context_platform            context_platform);
+typedef void  (*PFNCONTEXTENUMERATEMSAAPROC)      (__in  ogl_context_platform            context_platform);
 typedef void* (*PFNCONTEXTGETFUNCPTRPROC)         (__in  ogl_context_platform            context_platform,
                                                    __in  const char*                     name);
 typedef bool  (*PFNCONTEXTGETPROPERTYPROC)        (__in  ogl_context_platform            context_platform,
@@ -56,7 +57,6 @@ typedef bool  (*PFNCONTEXTGETPROPERTYPROC)        (__in  ogl_context_platform   
                                                    __out void*                           out_result);
 typedef void  (*PFNCONTEXTINITPROC)               (__in  ogl_context                     context,
                                                    __in  PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation);
-typedef void  (*PFNCONTEXTINITMSAAPROC)           (__in  ogl_context_platform            context_platform);
 typedef bool  (*PFNCONTEXTSETPROPERTYPROC)        (__in  ogl_context_platform            context_win32,
                                                    __in  ogl_context_property            property,
                                                    __in  const void*                     data);
@@ -74,6 +74,7 @@ typedef struct
 
     ogl_context_type     context_type;
     bool                 is_intel_driver;
+    bool                 is_msaa_enumeration_context;
     bool                 is_nv_driver;
     uint32_t             major_version;
     uint32_t             minor_version;
@@ -86,7 +87,6 @@ typedef struct
     GLuint               vao_no_vaas_id;
 
     /* Current multisampling samples setting */
-    bool     allow_msaa;
     uint32_t multisampling_samples;
 
     ogl_context_gl_entrypoints                         entry_points_gl;
@@ -130,10 +130,10 @@ typedef struct
 
     PFNCONTEXTBINDTOCURRENTTHREADPROC pfn_bind_to_current_thread;
     PFNCONTEXTDEINITPROC              pfn_deinit;
+    PFNCONTEXTENUMERATEMSAAPROC       pfn_enumerate_supported_msaa_samples;
     PFNCONTEXTGETFUNCPTRPROC          pfn_get_func_ptr;
     PFNCONTEXTGETPROPERTYPROC         pfn_get_property;
     PFNCONTEXTINITPROC                pfn_init;
-    PFNCONTEXTINITMSAAPROC            pfn_init_msaa;
     PFNCONTEXTSETPROPERTYPROC         pfn_set_property;
     PFNCONTEXTSWAPBUFFERSPROC         pfn_swap_buffers;
     PFNUNBINDFROMCURRENTTHREADPROC    pfn_unbind_from_current_thread;
@@ -195,6 +195,89 @@ PRIVATE void                      _ogl_context_retrieve_GL_function_pointers    
 PRIVATE void                      _ogl_context_retrieve_GL_info                                     (__inout __notnull                   _ogl_context*                context_ptr);
 PRIVATE void                      _ogl_context_retrieve_GL_limits                                   (__inout __notnull                   _ogl_context*                context_ptr);
 
+
+/** TODO */
+PRIVATE ogl_context _ogl_context_create_from_system_window_shared(__in __notnull system_hashed_ansi_string name,
+                                                                  __in __notnull ogl_context_type          type,
+                                                                  __in __notnull system_window             window,
+                                                                  __in __notnull system_pixel_format       in_pfd,
+                                                                  __in           bool                      vsync_enabled,
+                                                                  __in           ogl_context               parent_context,
+                                                                  __in           bool                      is_msaa_enumeration_context)
+{
+    /* Create the ogl_context instance. */
+    _ogl_context* new_context_ptr = new (std::nothrow) _ogl_context;
+
+    ASSERT_ALWAYS_SYNC(new_context_ptr != NULL,
+                       "Out of memory when creating ogl_context instance.");
+
+    memset(new_context_ptr,
+           0,
+           sizeof(*new_context_ptr) );
+
+    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_context_ptr,
+                                                   _ogl_context_release,
+                                                   OBJECT_TYPE_OGL_CONTEXT,
+                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
+                                                   system_hashed_ansi_string_get_buffer(name))
+                                                   );
+
+    new_context_ptr->context_platform            = NULL;
+    new_context_ptr->context_type                = type;
+    new_context_ptr->is_msaa_enumeration_context = is_msaa_enumeration_context;
+    new_context_ptr->parent_context              = parent_context;
+    new_context_ptr->pfd                         = in_pfd;
+    new_context_ptr->vsync_enabled               = vsync_enabled;
+    new_context_ptr->window                      = window;
+
+    #ifdef _WIN32
+    {
+        new_context_ptr->pfn_bind_to_current_thread           = ogl_context_win32_bind_to_current_thread;
+        new_context_ptr->pfn_deinit                           = ogl_context_win32_deinit;
+        new_context_ptr->pfn_enumerate_supported_msaa_samples = ogl_context_win32_enumerate_supported_msaa_modes;
+        new_context_ptr->pfn_get_func_ptr                     = ogl_context_win32_get_func_ptr;
+        new_context_ptr->pfn_get_property                     = ogl_context_win32_get_property;
+        new_context_ptr->pfn_init                             = ogl_context_win32_init;
+        new_context_ptr->pfn_set_property                     = ogl_context_win32_set_property;
+        new_context_ptr->pfn_swap_buffers                     = ogl_context_win32_swap_buffers;
+        new_context_ptr->pfn_unbind_from_current_thread       = ogl_context_win32_unbind_from_current_thread;
+    }
+    #else
+    {
+        new_context_ptr->pfn_bind_to_current_thread           = ogl_context_linux_bind_to_current_thread;
+        new_context_ptr->pfn_deinit                           = ogl_context_linux_deinit;
+        new_context_ptr->pfn_enumerate_supported_msaa_samples = ogl_context_linux_enumerate_supported_msaa_modes;
+        new_context_ptr->pfn_get_func_ptr                     = ogl_context_linux_get_func_ptr;
+        new_context_ptr->pfn_get_property                     = ogl_context_linux_get_property;
+        new_context_ptr->pfn_init                             = ogl_context_linux_init;
+        new_context_ptr->pfn_set_property                    = ogl_context_linux_set_property;
+        new_context_ptr->pfn_swap_buffers                     = ogl_context_linux_swap_buffers;
+        new_context_ptr->pfn_unbind_from_current_thread       = ogl_context_linux_unbind_from_current_thread;
+    }
+    #endif
+
+    if (new_context_ptr->parent_context != NULL)
+    {
+        ogl_context_retain(new_context_ptr->parent_context);
+    }
+
+    if (type == OGL_CONTEXT_TYPE_GL)
+    {
+        new_context_ptr->major_version = 4;
+        new_context_ptr->minor_version = 3;
+    }
+    else
+    {
+        new_context_ptr->major_version = 3;
+        new_context_ptr->minor_version = 1;
+    }
+
+    /* The first stage of context creation process is platform-specific. */
+    new_context_ptr->pfn_init( (ogl_context) new_context_ptr,
+                               _ogl_context_init_context_after_creation);
+
+    return (ogl_context) new_context_ptr;
+}
 
 /** TODO */
 PRIVATE void APIENTRY _ogl_context_debug_message_gl_callback(GLenum        source,
@@ -540,9 +623,24 @@ PRIVATE void _ogl_context_init_context_after_creation(__in ogl_context context)
     ASSERT_DEBUG_SYNC(context_ptr != NULL,
                       "Input argument is NULL");
 
+    /* If the context has been created to enumerate supported MSAA modes, handle
+     * this now and leave */
     memset(&context_ptr->limits,
            0,
            sizeof(context_ptr->limits) );
+
+    if (context_ptr->is_msaa_enumeration_context)
+    {
+        ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
+        ogl_context_bind_to_current_thread    ( (ogl_context) context_ptr);
+
+        _ogl_context_retrieve_GL_function_pointers(context_ptr);
+        _ogl_context_retrieve_GL_limits           (context_ptr);
+
+        context_ptr->pfn_enumerate_supported_msaa_samples(context_ptr->context_platform);
+
+        goto end;
+    }
 
     context_ptr->bo_bindings                                = NULL;
     context_ptr->buffers                                    = NULL;
@@ -664,7 +762,8 @@ PRIVATE void _ogl_context_init_context_after_creation(__in ogl_context context)
         }
         else
         {
-            ASSERT_ALWAYS_SYNC(false, "Direct State Access OpenGL extension is unavailable - the demo is very likely to crash");
+            ASSERT_ALWAYS_SYNC(false,
+                               "Direct State Access OpenGL extension is unavailable - the demo is very likely to crash");
         }
 
         /* Initialize debug output func ptrs */
@@ -683,11 +782,6 @@ PRIVATE void _ogl_context_init_context_after_creation(__in ogl_context context)
             context_ptr->entry_points_private.pGLEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         }
         #endif
-
-        if (context_ptr->allow_msaa)
-        {
-            context_ptr->pfn_init_msaa(context_ptr->context_platform);
-        }
 
         /* Set up cache storage */
         ogl_context_bo_bindings_init        (context_ptr->bo_bindings,
@@ -749,6 +843,7 @@ PRIVATE void _ogl_context_init_context_after_creation(__in ogl_context context)
                                   OGL_CONTEXT_PROPERTY_VSYNC_ENABLED,
                                  &context_ptr->vsync_enabled);
 
+end:
     /* Unbind the thread from the context. It is to be picked up by rendering thread */
     ogl_context_unbind_from_current_thread( (ogl_context) context_ptr);
 }
@@ -2316,79 +2411,26 @@ PUBLIC void ogl_context_unbind_from_current_thread(__in __notnull ogl_context co
 PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull system_hashed_ansi_string name,
                                                                      __in __notnull ogl_context_type          type,
                                                                      __in __notnull system_window             window,
-                                                                     __in __notnull system_pixel_format       in_pfd,
                                                                      __in           bool                      vsync_enabled,
-                                                                     __in           ogl_context               parent_context,
-                                                                     __in           bool                      allow_msaa)
+                                                                     __in           ogl_context               parent_context)
 {
-    /* Create the ogl_context instance. */
-    _ogl_context* new_context_ptr = new (std::nothrow) _ogl_context;
+    system_pixel_format window_pf      = NULL;
+    system_pixel_format window_pf_copy = NULL;
 
-    ASSERT_ALWAYS_SYNC(new_context_ptr != NULL,
-                       "Out of memory when creating ogl_context instance.");
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+                              &window_pf);
 
-    REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(new_context_ptr,
-                                                   _ogl_context_release,
-                                                   OBJECT_TYPE_OGL_CONTEXT,
-                                                   system_hashed_ansi_string_create_by_merging_two_strings("\\OpenGL Contexts\\",
-                                                   system_hashed_ansi_string_get_buffer(name))
-                                                   );
+    window_pf_copy = system_pixel_format_create_copy(window_pf);
 
-    new_context_ptr->allow_msaa       = allow_msaa;
-    new_context_ptr->context_platform = NULL;
-    new_context_ptr->context_type     = type;
-    new_context_ptr->parent_context   = parent_context;
-    new_context_ptr->pfd              = in_pfd;
-    new_context_ptr->vsync_enabled    = vsync_enabled;
-    new_context_ptr->window           = window;
-
-    #ifdef _WIN32
-    {
-        new_context_ptr->pfn_bind_to_current_thread     = ogl_context_win32_bind_to_current_thread;
-        new_context_ptr->pfn_deinit                     = ogl_context_win32_deinit;
-        new_context_ptr->pfn_get_func_ptr               = ogl_context_win32_get_func_ptr;
-        new_context_ptr->pfn_get_property               = ogl_context_win32_get_property;
-        new_context_ptr->pfn_init                       = ogl_context_win32_init;
-        new_context_ptr->pfn_init_msaa                  = ogl_context_win32_init_msaa;
-        new_context_ptr->pfn_set_property               = ogl_context_win32_set_property;
-        new_context_ptr->pfn_swap_buffers               = ogl_context_win32_swap_buffers;
-        new_context_ptr->pfn_unbind_from_current_thread = ogl_context_win32_unbind_from_current_thread;
-    }
-    #else
-    {
-        new_context_ptr->pfn_bind_to_current_thread     = ogl_context_linux_bind_to_current_thread;
-        new_context_ptr->pfn_deinit                     = ogl_context_linux_deinit;
-        new_context_ptr->pfn_get_func_ptr               = ogl_context_linux_get_func_ptr;
-        new_context_ptr->pfn_get_property               = ogl_context_linux_get_property;
-        new_context_ptr->pfn_init                       = ogl_context_linux_init;
-        new_context_ptr->pfn_init_msaa                  = ogl_context_linux_init_msaa;
-        new_context_ptr->pfn_set_property               = ogl_context_linux_set_property;
-        new_context_ptr->pfn_swap_buffers               = ogl_context_linux_swap_buffers;
-        new_context_ptr->pfn_unbind_from_current_thread = ogl_context_linux_unbind_from_current_thread;
-    }
-    #endif
-
-    if (new_context_ptr->parent_context != NULL)
-    {
-        ogl_context_retain(new_context_ptr->parent_context);
-    }
-
-    if (type == OGL_CONTEXT_TYPE_GL)
-    {
-        new_context_ptr->major_version = 4;
-        new_context_ptr->minor_version = 3;
-    }
-    else
-    {
-        new_context_ptr->major_version = 3;
-        new_context_ptr->minor_version = 1;
-    }
-
-    /* The first stage of context creation process is platform-specific. */
-    new_context_ptr->pfn_init( (ogl_context) new_context_ptr,
-                               _ogl_context_init_context_after_creation);
-
-    return (ogl_context) new_context_ptr;
+    /* The new context takes over the ownership of the duplicate pixel format object instance */
+    return _ogl_context_create_from_system_window_shared(name,
+                                                         type,
+                                                         window,
+                                                         window_pf,
+                                                         vsync_enabled,
+                                                         parent_context,
+                                                         false); /* is_msaa_enumeration_context */
 }
 
 /* Please see header for spec */
@@ -2403,6 +2445,59 @@ PUBLIC void ogl_context_deinit_global()
         ogl_context_linux_deinit_global();
     }
     #endif
+}
+
+/* Please see header for spec */
+PUBLIC EMERALD_API void ogl_context_enumerate_supported_msaa_samples(__in  system_pixel_format pf,
+                                                                     __out unsigned int*       out_n_supported_msaa_samples,
+                                                                     __out unsigned int**      out_supported_msaa_samples)
+{
+    void*               data_null_ptr           = NULL;
+    ogl_context         enumeration_context     = NULL;
+    _ogl_context*       enumeration_context_ptr = NULL;
+    system_pixel_format pf_copy                 = system_pixel_format_create_copy(pf); /* context will take over the ownership */
+    system_window       temp_window             = NULL;
+    const int           temp_window_x1y1wh[]    = { 0, 0, 1, 1};
+
+    temp_window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                      temp_window_x1y1wh,
+                                                      system_hashed_ansi_string_create("Enumeration window"),
+                                                      false, /* scalable */
+                                                      false, /* vsync_enabled */
+                                                      false,  /* visible */
+                                                      pf_copy);
+
+    enumeration_context = _ogl_context_create_from_system_window_shared(system_hashed_ansi_string_create("MSAA enumeration context"),
+                                                                        OGL_CONTEXT_TYPE_GL,
+                                                                        temp_window,
+                                                                        pf_copy,
+                                                                        false, /* vsync_enabled  */
+                                                                        NULL,  /* parent_context */
+                                                                        true); /* is_msaa_enumeration_context */
+
+    ASSERT_DEBUG_SYNC(enumeration_context != NULL,
+                      "Enumeration context is NULL");
+
+    /* Copy the results */
+    enumeration_context_ptr = (_ogl_context*) enumeration_context;
+
+    enumeration_context_ptr->pfn_get_property(enumeration_context_ptr->context_platform,
+                                              OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES,
+                                              out_n_supported_msaa_samples);
+    enumeration_context_ptr->pfn_get_property(enumeration_context_ptr->context_platform,
+                                              OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES,
+                                              out_supported_msaa_samples);
+
+    /* We're taking over the ownership of the data array, so reset it on the platform-specific
+     * instance's side */
+    enumeration_context_ptr->pfn_set_property(enumeration_context_ptr->context_platform,
+                                              OGL_CONTEXT_PROPERTY_MSAA_SUPPORTED_SAMPLES,
+                                             &data_null_ptr);
+
+    /* Release the enumeration context */
+    ogl_context_release(enumeration_context);
+
+    enumeration_context = NULL;
 }
 
 /* Please see header for spec */
@@ -2432,13 +2527,6 @@ PUBLIC EMERALD_API void ogl_context_get_property(__in  __notnull ogl_context    
 
     switch (property)
     {
-        case OGL_CONTEXT_PROPERTY_ALLOW_MSAA:
-        {
-            *(bool*) out_result = context_ptr->allow_msaa;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_BO_BINDINGS:
         {
             *((ogl_context_bo_bindings*) out_result) = context_ptr->bo_bindings;

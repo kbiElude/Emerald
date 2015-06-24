@@ -1671,6 +1671,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 
     /* We need to create a new context as rendering handler needs to be bound on a 1:1 basis. All contexts share namespaces
      * so we're on the safe side.
+     *
+     * NOTE: Ownership of window_pf is taken over by descriptor->window.
      **/
     const char* string_table[] =
     {
@@ -1680,13 +1682,18 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 
     system_hashed_ansi_string full_name = system_hashed_ansi_string_create_by_merging_strings(2,
                                                                                               string_table);
+    system_pixel_format       window_pf = system_pixel_format_create                         (8,  /* color_buffer_red_bits   */
+                                                                                              8,  /* color_buffer_green_bits */
+                                                                                              8,  /* color_buffer_blue_bits  */
+                                                                                              0,  /* color_buffer_alpha_bits */
+                                                                                              8,  /* color_buffer_depth_bits */
+                                                                                              1); /* n_samples */
 
     descriptor->window = system_window_create_by_replacing_window(full_name,
                                                                   OGL_CONTEXT_TYPE_GL,
-                                                                  0,
-                                                                  true,
+                                                                  true, /* vsync_enabled */
                                                                   descriptor->view_window_handle,
-                                                                  false);
+                                                                  window_pf);
 
     /* Register for call-backs we need to handle scrolling requests */
     system_window_add_callback_func(descriptor->window,

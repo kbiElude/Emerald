@@ -28,9 +28,6 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_context,
 
 typedef enum ogl_context_property
 {
-    /* not settable, bool */
-    OGL_CONTEXT_PROPERTY_ALLOW_MSAA,
-
     /* not settable, ogl_context_bo_bindings */
     OGL_CONTEXT_PROPERTY_BO_BINDINGS,
 
@@ -114,7 +111,7 @@ typedef enum ogl_context_property
      */
     OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES,
 
-    /* not settable, uint32_t*.
+    /* settable, uint32_t*.
      *
      * An array of supported MSAA samples.
      */
@@ -216,19 +213,28 @@ typedef void (*PFNINITCONTEXTAFTERCREATIONPROC)(__in ogl_context context);
 PUBLIC void ogl_context_bind_to_current_thread(__in ogl_context);
 
 /** TODO */
-PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull   system_hashed_ansi_string   name,
-                                                                     __in __notnull   ogl_context_type            type,
-                                                                     __in __notnull   system_window               window,
-                                                                     __in __notnull   system_pixel_format         in_pfd,
-                                                                     __in             bool                        vsync_enabled,
-                                                                     __in __maybenull ogl_context                 parent_context,
-                                                                     __in             bool                        allow_msaa);
+PUBLIC EMERALD_API ogl_context ogl_context_create_from_system_window(__in __notnull   system_hashed_ansi_string name,
+                                                                     __in __notnull   ogl_context_type          type,
+                                                                     __in __notnull   system_window             window,
+                                                                     __in             bool                      vsync_enabled,
+                                                                     __in __maybenull ogl_context               parent_context);
 
 /** TODO
  *
  *  NOTE: Internal use only.
  */
 PUBLIC void ogl_context_deinit_global();
+
+/** TODO
+ *
+ *  @param pf                           TODO. Ownership is NOT claimed by the function.
+ *  @param out_n_supported_msaa_samples TODO.
+ *  @param out_supported_msaa_samples   TODO.
+ *
+ */
+PUBLIC EMERALD_API void ogl_context_enumerate_supported_msaa_samples(__in  system_pixel_format pf,
+                                                                     __out unsigned int*       out_n_supported_msaa_samples,
+                                                                     __out unsigned int**      out_supported_msaa_samples);
 
 /** TODO */
 PUBLIC ogl_context ogl_context_get_current_context();

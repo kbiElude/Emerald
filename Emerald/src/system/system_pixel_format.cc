@@ -21,6 +21,7 @@ typedef struct _system_pixel_format
     unsigned char color_green_bits;
     unsigned char color_red_bits;
     unsigned char depth_bits;
+    unsigned char n_samples;
 
     _system_pixel_format()
     {
@@ -37,6 +38,7 @@ typedef struct _system_pixel_format
         color_green_bits = 0;
         color_red_bits   = 0;
         depth_bits       = 0;
+        n_samples        = 1;
     }
 } _system_pixel_format;
 
@@ -47,11 +49,12 @@ PRIVATE void _system_pixel_format_release(__in __notnull __deallocate(mem) void*
 }
 
 /** Please see header for specification */
-PUBLIC system_pixel_format system_pixel_format_create(__in unsigned char color_buffer_red_bits,
-                                                      __in unsigned char color_buffer_green_bits,
-                                                      __in unsigned char color_buffer_blue_bits,
-                                                      __in unsigned char color_buffer_alpha_bits,
-                                                      __in unsigned char depth_buffer_bits)
+PUBLIC EMERALD_API system_pixel_format system_pixel_format_create(__in unsigned char color_buffer_red_bits,
+                                                                  __in unsigned char color_buffer_green_bits,
+                                                                  __in unsigned char color_buffer_blue_bits,
+                                                                  __in unsigned char color_buffer_alpha_bits,
+                                                                  __in unsigned char depth_buffer_bits,
+                                                                  __in unsigned char n_samples)
 {
     _system_pixel_format* pf_ptr = new (std::nothrow) _system_pixel_format;
 
@@ -65,6 +68,7 @@ PUBLIC system_pixel_format system_pixel_format_create(__in unsigned char color_b
         pf_ptr->color_blue_bits  = color_buffer_blue_bits;
         pf_ptr->color_alpha_bits = color_buffer_alpha_bits;
         pf_ptr->depth_bits       = depth_buffer_bits;
+        pf_ptr->n_samples        = n_samples;
 
         #ifdef _WIN32
         {
@@ -87,6 +91,17 @@ PUBLIC system_pixel_format system_pixel_format_create(__in unsigned char color_b
     }
 
     return (system_pixel_format) pf_ptr;
+}
+
+/** Please see header for specification */
+PUBLIC system_pixel_format system_pixel_format_create_copy(__in system_pixel_format src_pf)
+{
+    _system_pixel_format* new_pf_ptr = new (std::nothrow) _system_pixel_format( *(_system_pixel_format*) src_pf);
+
+    ASSERT_ALWAYS_SYNC(new_pf_ptr != NULL,
+                       "Out of memory");
+
+    return (system_pixel_format) new_pf_ptr;
 }
 
 /** Please see header for specification */
@@ -142,7 +157,14 @@ PUBLIC void system_pixel_format_get_property(__in            system_pixel_format
         }
 #endif
 
-        default: 
+        case SYSTEM_PIXEL_FORMAT_PROPERTY_N_SAMPLES:
+        {
+            *(unsigned char*) out_result = pf_ptr->n_samples;
+
+            break;
+        }
+
+        default:
         {
             ASSERT_DEBUG_SYNC(false,
                               "Unrecognized PFD property [%d] requested",
@@ -152,7 +174,7 @@ PUBLIC void system_pixel_format_get_property(__in            system_pixel_format
 }
 
 /** Please see header for specification */
-PUBLIC void system_pixel_format_release(__in __notnull system_pixel_format pf)
+PUBLIC EMERALD_API void system_pixel_format_release(__in __notnull system_pixel_format pf)
 {
     delete (_system_pixel_format*) pf;
 

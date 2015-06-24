@@ -35,6 +35,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_variant.h"
 #include "system/system_window.h"
@@ -352,16 +353,23 @@ void _rendering_window_closing_callback_handler(system_window window)
     int window_x1y1x2y2[4] = {0};
 
     /* Carry on */
-    system_window_get_centered_window_position_for_primary_monitor(window_size, window_x1y1x2y2);
+    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                                               8,  /* color_buffer_green_bits */
+                                                               8,  /* color_buffer_blue_bits  */
+                                                               0,  /* color_buffer_alpha_bits */
+                                                               8,  /* depth_buffer_bits       */
+                                                               1); /* n_samples               */
+
+    system_window_get_centered_window_position_for_primary_monitor(window_size,
+                                                                   window_x1y1x2y2);
 
     _window                  = system_window_create_not_fullscreen   (OGL_CONTEXT_TYPE_GL,
                                                                       window_x1y1x2y2,
                                                                       system_hashed_ansi_string_create("Test window"),
                                                                       false,
-                                                                      0,
                                                                       true, /* vsync_enabled */
-                                                                      false,
-                                                                      true);
+                                                                      true,  /* visible */
+                                                                      window_pf);
     _rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                       60,
                                                                       _rendering_handler_callback,

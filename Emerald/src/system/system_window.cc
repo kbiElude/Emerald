@@ -166,14 +166,13 @@ PRIVATE system_window _system_window_create_shared                             (
                                                                                 __in __notnull __ecount(4) const int*                           x1y1x2y2,
                                                                                 __in __notnull             system_hashed_ansi_string            title,
                                                                                 __in __notnull             bool                                 is_scalable,
-                                                                                __in __notnull             uint16_t                             n_multisampling_samples,
                                                                                 __in                       uint16_t                             fullscreen_bpp,
                                                                                 __in                       uint16_t                             fullscreen_freq,
                                                                                 __in                       bool                                 vsync_enabled,
                                                                                 __in __maybenull           system_window_handle                 parent_window_handle,
-                                                                                __in                       bool                                 multisampling_supported,
                                                                                 __in                       bool                                 visible,
-                                                                                __in                       bool                                 is_root_window);
+                                                                                __in                       bool                                 is_root_window,
+                                                                                __in                       system_pixel_format                  pf);
 PRIVATE void          _system_window_window_closing_rendering_thread_entrypoint(                           ogl_context                          context,
                                                                                                            void*                                user_arg);
 
@@ -185,6 +184,13 @@ PRIVATE void _deinit_system_window(_system_window* window_ptr)
         system_critical_section_release(window_ptr->callbacks_cs);
 
         window_ptr->callbacks_cs = NULL;
+    }
+
+    if (window_ptr->pf != NULL)
+    {
+        system_pixel_format_release(window_ptr->pf);
+
+        window_ptr->pf = NULL;
     }
 
     if (window_ptr->window_safe_to_release_event != NULL)
@@ -354,6 +360,8 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
     _system_window* window_ptr = (_system_window*) in_arg;
 
     /* Open the window */
+    ASSERT_DEBUG_SYNC(window_ptr->pf != NULL,
+                      "Pixel format is not set for the window instance");
     ASSERT_DEBUG_SYNC(window_ptr->window_platform != NULL,
                       "Platform-specific window instance is NULL");
 
@@ -367,23 +375,6 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
 
     window_ptr->pfn_window_open_window(window_ptr->window_platform,
                                        n_windows_spawned == 0); /* is_first_window */
-
-    /* Cache the properties of the default framebuffer we will be using for the OpenGL
-     * context AND for the window visuals (under Linux).
-     */
-    window_ptr->pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
-                                                8,  /* color_buffer_green_bits */
-                                                8,  /* color_buffer_blue_bits  */
-                                                0,  /* color_buffer_alpha_bits */
-                                                8); /* depth_bits */
-
-    if (window_ptr->pf == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not create pixel format descriptor for RGB8D8 format.");
-
-        goto end;
-    }
 
     ++n_windows_spawned;
 
@@ -413,10 +404,8 @@ PRIVATE void _system_window_thread_entrypoint(__notnull void* in_arg)
         window_ptr->system_ogl_context = ogl_context_create_from_system_window(window_ptr->title,
                                                                                window_ptr->context_type,
                                                                                (system_window) window_ptr,
-                                                                               window_ptr->pf,
                                                                                window_ptr->vsync_enabled,
-                                                                               root_context,
-                                                                               window_ptr->multisampling_supported);
+                                                                               root_context);
 
         if (window_ptr->system_ogl_context == NULL)
         {
@@ -820,19 +809,28 @@ PRIVATE void _system_window_create_root_window(__in ogl_context_type context_typ
                       root_window_rendering_handler == NULL,
                       "Sanity check failed.");
 
+    /* Spawn the root window.
+     *
+     * NOTE: root_window_pf is taken over by the root window, so we need not release
+     *       the instance we're creating here. */
+    system_pixel_format root_window_pf = system_pixel_format_create(8,  /* red_bits   */
+                                                                    8,  /* green_bits */
+                                                                    8,  /* blue_bits  */
+                                                                    0,  /* alpha_bits */
+                                                                    1,  /* depth_bits */
+                                                                    1); /* n_samples  */
     root_window =  _system_window_create_shared(context_type,
                                                 false, /* is_fullscreen */
                                                 root_window_x1y1x2y2,
                                                 system_hashed_ansi_string_create("Root window"),
                                                 false, /* scalable */
-                                                0,     /* n_multisampling_samples */
                                                 0,     /* fullscreen_bpp */
                                                 0,     /* fullscreen_freq */
                                                 false, /* vsync_enabled */
                                                 0,     /* parent_window_handle */
-                                                false, /* multisampling_supported */
                                                 false, /* visible */
-                                                true   /* is_root_window */);
+                                                true,   /* is_root_window */
+                                                root_window_pf);
 
     ASSERT_DEBUG_SYNC(root_window != NULL,
                       "Root window context creation failed");
@@ -860,14 +858,13 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
                                                    __in __notnull __ecount(4) const int*                x1y1x2y2,
                                                    __in __notnull             system_hashed_ansi_string title,
                                                    __in __notnull             bool                      is_scalable,
-                                                   __in __notnull             uint16_t                  n_multisampling_samples,
                                                    __in                       uint16_t                  fullscreen_bpp,
                                                    __in                       uint16_t                  fullscreen_freq,
                                                    __in                       bool                      vsync_enabled,
                                                    __in __maybenull           system_window_handle      parent_window_handle,
-                                                   __in                       bool                      multisampling_supported,
                                                    __in                       bool                      visible,
-                                                   __in                       bool                      is_root_window)
+                                                   __in                       bool                      is_root_window,
+                                                   __in                       system_pixel_format       pf)
 {
     _system_window* new_window = new (std::nothrow) _system_window;
 
@@ -891,9 +888,8 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
         new_window->is_fullscreen           = is_fullscreen;
         new_window->is_root_window          = is_root_window;
         new_window->is_scalable             = is_scalable;
-        new_window->multisampling_supported = multisampling_supported;
-        new_window->n_multisampling_samples = n_multisampling_samples;
         new_window->parent_window_handle    = parent_window_handle;
+        new_window->pf                      = pf;
         new_window->title                   = title;
         new_window->visible                 = visible;
         new_window->vsync_enabled           = vsync_enabled;
@@ -959,10 +955,9 @@ PRIVATE system_window _system_window_create_shared(__in __notnull             og
 /** Please see header for specification */
 PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in system_hashed_ansi_string name,
                                                                           __in ogl_context_type          context_type,
-                                                                          __in uint16_t                  n_multisampling_samples,
                                                                           __in bool                      vsync_enabled,
                                                                           __in system_window_handle      parent_window_handle,
-                                                                          __in bool                      multisampling_supported)
+                                                                          __in system_pixel_format       pf)
 {
     system_window result = NULL;
 
@@ -994,14 +989,13 @@ PUBLIC EMERALD_API system_window system_window_create_by_replacing_window(__in s
                                                   x1y1x2y2, 
                                                   name,
                                                   false, /* not scalable */
-                                                  n_multisampling_samples,
                                                   0,
                                                   0,
                                                   vsync_enabled,
                                                   ::GetParent(parent_window_handle),
-                                                  multisampling_supported,
-                                                  true  /* visible */,
-                                                  false /* is_root_window */);
+                                                  true   /* visible */,
+                                                  false, /* is_root_window */
+                                                  pf);
         }
     }
     #else
@@ -1019,35 +1013,32 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in       
                                                                      __in __notnull __ecount(4) const int*                x1y1x2y2,
                                                                      __in __notnull             system_hashed_ansi_string title,
                                                                      __in                       bool                      scalable,
-                                                                     __in                       uint16_t                  n_multisampling_samples,
                                                                      __in                       bool                      vsync_enabled,
-                                                                     __in                       bool                      multisampling_supported,
-                                                                     __in                       bool                      visible)
+                                                                     __in                       bool                      visible,
+                                                                     __in                       system_pixel_format       pf)
 {
     return _system_window_create_shared(context_type,
                                         false,
                                         x1y1x2y2,
                                         title,
                                         scalable,
-                                        n_multisampling_samples,
                                         0,
                                         0,
                                         vsync_enabled,
                                         NULL, /* parent_window_handle */
-                                        multisampling_supported,
                                         visible,
-                                        false /* is_root_window */);
+                                        false, /* is_root_window */
+                                        pf);
 }
 
 /** Please see header for specification */
-PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_context_type context_type,
-                                                                 __in uint16_t         width,
-                                                                 __in uint16_t         height,
-                                                                 __in uint16_t         bpp,
-                                                                 __in uint16_t         freq,
-                                                                 __in uint16_t         n_multisampling_samples,
-                                                                 __in bool             vsync_enabled,
-                                                                 __in bool             multisampling_supported)
+PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_context_type    context_type,
+                                                                 __in uint16_t            width,
+                                                                 __in uint16_t            height,
+                                                                 __in uint16_t            bpp,
+                                                                 __in uint16_t            freq,
+                                                                 __in bool                vsync_enabled,
+                                                                 __in system_pixel_format pf)
 {
     const int x1y1x2y2[4] = {0, 0, width, height};
 
@@ -1056,14 +1047,13 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
                                         x1y1x2y2,
                                         system_hashed_ansi_string_get_default_empty_string(),
                                         false,
-                                        n_multisampling_samples,
                                         bpp,
                                         freq,
                                         vsync_enabled,
-                                        NULL, /* parent_window_handle */
-                                        multisampling_supported,
-                                        true, /* visible */
-                                        false /* is_root_window */);
+                                        NULL,  /* parent_window_handle */
+                                        true,  /* visible */
+                                        false, /* is_root_window */
+                                        pf);
 }
 
 /** Please see header for specification */
@@ -1746,6 +1736,13 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
         case SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE:
         {
             *(system_window_handle*) out_result = window_ptr->parent_window_handle;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT:
+        {
+            *(system_pixel_format*) out_result = window_ptr->pf;
 
             break;
         }

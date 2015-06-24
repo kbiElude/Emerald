@@ -12,6 +12,7 @@
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_shader.h"
 #include "system/system_matrix4x4.h"
+#include "system/system_pixel_format.h"
 #include "system/system_window.h"
 
 bool             triangle_test_is_first_frame             = true;
@@ -130,15 +131,20 @@ static void _on_render_frame_creation_test_callback(ogl_context          context
 TEST(ShaderTest, CreationTest)
 {
     /* Create the window */
-    const int     xywh[]            = {0, 0, 320, 240};
-    system_window window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                          xywh,
-                                                                          system_hashed_ansi_string_create("shader creation test"),
-                                                                          false, /* scalable */
-                                                                          0,     /* n_multisampling_samples */
-                                                                          true,  /* vsync_enabled */
-                                                                          false, /* multisampling_supported */
-                                                                          false);/* visible */
+    const int           xywh[]        = {0, 0, 320, 240};
+    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                                            8,  /* color_buffer_green_bits */
+                                                                            8,  /* color_buffer_blue_bits  */
+                                                                            0,  /* color_buffer_alpha_bits */
+                                                                            8,  /* depth_buffer_bits       */
+                                                                            1); /* n_samples               */
+    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                                            xywh,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false,
+                                                                            true,  /* vsync_enabled */
+                                                                            false, /* visible */
+                                                                            window_pf);
 
 #ifdef _WIN32
     HWND          window_sys_handle = 0;
@@ -202,15 +208,20 @@ TEST(ShaderTest, CreationTest)
 TEST(ShaderTest, FullViewportTriangleTest)
 {
     /* Create the window */
-    const int     xywh[]            = {0, 0, 320, 240};
-    system_window window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                          xywh,
-                                                                          system_hashed_ansi_string_create("triangle test"),
-                                                                          false,  /* scalable */
-                                                                          0,      /* n_multisampling_samples */
-                                                                          true,   /* vsync_enabled */
-                                                                          true,   /* multisampling_supported */
-                                                                          false); /* visible */
+    const int           xywh[]        = {0, 0, 320, 240};
+    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                                            8,  /* color_buffer_green_bits */
+                                                                            8,  /* color_buffer_blue_bits  */
+                                                                            0,  /* color_buffer_alpha_bits */
+                                                                            8,  /* depth_buffer_bits       */
+                                                                            16);/* n_samples               */
+    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                                            xywh,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false,
+                                                                            false, /* vsync_enabled */
+                                                                            true,  /* visible */
+                                                                            window_pf);
 
 #ifdef _WIN32
     HWND          window_sys_handle = 0;
@@ -371,3 +382,4 @@ TEST(ShaderTest, FullViewportTriangleTest)
                 FALSE);
 #endif
 }
+

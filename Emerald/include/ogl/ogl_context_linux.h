@@ -21,6 +21,9 @@ PUBLIC void ogl_context_linux_deinit(__in __post_invalid ogl_context_linux conte
 PUBLIC void ogl_context_linux_deinit_global();
 
 /** TODO */
+PUBLIC void ogl_context_linux_enumerate_supported_msaa_modes(__in ogl_context_linux context_linux);
+
+/** TODO */
 PUBLIC void* ogl_context_linux_get_func_ptr(__in ogl_context_linux context_linux,
                                             __in const char*       name);
 
@@ -40,9 +43,6 @@ PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
 
 /** TODO */
 PUBLIC void ogl_context_linux_init_global();
-
-/** TODO */
-PUBLIC void ogl_context_linux_init_msaa(__in ogl_context_linux context_linux);
 
 /** TODO */
 PUBLIC bool ogl_context_linux_set_property(__in ogl_context_linux    context_linux,
