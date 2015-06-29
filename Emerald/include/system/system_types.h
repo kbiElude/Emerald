@@ -157,6 +157,10 @@ DECLARE_HANDLE(system_window);
     typedef HWND system_window_handle;
     typedef HDC  system_window_dc;
 #elif __linux
+    #include <X11/Xlib.h>
+
+    DECLARE_HANDLE(system_window_linux);
+
     typedef Window system_window_handle;
 #else
     #error Platform unsupported
@@ -192,10 +196,15 @@ typedef enum
     SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_RIGHT_BUTTON_PRESSED,  MK_RBUTTON),
     SYSTEM_WINDOW_VK_STATUS_ENTRY(SYSTEM_WINDOW_VK_STATUS_SHIFT_PRESSED,         MK_SHIFT)
 #else
+    /* NOTE: Not reported under Linux. TODO */
     SYSTEM_WINDOW_VK_STATUS_CONTROL_PRESSED       = 1 << 0,
+    /* NOTE: Not reported under Linux. TODO */
     SYSTEM_WINDOW_VK_STATUS_LEFT_BUTTON_PRESSED   = 1 << 1,
+    /* NOTE: Not reported under Linux. TODO */
     SYSTEM_WINDOW_VK_STATUS_MIDDLE_BUTTON_PRESSED = 1 << 2,
+    /* NOTE: Not reported under Linux. TODO */
     SYSTEM_WINDOW_VK_STATUS_RIGHT_BUTTON_PRESSED  = 1 << 3,
+    /* NOTE: Not reported under Linux. TODO */
     SYSTEM_WINDOW_VK_STATUS_SHIFT_PRESSED         = 1 << 4
 #endif
 } system_window_vk_status;
@@ -203,7 +212,7 @@ typedef enum
 /** TODO */
 typedef enum
 {
-    SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE,
+    SYSTEM_WINDOW_CALLBACK_FUNC_EXIT_SIZE_MOVE, /* NOTE: Windows-only */
     SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
     SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
@@ -217,7 +226,7 @@ typedef enum
     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOUBLE_CLICK,
     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-    SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,
+    SYSTEM_WINDOW_CALLBACK_FUNC_CHAR,           /* NOTE: Windows-only */
 
     /* Called right after a rendering window has been closed. This
      * can happen both per user's, and per system's request. */

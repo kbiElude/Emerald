@@ -300,7 +300,7 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
     window_ptr->x1y1x2y2[1]                  = 0;
     window_ptr->x1y1x2y2[2]                  = 0;
     window_ptr->x1y1x2y2[3]                  = 0;
-    window_ptr->parent_window_handle         = NULL;
+    window_ptr->parent_window_handle         = (system_window_handle) NULL;
     window_ptr->rendering_handler            = NULL;
     window_ptr->system_ogl_context           = NULL;
     window_ptr->window_safe_to_release_event = system_event_create(true); /* manual_reset */
@@ -336,15 +336,17 @@ PRIVATE void _init_system_window(_system_window* window_ptr)
         window_ptr->pfn_window_handle_window = system_window_win32_handle_window;
         window_ptr->pfn_window_open_window   = system_window_win32_open_window;
         window_ptr->pfn_window_set_property  = system_window_win32_set_property;
-        window_ptr->window_platform          = system_window_win32_init( (system_window) window_ptr);
+
+        window_ptr->window_platform = system_window_win32_init( (system_window) window_ptr);
     #else
-        window_ptr->pfn_window_close_window  = system_window_linux_close_window;
-        window_ptr->pfn_window_deinit_window = system_window_linux_deinit;
-        window_ptr->pfn_window_get_property  = system_window_linux_get_property;
-        window_ptr->pfn_window_handle_window = system_window_linux_handle_window;
-        window_ptr->pfn_window_open_window   = system_window_linux_open_window;
-        window_ptr->pfn_window_set_property  = system_window_linux_set_property;
-        window_ptr->window_platform          = system_window_linux_init( (system_window) window_ptr);
+        window_ptr->pfn_window_close_window  = (PFNWINDOWCLOSEWINDOWPROC)  system_window_linux_close_window;
+        window_ptr->pfn_window_deinit_window = (PFNWINDOWDEINITWINDOWPROC) system_window_linux_deinit;
+        window_ptr->pfn_window_get_property  = (PFNWINDOWGETPROPERTYPROC)  system_window_linux_get_property;
+        window_ptr->pfn_window_handle_window = (PFNWINDOWHANDLEWINDOWPROC) system_window_linux_handle_window;
+        window_ptr->pfn_window_open_window   = (PFNWINDOWOPENWINDOWPROC)   system_window_linux_open_window;
+        window_ptr->pfn_window_set_property  = (PFNWINDOWSETPROPERTYPROC)  system_window_linux_set_property;
+
+        window_ptr->window_platform = system_window_linux_init( (system_window) window_ptr);
     #endif
 
     ASSERT_ALWAYS_SYNC(window_ptr->window_safe_to_release_event != NULL,
@@ -1025,7 +1027,7 @@ PUBLIC EMERALD_API system_window system_window_create_not_fullscreen(__in       
                                         0,
                                         0,
                                         vsync_enabled,
-                                        NULL, /* parent_window_handle */
+                                        (system_window_handle) NULL, /* parent_window_handle */
                                         visible,
                                         false, /* is_root_window */
                                         pf);
@@ -1050,7 +1052,7 @@ PUBLIC EMERALD_API system_window system_window_create_fullscreen(__in ogl_contex
                                         bpp,
                                         freq,
                                         vsync_enabled,
-                                        NULL,  /* parent_window_handle */
+                                        (system_window_handle) NULL,  /* parent_window_handle */
                                         true,  /* visible */
                                         false, /* is_root_window */
                                         pf);
@@ -1622,13 +1624,19 @@ PUBLIC void system_window_execute_callback_funcs(__in __notnull system_window   
 PUBLIC EMERALD_API bool system_window_get_centered_window_position_for_primary_monitor(__in_ecount(2)  __notnull const int* dimensions,
                                                                                        __out_ecount(4) __notnull int*       result_dimensions)
 {
+    int fullscreen_x = 0;
+    int fullscreen_y = 0;
+
     #ifdef _WIN32
-        int fullscreen_x = ::GetSystemMetrics(SM_CXFULLSCREEN);
-        int fullscreen_y = ::GetSystemMetrics(SM_CYFULLSCREEN);
+    {
+        system_window_win32_get_screen_size(&fullscreen_x,
+                                            &fullscreen_y);
+    }
     #else
-        /* TODO TEMP TEMP */
-        int fullscreen_x = sedes;
-        int fullscreen_y = sedes;
+    {
+        system_window_linux_get_screen_size(&fullscreen_x,
+                                            &fullscreen_y);
+    }
     #endif
 
     if (fullscreen_x >= dimensions[0] &&
@@ -1669,6 +1677,13 @@ PUBLIC EMERALD_API void system_window_get_property(__in  __notnull system_window
 
     switch (property)
     {
+        case SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE:
+        {
+            *(ogl_context_type*) out_result = window_ptr->context_type;
+
+            break;
+        }
+
         case SYSTEM_WINDOW_PROPERTY_FULLSCREEN_BPP:
         {
             *(uint16_t*) out_result = window_ptr->fullscreen_bpp;

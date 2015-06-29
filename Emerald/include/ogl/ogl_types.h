@@ -10,6 +10,10 @@
 #include "system/system_time.h"
 #include "system/system_types.h"
 
+#ifdef __linux
+    #include <GL/glx.h>
+#endif
+
 /* Primitive renderer */
 DECLARE_HANDLE(ogl_primitive_renderer);
 
@@ -1774,8 +1778,12 @@ DECLARE_HANDLE(ogl_rendering_handler);
 DECLARE_HANDLE(ogl_context);
 
 #ifdef _WIN32
+    typedef HGLRC ogl_context_handle;
+
     DECLARE_HANDLE(ogl_context_win32);
 #else
+    typedef GLXContext ogl_context_handle;
+
     DECLARE_HANDLE(ogl_context_linux);
 #endif
 

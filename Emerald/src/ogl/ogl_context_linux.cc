@@ -3,22 +3,24 @@
  * Emerald (kbi/elude @2015)
  *
  */
+#define GLX_GLXEXT_PROTOTYPES
+
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_win32.h"
-#include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_types.h"
 #include "system/system_window.h"
-#include <GL/glx.h>
 #include <X11/Xlib.h>
 
 
 typedef struct _ogl_context_linux
 {
     ogl_context context; /* DO NOT retain */
+    GLXContext  rendering_context;
 
     /* MSAA support */
     uint32_t  n_supported_msaa_samples;
@@ -34,11 +36,120 @@ typedef struct _ogl_context_linux
         glx_ext_swap_control_tear_support = false;
         glx_sgi_swap_control_support      = false;
         n_supported_msaa_samples          = 0;
+        rendering_context                 = NULL;
         supported_msaa_samples            = NULL;
     }
 } _ogl_context_linux;
 
 
+
+/** TODO
+ *
+ *  @return TODO. Must be freed with delete []
+ */
+PRIVATE int* _ogl_context_linux_get_fb_config_attribute_list(system_pixel_format pixel_format)
+{
+    uint32_t n_depth_bits   = 0;
+    uint32_t n_rgba_bits[4] = {0};
+    int*     result         = new int[13];
+
+    ASSERT_DEBUG_SYNC (pixel_format != NULL,
+                       "Input argument is NULL");
+    ASSERT_ALWAYS_SYNC(result != NULL,
+                       "Out of memory");
+
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
+                                     n_rgba_bits + 3);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
+                                     n_rgba_bits + 2);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
+                                     n_depth_bits);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
+                                     n_rgba_bits + 1);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
+                                     n_rgba_bits + 0);
+
+    result[0]  = GLX_RED_SIZE;     result[1]  = n_rgba_bits[0];
+    result[2]  = GLX_GREEN_SIZE;   result[3]  = n_rgba_bits[1];
+    result[4]  = GLX_BLUE_SIZE;    result[5]  = n_rgba_bits[2];
+    result[6]  = GLX_ALPHA_SIZE;   result[7]  = n_rgba_bits[3];
+    result[8]  = GLX_DEPTH_SIZE;   result[9]  = n_depth_bits;
+    result[10] = GLX_DOUBLEBUFFER; result[11] = GL_TRUE;
+    result[12] = None;
+
+    return result;
+}
+
+/** TODO
+ *
+ *  @return TODO. Must be freed with delete []
+ */
+
+PRIVATE int* _ogl_context_linux_get_visual_attribute_list(system_pixel_format pixel_format)
+{
+    uint32_t n_depth_bits   = 0;
+    uint32_t n_rgba_bits[4] = {0};
+    int*     result         = new int[13];
+
+    ASSERT_DEBUG_SYNC (pixel_format != NULL,
+                       "Input argument is NULL");
+    ASSERT_ALWAYS_SYNC(result != NULL,
+                       "Out of memory");
+
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
+                                     n_rgba_bits + 3);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
+                                     n_rgba_bits + 2);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
+                                     n_depth_bits);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
+                                     n_rgba_bits + 1);
+    system_pixel_format_get_property(pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
+                                     n_rgba_bits + 0);
+
+    result[0]  = GLX_RED_SIZE;     result[1]  = n_rgba_bits[0];
+    result[2]  = GLX_GREEN_SIZE;   result[3]  = n_rgba_bits[1];
+    result[4]  = GLX_BLUE_SIZE;    result[5]  = n_rgba_bits[2];
+    result[6]  = GLX_ALPHA_SIZE;   result[7]  = n_rgba_bits[3];
+    result[8]  = GLX_DEPTH_SIZE;   result[9]  = n_depth_bits;
+    result[10] = GLX_DOUBLEBUFFER;
+    result[11] = GLX_RGBA;
+    result[12] = None;
+
+    return result;
+}
+
+/** TODO */
+PRIVATE void _ogl_context_linux_initialize_glx_extensions(__inout __notnull _ogl_context_linux* context_ptr)
+{
+    if (context_ptr->pWGLGetExtensionsStringEXT != NULL)
+    {
+        const char* wgl_extensions = context_ptr->pWGLGetExtensionsStringEXT();
+
+        /* Is EXT_wgl_swap_control supported? */
+        context_ptr->wgl_swap_control_support = (strstr(wgl_extensions,
+                                                        "WGL_EXT_swap_control") != NULL);
+
+        if (context_ptr->wgl_swap_control_support)
+        {
+            context_ptr->pWGLSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC) ::wglGetProcAddress("wglSwapIntervalEXT");
+        }
+
+        /* Is EXT_WGL_swap_control_tear supported? */
+        context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions,
+                                                             "WGL_EXT_swap_control_tear") != NULL);
+    } /* if (pWGLGetExtensionsString != NULL) */
+}
 
 /** TODO */
 PRIVATE bool _ogl_context_linux_set_pixel_format_multisampling(_ogl_context_linux* linux_ptr,
@@ -133,20 +244,13 @@ PUBLIC void ogl_context_linux_deinit(__in __post_invalid ogl_context_linux conte
     ASSERT_DEBUG_SYNC(linux_ptr != NULL,
                       "Input argument is NULL");
 
-#if 0
-    if (::wglDeleteContext(win32_ptr->wgl_rendering_context) == FALSE)
+    if (linux_ptr->rendering_context != NULL)
     {
-        LOG_ERROR("wglDeleteContext() failed.");
+        glXDestroyContext(_display,
+                          linux_ptr->rendering_context);
+
+        linux_ptr->rendering_context = NULL;
     }
-
-    if (win32_ptr->opengl32_dll_handle != NULL)
-    {
-        ::FreeLibrary(win32_ptr->opengl32_dll_handle);
-
-        win32_ptr->opengl32_dll_handle = NULL;
-    }
-
-#endif
 
     if (linux_ptr->supported_msaa_samples != NULL)
     {
@@ -163,6 +267,45 @@ PUBLIC void ogl_context_linux_deinit(__in __post_invalid ogl_context_linux conte
 PUBLIC void ogl_context_linux_deinit_global()
 {
     /* Stub */
+}
+
+/** Please see header for specification */
+PUBLIC void ogl_context_linux_get_fb_configs_for_gl_window(system_window window,
+                                                           GLXFBConfig** out_fb_configs_ptr,
+                                                           int*          out_n_compatible_fb_configs_ptr)
+{
+    int*                fb_config_attribute_list = NULL;
+    Display*            window_display           = NULL;
+    system_pixel_format window_pixel_format      = NULL;
+    int                 window_screen_index      = -1;
+
+    ASSERT_DEBUG_SYNC(window                          != NULL &&
+                      out_fb_configs_ptr              != NULL &&
+                      out_n_compatible_fb_configs_ptr != NULL,
+                      "Input arguments are NULL");
+
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DISPLAY,
+                              &window_display);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+                              &window_pixel_format);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX,
+                              &window_screen_index);
+
+    fb_config_attribute_list = _ogl_context_linux_get_fb_config_attribute_list(window_pixel_format);
+    *out_fb_configs_ptr      = glXChooseFBConfig                              (window_display,
+                                                                               window_screen_index,
+                                                                               fb_config_attribute_list,
+                                                                               out_n_compatible_fb_configs_ptr);
+
+    ASSERT_DEBUG_SYNC(*out_fb_configs_ptr              != NULL &&
+                      *out_n_compatible_fb_configs_ptr != 0,
+                      "glXChooseFBConfig() returned NULL");
+
+    delete [] fb_config_attribute_list;
+    fb_config_attribute_list = NULL;
 }
 
 /** Please see header for spec */
@@ -207,14 +350,6 @@ PUBLIC bool ogl_context_linux_get_property(__in  ogl_context_linux    context_li
 
             break;
         }
-
-        case OGL_CONTEXT_PROPERTY_GL_CONTEXT:
-        {
-            *((HGLRC*) out_result) = win32_ptr->wgl_rendering_context;
-                       result      = true;
-
-            break;
-        }
 #endif
 
         case OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES:
@@ -233,25 +368,125 @@ PUBLIC bool ogl_context_linux_get_property(__in  ogl_context_linux    context_li
             break;
         }
 
-#if 0
         case OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT:
         {
-            *(HGLRC*) out_result = win32_ptr->wgl_rendering_context;
-                      result     = true;
+            *(GLXContext*) out_result = linux_ptr->rendering_context;
+                           result     = true;
 
             break;
         }
-#endif
     } /* switch (property) */
 
     return result;
+}
+
+/** Please see header for specification */
+PUBLIC XVisualInfo* ogl_context_linux_get_visual_info_for_gl_window(system_window window)
+{
+    int*                fb_config_attribute_list = NULL;
+    GLXFBConfig*        fb_configs_ptr           = NULL;
+    int                 n_compatible_fb_configs  = 0;
+    uint32_t            n_depth_bits             = 0;
+    uint32_t            n_rgba_bits[4]           = {0};
+    int*                visual_attribute_list    = NULL;
+    XVisualInfo*        visual_info_ptr          = NULL;
+    Display*            window_display           = NULL;
+    system_pixel_format window_pixel_format      = NULL;
+    int                 window_screen_index      = -1;
+
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DISPLAY,
+                              &window_display);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+                              &window_pixel_format);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX,
+                              &window_screen_index);
+
+    system_pixel_format_get_property(window_pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_ALPHA_BITS,
+                                     n_rgba_bits + 3);
+    system_pixel_format_get_property(window_pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_BLUE_BITS,
+                                     n_rgba_bits + 2);
+    system_pixel_format_get_property(window_pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
+                                     n_depth_bits);
+    system_pixel_format_get_property(window_pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
+                                     n_rgba_bits + 1);
+    system_pixel_format_get_property(window_pixel_format,
+                                     SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_RED_BITS,
+                                     n_rgba_bits + 0);
+
+    fb_config_attribute_list = _ogl_context_linux_get_fb_config_attribute_list(window_pixel_format);
+    visual_attribute_list    = _ogl_context_linux_get_visual_attribute_list   (window_pixel_format);
+
+    ogl_context_linux_get_fb_configs_for_gl_window(window,
+                                                  &fb_configs_ptr,
+                                                  &n_compatible_fb_configs);
+
+    if (fb_configs_ptr          == NULL ||
+        n_compatible_fb_configs == 0)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "No compatible framebuffer configurations found.");
+
+        goto end;
+    }
+
+    visual_info_ptr = glXChooseVisual(window_display,
+                                      window_screen_index,
+                                      fb_config_attribute_list,
+                                      visual_attribute_list);
+
+    ASSERT_DEBUG_SYNC(visual_info_ptr != NULL,
+                      "glXChooseVisual() returned NULL");
+
+end:
+    if (fb_config_attribute_list != NULL)
+    {
+        delete [] fb_config_attribute_list;
+
+        fb_config_attribute_list = NULL;
+    }
+
+    if (fb_configs_ptr != NULL)
+    {
+        XFree(fb_configs_ptr);
+
+        fb_configs_ptr = NULL;
+    }
+
+    if (visual_attribute_list != NULL)
+    {
+        delete [] visual_attribute_list;
+
+        visual_attribute_list = NULL;
+    }
+
+    return visual_info_ptr;
 }
 
 /** Please see header for spec */
 PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
                                    __in PFNINITCONTEXTAFTERCREATIONPROC pInitContextAfterCreation)
 {
-    _ogl_context_linux* new_linux_ptr = new (std::nothrow) _ogl_context_linux;
+    int                   attribute_list[32]               = {0}; /* 32 is more than enough */
+    int                   context_major_version            = 0;
+    int                   context_minor_version            = 0;
+    ogl_context_type      context_type                     = OGL_CONTEXT_TYPE_UNDEFINED;
+    GLXFBConfig*          fb_configs_ptr                   = NULL;
+    int                   n_fb_configs                     = 0;
+    _ogl_context_linux*   new_linux_ptr                    = new (std::nothrow) _ogl_context_linux;
+    ogl_context           parent_context                   = NULL;
+    GLXContext            parent_context_rendering_context = NULL;
+    system_window         parent_context_window            = NULL;
+    ogl_rendering_handler parent_context_rendering_handler = NULL;
+    system_window         window                           = (system_window)        NULL;
+    Display*              window_display                   = NULL;
+    system_window_handle  window_handle                    = (system_window_handle) NULL;
 
     ASSERT_DEBUG_SYNC(_display != NULL,
                       "Display is NULL");
@@ -263,201 +498,26 @@ PUBLIC void ogl_context_linux_init(__in ogl_context                     context,
         goto end;
     }
 
-    new_linux_ptr->context = context;
-
     ogl_context_set_property(context,
                              OGL_CONTEXT_PROPERTY_PLATFORM_CONTEXT,
                             &new_linux_ptr);
 
-    /* Create the context instance */
-    bool                         allow_msaa              = false;
-    ogl_pixel_format_descriptor  context_pfd             = NULL;
-    GLXFBConfig*                 fb_configs_ptr          = NULL;
-    int                          n_compatible_fb_configs = 0;
-    uint32_t                     n_depth_bits            = 0;
-    uint32_t                     n_rgba_bits[4]          = {0};
-    system_window                window                  = NULL;
-    XSetWindowAttributes         winattr;
-    system_window_handle         window_handle           = NULL;
-    XVisualInfo*                 visual_info_ptr         = NULL;
+    /* Immediately tell the owner where the platform context instance is */
+    new_linux_ptr->context = context;
 
-    int                          fb_config_attribute_list[2 * 6 /* rgba bits, depth bits, doublebuffering */ + 1 /* terminator */];
-    int                          visual_attribute_list   [2 * 5 /* rgba bits, depth bits */                  + 2 /* doublebuffering, rgba */ + 1 /* terminator */];
-
-    ogl_context_get_property  (context,
-                               OGL_CONTEXT_PROPERTY_ALLOW_MSAA,
-                              &allow_msaa);
-    ogl_context_get_property  (context,
-                               OGL_CONTEXT_PROPERTY_PIXEL_FORMAT_DESCRIPTOR,
-                              &context_pfd);
-    ogl_context_get_property  (context,
-                               OGL_CONTEXT_PROPERTY_WINDOW,
-                              &window);
-    system_window_get_property(window,
-                               SYSTEM_WINDOW_PROPERTY_HANDLE,
-                              &window_handle);
-
-    ogl_pixel_format_descriptor_get_property(context_pfd,
-                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_ALPHA_BITS,
-                                             n_rgba_bits + 3);
-    ogl_pixel_format_descriptor_get_property(context_pfd,
-                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_BLUE_BITS,
-                                             n_rgba_bits + 2);
-    ogl_pixel_format_descriptor_get_property(context_pfd,
-                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_DEPTH_BITS,
-                                            &n_depth_bits);
-    ogl_pixel_format_descriptor_get_property(context_pfd,
-                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_GREEN_BITS,
-                                             n_rgba_bits + 1);
-    ogl_pixel_format_descriptor_get_property(context_pfd,
-                                             OGL_PIXEL_FORMAT_DESCRIPTOR_PROPERTY_RED_BITS,
-                                             n_rgba_bits + 0);
-
-    fb_config_attribute_list[0]  = GLX_RED_SIZE;     fb_config_attribute_list[1]  = n_rgba_bits[0];
-    fb_config_attribute_list[2]  = GLX_GREEN_SIZE;   fb_config_attribute_list[3]  = n_rgba_bits[1];
-    fb_config_attribute_list[4]  = GLX_BLUE_SIZE;    fb_config_attribute_list[5]  = n_rgba_bits[2];
-    fb_config_attribute_list[6]  = GLX_ALPHA_SIZE;   fb_config_attribute_list[7]  = n_rgba_bits[3];
-    fb_config_attribute_list[8]  = GLX_DEPTH_SIZE;   fb_config_attribute_list[9]  = n_depth_bits;
-    fb_config_attribute_list[10] = GLX_DOUBLEBUFFER; fb_config_attribute_list[11] = GL_TRUE;
-    fb_config_attribute_list[12] = None;
-
-    visual_attribute_list[0]  = GLX_RED_SIZE;     visual_attribute_list[1]  = n_rgba_bits[0];
-    visual_attribute_list[2]  = GLX_GREEN_SIZE;   visual_attribute_list[3]  = n_rgba_bits[1];
-    visual_attribute_list[4]  = GLX_BLUE_SIZE;    visual_attribute_list[5]  = n_rgba_bits[2];
-    visual_attribute_list[6]  = GLX_ALPHA_SIZE;   visual_attribute_list[7]  = n_rgba_bits[3];
-    visual_attribute_list[8]  = GLX_DEPTH_SIZE;   visual_attribute_list[9]  = n_depth_bits;
-    visual_attribute_list[10] = GLX_DOUBLEBUFFER;
-    visual_attribute_list[11] = GLX_RGBA;
-    visual_attribute_list[12] = None;
-
-    fb_configs_ptr = glXChooseFBConfig(_display,
-                                       _default_screen_index,
-                                       fb_config_attribute_list,
-                                      &n_compatible_fb_configs);
-
-    ASSERT_DEBUG_SYNC(fb_configs_ptr != NULL,
-                      "glXChooseFBConfig() returned NULL");
-    ASSERT_DEBUG_SYNC(n_compatible_fb_configs != 0,
-                      "No compatible framebuffer configs were reported");
-
-    if (fb_configs_ptr          == NULL ||
-        n_compatible_fb_configs == 0)
-    {
-        goto end;
-    }
-
-    visual_info_ptr = glXChooseVisual(_display,
-                                      _default_screen_index,fb_config_attribute_list,
-                                      visual_attribute_list);
-
-    ASSERT_DEBUG_SYNC(visual_info_ptr != NULL,
-                      "glXChooseVisual() returned NULL");
-
-    if (visual_info_ptr == NULL)
-    {
-        goto end;
-    }
-
-    sedes;
-#if 0
-    winattr.background_pixel = 0;
-    winattr.border_pixel = 0;
-    winattr.colormap = XCreateColormap(d_dpy, root, visinfo->visual, AllocNone);
-    winattr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
-    unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask;
-
-    printf("Window depth %d, w %d h %d\n", visinfo->depth, width, height);
-    d_win = XCreateWindow(d_dpy, root, 0, 0, width, height, 0, 
-            visinfo->depth, InputOutput, visinfo->visual, mask, &winattr);
-#endif
-
-end:
-    /* Clean up */
-    if (fb_configs_ptr != NULL)
-    {
-        XFree(fb_configs_ptr);
-
-        fb_configs_ptr = NULL;
-    }
-
-    if (visual_info_ptr != NULL)
-    {
-        XFree(visual_info_ptr);
-
-        visual_info_ptr = NULL;
-    }
-)
-GLXFBConfig *fbcfg = glXChooseFBConfig(d_dpy, scrnum, NULL, &elemc);
-if (!fbcfg) 
-    throw std::string("Couldn't get FB configs\n");
-else
-    printf("Got %d FB configs\n", elemc);
-
-XVisualInfo *visinfo = glXChooseVisual(d_dpy, scrnum, attr);
-
-if (!visinfo)
-    throw std::string("Couldn't get a visual\n");
-
-// Window parameters
-XSetWindowAttributes winattr;
-winattr.background_pixel = 0;
-
-    /* Configure the device context handle to use the desired pixel format. */
-    int pixel_format_index = ::ChoosePixelFormat(new_win32_ptr->device_context_handle,
-                                                 system_pfd_ptr);
-
-    if (pixel_format_index == 0)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Requested pixel format is unavailable on the running platform!");
-
-        goto end_error;
-    }
-
-    /* Set the pixel format. */
-    if (!::SetPixelFormat(new_win32_ptr->device_context_handle,
-                          pixel_format_index,
-                          system_pfd_ptr) )
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not set pixel format.");
-
-        goto end_error;
-    }
-
-    /* Create a temporary WGL context that we will use to initialize WGL context for the target version of OpenGL */
-    HGLRC temp_wgl_context = ::wglCreateContext(new_win32_ptr->device_context_handle);
-
-    ::wglMakeCurrent(new_win32_ptr->device_context_handle,
-                     temp_wgl_context);
-
-    /* Create WGL rendering context */
-    new_win32_ptr->pWGLChoosePixelFormatARB    = (PFNWGLCHOOSEPIXELFORMATARBPROC)    ::wglGetProcAddress("wglChoosePixelFormatARB");
-    new_win32_ptr->pWGLCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC) ::wglGetProcAddress("wglCreateContextAttribsARB");
-    new_win32_ptr->pWGLGetExtensionsStringEXT  = (PFNWGLGETEXTENSIONSSTRINGEXTPROC)  ::wglGetProcAddress("wglGetExtensionsStringEXT");
-
-    /* Okay, let's check the func ptr */
-    if (new_win32_ptr->pWGLCreateContextAttribsARB == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not obtain func ptr to wglCreateContextAttribsARB! Update your drivers.");
-
-        goto end_error;
-    }
-
-#endif
-    /* If context we are to share objects with is not NULL, lock corresponding renderer thread before continuing.
-     * Otherwise GL impl could potentially forbid the context creation (happens on NViDiA drivers) */
-    ogl_context           parent_context                   = NULL;
-    system_window         parent_context_window            = NULL;
-    ogl_rendering_handler parent_context_rendering_handler = NULL;
-
+    /* If context we are to share objects with is not NULL, lock corresponding renderer thread before continuing.  */
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_PARENT_CONTEXT,
                             &parent_context);
+    ogl_context_get_property(context,
+                             OGL_CONTEXT_PROPERTY_WINDOW,
+                            &window);
 
     if (parent_context != NULL)
     {
+        ogl_context_get_property(parent_context,
+                                 OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT,
+                                &parent_context_rendering_context);
         ogl_context_get_property(parent_context,
                                  OGL_CONTEXT_PROPERTY_WINDOW,
                                 &parent_context_window);
@@ -472,13 +532,21 @@ winattr.background_pixel = 0;
         ogl_rendering_handler_lock_bound_context(parent_context_rendering_handler);
     }
 
-#if 0
-    /* Okay, try creating the context */
-    int              context_major_version      = 0;
-    int              context_minor_version      = 0;
-    int              context_profile_mask_key   = 0;
-    int              context_profile_mask_value = 0;
-    ogl_context_type context_type               = OGL_CONTEXT_TYPE_UNDEFINED;
+    /* Retrieve supported FB configs */
+    ogl_context_linux_get_fb_configs_for_gl_window(window,
+                                                  &fb_configs_ptr,
+                                                  &n_fb_configs);
+
+    /* Create the context instance */
+    ogl_context_get_property  (context,
+                               OGL_CONTEXT_PROPERTY_WINDOW,
+                              &window);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_DISPLAY,
+                              &window_display);
+    system_window_get_property(window,
+                               SYSTEM_WINDOW_PROPERTY_HANDLE,
+                              &window_handle);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_MAJOR_VERSION,
@@ -490,34 +558,52 @@ winattr.background_pixel = 0;
                              OGL_CONTEXT_PROPERTY_TYPE,
                             &context_type);
 
+    attribute_list[0] = GLX_CONTEXT_MAJOR_VERSION_ARB;
+    attribute_list[1] = context_major_version;
+
+    attribute_list[2] = GLX_CONTEXT_MINOR_VERSION_ARB;
+    attribute_list[3] = context_minor_version;
+
+    attribute_list[4] = GLX_CONTEXT_FLAGS_ARB;
+
+    #ifdef _DEBUG
+    {
+        attribute_list[5] = GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB | GLX_CONTEXT_DEBUG_BIT_ARB;
+    }
+    #else
+    {
+        attribute_list[5] = GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;
+    }
+    #endif
+
     if (context_type == OGL_CONTEXT_TYPE_ES)
     {
-        context_profile_mask_key   = WGL_CONTEXT_PROFILE_MASK_ARB;
-        context_profile_mask_value = WGL_CONTEXT_ES2_PROFILE_BIT_EXT;
+        attribute_list[6] = GLX_CONTEXT_PROFILE_MASK_ARB;
+        attribute_list[7] = GLX_CONTEXT_ES2_PROFILE_BIT_EXT;
+        attribute_list[8] = 0;
     }
     else
     {
-        ASSERT_DEBUG_SYNC(context_type == OGL_CONTEXT_TYPE_GL,
-                          "Unrecognized context type requested");
+        attribute_list[6] = 0;
     }
 
-    const int wgl_attrib_list[]     = {WGL_CONTEXT_MAJOR_VERSION_ARB, context_major_version,
-                                       WGL_CONTEXT_MINOR_VERSION_ARB, context_minor_version,
-                                       WGL_CONTEXT_FLAGS_ARB,
-    #ifdef _DEBUG
-                                                                      WGL_CONTEXT_DEBUG_BIT_ARB,
-    #else
-                                                                      0,
-    #endif
-                                      WGL_CONTEXT_FLAGS_ARB,          WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
-                                      context_profile_mask_key,       context_profile_mask_value,
-                                      0
-                                      };
+    new_linux_ptr->rendering_context = glXCreateContextAttribsARB(window_display,
+                                                                  fb_configs_ptr[0],
+                                                                  parent_context_rendering_context,
+                                                                  true, /* direct */
+                                                                  attribute_list);
 
-    new_win32_ptr->wgl_rendering_context = new_win32_ptr->pWGLCreateContextAttribsARB(new_win32_ptr->device_context_handle,
-                                                                                      parent_context_rendering_context,
-                                                                                      wgl_attrib_list);
-#endif
+    ASSERT_DEBUG_SYNC(new_linux_ptr->rendering_context != NULL,
+                      "Could not create a rendering context");
+
+end:
+    /* Clean up */
+    if (fb_configs_ptr != NULL)
+    {
+        XFree(fb_configs_ptr);
+
+        fb_configs_ptr = NULL;
+    }
 
     /* Sharing? Unlock corresponding renderer thread */
     if (parent_context != NULL)
@@ -525,35 +611,20 @@ winattr.background_pixel = 0;
         ogl_rendering_handler_unlock_bound_context(parent_context_rendering_handler);
     }
 
-#if 0
-    if (new_win32_ptr->wgl_rendering_context == NULL)
-    {
-        ASSERT_ALWAYS_SYNC(false,
-                           "Could not create WGL rendering context. [GetLastError():%d]",
-                           ::GetLastError() );
-
-        goto end_error;
-    }
-
     /* Initialize WGL extensions */
-    _ogl_context_win32_initialize_wgl_extensions(new_win32_ptr);
-#endif
+    _ogl_context_linux_initialize_glx_extensions(new_linux_ptr);
 
     /* Call the provided function pointer to continue the context initialization process. */
-    pInitContextAfterCreation(new_win32_ptr->context);
+    pInitContextAfterCreation(new_linux_ptr->context);
 
-#if 0
-    /* Release the temporary context now. */
-    ::wglDeleteContext(temp_wgl_context);
-#endif
-
-end:
     return;
 
 end_error:
     if (new_linux_ptr != NULL)
     {
         ogl_context_linux_deinit( (ogl_context_linux) new_linux_ptr);
+
+        new_linux_ptr = NULL;
     }
 
     return;

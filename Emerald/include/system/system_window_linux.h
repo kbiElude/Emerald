@@ -25,6 +25,10 @@ PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window
                                              __out void*                  out_result);
 
 /** TODO */
+PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
+                                                __out int* out_screen_height_ptr);
+
+/** TODO */
 PUBLIC system_window_linux system_window_linux_init(__in system_window owner);
 
 /** TODO */

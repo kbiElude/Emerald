@@ -600,6 +600,18 @@ PUBLIC bool system_window_win32_get_property(__in  system_window_win32    window
 }
 
 /** Please see header for spec */
+PUBLIC void system_window_win32_get_screen_size(__out int* out_screen_width_ptr,
+                                                __out int* out_screen_height_ptr)
+{
+    ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
+                      out_screen_height_ptr != NULL,
+                      "Input arguments are NULL");
+
+    *out_screen_width_ptr  = ::GetSystemMetrics(SM_CXFULLSCREEN);
+    *out_screen_height_ptr = ::GetSystemMetrics(SM_CYFULLSCREEN);
+}
+
+/** Please see header for spec */
 PUBLIC system_window_win32 system_window_win32_init(__in __notnull system_window owner)
 {
     _system_window_win32* win32_ptr = new (std::nothrow) _system_window_win32(owner);

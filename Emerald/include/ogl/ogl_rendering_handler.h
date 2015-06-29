@@ -13,8 +13,14 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_rendering_handler,
 
 typedef enum
 {
-    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS, /* not settable, ogl_rendering_handler_playback_status */
-    OGL_RENDERING_HANDLER_PROPERTY_POLICY,          /* not settable, ogl_rendering_handler_policy */
+    /* not settable, system_timeline_time */
+    OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME,
+
+    /* not settable, ogl_rendering_handler_playback_status */
+    OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+
+    /* not settable, ogl_rendering_handler_policy */
+    OGL_RENDERING_HANDLER_PROPERTY_POLICY,
 
 } ogl_rendering_handler_property;
 

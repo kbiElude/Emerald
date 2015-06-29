@@ -300,14 +300,6 @@ PUBLIC bool ogl_context_win32_get_property(__in  ogl_context_win32    context_wi
             break;
         }
 
-        case OGL_CONTEXT_PROPERTY_GL_CONTEXT:
-        {
-            *((HGLRC*) out_result) = win32_ptr->wgl_rendering_context;
-                       result      = true;
-
-            break;
-        }
-
         case OGL_CONTEXT_PROPERTY_MSAA_N_SUPPORTED_SAMPLES:
         {
             *(uint32_t*) out_result = win32_ptr->n_supported_msaa_samples;

@@ -31,12 +31,19 @@ typedef enum
     SYSTEM_WINDOW_PROPERTY_DC,
 #endif
 
+    /* not settable, ogl_context_type */
+    SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE,
+
     /* settable, system_window_mouse_cursor */
     SYSTEM_WINDOW_PROPERTY_CURSOR,
 
     /* settable, int[2] */
     SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
 
+#ifdef __linux
+    /* not settable, Display* */
+    SYSTEM_WINDOW_PROPERTY_DISPLAY,
+#endif
     /* not settable, system_window_handle */
     SYSTEM_WINDOW_PROPERTY_HANDLE,
 
@@ -89,6 +96,11 @@ typedef enum
      * The specified rendering handler instance is retained.
      */
     SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+
+#ifdef __linux
+    /* not settable, int */
+    SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX,
+#endif
 
     /* not settable, system_hashed ansi string */
     SYSTEM_WINDOW_PROPERTY_TITLE,

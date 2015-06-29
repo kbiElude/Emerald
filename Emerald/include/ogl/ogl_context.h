@@ -132,10 +132,8 @@ typedef enum ogl_context_property
     /* not settable, ogl_programs */
     OGL_CONTEXT_PROPERTY_PROGRAMS,
 
-#ifdef _WIN32
-    /* not settable, HGLRC */
+    /* not settable, ogl_context_handle */
     OGL_CONTEXT_PROPERTY_RENDERING_CONTEXT,
-#endif
 
     /* not settable, ogl_context_sampler_bindings */
     OGL_CONTEXT_PROPERTY_SAMPLER_BINDINGS,
@@ -199,9 +197,6 @@ typedef enum ogl_context_property
 #ifdef _WIN32
     /* not settable, HDC */
     OGL_CONTEXT_PROPERTY_DC,
-
-    /* not settable, HGLRC */
-    OGL_CONTEXT_PROPERTY_GL_CONTEXT,
 #endif
 
 } ogl_context_property;

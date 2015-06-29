@@ -25,6 +25,7 @@ typedef struct
     uint32_t                              fps;
     bool                                  fps_counter_status;
     uint32_t                              last_frame_index;      /* only when fps policy is used */
+    system_timeline_time                  last_frame_time;
     uint32_t                              n_frames_rendered;
     system_timeline_time                  playback_start_time;
     ogl_rendering_handler_playback_status playback_status;
@@ -263,6 +264,8 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
                             {
                                 pGLFinish();
                             }
+
+                            rendering_handler->last_frame_time = new_frame_time;
                         }
                         system_timeline_time rendering_end_time = system_time_now();
 
@@ -416,6 +419,7 @@ PRIVATE ogl_rendering_handler ogl_rendering_handler_create_shared(__in __notnull
         new_handler->context_set_event                = system_event_create(true); /* manual_reset */
         new_handler->fps                              = desired_fps;
         new_handler->fps_counter_status               = false;
+        new_handler->last_frame_time                  = 0;
         new_handler->n_frames_rendered                = 0;
         new_handler->playback_in_progress_event       = system_event_create(true); /* manual_reset */
         new_handler->playback_start_time              = 0;
@@ -509,6 +513,13 @@ PUBLIC EMERALD_API void ogl_rendering_handler_get_property(__in  __notnull ogl_r
 
     switch (property)
     {
+        case OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME:
+        {
+            *(system_timeline_time*) out_result = rendering_handler_ptr->last_frame_time;
+
+            break;
+        }
+
         case OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS:
         {
             *(ogl_rendering_handler_playback_status*) out_result = rendering_handler_ptr->playback_status;
