@@ -90,14 +90,13 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
         /* Wait until the handler is bound to a context */
         system_event_wait_single(rendering_handler->context_set_event);
 
-        /* There are two events we have to wait for at this point. It's either kill rendering thread event
-         * which should make us quit the loop, or 'playback active' event in which case we should call back
-         * the user.
-         */
-        ogl_context_type   context_type   = OGL_CONTEXT_TYPE_UNDEFINED;
-        PFNGLFINISHPROC    pGLFinish      = NULL;
-        bool               should_live    = true;
-        const system_event wait_events[]  =
+        /* Cache some variables.. */
+        ogl_context_type          context_type          = OGL_CONTEXT_TYPE_UNDEFINED;
+        system_window             context_window        = NULL;
+        system_hashed_ansi_string context_window_name   = NULL;
+        PFNGLFINISHPROC           pGLFinish             = NULL;
+        bool                      should_live           = true;
+        const system_event        wait_events[]         =
         {
             rendering_handler->shutdown_request_event,
             rendering_handler->callback_request_event,
@@ -133,10 +132,6 @@ PRIVATE void _ogl_rendering_handler_thread_entrypoint(void* in_arg)
             pGLFinish = entrypoints->pGLFinish;
 
         }
-
-        /* Retrieve context's DC which we will need for buffer swaps */
-        system_window             context_window        = NULL;
-        system_hashed_ansi_string context_window_name   = NULL;
 
         ogl_context_get_property  (rendering_handler->context,
                                    OGL_CONTEXT_PROPERTY_WINDOW,
