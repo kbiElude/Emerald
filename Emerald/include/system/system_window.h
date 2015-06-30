@@ -41,7 +41,10 @@ typedef enum
     SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
 
 #ifdef __linux
-    /* not settable, Display* */
+    /* not settable, Display*.
+     *
+     * The returned display is window-specific.
+     */
     SYSTEM_WINDOW_PROPERTY_DISPLAY,
 #endif
     /* not settable, system_window_handle */

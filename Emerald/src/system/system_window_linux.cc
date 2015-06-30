@@ -10,6 +10,7 @@
 #include "system/system_assertions.h"
 #include "system/system_constants.h"
 #include "system/system_event.h"
+#include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_pixel_format.h"
@@ -21,7 +22,6 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-#error WORK IN PROGRESS - DOES NOT COMPILE
 
 
 typedef struct _system_window_linux
@@ -52,11 +52,6 @@ typedef struct _system_window_linux
     system_window_handle system_handle;
     system_window        window; /* DO NOT retain */
 
-    bool                 is_message_pump_active; /* set to false and send an event to the window to kill the message pump thread */
-    bool                 is_message_pump_locked;
-    system_event         message_pump_lock_event;
-    system_thread_id     message_pump_thread_id;
-    system_event         message_pump_unlock_event;
     system_event         teardown_completed_event;
 
     int cursor_position[2]; /* only updated prior to call-back execution! */
@@ -74,11 +69,6 @@ typedef struct _system_window_linux
         display                              = NULL;
         hand_cursor_resource                 = 0;
         horizontal_resize_cursor_resource    = 0;
-        is_message_pump_active               = true;
-        is_message_pump_locked               = false;
-        message_pump_lock_event              = system_event_create(true); /* manual_reset */
-        message_pump_thread_id               = 0;
-        message_pump_unlock_event            = system_event_create(true); /* manual_reset */
         move_cursor_resource                 = 0;
         system_handle                        = (system_window_handle) NULL;
         teardown_completed_event             = system_event_create(true); /* manual_reset */
@@ -157,18 +147,11 @@ typedef struct _system_window_linux
             colormap = (Colormap) NULL;
         }
 
-        if (message_pump_lock_event != NULL)
+        if (display != NULL)
         {
-            system_event_release(message_pump_lock_event);
+            XCloseDisplay(display);
 
-            message_pump_lock_event = NULL;
-        }
-
-        if (message_pump_unlock_event != NULL)
-        {
-            system_event_release(message_pump_unlock_event);
-
-            message_pump_unlock_event = NULL;
+            display = NULL;
         }
 
         if (system_handle != (system_window_handle) NULL)
@@ -196,8 +179,21 @@ typedef struct _system_window_linux
  * the window events. If we used a single display, the rendering pump's thread would have acquired
  * the display lock in order to wait for incoming events, causing the buffer swap op to
  * starve until window event arrives.
+ *
+ * Some of these variables are configured in system_window_linux_init_global() and
+ * deinitialized in system_window_linux_deinit_global().
+ *
  */
-Display* main_display = NULL;
+PRIVATE const unsigned int client_message_type_please_die      = 1;
+PRIVATE const unsigned int client_message_type_register_window = 2;
+
+PRIVATE bool                    is_message_pump_active              = true; /* set to false and send an event to the window to kill the message pump thread */
+PRIVATE bool                    is_message_pump_locked              = false;
+PRIVATE Display*                main_display                        = NULL;
+PRIVATE Atom                    message_pump_atom_delete_window     = (Atom) NULL;
+PRIVATE system_critical_section message_pump_registered_windows_cs  = NULL;
+PRIVATE system_hash64map        message_pump_registered_windows_map = NULL; /* maps (system_hash64) Window to system_window_linux */
+PRIVATE system_event            message_pump_thread_died_event      = NULL;
 
 
 /* Forward declarations */
@@ -206,75 +202,12 @@ PRIVATE          void _system_window_linux_window_closing_rendering_thread_entry
 PRIVATE volatile void _system_window_linux_teardown_thread_pool_callback             (__in __notnull system_thread_pool_callback_argument arg);
 
 
-#if 0
-/** TODO */
-PRIVATE VOID _lock_system_window_message_pump(_system_window_win32* win32_ptr)
-{
-    /* Only lock if not in message pump AND:
-     * 1. the window has not been marked for release, AND
-     * 2. the window is in the process of being closed (the window_closing call-back)
-     */
-    bool is_closed  = false;
-    bool is_closing = false;
-
-    system_window_get_property(win32_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSED,
-                              &is_closed);
-    system_window_get_property(win32_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
-                              &is_closing);
-
-    if ( system_threads_get_thread_id () != win32_ptr->message_pump_thread_id &&
-        !is_closed                                                            &&
-        !is_closing)
-    {
-        /* Only lock if the window is still alive! */
-        system_event_reset(win32_ptr->message_pump_lock_event);
-        system_event_reset(win32_ptr->message_pump_unlock_event);
-        {
-            ::PostMessageA(win32_ptr->system_handle,
-                           WM_EMERALD_LOCK_MESSAGE_PUMP,
-                           0,
-                           0);
-
-            system_event_wait_single(win32_ptr->message_pump_lock_event);
-        }
-    }
-}
-
-/** TODO */
-PRIVATE VOID _unlock_system_window_message_pump(_system_window_win32* win32_ptr)
-{
-    /* Only unlock if not in message pump */
-    bool is_window_closed  = false;
-    bool is_window_closing = false;
-
-    system_window_get_property(win32_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSED,
-                              &is_window_closed);
-    system_window_get_property(win32_ptr->window,
-                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
-                              &is_window_closing);
-
-    if ( system_threads_get_thread_id() != win32_ptr->message_pump_thread_id &&
-        !is_window_closed                                                    &&
-        !is_window_closing)
-
-    {
-        ASSERT_DEBUG_SYNC(win32_ptr->is_message_pump_locked,
-                          "Cannot unlock system window message pump - not locked.");
-
-        system_event_set(win32_ptr->message_pump_unlock_event);
-
-        /* Wait until message pump confirms it has finished handling WM_EMERALD_LOCK_MESSAGE_PUMP msg */
-        while (system_event_wait_single_peek(win32_ptr->message_pump_unlock_event) ){}
-    }
-}
-#endif
-
-/** TODO */
-PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
-                                               const XEvent*         event_ptr)
+/** Global UI thread event handler.
+ *
+ *  @param event_ptr TODO
+ *
+ **/
+PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
 {
     switch (event_ptr->type)
     {
@@ -282,7 +215,21 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
         case ButtonRelease:
         {
             system_window_callback_func callback_func;
+            _system_window_linux*       linux_ptr      = NULL;
             bool                        should_proceed = true;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xbutton.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+
+                should_proceed = (linux_ptr != NULL);
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
 
             switch (event_ptr->xbutton.button)
             {
@@ -331,14 +278,94 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
 
         case ClientMessage:
         {
-            event_ptr->xclient.message_type 
-            // ...
+            /* There's a couple of client messages we need to handle:
+             *
+             * 1. REGISTER_WINDOW: new renderer window was spawned. Need to re-configure the main display
+             *                     to intercept for certain events generated for the new event.
+             * 
+             * 2. PLEASE_DIE:      the application is quitting, the message pump should gracefully put
+             *                     itself to rest.
+             */
+            if (event_ptr->xclient.message_type == client_message_type_please_die)
+            {
+                LOG_FATAL("DEBUG: Please die client message received.");
+
+                /* By setting the variable below to false, the message pump loop will leave shortly after */
+                is_message_pump_active = false;
+            }
+            else
+            if (event_ptr->xclient.message_type == client_message_type_register_window)
+            {
+                LOG_FATAL("DEBUG: Register window client message received.");
+
+                /* Iterate over all registered windows and configure event interception for every window */
+                system_critical_section_enter(message_pump_registered_windows_cs);
+                {
+                    unsigned int n_registered_windows = 0;
+
+                    system_hash64map_get_property(message_pump_registered_windows_map,
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_registered_windows);
+
+                    for (unsigned int n_registered_window = 0;
+                                      n_registered_window < n_registered_windows;
+                                    ++n_registered_window)
+                    {
+                        system_hash64       hash_window     = 0;
+                        system_window_linux internal_window = (system_window_linux) NULL;
+                        Window              window          = (Window)              NULL;
+
+                        if (!system_hash64map_get_element_at(message_pump_registered_windows_map,
+                                                             n_registered_window,
+                                                            &internal_window,
+                                                            &hash_window) )
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not retrieve a registered window key+value pair for index [%d]",
+                                              n_registered_window);
+
+                            continue;
+                        }
+
+                        window = (Window) hash_window;
+
+                        XSelectInput   (main_display,
+                                        window,
+                                        ButtonReleaseMask | ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+                        XSetWMProtocols(main_display,
+                                        window,
+                                        &message_pump_atom_delete_window,
+                                        1); /* n_atoms */
+                    } /* for (all registered windows) */
+                }
+                system_critical_section_leave(message_pump_registered_windows_cs);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized client message type");
+            }
 
             break;
         }
 
+        /* TODO TODO TODO: MOVE TO THE RENDERING HANDLER'S MESSAGE PUMP!! */
         case DestroyNotify:
         {
+#if 0
+            _system_window_linux* linux_ptr = NULL;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xdestroywindow.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+
             if (event_ptr->xdestroywindow.window == linux_ptr->system_handle)
             {
                 /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
@@ -377,7 +404,7 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
                 }
 
                 /* OK, safe to destroy the system window at this point */
-                XDestroyWindow(_display,
+                XDestroyWindow(linux_ptr->display,
                                linux_ptr->system_handle);
 
                 /* Now here's the trick: the call-backs can only be fired AFTER the window thread has shut down.
@@ -393,6 +420,15 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
 
                 system_thread_pool_submit_single_task(task);
             } /* if (event_ptr->xdestroywindow.window == linux_ptr->system_handle) */
+#else
+            /* Remove the window from the "registered windows" map */
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_remove(message_pump_registered_windows_map,
+                                        (system_hash64) event_ptr->xdestroywindow.window);
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+#endif
 
             break;
         } /* case DestroyNotify: */
@@ -400,7 +436,19 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
         case Expose:
         {
             /* Need to re-render the frame */
+            _system_window_linux* linux_ptr         = NULL;
             ogl_rendering_handler rendering_handler = NULL;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xbutton.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
 
             system_window_get_property(linux_ptr->window,
                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
@@ -425,19 +473,25 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
         }
 
         case KeyPress:
-        {
-            system_window_execute_callback_funcs(linux_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN,
-                                                 (void*) (event_ptr->xkey.keycode & 0xFF) );
-
-            break;
-        }
-
         case KeyRelease:
         {
+            _system_window_linux* linux_ptr = NULL;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xkey.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+
             system_window_execute_callback_funcs(linux_ptr->window,
-                                                 SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
-                                                 (void*) (event_ptr->xkey.keycode & 0xFF) );
+                                                 (event_ptr->type == KeyPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN
+                                                                               : SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
+                                                 (void*) (intptr_t) (event_ptr->xkey.keycode & 0xFF) );
 
             break;
         }
@@ -446,19 +500,6 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
 #if 0
     switch (message_id)
     {
-        case WM_EMERALD_LOCK_MESSAGE_PUMP:
-        {
-            win32_ptr->is_message_pump_locked = true;
-
-            system_event_set        (win32_ptr->message_pump_lock_event);
-            system_event_wait_single(win32_ptr->message_pump_unlock_event);
-
-            win32_ptr->is_message_pump_locked = false;
-
-            system_event_reset(win32_ptr->message_pump_unlock_event);
-            return 0;
-        }
-
         case WM_MOUSEMOVE:
         {
             system_window_execute_callback_funcs(win32_ptr->window,
@@ -485,6 +526,25 @@ PRIVATE void _system_window_linux_handle_event(_system_window_linux* linux_ptr,
     }
     #endif
 }
+
+/** TODO */
+PRIVATE void _system_window_linux_handle_events_thread_entrypoint(void* unused)
+{
+    while (is_message_pump_active)
+    {
+        XEvent current_event;
+
+        /* Block until X event arrives */
+        XNextEvent(main_display,
+                  &current_event);
+
+        /* Handle the event */
+        _system_window_linux_handle_event(&current_event);
+    } /* while (is_message_pump_active) */
+
+    system_event_set(message_pump_thread_died_event);
+}
+
 
 #if 0
 /** TODO */
@@ -519,7 +579,7 @@ PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_conte
 /** TODO */
 PRIVATE volatile void _system_window_linux_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
 {
-    _system_window_linux* window_ptr = (_system_window_win32*) arg;
+    _system_window_linux* window_ptr = (_system_window_linux*) arg;
 
     /* Call back the subscribers, if any */
     system_window_execute_callback_funcs(window_ptr->window,
@@ -539,15 +599,8 @@ PUBLIC void system_window_linux_close_window(__in system_window_linux window)
     ASSERT_DEBUG_SYNC(linux_ptr->system_handle != NULL,
                       "No window to close - system handle is NULL.");
 
-#if 0
-    if (win32_ptr->system_handle != NULL)
-    {
-        ::SendMessageA(win32_ptr->system_handle,
-                       WM_CLOSE,
-                       0,  /* wParam */
-                       0); /* lParam */
-    }
-#endif
+    XDestroyWindow(linux_ptr->display,
+                   linux_ptr->system_handle);
 }
 
 /** Please see header for spec */
@@ -565,16 +618,37 @@ PUBLIC void system_window_linux_deinit(__in system_window_linux window)
 /** Please see header for spec */
 PUBLIC void system_window_linux_deinit_global()
 {
-    if (_display != NULL)
+    if (main_display != NULL)
     {
         /* We don't really care whether this call fails or not */
-        XCloseDisplay(_display);
+        XCloseDisplay(main_display);
 
-        _display = NULL;
+        main_display = NULL;
     }
 
-    _desktop_window       = (Window) NULL;
-    _default_screen_index = -1;
+    if (message_pump_registered_windows_cs != NULL)
+    {
+        system_critical_section_enter(message_pump_registered_windows_cs);
+        system_critical_section_leave(message_pump_registered_windows_cs);
+
+        system_critical_section_release(message_pump_registered_windows_cs);
+
+        message_pump_registered_windows_cs = NULL;
+    }
+
+    if (message_pump_registered_windows_map != NULL)
+    {
+        system_hash64map_release(message_pump_registered_windows_map);
+
+        message_pump_registered_windows_map = NULL;
+    }
+
+    if (message_pump_thread_died_event != NULL)
+    {
+        system_event_release(message_pump_thread_died_event);
+
+        message_pump_thread_died_event = NULL;
+    }
 }
 
 /** Please see header for spec */
@@ -597,22 +671,26 @@ PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window
             int          temp_root_x;
             int          temp_root_y;
 
-            XQueryPointer(_display,
-                          linux_ptr->system_handle,
-                         &temp_root_window,
-                         &temp_child_window,
-                         &temp_root_x,
-                         &temp_root_y,
-                          result_ptr + 0,
-                          result_ptr + 1,
-                         &temp_mask);
+            XLockDisplay(linux_ptr->display);
+            {
+                XQueryPointer(linux_ptr->display,
+                            linux_ptr->system_handle,
+                            &temp_root_window,
+                            &temp_child_window,
+                            &temp_root_x,
+                            &temp_root_y,
+                            result_ptr + 0,
+                            result_ptr + 1,
+                            &temp_mask);
+            }
+            XUnlockDisplay(linux_ptr->display);
 
             break;
         }
 
         case SYSTEM_WINDOW_PROPERTY_DISPLAY:
         {
-            *(Display**) out_result = _display;
+            *(Display**) out_result = linux_ptr->display;
 
             break;
         }
@@ -636,9 +714,13 @@ PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window
             {
                 XWindowAttributes window_attributes;
 
-                XGetWindowAttributes(_display,
-                                     linux_ptr->system_handle,
-                                     &window_attributes);
+                XLockDisplay(linux_ptr->display);
+                {
+                    XGetWindowAttributes(linux_ptr->display,
+                                        linux_ptr->system_handle,
+                                        &window_attributes);
+                }
+                XUnlockDisplay(linux_ptr->display);
 
                 ((int*) out_result)[0] = window_attributes.x;
                 ((int*) out_result)[1] = window_attributes.y;
@@ -649,7 +731,7 @@ PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window
 
         case SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX:
         {
-            *(int*) out_result = _default_screen_index;
+            *(int*) out_result = linux_ptr->default_screen_index;
 
             break;
         }
@@ -676,7 +758,11 @@ PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
                       out_screen_height_ptr != NULL,
                       "Input arguments are NULL");
 
-    display_screen = DefaultScreenOfDisplay(_display);
+    XLockDisplay(main_display);
+    {
+        display_screen = DefaultScreenOfDisplay(main_display);
+    }
+    XUnlockDisplay(main_display);
 
     ASSERT_DEBUG_SYNC(display_screen != NULL,
                       "No default screen reported for the display");
@@ -688,6 +774,7 @@ PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
 /** Please see header for spec */
 PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
 {
+    XEvent                current_event;
     bool                  is_visible = false;
     _system_window_linux* linux_ptr  = (_system_window_linux*) window;
 
@@ -697,29 +784,31 @@ PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
                                SYSTEM_WINDOW_PROPERTY_IS_VISIBLE,
                               &is_visible);
 
+    /* Show the window if that's what was requested*/
     if (is_visible)
     {
-        /* Show the window */
-        XMapWindow(_display,
-                   linux_ptr->system_handle);
+        XLockDisplay(linux_ptr->display);
+        {
+            XMapWindow(linux_ptr->display,
+                       linux_ptr->system_handle);
+        }
+        XUnlockDisplay(linux_ptr->display);
     }
 
-    /* Cache the message pump thread ID */
-    linux_ptr->message_pump_thread_id = system_threads_get_thread_id();
-
-    /* Pump messages */
-    while (linux_ptr->is_message_pump_active)
+    /* Under Linux, we're using a single UI thread which listens for window events
+     * and handles them accordingly. Therefore, all we need to do here is to wait
+     * until the WM_DELETE_WINDOW message arrives, which is when we can return
+     * the execution to the caller. */
+    while (XNextEvent(linux_ptr->display,
+                     &current_event) )
     {
-        XEvent current_event;
-
-        /* Block until X event arrives */
-        XNextEvent(_display,
-                  &current_event);
-
-        /* Handle the event */
-        _system_window_linux_handle_event(linux_ptr,
-                                         &current_event);
-    }
+        if (               current_event.type == ClientMessage &&
+            (unsigned int) current_event.xclient.data.l[0] == message_pump_atom_delete_window)
+        {
+            /* Get out of the loop, the window is dead. */
+            break;
+        }
+    } /* events can be processed */
 
     LOG_INFO("system_window_linux_handle_window() waiting to die gracefully..");
 
@@ -746,9 +835,12 @@ PUBLIC void system_window_linux_init_global()
 {
     XInitThreads();
 
-    _display = XOpenDisplay(":0");
+    /* Open a global display which we will use to capture events coming for all
+     * opened windows.
+     */
+    main_display = XOpenDisplay(":0");
 
-    if (_display == NULL)
+    if (main_display == NULL)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not open display at :0");
@@ -756,13 +848,25 @@ PUBLIC void system_window_linux_init_global()
         goto end;
     }
 
-    _default_screen_index = DefaultScreen(_display);
-    _desktop_window       = RootWindow   (_display,
-                                          _default_screen_index);
+    /* Initialize other global stuff */
+    message_pump_atom_delete_window = XInternAtom(main_display,
+                                                  "WM_DELETE_WINDOW",
+                                                  True);
+
+    message_pump_registered_windows_cs  = system_critical_section_create();
+    message_pump_registered_windows_map = system_hash64map_create       (sizeof(_system_window_linux*) );
+
+    message_pump_thread_died_event = system_event_create(true); /* manual_reset */
+
+    /* Spawn the global UI thread */
+    system_threads_spawn(_system_window_linux_handle_events_thread_entrypoint,
+                         NULL,  /* callback_func_argument */
+                         NULL); /* thread_wait_event */
 
 end:
     ;
 }
+
 
 /** Please see header for spec */
 PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
@@ -774,6 +878,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
     uint32_t                  n_depth_bits         = 0;
     uint32_t                  n_rgba_bits[4]       = {0};
     system_window_handle      parent_window_handle = (system_window_handle) NULL;
+    XClientMessageEvent       register_window_message;
     bool                      result               = true;
     XSetWindowAttributes      winattr;
     ogl_context_type          window_context_type  = OGL_CONTEXT_TYPE_UNDEFINED;
@@ -784,23 +889,31 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
     int                       visual_attribute_list [2 * 5 /* rgba bits, depth bits */ + 2 /* doublebuffering, rgba */ + 1 /* terminator */];
     XVisualInfo*              visual_info_ptr      = NULL;
 
-    ASSERT_DEBUG_SYNC(_display != NULL,
-                      "Display is NULL");
+    /* Start up a new display for the window */
+    linux_ptr->display = XOpenDisplay(":0");
+
+    if (linux_ptr->display == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not open display at :0");
+
+        goto end;
+    }
 
     /* Cache mouse cursors */
-    linux_ptr->action_forbidden_cursor_resource  = XCreateFontCursor(_display,
+    linux_ptr->action_forbidden_cursor_resource  = XCreateFontCursor(linux_ptr->display,
                                                                      XC_X_cursor);
-    linux_ptr->arrow_cursor_resource             = XCreateFontCursor(_display,
+    linux_ptr->arrow_cursor_resource             = XCreateFontCursor(linux_ptr->display,
                                                                      XC_left_ptr);
-    linux_ptr->crosshair_cursor_resource         = XCreateFontCursor(_display,
+    linux_ptr->crosshair_cursor_resource         = XCreateFontCursor(linux_ptr->display,
                                                                      XC_crosshair);
-    linux_ptr->hand_cursor_resource              = XCreateFontCursor(_display,
+    linux_ptr->hand_cursor_resource              = XCreateFontCursor(linux_ptr->display,
                                                                      XC_hand1);
-    linux_ptr->horizontal_resize_cursor_resource = XCreateFontCursor(_display,
+    linux_ptr->horizontal_resize_cursor_resource = XCreateFontCursor(linux_ptr->display,
                                                                      XC_sb_h_double_arrow);
-    linux_ptr->move_cursor_resource              = XCreateFontCursor(_display,
+    linux_ptr->move_cursor_resource              = XCreateFontCursor(linux_ptr->display,
                                                                      XC_right_ptr);
-    linux_ptr->vertical_resize_cursor_resource   = XCreateFontCursor(_display,
+    linux_ptr->vertical_resize_cursor_resource   = XCreateFontCursor(linux_ptr->display,
                                                                      XC_sb_v_double_arrow);
 
     ASSERT_DEBUG_SYNC(linux_ptr->action_forbidden_cursor_resource != NULL,
@@ -840,17 +953,18 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                                SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
                                x1y1x2y2);
 
-    ASSERT_DEBUG_SYNC(is_window_scalable,
+    ASSERT_DEBUG_SYNC(!is_window_scalable,
                       "TODO: Scalable windows are not supported yet");
-    ASSERT_DEBUG_SYNC(is_window_fullscreen,
+    ASSERT_DEBUG_SYNC(!is_window_fullscreen,
                       "TODO: Full-screen windows are not supported yet");
 
     /* Determine parent window handle */
     ASSERT_DEBUG_SYNC(parent_window_handle == NULL,
                       "TODO: system_window_linux does not support window embedding.");
 
-    parent_window_handle = RootWindow(_display,
-                                      _default_screen_index);
+    linux_ptr->default_screen_index = DefaultScreen(linux_ptr->display);
+    parent_window_handle            = RootWindow    (linux_ptr->display,
+                                                     linux_ptr->default_screen_index);
 
     /* Retrieve XVisualInfo instance, compatible with the requested rendering context */
     system_window_get_property(linux_ptr->window,
@@ -880,17 +994,14 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
     /* Spawn the window */
     XSetWindowAttributes window_attributes;
 
-    linux_ptr->colormap = XCreateColormap(_display,
+    linux_ptr->colormap = XCreateColormap(linux_ptr->display,
                                           parent_window_handle,
                                           visual_info_ptr->visual,
                                           AllocNone);
 
-    window_attributes.background_pixel = 0; /* black */
-    window_attributes.border_pixel     = 0; /* black */
-    window_attributes.colormap         = linux_ptr->colormap;
-    window_attributes.event_mask       = ButtonReleaseMask | ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask;
+    window_attributes.colormap = linux_ptr->colormap;
 
-    linux_ptr->system_handle = XCreateWindow(_display,
+    linux_ptr->system_handle = XCreateWindow(linux_ptr->display,
                                              parent_window_handle,
                                              x1y1x2y2[0],
                                              x1y1x2y2[1],
@@ -900,7 +1011,7 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
                                              visual_info_ptr->depth,
                                              InputOutput,
                                              visual_info_ptr->visual,
-                                             CWBackPixel | CWBorderPixel | CWColormap | CWEventMask,
+                                             CWColormap,
                                             &window_attributes);
 
     if (linux_ptr->system_handle == (system_window_handle) NULL)
@@ -915,8 +1026,35 @@ PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
         goto end;
     }
 
+    /* Register the window */
+    system_critical_section_enter(message_pump_registered_windows_cs);
+    {
+        system_hash64 system_handle_hash = (system_hash64) linux_ptr->system_handle;
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(message_pump_registered_windows_map,
+                                                     system_handle_hash),
+                          "Newly created window is already recognized by the registered windows map");
+
+        system_hash64map_insert(message_pump_registered_windows_map,
+                                system_handle_hash,
+                                linux_ptr,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
+    }
+    system_critical_section_leave(message_pump_registered_windows_cs);
+
+    register_window_message.format       = 32; /* set anything, really. */
+    register_window_message.message_type = client_message_type_register_window;
+    register_window_message.type         = ClientMessage;
+
+    XSendEvent(main_display,
+               linux_ptr->system_handle,
+               False, /* propagate */
+               0,     /* event_mask */
+               (XEvent*) &register_window_message);
+
     /* Update the window title */
-    XStoreName(_display,
+    XStoreName(linux_ptr->display,
                linux_ptr->system_handle,
                system_hashed_ansi_string_get_buffer(window_title) );
 
@@ -999,9 +1137,13 @@ PUBLIC bool system_window_linux_set_property(__in system_window_linux    window,
 
             if (result)
             {
-                XDefineCursor(_display,
-                              linux_ptr->system_handle,
-                              linux_ptr->current_mouse_cursor_system_resource);
+                XLockDisplay(linux_ptr->display);
+                {
+                    XDefineCursor(linux_ptr->display,
+                                  linux_ptr->system_handle,
+                                  linux_ptr->current_mouse_cursor_system_resource);
+                }
+                XUnlockDisplay(linux_ptr->display);
             }
 
             break;
@@ -1011,10 +1153,14 @@ PUBLIC bool system_window_linux_set_property(__in system_window_linux    window,
         {
             const int* width_height_ptr = (const int*) data;
 
-            XResizeWindow(_display,
-                          linux_ptr->system_handle,
-                          width_height_ptr[0],
-                          width_height_ptr[1]);
+            XLockDisplay(linux_ptr->display);
+            {
+                XResizeWindow(linux_ptr->display,
+                              linux_ptr->system_handle,
+                              width_height_ptr[0],
+                              width_height_ptr[1]);
+            }
+            XUnlockDisplay(linux_ptr->display);
 
             break;
         }
@@ -1028,10 +1174,14 @@ PUBLIC bool system_window_linux_set_property(__in system_window_linux    window,
                                        SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
                                       &parent_window_handle);
 
-            XMoveWindow(_display,
-                        linux_ptr->system_handle,
-                        xy_ptr[0],
-                        xy_ptr[1]);
+            XLockDisplay(linux_ptr->display);
+            {
+                XMoveWindow(linux_ptr->display,
+                            linux_ptr->system_handle,
+                            xy_ptr[0],
+                            xy_ptr[1]);
+            }
+            XUnlockDisplay(linux_ptr->display);
 
             break;
         }

@@ -7,7 +7,7 @@
 
 #include "shared.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_context_win32.h"
+#include "ogl/ogl_context_linux.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_assertions.h"
 #include "system/system_log.h"
@@ -26,16 +26,19 @@ typedef struct _ogl_context_linux
     uint32_t  n_supported_msaa_samples;
     uint32_t* supported_msaa_samples;
 
-    /* WGL extensions */
+    /* GLX extensions */
+    bool glx_ext_swap_control_support;
     bool glx_ext_swap_control_tear_support;
-    bool glx_sgi_swap_control_support;
+
+    PFNGLXSWAPINTERVALEXTPROC pGLXSwapIntervalEXT; /* GL_EXT_swap_control */
 
     _ogl_context_linux()
     {
         context                           = NULL;
+        glx_ext_swap_control_support      = false;
         glx_ext_swap_control_tear_support = false;
-        glx_sgi_swap_control_support      = false;
         n_supported_msaa_samples          = 0;
+        pGLXSwapIntervalEXT               = NULL;
         rendering_context                 = NULL;
         supported_msaa_samples            = NULL;
     }
@@ -66,7 +69,7 @@ PRIVATE int* _ogl_context_linux_get_fb_config_attribute_list(system_pixel_format
                                      n_rgba_bits + 2);
     system_pixel_format_get_property(pixel_format,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
-                                     n_depth_bits);
+                                    &n_depth_bits);
     system_pixel_format_get_property(pixel_format,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
                                      n_rgba_bits + 1);
@@ -109,7 +112,7 @@ PRIVATE int* _ogl_context_linux_get_visual_attribute_list(system_pixel_format pi
                                      n_rgba_bits + 2);
     system_pixel_format_get_property(pixel_format,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_DEPTH_BITS,
-                                     n_depth_bits);
+                                    &n_depth_bits);
     system_pixel_format_get_property(pixel_format,
                                      SYSTEM_PIXEL_FORMAT_PROPERTY_COLOR_BUFFER_GREEN_BITS,
                                      n_rgba_bits + 1);
@@ -132,23 +135,47 @@ PRIVATE int* _ogl_context_linux_get_visual_attribute_list(system_pixel_format pi
 /** TODO */
 PRIVATE void _ogl_context_linux_initialize_glx_extensions(__inout __notnull _ogl_context_linux* context_ptr)
 {
-    if (context_ptr->pWGLGetExtensionsStringEXT != NULL)
+    system_window  context_window              = NULL;
+    Display*       context_window_display      = NULL;
+    int            context_window_screen_index = -1;
+    const char*    glx_extensions              = NULL;
+
+    ogl_context_get_property(context_ptr->context,
+                             OGL_CONTEXT_PROPERTY_WINDOW,
+                            &context_window);
+
+    ASSERT_DEBUG_SYNC(context_window != NULL,
+                      "No window associated with the OpenGL (ES) rendering context");
+
+    system_window_get_property(context_window,
+                               SYSTEM_WINDOW_PROPERTY_DISPLAY,
+                              &context_window_display);
+    system_window_get_property(context_window,
+                               SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX,
+                              &context_window_screen_index);
+
+    ASSERT_DEBUG_SYNC(context_window_platform != NULL,
+                      "No system handle associated with a system_window handle");
+
+    /* Retrieve the GLX extensions */
+    glx_extensions = glXQueryExtensionsString(context_window_display,
+                                              context_window_screen_index);
+
+    /* Is EXT_wgl_swap_control supported? */
+    context_ptr->glx_ext_swap_control_support = (strstr(glx_extensions,
+                                                        "GLX_EXT_swap_control") != NULL);
+
+    if (context_ptr->glx_ext_swap_control_support)
     {
-        const char* wgl_extensions = context_ptr->pWGLGetExtensionsStringEXT();
+        context_ptr->pGLXSwapIntervalEXT = (PFNGLXSWAPINTERVALEXTPROC) glXGetProcAddress( (const unsigned char*) "glXSwapIntervalEXT");
 
-        /* Is EXT_wgl_swap_control supported? */
-        context_ptr->wgl_swap_control_support = (strstr(wgl_extensions,
-                                                        "WGL_EXT_swap_control") != NULL);
+        ASSERT_DEBUG_SYNC(context_ptr->pGLXSwapIntervalEXT != NULL,
+                          "glXSwapIntervalEXT() entry-point is NULL");
+    }
 
-        if (context_ptr->wgl_swap_control_support)
-        {
-            context_ptr->pWGLSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC) ::wglGetProcAddress("wglSwapIntervalEXT");
-        }
-
-        /* Is EXT_WGL_swap_control_tear supported? */
-        context_ptr->wgl_swap_control_tear_support = (strstr(wgl_extensions,
-                                                             "WGL_EXT_swap_control_tear") != NULL);
-    } /* if (pWGLGetExtensionsString != NULL) */
+    /* Is EXT_WGL_swap_control_tear supported? */
+    context_ptr->glx_ext_swap_control_tear_support = (strstr(glx_extensions,
+                                                             "GLX_EXT_swap_control_tear") != NULL);
 }
 
 /** TODO */
@@ -220,7 +247,7 @@ PRIVATE bool _ogl_context_linux_set_pixel_format_multisampling(_ogl_context_linu
 /** Please see header for spec */
 PUBLIC void ogl_context_linux_bind_to_current_thread(__in ogl_context_linux context_linux)
 {
-    _ogl_contextlinux* linux_ptr = (_ogl_context_linux*) context_linux;
+    _ogl_context_linux* linux_ptr = (_ogl_context_linux*) context_linux;
 
 #if 0
     if (win32_ptr != NULL)
@@ -745,7 +772,7 @@ PUBLIC bool ogl_context_linux_set_property(__in ogl_context_linux    context_lin
 /** Please see header for spec */
 PUBLIC void ogl_context_linux_swap_buffers(__in ogl_context_linux context_linux)
 {
-    _ogl_context_linux* linux_ptr = (_ogl_context_win32*) context_linux;
+    _ogl_context_linux* linux_ptr = (_ogl_context_linux*) context_linux;
 
 #if 0
     ::SwapBuffers(win32_ptr->context_dc);
