@@ -7,6 +7,7 @@
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_context_textures.h"
 #include "ogl/ogl_texture.h"
+#include "system/system_atomics.h"
 #include "system/system_log.h"
 #include "system/system_hash64map.h"
 #include "system/system_resizable_vector.h"
@@ -42,7 +43,11 @@ typedef struct _ogl_context_textures
 
         if (reusable_texture_key_to_ogl_texture_vector_map != NULL)
         {
-            const uint32_t n_map_vectors = system_hash64map_get_amount_of_elements(reusable_texture_key_to_ogl_texture_vector_map);
+            uint32_t n_map_vectors = 0;
+
+            system_hash64map_get_property(reusable_texture_key_to_ogl_texture_vector_map,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_map_vectors);
 
             for (uint32_t n_map_vector = 0;
                           n_map_vector < n_map_vectors;
@@ -63,7 +68,11 @@ typedef struct _ogl_context_textures
                     continue;
                 }
 
-                n_reusable_textures_released += system_resizable_vector_get_amount_of_elements(map_vector);
+                system_resizable_vector_get_property(map_vector,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_map_vector_entries);
+
+                n_reusable_textures_released += n_map_vector_entries;
 
                 system_resizable_vector_release(map_vector);
                 map_vector = NULL;
@@ -76,7 +85,11 @@ typedef struct _ogl_context_textures
 
         if (reusable_textures != NULL)
         {
-            const uint32_t n_textures = system_resizable_vector_get_amount_of_elements(reusable_textures);
+            uint32_t n_textures = 0;
+
+            system_resizable_vector_get_property(reusable_textures,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_textures);
 
             ASSERT_DEBUG_SYNC(n_textures == n_reusable_textures_released,
                               "Reusable texture memory leak detected");
@@ -617,12 +630,12 @@ PUBLIC EMERALD_API ogl_texture ogl_context_textures_get_texture_from_pool(__in _
                uint32_t spawned_texture_id      = 0;
                char     spawned_texture_id_text[16];
 
-        spawned_texture_id = ::InterlockedIncrement(&spawned_textures_cnt);
+        spawned_texture_id = system_atomics_increment(&spawned_textures_cnt);
 
-        sprintf_s(spawned_texture_id_text,
-                  sizeof(spawned_texture_id_text),
-                  "%d",
-                  spawned_texture_id);
+        snprintf(spawned_texture_id_text,
+                 sizeof(spawned_texture_id_text),
+                 "%d",
+                 spawned_texture_id);
 
         /* No free re-usable texture available. Spawn a new container. */
         LOG_INFO("Creating a new re-usable texture object [index:%d]..",
@@ -718,7 +731,19 @@ PUBLIC void ogl_context_textures_release(__in __notnull ogl_context_textures tex
 PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_context context,
                                                              __in __notnull ogl_texture released_texture)
 {
-    _ogl_context_textures* textures_ptr = NULL;
+    const ogl_context_gl_entrypoints* entrypoints = NULL;
+    system_resizable_vector           owner_vector                   = NULL;
+    system_hash64                     reusable_texture_key           = 0;
+    unsigned int                      texture_base_mipmap_depth      = 0;
+    unsigned int                      texture_base_mipmap_height     = 0;
+    unsigned int                      texture_base_mipmap_width      = 0;
+    ogl_texture_dimensionality        texture_dimensionality         = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
+    bool                              texture_fixed_sample_locations;
+    GLuint                            texture_id                     = 0;
+    ogl_texture_internalformat        texture_internalformat;
+    unsigned int                      texture_n_mipmaps              = 0;
+    unsigned int                      texture_n_samples              = 0;
+    _ogl_context_textures*            textures_ptr                   = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_TEXTURES,
@@ -730,15 +755,6 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_
                       "Texture returned to the pool is NOT a re-usable texture!");
 
     /* Identify the texture key */
-    unsigned int               texture_base_mipmap_depth  = 0;
-    unsigned int               texture_base_mipmap_height = 0;
-    unsigned int               texture_base_mipmap_width  = 0;
-    ogl_texture_dimensionality texture_dimensionality     = OGL_TEXTURE_DIMENSIONALITY_UNKNOWN;
-    bool                       texture_fixed_sample_locations;
-    ogl_texture_internalformat texture_internalformat;
-    unsigned int               texture_n_mipmaps          = 0;
-    unsigned int               texture_n_samples          = 0;
-
     ogl_texture_get_mipmap_property(released_texture,
                                     0, /* mipmap_level */
                                     OGL_TEXTURE_MIPMAP_PROPERTY_DEPTH,
@@ -767,18 +783,16 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_
                                    OGL_TEXTURE_PROPERTY_N_SAMPLES,
                                   &texture_n_samples);
 
-    system_hash64 reusable_texture_key = _ogl_context_textures_get_reusable_texture_key(texture_dimensionality,
-                                                                                        texture_base_mipmap_depth,
-                                                                                        texture_base_mipmap_height,
-                                                                                        texture_base_mipmap_width,
-                                                                                        texture_n_mipmaps,
-                                                                                        texture_n_samples,
-                                                                                        texture_internalformat,
-                                                                                        texture_fixed_sample_locations);
+    reusable_texture_key = _ogl_context_textures_get_reusable_texture_key(texture_dimensionality,
+                                                                          texture_base_mipmap_depth,
+                                                                          texture_base_mipmap_height,
+                                                                          texture_base_mipmap_width,
+                                                                          texture_n_mipmaps,
+                                                                          texture_n_samples,
+                                                                          texture_internalformat,
+                                                                          texture_fixed_sample_locations);
 
     /* Look for the owner vector */
-    system_resizable_vector owner_vector = NULL;
-
     if (!system_hash64map_get(textures_ptr->reusable_texture_key_to_ogl_texture_vector_map,
                               reusable_texture_key,
                              &owner_vector) )
@@ -799,9 +813,6 @@ PUBLIC EMERALD_API void ogl_context_textures_return_reusable(__in __notnull ogl_
                                  released_texture);
 
     /* Finally, invalidate the texture contents */
-    const ogl_context_gl_entrypoints* entrypoints = NULL;
-    GLuint                            texture_id  = 0;
-
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints);

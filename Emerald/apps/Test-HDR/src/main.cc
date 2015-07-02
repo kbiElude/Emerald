@@ -4,7 +4,6 @@
  *
  */
 #include "shared.h"
-#include <crtdbg.h>
 #include <stdlib.h>
 #include "main.h"
 #include "curve/curve_container.h"
@@ -27,6 +26,7 @@
 #include "system/system_assertions.h"
 #include "system/system_event.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
@@ -109,8 +109,7 @@ ogl_texture                           _texture                                  
 gfx_image                             _texture_image                            = NULL;
 GLuint                                _texture_width                            = -1;
 system_window                         _window                                   = NULL;
-system_event                          _window_closed_event                      = system_event_create(true,  /* manual_reset */
-                                                                                                      false);/* start_state */
+system_event                          _window_closed_event                      = system_event_create(true); /* manual_reset */
 shaders_vertex_fullscreen             _vp                                       = NULL;
 GLuint                                _vaa_id                                   = 0;
 
@@ -568,10 +567,14 @@ void _window_closing_callback_handler(system_window window)
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle,
-                   HINSTANCE,
-                   LPTSTR,
-                   int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle,
+                       HINSTANCE,
+                       LPTSTR,
+                       int)
+#else
+    int main()
+#endif
 {
     _float_variant = system_variant_create(SYSTEM_VARIANT_FLOAT);
 
@@ -687,17 +690,23 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     _texture_width  = window_size[0];
 
     /* Carry on */
+    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                                               8,  /* color_buffer_green_bits */
+                                                               8,  /* color_buffer_blue_bits  */
+                                                               0,  /* color_buffer_alpha_bits */
+                                                               8,  /* depth_buffer_bits       */
+                                                               1); /* n_samples               */
+
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
     _window = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                  window_x1y1x2y2,
-                                                  system_hashed_ansi_string_create("Test window"),
-                                                  false, /* scalable */
-                                                  0,     /* n_multisampling_samples */
-                                                  false, /* vsync_enabled */
-                                                  false, /* multisampling_supported */
-                                                  true); /* visible */
+                                                                   window_x1y1x2y2,
+                                                                   system_hashed_ansi_string_create("Test window"),
+                                                                   false,
+                                                                   false, /* vsync_enabled */
+                                                                   true,  /* visible */
+                                                                   window_pf);
 
     ogl_rendering_handler window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                                                   30, /* desired_fps */
@@ -707,28 +716,29 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     system_window_get_property(_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
+    system_window_set_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &window_rendering_handler);
 
-    system_window_set_rendering_handler (_window,
-                                         window_rendering_handler);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                         _rendering_lbm_callback_handler,
+                                         (void*) _rendering_lbm_callback_handler,
                                          NULL);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                         _rendering_rbm_callback_handler,
+                                         (void*) _rendering_rbm_callback_handler,
                                          NULL);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                         _window_closed_callback_handler,
+                                         (void*) _window_closed_callback_handler,
                                          NULL);
     system_window_add_callback_func     (_window,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                          SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                         _window_closing_callback_handler,
+                                         (void*) _window_closing_callback_handler,
                                          NULL);
 
     ogl_rendering_handler_set_fps_counter_visibility(window_rendering_handler,
@@ -921,7 +931,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);

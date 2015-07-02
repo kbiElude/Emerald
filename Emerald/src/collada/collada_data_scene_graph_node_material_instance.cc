@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -44,7 +44,8 @@ _collada_data_scene_graph_node_material_instance::~_collada_data_scene_graph_nod
     {
         collada_data_geometry_material_binding binding = NULL;
 
-        while (system_resizable_vector_pop(bindings, &binding) )
+        while (system_resizable_vector_pop(bindings,
+                                          &binding) )
         {
             collada_data_geometry_material_binding_release(binding);
 
@@ -70,11 +71,15 @@ PUBLIC collada_data_scene_graph_node_material_instance collada_data_scene_graph_
                                                                                                               __in __notnull system_hash64map      materials_by_id_map)
 {
     /* Read the attribute data */
-    const char* symbol_name = element_ptr->Attribute("symbol");
-    const char* target_name = element_ptr->Attribute("target");
+    _collada_data_scene_graph_node_material_instance* instance_ptr = NULL;
+    collada_data_material                             material     = NULL;
+    const char*                                       symbol_name = element_ptr->Attribute("symbol");
+    const char*                                       target_name = element_ptr->Attribute("target");
 
-    ASSERT_DEBUG_SYNC(symbol_name != NULL, "Required <symbol> attribute not defined for a <instance_material> node");
-    ASSERT_DEBUG_SYNC(target_name != NULL, "Required <target> attribute not defined for a <instance_material> node");
+    ASSERT_DEBUG_SYNC(symbol_name != NULL,
+                      "Required <symbol> attribute not defined for a <instance_material> node");
+    ASSERT_DEBUG_SYNC(target_name != NULL,
+                      "Required <target> attribute not defined for a <instance_material> node");
 
     if (target_name[0] == '#')
     {
@@ -82,21 +87,24 @@ PUBLIC collada_data_scene_graph_node_material_instance collada_data_scene_graph_
     }
 
     /* Find the material descriptor */
-    collada_data_material material = NULL;
-
     if (!system_hash64map_get(materials_by_id_map,
-                              system_hash64_calculate(target_name, strlen(target_name) ),
+                              system_hash64_calculate(target_name,
+                                                      strlen(target_name) ),
                               &material) )
     {
-        ASSERT_DEBUG_SYNC(false, "Could not find a material named [%s]", target_name);
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not find a material named [%s]",
+                          target_name);
 
         goto end;
     }
 
     /* Spawn new descriptor */
-    _collada_data_scene_graph_node_material_instance* instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_material_instance;
+    instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_material_instance;
 
-    ASSERT_ALWAYS_SYNC(instance_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(instance_ptr != NULL,
+                       "Out of memory");
+
     if (instance_ptr == NULL)
     {
         goto end;
@@ -118,7 +126,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_material_instance_get_mate
     collada_data_geometry_material_binding            binding_ptr  = NULL;
     _collada_data_scene_graph_node_material_instance* instance_ptr = (_collada_data_scene_graph_node_material_instance*) instance;
 
-    if (system_resizable_vector_get_element_at(instance_ptr->bindings, n_binding, &binding_ptr) )
+    if (system_resizable_vector_get_element_at(instance_ptr->bindings,
+                                               n_binding,
+                                              &binding_ptr) )
     {
         if (out_material_binding != NULL)
         {
@@ -127,7 +137,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_material_instance_get_mate
     }
     else
     {
-        ASSERT_DEBUG_SYNC(false, "Could not retrieve material binding at index [%d]", n_binding);
+        ASSERT_DEBUG_SYNC(false,
+                          "Could not retrieve material binding at index [%d]",
+                          n_binding);
     }
 }
 
@@ -151,7 +163,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_material_instance_get_prop
 
     if (out_n_bindings != NULL)
     {
-        *out_n_bindings = system_resizable_vector_get_amount_of_elements(instance_ptr->bindings);
+        system_resizable_vector_get_property(instance_ptr->bindings,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             out_n_bindings);
     }
 }
 

@@ -450,9 +450,12 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
                                           __in_opt           scene                     owner_scene,
                                           __in_opt           system_hashed_ansi_string object_manager_path)
 {
-    system_hashed_ansi_string name           = NULL;
-    bool                      result         = true;
-    scene_material            result_material = NULL;
+    curve_container*          default_curves[7]   = {NULL};
+    const unsigned int        n_default_curves    = sizeof(default_curves) / sizeof(default_curves[0]);
+    system_hashed_ansi_string name                = NULL;
+    bool                      result              = true;
+    scene_material            result_material     = NULL;
+    _scene_material*          result_material_ptr = NULL;
 
     /* Retrieve mesh instance properties. */
     result &= system_file_serializer_read_hashed_ansi_string(serializer,
@@ -477,19 +480,15 @@ PUBLIC scene_material scene_material_load(__in     __notnull system_file_seriali
     }
 
     /* Release the default curves */
-    _scene_material* result_material_ptr = (_scene_material*) result_material;
+    result_material_ptr = (_scene_material*) result_material;
 
-    curve_container* default_curves[] =
-    {
-         result_material_ptr->color + 0,
-         result_material_ptr->color + 1,
-         result_material_ptr->color + 2,
-        &result_material_ptr->glosiness,
-        &result_material_ptr->luminance,
-        &result_material_ptr->reflection_ratio,
-        &result_material_ptr->specular_ratio
-    };
-    const unsigned int n_default_curves = sizeof(default_curves) / sizeof(default_curves[0]);
+    default_curves[0] =  result_material_ptr->color + 0;
+    default_curves[1] =  result_material_ptr->color + 1;
+    default_curves[2] =  result_material_ptr->color + 2;
+    default_curves[3] = &result_material_ptr->glosiness;
+    default_curves[4] = &result_material_ptr->luminance;
+    default_curves[5] = &result_material_ptr->reflection_ratio;
+    default_curves[6] = &result_material_ptr->specular_ratio;
 
     for (unsigned int n_default_curve = 0;
                       n_default_curve < n_default_curves;

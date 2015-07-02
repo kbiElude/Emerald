@@ -25,7 +25,10 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
   LIST(APPEND ${SourcesVar} ${PrecompiledSource})
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+IF(MSVC)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+ENDIF(MSVC)
+
 INCLUDE_DIRECTORIES("${TestObjectBrowser_SOURCE_DIR}")
 INCLUDE_DIRECTORIES("${TestObjectBrowser_SOURCE_DIR}/include")
 INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
@@ -38,7 +41,10 @@ SET(AllTestObjectBrowserSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTestObjectBrowserSources)
 
 ADD_EXECUTABLE(TestObjectBrowser WIN32 ${AllTestObjectBrowserSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(TestObjectBrowser PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(TestObjectBrowser PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

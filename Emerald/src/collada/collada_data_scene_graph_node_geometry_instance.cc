@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -37,37 +37,52 @@ PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_
                                                                                                               __in __notnull system_hash64map          materials_by_id_map)
 {
     /* Allocate space for the descriptor */
+    tinyxml2::XMLElement*                             bind_material_element_ptr = NULL;
+    collada_data_geometry                             geometry                  = NULL;
+    const char*                                       geometry_name             = NULL;
+    system_hash64                                     geometry_name_hash;
     _collada_data_scene_graph_node_geometry_instance* new_geometry_instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_geometry_instance;
 
-    ASSERT_DEBUG_SYNC(new_geometry_instance_ptr != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_geometry_instance_ptr != NULL,
+                      "Out of memory");
+
     if (new_geometry_instance_ptr == NULL)
     {
         goto end;
     }
 
     /* Locate the geometry the instance is referring to */
-    collada_data_geometry geometry           = NULL;
-    const char*           geometry_name      = element_ptr->Attribute("url");
-    system_hash64         geometry_name_hash;
+    geometry_name = element_ptr->Attribute("url");
 
-    ASSERT_DEBUG_SYNC(geometry_name != NULL, "url attribute missing");
+    ASSERT_DEBUG_SYNC(geometry_name != NULL,
+                      "url attribute missing");
+
     if (geometry_name == NULL)
     {
         goto end;
     }
 
-    ASSERT_DEBUG_SYNC(geometry_name[0] == '#', "Invalid url attribute");
+    ASSERT_DEBUG_SYNC(geometry_name[0] == '#',
+                      "Invalid url attribute");
+
     geometry_name++;
 
-    geometry_name_hash = system_hash64_calculate(geometry_name, strlen(geometry_name) );
-    ASSERT_DEBUG_SYNC(system_hash64map_contains(geometry_by_id_map, geometry_name_hash),
+    geometry_name_hash = system_hash64_calculate(geometry_name,
+                                                 strlen(geometry_name) );
+
+    ASSERT_DEBUG_SYNC(system_hash64map_contains(geometry_by_id_map,
+                                                geometry_name_hash),
                       "Geometry that is being referred to was not found");
 
-    system_hash64map_get(geometry_by_id_map, geometry_name_hash, &geometry);
-    ASSERT_DEBUG_SYNC(geometry != NULL, "NULL pointer returned for a geometry URL");
+    system_hash64map_get(geometry_by_id_map,
+                         geometry_name_hash,
+                        &geometry);
+
+    ASSERT_DEBUG_SYNC(geometry != NULL,
+                      "NULL pointer returned for a geometry URL");
 
     /* Iterate over material instances, if any */
-    tinyxml2::XMLElement* bind_material_element_ptr = element_ptr->FirstChildElement("bind_material");
+    bind_material_element_ptr = element_ptr->FirstChildElement("bind_material");
 
     if (bind_material_element_ptr != NULL)
     {
@@ -76,6 +91,7 @@ PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_
 
         ASSERT_DEBUG_SYNC(technique_common_element_ptr != NULL,
                           "Common technique not defined for a <bind_material> none");
+
         if (technique_common_element_ptr != NULL)
         {
             /* Iterate over defined instances */
@@ -97,8 +113,10 @@ PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_
                     unsigned int input_set_attribute      = bind_vertex_input_element_ptr->IntAttribute("input_set");
                     const char*  semantic_attribute       = bind_vertex_input_element_ptr->Attribute   ("semantic");
 
-                    ASSERT_DEBUG_SYNC(input_semantic_attribute != NULL, "Required <input_semantic> attribute is missing for <bind_vertex_input> node");
-                    ASSERT_DEBUG_SYNC(semantic_attribute       != NULL, "Required <semantic> attribute is missing for <bind_vertex_input> node");
+                    ASSERT_DEBUG_SYNC(input_semantic_attribute != NULL,
+                                      "Required <input_semantic> attribute is missing for <bind_vertex_input> node");
+                    ASSERT_DEBUG_SYNC(semantic_attribute       != NULL,
+                                      "Required <semantic> attribute is missing for <bind_vertex_input> node");
 
                     /* Spawn a new descriptor */
                     collada_data_geometry_material_binding binding = collada_data_geometry_material_binding_create(system_hashed_ansi_string_create(input_semantic_attribute),

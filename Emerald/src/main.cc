@@ -6,9 +6,11 @@
 #include "shared.h"
 #include <stdlib.h>
 #include "main.h"
+#include "ogl/ogl_context.h"
 #include "system/system_assertions.h"
 #include "system/system_callback_manager.h"
 #include "system/system_capabilities.h"
+#include "system/system_event_monitor.h"
 #include "system/system_global.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
@@ -20,28 +22,39 @@
 #include "system/system_types.h"
 #include "system/system_window.h"
 #include "system/system_variant.h"
-#include <crtdbg.h>
 
+/* Windows-specific deps */
+#ifdef _WIN32
+    #include <crtdbg.h>
+
+    #include <CommCtrl.h>
+    #pragma comment(lib, "comctl32.lib")
+#endif /* _WIN32 */
+
+/* Optional features */
 #ifdef INCLUDE_WEBCAM_MANAGER
     #include "webcam/webcam_manager.h"
-#endif
+#endif /* INCLUDE_WEBCAM_MANAGER */
 
 #ifdef INCLUDE_OBJECT_MANAGER
     #include "object_manager/object_manager_general.h"
-#endif
+#endif /* INCLUDE_OBJECT_MANAGER */
 
 #ifdef INCLUDE_CURVE_EDITOR
     #include "curve_editor/curve_editor_general.h"
+#endif /* INCLUDE_CURVE_EDITOR */
+
+#ifdef INCLUDE_OPENCL
+    #include "ocl/ocl_general.h"
+#endif /* INCLUDE_OPENCL */
+
+
+bool _deinited = false;
+
+#ifdef _WIN32
+    HINSTANCE _global_instance = NULL;
 #endif
 
-#include "ocl/ocl_general.h"
-
-
-#include <CommCtrl.h>
-#pragma comment(lib, "comctl32.lib")
-
-bool      _deinited        = false;
-HINSTANCE _global_instance = NULL;
 
 /* Forward declarations */
 int main_deinit();
@@ -60,10 +73,12 @@ PUBLIC EMERALD_API void main_force_deinit()
  */
 void main_init()
 {
+#ifdef _WIN32
     ::InitCommonControls();
 
-#ifdef _DEBUG
-    _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
+    #ifdef _DEBUG
+        _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
+    #endif
 #endif
 
     _system_log_init();
@@ -76,6 +91,13 @@ void main_init()
     _system_time_init();
     _system_assertions_init();
     _system_threads_init();
+
+    #ifdef USE_EMULATED_EVENTS
+    {
+        system_event_monitor_init();
+    }
+    #endif
+
     _system_thread_pool_init();
     _system_matrix4x4_init();
     _system_window_init();
@@ -96,6 +118,8 @@ void main_init()
     #ifdef INCLUDE_OPENCL
         _ocl_init();
     #endif
+
+    ogl_context_init_global();
 }
 
 /** Deinitializes all sub-modules. Called when DLL is about to be unloaded from process' space.
@@ -127,8 +151,16 @@ int main_deinit()
             _curve_editor_deinit();
         #endif
 
+        ogl_context_deinit_global();
+
         #ifdef INCLUDE_OPENCL
             _ocl_deinit();
+        #endif
+
+        #ifdef USE_EMULATED_EVENTS
+        {
+            system_event_monitor_deinit();
+        }
         #endif
 
         system_hashed_ansi_string_deinit();
@@ -161,7 +193,11 @@ int main_deinit()
             case DLL_PROCESS_DETACH:
             {
                 /* DLL unloaded from the virtual address space of the calling process */
-                main_deinit();
+
+                /* This call must not be made from within DllMain(). On Windows 8.1, all other
+                 * threads but the current one have been killed by the time this entry-point
+                 * is reached! */
+                // main_deinit();
 
                 break;
             }

@@ -11,20 +11,20 @@
 #include "tinyxml2.h"
 
 
-typedef enum collada_data_scene_graph_node_item_property
+typedef enum
 {
     COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_DATA_HANDLE, /* not settable, void* */
     COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_SID,         /* not settable, system_hashed_ansi_string */
     COLLADA_DATA_SCENE_GRAPH_NODE_ITEM_PROPERTY_TYPE         /* not settable, _collada_data_node_item_type */
-};
+} collada_data_scene_graph_node_item_property;
 
-typedef enum collada_data_scene_graph_node_property
+typedef enum
 {
     COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_ID,           /* not settable, system_hashed_ansi_string */
     COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_N_NODE_ITEMS, /* not settable, uint32_t */
     COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_NAME,         /* not settable, system_hashed_ansi_string */
     COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_TYPE          /* not settable, _collada_data_node_type */
-};
+} collada_data_scene_graph_node_property;
 
 
 /** TODO */

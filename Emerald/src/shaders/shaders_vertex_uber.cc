@@ -300,9 +300,14 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
                                                                              __in           shaders_fragment_uber_light_type light_type,
                                                                              __in           bool                             is_shadow_caster)
 {
-    _shaders_vertex_uber*       uber_ptr = (_shaders_vertex_uber*) uber;
-    const unsigned int          n_items  = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
-    shaders_vertex_uber_item_id result   = -1;
+    _shaders_vertex_uber*       uber_ptr     = (_shaders_vertex_uber*) uber;
+    unsigned int                n_items      = 0;
+    _shaders_vertex_uber_item*  new_item_ptr = NULL;
+    shaders_vertex_uber_item_id result       = -1;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     switch (light)
     {
@@ -348,9 +353,11 @@ PUBLIC EMERALD_API shaders_vertex_uber_item_id shaders_vertex_uber_add_light(__i
     }
 
     /* Spawn new descriptor */
-    _shaders_vertex_uber_item* new_item_ptr = new (std::nothrow) _shaders_vertex_uber_item;
+    new_item_ptr = new (std::nothrow) _shaders_vertex_uber_item;
 
-    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_item_ptr != NULL,
+                       "Out of memory");
+
     if (new_item_ptr == NULL)
     {
         goto end;
@@ -377,6 +384,8 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     std::stringstream     body_stream;
     _shaders_vertex_uber* result_object = NULL;
     shaders_vertex_uber   result_shader = NULL;
+    _uniform_block_id     ub_id         = -1;
+    ogl_shader            vertex_shader = NULL;
 
     /* Spawn the shader constructor */
     ogl_shader_constructor shader_constructor = NULL;
@@ -393,8 +402,6 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
     }
 
     /* Create VertexShaderProperties uniform block */
-    _uniform_block_id ub_id = -1;
-
     ub_id = ogl_shader_constructor_add_uniform_block(shader_constructor,
                                                      LAYOUT_QUALIFIER_STD140,
                                                      system_hashed_ansi_string_create("VertexShaderProperties") );
@@ -501,13 +508,14 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
                                                                               "\n"));
 
     /* Create the shader */
-    ogl_shader vertex_shader = ogl_shader_create(context,
-                                                 SHADER_TYPE_VERTEX,
-                                                 system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
-                                                                                                         " vertex uber"));
+    vertex_shader = ogl_shader_create(context,
+                                      SHADER_TYPE_VERTEX,
+                                      system_hashed_ansi_string_create_by_merging_two_strings(system_hashed_ansi_string_get_buffer(name),
+                                                                                              " vertex uber"));
 
     ASSERT_DEBUG_SYNC(vertex_shader != NULL,
                       "ogl_shader_create() failed");
+
     if (vertex_shader == NULL)
     {
         LOG_ERROR("Could not create uber vertex shader.");
@@ -520,6 +528,7 @@ PUBLIC EMERALD_API shaders_vertex_uber shaders_vertex_uber_create(__in __notnull
 
     ASSERT_DEBUG_SYNC(result_object != NULL,
                       "Out of memory while instantiating _shaders_vertex_uber object.");
+
     if (result_object == NULL)
     {
         LOG_ERROR("Out of memory while creating uber vertex shader object instance.");
@@ -631,7 +640,13 @@ end:
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t shaders_vertex_uber_get_n_items(__in __notnull shaders_vertex_uber shader)
 {
-    return system_resizable_vector_get_amount_of_elements(((_shaders_vertex_uber*)shader)->added_items);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(((_shaders_vertex_uber*)shader)->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
+
+    return result;
 }
 
 /** Please see header for specification */

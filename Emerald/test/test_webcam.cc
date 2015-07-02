@@ -4,6 +4,7 @@
  *
  */
 #include "test_webcam.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "config.h"
 #include "ogl/ogl_context.h"
@@ -18,9 +19,8 @@
 #include "webcam/webcam_device.h"
 #include "webcam/webcam_manager.h"
 #include "webcam/webcam_device_streamer.h"
-#include "gtest/gtest.h"
 
-#ifdef INCLUDE_WEBCAM_MANAGER
+#if defined(INCLUDE_WEBCAM_MANAGER) && defined(_WIN32)
 
 uint32_t              cam_data_width                             = 0;
 uint32_t              cam_data_height                            = 0;

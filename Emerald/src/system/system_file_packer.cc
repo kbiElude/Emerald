@@ -7,7 +7,16 @@
 #include "system/system_file_packer.h"
 #include "system/system_file_serializer.h"
 #include "system/system_resizable_vector.h"
+#include <stdio.h>
+#include <string.h>
 #include <zlib.h>
+
+#ifdef __linux
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
 
 
 /* This #define tells the size of the internal buffer. Two of those are allocated
@@ -95,8 +104,12 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
                                                       __in                           __notnull uint32_t                result_data_bytes,
                                                       __in_bcount(result_data_bytes) __notnull char*                   out_result_data)
 {
-    const uint32_t n_files_to_use = system_resizable_vector_get_amount_of_elements(files);
-    char*          traveller_ptr  = out_result_data;
+    uint32_t n_files_to_use = 0;
+    char*    traveller_ptr  = out_result_data;
+
+    system_resizable_vector_get_property(files,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_files_to_use);
 
     /* Store the number of files we are describing */
     *(uint32_t*) traveller_ptr  = n_files_to_use;
@@ -155,8 +168,19 @@ PRIVATE uint32_t _system_file_packer_build_file_table(__in                      
 PUBLIC EMERALD_API bool system_file_packer_add_file(__in __notnull system_file_packer        packer,
                                                     __in __notnull system_hashed_ansi_string filename)
 {
-    _system_file_packer* packer_ptr = (_system_file_packer*) packer;
-    bool                 result     = true;
+    _system_file_packer_file* new_file_ptr = NULL;
+    _system_file_packer*      packer_ptr   = (_system_file_packer*) packer;
+    bool                      result       = true;
+
+#ifdef _WIN32
+    HANDLE   file      = INVALID_HANDLE_VALUE;
+    uint32_t file_size = 0;
+
+#else
+    int         file      = -1;
+    struct stat file_info;
+    ssize_t     file_size = 0;
+#endif
 
     /* Sanity checks */
     ASSERT_DEBUG_SYNC(filename != NULL,
@@ -167,16 +191,23 @@ PUBLIC EMERALD_API bool system_file_packer_add_file(__in __notnull system_file_p
                       "Input packer argument is NULL");
 
     /* Attempt to open the file. If successful, retrieve its size and bail out */
-    HANDLE   file      = ::CreateFileA(system_hashed_ansi_string_get_buffer(filename),
-                                       GENERIC_READ,
-                                       FILE_SHARE_READ,
-                                       NULL, /* no security attribs */
-                                       OPEN_EXISTING,
-                                       FILE_ATTRIBUTE_NORMAL,
-                                       NULL); /* no template file */
-    uint32_t file_size = 0;
+#ifdef _WIN32
+    file = ::CreateFileA(system_hashed_ansi_string_get_buffer(filename),
+                         GENERIC_READ,
+                         FILE_SHARE_READ,
+                         NULL, /* no security attribs */
+                         OPEN_EXISTING,
+                         FILE_ATTRIBUTE_NORMAL,
+                         NULL); /* no template file */
 
     if (file == INVALID_HANDLE_VALUE)
+#else
+    file = open(system_hashed_ansi_string_get_buffer(filename),
+                O_RDONLY,
+                0); /* mode - not used */
+
+    if (file == -1)
+#endif
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not open file [%s]. Cannot add the file to the packer.",
@@ -186,10 +217,20 @@ PUBLIC EMERALD_API bool system_file_packer_add_file(__in __notnull system_file_p
         goto end;
     }
 
+#ifdef _WIN32
     file_size = ::GetFileSize(file,
                               NULL); /* lpFileSizeHight */
 
     if (file_size == INVALID_FILE_SIZE)
+#else
+    if (fstat(file,
+             &file_info) == 0)
+    {
+        file_size = file_info.st_size;
+    }
+    else
+#endif
+
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Could not retrieve size of file [%s]. Cannot add the file to the packer.",
@@ -200,8 +241,8 @@ PUBLIC EMERALD_API bool system_file_packer_add_file(__in __notnull system_file_p
     }
 
     /* Create a descriptor for the file and push it to the internal vector */
-    _system_file_packer_file* new_file_ptr = new (std::nothrow) _system_file_packer_file(filename,
-                                                                                         file_size);
+    new_file_ptr = new (std::nothrow) _system_file_packer_file(filename,
+                                                               file_size);
 
     if (new_file_ptr == NULL)
     {
@@ -251,12 +292,16 @@ PUBLIC EMERALD_API void system_file_packer_release(__in __notnull __post_invalid
 PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packer        packer,
                                                 __in __notnull system_hashed_ansi_string target_packed_filename)
 {
-    system_file_serializer     in_file_serializer  = NULL;
-    bool                       is_zlib_inited      = false;
-    system_file_serializer     out_file_serializer = NULL;
-    const _system_file_packer* packer_ptr          = (const _system_file_packer*) packer;
-    uint32_t                   n_files_to_pack     = system_resizable_vector_get_amount_of_elements(packer_ptr->files);
-    bool                       result              = true;
+    uint32_t                   file_table_size               = 0;
+    system_file_serializer     in_file_serializer            = NULL;
+    bool                       is_zlib_inited                = false;
+    uint32_t                   n_current_file                = 0;
+    uint32_t                   n_total_decoded_bytes         = 0;
+    system_file_serializer     out_file_serializer           = NULL;
+    const _system_file_packer* packer_ptr                    = (const _system_file_packer*) packer;
+    uint32_t                   n_files_to_pack               = 0;
+    bool                       result                        = true;
+    char*                      unpacked_buffer_traveller_ptr = NULL;
     z_stream                   zlib_stream;
 
     /* Set up output file serializer */
@@ -266,9 +311,9 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
                        "Could not set up output file serializer.");
 
     /* Build a file table */
-    uint32_t file_table_size = _system_file_packer_build_file_table(packer_ptr->files,
-                                                                    INTERNAL_BUFFER_SIZE,
-                                                                    packer_ptr->buffer_unpacked);
+    file_table_size = _system_file_packer_build_file_table(packer_ptr->files,
+                                                           INTERNAL_BUFFER_SIZE,
+                                                           packer_ptr->buffer_unpacked);
 
     /* Initialize zlib */
     zlib_stream.next_in = (Bytef*) packer_ptr->buffer_unpacked;
@@ -289,15 +334,14 @@ PUBLIC EMERALD_API bool system_file_packer_save(__in __notnull system_file_packe
     is_zlib_inited = true;
 
     /* Store total number of bytes in the decoded stream */
-    const uint32_t n_total_decoded_bytes = file_table_size + packer_ptr->total_filesize;
+    n_total_decoded_bytes = file_table_size + packer_ptr->total_filesize;
 
     system_file_serializer_write(out_file_serializer,
                                  sizeof(n_total_decoded_bytes),
                                 &n_total_decoded_bytes);
 
     /* Start constructing input data for the result blob */
-    uint32_t n_current_file                = 0;
-    char*    unpacked_buffer_traveller_ptr = packer_ptr->buffer_unpacked + file_table_size;
+    unpacked_buffer_traveller_ptr = packer_ptr->buffer_unpacked + file_table_size;
 
     while (n_current_file < n_files_to_pack)
     {

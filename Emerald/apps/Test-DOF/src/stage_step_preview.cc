@@ -5,12 +5,12 @@
  */
 
 #include "shared.h"
-#include "include\main.h"
+#include "include/main.h"
 #include "stage_step_dof_scheuermann.h"
 #include "stage_step_julia.h"
 #include "stage_step_preview.h"
-#include "ogl\ogl_context.h"
-#include "ogl\ogl_pipeline.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_pipeline.h"
 
 /** TODO */
 static void _stage_step_preview_execute(ogl_context          context,

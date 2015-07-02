@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -21,8 +21,7 @@
 /** Describes data stored in <animation>/<channel> **/
 typedef struct _collada_data_channel
 {
-    collada_data_sampler             sampler; /* Corresponds to <source> attribute */
-
+    collada_data_sampler                  sampler; /* Corresponds to <source> attribute */
     void*                                 target;
     collada_data_channel_target_component target_component;
     collada_data_channel_target_type      target_type;
@@ -34,7 +33,7 @@ typedef struct _collada_data_channel
 /** TODO */
 _collada_data_channel::_collada_data_channel()
 {
-    sampler      = NULL;
+    sampler     = NULL;
     target      = NULL;
     target_type = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 }
@@ -49,13 +48,28 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
 {
     bool result = false;
 
-    /* Break down the path into actual entities */
-    system_hashed_ansi_string object_name             = NULL;
-    system_hashed_ansi_string property_name           = NULL;
-    system_hashed_ansi_string property_component_name = NULL;
-    const char*               traveller_ptr           = strchr(path, '//');
-    const char*               traveller2_ptr          = NULL;
+    collada_data_scene_graph_node         current_node            = NULL;
+    collada_data_scene_graph_node_item    current_node_item       = NULL;
+    void*                                 current_node_item_data  = NULL;
+    _collada_data_node_item_type          current_node_item_type  = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
+    bool                                  has_found               = false;
+    system_resizable_vector               nodes                   = system_resizable_vector_create(4 /* capacity */);
+    uint32_t                              n_current_node_items    = 0;
+    uint32_t                              n_scenes                = 0;
+    system_hashed_ansi_string             object_name             = NULL;
+    system_hashed_ansi_string             property_name           = NULL;
+    system_hashed_ansi_string             property_component_name = NULL;
+    collada_data_scene_graph_node         root_node               = NULL;
+    collada_data_scene                    scene                   = NULL;
+    collada_data_scene_graph_node         target_object_node      = NULL;
+    collada_data_channel_target_component target_component        = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
+    void*                                 target_property_node    = NULL;
+    collada_data_channel_target_type      target_property_type    = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
+    const char*                           traveller_ptr           = strchr(path,
+                                                                           '/');
+    const char*                           traveller2_ptr          = NULL;
 
+    /* Break down the path into actual entities */
     if (traveller_ptr == NULL)
     {
         ASSERT_DEBUG_SYNC(false,
@@ -92,12 +106,7 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
     /* Identify the transformation: traverse the scene graph and find the transformation
      * the <channel> node is referring to.
      */
-    collada_data_scene_graph_node current_node = NULL;
-    bool                          has_found    = false;
-    uint32_t                      n_scenes     = 0;
-    system_resizable_vector       nodes        = system_resizable_vector_create(4 /* capacity */);
-    collada_data_scene_graph_node root_node    = NULL;
-    collada_data_scene            scene        = NULL;
+    nodes = system_resizable_vector_create(4 /* capacity */);
 
     collada_data_get_property(data,
                               COLLADA_DATA_PROPERTY_N_SCENES,
@@ -124,24 +133,19 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
 
     ASSERT_DEBUG_SYNC(root_node != NULL,
                       "Could not retrieve root node");
+
     if (root_node == NULL)
     {
         goto end;
     }
 
     /* Good to start traversing */
-    collada_data_scene_graph_node_item    current_node_item      = NULL;
-    void*                                 current_node_item_data = NULL;
-    _collada_data_node_item_type          current_node_item_type = COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED;
-    uint32_t                              n_current_node_items   = 0;
-    collada_data_scene_graph_node         target_object_node     = NULL;
-    collada_data_channel_target_component target_component       = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
-    void*                                 target_property_node   = NULL;
-    collada_data_channel_target_type      target_property_type   = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
+    system_resizable_vector_push(nodes,
+                                 root_node);
 
-    system_resizable_vector_push(nodes, root_node);
-
-    while (target_object_node == NULL && system_resizable_vector_pop(nodes, &current_node) )
+    while (target_object_node == NULL                &&
+           system_resizable_vector_pop(nodes,
+                                      &current_node) )
     {
         /* Iterate over all node items */
         collada_data_scene_graph_node_get_property(current_node,
@@ -213,9 +217,11 @@ PRIVATE bool _collada_data_channel_get_target(__in  __notnull collada_data      
 
     /* Now look through node items and try to find the matching property item */
     system_resizable_vector_clear(nodes);
-    system_resizable_vector_push (nodes, target_object_node);
+    system_resizable_vector_push (nodes,
+                                  target_object_node);
 
-    while ((target_property_node == NULL) && system_resizable_vector_pop(nodes, &current_node) )
+    while ((target_property_node == NULL) && system_resizable_vector_pop(nodes,
+                                                                        &current_node) )
     {
         collada_data_scene_graph_node_get_property(current_node,
                                                    COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_N_NODE_ITEMS,
@@ -370,12 +376,19 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
                                                         __in __notnull collada_data_sampler  sampler,
                                                         __in __notnull collada_data          data)
 {
-    _collada_data_channel* channel_ptr = NULL;
+    _collada_data_channel*                channel_ptr      = NULL;
+    system_hashed_ansi_string             sampler_id       = NULL;
+    const char*                           target_name      = NULL;
+    void*                                 target           = NULL;
+    collada_data_channel_target_component target_component = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
+    collada_data_channel_target_type      target_type      = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
 
     /* Retrieve the source instance */
     const char* source_name = channel_element_ptr->Attribute("source");
 
-    ASSERT_DEBUG_SYNC(source_name != NULL, "Source attribute not defined for <channel> node");
+    ASSERT_DEBUG_SYNC(source_name != NULL,
+                      "Source attribute not defined for <channel> node");
+
     if (source_name == NULL)
     {
         goto end;
@@ -387,8 +400,6 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     }
 
     /* Is this the right sampler? */
-    system_hashed_ansi_string sampler_id = NULL;
-
     collada_data_sampler_get_property(sampler,
                                       COLLADA_DATA_SAMPLER_PROPERTY_ID,
                                      &sampler_id);
@@ -404,14 +415,11 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     }
 
     /* Identify the target instance */
-    const char*                           target_name      = NULL;
-    void*                                 target           = NULL;
-    collada_data_channel_target_component target_component = COLLADA_DATA_CHANNEL_TARGET_COMPONENT_UNKNOWN;
-    collada_data_channel_target_type      target_type      = COLLADA_DATA_CHANNEL_TARGET_TYPE_UNKNOWN;
-
     target_name = channel_element_ptr->Attribute("target");
 
-    ASSERT_DEBUG_SYNC(target_name != NULL, "Target attribute not defined for <channel> node");
+    ASSERT_DEBUG_SYNC(target_name != NULL,
+                      "Target attribute not defined for <channel> node");
+
     if (target_name == NULL)
     {
         goto end;
@@ -433,7 +441,9 @@ PUBLIC collada_data_channel collada_data_channel_create(__in __notnull tinyxml2:
     /* Spawn the descriptor */
     channel_ptr = new (std::nothrow) _collada_data_channel;
 
-    ASSERT_ALWAYS_SYNC(channel_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(channel_ptr != NULL,
+                       "Out of memory");
+
     if (channel_ptr != NULL)
     {
         /* Fill it with pointers we earlier came up with */

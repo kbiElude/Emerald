@@ -120,7 +120,11 @@ PRIVATE void _init_cameras()
     }
 
     /* Create the list of camera names that will be shown under "active camera" dropdown */
-    const uint32_t n_total_cameras = system_resizable_vector_get_amount_of_elements(_cameras);
+    uint32_t n_total_cameras = 0;
+
+    system_resizable_vector_get_property(_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_total_cameras);
 
     _camera_indices = new void*                    [n_total_cameras];
     _camera_names   = new system_hashed_ansi_string[n_total_cameras];
@@ -135,7 +139,7 @@ PRIVATE void _init_cameras()
                                                n_camera,
                                               &current_camera);
 
-        _camera_indices[n_camera] = (void*) n_camera;
+        _camera_indices[n_camera] = (void*) (intptr_t) n_camera;
         _camera_names  [n_camera] = current_camera->name;
     }
 
@@ -160,7 +164,7 @@ PRIVATE void _init_cameras()
                                                    n_camera - 1,
                                                   &current_camera);
 
-            _camera_path_indices[n_camera] = (void*) (n_camera - 1);
+            _camera_path_indices[n_camera] = (void*) (intptr_t) (n_camera - 1);
             _camera_path_names  [n_camera] = current_camera->name;
         }
     }
@@ -200,11 +204,15 @@ PUBLIC void state_deinit()
 
     if (_cameras != NULL)
     {
-        while (system_resizable_vector_get_amount_of_elements(_cameras) > 0)
+        while (true)
         {
             _camera* current_camera = NULL;
 
-            system_resizable_vector_pop(_cameras, &current_camera);
+            if (!system_resizable_vector_pop(_cameras, &current_camera) )
+            {
+                break;
+            }
+
             delete current_camera;
         }
         system_resizable_vector_release(_cameras);
@@ -315,7 +323,13 @@ PUBLIC system_timeline_time state_get_last_frame_time()
 /** Please see header for spec */
 PUBLIC uint32_t state_get_number_of_cameras()
 {
-    return system_resizable_vector_get_amount_of_elements(_cameras);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
+
+    return result;
 }
 
 /** Please see header for spec */
@@ -351,7 +365,10 @@ PUBLIC ogl_scene_renderer state_get_scene_renderer()
 /** Please see header for spec */
 PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
 {
+    float                animation_duration_float = 0.0f;
+    system_timeline_time animation_duration       = 0;
     const float          camera_start_position[3] = {0, 0, 0};
+    const float          movement_delta           = MOVEMENT_DELTA;
     bool                 result                   = true;
     system_file_unpacker unpacker                 = NULL;
 
@@ -363,6 +380,11 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
     if (system_hashed_ansi_string_contains(scene_filename,
                                            system_hashed_ansi_string_create(".packed") ))
     {
+        const float            movement_delta   = MOVEMENT_DELTA;
+        unsigned int           n_packed_files   = 0;
+        unsigned int           scene_file_index = -1;
+        system_file_serializer scene_serializer = NULL;
+
         unpacker = system_file_unpacker_create(scene_filename);
 
         if (unpacker == NULL)
@@ -376,9 +398,6 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
         }
 
         /* Locate the .scene file we need to load */
-        unsigned int n_packed_files   = 0;
-        unsigned int scene_file_index = -1;
-
         system_file_unpacker_get_property(unpacker,
                                           SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES,
                                          &n_packed_files);
@@ -415,8 +434,6 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
         }
 
         /* Retrieve a memory region-based file serializer and load up the scene */
-        system_file_serializer scene_serializer = NULL;
-
         system_file_unpacker_get_file_property(unpacker,
                                                scene_file_index,
                                                SYSTEM_FILE_UNPACKER_FILE_PROPERTY_FILE_SERIALIZER,
@@ -442,9 +459,6 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
     _init_cameras();
 
     /* Determine animation duration */
-    float                animation_duration_float = 0.0f;
-    system_timeline_time animation_duration       = 0;
-
     scene_get_property(_scene,
                        SCENE_PROPERTY_MAX_ANIMATION_DURATION,
                       &animation_duration_float);
@@ -459,8 +473,6 @@ PUBLIC bool state_init(__in __notnull system_hashed_ansi_string scene_filename)
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
-    const float movement_delta = MOVEMENT_DELTA;
-
     _scene_renderer = ogl_scene_renderer_create(_context,
                                                 _scene);
 

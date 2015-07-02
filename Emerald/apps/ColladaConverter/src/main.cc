@@ -31,6 +31,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_matrix4x4.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
 #include "collada/collada_data.h"
@@ -53,8 +54,7 @@ ogl_text                  _text_renderer              = NULL;
 ogl_ui                    _ui                         = NULL;
 ogl_ui_control            _ui_convert_button          = NULL;
 system_window             _window                     = NULL;
-system_event              _window_closed_event        = system_event_create(true,   /* manual_reset */
-                                                                            false); /* start_state */
+system_event              _window_closed_event        = system_event_create(true); /* manual_reset */
 ogl_rendering_handler     _window_rendering_handler   = NULL;
 
 system_matrix4x4 _projection_matrix = NULL;
@@ -257,17 +257,39 @@ PRIVATE void _window_closing_callback_handler(system_window window)
     }
 }
 
+#ifdef _WIN32
 /** Entry point */
 int WINAPI WinMain(HINSTANCE instance_handle,
                    HINSTANCE,
                    LPTSTR,
                    int)
+#else
+int main()
+#endif
 {
-    float camera_position[3] = {0, 0, 0};
-    int   window_size    [2] = {1280, 720};
-    int   window_x1y1x2y2[4] = {0};
+    float       camera_position[3]   = {0, 0, 0};
+    const bool  flyby_active         = true;
+    const float flyby_movement_delta = 10.25f;
+    int         window_size    [2]   = {1280, 720};
+    int         window_x1y1x2y2[4]   = {0};
+
+    const system_hashed_ansi_string filter_descriptions[] =
+    {
+        system_hashed_ansi_string_create("COLLADA files")
+    };
+    const system_hashed_ansi_string filter_extensions[] =
+    {
+        system_hashed_ansi_string_create("*.dae")
+    };
 
     /* Carry on */
+    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                                               8,  /* color_buffer_green_bits */
+                                                               8,  /* color_buffer_blue_bits  */
+                                                               0,  /* color_buffer_alpha_bits */
+                                                               8,  /* depth_buffer_bits       */
+                                                               1); /* n_samples               */
+
     system_window_get_centered_window_position_for_primary_monitor(window_size,
                                                                    window_x1y1x2y2);
 
@@ -275,10 +297,9 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                                                              window_x1y1x2y2,
                                                                              system_hashed_ansi_string_create("Test window"),
                                                                              false,
-                                                                             0,
-                                                                             false,
-                                                                             false,
-                                                                             true);
+                                                                             false, /* vsync_enabled */
+                                                                             true,  /* visible */
+                                                                             window_pf);
     _window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                              60,
                                                                              _rendering_handler,
@@ -291,34 +312,27 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                OGL_CONTEXT_PROPERTY_FLYBY,
                               &_flyby);
 
-    system_window_set_rendering_handler(_window,
-                                        _window_rendering_handler);
+    system_window_set_property         (_window,
+                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                       &_window_rendering_handler);
+
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN,
-                                        _rendering_rbm_callback_handler,
+                                        (void*) _rendering_rbm_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        _window_closed_callback_handler,
+                                        (void*) _window_closed_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closing_callback_handler,
+                                        (void*) _window_closing_callback_handler,
                                         NULL);
 
     /* Let the user select the DAE file */
-    const system_hashed_ansi_string filter_descriptions[] =
-    {
-        system_hashed_ansi_string_create("COLLADA files")
-    };
-    const system_hashed_ansi_string filter_extensions[] =
-    {
-        system_hashed_ansi_string_create("*.dae")
-    };
-
     _selected_collada_data_file = system_file_enumerator_choose_file_via_ui(SYSTEM_FILE_ENUMERATOR_FILE_OPERATION_LOAD,
                                                                             1, /* n_filters */
                                                                             filter_descriptions,
@@ -342,9 +356,6 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     _animation_duration_time = system_time_get_timeline_time_for_msec( uint32_t(_animation_duration_float * 1000.0f) );
 
     /* Carry on initializing */
-    const bool  flyby_active         = true;
-    const float flyby_movement_delta = 10.25f;
-
     _test_scene = collada_data_get_emerald_scene(_test_collada_data,
                                                  _context,
                                                  0); /* n_scene */
@@ -397,7 +408,7 @@ int WINAPI WinMain(HINSTANCE instance_handle,
     ogl_rendering_handler_play(_window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(_window_rendering_handler);

@@ -477,10 +477,74 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                                                                           __in_opt           ogl_context    context)
 {
     /* Create a new mesh_material instance */
-    ogl_context_textures      context_textures                 = NULL;
-    system_hashed_ansi_string src_material_object_manager_path = NULL;
-    mesh_material             result_material                  = NULL;
-    system_hashed_ansi_string src_material_name                = NULL;
+    curve_container*                color                            = NULL;
+    system_hashed_ansi_string       color_texture_file_name          = NULL;
+    mesh_material_texture_filtering color_texture_mag_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
+    mesh_material_texture_filtering color_texture_min_filter         = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
+    ogl_context_textures            context_textures                 = NULL;
+    curve_container                 glosiness                        = NULL;
+    curve_container                 luminance                        = NULL;
+    system_hashed_ansi_string       luminance_texture_file_name      = NULL;
+    system_hashed_ansi_string       normal_texture_file_name         = NULL;
+    system_hashed_ansi_string       reflection_texture_file_name     = NULL;
+    mesh_material                   result_material                  = NULL;
+    const mesh_material_shading     shading_type                     = MESH_MATERIAL_SHADING_PHONG;
+    float                           smoothing_angle                  = 0.0f;
+    curve_container                 specular_ratio                   = NULL;
+    system_hashed_ansi_string       specular_texture_file_name       = NULL;
+    system_hashed_ansi_string       src_material_object_manager_path = NULL;
+    system_hashed_ansi_string       src_material_name                = NULL;
+
+    typedef struct _attachment_configuration
+    {
+        mesh_material_shading_property    shading_property;
+        mesh_material_property_attachment property_attachment;
+
+        /* float data */
+        float float_data;
+
+        /* curve_container data */
+        curve_container* curve_data;
+
+        /* texture data */
+        system_hashed_ansi_string       texture_filename;
+        mesh_material_texture_filtering texture_mag_filter;
+        mesh_material_texture_filtering texture_min_filter;
+
+        _attachment_configuration()
+        {
+        }
+
+        _attachment_configuration(mesh_material_shading_property    in_shading_property,
+                                  mesh_material_property_attachment in_property_attachment,
+                                  curve_container*                  in_curve_data,
+                                  system_hashed_ansi_string         in_texture_filename,
+                                  mesh_material_texture_filtering   in_texture_mag_filter,
+                                  mesh_material_texture_filtering   in_texture_min_filter)
+        {
+            curve_data          = in_curve_data;
+            property_attachment = in_property_attachment;
+            shading_property    = in_shading_property;
+            texture_filename    = in_texture_filename;
+            texture_mag_filter  = in_texture_mag_filter;
+            texture_min_filter  = in_texture_min_filter;
+        }
+
+        _attachment_configuration(mesh_material_shading_property    in_shading_property,
+                                  mesh_material_property_attachment in_property_attachment,
+                                  curve_container*                  in_curve_data)
+        {
+            curve_data          = in_curve_data;
+            property_attachment = in_property_attachment;
+            shading_property    = in_shading_property;
+        }
+
+    } _attachment_configuration;
+
+          _attachment_configuration attachment_configs[4]; /* diffuse, glosiness, luminance, specular attachments */
+    const unsigned int              n_attachment_configs = sizeof(attachment_configs) /
+                                                           sizeof(attachment_configs[0]);
+
 
     scene_material_get_property(src_material,
                                 SCENE_MATERIAL_PROPERTY_NAME,
@@ -512,26 +576,11 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
     ((_mesh_material*) result_material)->source_scene_material = src_material;
 
     /* Force Phong reflection model */
-    const mesh_material_shading shading_type = MESH_MATERIAL_SHADING_PHONG;
-
     mesh_material_set_property(result_material,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &shading_type);
 
     /* Extract values required to set up the attachment_configs array */
-    curve_container*                color                        = NULL;
-    system_hashed_ansi_string       color_texture_file_name      = NULL;
-    mesh_material_texture_filtering color_texture_mag_filter     = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
-    mesh_material_texture_filtering color_texture_min_filter     = MESH_MATERIAL_TEXTURE_FILTERING_UNKNOWN;
-    curve_container                 glosiness                    = NULL;
-    curve_container                 luminance                    = NULL;
-    system_hashed_ansi_string       luminance_texture_file_name  = NULL;
-    system_hashed_ansi_string       normal_texture_file_name     = NULL;
-    system_hashed_ansi_string       reflection_texture_file_name = NULL;
-    float                           smoothing_angle              = 0.0f;
-    curve_container                 specular_ratio               = NULL;
-    system_hashed_ansi_string       specular_texture_file_name   = NULL;
-
     scene_material_get_property(src_material,
                                 SCENE_MATERIAL_PROPERTY_COLOR_TEXTURE_FILE_NAME,
                                &color_texture_file_name);
@@ -617,72 +666,40 @@ PUBLIC EMERALD_API mesh_material mesh_material_create_from_scene_material(__in  
                       "mesh_material does not support specular textures");
 
     /* Configure texture/float/vec3 attachments (as described by scene_material) */
-    typedef struct
-    {
-        mesh_material_shading_property    shading_property;
-        mesh_material_property_attachment property_attachment;
 
-        /* float data */
-        float float_data;
+    /* 1. Diffuse attachment */
+    attachment_configs[0] = _attachment_configuration(
+        MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
+        (color_texture_file_name != NULL) ? MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE
+                                          : MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
 
-        /* curve_container data */
-        curve_container* curve_data;
+        (color_texture_file_name != NULL) ? NULL : color,
 
-        /* texture data */
-        system_hashed_ansi_string       texture_filename;
-        mesh_material_texture_filtering texture_mag_filter;
-        mesh_material_texture_filtering texture_min_filter;
-    } _attachment_configuration;
+        color_texture_file_name,
+        color_texture_mag_filter,
+        color_texture_min_filter
+    );
 
-    const _attachment_configuration attachment_configs[] =
-    {
-        /* Diffuse attachment */
-        {
-            MESH_MATERIAL_SHADING_PROPERTY_DIFFUSE,
-            (color_texture_file_name != NULL) ? MESH_MATERIAL_PROPERTY_ATTACHMENT_TEXTURE
-                                              : MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_VEC3,
+    /* 2. Glosiness attachment */
+    attachment_configs[1] = _attachment_configuration(
+        MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
+        MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+        &glosiness
+    );
 
-            0.0f,
+    /* 3. Luminance attachment */
+    attachment_configs[2] = _attachment_configuration(
+        MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
+        MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+        &luminance
+    );
 
-            (color_texture_file_name != NULL) ? NULL : color,
-
-            color_texture_file_name,
-            color_texture_mag_filter,
-            color_texture_min_filter
-        },
-
-        /* Glosiness attachment */
-        {
-            MESH_MATERIAL_SHADING_PROPERTY_SHININESS,
-            MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
-
-            0.0f,
-
-           &glosiness
-        },
-
-        /* Luminance attachment */
-        {
-            MESH_MATERIAL_SHADING_PROPERTY_LUMINOSITY,
-            MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
-
-            0.0f,
-
-           &luminance,
-        },
-
-        /* Specular attachment */
-        {
-            MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
-            MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
-
-            0.0f,
-
-           &specular_ratio
-        },
-    };
-    const unsigned int n_attachment_configs = sizeof(attachment_configs) /
-                                              sizeof(attachment_configs[0]);
+    /* 4. Specular attachment */
+    attachment_configs[3] = _attachment_configuration(
+        MESH_MATERIAL_SHADING_PROPERTY_SPECULAR,
+        MESH_MATERIAL_PROPERTY_ATTACHMENT_CURVE_CONTAINER_FLOAT,
+       &specular_ratio
+    );
 
     for (unsigned int n_attachment_config = 0;
                       n_attachment_config < n_attachment_configs;
@@ -1511,16 +1528,17 @@ PUBLIC EMERALD_API void mesh_material_get_shading_property_value_vec4(__in      
 PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_material material_a,
                                                       __in __notnull mesh_material material_b)
 {
-    bool result = false;
+    mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+    mesh_material_type    material_a_type    = ( (_mesh_material*) material_a)->type;
+    mesh_material_shading material_b_shading = MESH_MATERIAL_SHADING_UNKNOWN;
+    mesh_material_type    material_b_type    = ( (_mesh_material*) material_b)->type;
+    bool                  result             = false;
 
     ASSERT_DEBUG_SYNC(material_a != NULL &&
                       material_b != NULL,
                       "One or both input material arguments are NULL.");
 
     /* 1. Type */
-    mesh_material_type material_a_type = ( (_mesh_material*) material_a)->type;
-    mesh_material_type material_b_type = ( (_mesh_material*) material_b)->type;
-
     if (material_a_type != material_b_type)
     {
         goto end;
@@ -1528,9 +1546,6 @@ PUBLIC bool mesh_material_is_a_match_to_mesh_material(__in __notnull mesh_materi
 
     /* We only check the properties that affect how the shaders are built */
     /* 2. Shading */
-    mesh_material_shading material_a_shading = MESH_MATERIAL_SHADING_UNKNOWN;
-    mesh_material_shading material_b_shading = MESH_MATERIAL_SHADING_UNKNOWN;
-
     mesh_material_get_property(material_a,
                                MESH_MATERIAL_PROPERTY_SHADING,
                               &material_a_shading);

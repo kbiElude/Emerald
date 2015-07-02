@@ -4,9 +4,9 @@
  *
  */
 #include "test_variant.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_variant.h"
-#include "gtest/gtest.h"
 
 
 TEST(VariantTest, PoolManagement)

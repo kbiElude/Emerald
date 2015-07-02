@@ -70,9 +70,9 @@ PUBLIC ogl_programs ogl_programs_create()
         static unsigned int cnt = 0;
         char                name[32];
 
-        sprintf_s(name,
-                  "Instance %d",
-                  cnt++);
+        sprintf(name,
+                "Instance %d",
+                cnt++);
 
         new_programs->program_id_to_program_map   = system_hash64map_create(sizeof(ogl_program),
                                                                             true); /* should_be_thread_safe */

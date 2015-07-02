@@ -6,7 +6,6 @@
 #ifndef SYSTEM_RANDOMIZER
 #define SYSTEM_RANDOMIZER
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 REFCOUNT_INSERT_DECLARATIONS(system_randomizer,

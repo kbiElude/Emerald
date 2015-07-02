@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -25,14 +25,17 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_scale_cr
     /* Retrieve matrix data */
     float data[3];
 
-    sscanf_s(element_ptr->GetText(),
-             "%f %f %f",
-             data + 0, data + 1, data + 2);
+    sscanf(element_ptr->GetText(),
+           "%f %f %f",
+           data + 0, data + 1, data + 2);
 
     /* Instantiate new descriptor */
-    collada_data_transformation new_transformation = collada_data_transformation_create_scale(element_ptr, data);
+    collada_data_transformation new_transformation = collada_data_transformation_create_scale(element_ptr,
+                                                                                              data);
 
-    ASSERT_ALWAYS_SYNC(new_transformation != NULL, "Could not create COLLADA transformation descriptor");
+    ASSERT_ALWAYS_SYNC(new_transformation != NULL,
+                       "Could not create COLLADA transformation descriptor");
+
     if (new_transformation == NULL)
     {
         goto end;

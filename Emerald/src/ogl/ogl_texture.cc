@@ -12,9 +12,13 @@
 #include "system/system_log.h"
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
+#include <algorithm>
 
 #define DEFAULT_MIPMAPS_AMOUNT (4)
 
+#ifdef _WIN32
+    #undef max
+#endif
 
 /* Private declarations */
 typedef struct
@@ -369,8 +373,8 @@ PRIVATE void _ogl_texture_create_from_gfx_image_renderer_callback(__in __notnull
             }
         }
 
-        expected_mipmap_width  = max(1, expected_mipmap_width  / 2);
-        expected_mipmap_height = max(1, expected_mipmap_height / 2);
+        expected_mipmap_width  = std::max(1u, expected_mipmap_width  / 2);
+        expected_mipmap_height = std::max(1u, expected_mipmap_height / 2);
     } /* for (all mipmaps) */
 
     /* OK, we no longer need the gfx_image instance at this point */
@@ -576,6 +580,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
 {
     const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entry_points = NULL;
     ogl_texture                                               result           = NULL;
+    _ogl_texture*                                             result_ptr       = NULL;
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -683,7 +688,7 @@ PUBLIC EMERALD_API RENDERING_CONTEXT_CALL ogl_texture ogl_texture_create_and_ini
     } /* switch (dimensionality) */
 
     /* Store the properties */
-    _ogl_texture* result_ptr = (_ogl_texture*) result;
+    result_ptr = (_ogl_texture*) result;
 
     result_ptr->dimensionality         = dimensionality;
     result_ptr->fixed_sample_locations = fixed_sample_locations;
@@ -734,7 +739,8 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull 
                                                                  __in __notnull gfx_image                 image,
                                                                  __in __notnull system_hashed_ansi_string name)
 {
-    ogl_texture result = NULL;
+    system_hashed_ansi_string image_filename = NULL;
+    ogl_texture               result         = NULL;
 
     if (image == NULL)
     {
@@ -747,8 +753,6 @@ PUBLIC EMERALD_API ogl_texture ogl_texture_create_from_gfx_image(__in __notnull 
     /* Retrieve image file name - we'll store it in ogl_texture instance
      * in order to make sure we do not load the same image more than once.
      */
-    system_hashed_ansi_string image_filename = NULL;
-
     gfx_image_get_property(image,
                            GFX_IMAGE_PROPERTY_FILENAME,
                           &image_filename);
@@ -798,8 +802,12 @@ PUBLIC EMERALD_API bool ogl_texture_get_mipmap_property(__in  __notnull ogl_text
                                                         __out __notnull void*                       out_result)
 {
     _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
-    unsigned int  n_mipmaps_allocated = system_resizable_vector_get_amount_of_elements(texture_ptr->mipmaps);
+    unsigned int  n_mipmaps_allocated = 0;
     bool          result              = false;
+
+    system_resizable_vector_get_property(texture_ptr->mipmaps,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mipmaps_allocated);
 
     /* Retrieve mipmap container for requested index */
     _ogl_texture_mipmap* mipmap_ptr = NULL;
@@ -933,8 +941,12 @@ PUBLIC EMERALD_API void ogl_texture_get_property(__in  __notnull const ogl_textu
 
         case OGL_TEXTURE_PROPERTY_N_MIPMAPS:
         {
-            unsigned int       n_defined_mipmaps = 0;
-            const unsigned int n_mipmaps         = system_resizable_vector_get_amount_of_elements(texture_ptr->mipmaps);
+            unsigned int n_defined_mipmaps = 0;
+            unsigned int n_mipmaps         = 0;
+
+            system_resizable_vector_get_property(texture_ptr->mipmaps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_mipmaps);
 
             for (unsigned int n_mipmap = 0;
                               n_mipmap < n_mipmaps;
@@ -997,7 +1009,11 @@ PUBLIC EMERALD_API void ogl_texture_set_mipmap_property(__in __notnull ogl_textu
                                                         __in           void*                       value_ptr)
 {
     _ogl_texture* texture_ptr         = (_ogl_texture*) texture;
-    unsigned int  n_mipmaps_allocated = system_resizable_vector_get_amount_of_elements(texture_ptr->mipmaps);
+    unsigned int  n_mipmaps_allocated = 0;
+
+    system_resizable_vector_get_property(texture_ptr->mipmaps,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_mipmaps_allocated);
 
     if (n_mipmaps_allocated <= n_mipmap)
     {

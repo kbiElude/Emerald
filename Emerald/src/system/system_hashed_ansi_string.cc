@@ -9,6 +9,9 @@
 #include "system/system_hash64.h"
 #include "system/system_hash64map.h"
 #include "system/system_hashed_ansi_string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* Internal type definitions */
 typedef struct 
@@ -36,13 +39,13 @@ PRIVATE void _init_system_hashed_ansi_string_descriptor(__in  __notnull const ch
     memcpy(descriptor->contents,
            text,
            length);
-    
+
     descriptor->length = length;
     descriptor->hash   = system_hash64_calculate(text, (uint32_t) length);
 }
 
 /** TODO */
-PRIVATE VOID _deinit_system_hashed_ansi_string_descriptor(__in __notnull _system_hashed_ansi_string_descriptor* descriptor)
+PRIVATE void _deinit_system_hashed_ansi_string_descriptor(__in __notnull _system_hashed_ansi_string_descriptor* descriptor)
 {
     delete [] descriptor->contents;
     delete descriptor;

@@ -16,7 +16,11 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_math_other.h"
+#include <algorithm>
 
+#ifdef _WIN32
+    #undef max
+#endif
 
 /** Internal type definition */
 typedef struct
@@ -135,7 +139,7 @@ PRIVATE void _create_callback(ogl_context context,
     entry_points->pGLBindTexture  (GL_TEXTURE_2D,
                                    data->data_ptr->yxy_texture);
     entry_points->pGLTexStorage2D (GL_TEXTURE_2D,
-                                   log2_uint32(max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
+                                   log2_uint32(std::max(data->data_ptr->texture_width, data->data_ptr->texture_height) ),
                                    GL_RGB32F,
                                    data->data_ptr->texture_width,
                                    data->data_ptr->texture_height);

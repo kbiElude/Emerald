@@ -30,7 +30,6 @@ static const system_hashed_ansi_string _object_type_ogl_context_hashed_ansi_stri
 static const system_hashed_ansi_string _object_type_ogl_curve_renderer_hashed_ansi_string                    = system_hashed_ansi_string_create("Curve Renderers");
 static const system_hashed_ansi_string _object_type_ogl_flyby_hashed_ansi_string                             = system_hashed_ansi_string_create("Fly-by instances");
 static const system_hashed_ansi_string _object_type_ogl_pipeline_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Pipelines");
-static const system_hashed_ansi_string _object_type_ogl_pixel_format_descriptor_hashed_ansi_string           = system_hashed_ansi_string_create("OpenGL Pixel Format Descriptors");
 static const system_hashed_ansi_string _object_type_ogl_primitive_renderer_hashed_ansi_string                = system_hashed_ansi_string_create("Primitive Renderers");
 static const system_hashed_ansi_string _object_type_ogl_program_hashed_ansi_string                           = system_hashed_ansi_string_create("OpenGL Programs");
 static const system_hashed_ansi_string _object_type_ogl_programs_hashed_ansi_string                          = system_hashed_ansi_string_create("OpenGL Program Managers");
@@ -104,7 +103,6 @@ PUBLIC system_hashed_ansi_string object_manager_convert_object_manager_object_ty
         case OBJECT_TYPE_OGL_CURVE_RENDERER:                              return _object_type_ogl_curve_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_FLYBY:                                       return _object_type_ogl_flyby_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PIPELINE:                                    return _object_type_ogl_pipeline_hashed_ansi_string;
-        case OBJECT_TYPE_OGL_PIXEL_FORMAT_DESCRIPTOR:                     return _object_type_ogl_pixel_format_descriptor_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PRIMITIVE_RENDERER:                          return _object_type_ogl_primitive_renderer_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PROGRAM:                                     return _object_type_ogl_program_hashed_ansi_string;
         case OBJECT_TYPE_OGL_PROGRAMS:                                    return _object_type_ogl_programs_hashed_ansi_string;
@@ -185,14 +183,11 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
         }
 
         /* Iterate through cached subdirectory names and recursively call the function */
-        while (system_resizable_vector_get_amount_of_elements(subdirectories) != 0)
+        while (true)
         {
             object_manager_directory subdirectory = NULL;
             bool                     result       = system_resizable_vector_pop(subdirectories,
                                                                                &subdirectory);
-
-            ASSERT_DEBUG_SYNC(result,
-                              "Could not pop subdirectory from internal cache.");
 
             if (result)
             {
@@ -203,6 +198,10 @@ PRIVATE void _object_manager_delete_empty_subdirectories(object_manager_director
                     object_manager_directory_delete_directory(directory,
                                                               object_manager_directory_get_name(subdirectory) );
                 }
+            }
+            else
+            {
+                break;
             }
         }
 
@@ -415,8 +414,6 @@ PUBLIC void _object_manager_register_refcounted_object(void*                    
         }
     }
 }
-
-#include <crtdbg.h>
 
 /** Please see header for specification */
 PUBLIC void _object_manager_unregister_refcounted_object(system_hashed_ansi_string item_registration_path)

@@ -888,8 +888,18 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull ogl_context            
                                       __in_opt           scene                     owner_scene,
                                       __in_opt           system_hashed_ansi_string object_manager_path)
 {
-    scene_camera   result     = NULL;
-    _scene_camera* result_ptr = NULL;
+    float              camera_ar;
+    curve_container    camera_f_stop                  = NULL;
+    curve_container    camera_focal_distance          = NULL;
+    _scene_camera_type camera_type;
+    bool               camera_use_custom_vertical_fov = false;
+    bool               camera_use_physical_properties = false;
+    curve_container    camera_yfov                    = NULL;
+    float              camera_zfar;
+    float              camera_znear;
+    curve_container    camera_zoom_factor             = NULL;
+    scene_camera       result                         = NULL;
+    _scene_camera*     result_ptr                     = NULL;
 
     /* Retrieve camera name */
     system_hashed_ansi_string name = NULL;
@@ -944,17 +954,6 @@ PUBLIC scene_camera scene_camera_load(__in     __notnull ogl_context            
     }
 
     /* Retrieve other camera properties */
-    float              camera_ar;
-    curve_container    camera_f_stop         = NULL;
-    curve_container    camera_focal_distance = NULL;
-    _scene_camera_type camera_type;
-    bool               camera_use_custom_vertical_fov = false;
-    bool               camera_use_physical_properties = false;
-    curve_container    camera_yfov                    = NULL;
-    float              camera_zfar;
-    float              camera_znear;
-    curve_container    camera_zoom_factor = NULL;
-
     if (!system_file_serializer_read (serializer,
                                       sizeof(camera_ar),
                                      &camera_ar)                            ||

@@ -12,11 +12,11 @@
 #include "collada/collada_data_scene_graph_node.h"
 #include "tinyxml2.h"
 
-typedef enum collada_data_scene_graph_node_geometry_instance_property
+typedef enum
 {
     COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_GEOMETRY, /* not settable, collada_data_scene_graph_node_geometry_instance */
     COLLADA_DATA_SCENE_GRAPH_NODE_GEOMETRY_INSTANCE_PROPERTY_NAME      /* not settable, system_hashed_ansi_string */
-};
+} collada_data_scene_graph_node_geometry_instance_property;
 
 /** TODO */
 PUBLIC collada_data_scene_graph_node_geometry_instance collada_data_scene_graph_node_geometry_instance_create(__in __notnull tinyxml2::XMLElement*     element_ptr,

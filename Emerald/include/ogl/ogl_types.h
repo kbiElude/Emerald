@@ -10,6 +10,10 @@
 #include "system/system_time.h"
 #include "system/system_types.h"
 
+#ifdef __linux
+    #include <GL/glx.h>
+#endif
+
 /* Primitive renderer */
 DECLARE_HANDLE(ogl_primitive_renderer);
 
@@ -1648,16 +1652,6 @@ typedef struct
 } ogl_context_gl_entrypoints_ext_direct_state_access;
 
 
-/** Enumerator that can be used to define property caller wants to find out more details on. */
-typedef enum
-{
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_RED_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_GREEN_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_BLUE_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_COLOR_BUFFER_ALPHA_BITS,
-    OGL_PIXEL_FORMAT_DESCRIPTOR_DEPTH_BITS
-} ogl_pixel_format_descriptor_field;
-
 /** Flyby support handle */
 DECLARE_HANDLE(ogl_flyby);
 
@@ -1780,11 +1774,18 @@ DECLARE_HANDLE(shaders_vertex_uber);
 /** Rendering handler handle */
 DECLARE_HANDLE(ogl_rendering_handler);
 
-/** Pixel format descriptor handle */
-DECLARE_HANDLE(ogl_pixel_format_descriptor);
-
 /** OpenGL context handle */
 DECLARE_HANDLE(ogl_context);
+
+#ifdef _WIN32
+    typedef HGLRC ogl_context_handle;
+
+    DECLARE_HANDLE(ogl_context_win32);
+#else
+    typedef GLXContext ogl_context_handle;
+
+    DECLARE_HANDLE(ogl_context_linux);
+#endif
 
 /* Materials library handle */
 DECLARE_HANDLE(ogl_materials);

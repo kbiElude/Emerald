@@ -5,14 +5,14 @@
  */
 
 #include "shared.h"
-#include "include\main.h"
+#include "include/main.h"
 #include "stage_step_background.h"
 #include "stage_step_julia.h"
 #include "gfx/gfx_image.h"
 #include "gfx/gfx_rgbe.h"
-#include "ogl\ogl_context.h"
+#include "ogl/ogl_context.h"
 #include "ogl/ogl_flyby.h"
-#include "ogl\ogl_pipeline.h"
+#include "ogl/ogl_pipeline.h"
 #include "ogl/ogl_skybox.h"
 #include "ogl/ogl_texture.h"
 #include "system/system_matrix4x4.h"

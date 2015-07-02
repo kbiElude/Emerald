@@ -10,12 +10,12 @@
 #include "collada/collada_types.h"
 #include "tinyxml2.h"
 
-typedef enum collada_data_transformation_property
+typedef enum
 {
     COLLADA_DATA_TRANSFORMATION_PROPERTY_DATA_HANDLE,
     COLLADA_DATA_TRANSFORMATION_PROPERTY_SID,
     COLLADA_DATA_TRANSFORMATION_PROPERTY_TYPE,
-};
+} collada_data_transformation_property;
 
 /** TODO */
 PUBLIC collada_data_transformation collada_data_transformation_create_lookat(__in           __notnull tinyxml2::XMLElement* element_ptr,

@@ -16,6 +16,13 @@
 #include "system/system_thread_pool.h"
 #include "system/system_variant.h"
 
+#ifdef __linux
+    #include <fcntl.h>
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    #include <unistd.h>
+#endif
+
 /** Internal type definitions */
 typedef enum
 {
@@ -24,11 +31,22 @@ typedef enum
 
 } _system_file_serializer_type;
 
+#ifdef _WIN32
+    static const HANDLE file_handle_invalid = INVALID_HANDLE_VALUE;
+#else
+    static const int file_handle_invalid = -1;
+#endif
+
 typedef struct 
 {
+#ifdef _WIN32
+    HANDLE                       file_handle;
+#else
+    int                          file_handle;
+#endif
+
     char*                        contents;               /* reading/writing */
     uint32_t                     current_index;          /* reading/writing */
-    HANDLE                       file_handle;            /* reading only */
     system_hashed_ansi_string    file_name;              /* reading/writing */
     system_hashed_ansi_string    file_path;              /* reading only */
     uint32_t                     file_size;              /* reading only */
@@ -38,18 +56,28 @@ typedef struct
     uint32_t                     writing_capacity;       /* writing only */
 } _system_file_serializer_descriptor;
 
+
 /** Function that reads the file and sets the internal event, so that normal function can make full use of the read data.
  *
  *  @param argument Pointer to _system_file_serializer_descriptor instance.
  */
 PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor(system_thread_pool_callback_argument argument)
 {
+#ifdef _WIN32
+    DWORD n_bytes_read = 0;
+    BOOL  result       = FALSE;
+#else
+    struct stat file_info;
+    ssize_t     n_bytes_read = 0;
+#endif
+
     _system_file_serializer_descriptor* serializer_descriptor = (_system_file_serializer_descriptor*) argument;
 
-    /* Open the file */
     ASSERT_DEBUG_SYNC(serializer_descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
                       "_system_file_serializer_read_task_executor() can only be called for file serializers.");
 
+    /* Open the file */
+#ifdef _WIN32
     serializer_descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
                                                       GENERIC_READ,
                                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -57,8 +85,13 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
                                                       OPEN_EXISTING,          /* only open an existing file */
                                                       FILE_ATTRIBUTE_NORMAL,
                                                       NULL);                  /* no template file */
+#else
+    serializer_descriptor->file_handle = open(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
+                                              O_RDONLY,
+                                              0); /* mode - not used */
+#endif
 
-    if (serializer_descriptor->file_handle == INVALID_HANDLE_VALUE)
+    if (serializer_descriptor->file_handle == file_handle_invalid)
     {
         LOG_ERROR("File %s could not have been opened for reading",
                   system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
@@ -66,37 +99,77 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
     }
     else
     {
+        /* Retrieve the file size */
+#ifdef _WIN32
         serializer_descriptor->file_size = ::GetFileSize(serializer_descriptor->file_handle,
                                                          NULL);
-        serializer_descriptor->contents  = new (std::nothrow) char[serializer_descriptor->file_size + 1];
+#else
+        if (fstat(serializer_descriptor->file_handle,
+                 &file_info) != 0)
+        {
+            ASSERT_DEBUG_SYNC(false,
+                              "Could not retrieve file info structure");
+        }
+
+        serializer_descriptor->file_size = file_info.st_size;
+#endif
+
+        /* Allocate a buffer to hold the file contents */
+        serializer_descriptor->contents = new (std::nothrow) char[serializer_descriptor->file_size + 1];
 
         memset(serializer_descriptor->contents,
                0,
                serializer_descriptor->file_size + 1);
 
-        /* Read the contents now. */
-        DWORD n_bytes_read = 0;
-        BOOL  result       = ::ReadFile(serializer_descriptor->file_handle,
-                                        serializer_descriptor->contents,
-                                        serializer_descriptor->file_size,
-                                        &n_bytes_read,
-                                        NULL);                           /* overlapped access not needed */
+        /* Read the contents. */
+#ifdef _WIN32
+        n_bytes_read = 0;
+        result       = ::ReadFile(serializer_descriptor->file_handle,
+                                  serializer_descriptor->contents,
+                                  serializer_descriptor->file_size,
+                                 &n_bytes_read,
+                                  NULL);                           /* overlapped access not needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
                            "Could not read %d bytes for file [%s]",
                            serializer_descriptor->file_size,
                            system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
                           );
+#else
+        ASSERT_DEBUG_SYNC(serializer_descriptor->file_size < SSIZE_MAX,
+                          "File too large to read.");
+
+        n_bytes_read = read(serializer_descriptor->file_handle,
+                            serializer_descriptor->contents,
+                            serializer_descriptor->file_size);
+
+        ASSERT_ALWAYS_SYNC(n_bytes_read != serializer_descriptor->file_size,
+                           "Could not read %d bytes for file [%s]",
+                           serializer_descriptor->file_size,
+                           system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name)
+                          );
+#endif
 
         /* Clsoe the file, won't need it anymore. */
+#ifdef _WIN32
         ::CloseHandle(serializer_descriptor->file_handle);
 
         serializer_descriptor->file_handle = NULL;
+#else
+        if (close(serializer_descriptor->file_handle) == -1)
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Could not close file handle.");
+        }
+
+        serializer_descriptor->file_handle = 0;
+#endif
 
         LOG_INFO("Contents cached for file [%s]",
                  system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name) );
 
         /* Now retrieve path to the file */
+#ifdef _WIN32
         DWORD path_length_wo_terminator = ::GetFullPathName(system_hashed_ansi_string_get_buffer(serializer_descriptor->file_name),
                                                             0,     /* nBufferLength */
                                                             NULL,  /* lpBuffer */
@@ -126,6 +199,10 @@ PRIVATE THREAD_POOL_TASK_HANDLER void _system_file_serializer_read_task_executor
 
         delete [] path;
         path = NULL;
+#else
+    ASSERT_ALWAYS_SYNC(false,
+                       "TODO");
+#endif
     }
 
     /* Set the event so that cache-based functions can follow. */
@@ -138,9 +215,18 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
     ASSERT_DEBUG_SYNC(descriptor->type == SYSTEM_FILE_SERIALIZER_TYPE_FILE,
                       "_system_file_serializer_write_down_data_to_file() can only be called for file serializers.");
 
-    if (descriptor->file_handle == NULL)
+#ifdef _WIN32
+    DWORD n_bytes_written = 0;
+    BOOL  result          = FALSE;
+#else
+    ssize_t n_bytes_written = 0;
+    ssize_t result          = 0;
+#endif
+
+    if (descriptor->file_handle == file_handle_invalid)
     {
         /* Open the file for writing. If a file already exists, overwrite it */
+#ifdef _WIN32
         descriptor->file_handle = ::CreateFile(system_hashed_ansi_string_get_buffer(descriptor->file_name),
                                                GENERIC_WRITE,
                                                0,                      /* no sharing */
@@ -148,25 +234,42 @@ PRIVATE void _system_file_serializer_write_down_data_to_file(__in __notnull _sys
                                                CREATE_ALWAYS,          /* always create a new file*/
                                                FILE_ATTRIBUTE_NORMAL,
                                                NULL);                  /* no template file */
+#else
+        descriptor->file_handle = open(system_hashed_ansi_string_get_buffer(descriptor->file_name),
+                                       O_CREAT | O_WRONLY,
+                                       S_IRUSR | S_IWUSR); /* read/write permissions for the owner */
+#endif
 
-        ASSERT_ALWAYS_SYNC(descriptor->file_handle != INVALID_HANDLE_VALUE,
+        ASSERT_ALWAYS_SYNC(descriptor->file_handle != file_handle_invalid,
                            "File %s could not have been created for writing",
                            system_hashed_ansi_string_get_buffer(descriptor->file_name)
                           );
     }
 
-    if (descriptor->file_handle != INVALID_HANDLE_VALUE)
+    if (descriptor->file_handle != file_handle_invalid)
     {
-        DWORD n_bytes_written = 0;
-        BOOL  result          = ::WriteFile(descriptor->file_handle,
-                                            descriptor->contents,
-                                            descriptor->file_size,
-                                            &n_bytes_written,
-                                            NULL);              /* no overlapped behavior needed */
+#ifdef _WIN32
+        result = ::WriteFile(descriptor->file_handle,
+                             descriptor->contents,
+                             descriptor->file_size,
+                            &n_bytes_written,
+                             NULL);              /* no overlapped behavior needed */
 
         ASSERT_ALWAYS_SYNC(result == TRUE,
                           "Could not write file [%s]",
                           system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+#else
+        result = write(descriptor->file_handle,
+                       descriptor->contents,
+                       descriptor->file_size);
+
+        n_bytes_written = (result >= 0) ? result : 0;
+
+        ASSERT_ALWAYS_SYNC(result != -1,
+                          "Could not write file [%s]",
+                          system_hashed_ansi_string_get_buffer(descriptor->file_name) );
+#endif
+
         ASSERT_ALWAYS_SYNC(n_bytes_written == descriptor->file_size,
                            "Could not fully write file [%s] (%d bytes written out of %db)",
                            system_hashed_ansi_string_get_buffer(descriptor->file_name),
@@ -187,13 +290,14 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
 
     new_descriptor->contents               = (char*) data;
     new_descriptor->current_index          = 0;
-    new_descriptor->file_handle            = NULL;
+    new_descriptor->file_handle            = file_handle_invalid;
     new_descriptor->file_name              = NULL;
     new_descriptor->file_size              = data_size;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true,  /* manual_reset */
-                                                                 true); /* start_state  */
+    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
     new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_MEMORY_REGION;
+
+    system_event_set(new_descriptor->reading_finished_event);
 
     return (system_file_serializer) new_descriptor;
 }
@@ -206,12 +310,11 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_read
 
     new_descriptor->contents               = NULL;
     new_descriptor->current_index          = 0;
-    new_descriptor->file_handle            = NULL;
+    new_descriptor->file_handle            = file_handle_invalid;
     new_descriptor->file_name              = file_name;
     new_descriptor->file_size              = 0;
     new_descriptor->for_reading            = true;
-    new_descriptor->reading_finished_event = system_event_create(true,
-                                                                 false);
+    new_descriptor->reading_finished_event = system_event_create(true); /* manual_reset */
     new_descriptor->type                   = SYSTEM_FILE_SERIALIZER_TYPE_FILE;
 
     if (async_read)
@@ -247,7 +350,7 @@ PUBLIC EMERALD_API system_file_serializer system_file_serializer_create_for_writ
     {
         new_descriptor->contents               = new (std::nothrow) char[FILE_SERIALIZER_START_CAPACITY];
         new_descriptor->current_index          = 0;
-        new_descriptor->file_handle            = NULL;
+        new_descriptor->file_handle            = file_handle_invalid;
         new_descriptor->file_name              = file_name;
         new_descriptor->file_size              = 0;
         new_descriptor->for_reading            = false;
@@ -300,7 +403,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             {
                 LOG_ERROR("Performance hit: waiting for the read op to finish.");
 
-                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+                system_event_wait_single(serializer_ptr->reading_finished_event);
             }
 
             *(system_hashed_ansi_string*) out_data = serializer_ptr->file_path;
@@ -334,7 +437,7 @@ PUBLIC EMERALD_API void system_file_serializer_get_property(__in  __notnull syst
             {
                 LOG_ERROR("Performance hit: waiting for the read op to finish.");
 
-                system_event_wait_single_infinite(serializer_ptr->reading_finished_event);
+                system_event_wait_single(serializer_ptr->reading_finished_event);
             }
             else
             {
@@ -371,7 +474,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read(__in __notnull              
 
     if (descriptor->for_reading)
     {
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
+        system_event_wait_single(descriptor->reading_finished_event);
 
         if (descriptor->current_index + n_bytes <= descriptor->file_size)
         {
@@ -397,9 +500,16 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                                                                     __in_opt           system_hashed_ansi_string object_manager_path,
                                                                     __out    __notnull curve_container*          result_container)
 {
-    system_hashed_ansi_string curve_name    = NULL;
-    bool                      result        = false;
-    system_variant_type       variant_type  = (system_variant_type) -1;
+    system_hashed_ansi_string                  curve_name              = NULL;
+    bool                                       is_pre_post_behavior_on = false;
+    uint32_t                                   n_segments              = 0;
+    curve_container_envelope_boundary_behavior pre_behavior            = (curve_container_envelope_boundary_behavior) -1;
+    curve_container_envelope_boundary_behavior post_behavior           = (curve_container_envelope_boundary_behavior) -1;
+    bool                                       result                  = false;
+    system_variant                             temp_variant            = NULL;
+    system_variant                             temp_variant2           = NULL;
+    system_variant                             temp_variant3           = NULL;
+    system_variant_type                        variant_type            = (system_variant_type) -1;
 
     /* Read generic properties */
     if (!system_file_serializer_read_hashed_ansi_string(serializer,
@@ -414,9 +524,9 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
     }
 
     /* Prepare variants we'll need later */
-    system_variant temp_variant  = system_variant_create(variant_type);
-    system_variant temp_variant2 = system_variant_create(variant_type);
-    system_variant temp_variant3 = system_variant_create(variant_type);
+    temp_variant  = system_variant_create(variant_type);
+    temp_variant2 = system_variant_create(variant_type);
+    temp_variant3 = system_variant_create(variant_type);
 
     /* Instantiate the curve */
     if (*result_container == NULL)
@@ -437,9 +547,7 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
     }
 
     /* Iterate through all dimensions */
-    uint32_t n_segments = 0;
-
-    /* Read amount of segments and default value */
+    /* Read the number of segments and the default value */
     if (!system_file_serializer_read        (serializer,
                                              sizeof(n_segments),
                                             &n_segments)        ||
@@ -463,10 +571,6 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
     }
 
     /* Get pre-/post-boundary behavior properties */
-    bool                                       is_pre_post_behavior_on = false;
-    curve_container_envelope_boundary_behavior pre_behavior            = (curve_container_envelope_boundary_behavior) -1;
-    curve_container_envelope_boundary_behavior post_behavior           = (curve_container_envelope_boundary_behavior) -1;
-
     if (!system_file_serializer_read(serializer,
                                      sizeof(is_pre_post_behavior_on),
                                     &is_pre_post_behavior_on)        ||
@@ -792,17 +896,14 @@ PUBLIC EMERALD_API bool system_file_serializer_read_curve_container(__in     __n
                 /* All right - we're safe to release the resizable vector now */
                 if (nodes != NULL)
                 {
-                    while (system_resizable_vector_get_amount_of_elements(nodes) > 0)
+                    while (true)
                     {
                         _node_descriptor* node = NULL;
 
                         if (!system_resizable_vector_pop(nodes,
                                                         &node) )
                         {
-                            ASSERT_DEBUG_SYNC(false,
-                                              "Could not pop node descriptor off nodes vector.");
-
-                            goto end;
+                            break;
                         }
 
                         delete node;
@@ -1090,7 +1191,7 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     if (descriptor->for_reading)
     {
         /* Wait till reading finishes */
-        system_event_wait_single_infinite(descriptor->reading_finished_event);
+        system_event_wait_single(descriptor->reading_finished_event);
 
         /* Release reading-specific fields */
         system_event_release(descriptor->reading_finished_event);
@@ -1106,13 +1207,21 @@ PUBLIC EMERALD_API void system_file_serializer_release(__in __notnull __dealloca
     {
         _system_file_serializer_write_down_data_to_file(descriptor);
 
-        if (descriptor->file_handle != INVALID_HANDLE_VALUE &&
+#ifdef _WIN32
+        if (descriptor->file_handle != file_handle_invalid &&
             descriptor->file_handle != NULL)
+#else
+        if (descriptor->file_handle != file_handle_invalid)
+#endif
         {
             /* Cool to close the file now. */
+#ifdef _WIN32
             ::CloseHandle(descriptor->file_handle);
+#else
+            close(descriptor->file_handle);
+#endif
 
-            descriptor->file_handle = NULL;
+            descriptor->file_handle = file_handle_invalid;
         }
 
         /* Release all occupied blocks */
@@ -1210,9 +1319,13 @@ PUBLIC EMERALD_API bool system_file_serializer_write(__in __notnull system_file_
 PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notnull       system_file_serializer serializer,
                                                                      __in __notnull const curve_container        curve)
 {
-    system_hashed_ansi_string curve_name    = NULL;
-    bool                      result        = false;
-    system_variant_type       variant_type  = (system_variant_type) -1;
+    system_hashed_ansi_string                  curve_name              = NULL;
+    bool                                       is_pre_post_behavior_on = false;
+    uint32_t                                   n_segments              = 0;
+    curve_container_envelope_boundary_behavior pre_behavior            = (curve_container_envelope_boundary_behavior) -1;
+    curve_container_envelope_boundary_behavior post_behavior           = (curve_container_envelope_boundary_behavior) -1;
+    bool                                       result                  = false;
+    system_variant_type                        variant_type            = (system_variant_type) -1;
 
     curve_container_get_property(curve,
                                  CURVE_CONTAINER_PROPERTY_DATA_TYPE,
@@ -1240,8 +1353,6 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
     }
 
     /* Iterate through all dimensions */
-    uint32_t n_segments = 0;
-
     /* Get amount of segments */
     curve_container_get_property(curve,
                                  CURVE_CONTAINER_PROPERTY_N_SEGMENTS,
@@ -1259,10 +1370,6 @@ PUBLIC EMERALD_API bool system_file_serializer_write_curve_container(__in __notn
     }
 
     /* Get pre-/post-boundary behavior properties */
-    bool                                       is_pre_post_behavior_on = false;
-    curve_container_envelope_boundary_behavior pre_behavior            = (curve_container_envelope_boundary_behavior) -1;
-    curve_container_envelope_boundary_behavior post_behavior           = (curve_container_envelope_boundary_behavior) -1;
-
     curve_container_get_property(curve,
                                  CURVE_CONTAINER_PROPERTY_PRE_BEHAVIOR,
                                 &pre_behavior);

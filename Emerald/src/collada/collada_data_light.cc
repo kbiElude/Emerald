@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -48,6 +48,7 @@ PRIVATE bool _collada_data_light_parse_color(tinyxml2::XMLElement* element_ptr,
 
     ASSERT_DEBUG_SYNC(color_element_ptr != NULL,
                       "Required <color> sub-node not found.");
+
     if (color_element_ptr == NULL)
     {
         goto end;
@@ -68,10 +69,13 @@ end:
 /** Please see header for spec */
 PUBLIC collada_data_light collada_data_light_create(__in __notnull tinyxml2::XMLElement* current_light_element_ptr)
 {
-    _collada_data_light* new_light_ptr = NULL;
+    tinyxml2::XMLElement* current_child_element_ptr    = NULL;
+    bool                  has_parsed_light             = false;
+    _collada_data_light*  new_light_ptr                = NULL;
+    tinyxml2::XMLElement* technique_common_element_ptr = NULL;
 
     /* Try to find <technique_common> sub-node */
-    tinyxml2::XMLElement* technique_common_element_ptr = current_light_element_ptr->FirstChildElement("technique_common");
+    technique_common_element_ptr = current_light_element_ptr->FirstChildElement("technique_common");
 
     if (technique_common_element_ptr == NULL)
     {
@@ -84,48 +88,55 @@ PUBLIC collada_data_light collada_data_light_create(__in __notnull tinyxml2::XML
    /* Create the descriptor */
     new_light_ptr = new (std::nothrow) _collada_data_light;
 
-    ASSERT_DEBUG_SYNC(new_light_ptr != NULL, "Out of memory")
+    ASSERT_DEBUG_SYNC(new_light_ptr != NULL,
+                      "Out of memory")
+
     if (new_light_ptr == NULL)
     {
         goto end;
     }
 
     /* Parse the light details, given its type */
-    tinyxml2::XMLElement* current_child_element_ptr = technique_common_element_ptr->FirstChildElement();
-    bool                  has_parsed_light          = false;
+    current_child_element_ptr = technique_common_element_ptr->FirstChildElement();
 
     while (current_child_element_ptr != NULL)
     {
         const char* current_child_name = current_child_element_ptr->Name();
 
-        if (strcmp(current_child_name, "ambient") == 0)
+        if (strcmp(current_child_name,
+                   "ambient") == 0)
         {
             new_light_ptr->type = COLLADA_DATA_LIGHT_TYPE_AMBIENT;
 
             /* Read mandatory items */
-            if (!_collada_data_light_parse_color(current_child_element_ptr, new_light_ptr->color) )
+            if (!_collada_data_light_parse_color(current_child_element_ptr,
+                                                 new_light_ptr->color) )
             {
                 goto end;
             }
         }
         else
-        if (strcmp(current_child_name, "directional") == 0)
+        if (strcmp(current_child_name,
+                   "directional") == 0)
         {
             new_light_ptr->type = COLLADA_DATA_LIGHT_TYPE_DIRECTIONAL;
 
             /* Read mandatory items */
-            if (!_collada_data_light_parse_color(current_child_element_ptr, new_light_ptr->color) )
+            if (!_collada_data_light_parse_color(current_child_element_ptr,
+                                                 new_light_ptr->color) )
             {
                 goto end;
             }
         }
         else
-        if (strcmp(current_child_name, "point") == 0)
+        if (strcmp(current_child_name,
+                   "point") == 0)
         {
             new_light_ptr->type = COLLADA_DATA_LIGHT_TYPE_POINT;
 
             /* Read mandatory items */
-            if (!_collada_data_light_parse_color(current_child_element_ptr, new_light_ptr->color) )
+            if (!_collada_data_light_parse_color(current_child_element_ptr,
+                                                 new_light_ptr->color) )
             {
                 goto end;
             }
@@ -170,7 +181,8 @@ PUBLIC collada_data_light collada_data_light_create(__in __notnull tinyxml2::XML
         {
             new_light_ptr->type = COLLADA_DATA_LIGHT_TYPE_SPOT;
 
-            if (!_collada_data_light_parse_color(current_child_element_ptr, new_light_ptr->color) )
+            if (!_collada_data_light_parse_color(current_child_element_ptr,
+                                                 new_light_ptr->color) )
             {
                 goto end;
             }

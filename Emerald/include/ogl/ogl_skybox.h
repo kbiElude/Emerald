@@ -14,15 +14,21 @@ REFCOUNT_INSERT_DECLARATIONS(ogl_skybox,
 
 typedef enum
 {
+#ifdef INCLUDE_OPENCL
     OGL_SKYBOX_LIGHT_PROJECTION_SH,
+#endif
+
     OGL_SKYBOX_SPHERICAL_PROJECTION_TEXTURE,
+
     /** TODO: OGL_SKYBOX_CUBEMAP_TEXTURE */
 } _ogl_skybox_type;
 
 /** TODO */
-PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(__in __notnull ogl_context               context,
-                                                                    __in __notnull sh_samples                samples,
-                                                                    __in __notnull system_hashed_ansi_string name);
+#ifdef INCLUDE_OPENCL
+    PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_light_projection_sh(__in __notnull ogl_context               context,
+                                                                        __in __notnull sh_samples                samples,
+                                                                        __in __notnull system_hashed_ansi_string name);
+#endif
 
 /** TODO */
 PUBLIC EMERALD_API ogl_skybox ogl_skybox_create_spherical_projection_texture(__in __notnull ogl_context               context,

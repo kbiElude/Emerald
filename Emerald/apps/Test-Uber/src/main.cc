@@ -4,7 +4,6 @@
  *
  */
 #include "shared.h"
-#include <crtdbg.h>
 #include <stdlib.h>
 #include "main.h"
 #include "curve/curve_container.h"

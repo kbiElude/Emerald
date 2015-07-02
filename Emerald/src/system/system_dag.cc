@@ -63,9 +63,13 @@ PRIVATE bool _system_dag_process_node(__in    __notnull _system_dag_node*       
                                       __inout __notnull unsigned int*           time_ptr,
                                       __in    __notnull system_resizable_vector processed_nodes_vector)
     {
-        _system_dag_node*  adjacent_node_ptr = NULL;
-        const unsigned int n_adjacent_nodes  = system_resizable_vector_get_amount_of_elements(node_ptr->adjacent_nodes);
-        bool               result            = true;
+        _system_dag_node* adjacent_node_ptr = NULL;
+        unsigned int      n_adjacent_nodes  = 0;
+        bool              result            = true;
+
+        system_resizable_vector_get_property(node_ptr->adjacent_nodes,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_adjacent_nodes);
 
         node_ptr->status = STATUS_VISITED;
         (*time_ptr)      ++;
@@ -128,6 +132,8 @@ PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(__in __notnul
                                                                    __in __notnull system_dag_node src,
                                                                    __in __notnull system_dag_node dst)
 {
+    _system_dag* dag_ptr = (_system_dag*) dag;
+
     /* Create new descriptor */
     _system_dag_connection* new_connection = new (std::nothrow) _system_dag_connection;
 
@@ -143,8 +149,6 @@ PUBLIC EMERALD_API system_dag_connection system_dag_add_connection(__in __notnul
     new_connection->src = src;
 
     /* Associate the connection with DAG */
-    _system_dag* dag_ptr = (_system_dag*) dag;
-
     system_resizable_vector_push(dag_ptr->connections,
                                  new_connection);
 
@@ -157,6 +161,8 @@ end:
 PUBLIC EMERALD_API system_dag_node system_dag_add_node(__in __notnull system_dag            dag,
                                                        __in           system_dag_node_value value)
 {
+    _system_dag* dag_ptr = (_system_dag*) dag;
+
     /* Create new descriptor */
     _system_dag_node* new_node = new (std::nothrow) _system_dag_node;
 
@@ -174,8 +180,6 @@ PUBLIC EMERALD_API system_dag_node system_dag_add_node(__in __notnull system_dag
     new_node->value            = value;
 
     /* Associate the node with DAG */
-    _system_dag* dag_ptr = (_system_dag*) dag;
-
     system_resizable_vector_push(dag_ptr->nodes,
                                  new_node);
 
@@ -213,8 +217,13 @@ end:
 PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(__in    __notnull system_dag              dag,
                                                                         __inout __notnull system_resizable_vector result)
 {
-    _system_dag* dag_ptr     = (_system_dag*) dag;
-    bool         result_bool = false;
+    _system_dag* dag_ptr        = (_system_dag*) dag;
+    unsigned int n_result_nodes = 0;
+    bool         result_bool    = false;
+
+    system_resizable_vector_get_property(dag_ptr->sorted_nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_result_nodes);
 
     if (dag_ptr->dirty)
     {
@@ -227,8 +236,6 @@ PUBLIC EMERALD_API bool system_dag_get_topologically_sorted_node_values(__in    
     }
 
     /* Copy the sorted nodes to the result vector */
-    const unsigned int n_result_nodes = system_resizable_vector_get_amount_of_elements(dag_ptr->sorted_nodes);
-
     system_resizable_vector_empty(result);
 
     for (unsigned int n_result_node = 0;
@@ -333,15 +340,24 @@ PUBLIC EMERALD_API void system_dag_reset_connections(__in __notnull system_dag d
 /** TODO */
 PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
 {
-    _system_dag* dag_ptr = (_system_dag*) dag;
-    bool         result  = false;
+    _system_dag_node* current_node_ptr = NULL;
+    _system_dag*      dag_ptr          = (_system_dag*) dag;
+    unsigned int      n_connections    = 0;
+    unsigned int      n_nodes          = 0;
+    bool              result           = false;
+    unsigned int      time             = 0;
+
+    system_resizable_vector_get_property(dag_ptr->connections,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_connections);
+    system_resizable_vector_get_property(dag_ptr->nodes,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_nodes);
 
     /* This is the man-on-the-street implementation of topological sorting of DAG nodes.
      *
      * 1. Reset adjacent node storage for all nodes. Also, mark all nodes as not-visited.
      */
-    const unsigned int n_nodes = system_resizable_vector_get_amount_of_elements(dag_ptr->nodes);
-
     for (unsigned int n_node = 0;
                       n_node < n_nodes;
                     ++n_node)
@@ -367,8 +383,6 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
     } /* for (all nodes) */
 
     /* 2. Fill adjacent node storage */
-    const unsigned int n_connections = system_resizable_vector_get_amount_of_elements(dag_ptr->connections);
-
     for (unsigned int n_connection = 0;
                       n_connection < n_connections;
                     ++n_connection)
@@ -422,9 +436,6 @@ PUBLIC EMERALD_API bool system_dag_solve(__in __notnull system_dag dag)
     }
 
     /* 4. Execute the actual algorithm */
-    _system_dag_node* current_node_ptr = NULL;
-    unsigned int      time             = 0;
-
     result = true;
 
     while (system_resizable_vector_pop(dag_ptr->nodes_to_process,

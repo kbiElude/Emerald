@@ -11,7 +11,7 @@
 
 
 /* Call-backs */
-typedef enum
+enum
 {
     OGL_UI_SCROLLBAR_CALLBACK_ID_VISIBILITY_TOGGLE, /* fired when scrollbar visibility is toggled on or off / user_arg: not used */
 };

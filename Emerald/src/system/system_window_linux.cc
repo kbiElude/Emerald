@@ -1,0 +1,1196 @@
+/**
+ *
+ * Emerald (kbi/elude @2015)
+ *
+ */
+#include "shared.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_context_linux.h"
+#include "ogl/ogl_rendering_handler.h"
+#include "system/system_assertions.h"
+#include "system/system_constants.h"
+#include "system/system_event.h"
+#include "system/system_hash64map.h"
+#include "system/system_hashed_ansi_string.h"
+#include "system/system_log.h"
+#include "system/system_pixel_format.h"
+#include "system/system_resizable_vector.h"
+#include "system/system_thread_pool.h"
+#include "system/system_threads.h"
+#include "system/system_window_linux.h"
+#include <X11/cursorfont.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
+
+
+typedef struct _system_window_linux
+{
+    /* "action forbidden" cursor resource */
+    Cursor action_forbidden_cursor_resource;
+    /* arrow cursor resource */
+    Cursor arrow_cursor_resource;
+    /* cross-hair cursor resource */
+    Cursor crosshair_cursor_resource;
+    /* hand cursor resource */
+    Cursor hand_cursor_resource;
+    /* "horizontal resize" cursor resource */
+    Cursor horizontal_resize_cursor_resource;
+    /* move cursor resource */
+    Cursor move_cursor_resource;
+    /* "vertical resize" cursor resource */
+    Cursor vertical_resize_cursor_resource;
+
+    Cursor current_mouse_cursor_system_resource;
+
+    /* Properties of a display connection which hosts the rendering handler */
+    int      default_screen_index;
+    Window   desktop_window;
+    Display* display;
+
+    Colormap             colormap;
+    system_window_handle system_handle;
+    system_window        window; /* DO NOT retain */
+
+    system_event         teardown_completed_event;
+
+    int cursor_position[2]; /* only updated prior to call-back execution! */
+
+
+    explicit _system_window_linux(__in system_window in_window)
+    {
+        action_forbidden_cursor_resource     = 0;
+        arrow_cursor_resource                = 0;
+        colormap                             = (Colormap) NULL;
+        crosshair_cursor_resource            = 0;
+        current_mouse_cursor_system_resource = (Cursor) NULL;
+        default_screen_index                 = -1;
+        desktop_window                       = (Window) NULL;
+        display                              = NULL;
+        hand_cursor_resource                 = 0;
+        horizontal_resize_cursor_resource    = 0;
+        move_cursor_resource                 = 0;
+        system_handle                        = (system_window_handle) NULL;
+        teardown_completed_event             = system_event_create(true); /* manual_reset */
+        window                               = in_window;
+        vertical_resize_cursor_resource      = 0;
+    }
+
+    ~_system_window_linux()
+    {
+        ASSERT_DEBUG_SYNC(!is_message_pump_locked,
+                          "System window about to be deinited while message pump is locked!");
+
+        /* Release cursor */
+        if (action_forbidden_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        action_forbidden_cursor_resource);
+
+            action_forbidden_cursor_resource = (Cursor) NULL;
+        }
+
+        if (arrow_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        arrow_cursor_resource);
+
+            arrow_cursor_resource = (Cursor) NULL;
+        }
+
+        if (crosshair_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        crosshair_cursor_resource);
+
+            crosshair_cursor_resource = (Cursor) NULL;
+        }
+
+        if (hand_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        hand_cursor_resource);
+
+            hand_cursor_resource = (Cursor) NULL;
+        }
+
+        if (horizontal_resize_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        horizontal_resize_cursor_resource);
+
+            horizontal_resize_cursor_resource = (Cursor) NULL;
+        }
+
+        if (move_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        move_cursor_resource);
+
+            move_cursor_resource = (Cursor) NULL;
+        }
+
+        if (vertical_resize_cursor_resource != (Cursor) NULL)
+        {
+            XFreeCursor(display,
+                        vertical_resize_cursor_resource);
+
+            vertical_resize_cursor_resource = (Cursor) NULL;
+        }
+
+        /* Release other stuff */
+        if (colormap != (Colormap) NULL)
+        {
+            XFreeColormap(display,
+                          colormap);
+
+            colormap = (Colormap) NULL;
+        }
+
+        if (display != NULL)
+        {
+            XCloseDisplay(display);
+
+            display = NULL;
+        }
+
+        if (system_handle != (system_window_handle) NULL)
+        {
+            XDestroyWindow(display,
+                           system_handle);
+
+            system_handle = (system_window_handle) NULL;
+        }
+
+        if (teardown_completed_event != NULL)
+        {
+            system_event_release(teardown_completed_event);
+
+            teardown_completed_event = NULL;
+        }
+    }
+} _system_window_linux;
+
+/* Main display which is used to listen for window events.
+ *
+ * You might have noticed that each system_window_linux instance also holds a display.
+ * Each such display is used exclusively for buffer swapping. This is required,
+ * since we have a separate rendering thread and a separate thread for watching for
+ * the window events. If we used a single display, the rendering pump's thread would have acquired
+ * the display lock in order to wait for incoming events, causing the buffer swap op to
+ * starve until window event arrives.
+ *
+ * Some of these variables are configured in system_window_linux_init_global() and
+ * deinitialized in system_window_linux_deinit_global().
+ *
+ */
+PRIVATE const unsigned int client_message_type_please_die      = 1;
+PRIVATE const unsigned int client_message_type_register_window = 2;
+
+PRIVATE bool                    is_message_pump_active              = true; /* set to false and send an event to the window to kill the message pump thread */
+PRIVATE bool                    is_message_pump_locked              = false;
+PRIVATE Display*                main_display                        = NULL;
+PRIVATE Atom                    message_pump_atom_delete_window     = (Atom) NULL;
+PRIVATE system_critical_section message_pump_registered_windows_cs  = NULL;
+PRIVATE system_hash64map        message_pump_registered_windows_map = NULL; /* maps (system_hash64) Window to system_window_linux */
+PRIVATE system_event            message_pump_thread_died_event      = NULL;
+
+
+/* Forward declarations */
+PRIVATE          void _system_window_linux_window_closing_rendering_thread_entrypoint(               ogl_context                          context,
+                                                                                                     void*                                user_arg);
+PRIVATE volatile void _system_window_linux_teardown_thread_pool_callback             (__in __notnull system_thread_pool_callback_argument arg);
+
+
+/** Global UI thread event handler.
+ *
+ *  @param event_ptr TODO
+ *
+ **/
+PRIVATE void _system_window_linux_handle_event(const XEvent* event_ptr)
+{
+    switch (event_ptr->type)
+    {
+        case ButtonPress:
+        case ButtonRelease:
+        {
+            system_window_callback_func callback_func;
+            _system_window_linux*       linux_ptr      = NULL;
+            bool                        should_proceed = true;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xbutton.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+
+                should_proceed = (linux_ptr != NULL);
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+
+            switch (event_ptr->xbutton.button)
+            {
+                case 1:
+                {
+                    callback_func = (event_ptr->type == ButtonPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN
+                                                                     : SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP;
+
+                    break;
+                }
+
+                case 2:
+                {
+                    callback_func = (event_ptr->type == ButtonPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_DOWN
+                                                                     : SYSTEM_WINDOW_CALLBACK_FUNC_MIDDLE_BUTTON_UP;
+
+                    break;
+                }
+
+                case 3:
+                {
+                    callback_func = (event_ptr->type == ButtonPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_DOWN
+                                                                     : SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP;
+
+                    break;
+                }
+
+                default:
+                {
+                    /* Unsupported mouse button */
+                    should_proceed = false;
+
+                    break;
+                }
+            } /* switch (event_ptr->xbutton.button) */
+
+            if (should_proceed)
+            {
+                system_window_execute_callback_funcs(linux_ptr->window,
+                                                     callback_func,
+                                                    (void*) 0);
+            } /* if (should_proceed) */
+
+            break;
+        } /* ButtonPress & ButtonRelease cases */
+
+        case ClientMessage:
+        {
+            /* There's a couple of client messages we need to handle:
+             *
+             * 1. REGISTER_WINDOW: new renderer window was spawned. Need to re-configure the main display
+             *                     to intercept for certain events generated for the new event.
+             * 
+             * 2. PLEASE_DIE:      the application is quitting, the message pump should gracefully put
+             *                     itself to rest.
+             */
+            if (event_ptr->xclient.message_type == client_message_type_please_die)
+            {
+                LOG_FATAL("DEBUG: Please die client message received.");
+
+                /* By setting the variable below to false, the message pump loop will leave shortly after */
+                is_message_pump_active = false;
+            }
+            else
+            if (event_ptr->xclient.message_type == client_message_type_register_window)
+            {
+                LOG_FATAL("DEBUG: Register window client message received.");
+
+                /* Iterate over all registered windows and configure event interception for every window */
+                system_critical_section_enter(message_pump_registered_windows_cs);
+                {
+                    unsigned int n_registered_windows = 0;
+
+                    system_hash64map_get_property(message_pump_registered_windows_map,
+                                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                                 &n_registered_windows);
+
+                    for (unsigned int n_registered_window = 0;
+                                      n_registered_window < n_registered_windows;
+                                    ++n_registered_window)
+                    {
+                        system_hash64       hash_window     = 0;
+                        system_window_linux internal_window = (system_window_linux) NULL;
+                        Window              window          = (Window)              NULL;
+
+                        if (!system_hash64map_get_element_at(message_pump_registered_windows_map,
+                                                             n_registered_window,
+                                                            &internal_window,
+                                                            &hash_window) )
+                        {
+                            ASSERT_DEBUG_SYNC(false,
+                                              "Could not retrieve a registered window key+value pair for index [%d]",
+                                              n_registered_window);
+
+                            continue;
+                        }
+
+                        window = (Window) hash_window;
+
+                        XSelectInput   (main_display,
+                                        window,
+                                        ButtonReleaseMask | ExposureMask | KeyPressMask | KeyReleaseMask | StructureNotifyMask);
+                        XSetWMProtocols(main_display,
+                                        window,
+                                        &message_pump_atom_delete_window,
+                                        1); /* n_atoms */
+                    } /* for (all registered windows) */
+                }
+                system_critical_section_leave(message_pump_registered_windows_cs);
+            }
+            else
+            {
+                ASSERT_DEBUG_SYNC(false,
+                                  "Unrecognized client message type");
+            }
+
+            break;
+        }
+
+        /* TODO TODO TODO: MOVE TO THE RENDERING HANDLER'S MESSAGE PUMP!! */
+        case DestroyNotify:
+        {
+#if 0
+            _system_window_linux* linux_ptr = NULL;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xdestroywindow.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+
+            if (event_ptr->xdestroywindow.window == linux_ptr->system_handle)
+            {
+                /* If the window is being closed per system request (eg. ALT+F4 was pressed), we need to stop
+                 * the rendering process first! Otherwise we're very likely to end up with a nasty crash. */
+                ogl_context           context           = NULL;
+                ogl_rendering_handler rendering_handler = NULL;
+
+                system_window_get_property(linux_ptr->window,
+                                           SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
+                                          &context);
+                system_window_get_property(linux_ptr->window,
+                                           SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                          &rendering_handler);
+
+                if (rendering_handler != NULL)
+                {
+                    ogl_rendering_handler_playback_status playback_status = RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED;
+
+                    ogl_rendering_handler_get_property(rendering_handler,
+                                                       OGL_RENDERING_HANDLER_PROPERTY_PLAYBACK_STATUS,
+                                                      &playback_status);
+
+                    if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED)
+                    {
+                        ogl_rendering_handler_stop(rendering_handler);
+                    } /* if (playback_status != RENDERING_HANDLER_PLAYBACK_STATUS_STOPPED) */
+
+                    /* For the "window closing" call-back, we need to work from the rendering thread, as the caller
+                     * may need to release GL stuff.
+                     *
+                     * This should work out of the box, since we've just stopped the play-back.
+                     */
+                    ogl_context_request_callback_from_context_thread(context,
+                                                                     _system_window_linux_window_closing_rendering_thread_entrypoint,
+                                                                     linux_ptr);
+                }
+
+                /* OK, safe to destroy the system window at this point */
+                XDestroyWindow(linux_ptr->display,
+                               linux_ptr->system_handle);
+
+                /* Now here's the trick: the call-backs can only be fired AFTER the window thread has shut down.
+                 * This lets us avoid various thread racing conditions which used to break all hell loose at the
+                 * tear-down time in the past, and which also let the window messages flow, which is necessary
+                 * for the closure to finish correctly.
+                 *
+                 * The entry-point we're pointing the task at does exactly that.
+                 */
+                system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_CRITICAL,
+                                                                                                                _system_window_linux_teardown_thread_pool_callback,
+                                                                                                                (void*) linux_ptr);
+
+                system_thread_pool_submit_single_task(task);
+            } /* if (event_ptr->xdestroywindow.window == linux_ptr->system_handle) */
+#else
+            /* Remove the window from the "registered windows" map */
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_remove(message_pump_registered_windows_map,
+                                        (system_hash64) event_ptr->xdestroywindow.window);
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+#endif
+
+            break;
+        } /* case DestroyNotify: */
+
+        case Expose:
+        {
+            /* Need to re-render the frame */
+            _system_window_linux* linux_ptr         = NULL;
+            ogl_rendering_handler rendering_handler = NULL;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xbutton.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+
+            system_window_get_property(linux_ptr->window,
+                                       SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                      &rendering_handler);
+
+            ASSERT_DEBUG_SYNC(rendering_handler != NULL,
+                              "Window rendering handler is NULL");
+
+            if (rendering_handler != NULL)
+            {
+                system_timeline_time last_frame_time = 0;
+
+                ogl_rendering_handler_get_property(rendering_handler,
+                                                   OGL_RENDERING_HANDLER_PROPERTY_LAST_FRAME_TIME,
+                                                  &last_frame_time);
+
+                ogl_rendering_handler_play(rendering_handler,
+                                           last_frame_time);
+            } /* if (rendering_handler != NULL) */
+
+            break;
+        }
+
+        case KeyPress:
+        case KeyRelease:
+        {
+            _system_window_linux* linux_ptr = NULL;
+
+            system_critical_section_enter(message_pump_registered_windows_cs);
+            {
+                system_hash64map_get(message_pump_registered_windows_map,
+                                     (system_hash64) event_ptr->xkey.window,
+                                    &linux_ptr);
+
+                ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                                  "Could not find a system_window_linux instance associated with the event's window");
+            }
+            system_critical_section_leave(message_pump_registered_windows_cs);
+
+            system_window_execute_callback_funcs(linux_ptr->window,
+                                                 (event_ptr->type == KeyPress) ? SYSTEM_WINDOW_CALLBACK_FUNC_KEY_DOWN
+                                                                               : SYSTEM_WINDOW_CALLBACK_FUNC_KEY_UP,
+                                                 (void*) (intptr_t) (event_ptr->xkey.keycode & 0xFF) );
+
+            break;
+        }
+    } /* switch (event_ptr->type) */
+
+#if 0
+    switch (message_id)
+    {
+        case WM_MOUSEMOVE:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
+                                                 (void*) wparam);
+
+            if (win32_ptr->current_mouse_cursor_system_resource != NULL)
+            {
+                ::SetCursor(win32_ptr->current_mouse_cursor_system_resource);
+            }
+
+            break;
+        }
+
+        case WM_MOUSEWHEEL:
+        {
+            system_window_execute_callback_funcs(win32_ptr->window,
+                                                 SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
+                                                 (void*) GET_WHEEL_DELTA_WPARAM(wparam),
+                                                 (void*) LOWORD(wparam) );
+
+            return 0;
+        }
+    }
+    #endif
+}
+
+/** TODO */
+PRIVATE void _system_window_linux_handle_events_thread_entrypoint(void* unused)
+{
+    while (is_message_pump_active)
+    {
+        XEvent current_event;
+
+        /* Block until X event arrives */
+        XNextEvent(main_display,
+                  &current_event);
+
+        /* Handle the event */
+        _system_window_linux_handle_event(&current_event);
+    } /* while (is_message_pump_active) */
+
+    system_event_set(message_pump_thread_died_event);
+}
+
+
+#if 0
+/** TODO */
+PRIVATE void _system_window_window_closing_rendering_thread_entrypoint(ogl_context context,
+                                                                       void*       user_arg)
+{
+    bool                  is_closing  = false;
+    _system_window_win32* window_ptr  = (_system_window_win32*) user_arg;
+
+    system_window_get_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
+                              &is_closing);
+
+    ASSERT_DEBUG_SYNC(!is_closing,
+                      "Sanity check failed");
+
+    is_closing = true;
+    system_window_set_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
+                              &is_closing);
+
+    system_window_execute_callback_funcs(window_ptr->window,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING);
+
+    is_closing = false;
+    system_window_set_property(window_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_IS_CLOSING,
+                              &is_closing);
+}
+#endif
+
+/** TODO */
+PRIVATE volatile void _system_window_linux_teardown_thread_pool_callback(__in __notnull system_thread_pool_callback_argument arg)
+{
+    _system_window_linux* window_ptr = (_system_window_linux*) arg;
+
+    /* Call back the subscribers, if any */
+    system_window_execute_callback_funcs(window_ptr->window,
+                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED);
+
+    system_event_set(window_ptr->teardown_completed_event);
+}
+
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_close_window(__in system_window_linux window)
+{
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
+
+    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                      "Input argument is NULL");
+    ASSERT_DEBUG_SYNC(linux_ptr->system_handle != NULL,
+                      "No window to close - system handle is NULL.");
+
+    XDestroyWindow(linux_ptr->display,
+                   linux_ptr->system_handle);
+}
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_deinit(__in system_window_linux window)
+{
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
+
+    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                      "Input argument is NULL");
+
+    delete linux_ptr;
+    linux_ptr = NULL;
+}
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_deinit_global()
+{
+    if (main_display != NULL)
+    {
+        /* We don't really care whether this call fails or not */
+        XCloseDisplay(main_display);
+
+        main_display = NULL;
+    }
+
+    if (message_pump_registered_windows_cs != NULL)
+    {
+        system_critical_section_enter(message_pump_registered_windows_cs);
+        system_critical_section_leave(message_pump_registered_windows_cs);
+
+        system_critical_section_release(message_pump_registered_windows_cs);
+
+        message_pump_registered_windows_cs = NULL;
+    }
+
+    if (message_pump_registered_windows_map != NULL)
+    {
+        system_hash64map_release(message_pump_registered_windows_map);
+
+        message_pump_registered_windows_map = NULL;
+    }
+
+    if (message_pump_thread_died_event != NULL)
+    {
+        system_event_release(message_pump_thread_died_event);
+
+        message_pump_thread_died_event = NULL;
+    }
+}
+
+/** Please see header for spec */
+PUBLIC bool system_window_linux_get_property(__in  system_window_linux    window,
+                                             __in  system_window_property property,
+                                             __out void*                  out_result)
+{
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
+    bool                  result    = true;
+
+    /* Only handle platform-specific queries */
+    switch (property)
+    {
+        case SYSTEM_WINDOW_PROPERTY_CURSOR_POSITION:
+        {
+            int*         result_ptr = (int*) out_result;
+            Window       temp_child_window;
+            unsigned int temp_mask;
+            Window       temp_root_window;
+            int          temp_root_x;
+            int          temp_root_y;
+
+            XLockDisplay(linux_ptr->display);
+            {
+                XQueryPointer(linux_ptr->display,
+                            linux_ptr->system_handle,
+                            &temp_root_window,
+                            &temp_child_window,
+                            &temp_root_x,
+                            &temp_root_y,
+                            result_ptr + 0,
+                            result_ptr + 1,
+                            &temp_mask);
+            }
+            XUnlockDisplay(linux_ptr->display);
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_DISPLAY:
+        {
+            *(Display**) out_result = linux_ptr->display;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_HANDLE:
+        {
+            ASSERT_DEBUG_SYNC(linux_ptr->system_handle != 0,
+                              "System handle is NULL.");
+
+            *(system_window_handle*) out_result = linux_ptr->system_handle;
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_POSITION:
+        {
+            ASSERT_DEBUG_SYNC(linux_ptr->system_handle != 0,
+                              "System handle is NULL.");
+
+            if (linux_ptr->system_handle != 0)
+            {
+                XWindowAttributes window_attributes;
+
+                XLockDisplay(linux_ptr->display);
+                {
+                    XGetWindowAttributes(linux_ptr->display,
+                                        linux_ptr->system_handle,
+                                        &window_attributes);
+                }
+                XUnlockDisplay(linux_ptr->display);
+
+                ((int*) out_result)[0] = window_attributes.x;
+                ((int*) out_result)[1] = window_attributes.y;
+            }
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_SCREEN_INDEX:
+        {
+            *(int*) out_result = linux_ptr->default_screen_index;
+
+            break;
+        }
+
+        default:
+        {
+            /* Fall-back! */
+            result = false;
+        }
+    } /* switch (property) */
+
+    return result;
+}
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_get_screen_size(__out int* out_screen_width_ptr,
+                                                __out int* out_screen_height_ptr)
+{
+    Screen* display_screen = NULL;
+
+    ASSERT_DEBUG_SYNC(_display != NULL,
+                      "No active display");
+    ASSERT_DEBUG_SYNC(out_screen_width_ptr  != NULL &&
+                      out_screen_height_ptr != NULL,
+                      "Input arguments are NULL");
+
+    XLockDisplay(main_display);
+    {
+        display_screen = DefaultScreenOfDisplay(main_display);
+    }
+    XUnlockDisplay(main_display);
+
+    ASSERT_DEBUG_SYNC(display_screen != NULL,
+                      "No default screen reported for the display");
+
+    *out_screen_width_ptr  = display_screen->width;
+    *out_screen_height_ptr = display_screen->height;
+}
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_handle_window(__in system_window_linux window)
+{
+    XEvent                current_event;
+    bool                  is_visible = false;
+    _system_window_linux* linux_ptr  = (_system_window_linux*) window;
+
+    LOG_INFO("system_window_linux_handle_window() starts..");
+
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_IS_VISIBLE,
+                              &is_visible);
+
+    /* Show the window if that's what was requested*/
+    if (is_visible)
+    {
+        XLockDisplay(linux_ptr->display);
+        {
+            XMapWindow(linux_ptr->display,
+                       linux_ptr->system_handle);
+        }
+        XUnlockDisplay(linux_ptr->display);
+    }
+
+    /* Under Linux, we're using a single UI thread which listens for window events
+     * and handles them accordingly. Therefore, all we need to do here is to wait
+     * until the WM_DELETE_WINDOW message arrives, which is when we can return
+     * the execution to the caller. */
+    while (XNextEvent(linux_ptr->display,
+                     &current_event) )
+    {
+        if (               current_event.type == ClientMessage &&
+            (unsigned int) current_event.xclient.data.l[0] == message_pump_atom_delete_window)
+        {
+            /* Get out of the loop, the window is dead. */
+            break;
+        }
+    } /* events can be processed */
+
+    LOG_INFO("system_window_linux_handle_window() waiting to die gracefully..");
+
+    system_event_wait_single(linux_ptr->teardown_completed_event);
+
+    LOG_INFO("system_window_linux_handle_window() completed.");
+}
+
+/** Please see header for spec */
+PUBLIC system_window_linux system_window_linux_init(__in __notnull system_window owner)
+{
+    _system_window_linux* linux_ptr = new (std::nothrow) _system_window_linux(owner);
+
+    ASSERT_DEBUG_SYNC(linux_ptr != NULL,
+                      "Out of memory");
+
+    /* The descriptor is fully initialized in the constructor. */
+
+    return (system_window_linux) linux_ptr;
+}
+
+/** Please see header for spec */
+PUBLIC void system_window_linux_init_global()
+{
+    XInitThreads();
+
+    /* Open a global display which we will use to capture events coming for all
+     * opened windows.
+     */
+    main_display = XOpenDisplay(":0");
+
+    if (main_display == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not open display at :0");
+
+        goto end;
+    }
+
+    /* Initialize other global stuff */
+    message_pump_atom_delete_window = XInternAtom(main_display,
+                                                  "WM_DELETE_WINDOW",
+                                                  True);
+
+    message_pump_registered_windows_cs  = system_critical_section_create();
+    message_pump_registered_windows_map = system_hash64map_create       (sizeof(_system_window_linux*) );
+
+    message_pump_thread_died_event = system_event_create(true); /* manual_reset */
+
+    /* Spawn the global UI thread */
+    system_threads_spawn(_system_window_linux_handle_events_thread_entrypoint,
+                         NULL,  /* callback_func_argument */
+                         NULL); /* thread_wait_event */
+
+end:
+    ;
+}
+
+
+/** Please see header for spec */
+PUBLIC bool system_window_linux_open_window(__in system_window_linux window,
+                                            __in bool                is_first_window)
+{
+    bool                      is_window_fullscreen = false;
+    bool                      is_window_scalable   = false;
+    _system_window_linux*     linux_ptr            = (_system_window_linux*) window;
+    uint32_t                  n_depth_bits         = 0;
+    uint32_t                  n_rgba_bits[4]       = {0};
+    system_window_handle      parent_window_handle = (system_window_handle) NULL;
+    XClientMessageEvent       register_window_message;
+    bool                      result               = true;
+    XSetWindowAttributes      winattr;
+    ogl_context_type          window_context_type  = OGL_CONTEXT_TYPE_UNDEFINED;
+    system_window_handle      window_handle        = (system_window_handle) NULL;
+    system_pixel_format       window_pixel_format  = NULL;
+    system_hashed_ansi_string window_title         = NULL;
+    int                       x1y1x2y2[4];
+    int                       visual_attribute_list [2 * 5 /* rgba bits, depth bits */ + 2 /* doublebuffering, rgba */ + 1 /* terminator */];
+    XVisualInfo*              visual_info_ptr      = NULL;
+
+    /* Start up a new display for the window */
+    linux_ptr->display = XOpenDisplay(":0");
+
+    if (linux_ptr->display == NULL)
+    {
+        ASSERT_ALWAYS_SYNC(false,
+                           "Could not open display at :0");
+
+        goto end;
+    }
+
+    /* Cache mouse cursors */
+    linux_ptr->action_forbidden_cursor_resource  = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_X_cursor);
+    linux_ptr->arrow_cursor_resource             = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_left_ptr);
+    linux_ptr->crosshair_cursor_resource         = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_crosshair);
+    linux_ptr->hand_cursor_resource              = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_hand1);
+    linux_ptr->horizontal_resize_cursor_resource = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_sb_h_double_arrow);
+    linux_ptr->move_cursor_resource              = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_right_ptr);
+    linux_ptr->vertical_resize_cursor_resource   = XCreateFontCursor(linux_ptr->display,
+                                                                     XC_sb_v_double_arrow);
+
+    ASSERT_DEBUG_SYNC(linux_ptr->action_forbidden_cursor_resource != NULL,
+                      "Failed to load action forbidden cursor resource.");
+    ASSERT_DEBUG_SYNC(linux_ptr->arrow_cursor_resource != NULL,
+                      "Failed to load arrow cursor resource.");
+    ASSERT_DEBUG_SYNC(linux_ptr->crosshair_cursor_resource != NULL,
+                      "Failed to load crosshair cursor resource.");
+    ASSERT_DEBUG_SYNC(linux_ptr->hand_cursor_resource != NULL,
+                      "Failed to load hand cursor resource.");
+    ASSERT_DEBUG_SYNC(linux_ptr->horizontal_resize_cursor_resource != NULL,
+                      "Failed to load horizontal resize cursor resource.");
+    ASSERT_DEBUG_SYNC(linux_ptr->move_cursor_resource != NULL,
+                      "Failed to load move cursor resource.");
+    ASSERT_DEBUG_SYNC(linux_ptr->vertical_resize_cursor_resource != NULL,
+                      "Failed to load vertical resize cursor resource.");
+
+    /* If full-screen window is requested, throw an assertion. Linux builds do not support it yet.
+     * Same goes for scalable windows.
+     */
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_IS_FULLSCREEN,
+                              &is_window_fullscreen);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_IS_SCALABLE,
+                              &is_window_scalable);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
+                              &parent_window_handle);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_PIXEL_FORMAT,
+                              &window_pixel_format);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_TITLE,
+                              &window_title);
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_X1Y1X2Y2,
+                               x1y1x2y2);
+
+    ASSERT_DEBUG_SYNC(!is_window_scalable,
+                      "TODO: Scalable windows are not supported yet");
+    ASSERT_DEBUG_SYNC(!is_window_fullscreen,
+                      "TODO: Full-screen windows are not supported yet");
+
+    /* Determine parent window handle */
+    ASSERT_DEBUG_SYNC(parent_window_handle == NULL,
+                      "TODO: system_window_linux does not support window embedding.");
+
+    linux_ptr->default_screen_index = DefaultScreen(linux_ptr->display);
+    parent_window_handle            = RootWindow    (linux_ptr->display,
+                                                     linux_ptr->default_screen_index);
+
+    /* Retrieve XVisualInfo instance, compatible with the requested rendering context */
+    system_window_get_property(linux_ptr->window,
+                               SYSTEM_WINDOW_PROPERTY_CONTEXT_TYPE,
+                              &window_context_type);
+
+    switch (window_context_type)
+    {
+        case OGL_CONTEXT_TYPE_ES:
+        case OGL_CONTEXT_TYPE_GL:
+        {
+            visual_info_ptr = ogl_context_linux_get_visual_info_for_gl_window(linux_ptr->window);
+
+            break;
+        }
+
+        default:
+        {
+            ASSERT_ALWAYS_SYNC(false,
+                               "Unsupported rendering context type");
+        }
+    } /* switch (window_context_type) */
+
+    ASSERT_DEBUG_SYNC(visual_info_ptr != NULL,
+                      "No visual that would be compatible with the requested context properties was found.");
+
+    /* Spawn the window */
+    XSetWindowAttributes window_attributes;
+
+    linux_ptr->colormap = XCreateColormap(linux_ptr->display,
+                                          parent_window_handle,
+                                          visual_info_ptr->visual,
+                                          AllocNone);
+
+    window_attributes.colormap = linux_ptr->colormap;
+
+    linux_ptr->system_handle = XCreateWindow(linux_ptr->display,
+                                             parent_window_handle,
+                                             x1y1x2y2[0],
+                                             x1y1x2y2[1],
+                                             x1y1x2y2[2] - x1y1x2y2[0],
+                                             x1y1x2y2[3] - x1y1x2y2[1],
+                                             0, /* border_width */
+                                             visual_info_ptr->depth,
+                                             InputOutput,
+                                             visual_info_ptr->visual,
+                                             CWColormap,
+                                            &window_attributes);
+
+    if (linux_ptr->system_handle == (system_window_handle) NULL)
+    {
+        LOG_FATAL("Could not create window [%s]",
+                  system_hashed_ansi_string_get_buffer(window_title) );
+
+        ASSERT_DEBUG_SYNC(linux_ptr->system_handle != (Window) NULL,
+                          "Could not create a window");
+
+        result = false;
+        goto end;
+    }
+
+    /* Register the window */
+    system_critical_section_enter(message_pump_registered_windows_cs);
+    {
+        system_hash64 system_handle_hash = (system_hash64) linux_ptr->system_handle;
+
+        ASSERT_DEBUG_SYNC(!system_hash64map_contains(message_pump_registered_windows_map,
+                                                     system_handle_hash),
+                          "Newly created window is already recognized by the registered windows map");
+
+        system_hash64map_insert(message_pump_registered_windows_map,
+                                system_handle_hash,
+                                linux_ptr,
+                                NULL,  /* on_remove_callback */
+                                NULL); /* on_remove_callback_user_arg */
+    }
+    system_critical_section_leave(message_pump_registered_windows_cs);
+
+    register_window_message.format       = 32; /* set anything, really. */
+    register_window_message.message_type = client_message_type_register_window;
+    register_window_message.type         = ClientMessage;
+
+    XSendEvent(main_display,
+               linux_ptr->system_handle,
+               False, /* propagate */
+               0,     /* event_mask */
+               (XEvent*) &register_window_message);
+
+    /* Update the window title */
+    XStoreName(linux_ptr->display,
+               linux_ptr->system_handle,
+               system_hashed_ansi_string_get_buffer(window_title) );
+
+end:
+    if (visual_info_ptr != NULL)
+    {
+        XFree(visual_info_ptr);
+
+        visual_info_ptr = NULL;
+    }
+
+    return result;
+}
+
+/** Please see header for property */
+PUBLIC bool system_window_linux_set_property(__in system_window_linux    window,
+                                             __in system_window_property property,
+                                             __in const void*            data)
+{
+    _system_window_linux* linux_ptr = (_system_window_linux*) window;
+    bool                  result    = true;
+
+    switch (property)
+    {
+        case SYSTEM_WINDOW_PROPERTY_CURSOR:
+        {
+            system_window_mouse_cursor cursor = *(system_window_mouse_cursor*) data;
+
+            switch (cursor)
+            {
+                case SYSTEM_WINDOW_MOUSE_CURSOR_ACTION_FORBIDDEN:
+                {
+                    linux_ptr->current_mouse_cursor_system_resource = linux_ptr->action_forbidden_cursor_resource;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_MOUSE_CURSOR_ARROW:
+                {
+                    linux_ptr->current_mouse_cursor_system_resource = linux_ptr->arrow_cursor_resource;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_MOUSE_CURSOR_CROSSHAIR:
+                {
+                    linux_ptr->current_mouse_cursor_system_resource = linux_ptr->crosshair_cursor_resource;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_MOUSE_CURSOR_HORIZONTAL_RESIZE:
+                {
+                    linux_ptr->current_mouse_cursor_system_resource = linux_ptr->horizontal_resize_cursor_resource;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_MOUSE_CURSOR_MOVE:
+                {
+                    linux_ptr->current_mouse_cursor_system_resource = linux_ptr->move_cursor_resource;
+
+                    break;
+                }
+
+                case SYSTEM_WINDOW_MOUSE_CURSOR_VERTICAL_RESIZE:
+                {
+                    linux_ptr->current_mouse_cursor_system_resource = linux_ptr->vertical_resize_cursor_resource;
+
+                    break;
+                }
+
+                default:
+                {
+                    LOG_ERROR("Unrecognized cursor type [%d] requested", cursor);
+
+                    result = false;
+                }
+            } /* switch (cursor) */
+
+            if (result)
+            {
+                XLockDisplay(linux_ptr->display);
+                {
+                    XDefineCursor(linux_ptr->display,
+                                  linux_ptr->system_handle,
+                                  linux_ptr->current_mouse_cursor_system_resource);
+                }
+                XUnlockDisplay(linux_ptr->display);
+            }
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_DIMENSIONS:
+        {
+            const int* width_height_ptr = (const int*) data;
+
+            XLockDisplay(linux_ptr->display);
+            {
+                XResizeWindow(linux_ptr->display,
+                              linux_ptr->system_handle,
+                              width_height_ptr[0],
+                              width_height_ptr[1]);
+            }
+            XUnlockDisplay(linux_ptr->display);
+
+            break;
+        }
+
+        case SYSTEM_WINDOW_PROPERTY_POSITION:
+        {
+            system_window_handle parent_window_handle = (system_window_handle) NULL;
+            const int*           xy_ptr               = (const int*) data;
+
+            system_window_get_property(linux_ptr->window,
+                                       SYSTEM_WINDOW_PROPERTY_PARENT_WINDOW_HANDLE,
+                                      &parent_window_handle);
+
+            XLockDisplay(linux_ptr->display);
+            {
+                XMoveWindow(linux_ptr->display,
+                            linux_ptr->system_handle,
+                            xy_ptr[0],
+                            xy_ptr[1]);
+            }
+            XUnlockDisplay(linux_ptr->display);
+
+            break;
+        }
+
+        default:
+        {
+            result = false;
+        }
+    } /* switch (property) */
+
+    return result;
+}

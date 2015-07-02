@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -37,7 +37,9 @@ typedef struct _collada_data_polylist
 /** TODO */
 _collada_data_polylist::_collada_data_polylist()
 {
-    memset(inputs, 0, sizeof(inputs) );
+    memset(inputs,
+           0,
+           sizeof(inputs) );
 
     material_name       = NULL;
     n_inputs            = 0;
@@ -51,7 +53,9 @@ _collada_data_polylist::_collada_data_polylist()
 /** TODO */
 _collada_data_polylist::~_collada_data_polylist()
 {
-    for (int n_input = 0; n_input < COLLADA_DATA_INPUT_TYPE_COUNT; ++n_input)
+    for (int n_input = 0;
+             n_input < COLLADA_DATA_INPUT_TYPE_COUNT;
+           ++n_input)
     {
         if (inputs[n_input] != NULL)
         {
@@ -84,12 +88,12 @@ PRIVATE system_hashed_ansi_string _collada_data_polylist_get_cached_blob_file_na
 {
     char temp_file_name[1024];
 
-    sprintf_s(temp_file_name,
-              sizeof(temp_file_name),
-              "collada_polylist_%s_%d_%s",
-              system_hashed_ansi_string_get_buffer(geometry_name),
-              count,
-              system_hashed_ansi_string_get_buffer(material) );
+    snprintf(temp_file_name,
+             sizeof(temp_file_name),
+             "collada_polylist_%s_%d_%s",
+             system_hashed_ansi_string_get_buffer(geometry_name),
+             count,
+             system_hashed_ansi_string_get_buffer(material) );
 
     return system_hashed_ansi_string_create(temp_file_name);
 }
@@ -99,32 +103,48 @@ PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml
                                                           __in __notnull collada_data_geometry_mesh geometry_mesh,
                                                           __in __notnull collada_data               data)
 {
-    _collada_data_polylist* result_polylist_ptr = new (std::nothrow) _collada_data_polylist;
+    system_hashed_ansi_string blob_file_name            = NULL;
+    tinyxml2::XMLElement*     current_input_element_ptr = NULL;
+    bool                      has_loaded_cached_blob    = false;
+    unsigned int*             index_data                = NULL;
+    const char*               material_name             = NULL;
+    system_hashed_ansi_string material_name_has         = NULL;
+    unsigned int              n_inputs                  = 0;
+    unsigned int              polylist_count            = 0;
+    _collada_data_polylist*   result_polylist_ptr       = new (std::nothrow) _collada_data_polylist;
+    bool                      should_cache_blobs        = false;
+    unsigned int              total_vcount              = 0;
+    unsigned int*             vcount_data               = NULL;
 
-    ASSERT_ALWAYS_SYNC(result_polylist_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(result_polylist_ptr != NULL,
+                       "Out of memory");
+
     if (result_polylist_ptr == NULL)
     {
         goto end;
     }
 
     /* Step 1) Iterate over all inputs defined and process the nodes */
-    tinyxml2::XMLElement* current_input_element_ptr = polylist_element_ptr->FirstChildElement("input");
-    const char*           material_name             = polylist_element_ptr->Attribute        ("material");
-    unsigned int          n_inputs                  = 0;
-    unsigned int          polylist_count            = polylist_element_ptr->IntAttribute     ("count");
+    current_input_element_ptr = polylist_element_ptr->FirstChildElement("input");
+    material_name             = polylist_element_ptr->Attribute        ("material");
+    polylist_count            = polylist_element_ptr->IntAttribute     ("count");
 
     while (current_input_element_ptr != NULL)
     {
-        unsigned int offset      = current_input_element_ptr->IntAttribute("offset");
-        const char*  semantic    = current_input_element_ptr->Attribute   ("semantic");
-        unsigned int set         = current_input_element_ptr->IntAttribute("set");
-        const char*  source_name = current_input_element_ptr->Attribute   ("source");
+        _collada_data_input_type input_type;
+        collada_data_input_set   new_input_set;
+        unsigned int             offset        = current_input_element_ptr->IntAttribute("offset");
+        const char*              semantic      = current_input_element_ptr->Attribute   ("semantic");
+        unsigned int             set           = current_input_element_ptr->IntAttribute("set");
+        collada_data_source      source        = NULL;
+        const char*              source_name   = current_input_element_ptr->Attribute   ("source");
 
         /* Sanity checks */
         if (semantic == NULL)
         {
             LOG_FATAL        ("Semantic not defined for <input> sub-node of <polylist>");
-            ASSERT_DEBUG_SYNC(false, "Will skip an input");
+            ASSERT_DEBUG_SYNC(false,
+                              "Will skip an input");
 
             goto next_input;
         }
@@ -132,36 +152,40 @@ PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml
         if (source_name == NULL)
         {
             LOG_FATAL        ("Source not defined for <input> sub-node of <polylist>");
-            ASSERT_DEBUG_SYNC(false, "Will skip an input");
+            ASSERT_DEBUG_SYNC(false,
+                              "Will skip an input");
 
             goto next_input;
         }
         else
         {
-            ASSERT_DEBUG_SYNC(source_name[0] == '#', "Source name is not a reference");
+            ASSERT_DEBUG_SYNC(source_name[0] == '#',
+                              "Source name is not a reference");
 
             source_name++;
         }
 
         /* Convert a semantic to internal equivalent */
-        _collada_data_input_type input_type = collada_data_input_convert_from_string(system_hashed_ansi_string_create(semantic) );
+        input_type = collada_data_input_convert_from_string(system_hashed_ansi_string_create(semantic) );
 
         if (input_type == COLLADA_DATA_INPUT_TYPE_UNDEFINED)
         {
             LOG_FATAL        ("Unrecognized semantic used for a polylist input");
-            ASSERT_DEBUG_SYNC(FALSE, "Will skip an input");
+            ASSERT_DEBUG_SYNC(FALSE,
+                              "Will skip an input");
 
             goto next_input;
         }
 
         /* Try to locate the source the input is referring to */
-        collada_data_source source = collada_data_geometry_mesh_get_source_by_id(geometry_mesh,
-                                                                                 system_hashed_ansi_string_create(source_name) );
+        source = collada_data_geometry_mesh_get_source_by_id(geometry_mesh,
+                                                             system_hashed_ansi_string_create(source_name) );
 
         if (source == NULL)
         {
             LOG_FATAL        ("Unrecognized source used in a polylist input");
-            ASSERT_DEBUG_SYNC(false, "Will skip an input");
+            ASSERT_DEBUG_SYNC(false,
+                              "Will skip an input");
 
             goto next_input;
         }
@@ -175,7 +199,9 @@ PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml
         {
             collada_data_input new_input = collada_data_input_create(input_type);
 
-            ASSERT_DEBUG_SYNC(new_input != NULL, "Out of memory");
+            ASSERT_DEBUG_SYNC(new_input != NULL,
+                              "Out of memory");
+
             if (new_input == NULL)
             {
                 goto next_input;
@@ -185,9 +211,12 @@ PUBLIC collada_data_polylist collada_data_polylist_create(__in __notnull tinyxml
         }
 
         /* Form the set descriptor and stash it into the hash map */
-        collada_data_input_set new_input_set = collada_data_input_set_create(offset, source);
+        new_input_set = collada_data_input_set_create(offset,
+                                                      source);
 
-        ASSERT_DEBUG_SYNC(new_input_set != NULL, "Out of memory");
+        ASSERT_DEBUG_SYNC(new_input_set != NULL,
+                          "Out of memory");
+
         if (new_input_set == NULL)
         {
             goto next_input;
@@ -211,13 +240,6 @@ next_input:
     *            make sure actual demos do not ever generate any binary representations. Hence, the
     *            mode needs to be manually toggled.
     */
-    system_hashed_ansi_string blob_file_name         = NULL;
-    bool                      has_loaded_cached_blob = false;
-    unsigned int*             index_data             = NULL;
-    bool                      should_cache_blobs     = false;
-    unsigned int              total_vcount           = 0;
-    unsigned int*             vcount_data            = NULL;
-
     collada_data_get_property(data,
                               COLLADA_DATA_PROPERTY_CACHE_BINARY_BLOBS_MODE,
                              &should_cache_blobs);
@@ -245,7 +267,8 @@ next_input:
          *       in multiple threads, and all available threads may be used at the same time,
          *       leading the async read to effectively lock up.
          */
-        system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name, false);
+        system_file_serializer blob_serializer = system_file_serializer_create_for_reading(blob_file_name,
+                                                                                           false); /* async_read */
         const void*            blob_data       = NULL;
 
         system_file_serializer_get_property(blob_serializer,
@@ -254,22 +277,34 @@ next_input:
 
         if (blob_data != NULL)
         {
-            system_file_serializer_read(blob_serializer, sizeof(unsigned int), &total_vcount);
+            system_file_serializer_read(blob_serializer,
+                                        sizeof(unsigned int),
+                                       &total_vcount);
 
             const unsigned int n_indices = total_vcount * n_inputs;
 
             vcount_data = new (std::nothrow) unsigned int [polylist_count];
             index_data  = new (std::nothrow) unsigned int [n_indices];
 
-            ASSERT_ALWAYS_SYNC(vcount_data != NULL && index_data != NULL,
+            ASSERT_ALWAYS_SYNC(vcount_data != NULL &&
+                               index_data  != NULL,
                                "Out of memory");
 
-            if (vcount_data != NULL && index_data != NULL)
+            if (vcount_data != NULL &&
+                index_data  != NULL)
             {
-                system_file_serializer_read(blob_serializer, sizeof(unsigned int) * polylist_count, vcount_data);
-                system_file_serializer_read(blob_serializer, sizeof(unsigned int) * n_indices,      index_data);
-                system_file_serializer_read(blob_serializer, sizeof(unsigned int),                 &result_polylist_ptr->polygon_indices_min);
-                system_file_serializer_read(blob_serializer, sizeof(unsigned int),                 &result_polylist_ptr->polygon_indices_max);
+                system_file_serializer_read(blob_serializer,
+                                            sizeof(unsigned int) * polylist_count,
+                                            vcount_data);
+                system_file_serializer_read(blob_serializer,
+                                            sizeof(unsigned int) * n_indices,
+                                            index_data);
+                system_file_serializer_read(blob_serializer,
+                                            sizeof(unsigned int),
+                                           &result_polylist_ptr->polygon_indices_min);
+                system_file_serializer_read(blob_serializer,
+                                            sizeof(unsigned int),
+                                           &result_polylist_ptr->polygon_indices_max);
 
                 /* All done */
                 has_loaded_cached_blob = true;
@@ -308,12 +343,16 @@ next_input:
         /* Step 2) Retrieve vcount data */
         tinyxml2::XMLElement* vcount_element_ptr = polylist_element_ptr->FirstChildElement("vcount");
 
-        ASSERT_DEBUG_SYNC(vcount_element_ptr != NULL, "<vcount> node was not found");
+        ASSERT_DEBUG_SYNC(vcount_element_ptr != NULL,
+                          "<vcount> node was not found");
+
         if (vcount_element_ptr != NULL)
         {
             vcount_data = new (std::nothrow) unsigned int[polylist_count];
 
-            ASSERT_DEBUG_SYNC(vcount_data != NULL, "Out of memory");
+            ASSERT_DEBUG_SYNC(vcount_data != NULL,
+                              "Out of memory");
+
             if (vcount_data != NULL)
             {
                 const char*  traveller_ptr = vcount_element_ptr->GetText();
@@ -321,15 +360,17 @@ next_input:
 
                 while (n_counts_read != polylist_count)
                 {
-                    sscanf_s(traveller_ptr, "%d", vcount_data + n_counts_read);
+                    sscanf(traveller_ptr,
+                           "%d",
+                           vcount_data + n_counts_read);
 
-                    if (result_polylist_ptr->polygon_indices_max == 0xFFFFFFFF ||
+                    if (result_polylist_ptr->polygon_indices_max == 0xFFFFFFFF                  ||
                         result_polylist_ptr->polygon_indices_max <  vcount_data[n_counts_read])
                     {
                         result_polylist_ptr->polygon_indices_max = vcount_data[n_counts_read];
                     }
 
-                    if (result_polylist_ptr->polygon_indices_min == 0xFFFFFFFF ||
+                    if (result_polylist_ptr->polygon_indices_min == 0xFFFFFFFF                   ||
                         result_polylist_ptr->polygon_indices_min >  vcount_data[n_counts_read])
                     {
                         result_polylist_ptr->polygon_indices_min = vcount_data[n_counts_read];
@@ -338,7 +379,8 @@ next_input:
                     traveller_ptr = strchr(traveller_ptr, ' ') + 1;
 
                     /* NOTE: We only support vcounts of 3 - triangles. */
-                    ASSERT_DEBUG_SYNC(vcount_data[n_counts_read] == 3, "Unsupported vcount entry found!");
+                    ASSERT_DEBUG_SYNC(vcount_data[n_counts_read] == 3,
+                                      "Unsupported vcount entry found!");
 
                     /* Move on */
                     total_vcount += vcount_data[n_counts_read];
@@ -350,12 +392,16 @@ next_input:
         /* Step 3) Retrieve polygon construction data */
         tinyxml2::XMLElement* index_element_ptr = polylist_element_ptr->FirstChildElement("p");
 
-        ASSERT_DEBUG_SYNC(index_element_ptr != NULL, "<p> node was not found");
+        ASSERT_DEBUG_SYNC(index_element_ptr != NULL,
+                          "<p> node was not found");
+
         if (index_element_ptr != NULL)
         {
             index_data = new (std::nothrow) unsigned int[total_vcount * n_inputs];
 
-            ASSERT_DEBUG_SYNC(index_data != NULL, "Out of memory");
+            ASSERT_DEBUG_SYNC(index_data != NULL,
+                              "Out of memory");
+
             if (index_data != NULL)
             {
                 const char*  traveller_ptr  = index_element_ptr->GetText();
@@ -363,7 +409,9 @@ next_input:
 
                 while (n_indices_read != total_vcount * n_inputs)
                 {
-                    sscanf_s(traveller_ptr, "%d", index_data + n_indices_read);
+                    sscanf(traveller_ptr,
+                           "%d",
+                           index_data + n_indices_read);
 
                     traveller_ptr = strchr(traveller_ptr, ' ') + 1;
 
@@ -379,11 +427,21 @@ next_input:
             system_file_serializer blob_serializer = system_file_serializer_create_for_writing(blob_file_name);
             const unsigned int     n_indices       = total_vcount * n_inputs;
 
-            system_file_serializer_write(blob_serializer, sizeof(unsigned int),                 &total_vcount);
-            system_file_serializer_write(blob_serializer, sizeof(unsigned int) * polylist_count, vcount_data);
-            system_file_serializer_write(blob_serializer, sizeof(unsigned int) * n_indices,      index_data);
-            system_file_serializer_write(blob_serializer, sizeof(unsigned int),                 &result_polylist_ptr->polygon_indices_min);
-            system_file_serializer_write(blob_serializer, sizeof(unsigned int),                 &result_polylist_ptr->polygon_indices_max);
+            system_file_serializer_write(blob_serializer,
+                                         sizeof(unsigned int),
+                                         &total_vcount);
+            system_file_serializer_write(blob_serializer,
+                                         sizeof(unsigned int) * polylist_count,
+                                         vcount_data);
+            system_file_serializer_write(blob_serializer,
+                                         sizeof(unsigned int) * n_indices,
+                                         index_data);
+            system_file_serializer_write(blob_serializer,
+                                         sizeof(unsigned int),
+                                         &result_polylist_ptr->polygon_indices_min);
+            system_file_serializer_write(blob_serializer,
+                                         sizeof(unsigned int),
+                                         &result_polylist_ptr->polygon_indices_max);
 
             system_file_serializer_release(blob_serializer);
 
@@ -393,8 +451,8 @@ next_input:
     } /* if (!has_loaded_cached_blob) */
 
     /* Step 4) Store the results */
-    system_hashed_ansi_string material_name_has = (material_name != NULL) ? system_hashed_ansi_string_create                  (material_name)
-                                                                          : system_hashed_ansi_string_get_default_empty_string();
+    material_name_has = (material_name != NULL) ? system_hashed_ansi_string_create                  (material_name)
+                                                : system_hashed_ansi_string_get_default_empty_string();
 
     result_polylist_ptr->material_name   = material_name_has;
     result_polylist_ptr->n_inputs        = n_inputs;

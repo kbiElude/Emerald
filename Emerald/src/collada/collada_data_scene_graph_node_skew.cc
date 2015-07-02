@@ -25,11 +25,11 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_skew_cre
     /* Retrieve matrix data */
     float data[7];
 
-    sscanf_s(element_ptr->GetText(),
-             "%f %f %f %f %f %f %f",
-             data + 0,
-             data + 1, data + 2, data + 3,
-             data + 4, data + 5, data + 6);
+    sscanf(element_ptr->GetText(),
+           "%f %f %f %f %f %f %f",
+           data + 0,
+           data + 1, data + 2, data + 3,
+           data + 4, data + 5, data + 6);
 
     /* Instantiate new descriptor */
     collada_data_transformation new_transformation = collada_data_transformation_create_skew(element_ptr, data);

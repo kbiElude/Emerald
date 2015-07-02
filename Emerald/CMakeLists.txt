@@ -2,18 +2,54 @@
 # refer to the root source directory of the project as ${HELLO_SOURCE_DIR} and 
 # to the root binary directory of the project as ${HELLO_BINARY_DIR}. 
 cmake_minimum_required (VERSION 2.8) 
-project (EMERALD) 
+project (EMERALD C CXX) 
 
 # Options
-OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code" ON)
-OPTION(INCLUDE_OBJECT_MANAGER  "Should include object manager code (incl. resource leaking detection)" ON)
-OPTION(INCLUDE_OPENCL          "Should include OpenCL code" OFF)
-OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
-OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code" OFF)
+IF (MSVC)
+     OPTION(INCLUDE_CURVE_EDITOR    "Should include curve editor code"    ON)
+     OPTION(INCLUDE_OPENCL          "Should include OpenCL code"          OFF)
+     OPTION(INCLUDE_SH_LIGHT_EDITOR "Should include SH light editor code" OFF)
+     OPTION(INCLUDE_WEBCAM_MANAGER  "Should include webcam manager code"  OFF)
+ENDIF (MSVC)
 
+OPTION(INCLUDE_OBJECT_MANAGER  "Should include object manager code (incl. resource leaking detection)" ON)
 
 # DO NOT MODIFY BELOW THIS LINE
 include (GenerateExportHeader)
+
+IF(MSVC)
+    ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
+ENDIF(MSVC)
+
+IF (NOT MSVC)
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
+    # Posix does not support events, as found in Windows. Emerald provides an emulation layer
+    # for the functionality, based on conditional variables.
+    ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
+
+IF (0)
+    SET            (Command ld -melf_i386 --oformat=elf32-i386 -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_bmp.o meiryo_36.bmp)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
+
+    SET            (Command ld -melf_i386 --oformat=elf32-i386 -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_dat.o meiryo_36.dat)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
+ENDIF(0)
+
+    SET            (Command xxd -i meiryo_36.bmp)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR}
+                    OUTPUT_FILE       ${EMERALD_SOURCE_DIR}/meiryo_36.bmp.h)
+
+    SET            (Command xxd -i meiryo_36.dat)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR}
+                    OUTPUT_FILE       ${EMERALD_SOURCE_DIR}/meiryo_36.dat.h)
+
+ENDIF(NOT MSVC)
+
 
 CONFIGURE_FILE ("${EMERALD_SOURCE_DIR}/include/config.h.in" "${EMERALD_SOURCE_DIR}/include/config.h")
 
@@ -31,12 +67,15 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
                                            OBJECT_OUTPUTS "${PrecompiledBinary}")
     SET_SOURCE_FILES_PROPERTIES(${Sources}
                                 PROPERTIES COMPILE_FLAGS "/W3 /analyze /Yu\"${PrecompiledHeader}\" /FI\"${PrecompiledHeader}\" /Fp\"${PrecompiledBinary}\""
-                                           OBJECT_DEPENDS "${PrecompiledBinary}")  
+                                           OBJECT_DEPENDS "${PrecompiledBinary}")
     LIST(APPEND ${SourcesVar} ${PrecompiledSource})
   ENDIF(MSVC)
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+IF(MSVC)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+ENDIF(MSVC)
+
 INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
 INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/deps/jpeg-6b")
 INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/deps/libpng-1.2.36")
@@ -46,32 +85,30 @@ INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/deps/zlib-1.2.8")
 INCLUDE_DIRECTORIES("gtest-1.6.0/include")
 INCLUDE_DIRECTORIES("gtest-1.6.0/")
 
-FILE(GLOB ColladaIncludes "${EMERALD_SOURCE_DIR}/include/collada/*.h")
-FILE(GLOB ColladaSources "${EMERALD_SOURCE_DIR}/src/collada/*.cc")
-FILE(GLOB CurveIncludes "${EMERALD_SOURCE_DIR}/include/curve/*.h")
-FILE(GLOB CurveSources "${EMERALD_SOURCE_DIR}/src/curve/*.cc")
-FILE(GLOB GeneralIncludes "${EMERALD_SOURCE_DIR}/include/*.h")
-FILE(GLOB GeneralSources "${EMERALD_SOURCE_DIR}/src/main.cc")
-FILE(GLOB GFXIncludes "${EMERALD_SOURCE_DIR}/include/gfx/*.h")
-FILE(GLOB GFXSources "${EMERALD_SOURCE_DIR}/src/gfx/*.cc")
-FILE(GLOB MeshIncludes "${EMERALD_SOURCE_DIR}/include/mesh/*.h")
-FILE(GLOB MeshSources "${EMERALD_SOURCE_DIR}/src/mesh/*.cc")
-FILE(GLOB OpenGLIncludes "${EMERALD_SOURCE_DIR}/include/ogl/*.h")
-FILE(GLOB OpenGLSources "${EMERALD_SOURCE_DIR}/src/ogl/*.cc")
+FILE(GLOB ColladaIncludes        "${EMERALD_SOURCE_DIR}/include/collada/*.h")
+FILE(GLOB ColladaSources         "${EMERALD_SOURCE_DIR}/src/collada/*.cc")
+FILE(GLOB CurveIncludes          "${EMERALD_SOURCE_DIR}/include/curve/*.h")
+FILE(GLOB CurveSources           "${EMERALD_SOURCE_DIR}/src/curve/*.cc")
+FILE(GLOB GeneralIncludes        "${EMERALD_SOURCE_DIR}/include/*.h")
+FILE(GLOB GeneralSources         "${EMERALD_SOURCE_DIR}/src/main.cc")
+FILE(GLOB GFXIncludes            "${EMERALD_SOURCE_DIR}/include/gfx/*.h")
+FILE(GLOB GFXSources             "${EMERALD_SOURCE_DIR}/src/gfx/*.cc")
+FILE(GLOB MeshIncludes           "${EMERALD_SOURCE_DIR}/include/mesh/*.h")
+FILE(GLOB MeshSources            "${EMERALD_SOURCE_DIR}/src/mesh/*.cc")
+FILE(GLOB OpenGLIncludes         "${EMERALD_SOURCE_DIR}/include/ogl/*.h")
+FILE(GLOB OpenGLSources          "${EMERALD_SOURCE_DIR}/src/ogl/*.cc")
 FILE(GLOB PostProcessingIncludes "${EMERALD_SOURCE_DIR}/include/postprocessing/*.h")
-FILE(GLOB PostProcessingSources "${EMERALD_SOURCE_DIR}/src/postprocessing/*.cc")
-FILE(GLOB ProceduralIncludes "${EMERALD_SOURCE_DIR}/include/procedural/*.h")
-FILE(GLOB ProceduralSources "${EMERALD_SOURCE_DIR}/src/procedural/*.cc")
-FILE(GLOB SceneIncludes "${EMERALD_SOURCE_DIR}/include/scene/*.h")
-FILE(GLOB SceneSources "${EMERALD_SOURCE_DIR}/src/scene/*.cc")
-FILE(GLOB ShIncludes "${EMERALD_SOURCE_DIR}/include/sh/*.h")
-FILE(GLOB ShSources "${EMERALD_SOURCE_DIR}/src/sh/*.cc")
-FILE(GLOB ShadersIncludes "${EMERALD_SOURCE_DIR}/include/shaders/*.h")
-FILE(GLOB ShadersSources "${EMERALD_SOURCE_DIR}/src/shaders/*.cc")
-FILE(GLOB SystemIncludes "${EMERALD_SOURCE_DIR}/include/system/*.h")
-FILE(GLOB SystemSources "${EMERALD_SOURCE_DIR}/src/system/*.cc")
-FILE(GLOB TextureIncludes "${EMERALD_SOURCE_DIR}/include/texture/*.h")
-FILE(GLOB TextureSources "${EMERALD_SOURCE_DIR}/src/texture/*.cc")
+FILE(GLOB PostProcessingSources  "${EMERALD_SOURCE_DIR}/src/postprocessing/*.cc")
+FILE(GLOB ProceduralIncludes     "${EMERALD_SOURCE_DIR}/include/procedural/*.h")
+FILE(GLOB ProceduralSources      "${EMERALD_SOURCE_DIR}/src/procedural/*.cc")
+FILE(GLOB SceneIncludes          "${EMERALD_SOURCE_DIR}/include/scene/*.h")
+FILE(GLOB SceneSources           "${EMERALD_SOURCE_DIR}/src/scene/*.cc")
+FILE(GLOB ShadersIncludes        "${EMERALD_SOURCE_DIR}/include/shaders/*.h")
+FILE(GLOB ShadersSources         "${EMERALD_SOURCE_DIR}/src/shaders/*.cc")
+FILE(GLOB SystemIncludes         "${EMERALD_SOURCE_DIR}/include/system/*.h")
+FILE(GLOB SystemSources          "${EMERALD_SOURCE_DIR}/src/system/*.cc")
+FILE(GLOB TextureIncludes        "${EMERALD_SOURCE_DIR}/include/texture/*.h")
+FILE(GLOB TextureSources         "${EMERALD_SOURCE_DIR}/src/texture/*.cc")
 
 IF (INCLUDE_WEBCAM_MANAGER)
     FILE(GLOB WebcamIncludes "${EMERALD_SOURCE_DIR}/include/webcam/*.h")
@@ -86,67 +123,87 @@ IF (INCLUDE_OBJECT_MANAGER)
 ENDIF (INCLUDE_OBJECT_MANAGER)
 
 IF (INCLUDE_CURVE_EDITOR)
+ IF (MSVC)
     FILE(GLOB CurveEditorIncludes "${EMERALD_SOURCE_DIR}/include/curve_editor/*.h")
     FILE(GLOB CurveEditorSources  "${EMERALD_SOURCE_DIR}/src/curve_editor/*.cc")
+ ENDIF(MSVC)
 ENDIF (INCLUDE_CURVE_EDITOR)
 
 IF (INCLUDE_OPENCL)
+ IF (MSVC)
     FILE(GLOB OpenCLIncludes "${EMERALD_SOURCE_DIR}/include/ocl/*.h")
     FILE(GLOB OpenCLSources "${EMERALD_SOURCE_DIR}/src/ocl/*.cc")
-ENDIF (INCLUDE_OPENCL)
+    FILE(GLOB ShIncludes "${EMERALD_SOURCE_DIR}/include/sh/*.h")
+    FILE(GLOB ShSources "${EMERALD_SOURCE_DIR}/src/sh/*.cc")
 
-IF (INCLUDE_SH_LIGHT_EDITOR)
-    FILE(GLOB ShLightEditorIncludes "${EMERALD_SOURCE_DIR}/include/sh_light_editor/*.h")
-    FILE(GLOB ShLightEditorSources "${EMERALD_SOURCE_DIR}/src/sh_light_editor/*.cc")
-ENDIF (INCLUDE_SH_LIGHT_EDITOR)
+    IF (INCLUDE_SH_LIGHT_EDITOR)
+       FILE(GLOB ShLightEditorIncludes "${EMERALD_SOURCE_DIR}/include/sh_light_editor/*.h")
+       FILE(GLOB ShLightEditorSources  "${EMERALD_SOURCE_DIR}/src/sh_light_editor/*.cc")
+    ENDIF (INCLUDE_SH_LIGHT_EDITOR)
+
+ ENDIF(MSVC)
+ENDIF (INCLUDE_OPENCL)
 
 SET(AllSources ${GeneralSources}
                ${ColladaSources}
-               ${SystemSources} 
-               ${CurveSources} 
+               ${SystemSources}
+               ${CurveSources}
                ${LWSources}
                ${GFXSources}
-               ${OpenGLSources} 
-               ${WebcamSources} 
-               ${ShadersSources} 
-               ${ObjectManagerSources} 
-               ${CurveEditorSources} 
-               ${PostProcessingSources} 
-               ${ShSources} 
+               ${OpenGLSources}
+               ${WebcamSources}
+               ${ShadersSources}
+               ${ObjectManagerSources}
+               ${CurveEditorSources}
+               ${PostProcessingSources}
+               ${ShSources}
                ${ShLightEditorSources}
                ${ProceduralSources}
-               ${SceneSources} 
+               ${SceneSources}
                ${MeshSources}
                ${OpenCLSources}
                ${TextureSources})
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllSources)
 
+# Exclude platform-specific bits for other platforms
+IF (MSVC)
+    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_linux.cc"
+                                "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_linux.h"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.cc"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_linux.h")
+ELSE (MSVC)
+    LIST(REMOVE_ITEM AllSources "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_win32.cc"
+                                "${EMERALD_SOURCE_DIR}/src/ogl/ogl_context_wim32.h"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.cc"
+                                "${EMERALD_SOURCE_DIR}/src/system/system_window_win32.h")
+ENDIF (MSVC)
+
 ADD_LIBRARY(EMERALD SHARED ${AllSources}
     ${ColladaIncludes}
-    ${CurveIncludes} 
+    ${CurveIncludes}
     ${GeneralIncludes}
     ${LWIncludes}
-    ${GFXIncludes} 
-    ${SystemIncludes} 
-    ${OpenGLIncludes} 
-    ${WebcamIncludes} 
-    ${ShadersIncludes} 
-    ${ObjectManagerIncludes} 
-    ${CurveEditorIncludes} 
-    ${PostProcessingIncludes} 
+    ${GFXIncludes}
+    ${SystemIncludes}
+    ${OpenGLIncludes}
+    ${WebcamIncludes}
+    ${ShadersIncludes}
+    ${ObjectManagerIncludes}
+    ${CurveEditorIncludes}
+    ${PostProcessingIncludes}
     ${ShIncludes}
     ${ShLightEditorIncludes}
-    ${ProceduralIncludes} 
-    ${SceneIncludes} 
-    ${MeshIncludes} 
-    ${OpenCLIncludes} 
+    ${ProceduralIncludes}
+    ${SceneIncludes}
+    ${MeshIncludes}
+    ${OpenCLIncludes}
     ${TextureIncludes}
      Emerald.rc)
 
 GENERATE_EXPORT_HEADER( EMERALD
 	BASE_NAME EMERALD
 	EXPORT_MACRO_NAME _EMERALD_API
-	EXPORT_FILE_NAME ./include/generated_dll_exports.h
+	EXPORT_FILE_NAME ${EMERALD_SOURCE_DIR}/include/generated_dll_exports.h
 )
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
@@ -196,7 +253,27 @@ FIND_PACKAGE(OpenGL)
 ADD_SUBDIRECTORY(apps)
 ADD_SUBDIRECTORY(deps)
 
-TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static)
+IF (NOT MSVC)
+    SET(ADDITIONAL_LIBS pthread)
+ENDIF (NOT MSVC)
+
+IF (NOT MSVC)
+    # Force 32-bit builds. 64-bit compatibility is TODO.
+    SET_TARGET_PROPERTIES(EMERALD        PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(lib_jpeg       PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(LIB_PNG        PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(LIB_ZLIB       PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(TEST           PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(tinyxml2static PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+ENDIF (NOT MSVC)
+
+TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${ADDITIONAL_LIBS})
 TARGET_LINK_LIBRARIES(TEST EMERALD)
 
 ADD_DEPENDENCIES(EMERALD lib_jpeg)

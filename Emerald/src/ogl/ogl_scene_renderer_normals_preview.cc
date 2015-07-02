@@ -14,8 +14,7 @@
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
-#include <string>
-#include <sstream>
+#include <string.h>
 
 static const char* preview_fragment_shader = "#version 430 core\n"
                                              "\n"
@@ -92,6 +91,7 @@ typedef struct _ogl_scene_renderer_normals_preview
      */
     ogl_context context;
 
+    scene              owned_scene;
     ogl_scene_renderer owner;
     ogl_program        preview_program;
     GLint              preview_program_normal_matrix_ub_offset;
@@ -108,7 +108,6 @@ typedef struct _ogl_scene_renderer_normals_preview
     unsigned int       preview_program_ub_vs_bo_start_offset;
     GLuint             preview_program_ub_vs_ub_bp;
     GLint              preview_program_vp_ub_offset;
-    scene              scene;
 } _ogl_scene_renderer_normals_preview;
 
 /* Forward declarations */
@@ -125,10 +124,16 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Preview program has already been initialized");
 
+    const ogl_context_gl_entrypoints* entrypoints_ptr                      = NULL;
+    const ogl_program_variable*       normal_matrix_uniform_descriptor_ptr = NULL;
+    const ogl_program_variable*       start_offsets_uniform_descriptor_ptr = NULL;
+    const ogl_program_variable*       stride_uniform_descriptor_ptr        = NULL;
+    const ogl_program_variable*       vp_uniform_descriptor_ptr            = NULL;
+
     /* Create shaders and set their bodies */
     system_hashed_ansi_string scene_name = NULL;
 
-    scene_get_property(preview_ptr->scene,
+    scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
@@ -184,11 +189,6 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
     }
 
     /* Retrieve uniform locations */
-    const ogl_program_variable* normal_matrix_uniform_descriptor_ptr = NULL;
-    const ogl_program_variable* start_offsets_uniform_descriptor_ptr = NULL;
-    const ogl_program_variable* stride_uniform_descriptor_ptr        = NULL;
-    const ogl_program_variable* vp_uniform_descriptor_ptr            = NULL;
-
     ogl_program_get_uniform_by_name(preview_ptr->preview_program,
                                     system_hashed_ansi_string_create("normal_matrix"),
                                    &normal_matrix_uniform_descriptor_ptr);
@@ -275,8 +275,6 @@ PRIVATE void _ogl_context_scene_renderer_normals_preview_init_preview_program(__
                                &preview_ptr->preview_program_ub_vs_ub_bp);
 
     /* Set up SSBO bindings */
-    const ogl_context_gl_entrypoints* entrypoints_ptr = NULL;
-
     ogl_context_get_property(preview_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entrypoints_ptr);
@@ -346,13 +344,13 @@ PUBLIC ogl_scene_renderer_normals_preview ogl_scene_renderer_normals_preview_cre
          * are asked to render the preview.
          */
         new_instance->context                                 = context;
+        new_instance->owned_scene                             = scene;
         new_instance->owner                                   = owner;
         new_instance->preview_program                         = NULL;
         new_instance->preview_program_normal_matrix_ub_offset = -1;
         new_instance->preview_program_start_offsets_ub_offset = -1;
         new_instance->preview_program_stride_ub_offset        = -1;
         new_instance->preview_program_vp_ub_offset            = -1;
-        new_instance->scene                                   = scene;
 
         scene_retain(scene);
     } /* if (new_instance != NULL) */
@@ -365,16 +363,16 @@ PUBLIC void ogl_scene_renderer_normals_preview_release(__in __notnull __post_inv
 {
     _ogl_scene_renderer_normals_preview* preview_ptr = (_ogl_scene_renderer_normals_preview*) preview;
 
+    if (preview_ptr->owned_scene != NULL)
+    {
+        scene_release(preview_ptr->owned_scene);
+    }
+
     if (preview_ptr->preview_program != NULL)
     {
         ogl_program_release(preview_ptr->preview_program);
 
         preview_ptr->preview_program = NULL;
-    }
-
-    if (preview_ptr->scene != NULL)
-    {
-        scene_release(preview_ptr->scene);
     }
 
     delete preview_ptr;

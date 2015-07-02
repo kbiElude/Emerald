@@ -5,7 +5,10 @@
  */
 #include "shared.h"
 #include "main.h"
-#include <CommCtrl.h>
+
+#ifdef _WIN32
+    #include <CommCtrl.h>
+#endif
 
 #include "../resource.h"
 #include "curve/curve_container.h"
@@ -70,25 +73,25 @@ typedef struct
 
 /* Private functions */
 /* Forward declarations */
-PRIVATE curve_container _curve_editor_dialog_get_selected_curve          (_curve_editor_main_window* descriptor_ptr);
-PRIVATE void            _curve_editor_dialog_handle_edit_request         (_curve_editor_main_window* descriptor_ptr);
-PRIVATE int             _curve_editor_dialog_item_name_comparator        (void*                      has_1,
-                                                                          void*                      has_2);
-PRIVATE void            _curve_editor_dialog_on_curve_window_release     (void*,
-                                                                          curve_container);
-PRIVATE void            _curve_editor_dialog_update_curve_tree           (_curve_editor_main_window* descriptor_ptr,
-                                                                          HTREEITEM                  parent_node_handle,
-                                                                          object_manager_directory   parent_directory,
-                                                                          system_hashed_ansi_string  directory_registry_path);
-PRIVATE void            _curve_editor_dialog_update_ui                   (_curve_editor_main_window* descriptor_ptr);
-PRIVATE void            _curve_editor_dialog_update_ui_curve_edit_buttons(_curve_editor_main_window* descriptor_ptr,
-                                                                          HTREEITEM                  curve_node_handle);
-PRIVATE BOOL CALLBACK   _curve_editor_dialog_window_message_handler      (HWND                       dialog_handle,
-                                                                          UINT                       message_id,
-                                                                          WPARAM                     wparam,
-                                                                          LPARAM                     lparam);
-PRIVATE void            _curve_editor_main_window_initialize_dialog      (_curve_editor_main_window* descriptor,
-                                                                          HWND                       dialog_handle);
+PRIVATE curve_container  _curve_editor_dialog_get_selected_curve          (_curve_editor_main_window* descriptor_ptr);
+PRIVATE void             _curve_editor_dialog_handle_edit_request         (_curve_editor_main_window* descriptor_ptr);
+PRIVATE int              _curve_editor_dialog_item_name_comparator        (void*                      has_1,
+                                                                           void*                      has_2);
+PRIVATE void             _curve_editor_dialog_on_curve_window_release     (void*,
+                                                                           curve_container);
+PRIVATE void             _curve_editor_dialog_update_curve_tree           (_curve_editor_main_window* descriptor_ptr,
+                                                                           HTREEITEM                  parent_node_handle,
+                                                                           object_manager_directory   parent_directory,
+                                                                           system_hashed_ansi_string  directory_registry_path);
+PRIVATE void             _curve_editor_dialog_update_ui                   (_curve_editor_main_window* descriptor_ptr);
+PRIVATE void             _curve_editor_dialog_update_ui_curve_edit_buttons(_curve_editor_main_window* descriptor_ptr,
+                                                                           HTREEITEM                  curve_node_handle);
+PRIVATE INT_PTR CALLBACK _curve_editor_dialog_window_message_handler      (HWND                       dialog_handle,
+                                                                           UINT                       message_id,
+                                                                           WPARAM                     wparam,
+                                                                           LPARAM                     lparam);
+PRIVATE void             _curve_editor_main_window_initialize_dialog      (_curve_editor_main_window* descriptor,
+                                                                           HWND                       dialog_handle);
 
 
 /** TODO */
@@ -279,7 +282,11 @@ PRIVATE void _curve_editor_dialog_on_curve_window_release(void*           owner,
 
     /* Try to find the descriptor corresponding to the curve */
     bool     has_found = false;
-    uint32_t n_windows = system_hash64map_get_amount_of_elements(owner_ptr->curve_node_handle_to_curve_window_map_array_descriptor);
+    uint32_t n_windows = 0;
+
+    system_hash64map_get_property(owner_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_windows);
 
     for (uint32_t n_window = 0;
                   n_window < n_windows;
@@ -703,10 +710,10 @@ PRIVATE volatile void _curve_editor_dialog_close_button_handler(void* descriptor
 }
 
 /** TODO */
-PRIVATE BOOL CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_handle,
-                                                                  UINT   message_id,
-                                                                  WPARAM wparam,
-                                                                  LPARAM lparam)
+PRIVATE INT_PTR CALLBACK _curve_editor_dialog_window_message_handler(HWND   dialog_handle,
+                                                                     UINT   message_id,
+                                                                     WPARAM wparam,
+                                                                     LPARAM lparam)
 {
     switch (message_id)
     {
@@ -853,8 +860,7 @@ PRIVATE void _curve_editor_init_descriptor(_curve_editor_main_window*           
     descriptor->context                                                = context;
     descriptor->curve_node_handle_to_curve_window_map_array_descriptor = system_hash64map_create(sizeof(_window_map_array_descriptor*) );
     descriptor->curves_tree_window_handle                              = NULL;
-    descriptor->dialog_created_event                                   = system_event_create(true,   /* manual_reset */
-                                                                                             false); /* start_state  */
+    descriptor->dialog_created_event                                   = system_event_create(true); /* manual_reset */
     descriptor->edit_curve_button_window_handle                        = NULL;
     descriptor->format_static_window_handle                            = NULL;
     descriptor->name_static_window_handle                              = NULL;
@@ -936,7 +942,7 @@ PUBLIC curve_editor_main_window curve_editor_main_window_create(               P
                             &result->dialog_thread_event);
 
         /* Block till everything is ready */
-        system_event_wait_single_infinite(result->dialog_created_event);
+        system_event_wait_single(result->dialog_created_event);
 
         /* Sign for the call-backs */
         system_callback_manager_subscribe_for_callbacks(system_callback_manager_get(),
@@ -981,8 +987,19 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
     /* Release sub-windows */
     if (main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor != NULL)
     {
-        while (system_hash64map_get_amount_of_elements(main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor) != 0)
+        while (true)
         {
+            uint32_t n_items = 0;
+
+            system_hash64map_get_property(main_window_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                          SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                         &n_items);
+
+            if (n_items == 0)
+            {
+                break;
+            }
+
             _window_map_array_descriptor* descriptor      = NULL;
             system_hash64                 descriptor_hash = 0;
 
@@ -1021,7 +1038,7 @@ PUBLIC void curve_editor_main_window_release(__in __notnull __post_invalid curve
                        0,
                        0);
 
-        system_event_wait_single_infinite(main_window_ptr->dialog_thread_event);
+        system_event_wait_single(main_window_ptr->dialog_thread_event);
     }
 
     /* Release all objects allocated for the window */
@@ -1077,7 +1094,11 @@ PUBLIC void curve_editor_main_window_set_property(__in __notnull curve_editor_ma
         {
             case CURVE_EDITOR_MAIN_WINDOW_PROPERTY_MAX_VISIBLE_TIMELINE_WIDTH:
             {
-                uint32_t n_windows = system_hash64map_get_amount_of_elements(window_ptr->curve_node_handle_to_curve_window_map_array_descriptor);
+                uint32_t n_windows = 0;
+
+                system_hash64map_get_property(window_ptr->curve_node_handle_to_curve_window_map_array_descriptor,
+                                              SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                             &n_windows);
 
                 for (uint32_t n_window = 0;
                               n_window < n_windows;

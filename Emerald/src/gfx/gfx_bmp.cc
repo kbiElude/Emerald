@@ -19,17 +19,17 @@
 
     typedef struct
     {
-        DWORD size;
-        LONG  width;
-        LONG  height;
-        WORD  planes;
-        WORD  bit_count;
-        DWORD compression;
-        DWORD size_image;
-        LONG  x_pels_per_meter;
-        LONG  y_pels_per_meter;
-        DWORD clr_used;
-        DWORD clr_important;
+        uint32_t size;
+        int32_t  width;
+        int32_t  height;
+        uint16_t planes;
+        uint16_t bit_count;
+        uint32_t compression;
+        uint32_t size_image;
+        int32_t  x_pels_per_meter;
+        int32_t  y_pels_per_meter;
+        uint32_t clr_used;
+        uint32_t clr_important;
     } bitmap_info_header;
 #pragma pack(pop)
 
@@ -40,8 +40,9 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in             bool             
                                               __in __maybenull const unsigned char*      in_data_ptr)
 {
     /* Create or retrieve the file serializer */
-    unsigned char* data_ptr = NULL;
-    gfx_image      result   = NULL;
+    unsigned char*      data_ptr   = NULL;
+    bitmap_info_header* header_ptr = NULL;
+    gfx_image           result     = NULL;
 
     if (should_load_from_file)
     {
@@ -139,7 +140,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in             bool             
     }
 
     /* Do a few checks, limiting current bitmap support to raw 24-bits */
-    bitmap_info_header* header_ptr = (bitmap_info_header*) (in_data_ptr + sizeof(BITMAPFILEHEADER) );
+    header_ptr = (bitmap_info_header*) (in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */);
 
     ASSERT_ALWAYS_SYNC(header_ptr->bit_count == 24,
                        "Only 24-bit .bmp files are supported");
@@ -180,7 +181,7 @@ PRIVATE gfx_image gfx_bmp_shared_load_handler(__in             bool             
                          4, /* row_alignment */
                          GL_SRGB8,
                          false,
-                         in_data_ptr + sizeof(BITMAPFILEHEADER) + sizeof(bitmap_info_header),
+                         in_data_ptr + 14 /* sizeof(BITMAPFILEHEADER) */ + sizeof(bitmap_info_header),
                          gfx_image_get_data_size(GL_RGB8,
                                                  header_ptr->width,
                                                  header_ptr->height,

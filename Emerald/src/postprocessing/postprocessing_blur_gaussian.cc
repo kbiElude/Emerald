@@ -20,6 +20,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
+#include "system/system_types.h"
 #include <sstream>
 
 
@@ -322,8 +323,8 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
      */
     const unsigned int max_binomial_n        = instance_ptr->n_max_taps + 3;
     const unsigned int max_n_binomial_values = max_binomial_n + 1;
-    unsigned __int64*  binomial_values       = new (std::nothrow) unsigned __int64[max_n_binomial_values];
-    unsigned __int64*  factorial_values      = new (std::nothrow) unsigned __int64[max_n_binomial_values];
+    __uint64*          binomial_values       = new (std::nothrow) __uint64[max_n_binomial_values];
+    __uint64*          factorial_values      = new (std::nothrow) __uint64[max_n_binomial_values];
 
     ASSERT_DEBUG_SYNC(max_binomial_n < 20,
                       "Insufficient precision for requested number of factorial values");
@@ -371,11 +372,17 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
         const float padding = 0.0f;
 
         /* Store the offset for this dataset */
-        misaligned_coeff_buffer_offsets[n_taps - instance_ptr->n_min_taps] = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float);
+        uint32_t n_coeff_vector_items = 0;
+
+        system_resizable_vector_get_property(coeff_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_coeff_vector_items);
+
+        misaligned_coeff_buffer_offsets[n_taps - instance_ptr->n_min_taps] = n_coeff_vector_items * sizeof(float);
 
         /* Precalc the binomial values */
         const unsigned int binomial_n        = n_taps + 3;
-        unsigned __int64   binomial_sum      = 0;
+        __uint64           binomial_sum      = 0;
         const unsigned int n_binomial_values = binomial_n + 1;
         const unsigned int n_tap_weights     = (n_taps + 1) / 2;
 
@@ -495,10 +502,14 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
      * In the second run, we allocate an actual buffer and copy the memory blocks
      * from the coeff data buffer we've created earlier.
      */
-    const char*  coeff_vector_data_raw_ptr       = (const char*) system_resizable_vector_get_array(coeff_vector);
+    const char*  coeff_vector_data_raw_ptr       = NULL;
     char*        final_data_bo_raw_ptr           = NULL;
     char*        final_data_bo_raw_traveller_ptr = NULL;
     unsigned int final_data_bo_size              = 0;
+
+    system_resizable_vector_get_property(coeff_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                         &coeff_vector_data_raw_ptr);
 
     instance_ptr->coeff_buffer_offsets = new (std::nothrow) unsigned int [n_tap_datasets];
 
@@ -547,7 +558,13 @@ PRIVATE void _postprocessing_blur_gaussian_init_rendering_thread_callback(__in _
             } /* if (n_tap_dataset == (n_tap_datasets - 1)) */
             else
             {
-                misaligned_dataset_size = system_resizable_vector_get_amount_of_elements(coeff_vector) * sizeof(float) -
+                uint32_t n_coeff_vector_items = 0;
+
+                system_resizable_vector_get_property(coeff_vector,
+                                                     SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                    &n_coeff_vector_items);
+
+                misaligned_dataset_size = n_coeff_vector_items                           * sizeof(float) -
                                           misaligned_coeff_buffer_offsets[n_tap_dataset];
             }
 

@@ -111,8 +111,14 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
                                                           __in           GLenum                    alternative_filename_glenum,
                                                           __in_opt       system_file_unpacker      file_unpacker)
 {
-    gfx_image result                    = NULL;
-    bool      should_release_serializer = false;
+
+    const unsigned char*                                   data                   = NULL;
+    unsigned int                                           data_total_n_bytes     = 0;
+    size_t                                                 file_size              = 0;
+    ogl_context_texture_compression_compressed_blob_header header;
+    gfx_image                                              result                    = NULL;
+    const unsigned char*                                   serializer_raw_storage    = NULL;
+    bool                                                   should_release_serializer = false;
 
     /* Load the file contents.
      *
@@ -149,8 +155,6 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
     }
 
     /* Load in the header */
-    ogl_context_texture_compression_compressed_blob_header header;
-
     if (!system_file_serializer_read(serializer,
                                      sizeof(header),
                                     &header))
@@ -174,11 +178,6 @@ PRIVATE gfx_image _gfx_image_create_from_alternative_file(__in __notnull system_
     }
 
     /* Load in the contents */
-    size_t               file_size              = 0;
-    const unsigned char* data                   = NULL;
-    unsigned int         data_total_n_bytes     = 0;
-    const unsigned char* serializer_raw_storage = NULL;
-
     system_file_serializer_get_property(serializer,
                                         SYSTEM_FILE_SERIALIZER_PROPERTY_RAW_STORAGE,
                                        &serializer_raw_storage);
@@ -235,7 +234,11 @@ PUBLIC void _gfx_image_release(void* image)
 
     if (image_ptr->mipmaps != NULL)
     {
-        const unsigned int n_mipmaps = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
+        unsigned int n_mipmaps = 0;
+
+        system_resizable_vector_get_property(image_ptr->mipmaps,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_mipmaps);
 
         for (unsigned int n_mipmap = 0;
                           n_mipmap < n_mipmaps;
@@ -325,7 +328,9 @@ PUBLIC unsigned int gfx_image_add_mipmap(__in __notnull                   gfx_im
         }
     }
 
-    result = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
+    system_resizable_vector_get_property(image_ptr->mipmaps,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     system_resizable_vector_push(image_ptr->mipmaps,
                                  mipmap_ptr);
@@ -624,7 +629,9 @@ PUBLIC EMERALD_API void gfx_image_get_property(__in __notnull const gfx_image   
 
         case GFX_IMAGE_PROPERTY_N_MIPMAPS:
         {
-            *(unsigned int*) out_result_ptr = system_resizable_vector_get_amount_of_elements(image_ptr->mipmaps);
+            system_resizable_vector_get_property(image_ptr->mipmaps,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result_ptr);
 
             break;
         }

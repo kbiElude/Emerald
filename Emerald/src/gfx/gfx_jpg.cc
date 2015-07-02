@@ -58,8 +58,15 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in             bool             
                                               __in __maybenull const unsigned char*      in_data_ptr,
                                               __in             unsigned int              data_size)
 {
-    unsigned char* file_data = NULL;
-    gfx_image      result    = NULL;
+    JSAMPARRAY             buffer;
+    jpeg_decompress_struct cinfo;
+    __int64                dataSize    = 0;
+    unsigned char*         file_data   = NULL;
+    unsigned int           file_size   = 0;
+    _error_manager         jerr;
+    gfx_image              result      = NULL;
+    int                    row_stride  = 0;
+    unsigned char*         temp_buffer = NULL;
 
     if (should_load_from_file)
     {
@@ -104,8 +111,6 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in             bool             
         }
 
         /* ..and cache its contents */
-        unsigned int file_size = 0;
-
         system_file_serializer_get_property(serializer,
                                             SYSTEM_FILE_SERIALIZER_PROPERTY_SIZE,
                                            &file_size);
@@ -160,15 +165,8 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in             bool             
     }
 
     /* Load the JPG data */
-    JSAMPARRAY             buffer;
-    jpeg_decompress_struct cinfo;
-    _error_manager         jerr;
-    int                    row_stride = 0;
-
     cinfo.err           = jpeg_std_error(&jerr.pub);
     jerr.pub.error_exit = _handle_error;
-
-    __int64 dataSize = 0;
 
     if (setjmp(jerr.setjmp_buffer))
     {
@@ -196,7 +194,7 @@ PRIVATE gfx_image gfx_jpg_shared_load_handler(__in             bool             
                                              1);
 
     /* Allocate space for temporary representation */
-    unsigned char* temp_buffer = new unsigned char[cinfo.image_width * cinfo.image_height * 3];
+    temp_buffer = new unsigned char[cinfo.image_width * cinfo.image_height * 3];
 
     ASSERT_ALWAYS_SYNC(temp_buffer != NULL,
                        "Out of memory");

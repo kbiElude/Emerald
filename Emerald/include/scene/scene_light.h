@@ -8,11 +8,12 @@
 
 #include "scene/scene_types.h"
 
+
 REFCOUNT_INSERT_DECLARATIONS(scene_light,
                              scene_light)
 
 
-typedef enum scene_light_callback
+typedef enum
 {
     /* arg: source scene_light instance */
     SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_ALGORITHM_CHANGED,
@@ -30,7 +31,7 @@ typedef enum scene_light_callback
     SCENE_LIGHT_CALLBACK_ID_LAST = SCENE_LIGHT_CALLBACK_ID_SHADOW_MAP_POINTLIGHT_ALGORITHM_CHANGED
 } scene_light_callback;
 
-typedef enum scene_light_property
+typedef enum
 {
                                             /* GENERAL PROPERTIES: */
 
@@ -251,7 +252,7 @@ typedef enum scene_light_property
 
     /* Always last */
     SCENE_LIGHT_PROPERTY_COUNT
-};
+} scene_light_property;
 
 typedef enum
 {
@@ -287,6 +288,7 @@ typedef enum
 
     SCENE_LIGHT_SHADOW_MAP_FILTERING_UNKNOWN
 } scene_light_shadow_map_filtering;
+
 
 /** TODO */
 PUBLIC EMERALD_API scene_light scene_light_create_ambient(__in     __notnull system_hashed_ansi_string name,

@@ -10,6 +10,7 @@
 #include "system/system_resizable_vector.h"
 #include "system/system_resource_pool.h"
 #include "system/system_thread_pool.h"
+#include <string.h>
 
 /* Private type definitions */
 struct _system_callback_manager_callback;
@@ -105,7 +106,8 @@ PRIVATE void _add_callback_support(__in __notnull system_callback_manager callba
                                    __in           _callback_id            callback_id,
                                    __in            uint32_t               callback_proc_data_size)
 {
-    _system_callback_manager* callback_manager_ptr = (_system_callback_manager*) callback_manager;
+    _system_callback_manager*          callback_manager_ptr = (_system_callback_manager*) callback_manager;
+    _system_callback_manager_callback* descriptor_ptr       = NULL;
 
     /* Sanity checks */
     if (callback_id > callback_manager_ptr->max_callback_id)
@@ -117,25 +119,27 @@ PRIVATE void _add_callback_support(__in __notnull system_callback_manager callba
     }
 
     /* Configure the callback descriptor */
-    _system_callback_manager_callback& descriptor = callback_manager_ptr->callbacks[callback_id];
+    descriptor_ptr = callback_manager_ptr->callbacks + callback_id;
 
-    ASSERT_DEBUG_SYNC(descriptor.subscriptions == NULL,
+    ASSERT_DEBUG_SYNC(descriptor_ptr->subscriptions == NULL,
                       "Subscription handler already configured");
 
-    descriptor.callback_in_progress_cs = system_critical_section_create();
-    descriptor.callback_proc_data_size = callback_proc_data_size;
-    descriptor.resource_pool           = system_resource_pool_create   (sizeof(_system_callback_manager_callback_subscription) + callback_proc_data_size,
-                                                                        4,     /* n_elements */
-                                                                        NULL,  /* init_fn */
-                                                                        NULL); /* deinit_fn */
-    descriptor.subscriptions           = system_resizable_vector_create(4 /* capacity */);
+    descriptor_ptr->callback_in_progress_cs = system_critical_section_create();
+    descriptor_ptr->callback_proc_data_size = callback_proc_data_size;
+    descriptor_ptr->resource_pool           = system_resource_pool_create   (sizeof(_system_callback_manager_callback_subscription) + callback_proc_data_size,
+                                                                             4,     /* n_elements */
+                                                                             NULL,  /* init_fn */
+                                                                             NULL); /* deinit_fn */
+    descriptor_ptr->subscriptions           = system_resizable_vector_create(4 /* capacity */);
 
-    ASSERT_ALWAYS_SYNC(descriptor.resource_pool != NULL && descriptor.subscriptions != NULL,
+    ASSERT_ALWAYS_SYNC(descriptor_ptr->resource_pool != NULL &&
+                       descriptor_ptr->subscriptions != NULL,
                        "Out of memory");
 
-    if (descriptor.resource_pool == NULL || descriptor.subscriptions == NULL)
+    if (descriptor_ptr->resource_pool == NULL ||
+        descriptor_ptr->subscriptions == NULL)
     {
-        _deinit_system_callback_manager_callback(descriptor);
+        _deinit_system_callback_manager_callback(*descriptor_ptr);
 
         goto end;
     }
@@ -209,7 +213,11 @@ PUBLIC void system_callback_manager_call_back(__in __notnull system_callback_man
         if (callback_descriptor.subscriptions != NULL)
         {
             _system_callback_manager_callback_subscription* subscription_ptr = NULL;
-            const unsigned int                              n_subscriptions  = system_resizable_vector_get_amount_of_elements(callback_descriptor.subscriptions);
+            unsigned int                                    n_subscriptions  = 0;
+
+            system_resizable_vector_get_property(callback_descriptor.subscriptions,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_subscriptions);
 
             for (unsigned int n_subscription = 0;
                               n_subscription < n_subscriptions;
@@ -405,7 +413,11 @@ PUBLIC EMERALD_API void system_callback_manager_unsubscribe_from_callbacks(__in 
     system_critical_section_enter(callback_manager_ptr->callbacks[callback_id].callback_in_progress_cs);
     {
         /* Find the callback descriptor */
-        const uint32_t n_callbacks = system_resizable_vector_get_amount_of_elements(callback_manager_ptr->callbacks[callback_id].subscriptions);
+        uint32_t n_callbacks = 0;
+
+        system_resizable_vector_get_property(callback_manager_ptr->callbacks[callback_id].subscriptions,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_callbacks);
 
         for (uint32_t n_callback = 0;
                       n_callback < n_callbacks;

@@ -4,7 +4,9 @@
 cmake_minimum_required (VERSION 2.6) 
 project (lib_jpeg)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+IF(MSVC)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+ENDIF(MSVC)
 
 FILE(GLOB Includes "${lib_jpeg_SOURCE_DIR}/jconfig.h")
 FILE(GLOB Sources  "${lib_jpeg_SOURCE_DIR}/jcomapi.c"
@@ -17,10 +19,9 @@ FILE(GLOB Sources  "${lib_jpeg_SOURCE_DIR}/jcomapi.c"
                    "${lib_jpeg_SOURCE_DIR}/jquant2.c"
                    "${lib_jpeg_SOURCE_DIR}/jutils.c")
 
-SET(AllSources ${Sources})
-
 ADD_LIBRARY(lib_jpeg STATIC ${Sources} ${Includes})
-SET_TARGET_PROPERTIES(lib_jpeg PROPERTIES LINKER_LANGUAGE C)
+SET_TARGET_PROPERTIES(lib_jpeg PROPERTIES LINKER_LANGUAGE           C
+                                          POSITION_INDEPENDENT_CODE ON)
 
 SET(LIBRARY_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

@@ -4,12 +4,13 @@
  *
  */
 #include "test_window.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "ogl/ogl_context.h"
 #include "ogl/ogl_rendering_handler.h"
 #include "system/system_hashed_ansi_string.h"
+#include "system/system_pixel_format.h"
 #include "system/system_window.h"
-#include "gtest/gtest.h"
 
 static void _mouse_move_entrypoint(system_window           window,
                                    unsigned short          x,
@@ -22,15 +23,22 @@ static void _mouse_move_entrypoint(system_window           window,
 TEST(WindowTest, CreationTest)
 {
     /* Create the window */
-    const int     xywh[]            = {0, 0, 320, 240};
-    system_window window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                          xywh,
-                                                                          system_hashed_ansi_string_create("test name"),
-                                                                          false, /* scalable */
-                                                                          0,     /* n_multisampling_samples */
-                                                                          true,
-                                                                          false, /* multisampling_supported */
-                                                                          true); /* visible */
+    const int           xywh[]        = {0, 0, 320, 240};
+    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                                            8,  /* color_buffer_green_bits */
+                                                                            8,  /* color_buffer_blue_bits  */
+                                                                            0,  /* color_buffer_alpha_bits */
+                                                                            8,  /* depth_buffer_bits       */
+                                                                            1); /* n_samples               */
+    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                                            xywh,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false,
+                                                                            true,  /* vsync_enabled */
+                                                                            true,  /* visible */
+                                                                            window_pf);
+
+#ifdef _WIN32
     HWND          window_sys_handle = 0;
 
     ASSERT_TRUE(window_handle != NULL);
@@ -41,18 +49,22 @@ TEST(WindowTest, CreationTest)
 
     ASSERT_EQ(::IsWindow(window_sys_handle),
                          TRUE);
+#endif
 
     /* Set a callback func */
     system_window_add_callback_func(window_handle,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                    _mouse_move_entrypoint,
+                                    (void*) _mouse_move_entrypoint,
                                     NULL); /* callback_func_user_arg */
 
     /* Destroy the window */
     ASSERT_TRUE(system_window_close(window_handle) );
+
+#ifdef _WIN32
     ASSERT_EQ  (::IsWindow          (window_sys_handle),
                 FALSE);
+#endif
 }
 
 /* rendering handler tests */
@@ -78,18 +90,45 @@ static void _on_render_frame_callback(ogl_context          context,
     global_n_frames_rendered = n_frames_rendered;
 }
 
+TEST(WindowTest, MSAAEnumerationTest)
+{
+    unsigned int*       msaa_samples_ptr = NULL;
+    unsigned int        n_msaa_samples   = 0;
+    system_pixel_format window_pf        = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                                                      8,  /* color_buffer_green_bits */
+                                                                      8,  /* color_buffer_blue_bits  */
+                                                                      0,  /* color_buffer_alpha_bits */
+                                                                      8,  /* depth_buffer_bits       */
+                                                                      1); /* n_samples               */
+
+    ogl_context_enumerate_supported_msaa_samples(window_pf,
+                                                &n_msaa_samples,
+                                                &msaa_samples_ptr);
+
+    system_pixel_format_release(window_pf);
+
+    delete[] msaa_samples_ptr;
+    msaa_samples_ptr = NULL;
+}
+
 TEST(WindowTest, RenderingHandlerTest)
 {
     /* Create the window */
-    const int     xywh[]            = {0, 0, 320, 240};
-    system_window window_handle     = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
-                                                                          xywh,
-                                                                          system_hashed_ansi_string_create("test name"),
-                                                                          false, /* scalable */
-                                                                          0,     /* n_multisampling_samples */
-                                                                          true,  /* vsync_enabled */
-                                                                          false, /* multisampling_supported */
-                                                                          true); /* visible */
+    const int           xywh[]        = {0, 0, 320, 240};
+    system_pixel_format window_pf     = system_pixel_format_create         (8,  /* color_buffer_red_bits   */
+                                                                            8,  /* color_buffer_green_bits */
+                                                                            8,  /* color_buffer_blue_bits  */
+                                                                            0,  /* color_buffer_alpha_bits */
+                                                                            8,  /* depth_buffer_bits       */
+                                                                            1); /* n_samples               */
+    system_window       window_handle = system_window_create_not_fullscreen(OGL_CONTEXT_TYPE_GL,
+                                                                            xywh,
+                                                                            system_hashed_ansi_string_create("Test window"),
+                                                                            false,
+                                                                            true,  /* vsync_enabled */
+                                                                            true,  /* visible */
+                                                                            window_pf);
+#ifdef _WIN32
     HWND          window_sys_handle = 0;
 
     ASSERT_TRUE(window_handle != NULL);
@@ -100,6 +139,7 @@ TEST(WindowTest, RenderingHandlerTest)
 
     ASSERT_EQ(::IsWindow(window_sys_handle),
               TRUE);
+#endif
 
     /* Create a rendering handler */
     ogl_rendering_handler rendering_handler = ogl_rendering_handler_create_with_max_performance_policy(system_hashed_ansi_string_create("rendering handler"),
@@ -108,14 +148,20 @@ TEST(WindowTest, RenderingHandlerTest)
     ASSERT_TRUE(rendering_handler != NULL);
 
     /* Bind the handler to the window */
-    ASSERT_TRUE(system_window_set_rendering_handler(window_handle,
-                                                    rendering_handler) );
+    system_window_set_property(window_handle,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &rendering_handler);
 
     /* Let's render a couple of frames. */
     ASSERT_TRUE(ogl_rendering_handler_play(rendering_handler,
                                            0) );
 
-    ::Sleep  (1000);
+#ifdef _WIN32
+    ::Sleep(1000);
+#else
+    sleep(1);
+#endif
+
     ASSERT_NE(global_n_frames_rendered,
               0);
 
@@ -124,7 +170,11 @@ TEST(WindowTest, RenderingHandlerTest)
 
     global_n_frames_rendered = 0;
 
+#ifdef _WIN32
     ::Sleep(1000);
+#else
+    sleep(1);
+#endif
 
     ASSERT_EQ(global_n_frames_rendered,
               0);
@@ -135,6 +185,9 @@ TEST(WindowTest, RenderingHandlerTest)
 
     /* Destroy the window in a blunt way */
     ASSERT_TRUE(system_window_close(window_handle) );
+
+#ifdef _WIN32
     ASSERT_EQ  (::IsWindow         (window_sys_handle),
                 FALSE);
+#endif
 }

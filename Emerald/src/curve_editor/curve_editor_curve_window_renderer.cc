@@ -15,7 +15,6 @@
 #include "curve_editor/curve_editor_program_static.h"
 #include "curve_editor/curve_editor_program_tcb.h"
 #include "ogl/ogl_context.h"
-#include "ogl/ogl_pixel_format_descriptor.h"
 #include "ogl/ogl_program.h"
 #include "ogl/ogl_program_ub.h"
 #include "ogl/ogl_rendering_handler.h"
@@ -30,6 +29,7 @@
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_hash64map.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resources.h"
 #include "system/system_variant.h"
 #include "system/system_window.h"
@@ -466,6 +466,8 @@ PRIVATE void _curve_editor_curve_window_renderer_deinit_globals()
 {
     if (::InterlockedDecrement(&_globals->ref_counter) == 0)
     {
+        _is_globals_initialized = false;
+
         if (_globals->bg_program != NULL)
         {
             ogl_program_release(_globals->bg_program);
@@ -1480,7 +1482,7 @@ PRIVATE void _curve_editor_curve_window_renderer_draw_curve_tcb_segment(ogl_cont
                       "Nodes are not sorted in order!");
 
     curve_segment_get_node_value_variant_type(segment,
-                                             &segment_data_type);
+                                             &segment_data_type); 
 
     const bool new_should_round_data_value = segment_data_type == SYSTEM_VARIANT_INTEGER;
 
@@ -1669,6 +1671,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 
     /* We need to create a new context as rendering handler needs to be bound on a 1:1 basis. All contexts share namespaces
      * so we're on the safe side.
+     *
+     * NOTE: Ownership of window_pf is taken over by descriptor->window.
      **/
     const char* string_table[] =
     {
@@ -1678,13 +1682,18 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
 
     system_hashed_ansi_string full_name = system_hashed_ansi_string_create_by_merging_strings(2,
                                                                                               string_table);
+    system_pixel_format       window_pf = system_pixel_format_create                         (8,  /* color_buffer_red_bits   */
+                                                                                              8,  /* color_buffer_green_bits */
+                                                                                              8,  /* color_buffer_blue_bits  */
+                                                                                              0,  /* color_buffer_alpha_bits */
+                                                                                              8,  /* color_buffer_depth_bits */
+                                                                                              1); /* n_samples */
 
     descriptor->window = system_window_create_by_replacing_window(full_name,
                                                                   OGL_CONTEXT_TYPE_GL,
-                                                                  0,
-                                                                  true,
+                                                                  true, /* vsync_enabled */
                                                                   descriptor->view_window_handle,
-                                                                  false);
+                                                                  window_pf);
 
     /* Register for call-backs we need to handle scrolling requests */
     system_window_add_callback_func(descriptor->window,
@@ -1720,11 +1729,11 @@ PRIVATE bool _curve_editor_curve_window_renderer_init(_curve_editor_curve_window
                                                                                                 descriptor);
 
     /* Bind the rendering handler to our window */
-    result = system_window_set_rendering_handler(descriptor->window,
-                                                 descriptor->rendering_handler);
+    system_window_set_property(descriptor->window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &descriptor->rendering_handler);
 
-    ASSERT_DEBUG_SYNC(result,
-                      "Could not bind rendering handler to curve window renderer window.");
+    result = true;
 
     /* Hide the window we use for retrieving dimensions */
     RECT window_rect = {0};
@@ -2249,8 +2258,8 @@ PRIVATE bool _curve_editor_curve_window_renderer_on_left_button_up(system_window
         system_context_menu_release(context_menu);
     }
     else
-    if ( !renderer_ptr->nodemove_mode_active                                                                                                              &&
-        (!renderer_ptr->segmentmove_mode_active || renderer_ptr->segmentmove_mode_active && abs(renderer_ptr->segmentmove_click_x - x) < CLICK_THRESHOLD) &&
+    if ( !renderer_ptr->nodemove_mode_active                                                                                                                        &&
+        (!renderer_ptr->segmentmove_mode_active || renderer_ptr->segmentmove_mode_active && abs((int)renderer_ptr->segmentmove_click_x -(int) x) < CLICK_THRESHOLD) &&
          !renderer_ptr->segmentresize_mode_active)
     {
         /* If user has clicked within a TCB segment, we need to add a new node */
@@ -2889,6 +2898,12 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
                             &entry_points);
 
+    /* If globals are not initialized DO NOT continue */
+    if (!_is_globals_initialized)
+    {
+        return;
+    }
+
     /* If this is the first draw call ever, initialize uniform & uniform block data */
     if (descriptor_ptr->static_color_program_ub_fs == NULL)
     {
@@ -2953,12 +2968,6 @@ PRIVATE void _curve_editor_curve_window_renderer_rendering_callback_handler(ogl_
         descriptor_ptr->static_color_program_a_ub_offset     = a_uniform_descriptor->block_offset;
         descriptor_ptr->static_color_program_b_ub_offset     = b_uniform_descriptor->block_offset;
         descriptor_ptr->static_color_program_mvp_ub_offset   = mvp_uniform_descriptor->block_offset;
-    }
-
-    /* If globals are not initialized DO NOT continue */
-    if (!_is_globals_initialized)
-    {
-        return;
     }
 
     /* Enable line smoothing */
@@ -3647,13 +3656,18 @@ PUBLIC void curve_editor_curve_window_renderer_redraw(__in __notnull curve_edito
 /* Please see header for specification */
 PUBLIC void curve_editor_curve_window_renderer_release(__in __post_invalid curve_editor_curve_window_renderer descriptor)
 {
+    _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
+
+    if (descriptor_ptr->rendering_handler != NULL)
+    {
+        ogl_rendering_handler_stop(descriptor_ptr->rendering_handler);
+    }
+
     /* Deinitialize globals if necessary. */
     if (_globals != NULL)
     {
         _curve_editor_curve_window_renderer_deinit_globals();
     }
-
-    _curve_editor_curve_window_renderer* descriptor_ptr = (_curve_editor_curve_window_renderer*) descriptor;
 
     _curve_editor_curve_window_renderer_deinit(descriptor_ptr);
     delete descriptor_ptr;
@@ -3679,13 +3693,14 @@ void _curve_editor_curve_window_renderer_on_resize(ogl_context context,
 PUBLIC void curve_editor_curve_window_renderer_resize(__in __notnull   curve_editor_curve_window_renderer renderer,
                                                       __in __ecount(4) int*                               x1y1x2y2)
 {
-    _curve_editor_curve_window_renderer* renderer_ptr = (_curve_editor_curve_window_renderer*) renderer;
-    uint32_t                             new_height   = x1y1x2y2[3] - x1y1x2y2[1];
-    uint32_t                             new_width    = x1y1x2y2[2] - x1y1x2y2[0];
+    _curve_editor_curve_window_renderer* renderer_ptr       = (_curve_editor_curve_window_renderer*) renderer;
+    uint32_t                             new_height         = x1y1x2y2[3] - x1y1x2y2[1];
+    uint32_t                             new_width          = x1y1x2y2[2] - x1y1x2y2[0];
+    uint32_t                             new_width_height[] = {new_width, new_height};
 
-    system_window_set_size        (renderer_ptr->window,
-                                   new_width,
-                                   new_height);
+    system_window_set_property    (renderer_ptr->window,
+                                   SYSTEM_WINDOW_PROPERTY_DIMENSIONS,
+                                   new_width_height);
     ogl_text_set_screen_properties(renderer_ptr->text_renderer,
                                    new_width,
                                    new_height);

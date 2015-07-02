@@ -37,7 +37,6 @@
 #include "system/system_math_other.h"
 #include "system/system_resizable_vector.h"
 #include <map>
-#include <sstream>
 
 #define DEFAULT_COLOR_R (1)
 #define DEFAULT_COLOR_G (0)
@@ -57,7 +56,7 @@ typedef FontTable::const_iterator                            FontTableConstItera
 
 typedef struct
 {
-    void*        data_buffer_contents;
+    char*        data_buffer_contents;
     uint32_t     data_buffer_contents_length;
     uint32_t     data_buffer_contents_size;
     bool         dirty;
@@ -322,8 +321,12 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
                             &context_type);
 
     /* Prepare UV data to be uploaded to VRAM */
-    uint32_t n_text_strings     = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
+    uint32_t n_text_strings     = 0;
     uint32_t summed_text_length = 0;
+
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_text_strings);
 
     for (size_t n_text_string = 0;
                 n_text_string < n_text_strings;
@@ -351,7 +354,7 @@ PRIVATE void _ogl_text_update_vram_data_storage(__in __notnull ogl_context conte
 
         text_ptr->data_buffer_contents_length = summed_text_length;
         text_ptr->data_buffer_contents_size   = 8 * summed_text_length * sizeof(float);
-        text_ptr->data_buffer_contents        = (void*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
+        text_ptr->data_buffer_contents        = (char*) new (std::nothrow) char[text_ptr->data_buffer_contents_size];
 
         ASSERT_ALWAYS_SYNC(text_ptr->data_buffer_contents != NULL,
                            "Out of memory");
@@ -843,7 +846,11 @@ PRIVATE void _ogl_text_draw_callback_from_renderer(__in __notnull ogl_context co
     ogl_context_type context_type = OGL_CONTEXT_TYPE_UNDEFINED;
     GLuint           program_id   = ogl_program_get_id(_global.draw_text_program);
     _ogl_text*       text_ptr     = (_ogl_text*) text;
-    uint32_t         n_strings    = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
+    uint32_t         n_strings    = 0;
+
+    system_resizable_vector_get_property(text_ptr->strings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_strings);
 
     system_critical_section_enter(text_ptr->draw_cs);
     {
@@ -1046,7 +1053,9 @@ PUBLIC EMERALD_API ogl_text_string_id ogl_text_add_string(__in __notnull ogl_tex
         text_string_ptr->visible              = true;
         text_ptr->dirty                       = true;
 
-        result = system_resizable_vector_get_amount_of_elements(text_ptr->strings);
+        system_resizable_vector_get_property(text_ptr->strings,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result);
 
         system_critical_section_enter(text_ptr->draw_cs);
         {
@@ -1281,7 +1290,13 @@ PUBLIC EMERALD_API const unsigned char* ogl_text_get(__in __notnull ogl_text    
 /** Please see header for specification */
 PUBLIC EMERALD_API uint32_t ogl_text_get_added_strings_counter(__in __notnull ogl_text instance)
 {
-    return system_resizable_vector_get_amount_of_elements(((_ogl_text*) instance)->strings);
+    uint32_t result = 0;
+
+    system_resizable_vector_get_property(((_ogl_text*) instance)->strings,
+                                          SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                         &result);
+
+    return result;
 }
 
 /** Please see header for specification */
@@ -1433,6 +1448,7 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
                                      __in           ogl_text_string_id text_string_id,
                                      __in __notnull const char*        raw_text_ptr)
 {
+    size_t            raw_text_length = 0;
     _ogl_text*        text_ptr        = (_ogl_text*) text;
     _ogl_text_string* text_string_ptr = NULL;
 
@@ -1461,8 +1477,8 @@ PUBLIC EMERALD_API void ogl_text_set(__in __notnull ogl_text           text,
     }
 
     /* Update text width and height properties */
-    size_t raw_text_length = strlen((const char*) raw_text_ptr);
-    
+    raw_text_length = strlen((const char*) raw_text_ptr);
+
     text_string_ptr->height_px = 0;
     text_string_ptr->width_px  = 0;
 

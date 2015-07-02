@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -34,35 +34,50 @@ PUBLIC collada_data_scene_graph_node_light_instance collada_data_scene_graph_nod
                                                                                                         __in __notnull system_hash64map              lights_by_id_map,
                                                                                                         __in __notnull system_hashed_ansi_string name)
 {
+    const char*        light_name      = element_ptr->Attribute("url");
+    system_hash64      light_name_hash = 0;
+    collada_data_light light           = NULL;
+
     /* Allocate space for the descriptor */
     _collada_data_scene_graph_node_light_instance* new_light_instance_ptr = new (std::nothrow) _collada_data_scene_graph_node_light_instance;
 
-    ASSERT_DEBUG_SYNC(new_light_instance_ptr != NULL, "Out of memory");
+    ASSERT_DEBUG_SYNC(new_light_instance_ptr != NULL,
+                      "Out of memory");
+
     if (new_light_instance_ptr == NULL)
     {
         goto end;
     }
 
     /* Locate the light the instance is referring to */
-    const char*        light_name      = element_ptr->Attribute("url");
-    system_hash64      light_name_hash;
-    collada_data_light light           = NULL;
+    light_name = element_ptr->Attribute("url");
 
-    ASSERT_DEBUG_SYNC(light_name != NULL, "url attribute missing");
+    ASSERT_DEBUG_SYNC(light_name != NULL,
+                      "url attribute missing");
+
     if (light_name == NULL)
     {
         goto end;
     }
 
-    ASSERT_DEBUG_SYNC(light_name[0] == '#', "Invalid url attribute");
+    ASSERT_DEBUG_SYNC(light_name[0] == '#',
+                      "Invalid url attribute");
+
     light_name++;
 
-    light_name_hash = system_hash64_calculate(light_name, strlen(light_name) );
-    ASSERT_DEBUG_SYNC(system_hash64map_contains(lights_by_id_map, light_name_hash),
+    light_name_hash = system_hash64_calculate(light_name,
+                                              strlen(light_name) );
+
+    ASSERT_DEBUG_SYNC(system_hash64map_contains(lights_by_id_map,
+                                                light_name_hash),
                       "Light that is being referred to was not found");
 
-    system_hash64map_get(lights_by_id_map, light_name_hash, &light);
-    ASSERT_DEBUG_SYNC(light != NULL, "NULL pointer returned for a light URL");
+    system_hash64map_get(lights_by_id_map,
+                         light_name_hash,
+                        &light);
+
+    ASSERT_DEBUG_SYNC(light != NULL,
+                      "NULL pointer returned for a light URL");
 
     /* Init the descriptor */
     new_light_instance_ptr->light = light;

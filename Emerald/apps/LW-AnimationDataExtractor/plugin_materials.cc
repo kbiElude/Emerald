@@ -321,7 +321,11 @@ volatile void ExtractMaterialDataWorkerThreadEntryPoint(__in __notnull void* in_
      * To leverage the architecture, we also create a scene texture for each file name we came up
      * with while preparing materials for the scene.
      */
-    const uint32_t n_texture_filenames = system_resizable_vector_get_amount_of_elements(texture_filenames_vector);
+    uint32_t n_texture_filenames = 0;
+
+    system_resizable_vector_get_property(texture_filenames_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_texture_filenames);
 
     for (uint32_t n_texture_filename = 0;
                   n_texture_filename < n_texture_filenames;
@@ -399,8 +403,7 @@ PUBLIC system_hash64map GetLWSurfaceIDToSceneMaterialMap()
 /** Please see header for spec */
 PUBLIC system_event StartMaterialDataExtraction(__in __notnull scene in_scene)
 {
-    job_done_event = system_event_create(false,  /* manual_reset */
-                                         false); /* start_state */
+    job_done_event = system_event_create(false); /* manual_reset */
 
     /* Spawn a worker thread so that we can report the progress. */
     system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,

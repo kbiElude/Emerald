@@ -127,13 +127,13 @@ typedef struct _ogl_scene_renderer_frustum_preview
     GLuint                  data_bo_id; /* owned by ogl_buffers - do NOT release */
     unsigned int            data_bo_size;
     unsigned int            data_bo_start_offset;
+    scene                   owned_scene;
     ogl_program             po;
     ogl_program_ub          po_ub;
     GLuint                  po_ub_bo_id;
     unsigned int            po_ub_bo_size;
     unsigned int            po_ub_bo_start_offset;
     GLint                   po_vp_ub_offset;
-    scene                   scene;
     ogl_text                text_renderer;  /* TODO: use a global text renderer */
     GLuint                  vao_id;
 
@@ -158,12 +158,12 @@ typedef struct _ogl_scene_renderer_frustum_preview
         mdebv_basevertex_array          = NULL;
         mdebv_count_array               = NULL;
         mdebv_indices_array             = NULL;
+        owned_scene                     = NULL;
         po                              = NULL;
         po_ub_bo_id                     = -1;
         po_ub_bo_size                   = 0;
         po_ub_bo_start_offset           = 0;
         po_vp_ub_offset                 = -1;
-        scene                           = NULL;
         text_renderer                   = NULL;
         vao_id                          = 0;
 
@@ -333,7 +333,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback(
     const char*               limiter    = "/";
     system_hashed_ansi_string scene_name = NULL;
 
-    scene_get_property(preview_ptr->scene,
+    scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
@@ -485,8 +485,12 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
            sizeof(index_data_array) );
 
     /* Reallocate MDEBV argument space if necessary */
-    const uint32_t n_cameras      = system_resizable_vector_get_amount_of_elements(preview_ptr->assigned_cameras);
-    bool           realloc_needed = false;
+    uint32_t n_cameras      = 0;
+    bool     realloc_needed = false;
+
+    system_resizable_vector_get_property(preview_ptr->assigned_cameras,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_cameras);
 
     if (preview_ptr->mdebv_array_size < n_cameras)
     {
@@ -684,7 +688,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
         /* Update MDEBV draw call arguments */
         preview_ptr->mdebv_basevertex_array[n_camera] = (BO_DATA_INDEX_MAX + 1) * n_camera;
         preview_ptr->mdebv_count_array     [n_camera] = sizeof(index_data_array) / sizeof(index_data_array[0]);
-        preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) preview_ptr->data_bo_start_offset;
+        preview_ptr->mdebv_indices_array   [n_camera] = (GLvoid*) (intptr_t) preview_ptr->data_bo_start_offset;
     } /* for (all assigned cameras) */
 
     /* Set up the data BO */
@@ -708,7 +712,7 @@ PRIVATE void _ogl_scene_renderer_frustum_preview_update_data_bo_buffer(__in __no
         {
             ogl_buffers_free_buffer_memory(preview_ptr->buffers,
                                            preview_ptr->data_bo_id,
-                                           preview_ptr->data_bo_start_offset);
+                                           (intptr_t) preview_ptr->data_bo_start_offset);
 
             preview_ptr->data_bo_id           = 0;
             preview_ptr->data_bo_start_offset = -1;
@@ -866,8 +870,8 @@ PUBLIC ogl_scene_renderer_frustum_preview ogl_scene_renderer_frustum_preview_cre
                                  OGL_CONTEXT_PROPERTY_BUFFERS,
                                 &new_instance->buffers);
 
-        new_instance->context = context;
-        new_instance->scene   = scene;
+        new_instance->context     = context;
+        new_instance->owned_scene = scene;
 
         ogl_context_request_callback_from_context_thread(context,
                                                          _ogl_scene_renderer_frustum_preview_init_rendering_thread_callback,

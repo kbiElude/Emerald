@@ -14,6 +14,17 @@
 #include "system/system_resource_pool.h"
 #include "system/system_threads.h"
 
+#ifdef __linux__
+    #include <pthread.h>
+    #include <unistd.h>
+    #include <sys/syscall.h>
+    #include <sys/types.h>
+#endif
+
+#ifdef USE_EMULATED_EVENTS
+    #include "system/system_event_monitor.h"
+#endif
+
 /** Internal type definitions */
 typedef struct
 {
@@ -33,7 +44,11 @@ system_resource_pool    thread_descriptor_pool   = NULL;
  *
  *  @param argument _system_threads_thread_descriptor*
  */
-PRIVATE DWORD __stdcall _system_threads_entry_point_wrapper(void* argument)
+#ifdef _WIN32
+    DWORD WINAPI _system_threads_entry_point_wrapper(LPVOID argument)
+#else
+    void* _system_threads_entry_point_wrapper(void* argument)
+#endif
 {
     _system_threads_thread_descriptor*  thread_descriptor = (_system_threads_thread_descriptor*) argument;
     PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func     = thread_descriptor->callback_func;
@@ -47,20 +62,75 @@ PRIVATE DWORD __stdcall _system_threads_entry_point_wrapper(void* argument)
     callback_func(callback_func_arg);
 
     /* We're done */
-    return 0;
+    return NULL;
 }
 
 
 /** Please see header for specification */
 PUBLIC EMERALD_API system_thread_id system_threads_get_thread_id()
 {
+#ifdef _WIN32
     return ::GetCurrentThreadId();
+#else
+    return syscall(SYS_gettid);
+#endif
+}
+
+/** Please see header for specification */
+PUBLIC EMERALD_API void system_threads_join_thread(__in      system_thread        thread,
+                                                   __in      system_timeline_time timeout,
+                                                   __out_opt bool*                out_has_timed_out_ptr)
+{
+    bool     has_timed_out = false;
+    uint32_t timeout_msec  = 0;
+
+#ifdef _WIN32
+    if (timeout == SYSTEM_TIME_INFINITE)
+    {
+        timeout_msec = INFINITE;
+    }
+    else
+    {
+        system_time_get_msec_for_timeline_time(timeout,
+                                              &timeout_msec);
+    }
+
+    has_timed_out = (::WaitForSingleObject( thread,
+                                            timeout_msec) ) == WAIT_TIMEOUT;
+#else
+    if (timeout == SYSTEM_TIME_INFINITE)
+    {
+        pthread_join(thread,
+                     NULL); /* __thread_return */
+    }
+    else
+    {
+        struct timespec timeout_api;
+        unsigned int    timeout_msec;
+
+        system_time_get_msec_for_timeline_time(timeout,
+                                              &timeout_msec);
+
+        timeout_api.tv_sec  =  timeout_msec / 1000;
+        timeout_api.tv_nsec = (timeout_msec % 1000) * NSEC_PER_SEC;
+
+        has_timed_out = (pthread_timedjoin_np(thread,
+                                              NULL, /* __thread_return */
+                                             &timeout_api) != 0);
+    }
+#endif
+
+    if (out_has_timed_out_ptr != NULL)
+    {
+        *out_has_timed_out_ptr = has_timed_out;
+    }
 }
 
 /** Please see header for specification */
 PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSYSTEMTHREADSENTRYPOINTPROC      callback_func,
                                                          __in  __maybenull system_threads_entry_point_argument callback_func_argument,
-                                                         __out __maybenull system_event*                       thread_wait_event)
+                                                         __out __maybenull system_event*                       thread_wait_event,
+                                                         __out __maybenull system_thread*                      out_thread_ptr)
 {
     /* Create a new descriptor */
     system_thread_id result = 0;
@@ -74,12 +144,14 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
         ASSERT_ALWAYS_SYNC(thread_descriptor != NULL,
                            "Could not allocate thread descriptor");
+
         if (thread_descriptor != NULL)
         {
             thread_descriptor->callback_func          = callback_func;
             thread_descriptor->callback_func_argument = callback_func_argument;
 
             /* Spawn the thread. */
+#ifdef _WIN32
             HANDLE new_thread_handle = ::CreateThread(NULL,                   /* no security attribs */
                                                       0,                      /* default stack size */
                                                       &_system_threads_entry_point_wrapper,
@@ -90,19 +162,35 @@ PUBLIC EMERALD_API system_thread_id system_threads_spawn(__in  __notnull   PFNSY
 
             ASSERT_ALWAYS_SYNC(new_thread_handle != NULL,
                                "Could not create a new thread");
+#else
+            pthread_t new_thread_handle = (pthread_t) NULL;
+
+            int creation_result = pthread_create(&new_thread_handle,
+                                                  NULL,
+                                                  _system_threads_entry_point_wrapper,
+                                                  thread_descriptor);
+
+            ASSERT_ALWAYS_SYNC(creation_result == 0,
+                               "Could not create a new thread");
+#endif
 
             result = thread_descriptor->thread_id;
 
+            if (out_thread_ptr != NULL)
+            {
+                *out_thread_ptr = new_thread_handle;
+            }
+
             if (thread_wait_event != NULL)
             {
-                *thread_wait_event            = (system_event) new_thread_handle;
+                *thread_wait_event            = system_event_create_from_thread(new_thread_handle);
                 thread_descriptor->kill_event = *thread_wait_event;
             }
             else
             {
                 thread_descriptor->kill_event = NULL;
             }
-        }
+        } /* if (thread_descriptor != NULL) */
     }
 
     return result;
@@ -157,40 +245,56 @@ PUBLIC void _system_threads_deinit()
         {
             LOG_INFO("Waiting for all threads to quit..");
 
-            unsigned int n_threads = system_resizable_vector_get_amount_of_elements(active_threads_vector);
+            unsigned int n_threads = 0;
+
+            system_resizable_vector_get_property(active_threads_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_threads);
 
             if (n_threads > 0)
             {
+#ifdef _WIN32
                 HANDLE* threads = new (std::nothrow) HANDLE[n_threads];
 
                 ASSERT_ALWAYS_SYNC(threads != NULL,
                                    "Could not alloc handle table");
 
                 if (threads != NULL)
+#endif
                 {
                     for (unsigned int n_thread = 0;
                                       n_thread < n_threads;
                                     ++n_thread)
                     {
+#ifdef _WIN32
                         HANDLE thread_handle = 0;
-                        bool   result_get    = false;
+#else
+                        pthread_t thread_handle = (pthread_t) NULL;
+#endif
 
-                        result_get = system_resizable_vector_get_element_at(active_threads_vector,
-                                                                            n_thread,
-                                                                           &thread_handle);
+                        bool result_get = system_resizable_vector_get_element_at(active_threads_vector,
+                                                                                 n_thread,
+                                                                                &thread_handle);
 
                         ASSERT_DEBUG_SYNC(result_get,
                                           "Could not retrieve thread handle.");
 
+#ifdef _WIN32
                         memcpy(threads[n_thread],
                               &thread_handle,
                               sizeof(HANDLE) );
+#else
+                        pthread_join(thread_handle,
+                                     NULL); /* _thread_return */
+#endif
                     }
 
+#ifdef _WIN32
                     ::WaitForMultipleObjects(n_threads,
                                              threads,
                                              TRUE,
                                              INFINITE);
+#endif
                 }
             }
 

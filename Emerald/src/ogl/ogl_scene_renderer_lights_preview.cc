@@ -12,8 +12,7 @@
 #include "ogl/ogl_shader.h"
 #include "scene/scene.h"
 #include "system/system_matrix4x4.h"
-#include <string>
-#include <sstream>
+#include <string.h>
 
 /* This is pretty basic stuff to draw white splats in clip space */
 static const char* preview_fragment_shader = "#version 430 core\n"
@@ -51,6 +50,7 @@ typedef struct _ogl_scene_renderer_lights_preview
      */
     ogl_context context;
 
+    scene          owned_scene;
     ogl_program    preview_program;
     ogl_program_ub preview_program_ub;
     GLuint         preview_program_ub_bo_id;
@@ -58,11 +58,11 @@ typedef struct _ogl_scene_renderer_lights_preview
     unsigned int   preview_program_ub_bo_start_offset;
     GLint          preview_program_color_ub_offset;
     GLint          preview_program_position_ub_offset;
-    scene          scene;
 
     _ogl_scene_renderer_lights_preview()
     {
         context                            = NULL;
+        owned_scene                        = NULL;
         preview_program                    = NULL;
         preview_program_ub                 = NULL;
         preview_program_ub_bo_id           = 0;
@@ -70,7 +70,6 @@ typedef struct _ogl_scene_renderer_lights_preview
         preview_program_ub_bo_start_offset = 0;
         preview_program_color_ub_offset    = -1;
         preview_program_position_ub_offset = -1;
-        scene                              = NULL;
     }
 
 } _ogl_scene_renderer_lights_preview;
@@ -86,13 +85,16 @@ typedef struct _ogl_scene_renderer_lights_preview
 /** TODO */
 PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__in __notnull _ogl_scene_renderer_lights_preview* preview_ptr)
 {
+    const ogl_program_variable* color_uniform_ptr    = NULL;
+    const ogl_program_variable* position_uniform_ptr = NULL;
+
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Preview program has already been initialized");
 
     /* Create shaders and set their bodies */
     system_hashed_ansi_string scene_name = NULL;
 
-    scene_get_property(preview_ptr->scene,
+    scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
@@ -157,9 +159,6 @@ PRIVATE void _ogl_context_scene_renderer_lights_preview_init_preview_program(__i
                                &preview_ptr->preview_program_ub_bo_start_offset);
 
     /* Retrieve uniform properties */
-    const ogl_program_variable* color_uniform_ptr    = NULL;
-    const ogl_program_variable* position_uniform_ptr = NULL;
-
     ogl_program_get_uniform_by_name(preview_ptr->preview_program,
                                     system_hashed_ansi_string_create("color"),
                                    &color_uniform_ptr);
@@ -229,8 +228,8 @@ PUBLIC ogl_scene_renderer_lights_preview ogl_scene_renderer_lights_preview_creat
          * are asked to render the preview.
          */
         new_instance->context         = context;
+        new_instance->owned_scene     = scene;
         new_instance->preview_program = NULL;
-        new_instance->scene           = scene;
 
         scene_retain(scene);
     } /* if (new_instance != NULL) */
@@ -250,11 +249,11 @@ PUBLIC void ogl_scene_renderer_lights_preview_release(__in __notnull __post_inva
         preview_ptr->preview_program = NULL;
     }
 
-    if (preview_ptr->scene != NULL)
+    if (preview_ptr->owned_scene != NULL)
     {
-        scene_release(preview_ptr->scene);
+        scene_release(preview_ptr->owned_scene);
 
-        preview_ptr->scene = NULL;
+        preview_ptr->owned_scene = NULL;
     }
 
     delete preview_ptr;

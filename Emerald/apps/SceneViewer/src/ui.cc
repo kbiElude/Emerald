@@ -59,14 +59,14 @@ PRIVATE void _callback_on_dropdown_switch(ogl_ui_control control,
 PRIVATE void _on_active_camera_changed(void* fire_proc_user_arg,
                                        void* event_user_arg)
 {
-    state_set_active_camera_index( (unsigned int) event_user_arg);
+    state_set_active_camera_index( (unsigned int) (intptr_t) event_user_arg);
 }
 
 /* "Show camera path" dropdown call-back handler */
 PRIVATE void _on_shown_camera_path_changed(void* fire_proc_user_arg,
                                            void* event_user_arg)
 {
-    state_set_active_camera_path_index( (unsigned int) event_user_arg);
+    state_set_active_camera_path_index( (unsigned int) (intptr_t) event_user_arg);
 }
 
 /** TODO */

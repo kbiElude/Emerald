@@ -788,7 +788,11 @@ PRIVATE void _ogl_materials_get_forced_setting(__in      __notnull ogl_materials
                                                __out_opt __notnull void**                             out_attachment_data)
 {
     const _ogl_materials* materials_ptr     = (const _ogl_materials*) materials;
-    const unsigned int    n_forced_settings = system_resizable_vector_get_amount_of_elements(materials_ptr->forced_mesh_material_settings);
+    unsigned int          n_forced_settings = 0;
+
+    system_resizable_vector_get_property(materials_ptr->forced_mesh_material_settings,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_forced_settings);
 
     for (unsigned int n_setting = 0;
                       n_setting < n_forced_settings;
@@ -1157,7 +1161,11 @@ PUBLIC ogl_uber ogl_materials_get_uber(__in     __notnull ogl_materials material
     ogl_uber        result        = NULL;
 
     /* First, iterate over existing uber containers and check if there's a match */
-    const unsigned int n_materials = system_resizable_vector_get_amount_of_elements(materials_ptr->ubers);
+    unsigned int n_materials = 0;
+
+    system_resizable_vector_get_property(materials_ptr->ubers,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_materials);
 
     for (unsigned int n_material = 0;
                       n_material < n_materials;

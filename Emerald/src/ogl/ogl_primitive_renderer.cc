@@ -95,7 +95,7 @@ typedef struct
      * [n_datasets] * [vertex data] - vertex data for subsequent datasets.
      **/
     GLuint           bo_color_offset;
-    void*            bo_data;
+    unsigned char*   bo_data;
     unsigned int     bo_data_size;
     GLuint           bo_id;             /* owned by ogl_buffers */
     system_matrix4x4 bo_mvp;
@@ -464,10 +464,14 @@ PRIVATE void _ogl_primitive_renderer_update_data_buffer(__in __notnull _ogl_prim
     /* TODO: This is the simplest implementation possible. Consider optimizations */
 
     /* Determine how much memory we need to allocate */
-    const unsigned int n_datasets       = system_resizable_vector_get_amount_of_elements(renderer_ptr->datasets);
+    unsigned int       n_datasets       = 0;
     unsigned int       color_data_size  = 0;
     const unsigned int mvp_data_size    = sizeof(float) * 16;
     unsigned int       vertex_data_size = 0;
+
+    system_resizable_vector_get_property(renderer_ptr->datasets,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_datasets);
 
     for (unsigned int n_item = 0;
                       n_item < n_datasets;
@@ -574,13 +578,13 @@ PRIVATE void _ogl_primitive_renderer_update_vao(ogl_context               contex
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) (renderer_ptr->bo_start_offset + renderer_ptr->bo_color_offset) );
+                                         (const GLvoid*) (intptr_t) (renderer_ptr->bo_start_offset + renderer_ptr->bo_color_offset) );
     entry_points->pGLVertexAttribPointer(VS_VERTEX_DATA_VAA_ID,
                                          3, /* size */
                                          GL_FLOAT,
                                          GL_FALSE, /* normalized */
                                          0,        /* stride */
-                                         (const GLvoid*) (renderer_ptr->bo_start_offset + renderer_ptr->bo_vertex_offset) );
+                                         (const GLvoid*) (intptr_t) (renderer_ptr->bo_start_offset + renderer_ptr->bo_vertex_offset) );
 
     entry_points->pGLVertexAttribDivisor(VS_COLOR_DATA_VAA_ID,
                                          1);
@@ -632,7 +636,9 @@ PUBLIC EMERALD_API ogl_primitive_renderer_dataset_id ogl_primitive_renderer_add_
     system_critical_section_enter(renderer_ptr->draw_cs);
     {
         /* Allocate an unique result ID */
-        result_id = system_resizable_vector_get_amount_of_elements(renderer_ptr->datasets);
+        system_resizable_vector_get_property(renderer_ptr->datasets,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &result_id);
 
         system_resizable_vector_push(renderer_ptr->datasets,
                                      new_dataset_ptr);

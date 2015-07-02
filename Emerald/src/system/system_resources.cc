@@ -14,9 +14,15 @@
 /* Forward declarations */
 PRIVATE void  _system_resources_get_embedded_meiryo_font_binaries(__out __notnull   void**  out_bmp_blob,
                                                                   __out __notnull   void**  out_dat_blob);
-PRIVATE void* _system_resources_get_resource_blob                (__in  __maybenull HMODULE module_handle,
-                                                                                    int     resource_id,
-                                                                                    int     resource_type);
+
+#ifdef _WIN32
+    PRIVATE void* _system_resources_get_resource_blob(__in  __maybenull HMODULE module_handle,
+                                                                        int     resource_id,
+                                                                        int     resource_type);
+#else
+    #include "../meiryo_36.bmp.h"
+    #include "../meiryo_36.dat.h"
+#endif
 
 /* Private variables */
 system_critical_section cs                = system_critical_section_create();
@@ -40,26 +46,42 @@ PUBLIC void _system_resources_deinit()
 PRIVATE void _system_resources_get_embedded_meiryo_font_binaries(__out __notnull void** out_bmp_blob,
                                                                  __out __notnull void** out_dat_blob)
 {
-    HMODULE dll_handle = ::GetModuleHandleA("Emerald.dll");
-
-    ASSERT_DEBUG_SYNC(dll_handle != NULL,
-                      "Module handle for Emerald is NULL!");
-
-    if (dll_handle != NULL)
+    #ifdef _WIN32
     {
-        *out_bmp_blob = _system_resources_get_resource_blob(dll_handle,
-                                                            IDR_FONT_BMP,
-                                                            IDR_FONT_BMP);
-        *out_dat_blob = _system_resources_get_resource_blob(dll_handle,
-                                                            IDR_FONT_DAT,
-                                                            IDR_FONT_DAT);
+        HMODULE dll_handle = ::GetModuleHandleA("Emerald.dll");
+
+        ASSERT_DEBUG_SYNC(dll_handle != NULL,
+                        "Module handle for Emerald is NULL!");
+
+        if (dll_handle != NULL)
+        {
+            *out_bmp_blob = _system_resources_get_resource_blob(dll_handle,
+                                                                IDR_FONT_BMP,
+                                                                IDR_FONT_BMP);
+            *out_dat_blob = _system_resources_get_resource_blob(dll_handle,
+                                                                IDR_FONT_DAT,
+                                                                IDR_FONT_DAT);
+
+            ASSERT_DEBUG_SYNC(*out_bmp_blob != NULL,
+                            "Could not retrieve bmp blob pointer.");
+            ASSERT_DEBUG_SYNC(*out_dat_blob != NULL,
+                            "Could not retrieve dat blob pointer.");
+        }
+    }
+    #else
+    {
+        *out_bmp_blob = meiryo_36_bmp;
+        *out_dat_blob = meiryo_36_dat;
 
         ASSERT_DEBUG_SYNC(*out_bmp_blob != NULL,
-                          "Could not retrieve bmp blob pointer.");
+                          "BMP blob pointer is NULL");
         ASSERT_DEBUG_SYNC(*out_dat_blob != NULL,
-                          "Could not retrieve dat blob pointer.");
+                          "DAT blob pointer is NULL");
     }
+    #endif
 }
+
+#ifdef _WIN32
 
 /** TODO */
 PRIVATE void* _system_resources_get_resource_blob(__in __maybenull HMODULE module_handle,
@@ -72,7 +94,7 @@ PRIVATE void* _system_resources_get_resource_blob(__in __maybenull HMODULE modul
     {
         HRSRC resource_handle = ::FindResourceA(module_handle,
                                                 MAKEINTRESOURCE(resource_id),
-                                                MAKEINTRESOURCE(resource_type) );        
+                                                MAKEINTRESOURCE(resource_type) );
 
         ASSERT_DEBUG_SYNC(resource_handle != NULL,
                           "Could not retrieve resource blob [%d]",
@@ -110,6 +132,7 @@ PUBLIC EMERALD_API void* system_resources_get_exe_resource(__in __notnull int re
                                                resource_id,
                                                resource_type);
 }
+#endif
 
 /** Please see header for specification */
 gfx_bfg_font_table system_resources_get_meiryo_font_table()

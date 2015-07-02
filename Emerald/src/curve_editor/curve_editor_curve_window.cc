@@ -102,10 +102,10 @@ PRIVATE volatile void _curve_editor_curve_window_dialog_close_button_handler(voi
 }
 
 /** TODO */
-PRIVATE BOOL CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND   dialog_handle,
-                                                                        UINT   message_id,
-                                                                        WPARAM wparam,
-                                                                        LPARAM lparam)
+PRIVATE INT_PTR CALLBACK _curve_editor_curve_window_dialog_message_handler(HWND   dialog_handle,
+                                                                           UINT   message_id,
+                                                                           WPARAM wparam,
+                                                                           LPARAM lparam)
 {
     switch (message_id)
     {
@@ -801,8 +801,7 @@ PRIVATE void _curve_editor_curve_window_init_curve_editor_curve_window(_curve_ed
 {
     descriptor->context                          = context;
     descriptor->curve                            = curve;
-    descriptor->dialog_created_event             = system_event_create(true,        /* manual_reset */
-                                                                       false);      /* start_state */
+    descriptor->dialog_created_event             = system_event_create(true); /* manual_reset */
     descriptor->dialog_thread_event              = NULL;
     descriptor->name                             = name;
     descriptor->ref_client_height                = 0;
@@ -840,7 +839,7 @@ PRIVATE void _curve_editor_curve_window_release(_curve_editor_curve_window* desc
                   0,
                   0);
 
-    system_event_wait_single_infinite(descriptor->dialog_thread_event);
+    system_event_wait_single(descriptor->dialog_thread_event);
 
     /* Proceed with releasing */
     if (descriptor->dialog_created_event != NULL)

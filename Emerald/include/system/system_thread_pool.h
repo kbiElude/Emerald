@@ -6,7 +6,6 @@
 #ifndef SYSTEM_THREAD_POOL_H
 #define SYSTEM_THREAD_POOL_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 /** This define should be used to mark all PRIVATE functions that act as task execution handler.

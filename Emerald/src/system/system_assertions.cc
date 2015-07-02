@@ -9,7 +9,13 @@
 #include "system/system_critical_section.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
-#include <intrin.h>
+
+#ifdef _WIN32
+    #include <intrin.h>
+#else
+    #include <stdarg.h>
+#endif
+
 
 /** Internal typedefs */
 typedef struct
@@ -21,8 +27,25 @@ typedef struct
 /** Internal variables */
 _system_assertions_internal* internals = NULL;
 
-/* Forward declarations */
-void _show_assertion_failure(const char* message);
+
+/** TODO */
+PRIVATE void _show_assertion_failure(const char* message)
+{
+    #if defined(_DEBUG)
+    {
+        __debugbreak();
+
+#ifdef _WIN32
+        ::MessageBoxA(HWND_DESKTOP,
+                      message,
+                      "Assertion failure",
+                      MB_OK | MB_ICONWARNING);
+#else
+        /* TODO */
+#endif
+    }
+    #endif /* _DEBUG */
+}
 
 
 /** Please see header for specfication */
@@ -57,13 +80,13 @@ PUBLIC EMERALD_API void system_assertions_assert(bool                  is_blocki
                0,
                ASSERTION_FAILURE_MAX_LENGTH);
 
-        va_start  (arguments,
-                   message);
-        vsprintf_s(formatted_message,
-                   ASSERTION_FAILURE_MAX_LENGTH,
-                   message,
-                   arguments);
-        va_end    (arguments);
+        va_start (arguments,
+                  message);
+        vsnprintf(formatted_message,
+                  ASSERTION_FAILURE_MAX_LENGTH,
+                  message,
+                  arguments);
+        va_end   (arguments);
 
         /* Insert a log entry */
         system_log_write(LOGLEVEL_ERROR,
@@ -78,7 +101,7 @@ PUBLIC EMERALD_API void system_assertions_assert(bool                  is_blocki
             memcpy(message_container,
                    formatted_message,
                    message_length);
-            
+
             message_container[message_length] = 0x00;
 
             /* Show the message now (if blocking) or queue for showing (if non-blocking) */
@@ -95,12 +118,9 @@ PUBLIC EMERALD_API void system_assertions_assert(bool                  is_blocki
                     /* Push the message onto our internal messages queue */
                     system_resizable_vector_push(internals->messages,
                                                 &message_container);
-
-                    /* Obtain the message's index */
-                    unsigned int message_index = system_resizable_vector_get_amount_of_elements(internals->messages);
                 }
                 system_critical_section_leave(internals->cs);
-                
+
                 /* TODO: THREAD POOL INTEGRATION */
             }
         }
@@ -135,16 +155,3 @@ PUBLIC void _system_assertions_deinit()
     }
 }
 
-PRIVATE void _show_assertion_failure(const char* message)
-{
-    #ifdef _DEBUG
-    {
-        __debugbreak();
-
-        ::MessageBoxA(HWND_DESKTOP,
-                      message,
-                      "Assertion failure",
-                      MB_OK | MB_ICONWARNING);
-    }
-    #endif /* _DEBUG */
-}

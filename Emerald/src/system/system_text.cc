@@ -11,41 +11,14 @@
 PUBLIC EMERALD_API bool system_text_get_float_from_text(__in  __notnull const char* data,
                                                         __out __notnull float*      out_result)
 {
-    bool is_negative = false;
-    bool result      = true;
-
-    if (data == NULL)
-    {
-        ASSERT_DEBUG_SYNC(false,
-                          "Input argument is NULL");
-
-        result = false;
-        goto end;
-    }
-
-    /* Ignore trailing spaces */
-    while (*data == ' '  ||
-           *data == '\r' ||
-           *data == '\n')
-    {
-        data++;
-    }
-
-    /* Is this a negative FP? */
-    if (*data == '-')
-    {
-        is_negative = true;
-
-        data++;
-    }
-
-    /* Loop over character stream until we hit \n or a space */
     unsigned int              current_location         = 0;
+    bool                      is_negative              = false;
     unsigned int              quotient                 = 0;
     unsigned int              n_exponent_digits        = 0;
     unsigned int              n_quotient_digits        = 0;
     unsigned int              n_remainder_digits       = 0;
     unsigned int              remainder                = 0;
+    bool                      result                   = true;
     const static unsigned int tens[10]                 = {1,
                                                           10,
                                                           100,
@@ -74,6 +47,32 @@ PUBLIC EMERALD_API bool system_text_get_float_from_text(__in  __notnull const ch
         EXPONENT_POSITIVE
     } exponent_type = EXPONENT_POSITIVE;
 
+    if (data == NULL)
+    {
+        ASSERT_DEBUG_SYNC(false,
+                          "Input argument is NULL");
+
+        result = false;
+        goto end;
+    }
+
+    /* Ignore trailing spaces */
+    while (*data == ' '  ||
+           *data == '\r' ||
+           *data == '\n')
+    {
+        data++;
+    }
+
+    /* Is this a negative FP? */
+    if (*data == '-')
+    {
+        is_negative = true;
+
+        data++;
+    }
+
+    /* Loop over character stream until we hit \n or a space */
     while (true)
     {
         char current_character = *data;

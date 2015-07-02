@@ -1,7 +1,8 @@
 /**
  *
- * Object browser test app (kbi/elude @2012)
+ * Texture compressor app (kbi/elude @2014)
  *
  */
-
-#include <Windows.h>
+#ifdef _WIN32
+    #include <Windows.h>
+#endif

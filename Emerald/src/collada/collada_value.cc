@@ -19,7 +19,7 @@ typedef struct _collada_value
         float_value = 0.0f;
         type        = COLLADA_VALUE_TYPE_UNKNOWN;
     }
-};
+} _collada_value;
 
 
 /** Please see header for spec */

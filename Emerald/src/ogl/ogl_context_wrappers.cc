@@ -19,7 +19,11 @@
 #include "system/system_log.h"
 #include <math.h>
 
-__declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
+#ifdef _WIN32
+    __declspec(thread) ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
+#else
+    __thread ogl_context_gl_entrypoints_private* _private_entrypoints_ptr = NULL;
+#endif
 
 
 PRIVATE ogl_context_state_cache_property _ogl_context_wrappers_get_ogl_context_state_cache_property_for_glenum(__in GLenum property)

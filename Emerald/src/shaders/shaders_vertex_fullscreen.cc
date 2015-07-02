@@ -49,8 +49,11 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__
                                                                               __in           bool                      export_uv,
                                                                               __in __notnull system_hashed_ansi_string name)
 {
+    bool                        result        = false;
     _shaders_vertex_fullscreen* result_object = NULL;
     shaders_vertex_fullscreen   result_shader = NULL;
+    system_hashed_ansi_string   shader_body   = NULL;
+    ogl_shader                  vertex_shader = NULL;
 
     /* Create the body */
     std::stringstream body_stream;
@@ -76,9 +79,9 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__
     body_stream << "}\n";
 
     /* Create the shader */
-    ogl_shader vertex_shader = ogl_shader_create(context,
-                                                 SHADER_TYPE_VERTEX,
-                                                 name);
+    vertex_shader = ogl_shader_create(context,
+                                      SHADER_TYPE_VERTEX,
+                                      name);
 
     ASSERT_DEBUG_SYNC(vertex_shader != NULL,
                       "ogl_shader_create() failed");
@@ -91,9 +94,9 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__
     }
 
     /* Set the shader's body */
-    system_hashed_ansi_string shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
-    bool                      result      = ogl_shader_set_body             (vertex_shader,
-                                                                             shader_body);
+    shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
+    result      = ogl_shader_set_body             (vertex_shader,
+                                                   shader_body);
 
     ASSERT_DEBUG_SYNC(result,
                       "ogl_shader_set_body() failed");
@@ -104,7 +107,7 @@ PUBLIC EMERALD_API shaders_vertex_fullscreen shaders_vertex_fullscreen_create(__
 
         goto end;
     }
-    
+
     /* Everything went okay. Instantiate the object */
     result_object = new (std::nothrow) _shaders_vertex_fullscreen;
 

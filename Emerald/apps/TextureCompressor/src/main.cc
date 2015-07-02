@@ -27,6 +27,7 @@
 #include "system/system_file_serializer.h"
 #include "system/system_hashed_ansi_string.h"
 #include "system/system_log.h"
+#include "system/system_pixel_format.h"
 #include "system/system_resizable_vector.h"
 #include "system/system_resources.h"
 #include "system/system_window.h"
@@ -111,8 +112,7 @@ ogl_shader                      _whiteline_fs                          = NULL;
 ogl_program                     _whiteline_po                          = NULL;
 ogl_shader                      _whiteline_vs                          = NULL;
 system_window                   _window                                = NULL;
-system_event                    _window_closed_event                   = system_event_create(true,  /* manual_reset */
-                                                                                             false);/* start_state */
+system_event                    _window_closed_event                   = system_event_create(true); /* manual_reset */
 const int                       _window_size[2]                        = {1280, 720};
 float                           _x1y1x2y2[4]                           = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -407,7 +407,7 @@ void _change_algorithm_renderer_callback(ogl_context context,
                                          void*       user_arg)
 {
     _compress_texture(context,
-                      (uint32_t) user_arg);
+                      (uint32_t) (intptr_t) user_arg);
 
     _update_ui_controls_strings();
 }
@@ -563,8 +563,11 @@ system_hashed_ansi_string _get_compressed_filename()
 bool _load_texture(ogl_context               context,
                    system_hashed_ansi_string file_name)
 {
-    gfx_image image_nc = NULL;
-    bool      result   = true;
+    uint32_t  image_height  = 0;
+    gfx_image image_nc      = NULL;
+    uint32_t  image_width   = 0;
+    bool      result        = true;
+    float     scaled_y_span = 0.0f;
 
     /* Try to load the file */
     image_nc = gfx_image_create_from_file(file_name,
@@ -599,10 +602,6 @@ bool _load_texture(ogl_context               context,
 
     /* Center the image on the screen. We assume the image needs to completely fit
      * horizontally within the viewport. */
-    uint32_t image_height      = 0;
-    uint32_t image_width       = 0;
-    float    scaled_y_span     = 0.0f;
-
     gfx_image_get_mipmap_property(image_nc,
                                   0, /* n_mipmap */
                                   GFX_IMAGE_MIPMAP_PROPERTY_WIDTH,
@@ -1300,8 +1299,14 @@ void _setup_ui(ogl_context context)
     _setup_compression_algorithms(context);
 
     /* Convert the vector data to C arrays needed for ogl_ui_add_dropdown() call */
-    unsigned int               n_compressed_internalformats = system_resizable_vector_get_amount_of_elements(_compression_algorithms);
-    system_hashed_ansi_string* compressed_internalformats   = new system_hashed_ansi_string[n_compressed_internalformats];
+    system_hashed_ansi_string* compressed_internalformats   = NULL;
+    unsigned int               n_compressed_internalformats = 0;
+
+    system_resizable_vector_get_property(_compression_algorithms,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_compressed_internalformats);
+
+    compressed_internalformats = new system_hashed_ansi_string[n_compressed_internalformats];
 
     for (unsigned int n_algorithm = 0;
                       n_algorithm < n_compressed_internalformats;
@@ -1321,7 +1326,7 @@ void _setup_ui(ogl_context context)
                       n_algorithm < n_compressed_internalformats;
                     ++n_algorithm)
     {
-        user_args[n_algorithm] = (void*) n_algorithm;
+        user_args[n_algorithm] = (void*) (intptr_t) n_algorithm;
     }
 
     /* Set up the UI */
@@ -1681,26 +1686,34 @@ void _update_ui_controls_strings()
 }
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
+#else
+    int main()
+#endif
 {
     bool                  context_result           = false;
     ogl_rendering_handler window_rendering_handler = NULL;
     int                   window_x1y1x2y2[4]       = {0};
 
-    _CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_CHECK_CRT_DF);
-
     /* Carry on */
+    system_pixel_format window_pf = system_pixel_format_create(8,  /* color_buffer_red_bits   */
+                                                               8,  /* color_buffer_green_bits */
+                                                               8,  /* color_buffer_blue_bits  */
+                                                               0,  /* color_buffer_alpha_bits */
+                                                               8,  /* depth_buffer_bits       */
+                                                               1); /* n_samples               */
+
     system_window_get_centered_window_position_for_primary_monitor(_window_size,
                                                                    window_x1y1x2y2);
 
     _window                  = system_window_create_not_fullscreen         (OGL_CONTEXT_TYPE_GL,
                                                                             window_x1y1x2y2,
                                                                             system_hashed_ansi_string_create("Test window"),
-                                                                            false, /* scalable */
-                                                                            0,     /* n_multisampling_samples */
+                                                                            false,
                                                                             false, /* vsync_enabled */
-                                                                            false, /* multisampling_supported */
-                                                                            true); /* visible */
+                                                                            true,  /* visible */
+                                                                            window_pf);
     window_rendering_handler = ogl_rendering_handler_create_with_fps_policy(system_hashed_ansi_string_create("Default rendering handler"),
                                                                             60,                 /* desired_fps */
                                                                             _rendering_handler, /* pfn_rendering_callback */
@@ -1709,28 +1722,29 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_get_property(_window,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                                &_context);
+    system_window_set_property(_window,
+                               SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                              &window_rendering_handler);
 
-    system_window_set_rendering_handler(_window,
-                                        window_rendering_handler);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        _rendering_lbm_down_callback_handler,
+                                        (void*) _rendering_lbm_down_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_UP,
-                                        _rendering_lbm_up_callback_handler,
+                                        (void*) _rendering_lbm_up_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_MOVE,
-                                        _rendering_move_callback_handler,
+                                        (void*) _rendering_move_callback_handler,
                                         NULL);
     system_window_add_callback_func    (_window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_MOUSE_WHEEL,
-                                        _rendering_mouse_wheel_callback_handler,
+                                        (void*) _rendering_mouse_wheel_callback_handler,
                                         NULL);
 
     /* Locate all jpg files */
@@ -1756,23 +1770,23 @@ int WINAPI WinMain(HINSTANCE instance_handle, HINSTANCE, LPTSTR, int)
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_SYSTEM,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_RIGHT_BUTTON_UP,
-                                    _callback_on_rbm_up,
+                                    (void*) _callback_on_rbm_up,
                                     NULL);
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                    _callback_window_closed,
+                                    (void*) _callback_window_closed,
                                     NULL);
     system_window_add_callback_func(_window,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                     SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                    _callback_window_closing,
+                                    (void*) _callback_window_closing,
                                     NULL);
     /* Carry on */
     ogl_rendering_handler_play(window_rendering_handler,
                                0);
 
-    system_event_wait_single_infinite(_window_closed_event);
+    system_event_wait_single(_window_closed_event);
 
     /* Clean up */
     ogl_rendering_handler_stop(window_rendering_handler);

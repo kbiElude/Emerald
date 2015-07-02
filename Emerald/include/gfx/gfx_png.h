@@ -16,4 +16,4 @@ PUBLIC EMERALD_API gfx_image gfx_png_load_from_file(__in __notnull system_hashed
 PUBLIC EMERALD_API gfx_image gfx_png_load_from_memory(__in __notnull const unsigned char* data_ptr);
 
 
-#endif /* OGL_PIXEL_FORMAT_DESCRIPTOR_H */
+#endif /* GFX_PNG_H */

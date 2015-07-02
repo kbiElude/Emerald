@@ -25,7 +25,10 @@ MACRO(ADD_MSVC_PRECOMPILED_HEADER PrecompiledHeader PrecompiledSource SourcesVar
   LIST(APPEND ${SourcesVar} ${PrecompiledSource})
 ENDMACRO(ADD_MSVC_PRECOMPILED_HEADER)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+IF(MSVC)
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+ENDIF(MSVC)
+
 INCLUDE_DIRECTORIES("${TestPipeline_SOURCE_DIR}")
 INCLUDE_DIRECTORIES("${TestPipeline_SOURCE_DIR}/include")
 INCLUDE_DIRECTORIES("${EMERALD_SOURCE_DIR}/include")
@@ -38,7 +41,14 @@ SET(AllTestPipelineSources ${GeneralSources} )
 ADD_MSVC_PRECOMPILED_HEADER("shared.h" "src/shared.cc" AllTestPipelineSources)
 
 ADD_EXECUTABLE(TestPipeline WIN32 ${AllTestPipelineSources} ${GeneralIncludes})
-SET_TARGET_PROPERTIES(TestPipeline PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+
+IF (MSVC)
+    SET_TARGET_PROPERTIES(TestPipeline PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ELSE (MSVC)
+    # Force a 32-bit build
+    SET_TARGET_PROPERTIES(TestPipeline PROPERTIES COMPILE_FLAGS "-m32"
+                                                  LINK_FLAGS    "-m32")
+ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)
 

@@ -132,14 +132,18 @@ PUBLIC EMERALD_API void system_global_get_general_property(__in            syste
     {
         case SYSTEM_GLOBAL_PROPERTY_N_ASSET_PATHS:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(global_ptr->asset_paths);
+            system_resizable_vector_get_property(global_ptr->asset_paths,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
 
         case SYSTEM_GLOBAL_PROPERTY_N_FILE_UNPACKERS:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(global_ptr->file_unpackers);
+            system_resizable_vector_get_property(global_ptr->file_unpackers,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

@@ -4,9 +4,9 @@
  *
  */
 #include "test_linear_alloc_pin.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_linear_alloc_pin.h"
-#include "gtest/gtest.h"
 
 
 TEST(LinearAllocPinTest, EntryAlignmentTest)

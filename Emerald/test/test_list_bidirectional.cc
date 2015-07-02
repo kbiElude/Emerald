@@ -4,10 +4,10 @@
  *
  */
 #include "test_list_bidirectional.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_log.h"
 #include "system/system_list_bidirectional.h"
-#include "gtest/gtest.h"
 
 #define N_OPERATIONS (10000)
 
@@ -54,7 +54,7 @@ bool append_item(std::vector<int>&         ref,
 
     system_list_bidirectional_append(list,
                                      prepending_item,
-                                     (void*) new_element);
+                                     (void*) (intptr_t) new_element);
 
 end:
     return result;
@@ -109,7 +109,7 @@ bool push_item_at_end(std::vector<int>&         ref,
 
     ref.push_back                        (new_element);
     system_list_bidirectional_push_at_end(list,
-                                          (void*) new_element);
+                                          (void*) (intptr_t) new_element);
 
     return true;
 }
@@ -125,7 +125,7 @@ bool push_item_at_front(std::vector<int>&         ref,
     ref.insert                             (ref.begin(),
                                             new_element);
     system_list_bidirectional_push_at_front(list,
-                                            (void*) new_element);
+                                            (void*) (intptr_t) new_element);
 
     return true;
 }
@@ -213,7 +213,7 @@ TEST(ListBidirectional, RandomOperations)
                                                    &list_head_data);
 
             ASSERT_EQ(ref[0],
-                      (int) list_head_data);
+                      (int) (intptr_t) list_head_data);
         }
         else
         {
@@ -227,7 +227,7 @@ TEST(ListBidirectional, RandomOperations)
                                                    &list_tail_data);
 
             ASSERT_EQ(ref[ref.size() - 1],
-                      (int) list_tail_data);
+                      (int) (intptr_t) list_tail_data);
         }
         else
         {
@@ -247,7 +247,7 @@ TEST(ListBidirectional, RandomOperations)
             system_list_bidirectional_get_item_data(current_item,
                                                    &current_item_data);
 
-            ASSERT_EQ( (int) current_item_data,
+            ASSERT_EQ( (int) (intptr_t) current_item_data,
                        ref[current_item_index]);
 
             /* Move ahead */
@@ -267,7 +267,7 @@ TEST(ListBidirectional, RandomOperations)
             system_list_bidirectional_get_item_data(current_item,
                                                    &current_item_data);
 
-            ASSERT_EQ( (int) current_item_data,
+            ASSERT_EQ( (int) (intptr_t) current_item_data,
                        ref[current_item_index]);
 
             /* Move ahead */
@@ -285,8 +285,8 @@ TEST(ListBidirectional, RandomOperations)
                   ++n)
         {
             LOG_INFO("[%d]. %d",
-                     n,
-                     ref[n]);
+                     (int) n,
+                     (int) ref[n]);
 
             system_list_bidirectional_item list_item       = NULL;
             void*                          list_item_data  = NULL;
@@ -299,7 +299,7 @@ TEST(ListBidirectional, RandomOperations)
 
             ASSERT_TRUE(list_get_result);
             ASSERT_EQ  (ref[n],
-                        (int) list_item_data);
+                        (int) (intptr_t) list_item_data);
         }
     }
 

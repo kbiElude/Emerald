@@ -1,6 +1,6 @@
 /**
  *
- * Emerald (kbi/elude @2014)
+ * Emerald (kbi/elude @2014-2015)
  *
  */
 #include "shared.h"
@@ -127,7 +127,8 @@ PUBLIC void collada_data_scene_graph_node_add_node_item(__in __notnull collada_d
 {
     _collada_data_scene_graph_node* node_ptr = (_collada_data_scene_graph_node*) node;
 
-    system_resizable_vector_push(node_ptr->node_items, node_item);
+    system_resizable_vector_push(node_ptr->node_items,
+                                 node_item);
 }
 
 /** TODO */
@@ -135,7 +136,8 @@ PUBLIC collada_data_scene_graph_node collada_data_scene_graph_node_create(__in _
 {
     _collada_data_scene_graph_node* new_node_ptr = new (std::nothrow) _collada_data_scene_graph_node(parent);
 
-    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL,
+                       "Out of memory");
 
     return (collada_data_scene_graph_node) new_node_ptr;
 }
@@ -147,7 +149,9 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
 {
     _collada_data_scene_graph_node_item* new_node_item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item();
 
-    ASSERT_ALWAYS_SYNC(new_node_item_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_node_item_ptr != NULL,
+                       "Out of memory");
+
     if (new_node_item_ptr == NULL)
     {
         goto end;
@@ -166,9 +170,16 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                                          __in_opt __notnull collada_data_scene_graph_node parent_node,
                                                                                          __in     __notnull collada_data                  collada_data)
 {
-    _collada_data_scene_graph_node* new_node_ptr = new (std::nothrow) _collada_data_scene_graph_node(parent_node);
+    tinyxml2::XMLElement*                current_node_child_ptr    = NULL;
+    bool                                 is_lw10_file              = false;
+    _collada_data_scene_graph_node_item* item_ptr                  = NULL;
+    float                                last_rotate_pivot     [3] = {0};
+    _collada_data_scene_graph_node*      new_node_ptr              = new (std::nothrow) _collada_data_scene_graph_node(parent_node);
+    const char*                          type                      = NULL;
 
-    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_node_ptr != NULL,
+                       "Out of memory");
+
     if (new_node_ptr == NULL)
     {
         goto end;
@@ -179,33 +190,35 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
     new_node_ptr->name = system_hashed_ansi_string_create(element_ptr->Attribute("name") );
 
     /* Decide on the type */
-    const char* type = element_ptr->Attribute("type");
+    type = element_ptr->Attribute("type");
 
     new_node_ptr->type = COLLADA_DATA_NODE_TYPE_NODE;
 
     if (type != NULL)
     {
-        if (strcmp(type, "NODE") == 0)
+        if (strcmp(type,
+                   "NODE") == 0)
         {
             /* Nothing to do here */
         }
         else
-        if (strcmp(type, "JOINT") == 0)
+        if (strcmp(type,
+                   "JOINT") == 0)
         {
             new_node_ptr->type = COLLADA_DATA_NODE_TYPE_JOINT;
         }
         else
         {
-            LOG_FATAL        ("Unrecognized <node> type encountered: [%s]", type);
-            ASSERT_DEBUG_SYNC(false, "Unrecognized node type found");
+            LOG_FATAL        ("Unrecognized <node> type encountered: [%s]",
+                              type);
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized node type found");
         }
     } /* if (type != NULL) */
 
     /* Nodes can be described by a number of different node types. Iterate over
      * all children and parse them recursively */
-    tinyxml2::XMLElement*              current_node_child_ptr    = element_ptr->FirstChildElement();
-    bool                               is_lw10_file              = false;
-    float                              last_rotate_pivot     [3] = {0};
+    current_node_child_ptr = element_ptr->FirstChildElement();
 
     collada_data_get_property(collada_data,
                               COLLADA_DATA_PROPERTY_IS_LW10_COLLADA_FILE,
@@ -216,32 +229,38 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
         system_hashed_ansi_string          current_node_type = system_hashed_ansi_string_create(current_node_child_ptr->Name() );
         collada_data_scene_graph_node_item new_node_item     = NULL;
 
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "lookat"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "lookat"))
         {
             new_node_item = collada_data_scene_graph_node_lookat_create(current_node_child_ptr);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "matrix"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "matrix"))
         {
             new_node_item = collada_data_scene_graph_node_matrix_create(current_node_child_ptr);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "rotate"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "rotate"))
         {
             new_node_item = collada_data_scene_graph_node_rotate_create(current_node_child_ptr);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "scale"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "scale"))
         {
             new_node_item = collada_data_scene_graph_node_scale_create(current_node_child_ptr);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "skew"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "skew"))
         {
             new_node_item = collada_data_scene_graph_node_skew_create(current_node_child_ptr);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "translate"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "translate"))
         {
             bool  should_cache_as_last_rotatePivot_transformation = false;
             bool  should_enforce_inversed_rotatePivot_vector      = false;
@@ -260,12 +279,14 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                  *       an inversed vector for rotatePivotInverse translations */
                 const char* current_node_sid = current_node_child_ptr->Attribute("sid");
 
-                if (strcmp(current_node_sid, "rotatePivot") == 0)
+                if (strcmp(current_node_sid,
+                           "rotatePivot") == 0)
                 {
                     should_cache_as_last_rotatePivot_transformation = true;
                 }
                 else
-                if (strcmp(current_node_sid, "rotatePivotInverse") == 0)
+                if (strcmp(current_node_sid,
+                           "rotatePivotInverse") == 0)
                 {
                     should_enforce_inversed_rotatePivot_vector = true;
                 }
@@ -276,7 +297,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                            (should_cache_as_last_rotatePivot_transformation ? last_rotate_pivot     : NULL) );
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_camera"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "instance_camera"))
         {
             system_hash64map                              cameras_by_id_map   = NULL;
             collada_data_scene_graph_node_camera_instance new_camera_instance = NULL;
@@ -295,12 +317,14 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                       NULL /* sid */);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_controller"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "instance_controller"))
         {
             /* TODO: Bones support */
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_geometry"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "instance_geometry"))
         {
             system_hash64map                                geometries_by_id_map  = NULL;
             system_hash64map                                materials_by_id_map   = NULL;
@@ -324,7 +348,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                       NULL /* sid */);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "instance_light"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "instance_light"))
         {
             system_hash64map                             lights_by_id_map   = NULL;
             collada_data_scene_graph_node_light_instance new_light_instance = NULL;
@@ -343,7 +368,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                       NULL /* sid */);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "node"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "node"))
         {
             _collada_data_scene_graph_node* new_subnode = NULL;
 
@@ -354,7 +380,8 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
                                                                            collada_data);
         }
         else
-        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type, "extra"))
+        if (system_hashed_ansi_string_is_equal_to_raw_string(current_node_type,
+                                                             "extra"))
         {
             /* We don't support any extra information for nodes */
         }
@@ -363,12 +390,14 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
             LOG_FATAL        ("Unrecognized sub-node type [%s] found under <node> with name [%s]",
                               system_hashed_ansi_string_get_buffer(current_node_type),
                               system_hashed_ansi_string_get_buffer(new_node_ptr->name) );
-            ASSERT_DEBUG_SYNC(false, "Unrecognized sub-node type");
+            ASSERT_DEBUG_SYNC(false,
+                              "Unrecognized sub-node type");
         }
 
         if (new_node_item != NULL)
         {
-            system_resizable_vector_push(new_node_ptr->node_items, new_node_item);
+            system_resizable_vector_push(new_node_ptr->node_items,
+                                         new_node_item);
         }
 
         /* Move on */
@@ -376,9 +405,11 @@ PUBLIC collada_data_scene_graph_node_item collada_data_scene_graph_node_item_cre
     } /* while (current_node_child_ptr != NULL) */
 
     /* Wrap the node in a node item descriptor */
-    _collada_data_scene_graph_node_item* item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item;
+    item_ptr = new (std::nothrow) _collada_data_scene_graph_node_item;
 
-    ASSERT_ALWAYS_SYNC(item_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(item_ptr != NULL,
+                       "Out of memory");
+
     if (item_ptr == NULL)
     {
         goto end;
@@ -409,7 +440,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_property(__in  __notnu
 
         case COLLADA_DATA_SCENE_GRAPH_NODE_PROPERTY_N_NODE_ITEMS:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(node_ptr->node_items);
+            system_resizable_vector_get_property(node_ptr->node_items,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
@@ -445,7 +478,9 @@ PUBLIC EMERALD_API void collada_data_scene_graph_node_get_node_item(__in      __
 
     if (out_node_item != NULL)
     {
-        system_resizable_vector_get_element_at(node_ptr->node_items, n_node_item, out_node_item);
+        system_resizable_vector_get_element_at(node_ptr->node_items,
+                                               n_node_item,
+                                               out_node_item);
     }
 }
 

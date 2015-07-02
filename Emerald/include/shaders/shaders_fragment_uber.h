@@ -80,13 +80,13 @@ typedef enum
 typedef unsigned int shaders_fragment_uber_item_id;
 
 /** TODO */
-typedef enum _shaders_fragment_uber_parent_callback_type
+typedef enum
 {
     /* uses _shaders_fragment_uber_new_fragment_input_callback structure for data */
     SHADERS_FRAGMENT_UBER_PARENT_CALLBACK_NEW_FRAGMENT_INPUT,
 
     /* .. */
-};
+} _shaders_fragment_uber_parent_callback_type;
 
 /** TODO */
 typedef struct _shaders_fragment_uber_new_fragment_input_callback

@@ -4,9 +4,9 @@
  *
  */
 #include "test_curves.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "curve/curve_container.h"
-#include "gtest/gtest.h"
 #include "system/system_time.h"
 #include "system/system_variant.h"
 

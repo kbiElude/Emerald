@@ -6,8 +6,9 @@
 #ifndef SYSTEM_CONTEXT_MENU_H
 #define SYSTEM_CONTEXT_MENU_H
 
-#include "dll_exports.h"
 #include "system_types.h"
+
+#ifdef _WIN32
 
 REFCOUNT_INSERT_DECLARATIONS(system_context_menu,
                              system_context_menu)
@@ -35,5 +36,9 @@ PUBLIC void system_context_menu_show(__in __notnull system_context_menu  menu,
                                      __in           system_window_handle parent_window_handle,
                                      __in           int                  x,
                                      __in           int                  y);
+
+#else
+    /* TODO */
+#endif
 
 #endif /* SYSTEM_CONTEXT_MENU_H */

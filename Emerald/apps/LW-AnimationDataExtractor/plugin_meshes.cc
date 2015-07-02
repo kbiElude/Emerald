@@ -198,8 +198,12 @@ PRIVATE void AddMeshToScene(__in __notnull scene           in_scene,
 volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
 {
     _bake_mesh_gl_blob_worker_arg* arg_ptr     = (_bake_mesh_gl_blob_worker_arg*) arg;
-    const uint32_t                 n_materials = system_hash64map_get_amount_of_elements(arg_ptr->instance_ptr->material_to_polygon_instance_vector_map);
+    uint32_t                       n_materials = 0;
     char                           text_buffer[1024];
+
+    system_hash64map_get_property(arg_ptr->instance_ptr->material_to_polygon_instance_vector_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_materials);
 
     ASSERT_DEBUG_SYNC(n_materials != 0,
                       "No materials defined for a mesh instance");
@@ -232,7 +236,11 @@ volatile void BakeMeshGLBlobWorkerThreadEntryPoint(__in __notnull void* arg)
         }
 
         current_material    = (scene_material) current_material_hash;
-        n_polygon_instances = system_resizable_vector_get_amount_of_elements(polygon_instance_vector);
+        n_polygon_instances = 0;
+
+        system_resizable_vector_get_property(polygon_instance_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_polygon_instances);
 
         scene_material_get_property(current_material,
                                     SCENE_MATERIAL_PROPERTY_NAME,
@@ -390,12 +398,17 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
             }
             system_critical_section_leave(global_cs);
 
-            const unsigned int n_layer_points   = layer_mesh_info_ptr->numPoints  (layer_mesh_info_id);
-            const unsigned int n_layer_polygons = layer_mesh_info_ptr->numPolygons(layer_mesh_info_id);
+            const unsigned int n_layer_points                   = layer_mesh_info_ptr->numPoints  (layer_mesh_info_id);
+            const unsigned int n_layer_polygons                 = layer_mesh_info_ptr->numPolygons(layer_mesh_info_id);
+                  unsigned int n_layer_polygon_ids_vector_items = 0;
+
+            system_resizable_vector_get_property(layer_polygon_ids_vector,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_layer_polygon_ids_vector_items);
 
             ASSERT_DEBUG_SYNC(n_layer_polygons != 0,
                               "No polygons defined for a layer?");
-            ASSERT_DEBUG_SYNC(n_layer_polygons == system_resizable_vector_get_amount_of_elements(layer_polygon_ids_vector),
+            ASSERT_DEBUG_SYNC(n_layer_polygons == n_layer_polygon_ids_vector_items,
                               "Something's wrong");
 
             /* Iterate over all polygons */
@@ -428,7 +441,12 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                 if (last_update_time            == 0                                           ||
                     time_now - last_update_time > system_time_get_timeline_time_for_msec(1000) )
                 {
-                    char text_buffer[1024];
+                    unsigned int n_objects = 0;
+                    char         text_buffer[1024];
+
+                    system_resizable_vector_get_property(objects,
+                                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                        &n_objects);
 
                     memset(text_buffer,
                            0,
@@ -439,7 +457,7 @@ PRIVATE void ExtractMeshData(__in __notnull _mesh_instance*  instance_ptr,
                               "Extracting mesh data of [%s] (%d / %d): %d / %d polygons processed (layer %d/%d)",
                               system_hashed_ansi_string_get_buffer(instance_ptr->name),
                               lw_object_id + 1,
-                              system_resizable_vector_get_amount_of_elements(objects),
+                              n_objects,
                               n_polygons_processed,
                               n_layer_polygons,
                               n_lw_mesh_layer,
@@ -717,8 +735,12 @@ PRIVATE void ExtractPointData(__in            LWPolID          polygon_id,
 PRIVATE void* GenerateDataStreamData(__in  __notnull system_resizable_vector     polygon_instance_vector,
                                      __in            mesh_layer_data_stream_type stream_type)
 {
-    const uint32_t n_polygon_instances = system_resizable_vector_get_amount_of_elements(polygon_instance_vector);
-    float*         result_data         = NULL;
+    uint32_t n_polygon_instances = 0;
+    float*   result_data         = NULL;
+
+    system_resizable_vector_get_property(polygon_instance_vector,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_polygon_instances);
 
     switch (stream_type)
     {
@@ -849,7 +871,11 @@ end:
 /** TODO */
 PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_hash64map material_to_polygon_instance_vector_map)
 {
-    const uint32_t n_keys = system_hash64map_get_amount_of_elements(material_to_polygon_instance_vector_map);
+    uint32_t n_keys = 0;
+
+    system_hash64map_get_property(material_to_polygon_instance_vector_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_keys);
 
     for (uint32_t n_key = 0;
                   n_key < n_keys;
@@ -869,7 +895,9 @@ PRIVATE void ReleaseMaterialToPolygonInstanceVectorMap(__in __notnull system_has
             continue;
         }
 
-        n_vector_entries = system_resizable_vector_get_amount_of_elements(polygon_instance_vector);
+        system_resizable_vector_get_property(polygon_instance_vector,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_vector_entries);
 
         for (uint32_t n_vector_entry = 0;
                       n_vector_entry < n_vector_entries;
@@ -1110,8 +1138,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                   n_object < n_unique_objects;
                 ++n_object)
     {
-        system_event job_done_event = system_event_create(true,   /* manual_reset */
-                                                          false); /* start_state */
+        system_event job_done_event = system_event_create(true); /* manual_reset */
 
         /* Spawn a worker thread so that we can report the progress. */
         system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_with_event_signal(THREAD_POOL_TASK_PRIORITY_NORMAL,
@@ -1120,7 +1147,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
                                                                                                                       job_done_event);
 
         system_thread_pool_submit_single_task(task);
-        system_event_wait_single_infinite    (job_done_event);
+        system_event_wait_single             (job_done_event);
 
         system_event_release(job_done_event);
     }
@@ -1129,7 +1156,11 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
      *
      * NOTE: Not much benefit in running this in parallel.
      */
-    const uint32_t n_objects = system_resizable_vector_get_amount_of_elements(objects);
+    uint32_t n_objects = 0;
+
+    system_resizable_vector_get_property(objects,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_objects);
 
     for (uint32_t n_object = 0;
                   n_object < n_objects;
@@ -1177,9 +1208,21 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
         if (n_iteration == 1)
         {
             /* Wait for zeroth iteration's tasks to finish before continuing */
-            system_event_wait_multiple_infinite((const system_event*) system_resizable_vector_get_array(job_done_events),
-                                                system_resizable_vector_get_amount_of_elements         (job_done_events),
-                                                true); /* wait_for_all */
+            const system_event* events_array_ptr  = NULL;
+            unsigned int        n_job_done_events = 0;
+
+            system_resizable_vector_get_property(job_done_events,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_ARRAY,
+                                                 &events_array_ptr);
+            system_resizable_vector_get_property(job_done_events,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                &n_job_done_events);
+
+            system_event_wait_multiple(events_array_ptr,
+                                       n_job_done_events,
+                                       true, /* wait_for_all */
+                                       SYSTEM_TIME_INFINITE,
+                                       NULL); /* out_result_ptr */
 
             /* Clean up before continuing */
             system_event event_to_release = NULL;
@@ -1236,8 +1279,7 @@ PUBLIC void FillSceneWithMeshData(__in __notnull scene scene)
 
             if (n_iteration == 0)
             {
-                system_event job_done_event = system_event_create(true,   /* manual_reset */
-                                                                  false); /* start_state */
+                system_event job_done_event = system_event_create(true); /* manual_reset */
 
                 /* Spawn task argument descriptor */
                 _bake_mesh_gl_blob_worker_arg* job_arg_ptr = new (std::nothrow) _bake_mesh_gl_blob_worker_arg(instance_ptr,

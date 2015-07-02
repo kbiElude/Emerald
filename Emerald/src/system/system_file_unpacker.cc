@@ -85,16 +85,22 @@ typedef struct _system_file_unpacker
 /** TODO */
 PRIVATE bool _system_file_unpacker_init(__in __notnull _system_file_unpacker* file_unpacker_ptr)
 {
-    bool                 is_zlib_inited        = false;
-    uint32_t             n_total_decoded_bytes = 0;
-    const unsigned char* packed_file_data_ptr  = NULL;
-    uint32_t             packed_file_data_size = 0;
-    bool                 result                = true;
-    z_stream             zlib_stream;
+    unsigned char*              data_ptr               = NULL;
+    int                         inflation_result       = 0;
+    bool                        is_zlib_inited         = false;
+    unsigned int                n_files_embedded       = 0;
+    uint32_t                    n_total_decoded_bytes  = 0;
+    const unsigned char*        packed_file_data_ptr   = NULL;
+    uint32_t                    packed_file_data_size  = 0;
+    system_file_serializer      packed_file_serializer = NULL;
+    _system_file_unpacker_file* prev_file_ptr          = NULL;
+    bool                        result                 = true;
+    unsigned char*              traveller_ptr          = data_ptr;
+    z_stream                    zlib_stream;
 
     /* Open the packed file */
-    system_file_serializer packed_file_serializer = system_file_serializer_create_for_reading(file_unpacker_ptr->packed_filename,
-                                                                                              false); /* async_read */
+    packed_file_serializer = system_file_serializer_create_for_reading(file_unpacker_ptr->packed_filename,
+                                                                       false); /* async_read */
 
     if (packed_file_serializer == NULL)
     {
@@ -125,8 +131,6 @@ PRIVATE bool _system_file_unpacker_init(__in __notnull _system_file_unpacker* fi
                                        &packed_file_data_size);
 
     /* Feed the packed data through zlib to unpack it */
-    int inflation_result = 0;
-
     file_unpacker_ptr->unpacked_buffer_ptr = new (std::nothrow) unsigned char[n_total_decoded_bytes];
 
     if (file_unpacker_ptr->unpacked_buffer_ptr == NULL)
@@ -169,10 +173,10 @@ PRIVATE bool _system_file_unpacker_init(__in __notnull _system_file_unpacker* fi
     }
 
     /* Read the file table */
-    unsigned char*              data_ptr         = file_unpacker_ptr->unpacked_buffer_ptr + sizeof(uint32_t);
-    const unsigned int          n_files_embedded = *(unsigned int*) file_unpacker_ptr->unpacked_buffer_ptr;
-    _system_file_unpacker_file* prev_file_ptr    = NULL;
-    unsigned char*              traveller_ptr    = data_ptr;
+    n_files_embedded = *(unsigned int*) file_unpacker_ptr->unpacked_buffer_ptr;
+
+    data_ptr      = file_unpacker_ptr->unpacked_buffer_ptr + sizeof(uint32_t);
+    traveller_ptr = data_ptr;
 
     for (uint32_t n_file = 0;
                   n_file < n_files_embedded;
@@ -290,11 +294,17 @@ PUBLIC EMERALD_API void system_file_unpacker_get_file_property(__in  __notnull s
     _system_file_unpacker*      unpacker_ptr = (_system_file_unpacker*) unpacker;
 
     /* Sanity checks */
+    unsigned int n_files = 0;
+
+    system_resizable_vector_get_property(unpacker_ptr->files,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_files);
+
     ASSERT_DEBUG_SYNC(unpacker != NULL,
                       "Input unpacker argument is NULL");
     ASSERT_DEBUG_SYNC(out_result != NULL,
                       "Output result value ptr is NULL");
-    ASSERT_DEBUG_SYNC(file_index < system_resizable_vector_get_amount_of_elements(unpacker_ptr->files),
+    ASSERT_DEBUG_SYNC(file_index < n_files,
                       "Invalid file index requested");
 
     /* Retrieve the requested file descriptor */
@@ -362,7 +372,9 @@ PUBLIC EMERALD_API void system_file_unpacker_get_property(__in  __notnull system
 
         case SYSTEM_FILE_UNPACKER_PROPERTY_N_OF_EMBEDDED_FILES:
         {
-            *(uint32_t*) out_result = system_resizable_vector_get_amount_of_elements(unpacker_ptr->files);
+            system_resizable_vector_get_property(unpacker_ptr->files,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }

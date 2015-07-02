@@ -191,11 +191,15 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ans
                                                 __in __notnull const char*               in_data_ptr)
 {
     /* Open file handle */
-    char*            data_buffer  = NULL;
-    unsigned char*   data_ptr     = NULL;
-    fpos_t           file_size    = 0;
-    const char*      magic_header = "#?RADIANCE";
-    gfx_image        result       = NULL;
+    char*            data_buffer        = NULL;
+    uint32_t         data_buffer_size   = 0;
+    unsigned char*   data_ptr           = NULL;
+    char*            data_ptr_traveller = NULL;
+    fpos_t           file_size;
+    int              height             = 0;
+    const char*      magic_header       = "#?RADIANCE";
+    gfx_image        result             = NULL;
+    int              width              = 0;
 
     /* Input data pointer should not be NULL at this point */
     if (in_data_ptr == NULL)
@@ -221,7 +225,7 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ans
     }
 
     /* Parse header */
-    char* data_ptr_traveller = (char*) in_data_ptr;
+    data_ptr_traveller = (char*) in_data_ptr;
 
     while (true)
     {
@@ -267,9 +271,6 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ans
     }
 
     /* Following is the resolution string. For simplicity, we just og with the usual bottom-up storage. */
-    int height = 0;
-    int width  = 0;
-
     if (memcmp(data_ptr_traveller,
                "-Y ",
                strlen("-Y ") ) != 0)
@@ -284,9 +285,9 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ans
         data_ptr_traveller += strlen("-Y ");
     }
 
-    if (sscanf_s(data_ptr_traveller,
-                 "%d",
-                &height) != 1)
+    if (sscanf(data_ptr_traveller,
+               "%d",
+              &height) != 1)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Couldn't read input height");
@@ -314,9 +315,9 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ans
         data_ptr_traveller += strlen("+X ");
     }
 
-    if (sscanf_s(data_ptr_traveller,
-                 "%d",
-                &width) != 1)
+    if (sscanf(data_ptr_traveller,
+               "%d",
+              &width) != 1)
     {
         ASSERT_ALWAYS_SYNC(false,
                            "Couldn't read input width");
@@ -331,9 +332,8 @@ PRIVATE gfx_image _gfx_rgbe_shared_load_handler(__in __notnull system_hashed_ans
     data_ptr_traveller++; /* New-line */
 
     /* Data starts at this point */
-    uint32_t data_buffer_size = sizeof(float) * 3 * width * height;
-
-    data_buffer = new (std::nothrow) char[data_buffer_size];
+    data_buffer_size = sizeof(float) * 3 * width * height;
+    data_buffer      = new (std::nothrow) char[data_buffer_size];
 
     if (data_buffer == NULL)
     {

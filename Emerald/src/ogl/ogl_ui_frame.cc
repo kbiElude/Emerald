@@ -107,7 +107,7 @@ PUBLIC void ogl_ui_frame_deinit(void* internal_instance)
     ogl_context_release(ui_frame_ptr->context);
     ogl_program_release(ui_frame_ptr->program);
 
-    delete internal_instance;
+    delete ui_frame_ptr;
 }
 
 /** Please see header for specification */

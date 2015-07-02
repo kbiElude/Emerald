@@ -38,17 +38,17 @@ DECLARE_HANDLE(collada_data_transformation);
 DECLARE_HANDLE(collada_value);
 
 /** Describes up vector. */
-typedef enum _collada_data_up_axis
+typedef enum
 {
     COLLADA_DATA_UP_AXIS_X_UP,
     COLLADA_DATA_UP_AXIS_Y_UP,
     COLLADA_DATA_UP_AXIS_Z_UP,
 
     COLLADA_DATA_UP_AXIS_UNDEFINED
-};
+} _collada_data_up_axis;
 
 /** Describes shading algorithms supported by COLLADA for COMMON profile */
-typedef enum _collada_data_shading
+typedef enum
 {
     /* color = <emission> + <ambient>*al + <diffuse>*max(dot(N,L), 0)+<specular>*max(dot(H, N), 0)^shininess */
     COLLADA_DATA_SHADING_BLINN,
@@ -59,10 +59,10 @@ typedef enum _collada_data_shading
 
     /* Always last */
     COLLADA_DATA_SHADING_UNKNOWN
-};
+} _collada_data_shading;
 
 /** Describes type of representation used to describe a single shading factor. */
-typedef enum collada_data_shading_factor
+typedef enum
 {
     COLLADA_DATA_SHADING_FACTOR_NONE,
     COLLADA_DATA_SHADING_FACTOR_FLOAT,
@@ -71,10 +71,10 @@ typedef enum collada_data_shading_factor
 
     /* Always last */
     COLLADA_DATA_SHADING_FACTOR_UNKNOWN
-};
+} collada_data_shading_factor;
 
 /** Describes shading factor item type */
-typedef enum collada_data_shading_factor_item
+typedef enum
 {
     COLLADA_DATA_SHADING_FACTOR_ITEM_AMBIENT    = 1 << 0,
     COLLADA_DATA_SHADING_FACTOR_ITEM_DIFFUSE    = 1 << 1,
@@ -84,13 +84,13 @@ typedef enum collada_data_shading_factor_item
 
     COLLADA_DATA_SHADING_FACTOR_ITEM_COUNT   = 5, /* always equal to +1 off the highest power defined in this enum */
     COLLADA_DATA_SHADING_FACTOR_ITEM_UNKNOWN = COLLADA_DATA_SHADING_FACTOR_ITEM_COUNT
-};
+} collada_data_shading_factor_item;
 
 /** Describes common inputs supported by COLLADA.
  *
  *  We only support a subset of these at the moment!
  */
-typedef enum _collada_data_input_type
+typedef enum
 {
     COLLADA_DATA_INPUT_TYPE_BINORMAL,
     COLLADA_DATA_INPUT_TYPE_COLOR,
@@ -120,10 +120,10 @@ typedef enum _collada_data_input_type
     COLLADA_DATA_INPUT_TYPE_COUNT,
 
     COLLADA_DATA_INPUT_TYPE_UNDEFINED = COLLADA_DATA_INPUT_TYPE_COUNT
-};
+} _collada_data_input_type;
 
 /** Describes texture filtering type */
-typedef enum _collada_data_sampler_filter
+typedef enum
 {
     COLLADA_DATA_SAMPLER_FILTER_NONE,
     COLLADA_DATA_SAMPLER_FILTER_NEAREST,
@@ -135,10 +135,10 @@ typedef enum _collada_data_sampler_filter
 
     /* Always last */
     COLLADA_DATA_SAMPLER_FILTER_UNKNOWN
-};
+} _collada_data_sampler_filter;
 
 /** Describes transformation types supported by COLLADA common profile (v1.4) */
-typedef enum _collada_data_transformation_type
+typedef enum
 {
     COLLADA_DATA_TRANSFORMATION_TYPE_LOOKAT,
     COLLADA_DATA_TRANSFORMATION_TYPE_MATRIX,
@@ -151,10 +151,10 @@ typedef enum _collada_data_transformation_type
     COLLADA_DATA_TRANSFORMATION_TYPE_COUNT,
 
     COLLADA_DATA_TRANSFORMATION_TYPE_UNDEFINED = COLLADA_DATA_TRANSFORMATION_TYPE_COUNT
-};
+} _collada_data_transformation_type;
 
 /** TODO */
-typedef enum _collada_data_node_item_type
+typedef enum
 {
     COLLADA_DATA_NODE_ITEM_TYPE_CAMERA_INSTANCE,
     COLLADA_DATA_NODE_ITEM_TYPE_GEOMETRY_INSTANCE,
@@ -163,10 +163,10 @@ typedef enum _collada_data_node_item_type
     COLLADA_DATA_NODE_ITEM_TYPE_NODE,
 
     COLLADA_DATA_NODE_ITEM_TYPE_UNDEFINED
-};
+} _collada_data_node_item_type;
 
 /** Describes node types supported by COLLADA common profile (v1.4) */
-typedef enum _collada_data_node_type
+typedef enum
 {
     COLLADA_DATA_NODE_TYPE_JOINT,
     COLLADA_DATA_NODE_TYPE_NODE,
@@ -180,6 +180,6 @@ typedef enum _collada_data_node_type
     COLLADA_DATA_NODE_TYPE_COUNT,
 
     COLLADA_DATA_NODE_TYPE_UNDEFINED = COLLADA_DATA_NODE_TYPE_COUNT
-};
+} _collada_data_node_type;
 
 #endif /* COLLADA_TYPES_H */

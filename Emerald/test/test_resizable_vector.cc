@@ -4,10 +4,10 @@
  *
  */
 #include "test_resizable_vector.h"
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_log.h"
 #include "system/system_resizable_vector.h"
-#include "gtest/gtest.h"
 
 #define N_OPERATIONS (100)
 
@@ -33,7 +33,7 @@ bool add_new_item(std::vector<int>&       ref,
     ref.insert                               (ref.begin() + new_element_location,
                                               new_element);
     system_resizable_vector_insert_element_at(vec, new_element_location,
-                                              (void*) new_element);
+                                              (void*) (intptr_t) new_element);
 
     return true;
 }
@@ -70,7 +70,7 @@ bool push_item(std::vector<int>&       ref,
 
     ref.push_back               (new_element);
     system_resizable_vector_push(vec,
-                                 (void*)new_element);
+                                 (void*) (intptr_t) new_element);
 
     return true;
 }
@@ -92,7 +92,8 @@ bool pop_item(std::vector<int>&       ref,
 
         if (ref_value != vec_value)
         {
-            __asm int 3;
+            ASSERT_ALWAYS_SYNC(false,
+                               "Sanity check failed!");
         }
 
         return true;
@@ -136,7 +137,13 @@ TEST(ResizableVectorTest, RandomOperations)
         }
 
         /* Make sure reference vector's contents matches resizable vector's */
-        ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(vec) == ref.size() );
+        uint32_t n_vec_items = 0;
+
+        system_resizable_vector_get_property(vec,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_vec_items);
+
+        ASSERT_TRUE(n_vec_items == ref.size() );
 
         LOG_INFO("Contents at iteration [%d]:",
                  n_operation);
@@ -146,8 +153,8 @@ TEST(ResizableVectorTest, RandomOperations)
                   ++n)
         {
             LOG_INFO("[%d]. %d",
-                     n,
-                     ref[n]);
+                     (int) n,
+                     (int) ref[n]);
 
             int  vec_value = 0;
             bool vec_get_result = system_resizable_vector_get_element_at(vec,

@@ -56,7 +56,7 @@ typedef struct _ogl_shader_constructor_variable
 
     /* Otherwise, this is a normal variable */
     uint32_t              array_size;
-    void*                 default_data;
+    char*                 default_data;
     _layout_qualifier     layout_qualifiers;
     _shader_variable_type type;
     _variable_type        variable_type;
@@ -245,7 +245,11 @@ PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constr
     body_sstream << "#version 430 core\n\n";
 
     /* Add structure declarations */
-    const unsigned int n_structures = system_resizable_vector_get_amount_of_elements(constructor_ptr->structures);
+    unsigned int n_structures = 0;
+
+    system_resizable_vector_get_property(constructor_ptr->structures,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_structures);
 
     for (unsigned int n_structure = 0;
                       n_structure < n_structures;
@@ -268,7 +272,11 @@ PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constr
     } /* for (all structures) */
 
     /* Add uniform block declarations */
-    const unsigned int n_uniform_blocks = system_resizable_vector_get_amount_of_elements(constructor_ptr->uniform_blocks);
+    unsigned int n_uniform_blocks = 0;
+
+    system_resizable_vector_get_property(constructor_ptr->uniform_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_uniform_blocks);
 
     for (unsigned int n_ub = 0;
                       n_ub < n_uniform_blocks;
@@ -291,7 +299,11 @@ PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constr
     } /* for (all uniform blocks) */
 
     /* Add function bodies */
-    const unsigned int n_functions = system_resizable_vector_get_amount_of_elements(constructor_ptr->functions);
+    unsigned int n_functions = 0;
+
+    system_resizable_vector_get_property(constructor_ptr->functions,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_functions);
 
     for (unsigned int n_function = 0;
                       n_function < n_functions;
@@ -324,8 +336,12 @@ PRIVATE void _ogl_shader_constructor_bake_body(__in __notnull _ogl_shader_constr
 /** TODO */
 PRIVATE std::string _ogl_shader_constructor_get_argument_list_string(__in __notnull system_resizable_vector arguments)
 {
-    const unsigned int n_arguments = system_resizable_vector_get_amount_of_elements(arguments);
-    std::stringstream  result;
+    unsigned int      n_arguments = 0;
+    std::stringstream result;
+
+    system_resizable_vector_get_property(arguments,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_arguments);
 
     for (unsigned int n_argument = 0;
                       n_argument < n_arguments;
@@ -490,7 +506,11 @@ PRIVATE std::string _ogl_shader_constructor_get_structure_declaration_string(__i
                       "{\n";
 
     /* Members */
-    const unsigned int n_members = system_resizable_vector_get_amount_of_elements(structure_ptr->members);
+    unsigned int n_members = 0;
+
+    system_resizable_vector_get_property(structure_ptr->members,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_members);
 
     for (unsigned int n_member = 0;
                       n_member < n_members;
@@ -619,7 +639,11 @@ PRIVATE std::string _ogl_shader_constructor_get_uniform_block_declaration_string
     std::stringstream result_sstream;
 
     /* Uniform block declaration */
-    const unsigned int n_variables = system_resizable_vector_get_amount_of_elements(ub_ptr->variables);
+    unsigned int n_variables = 0;
+
+    system_resizable_vector_get_property(ub_ptr->variables,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_variables);
 
     if (n_variables > 0)
     {
@@ -766,9 +790,14 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(__in  __notnull ogl_
                                                             __in            _shader_variable_type     returned_value_type,
                                                             __out __notnull _function_id*             out_new_function_id_ptr)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     result          = false;
-    _function_id             result_id       = system_resizable_vector_get_amount_of_elements(constructor_ptr->functions);
+    _ogl_shader_constructor*          constructor_ptr    = (_ogl_shader_constructor*) constructor;
+    _ogl_shader_constructor_function* new_descriptor_ptr = NULL;
+    bool                              result             = false;
+    _function_id                      result_id          = 0;
+
+    system_resizable_vector_get_property(constructor_ptr->functions,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result_id);
 
     /* Make sure the function is not already added */
     for (unsigned int n_function = 0;
@@ -799,9 +828,11 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_function(__in  __notnull ogl_
     } /* for (all function descriptors) */
 
     /* Form the new descriptor */
-    _ogl_shader_constructor_function* new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function;
+    new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function;
 
-    ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL,
+                       "Out of memory");
+
     if (new_descriptor_ptr != NULL)
     {
         new_descriptor_ptr->name                = name;
@@ -830,7 +861,9 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(__in __notn
                                                                      __in           _shader_variable_type      argument_type,
                                                                      __in __notnull system_hashed_ansi_string  argument_name)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
+    _ogl_shader_constructor*                   constructor_ptr    = (_ogl_shader_constructor*) constructor;
+    unsigned int                               n_arguments        = 0;
+    _ogl_shader_constructor_function_argument* new_descriptor_ptr = NULL;
 
     /* Identify the function descriptor */
     _ogl_shader_constructor_function* function_ptr = NULL;
@@ -846,7 +879,9 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(__in __notn
     }
 
     /* Make sure the argument has not already been added */
-    const unsigned int n_arguments = system_resizable_vector_get_amount_of_elements(function_ptr->arguments);
+    system_resizable_vector_get_property(function_ptr->arguments,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_arguments);
 
     for (unsigned int n_argument = 0;
                       n_argument < n_arguments;
@@ -876,7 +911,7 @@ PUBLIC EMERALD_API void ogl_shader_constructor_add_function_argument(__in __notn
     } /* for (all arguments) */
 
     /* Form the new descriptor */
-    _ogl_shader_constructor_function_argument* new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function_argument;
+    new_descriptor_ptr = new (std::nothrow) _ogl_shader_constructor_function_argument;
 
     ASSERT_ALWAYS_SYNC(new_descriptor_ptr != NULL,
                        "Out of memory");
@@ -906,8 +941,9 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure
                                                                                  __in           _structure_id             structure,
                                                                                  __in __notnull system_hashed_ansi_string name)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     result          = false;
+    _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
+    bool                              result          = false;
+    _ogl_shader_constructor_variable* variable_ptr    = NULL;
 
     /* Retrieve structure descriptor */
     _ogl_shader_constructor_structure* structure_ptr = NULL;
@@ -923,9 +959,11 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_structure
     }
 
     /* Form new variable descriptor */
-    _ogl_shader_constructor_variable* variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
+    variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
 
-    ASSERT_ALWAYS_SYNC(variable_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
+                       "Out of memory");
+
     if (variable_ptr == NULL)
     {
         goto end;
@@ -959,8 +997,11 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in  
                                                                           __in      __notnull system_hashed_ansi_string name,
                                                                           __out_opt           _variable_id*             out_variable_id)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     result          = false;
+    _ogl_shader_constructor*               constructor_ptr      = (_ogl_shader_constructor*) constructor;
+    unsigned int                           n_existing_variables = 0;
+    bool                                   result               = false;
+    _ogl_shader_constructor_uniform_block* ub_ptr               = NULL;
+    _ogl_shader_constructor_variable*      variable_ptr         = NULL;
 
     /* Sanity checks */
     if (variable_type == VARIABLE_TYPE_INPUT_ATTRIBUTE &&
@@ -980,8 +1021,6 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in  
     }
 
     /* Retrieve UB descriptor */
-    _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
-
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 uniform_block,
                                                &ub_ptr) )
@@ -994,7 +1033,9 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in  
 
     /* Make sure that the variable has not already been added. If it is already a recognized
      * var, make sure the type matches */
-    const unsigned int n_existing_variables = system_resizable_vector_get_amount_of_elements(ub_ptr->variables);
+    system_resizable_vector_get_property(ub_ptr->variables,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_existing_variables);
 
     for (unsigned int n_variable = 0;
                       n_variable < n_existing_variables;
@@ -1033,7 +1074,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in  
     } /* for (all known variables) */
 
     /* Form new variable descriptor */
-    _ogl_shader_constructor_variable* variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
+    variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
 
     ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
                        "Out of memory");
@@ -1052,7 +1093,9 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_general_variable_to_ub(__in  
     /* Store the descriptor */
     if (out_variable_id != NULL)
     {
-        *out_variable_id = system_resizable_vector_get_amount_of_elements(ub_ptr->variables);
+        system_resizable_vector_get_property(ub_ptr->variables,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                             out_variable_id);
     }
 
     system_resizable_vector_push(ub_ptr->variables,
@@ -1073,12 +1116,17 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(__in  __notnull ogl
                                                              __in  __notnull system_hashed_ansi_string name,
                                                              __out __notnull _structure_id*            out_result_id_ptr)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     result          = false;
-    _structure_id            result_id       = 0;
+    _ogl_shader_constructor*           constructor_ptr   = (_ogl_shader_constructor*) constructor;
+    _ogl_shader_constructor_structure* new_structure_ptr = NULL;
+    bool                               result            = false;
+    _structure_id                      result_id         = 0;
 
     /* Make sure the structure has not already been added */
-    const unsigned int n_structures = system_resizable_vector_get_amount_of_elements(constructor_ptr->structures);
+    unsigned int n_structures = 0;
+
+    system_resizable_vector_get_property(constructor_ptr->structures,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_structures);
 
     for (unsigned int n_structure = 0;
                       n_structure < n_structures;
@@ -1107,9 +1155,11 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure(__in  __notnull ogl
     } /* for (all added structures) */
 
     /* Form a new descriptor */
-    _ogl_shader_constructor_structure* new_structure_ptr = new (std::nothrow) _ogl_shader_constructor_structure;
+     new_structure_ptr = new (std::nothrow) _ogl_shader_constructor_structure;
 
-    ASSERT_ALWAYS_SYNC(new_structure_ptr != NULL, "Out of memory");
+    ASSERT_ALWAYS_SYNC(new_structure_ptr != NULL,
+                       "Out of memory");
+
     if (new_structure_ptr == NULL)
     {
         goto end;
@@ -1144,8 +1194,10 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(__in
                                                                             __in           _uniform_block_id         uniform_block,
                                                                             __in __notnull system_hashed_ansi_string name)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     result          = false;
+    _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
+    bool                                   result          = false;
+    _ogl_shader_constructor_uniform_block* ub_ptr          = NULL;
+    _ogl_shader_constructor_variable*      variable_ptr    = NULL;
 
     /* Retrieve structure descriptor */
     _ogl_shader_constructor_structure* structure_ptr = NULL;
@@ -1161,8 +1213,6 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(__in
     }
 
     /* Retrieve UB descriptor */
-    _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
-
     if (!system_resizable_vector_get_element_at(constructor_ptr->uniform_blocks,
                                                 uniform_block,
                                                &ub_ptr) )
@@ -1174,10 +1224,11 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_add_structure_variable_to_ub(__in
     }
 
     /* Form new variable descriptor */
-    _ogl_shader_constructor_variable* variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
+    variable_ptr = new (std::nothrow) _ogl_shader_constructor_variable;
 
     ASSERT_ALWAYS_SYNC(variable_ptr != NULL,
                        "Out of memory");
+
     if (variable_ptr == NULL)
     {
         goto end;
@@ -1237,12 +1288,17 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(__
                                                                               __in __notnull _layout_qualifier         layout_qualifiers,
                                                                               __in __notnull system_hashed_ansi_string name)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     is_default_ub   = false;
-    _uniform_block_id        result_id       = 0;
+    _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
+    bool                                   is_default_ub   = false;
+    _uniform_block_id                      result_id       = 0;
+    _ogl_shader_constructor_uniform_block* ub_ptr          = NULL;
 
     /* Make sure the uniform block has not already been added */
-    const unsigned int n_uniform_blocks = system_resizable_vector_get_amount_of_elements(constructor_ptr->uniform_blocks);
+    unsigned int n_uniform_blocks = 0;
+
+    system_resizable_vector_get_property(constructor_ptr->uniform_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_uniform_blocks);
 
     for (unsigned int n_uniform_block = 0;
                       n_uniform_block < n_uniform_blocks;
@@ -1276,7 +1332,13 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(__
     if ( (system_hashed_ansi_string_get_length(name) == 0 ||
          name                                        == NULL) )
     {
-        if (system_resizable_vector_get_amount_of_elements(constructor_ptr->uniform_blocks) > 0)
+        uint32_t n_ubs = 0;
+
+        system_resizable_vector_get_property(constructor_ptr->uniform_blocks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_ubs);
+
+        if (n_ubs > 0)
         {
             LOG_ERROR("Unnamed uniform blocks are not allowed.");
 
@@ -1289,7 +1351,7 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(__
     }
 
     /* Form a new descriptor */
-    _ogl_shader_constructor_uniform_block* ub_ptr = new (std::nothrow) _ogl_shader_constructor_uniform_block;
+    ub_ptr = new (std::nothrow) _ogl_shader_constructor_uniform_block;
 
     if (ub_ptr == NULL)
     {
@@ -1299,7 +1361,10 @@ PUBLIC EMERALD_API _uniform_block_id ogl_shader_constructor_add_uniform_block(__
         goto end;
     }
 
-    result_id             = system_resizable_vector_get_amount_of_elements(constructor_ptr->uniform_blocks);
+    system_resizable_vector_get_property(constructor_ptr->uniform_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result_id);
+
     ub_ptr->is_default_ub = is_default_ub;
     ub_ptr->name          = name;
 
@@ -1373,7 +1438,9 @@ PUBLIC EMERALD_API unsigned int ogl_shader_constructor_get_amount_of_variables_i
         goto end;
     }
 
-    result = system_resizable_vector_get_amount_of_elements(ub_ptr->variables);
+    system_resizable_vector_get_property(ub_ptr->variables,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     /* All done */
 end:
@@ -1399,6 +1466,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(__in __
                                                                          __in __notnull system_hashed_ansi_string var_name)
 {
     _ogl_shader_constructor*               constructor_ptr = (_ogl_shader_constructor*) constructor;
+    uint32_t                               n_variables     = 0;
     bool                                   result          = false;
     _ogl_shader_constructor_uniform_block* ub_ptr          = NULL;
 
@@ -1413,7 +1481,9 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_is_general_variable_in_ub(__in __
     }
 
     /* TODO: Optimize */
-    const uint32_t n_variables = system_resizable_vector_get_amount_of_elements(ub_ptr->variables);
+    system_resizable_vector_get_property(ub_ptr->variables,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_variables);
 
     LOG_ERROR("ogl_shader_constructor_is_general_variable_in_ub(): Slow code path!");
 
@@ -1485,8 +1555,9 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
                                                                                   __in      __notnull const void*            data,
                                                                                   __out_opt           uint32_t*              out_n_bytes_to_read)
 {
-    _ogl_shader_constructor* constructor_ptr = (_ogl_shader_constructor*) constructor;
-    bool                     result          = false;
+    _ogl_shader_constructor*          constructor_ptr = (_ogl_shader_constructor*) constructor;
+    bool                              result          = false;
+    _ogl_shader_constructor_variable* variable_ptr    = NULL;
 
     /* Retrieve UB descriptor */
     _ogl_shader_constructor_uniform_block* ub_ptr = NULL;
@@ -1502,8 +1573,6 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
     }
 
     /* Retrieve variable descriptor */
-    _ogl_shader_constructor_variable* variable_ptr = NULL;
-
     if (!system_resizable_vector_get_element_at(ub_ptr->variables,
                                                 variable_id,
                                                &variable_ptr) )
@@ -1566,7 +1635,7 @@ PUBLIC EMERALD_API bool ogl_shader_constructor_set_general_variable_default_valu
             variable_ptr->default_data = NULL;
         }
 
-        variable_ptr->default_data = new (std::nothrow) float[16];
+        variable_ptr->default_data = new (std::nothrow) char[16 * sizeof(float)];
 
         ASSERT_DEBUG_SYNC(variable_ptr->default_data != NULL,
                           "Out of memory");

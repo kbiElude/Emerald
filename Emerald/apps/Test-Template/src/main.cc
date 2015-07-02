@@ -68,10 +68,14 @@ PRIVATE void _window_closing_callback_handler(system_window window)
 
 
 /** Entry point */
-int WINAPI WinMain(HINSTANCE instance_handle,
-                   HINSTANCE,
-                   LPTSTR,
-                   int)
+#ifdef _WIN32
+    int WINAPI WinMain(HINSTANCE instance_handle,
+                       HINSTANCE,
+                       LPTSTR,
+                       int)
+#else
+    int main()
+#endif
 {
     int window_size    [2] = {640, 480};
     int window_x1y1x2y2[4] = {0};
@@ -96,22 +100,23 @@ int WINAPI WinMain(HINSTANCE instance_handle,
                                SYSTEM_WINDOW_PROPERTY_RENDERING_CONTEXT,
                               &_context);
 
-    system_window_set_rendering_handler(window,
-                                        window_rendering_handler);
+    system_window_set_property         (window,
+                                        SYSTEM_WINDOW_PROPERTY_RENDERING_HANDLER,
+                                       &window_rendering_handler);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_LEFT_BUTTON_DOWN,
-                                        _rendering_lbm_callback_handler,
+                                        (void*) _rendering_lbm_callback_handler,
                                         NULL);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSED,
-                                        _window_closed_callback_handler,
+                                        (void*) _window_closed_callback_handler,
                                         NULL);
     system_window_add_callback_func    (window,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_PRIORITY_NORMAL,
                                         SYSTEM_WINDOW_CALLBACK_FUNC_WINDOW_CLOSING,
-                                        _window_closing_callback_handler,
+                                        (void*) _window_closing_callback_handler,
                                         NULL);
 
     ogl_rendering_handler_play(window_rendering_handler,

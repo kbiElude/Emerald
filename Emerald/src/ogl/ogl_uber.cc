@@ -314,9 +314,14 @@ PRIVATE void _ogl_uber_add_item_shaders_fragment_callback_handler(         _shad
 PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                                      __in __notnull mesh       mesh)
 {
-    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints = NULL;
-    const ogl_context_gl_entrypoints*                         entrypoints     = NULL;
-    const ogl_context_gl_limits*                              limits          = NULL;
+    const ogl_context_gl_entrypoints_ext_direct_state_access* dsa_entrypoints       = NULL;
+    const ogl_context_gl_entrypoints*                         entrypoints           = NULL;
+    const ogl_context_gl_limits*                              limits                = NULL;
+    GLint                                                     mesh_bo_id            = 0;
+    unsigned int                                              mesh_stride           = 0;
+    uint32_t                                                  mesh_texcoords_offset = 0;
+    uint32_t                                                  n_layers              = 0;
+    _ogl_uber_vao*                                            vao_ptr               = NULL;
 
     ogl_context_get_property(uber_ptr->context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL_EXT_DIRECT_STATE_ACCESS,
@@ -329,8 +334,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                             &limits);
 
     /* Create a VAO if one is needed */
-    _ogl_uber_vao* vao_ptr = NULL;
-
     if (!system_hash64map_get(uber_ptr->mesh_to_vao_descriptor_map,
                               (system_hash64) mesh,
                              &vao_ptr) )
@@ -350,10 +353,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
     }
 
     /* Retrieve buffer object storage data. All data streams are stored inside the BO */
-    GLint        mesh_bo_id            = 0;
-    unsigned int mesh_stride           = 0;
-    uint32_t     mesh_texcoords_offset = 0;
-
     mesh_get_layer_data_stream_property(mesh,
                                         MESH_LAYER_DATA_STREAM_TYPE_TEXCOORDS,
                                         MESH_LAYER_DATA_STREAM_PROPERTY_START_OFFSET,
@@ -421,8 +420,6 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
                                     mesh_bo_id);
 
     /* Iterate over all layers.. */
-    uint32_t n_layers = 0;
-
     mesh_get_property(mesh,
                       MESH_PROPERTY_N_LAYERS,
                      &n_layers);
@@ -444,7 +441,7 @@ PRIVATE void _ogl_uber_bake_mesh_vao(__in __notnull _ogl_uber* uber_ptr,
         {
             {
                 uber_ptr->object_uv_attribute_location,
-                (const GLvoid*) mesh_texcoords_offset,
+                (const GLvoid*) (intptr_t) mesh_texcoords_offset,
                 2
             },
         };
@@ -726,7 +723,11 @@ PRIVATE void _ogl_uber_release_renderer_callback(ogl_context context, void* arg)
 {
     const ogl_context_gl_entrypoints* entrypoints = NULL;
     _ogl_uber*                        uber_ptr    = (_ogl_uber*) arg;
-    const unsigned int                n_vaos      = system_hash64map_get_amount_of_elements(uber_ptr->mesh_to_vao_descriptor_map);
+    unsigned int                      n_vaos      = 0;
+
+    system_hash64map_get_property(uber_ptr->mesh_to_vao_descriptor_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_vaos);
 
     ogl_context_get_property(context,
                              OGL_CONTEXT_PROPERTY_ENTRYPOINTS_GL,
@@ -857,7 +858,10 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_input_fragment_attribute_item(_
     }
 
     new_item_ptr->type = OGL_UBER_ITEM_INPUT_FRAGMENT_ATTRIBUTE;
-    result             = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     /* Add the descriptor to the added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -979,7 +983,10 @@ PUBLIC EMERALD_API ogl_uber_item_id ogl_uber_add_light_item(__in __notnull      
     new_item_ptr->is_shadow_caster = is_shadow_caster;
     new_item_ptr->type             = OGL_UBER_ITEM_LIGHT;
     new_item_ptr->vs_item_id       = vs_item_id;
-    result                         = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &result);
 
     /* Add the descriptor to the added items vector */
     system_resizable_vector_push(uber_ptr->added_items,
@@ -1100,7 +1107,9 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_general_property(__in  __notnull con
             ASSERT_DEBUG_SYNC(uber_ptr->type == OGL_UBER_TYPE_REGULAR,
                               "OGL_UBER_GENERAL_PROPERTY_N_ITEMS query is only supported for regular ogl_uber instances.");
 
-            *( (uint32_t*) out_result) = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+            system_resizable_vector_get_property(uber_ptr->added_items,
+                                                 SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                                 out_result);
 
             break;
         }
@@ -1218,7 +1227,36 @@ PUBLIC EMERALD_API void ogl_uber_get_shader_item_property(__in __notnull const o
 /** TODO */
 PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
 {
-    _ogl_uber* uber_ptr = (_ogl_uber*) uber;
+    const ogl_program_variable*             ambient_material_sampler_uniform_descriptor    = NULL;
+    const ogl_program_variable*             ambient_material_uniform_descriptor            = NULL;
+    const ogl_program_variable*             diffuse_material_sampler_uniform_descriptor    = NULL;
+    const ogl_program_variable*             diffuse_material_uniform_descriptor            = NULL;
+    const ogl_program_variable*             emission_material_sampler_uniform_descriptor   = NULL;
+    const ogl_program_variable*             emission_material_uniform_descriptor           = NULL;
+    const ogl_program_variable*             far_near_plane_diff_uniform_descriptor         = NULL;
+    const ogl_program_variable*             flip_z_uniform_descriptor                      = NULL;
+    const ogl_program_variable*             glosiness_uniform_descriptor                   = NULL;
+    const ogl_program_variable*             luminosity_material_sampler_uniform_descriptor = NULL;
+    const ogl_program_variable*             luminosity_material_uniform_descriptor         = NULL;
+    const ogl_program_variable*             max_variance_uniform_descriptor                = NULL;
+    const ogl_program_variable*             mesh_sh3_uniform_descriptor                    = NULL;
+    const ogl_program_variable*             mesh_sh3_data_offset_uniform_descriptor        = NULL;
+    const ogl_program_variable*             mesh_sh4_uniform_descriptor                    = NULL;
+    const ogl_program_variable*             mesh_sh4_data_offset_uniform_descriptor        = NULL;
+    const ogl_program_variable*             model_uniform_descriptor                       = NULL;
+    const ogl_program_variable*             near_plane_uniform_descriptor                  = NULL;
+    unsigned int                            n_items                                        = 0;
+    const ogl_program_variable*             normal_matrix_uniform_descriptor               = NULL;
+    const ogl_program_attribute_descriptor* object_normal_descriptor                       = NULL;
+    const ogl_program_attribute_descriptor* object_uv_descriptor                           = NULL;
+    const ogl_program_attribute_descriptor* object_vertex_descriptor                       = NULL;
+    const ogl_program_variable*             shininess_material_sampler_uniform_descriptor  = NULL;
+    const ogl_program_variable*             shininess_material_uniform_descriptor          = NULL;
+    const ogl_program_variable*             specular_material_sampler_uniform_descriptor   = NULL;
+    const ogl_program_variable*             specular_material_uniform_descriptor           = NULL;
+    _ogl_uber*                              uber_ptr                                       = (_ogl_uber*) uber;
+    const ogl_program_variable*             vp_uniform_descriptor                          = NULL;
+    const ogl_program_variable*             world_camera_uniform_descriptor                = NULL;
 
     /* Bail out if no need to link */
     if (!uber_ptr->dirty)
@@ -1250,10 +1288,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     _ogl_uber_reset_attribute_uniform_locations(uber_ptr);
 
     /* Retrieve attribute locations */
-    const ogl_program_attribute_descriptor* object_normal_descriptor = NULL;
-    const ogl_program_attribute_descriptor* object_uv_descriptor     = NULL;
-    const ogl_program_attribute_descriptor* object_vertex_descriptor = NULL;
-
     ogl_program_get_attribute_by_name(uber_ptr->program,
                                       system_hashed_ansi_string_create("object_normal"),
                                      &object_normal_descriptor);
@@ -1280,32 +1314,6 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Retrieve uniform locations */
-    const ogl_program_variable* ambient_material_sampler_uniform_descriptor    = NULL;
-    const ogl_program_variable* ambient_material_uniform_descriptor            = NULL;
-    const ogl_program_variable* diffuse_material_sampler_uniform_descriptor    = NULL;
-    const ogl_program_variable* diffuse_material_uniform_descriptor            = NULL;
-    const ogl_program_variable* emission_material_sampler_uniform_descriptor   = NULL;
-    const ogl_program_variable* emission_material_uniform_descriptor           = NULL;
-    const ogl_program_variable* far_near_plane_diff_uniform_descriptor         = NULL;
-    const ogl_program_variable* flip_z_uniform_descriptor                      = NULL;
-    const ogl_program_variable* glosiness_uniform_descriptor                   = NULL;
-    const ogl_program_variable* luminosity_material_sampler_uniform_descriptor = NULL;
-    const ogl_program_variable* luminosity_material_uniform_descriptor         = NULL;
-    const ogl_program_variable* max_variance_uniform_descriptor                = NULL;
-    const ogl_program_variable* mesh_sh3_uniform_descriptor                    = NULL;
-    const ogl_program_variable* mesh_sh3_data_offset_uniform_descriptor        = NULL;
-    const ogl_program_variable* mesh_sh4_uniform_descriptor                    = NULL;
-    const ogl_program_variable* mesh_sh4_data_offset_uniform_descriptor        = NULL;
-    const ogl_program_variable* model_uniform_descriptor                       = NULL;
-    const ogl_program_variable* near_plane_uniform_descriptor                  = NULL;
-    const ogl_program_variable* normal_matrix_uniform_descriptor               = NULL;
-    const ogl_program_variable* shininess_material_sampler_uniform_descriptor  = NULL;
-    const ogl_program_variable* shininess_material_uniform_descriptor          = NULL;
-    const ogl_program_variable* specular_material_sampler_uniform_descriptor   = NULL;
-    const ogl_program_variable* specular_material_uniform_descriptor           = NULL;
-    const ogl_program_variable* vp_uniform_descriptor                          = NULL;
-    const ogl_program_variable* world_camera_uniform_descriptor                = NULL;
-
     ogl_program_get_uniform_by_name(uber_ptr->program,
                                     system_hashed_ansi_string_create("ambient_material_sampler"),
                                    &ambient_material_sampler_uniform_descriptor);
@@ -1564,7 +1572,9 @@ PUBLIC EMERALD_API void ogl_uber_link(__in __notnull ogl_uber uber)
     }
 
     /* Create internal representation of uber shader items */
-    const unsigned int n_items = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     for (unsigned int n_item = 0;
                       n_item < n_items;
@@ -2314,7 +2324,7 @@ PUBLIC void ogl_uber_rendering_render_mesh(__in __notnull mesh                 m
                                                    layer_pass_index_max_value,
                                                    layer_pass_n_elements,
                                                    gl_index_type,
-                                                  (const GLvoid*) layer_pass_elements_offset);
+                                                  (const GLvoid*) (intptr_t) layer_pass_elements_offset);
             } /* for (all mesh layer passes) */
         } /* for (all mesh layers) */
     } /* if (mesh_gpu != NULL) */
@@ -2350,7 +2360,11 @@ PUBLIC RENDERING_CONTEXT_CALL EMERALD_API void ogl_uber_rendering_start(__in __n
     }
 
     /* Set up UB contents & texture samplers */
-    const unsigned int n_items = system_resizable_vector_get_amount_of_elements(uber_ptr->added_items);
+    unsigned int n_items = 0;
+
+    system_resizable_vector_get_property(uber_ptr->added_items,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_items);
 
     for (unsigned int n_item = 0;
                       n_item < n_items;

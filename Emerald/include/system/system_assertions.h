@@ -6,7 +6,6 @@
 #ifndef SYSTEM_ASSERTIONS_H
 #define SYSTEM_ASSERTIONS_H
 
-#include "dll_exports.h"
 #include "system_types.h"
 
 
@@ -50,18 +49,33 @@
 #endif
 
 /** Macro to always do an assertion check */
-#define ASSERT_ALWAYS_ASYNC(condition, message, ...) system_assertions_assert(false,            \
-                                                                              ALWAYS_ASSERTION, \
-                                                                              condition,        \
-                                                                              message,          \
-                                                                              __VA_ARGS__);     \
-                                                     __analysis_assume       (condition);
-#define ASSERT_ALWAYS_SYNC(condition, message, ...)  system_assertions_assert(true,             \
-                                                                              ALWAYS_ASSERTION, \
-                                                                              condition,        \
-                                                                              message,          \
-                                                                              __VA_ARGS__);     \
-                                                     __analysis_assume       (condition);
+#ifdef _WIN32
+    #define ASSERT_ALWAYS_ASYNC(condition, message, ...) system_assertions_assert(false,          \
+                                                                                ALWAYS_ASSERTION, \
+                                                                                condition,        \
+                                                                                message,          \
+                                                                                __VA_ARGS__);     \
+                                                        __analysis_assume       (condition);
+    #define ASSERT_ALWAYS_SYNC(condition, message, ...)  system_assertions_assert(true,           \
+                                                                                ALWAYS_ASSERTION, \
+                                                                                condition,        \
+                                                                                message,          \
+                                                                                __VA_ARGS__);     \
+                                                        __analysis_assume       (condition);
+#else
+    #define ASSERT_ALWAYS_ASYNC(condition, message, ...) system_assertions_assert(false,          \
+                                                                                ALWAYS_ASSERTION, \
+                                                                                condition,        \
+                                                                                message,          \
+                                                                                ##__VA_ARGS__);   \
+                                                        __analysis_assume       (condition);
+    #define ASSERT_ALWAYS_SYNC(condition, message, ...)  system_assertions_assert(true,           \
+                                                                                ALWAYS_ASSERTION, \
+                                                                                condition,        \
+                                                                                message,          \
+                                                                                ##__VA_ARGS__);   \
+                                                        __analysis_assume       (condition);
+#endif
 
 /** Function to use in order to issue a non-/-blocking assertion check. This
  *  implementation will use one of the thread pool's worker threads to show

@@ -3,11 +3,11 @@
  * Emerald (kbi/elude @2012-2015)
  *
  */
+#include "gtest/gtest.h"
 #include "shared.h"
 #include "system/system_log.h"
 #include "system/system_memory_manager.h"
 #include "system/system_resizable_vector.h"
-#include "gtest/gtest.h"
 
 
 struct _memory_block
@@ -64,7 +64,11 @@ static void _mmanager_block_freed_callback(__in system_memory_manager manager,
 {
     /* Find the matching block */
     bool         has_found               = false;
-    unsigned int n_alloced_memory_blocks = system_resizable_vector_get_amount_of_elements(memory_blocks);
+    unsigned int n_alloced_memory_blocks = 0;
+
+    system_resizable_vector_get_property(memory_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_alloced_memory_blocks);
 
     for (int n_block = 0;
              n_block < n_alloced_memory_blocks;
@@ -132,9 +136,14 @@ TEST(MemoryManagerTest, AlignedPageSizeAllocations)
                     n_allocation * allocation_size);
 
         /* Also check if the call-back occured */
-        _memory_block* block_ptr = NULL;
+        _memory_block* block_ptr       = NULL;
+        uint32_t       n_memory_blocks = 0;
 
-        ASSERT_EQ(system_resizable_vector_get_amount_of_elements(memory_blocks),
+        system_resizable_vector_get_property(memory_blocks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_memory_blocks);
+
+        ASSERT_EQ(n_memory_blocks,
                   n_allocation + 1);
 
         system_resizable_vector_get_element_at(memory_blocks,
@@ -205,9 +214,13 @@ TEST(MemoryManagerTest, UnalignedNonPageSizeAllocations)
          * the number of call-backs, we need to make sure a sufficient number of pages has been
          * committed.
          */
-        unsigned int       accumulated_page_size = 0;
-        _memory_block*     block_ptr             = NULL;
-        const unsigned int n_blocks              = system_resizable_vector_get_amount_of_elements(memory_blocks);
+        unsigned int   accumulated_page_size = 0;
+        _memory_block* block_ptr             = NULL;
+        unsigned int   n_blocks              = 0;
+
+        system_resizable_vector_get_property(memory_blocks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_blocks);
 
         for (unsigned int n_block = 0;
                           n_block < n_blocks;
@@ -293,9 +306,13 @@ TEST(MemoryManagerTest, AlignedNonPageSizeAllocations)
          * the number of call-backs, we need to make sure a sufficient number of pages has been
          * committed.
          */
-        unsigned int       accumulated_page_size = 0;
-        _memory_block*     block_ptr             = NULL;
-        const unsigned int n_blocks              = system_resizable_vector_get_amount_of_elements(memory_blocks);
+        unsigned int   accumulated_page_size = 0;
+        _memory_block* block_ptr             = NULL;
+        unsigned int   n_blocks              = 0;
+
+        system_resizable_vector_get_property(memory_blocks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_blocks);
 
         for (unsigned int n_block = 0;
                           n_block < n_blocks;
@@ -356,10 +373,10 @@ TEST(MemoryManagerTest, AllocReleaseAlloc)
 
         ASSERT_TRUE(result);
         ASSERT_TRUE(system_resizable_vector_find(alloc_offsets,
-                                                 (void*) alloc_offset) == ITEM_NOT_FOUND);
+                                                 (void*) (intptr_t) alloc_offset) == ITEM_NOT_FOUND);
 
         system_resizable_vector_push(alloc_offsets,
-                                     (void*) alloc_offset);
+                                     (void*) (intptr_t) alloc_offset);
     } /* for (all allocable blocks) */
 
     /* 2. Free all those blocks */
@@ -455,7 +472,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
         ASSERT_TRUE(result);
 
         system_resizable_vector_push(alloc_offsets,
-                                     (void*) alloc_offset);
+                                     (void*) (intptr_t) alloc_offset);
     } /* for (all allocable blocks) */
 
     /* 2. Free all those blocks */
@@ -475,12 +492,18 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
                                          alloc_offset);
 
         /* Make sure the memory blocks are as per description */
+        uint32_t n_memory_blocks = 0;
+
+        system_resizable_vector_get_property(memory_blocks,
+                                             SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                            &n_memory_blocks);
+
         switch (n_block)
         {
             case 0:
             {
                 /* a) All pages should be left intact */
-                ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 3);
+                ASSERT_TRUE(n_memory_blocks == 3);
 
                 break;
             }
@@ -488,7 +511,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
             case 1:
             {
                 /* b) Page 0 should be released, all other pages should be left untouched. */
-                ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 2);
+                ASSERT_TRUE(n_memory_blocks == 2);
 
                 break;
             }
@@ -496,7 +519,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
             case 2:
             {
                 /* c) No page should be touched. */
-                ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 2);
+                ASSERT_TRUE(n_memory_blocks == 2);
 
                 break;
             }
@@ -504,7 +527,7 @@ TEST(MemoryManagerTest, OverlappingPageDataDealloc)
             case 3:
             {
                 /* d) Page 1 and 2 should be released. */
-                ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 0);
+                ASSERT_TRUE(n_memory_blocks == 0);
 
                 break;
             }
@@ -547,13 +570,20 @@ TEST(MemoryManagerTest, AlignedRegionDealloc)
      * would have always ended up aligned to an offset of 0, which is not the case
      * we're really trying to test here.
      */
+    uint32_t n_memory_blocks = 0;
+
     result = system_memory_manager_alloc_block(manager,
                                                1024, /* size */
                                                64,   /* required_alignment */
                                               &alloc_offset_1);
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 1);
+
+    system_resizable_vector_get_property(memory_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_memory_blocks);
+
+    ASSERT_TRUE(n_memory_blocks== 1);
 
     result = system_memory_manager_alloc_block(manager,
                                                1024, /* size */
@@ -561,18 +591,31 @@ TEST(MemoryManagerTest, AlignedRegionDealloc)
                                               &alloc_offset_2);
 
     ASSERT_TRUE(result);
-    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 2);
+
+    system_resizable_vector_get_property(memory_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_memory_blocks);
+
+    ASSERT_TRUE(n_memory_blocks == 2);
 
     /* Try to release the block under the reported offset. */
     system_memory_manager_free_block(manager,
                                      alloc_offset_1);
 
-    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 1);
+    system_resizable_vector_get_property(memory_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_memory_blocks);
+
+    ASSERT_TRUE(n_memory_blocks == 1);
 
     system_memory_manager_free_block(manager,
                                      alloc_offset_2);
 
-    ASSERT_TRUE(system_resizable_vector_get_amount_of_elements(memory_blocks) == 0);
+    system_resizable_vector_get_property(memory_blocks,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_memory_blocks);
+
+    ASSERT_TRUE(n_memory_blocks== 0);
 
     /* All done */
     _free_memory_blocks();

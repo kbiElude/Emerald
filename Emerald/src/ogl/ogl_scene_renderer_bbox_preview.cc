@@ -15,8 +15,7 @@
 #include "scene/scene.h"
 #include "scene/scene_mesh.h"
 #include "system/system_matrix4x4.h"
-#include <string>
-#include <sstream>
+#include <string.h>
 
 static const char* preview_fragment_shader = "#version 430 core\n"
                                              "\n"
@@ -122,12 +121,12 @@ typedef struct _ogl_scene_renderer_bbox_preview
     unsigned int       data_bo_size;
     unsigned int       data_bo_start_offset;
     uint32_t           data_n_meshes;
+    scene              owned_scene;
     ogl_scene_renderer owner;
     ogl_program        preview_program;
     ogl_program_ub     preview_program_data_ub;
     GLuint             preview_program_ub_offset_model;
     GLuint             preview_program_ub_offset_vp;
-    scene              scene;
 
     /* Cached func ptrs */
     PFNGLBINDBUFFERPROC              pGLBindBuffer;
@@ -146,6 +145,9 @@ typedef struct _ogl_scene_renderer_bbox_preview
 /** TODO */
 PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in __notnull _ogl_scene_renderer_bbox_preview* preview_ptr)
 {
+    const ogl_program_variable* model_uniform_ptr = NULL;
+    const ogl_program_variable* vp_uniform_ptr    = NULL;
+
     ASSERT_DEBUG_SYNC(preview_ptr->preview_program == NULL,
                       "Previe wprogram has already been initialized");
 
@@ -153,7 +155,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     std::stringstream n_scene_meshes_sstream;
     uint32_t          n_scene_meshes = 0;
 
-    scene_get_property(preview_ptr->scene,
+    scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_N_MESH_INSTANCES,
                       &n_scene_meshes);
 
@@ -173,7 +175,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     /* Create shaders and set their bodies */
     system_hashed_ansi_string scene_name = NULL;
 
-    scene_get_property(preview_ptr->scene,
+    scene_get_property(preview_ptr->owned_scene,
                        SCENE_PROPERTY_NAME,
                       &scene_name);
 
@@ -229,9 +231,6 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_preview_program(__in 
     }
 
     /* Retrieve uniform block manager */
-    const ogl_program_variable* model_uniform_ptr = NULL;
-    const ogl_program_variable* vp_uniform_ptr    = NULL;
-
     ogl_program_get_uniform_block_by_name(preview_ptr->preview_program,
                                           system_hashed_ansi_string_create("data"),
                                          &preview_ptr->preview_program_data_ub);
@@ -293,7 +292,10 @@ end:
 /** TODO */
 PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnull _ogl_scene_renderer_bbox_preview* preview_ptr)
 {
-    float* ub_data = NULL;
+    ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
+    float*           traveller_ptr                   = NULL;
+    float*           ub_data                         = NULL;
+    GLuint           uniform_buffer_offset_alignment = -1;
 
     /* Allocate space for AABB data. */
     const uint32_t matrix_data_size = 4 /* vec4 */ * 2 /* max, min */ * preview_ptr->data_n_meshes * sizeof(float);
@@ -309,8 +311,6 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
     }
 
     /* Fill the buffer with data */
-    float* traveller_ptr = NULL;
-
     for (unsigned int n_iteration = 0;
                       n_iteration < 2;
                     ++n_iteration)
@@ -322,7 +322,7 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
             float*     aabb_max_ptr              = NULL;
             float*     aabb_min_ptr              = NULL;
             uint32_t   mesh_id                   = -1;
-            scene_mesh mesh_instance             = scene_get_mesh_instance_by_index(preview_ptr->scene,
+            scene_mesh mesh_instance             = scene_get_mesh_instance_by_index(preview_ptr->owned_scene,
                                                                                     n_mesh);
             mesh       mesh_current              = NULL;
             mesh       mesh_instantiation_parent = NULL;
@@ -375,9 +375,6 @@ PRIVATE void _ogl_context_scene_renderer_bbox_preview_init_ub_data(__in __notnul
     } /* for (both iterations) */
 
     /* Retrieve UB offset alignment */
-    ogl_context_type context_type                    = OGL_CONTEXT_TYPE_UNDEFINED;
-    GLuint           uniform_buffer_offset_alignment = -1;
-
     ogl_context_get_property(preview_ptr->context,
                              OGL_CONTEXT_PROPERTY_TYPE,
                             &context_type);
@@ -468,12 +465,12 @@ PUBLIC ogl_scene_renderer_bbox_preview ogl_scene_renderer_bbox_preview_create(__
         new_instance->data_bo_size                    = 0;
         new_instance->data_bo_start_offset            = -1;
         new_instance->data_n_meshes                   = 0;
+        new_instance->owned_scene                     = scene;
         new_instance->owner                           = owner;
         new_instance->preview_program                 = NULL;
         new_instance->preview_program_data_ub         = NULL;
         new_instance->preview_program_ub_offset_model = -1;
         new_instance->preview_program_ub_offset_vp    = -1;
-        new_instance->scene                           = scene;
 
         ogl_context_get_property(new_instance->context,
                                  OGL_CONTEXT_PROPERTY_BUFFERS,
@@ -551,9 +548,9 @@ PUBLIC void ogl_scene_renderer_bbox_preview_release(__in __notnull __post_invali
                                                          preview_ptr);
     }
 
-    if (preview_ptr->scene != NULL)
+    if (preview_ptr->owned_scene != NULL)
     {
-        scene_release(preview_ptr->scene);
+        scene_release(preview_ptr->owned_scene);
     }
 
     delete preview_ptr;

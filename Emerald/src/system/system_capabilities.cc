@@ -6,6 +6,11 @@
 #include "shared.h"
 #include "system/system_capabilities.h"
 
+#ifdef __linux
+    #include <unistd.h>
+#endif
+
+
 PRIVATE unsigned int n_cpu_cores = 0;
 
 
@@ -37,9 +42,14 @@ PUBLIC EMERALD_API void system_capabilities_get(__in            system_capabilit
 /** Please see header for spec */
 PUBLIC void system_capabilities_init()
 {
+    /* Number of CPU cores */
+#ifdef _WIN32
     SYSTEM_INFO system_info;
 
     ::GetSystemInfo(&system_info);
 
     n_cpu_cores = system_info.dwNumberOfProcessors;
+#else
+    n_cpu_cores = sysconf(_SC_NPROCESSORS_ONLN);
+#endif
 }

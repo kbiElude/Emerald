@@ -7,18 +7,62 @@
 #define SYSTEM_EVENT_H
 
 #include "system/system_types.h"
+#include "system/system_time.h"
 
+typedef enum
+{
+    /* bool */
+    SYSTEM_EVENT_PROPERTY_MANUAL_RESET,
+
+    /* system_thread.
+     *
+     * Only valid if event type == SYSTEM_EVENT_TYPE_THREAD
+     */
+    SYSTEM_EVENT_PROPERTY_OWNED_THREAD,
+
+    /* system_event_type */
+    SYSTEM_EVENT_PROPERTY_TYPE
+} system_event_property;
+
+typedef enum
+{
+    /* Created by system_event_create() */
+    SYSTEM_EVENT_TYPE_REGULAR,
+    /* Created by system_event_create_from_thread() */
+    SYSTEM_EVENT_TYPE_THREAD,
+
+    SYSTEM_EVENT_TYPE_UNDEFINED
+} system_event_type;
 
 /** Creates an event synchronisation object.
  *
+ *  All threads waiting on the event will block, until the event is "set"
+ *  by another thread.
+ *
  *  @param bool True to reset the object with each finished wait() request, false to make it resettable only
  *              by means of calling system_event_reset() func.
- *  @param bool True to make the event waitable from start, false to require a wait in order to unblock any awaiting wait requests.
  *
  *  @return Event handle object.
  */
-PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset,
-                                                                bool start_state);
+PUBLIC EMERALD_API __maybenull system_event system_event_create(bool manual_reset);
+
+/** Creates an event synchronization object, wrapping a thread. The event will be signalled, the moment
+ *  the thread dies.
+ *
+ *  Calling system_event_set() or system_event_reset() on the event will throw assertion failures, and will
+ *  have not change the event's signal status.
+ *
+ *  @return Event handle object.
+ */
+PUBLIC EMERALD_API __maybenull system_event system_event_create_from_thread(__in system_thread thread);
+
+/** TODO
+ *
+ *  Internal use only.
+ */
+PUBLIC void system_event_get_property(__in  system_event          event,
+                                      __in  system_event_property property,
+                                      __out void*                 out_result);
 
 /** Releases an event synchronisation object.
  *
@@ -54,27 +98,8 @@ PUBLIC EMERALD_API bool system_event_wait_single_peek(__in __notnull system_even
  *
  *  @paran system_event Event object to wait on.
  */
-PUBLIC EMERALD_API void system_event_wait_single_infinite(__in __notnull system_event event);
-
-/** TODO.
- *
- *  @return true if timed out, false otherwise.
- **/
-PUBLIC EMERALD_API bool system_event_wait_single_timeout(__in __notnull system_event         event,
-                                                                        system_timeline_time timeout);
-
-/** Waits infinitely on multiple objects. Function can either block till one of the events become available or
- *  till all of them are free.
- *
- *  @param system_event* Array to wait on.
- *  @param int           Amount of elements in the array. Can't be negative
- *  @param bool          True to wait on all objects, false to wait on only one object.
- *
- *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
- */
-PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __ecount(n_elements) const system_event* events,
-                                                              __in                                int                 n_elements,
-                                                                                                  bool                wait_on_all_objects);
+PUBLIC EMERALD_API void system_event_wait_single(__in __notnull system_event         event,
+                                                 __in           system_timeline_time timeout = SYSTEM_TIME_INFINITE);
 
 /** Waits on multiple objects until user-defined amount of time passes. Function can either block till one of the events become available or
  *  till all of them are free.
@@ -87,10 +112,10 @@ PUBLIC EMERALD_API size_t system_event_wait_multiple_infinite(__in __notnull __e
  *
  *  @return Index of the event causing wait operation to unblock, if @param bool is false. Otherwise undetermined.
  */
-PUBLIC EMERALD_API size_t system_event_wait_multiple_timeout(__in  __notnull __ecount(n_elements) const system_event*  events,
-                                                             __in                                 int                  n_elements,
-                                                                                                  bool                 wait_on_all_objects,
-                                                                                                  system_timeline_time timeout,
-                                                             __out __notnull                      bool*                out_has_timeout_occured);
+PUBLIC EMERALD_API size_t system_event_wait_multiple(__in  __notnull __ecount(n_elements) const system_event*  events,
+                                                     __in                                 int                  n_elements,
+                                                                                          bool                 wait_on_all_objects,
+                                                                                          system_timeline_time timeout,
+                                                     __out_opt                            bool*                out_has_timed_out_ptr);
 
 #endif /* SYSTEM_EVENT_H */

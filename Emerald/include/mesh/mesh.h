@@ -27,14 +27,14 @@
 
 REFCOUNT_INSERT_DECLARATIONS(mesh, mesh)
 
-typedef enum _mesh_index_type
+typedef enum
 {
     MESH_INDEX_TYPE_UNSIGNED_CHAR,
     MESH_INDEX_TYPE_UNSIGNED_SHORT,
     MESH_INDEX_TYPE_UNSIGNED_INT,
 
     MESH_INDEX_TYPE_UNKNOWN
-};
+} _mesh_index_type;
 
 
 /** TODO */

@@ -48,8 +48,11 @@ PRIVATE void _shaders_vertex_combinedmvp_generic_release(__in __notnull __deallo
 PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp_generic_create(__in __notnull ogl_context               context,
                                                                                                 __in __notnull system_hashed_ansi_string name)
 {
+    bool                                 result        = false;
     _shaders_vertex_combinedmvp_generic* result_object = NULL;
     shaders_vertex_combinedmvp_generic   result_shader = NULL;
+    system_hashed_ansi_string            shader_body   = NULL;
+    ogl_shader                           vertex_shader = NULL;
 
     /* Create the body */
     std::stringstream body_stream;
@@ -75,9 +78,9 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp
                    "}\n";
 
     /* Create the shader */
-    ogl_shader vertex_shader = ogl_shader_create(context,
-                                                 SHADER_TYPE_VERTEX,
-                                                 name);
+    vertex_shader = ogl_shader_create(context,
+                                      SHADER_TYPE_VERTEX,
+                                      name);
 
     ASSERT_DEBUG_SYNC(vertex_shader != NULL,
                       "ogl_shader_create() failed");
@@ -90,9 +93,9 @@ PUBLIC EMERALD_API shaders_vertex_combinedmvp_generic shaders_vertex_combinedmvp
     }
 
     /* Set the shader's body */
-    system_hashed_ansi_string shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
-    bool                      result      = ogl_shader_set_body             (vertex_shader,
-                                                                             shader_body);
+    shader_body = system_hashed_ansi_string_create(body_stream.str().c_str() );
+    result      = ogl_shader_set_body             (vertex_shader,
+                                                   shader_body);
 
     ASSERT_DEBUG_SYNC(result,
                       "ogl_shader_set_body() failed");

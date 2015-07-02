@@ -178,7 +178,11 @@ PRIVATE curve_container CreateCurveFromEnvelope(const char*   object_name,
     } /* while (currentKey != NULL) */
 
     /* Now that we know all the keys, we can proceed with curve_container instantiation */
-    const uint32_t n_keys = system_resizable_vector_get_amount_of_elements(keys);
+    uint32_t n_keys = 0;
+
+    system_resizable_vector_get_property(keys,
+                                         SYSTEM_RESIZABLE_VECTOR_PROPERTY_N_ELEMENTS,
+                                        &n_keys);
 
     if (n_keys == 1)
     {
@@ -442,7 +446,11 @@ PUBLIC void FillSceneWithCurveData(__in __notnull scene in_scene)
                       "Envelope ID->curve container map is NULL");
 
     /* Iterate over all hash-map items */
-    const uint32_t n_entries = system_hash64map_get_amount_of_elements(envelope_id_to_curve_container_map);
+    uint32_t n_entries = 0;
+
+    system_hash64map_get_property(envelope_id_to_curve_container_map,
+                                  SYSTEM_HASH64MAP_PROPERTY_N_ELEMENTS,
+                                 &n_entries);
 
     for (uint32_t n_entry = 0;
                   n_entry < n_entries;
@@ -601,8 +609,7 @@ PUBLIC system_hash64map GetEnvelopeIDToCurveContainerHashMap()
 /** TODO */
 PUBLIC void InitCurveData()
 {
-    job_done_event = system_event_create(false,  /* manual_reset */
-                                         false); /* start_state */
+    job_done_event = system_event_create(false); /* manual_reset */
 
     /* Spawn a worker thread so that we can report the progress. */
     system_thread_pool_task_descriptor task = system_thread_pool_create_task_descriptor_handler_only(THREAD_POOL_TASK_PRIORITY_NORMAL,
@@ -612,7 +619,7 @@ PUBLIC void InitCurveData()
     system_thread_pool_submit_single_task(task);
 
     /* Wait for the job to finish */
-    system_event_wait_single_infinite(job_done_event);
+    system_event_wait_single(job_done_event);
 
     /* Clean up */
     system_event_release(job_done_event);

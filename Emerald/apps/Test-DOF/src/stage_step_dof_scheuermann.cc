@@ -5,18 +5,18 @@
  */
 
 #include "shared.h"
-#include "include\main.h"
-#include "postprocessing\postprocessing_blur_poisson.h"
-#include "shaders\shaders_vertex_fullscreen.h"
+#include "include/main.h"
+#include "postprocessing/postprocessing_blur_poisson.h"
+#include "shaders/shaders_vertex_fullscreen.h"
 #include "stage_step_background.h"
 #include "stage_step_dof_scheuermann.h"
 #include "stage_step_julia.h"
-#include "ogl\ogl_context.h"
-#include "ogl\ogl_pipeline.h"
-#include "ogl\ogl_program.h"
-#include "ogl\ogl_program_ub.h"
-#include "ogl\ogl_shader.h"
-#include "ogl\ogl_texture.h"
+#include "ogl/ogl_context.h"
+#include "ogl/ogl_pipeline.h"
+#include "ogl/ogl_program.h"
+#include "ogl/ogl_program_ub.h"
+#include "ogl/ogl_shader.h"
+#include "ogl/ogl_texture.h"
 
 
 #define DOWNSAMPLE_FACTOR (8)

@@ -61,7 +61,7 @@ PUBLIC EMERALD_API system_randomizer system_randomizer_create(__in __notnull sys
                                 seed);
 
         REFCOUNT_INSERT_INIT_CODE_WITH_RELEASE_HANDLER(randomizer_ptr,
-                                                       _system_randomizer_release, 
+                                                       _system_randomizer_release,
                                                        OBJECT_TYPE_SYSTEM_RANDOMIZER, 
                                                        system_hashed_ansi_string_create_by_merging_two_strings("\\System Randomizers\\",
                                                                                                                system_hashed_ansi_string_get_buffer(name)) );
