@@ -604,7 +604,7 @@ PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32)
 }
 
 /** Please see header for spec */
-PUBLIC void ogl_context_win32_unbind_from_current_thread()
+PUBLIC void ogl_context_win32_unbind_from_current_thread(__in ogl_context_win32 context_win32)
 {
     ::wglMakeCurrent(NULL,  /* HDC */
                      NULL); /* HGLRC */

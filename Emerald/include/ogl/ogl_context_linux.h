@@ -66,6 +66,6 @@ PUBLIC bool ogl_context_linux_set_property(__in ogl_context_linux    context_lin
 PUBLIC void ogl_context_linux_swap_buffers(__in ogl_context_linux context_linux);
 
 /** TODO */
-PUBLIC void ogl_context_linux_unbind_from_current_thread();
+PUBLIC void ogl_context_linux_unbind_from_current_thread(__in ogl_context_linux context_linux);
 
 #endif /* OGL_CONTEXT_LINUX_H */

@@ -14,22 +14,29 @@ ENDIF (MSVC)
 
 OPTION(INCLUDE_OBJECT_MANAGER  "Should include object manager code (incl. resource leaking detection)" ON)
 
-IF (NOT MSVC)
- SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-ENDIF (NOT MSVC)
-
-IF (NOT MSVC)
-    # Posix does not support events, as found in Windows. Emerald provides an emulation layer
-    # for the functionality, based on conditional variables.
-    ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
-ENDIF(NOT MSVC)
-
 # DO NOT MODIFY BELOW THIS LINE
 include (GenerateExportHeader)
 
 IF(MSVC)
     ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
 ENDIF(MSVC)
+
+IF (NOT MSVC)
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+
+    # Posix does not support events, as found in Windows. Emerald provides an emulation layer
+    # for the functionality, based on conditional variables.
+    ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
+
+    # Bake binaries into blobs, so that we can partially link them with the Emerald library.
+    SET            (Command ld -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_bmp.o meiryo_36.bmp)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
+
+    SET            (Command ld -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_dat.o meiryo_36.dat)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
+ENDIF(NOT MSVC)
 
 
 CONFIGURE_FILE ("${EMERALD_SOURCE_DIR}/include/config.h.in" "${EMERALD_SOURCE_DIR}/include/config.h")
@@ -235,10 +242,10 @@ ADD_SUBDIRECTORY(apps)
 ADD_SUBDIRECTORY(deps)
 
 IF (NOT MSVC)
-    SET(THREADING_LIB pthread)
+    SET(ADDITIONAL_LIBS pthread "${EMERALD_BINARY_DIR}/meiryo_36_bmp.o" "${EMERALD_BINARY_DIR}/meiryo_36_dat.o")
 ENDIF (NOT MSVC)
 
-TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${THREADING_LIB})
+TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${ADDITIONAL_LIBS})
 TARGET_LINK_LIBRARIES(TEST EMERALD)
 
 ADD_DEPENDENCIES(EMERALD lib_jpeg)

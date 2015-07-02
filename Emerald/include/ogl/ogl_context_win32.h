@@ -47,6 +47,6 @@ PUBLIC bool ogl_context_win32_set_property(__in ogl_context_win32    context_win
 PUBLIC void ogl_context_win32_swap_buffers(__in ogl_context_win32 context_win32);
 
 /** TODO */
-PUBLIC void ogl_context_win32_unbind_from_current_thread();
+PUBLIC void ogl_context_win32_unbind_from_current_thread(__in ogl_context_win32 context_win32);
 
 #endif /* OGL_CONTEXT_WIN32_H */

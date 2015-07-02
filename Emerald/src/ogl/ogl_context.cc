@@ -61,7 +61,7 @@ typedef bool  (*PFNCONTEXTSETPROPERTYPROC)        (__in  ogl_context_platform   
                                                    __in  ogl_context_property            property,
                                                    __in  const void*                     data);
 typedef void  (*PFNCONTEXTSWAPBUFFERSPROC)        (__in  ogl_context_platform            context_platform);
-typedef void  (*PFNUNBINDFROMCURRENTTHREADPROC)   ();
+typedef void  (*PFNUNBINDFROMCURRENTTHREADPROC)   (__in  ogl_context_platform            context_platform);
 
 /** Internal variables */
 typedef struct
@@ -2388,7 +2388,7 @@ PUBLIC void ogl_context_unbind_from_current_thread(__in __notnull ogl_context co
 
     if (context_ptr != NULL)
     {
-        context_ptr->pfn_unbind_from_current_thread();
+        context_ptr->pfn_unbind_from_current_thread(context_ptr->context_platform);
 
         _current_context = NULL;
         ogl_context_wrappers_set_private_functions(NULL);

@@ -2,7 +2,7 @@
  *
  * Emerald (kbi/elude @2014-2015)
  *
- * Linux version: TODO
+ * NOTE: Some parts of this API are Windows-specific.
  */
 #include "shared.h"
 #include "system/system_file_enumerator.h"
@@ -10,8 +10,13 @@
 #include "system/system_resizable_vector.h"
 
 #ifdef _WIN32
+    #include "commdlg.h"
+#else
+    #include <unistd.h>
+#endif
 
-#include "commdlg.h"
+
+#ifdef _WIN32
 
 typedef struct
 {
@@ -120,6 +125,7 @@ end:
 
     return result;
 }
+
 
 /** Please see header for spec */
 PUBLIC EMERALD_API system_hashed_ansi_string system_file_enumerator_choose_file_via_ui(__in                                   system_file_enumerator_file_operation operation,
@@ -346,26 +352,39 @@ PUBLIC EMERALD_API void system_file_enumerator_get_property(__in  __notnull syst
     } /* switch (property) */
 }
 
+#endif
+
 /** Please see header for spec */
 PUBLIC EMERALD_API bool system_file_enumerator_is_file_present(__in __notnull system_hashed_ansi_string file_name)
 {
-    HANDLE file_handle = ::CreateFileA(system_hashed_ansi_string_get_buffer(file_name),
-                                       GENERIC_READ,
-                                       FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                       NULL, /* no security attributes */
-                                       OPEN_EXISTING,
-                                       FILE_ATTRIBUTE_NORMAL,
-                                       NULL); /* no template file */
-    bool   result      = false;
-
-    if (file_handle != INVALID_HANDLE_VALUE)
+    #ifdef _WIN32
     {
-        ::CloseHandle(file_handle);
+        HANDLE file_handle = ::CreateFileA(system_hashed_ansi_string_get_buffer(file_name),
+                                        GENERIC_READ,
+                                        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                        NULL, /* no security attributes */
+                                        OPEN_EXISTING,
+                                        FILE_ATTRIBUTE_NORMAL,
+                                        NULL); /* no template file */
+        bool   result      = false;
 
-        result = true;
+        if (file_handle != INVALID_HANDLE_VALUE)
+        {
+            ::CloseHandle(file_handle);
+
+            result = true;
+        }
+
+        return result;
     }
+    #else
+    {
+        bool result = (access(system_hashed_ansi_string_get_buffer(file_name),
+                              F_OK) != -1);
 
-    return result;
+        return result;
+    }
+    #endif
 }
 
 /** Please see header for spec */
@@ -410,6 +429,8 @@ PUBLIC EMERALD_API bool system_file_enumerator_is_file_present_in_system_file_un
 
     return result;
 }
+
+#ifdef _WIN32
 
 /** Please see header for spec */
 PUBLIC EMERALD_API void system_file_enumerator_release(__in __notnull system_file_enumerator enumerator)
