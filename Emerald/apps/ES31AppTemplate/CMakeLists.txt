@@ -44,6 +44,10 @@ ADD_EXECUTABLE(ES31AppTemplate WIN32 ${AllES31AppTemplateSources} ${GeneralInclu
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(ES31AppTemplate PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ELSE (MSVC)
+    # Force a 32-bit build
+    SET_TARGET_PROPERTIES(ES31AppTemplate PROPERTIES COMPILE_FLAGS "-m32"
+                                                     LINK_FLAGS    "-m32")
 ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

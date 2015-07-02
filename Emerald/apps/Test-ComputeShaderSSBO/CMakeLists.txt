@@ -44,6 +44,10 @@ ADD_EXECUTABLE(TestComputeShaderSSBO WIN32 ${AllTestComputeShaderSSBOSources} ${
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(TestComputeShaderSSBO PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ELSE (MSVC)
+    # Force a 32-bit build
+    SET_TARGET_PROPERTIES(TestComputeShaderSSBO PROPERTIES COMPILE_FLAGS "-m32"
+                                                           LINK_FLAGS    "-m32")
 ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

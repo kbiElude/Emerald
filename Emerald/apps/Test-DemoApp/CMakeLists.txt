@@ -44,6 +44,10 @@ ADD_EXECUTABLE(Test-DemoApp WIN32 ${AllTest-DemoAppSources} ${GeneralIncludes})
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(Test-DemoApp PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ELSE (MSVC)
+    # Force a 32-bit build
+    SET_TARGET_PROPERTIES(Test-DemoApp PROPERTIES COMPILE_FLAGS "-m32"
+                                                  LINK_FLAGS    "-m32")
 ENDIF (MSVC)
 
 FILE(COPY "${Test-DemoApp_SOURCE_DIR}/blob/" DESTINATION "${Test-DemoApp_BINARY_DIR}/blob/")

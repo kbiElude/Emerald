@@ -44,6 +44,10 @@ ADD_EXECUTABLE(TestUber WIN32 ${AllTestUberSources} ${GeneralIncludes})
 
 IF (MSVC)
     SET_TARGET_PROPERTIES(TestUber PROPERTIES LINK_FLAGS "/MANIFEST:NO")
+ELSE (MSVC)
+    # Force a 32-bit build
+    SET_TARGET_PROPERTIES(TestUber PROPERTIES COMPILE_FLAGS "-m32"
+                                              LINK_FLAGS    "-m32")
 ENDIF (MSVC)
 
 SET(EXECUTABLE_OUTPUT_PATH ${EMERALD_BINARY_DIR}/bin)

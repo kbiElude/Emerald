@@ -28,14 +28,26 @@ IF (NOT MSVC)
     # for the functionality, based on conditional variables.
     ADD_DEFINITIONS(-DUSE_EMULATED_EVENTS)
 
-    # Bake binaries into blobs, so that we can partially link them with the Emerald library.
-    SET            (Command ld -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_bmp.o meiryo_36.bmp)
+IF (0)
+    SET            (Command ld -melf_i386 --oformat=elf32-i386 -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_bmp.o meiryo_36.bmp)
     EXECUTE_PROCESS(COMMAND           ${Command}
                     WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
 
-    SET            (Command ld -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_dat.o meiryo_36.dat)
+    SET            (Command ld -melf_i386 --oformat=elf32-i386 -r -b binary -o ${EMERALD_BINARY_DIR}/meiryo_36_dat.o meiryo_36.dat)
     EXECUTE_PROCESS(COMMAND           ${Command}
                     WORKING_DIRECTORY ${EMERALD_SOURCE_DIR})
+ENDIF(0)
+
+    SET            (Command xxd -i meiryo_36.bmp)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR}
+                    OUTPUT_FILE       ${EMERALD_SOURCE_DIR}/meiryo_36.bmp.h)
+
+    SET            (Command xxd -i meiryo_36.dat)
+    EXECUTE_PROCESS(COMMAND           ${Command}
+                    WORKING_DIRECTORY ${EMERALD_SOURCE_DIR}
+                    OUTPUT_FILE       ${EMERALD_SOURCE_DIR}/meiryo_36.dat.h)
+
 ENDIF(NOT MSVC)
 
 
@@ -242,7 +254,23 @@ ADD_SUBDIRECTORY(apps)
 ADD_SUBDIRECTORY(deps)
 
 IF (NOT MSVC)
-    SET(ADDITIONAL_LIBS pthread "${EMERALD_BINARY_DIR}/meiryo_36_bmp.o" "${EMERALD_BINARY_DIR}/meiryo_36_dat.o")
+    SET(ADDITIONAL_LIBS pthread)
+ENDIF (NOT MSVC)
+
+IF (NOT MSVC)
+    # Force 32-bit builds. 64-bit compatibility is TODO.
+    SET_TARGET_PROPERTIES(EMERALD        PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(lib_jpeg       PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(LIB_PNG        PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(LIB_ZLIB       PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(TEST           PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
+    SET_TARGET_PROPERTIES(tinyxml2static PROPERTIES COMPILE_FLAGS "-m32"
+                                                    LINK_FLAGS    "-m32")
 ENDIF (NOT MSVC)
 
 TARGET_LINK_LIBRARIES(EMERALD ${OPENGL_LIBRARIES} ${STRMIIDS_LIB} lib_jpeg LIB_PNG LIB_ZLIB tinyxml2static ${ADDITIONAL_LIBS})

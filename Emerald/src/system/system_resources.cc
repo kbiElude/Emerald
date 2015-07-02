@@ -20,11 +20,8 @@ PRIVATE void  _system_resources_get_embedded_meiryo_font_binaries(__out __notnul
                                                                         int     resource_id,
                                                                         int     resource_type);
 #else
-    extern char _binary_meiryo_36_bmp_end  [];
-    extern char _binary_meiryo_36_bmp_start[];
-
-    extern char _binary_meiryo_36_dat_end  [];
-    extern char _binary_meiryo_36_dat_start[];
+    #include "../meiryo_36.bmp.h"
+    #include "../meiryo_36.dat.h"
 #endif
 
 /* Private variables */
@@ -73,8 +70,8 @@ PRIVATE void _system_resources_get_embedded_meiryo_font_binaries(__out __notnull
     }
     #else
     {
-        *out_bmp_blob = _binary_meiryo_36_bmp_start;
-        *out_dat_blob = _binary_meiryo_36_dat_start;
+        *out_bmp_blob = meiryo_36_bmp;
+        *out_dat_blob = meiryo_36_dat;
 
         ASSERT_DEBUG_SYNC(*out_bmp_blob != NULL,
                           "BMP blob pointer is NULL");
