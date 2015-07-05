@@ -68,11 +68,23 @@ EMERALD_API system_critical_section system_critical_section_create()
 #ifdef _WIN32
     ::InitializeCriticalSection(&cs_ptr->cs);
 #else
-    int result = pthread_mutex_init(&cs_ptr->cs,
-                                    NULL);       /* attr */
+    pthread_mutexattr_t mutex_attributes;
+    int                 result;
+
+    result = pthread_mutexattr_init(&mutex_attributes);
+    ASSERT_DEBUG_SYNC(result == 0,
+                      "pthread_mutexattr_init() call failed.");
+
+    pthread_mutexattr_settype(&mutex_attributes,
+                               PTHREAD_MUTEX_RECURSIVE);
+
+    result = pthread_mutex_init(&cs_ptr->cs,
+                                &mutex_attributes);
 
     ASSERT_DEBUG_SYNC(result == 0,
                       "pthread_mutex_init() call failed.");
+
+    pthread_mutexattr_destroy(&mutex_attributes);
 #endif
 
     cs_ptr->n_enters  = 0;

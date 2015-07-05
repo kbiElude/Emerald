@@ -205,4 +205,11 @@ int main_deinit()
 
         return TRUE;
     }
+#else
+    static void GlobalConstructor() __attribute__((constructor));
+
+    void GlobalConstructor()
+    {
+        main_init();
+    }
 #endif
